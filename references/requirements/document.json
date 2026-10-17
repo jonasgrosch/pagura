@@ -206,7 +206,7 @@
       "tests": [
         "document/pages-type-missing"
       ],
-      "gaps": "missing boxes, invalid Kids and conflicting explicit types remain errors"
+      "gaps": "untyped leaves still require their own Contents or MediaBox; conflicting structural types remain errors"
     },
     {
       "id": "security-indirect-filters",
@@ -271,6 +271,176 @@
         "document/length-chain-short"
       ],
       "gaps": "dependency cycles are errors; excessive acyclic reference depth is a Limit, never a guessed stream length"
+    },
+    {
+      "id": "page-box-recovery",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.7.3.3",
+        "7.7.3.4",
+        "14.11.2",
+        "7.9.5"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/pages-media-missing",
+        "document/pages-media-empty",
+        "document/pages-media-from-crop",
+        "document/pages-crop-empty",
+        "document/pages-crop-disjoint"
+      ],
+      "gaps": "MediaBox prefers valid CropBox then Letter (612 by 792), a viewing convention also used by PDF.js, not an ISO default; invalid or disjoint CropBox uses MediaBox; resolution and budget errors propagate"
+    },
+    {
+      "id": "page-graph-recovery",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.7.3.2",
+        "7.7.3.3",
+        "7.7.3.4",
+        "12.7.7"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/pages-kids-invalid",
+        "document/pages-kids-single",
+        "document/pages-kids-rebuilt",
+        "document/pages-root-untyped-backlinks",
+        "document/pages-repeat-leaf",
+        "document/pages-repeat-branch",
+        "document/pages-cycle-usable",
+        "document/pages-cycle-only",
+        "document/pages-kids-all-invalid",
+        "document/pages-parent-mismatch",
+        "document/pages-template-kid",
+        "document/pages-direct-kids"
+      ],
+      "gaps": "Kids order wins over conflicting Parent and Count. Repeated node occurrences are retained in Kids order, bounded by page and traversal-work limits. Cyclic/invalid child edges are omitted only if usable leaves remain. Missing Kids uses explicit typed Parent backlinks in object-number order. Direct dictionaries use their container object identity and distinct page indexes. No identity inferred from inherited attributes or EOF"
+    },
+    {
+      "id": "document-lexical-recovery",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.2.3",
+        "7.3.5",
+        "7.3.7",
+        "7.3.10"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/syntax-key-solidus",
+        "document/syntax-name-escape",
+        "document/syntax-reference-zero",
+        "document/syntax-dictionary-closer",
+        "document/syntax-dictionary-opener",
+        "document/object-separator-missing"
+      ],
+      "gaps": "Limited lexical repairs: bare keys begin with letters and exclude reserved keywords, invalid hash escapes remain literal, object-zero references become null, duplicate opener and one stray parenthesis before dictionary close are reported. Glued endobj needs a proven next object header; direct nested streams remain invalid"
+    },
+    {
+      "id": "xref-lazy-offset-validation",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.5.4",
+        "7.5.8"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/xref-swapped-offsets"
+      ],
+      "gaps": "Merged offsets pointing to another object header trigger one full reconstruction before lazy loading, never a second retained cache. Nearby corrections retain the existing path; unused entries without recognizable headers remain lazy"
+    },
+    {
+      "id": "object-stream-header-recovery",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.5.7",
+        "7.5.8"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/object-stream-type-invalid",
+        "document/object-stream-type-conflict",
+        "document/object-stream-self-entry",
+        "document/object-stream-offset-alias"
+      ],
+      "gaps": "Unknown Type needs an xref-selected stream with a validated N/First header; known conflicting roles remain errors. Only a leading self entry aliasing the first real zero offset is discarded; original indexes and a complete physical stream definition are required. Compressed Encrypt/crypt filters and compressed stream Length remain forbidden."
+    },
+    {
+      "id": "direct-stream-recovery",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.8.1",
+        "7.3.10",
+        "7.6.3.2",
+        "7.8.2",
+        "C.1"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/direct-stream-contents",
+        "document/direct-stream-rebuilt",
+        "document/direct-stream-array",
+        "document/direct-stream-indirect-array",
+        "document/direct-stream-direct-page",
+        "document/direct-stream-indirect-kids",
+        "document/direct-stream-resources",
+        "document/direct-stream-encrypted",
+        "document/direct-stream-length",
+        "document/direct-stream-ambiguous",
+        "document/direct-stream-duplicate-key",
+        "document/direct-stream-no-terminator",
+        "document/direct-stream-encrypt-dictionary"
+      ],
+      "gaps": "Streams must ordinarily be indirect. Reported recovery keeps dictionaries unchanged and records source paths/ranges in the containing object cache. Payloads use the container encryption identity; direct page contents use the existing stream API. These metadata and header copies are retained-budget charges. A wrong Length needs a unique terminator with a complete dictionary/array continuation. EOF, ambiguous boundaries and duplicate-key scopes containing direct streams are rejected. Direct image resource dictionaries enumerate but drawing them still needs image integration. Direct streams are rejected during security initialization."
+    },
+    {
+      "id": "security-authorization-events",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.6.6"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/security-embedded-event",
+        "document/security-default-event-override",
+        "document/security-embedded-doc-open",
+        "document/security-embedded-identity-filter"
+      ],
+      "gaps": "EFOpen-only crypt filters can leave a document without an authenticated key while Identity page data remains readable. Embedded encrypted data still returns Password until reopened with credentials. StrF/StmF force DocOpen as Table 25 requires; other DocOpen filters retain eager authentication. Malformed security parameters are never deferred."
+    },
+    {
+      "id": "security-key-length-recovery",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.6.2",
+        "7.6.4.3.2",
+        "7.6.4.4.5",
+        "7.6.4.4.6"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/security-length-missing",
+        "document/security-length-missing-password"
+      ],
+      "gaps": "Only missing V=2/R=3 Length is recovered, after the 40-bit default fails and exactly one other legal size authenticates the same supplied credential. Passwords, IDs and other parameters are unchanged. Authentication remains in pagura-crypto; failed or ambiguous trials preserve the original error, and Limit errors propagate."
+    },
+    {
+      "id": "catalog-identity-recovery",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.10",
+        "7.5.4",
+        "7.5.5",
+        "7.7.2"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/catalog-number-zero",
+        "document/catalog-number-zero-conflict",
+        "document/catalog-number-zero-encrypted"
+      ],
+      "gaps": "Only a complete, explicitly typed plaintext Catalog numbered zero is recovered at the exact positive trailer Root xref offset. A matching nearby positive header takes precedence. Generation, Pages reference, endobj and absence of stream payloads are required. Other roles, arbitrary renumbering and encrypted object-key guesses are rejected. No second object slot or retained copy is created."
     }
   ]
 }

@@ -196,7 +196,48 @@ fn primary(
             .checked_add(shift)
             .ok_or(Error::syntax("Prev offset overflow"))?;
     }
+    validate_identities(bytes, &table, limits)?;
     Ok(table)
+}
+
+fn validate_identities(bytes: &[u8], table: &XrefTable, limits: Limits) -> Result<()> {
+    // Verify identities, not bodies, before handing entries to the lazy cache.
+    // An offset pointing to another object must trigger the same full reconstruction as a
+    // malformed table (7.5.4); keep the existing nearby-offset repair path.
+    for (&number, entry) in &table.entries {
+        if let Location::Offset(at) = entry.location {
+            let id = pagura_core::ObjectId::new(number, entry.generation);
+            // This eager check uses a fixed-size lookahead. Longer headers
+            // remain lazy, avoiding repeated scans of hostile overlapping tokens.
+            let header = |offset: usize| {
+                crate::object::header(
+                    &bytes[..offset.saturating_add(1024).min(bytes.len())],
+                    offset,
+                    limits,
+                )
+            };
+            let matches = |offset| header(offset) == Some(id);
+            if header(at).is_some()
+                && !matches(at)
+                && !(at.saturating_sub(32)..at.saturating_add(33).min(bytes.len())).any(|offset| {
+                    (offset == 0
+                        || bytes
+                            .get(offset - 1)
+                            .is_some_and(|&byte| is_whitespace(byte)))
+                        && matches(offset)
+                })
+            {
+                return Err(Diagnostic::new(
+                    tags::XREF_REBUILT,
+                    "cross-reference offset has no matching object header",
+                )
+                .at(Position::File(at))
+                .in_object(id)
+                .to_error());
+            }
+        }
+    }
+    Ok(())
 }
 
 fn merge_entries(

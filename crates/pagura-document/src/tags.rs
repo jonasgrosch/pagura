@@ -62,3 +62,41 @@ pub const OBJECT_END: Repair = Repair::new("object.end-missing");
 pub const CATALOG_TYPE_INVALID: Repair = Repair::new("catalog.type-invalid");
 /// A missing page-tree Type inferred from Kids or leaf attributes (7.7.3).
 pub const PAGE_TYPE: Repair = Repair::new("pages.type-missing");
+
+/// Required MediaBox is missing/invalid: use a valid CropBox or Letter (Table 31).
+pub const PAGE_MEDIA_BOX: Repair = Repair::new("pages.media-box");
+/// Invalid/disjoint CropBox defaults to MediaBox (Table 31, 14.11.2).
+pub const PAGE_CROP_BOX: Repair = Repair::new("pages.crop-box");
+/// Repeated node occurrences are preserved in Kids order, within work/page limits (7.7.3).
+pub const PAGE_REPEAT: Repair = Repair::new("pages.repeated-node");
+/// A cyclic child edge is omitted, provided identifiable leaves survive (7.7.3.2).
+pub const PAGE_CYCLE: Repair = Repair::new("pages.cycle");
+/// Invalid or undefined Kids entries are omitted; a lone reference is wrapped (7.7.3.2).
+pub const PAGE_KIDS: Repair = Repair::new("pages.kids-invalid");
+/// Missing Kids recovered from explicit Parent backlinks in object-number order (7.7.3.2).
+pub const PAGE_KIDS_REBUILT: Repair = Repair::new("pages.kids-rebuilt");
+/// An explicit Parent disagrees with the traversed Kids edge (Tables 30 and 31).
+pub const PAGE_PARENT: Repair = Repair::new("pages.parent-mismatch");
+/// A Template named in Kids is displayed as a Page (7.7.3.3, 12.7.7).
+pub const PAGE_TYPE_INVALID: Repair = Repair::new("pages.type-invalid");
+
+/// Missing white space between endobj and the next object header (7.2.3, 7.3.10).
+pub const OBJECT_SEPARATOR: Repair = Repair::new("object.separator-missing");
+
+/// A direct Kids dictionary uses its container's object identity (7.7.3.2).
+/// Page indexes distinguish occurrences; direct resources keep separate identities.
+pub const PAGE_DIRECT: Repair = Repair::new("pages.direct-kid");
+
+/// Unknown/missing object-stream Type inferred from xref and a valid header (7.5.7).
+pub const OBJECT_STREAM_TYPE: Repair = Repair::new("object.stream-type");
+/// A leading self header entry is discarded while retaining the physical stream
+/// and all original indexes. Other self references and offset aliases fail (7.5.7).
+pub const OBJECT_STREAM_SELF_ENTRY: Repair = Repair::new("object.stream-self-entry");
+
+/// Missing V=2 Length uses the unique legal size that authenticates the same
+/// credential, instead of the 40-bit default (7.6.2 Table 20, 7.6.4.3.2).
+pub const KEY_LENGTH_MISSING: Repair = Repair::new("security.key-length");
+
+/// A plaintext Catalog numbered zero uses the exact positive Root xref slot
+/// (7.3.10, 7.5.4, Table 15); other identities and encrypted files are rejected.
+pub const CATALOG_OBJECT_NUMBER: Repair = Repair::new("catalog.object-number");

@@ -121,7 +121,13 @@ def rc4(key, data):
     return bytes(output)
 
 
-def encrypted(revision, identity=False, compressed=False):
+def encrypted(revision, identity=False, compressed=False, direct=False,
+              auth_event=None, attachment_only=False, user_password=b"", identity_attachments=False, omit_length=False):
+    assert not (direct and compressed)
+    assert not attachment_only or (revision == 4 and not compressed)
+    assert not identity_attachments or attachment_only
+    assert not omit_length or revision == 3
+    padded_user = (user_password + PADDING)[:32]
     assert len(PADDING) == 32
     assert rc4(b"Key", b"Plaintext").hex() == "bbf316e8d940af0ad3"
     version = {2: 1, 3: 2, 4: 4}[revision]
@@ -131,12 +137,12 @@ def encrypted(revision, identity=False, compressed=False):
         for _ in range(50):
             digest = hashlib.md5(digest).digest()
     owner_key = digest[:length]
-    owner = rc4(owner_key, PADDING)
+    owner = rc4(owner_key, padded_user)
     if revision >= 3:
         for iteration in range(1, 20):
             owner = rc4(bytes(value ^ iteration for value in owner_key), owner)
     file_id = bytes.fromhex("00112233445566778899aabbccddeeff")
-    digest = hashlib.md5(PADDING + owner + struct.pack("<i", -4) + file_id).digest()
+    digest = hashlib.md5(padded_user + owner + struct.pack("<i", -4) + file_id).digest()
     if revision >= 3:
         for _ in range(50):
             digest = hashlib.md5(digest[:length]).digest()
@@ -153,14 +159,23 @@ def encrypted(revision, identity=False, compressed=False):
 
     encryption = b"<< /Filter /Standard /V %d /R %d /Length %d /O <%s> /U <%s> /P -4 " % (
         version, revision, length * 8, owner.hex().encode(), user.hex().encode())
+    if omit_length:
+        encryption = encryption.replace(b"/Length %d " % (length * 8), b"", 1)
     if revision == 4:
-        encryption += b"/CF << /RC << /CFM /V2 /Length 16 >> >> /StrF /RC /StmF /RC "
+        event = b"/AuthEvent /" + auth_event + b" " if auth_event else b""
+        encryption += b"/CF << /RC << /CFM /" + (b"None" if identity_attachments else b"V2") + b" /Length 16 " + event + b">> >> "
+        encryption += b"/StrF /Identity /StmF /Identity /EFF /RC " if attachment_only else b"/StrF /RC /StmF /RC "
     encryption += b">>"
     objects = list(OBJECTS)
-    objects[0] = OBJECTS[0].replace(b"/Pages", b"/Marker <" + encrypt(1, b"independent").hex().encode() + b"> /Pages")
-    objects[3] = stream(CONTENT if identity else encrypt(4, CONTENT),
+    objects[0] = OBJECTS[0].replace(b"/Pages", b"/Marker <" + (b"independent" if attachment_only else encrypt(1, b"independent")).hex().encode() + b"> /Pages")
+    objects[3] = stream(CONTENT if identity or attachment_only else encrypt(4, CONTENT),
                         b"/Filter /Crypt /DecodeParms << /Name /Identity >> " if identity else b"")
+    if direct:
+        inline = stream(encrypt(3, CONTENT), b"/Label <" + encrypt(3, b"inline").hex().encode() + b"> ")
+        objects[2] = OBJECTS[2].replace(b"/Contents 4 0 R", b"/Contents " + inline)
     objects.append(encryption)
+    if attachment_only:
+        objects.append(stream(b"attached file bytes" if identity_attachments else encrypt(6, b"attached file bytes"), b"/Type /EmbeddedFile "))
     identifier = b"/ID [<" + file_id.hex().encode() + b"><" + file_id.hex().encode() + b">] "
     if compressed:
         builder = Builder()
@@ -387,6 +402,12 @@ def cases():
     yield from structural_recovery_cases()
     yield from bounded_loading_cases()
     yield from retained_cache_cases()
+    yield from page_recovery_cases()
+    yield from object_stream_recovery_cases()
+    yield from direct_stream_cases()
+    yield from authorization_event_cases()
+    yield from key_length_cases()
+    yield from catalog_identity_cases()
 
 
 def replace_startxref(data, offset):
@@ -593,3 +614,235 @@ def retained_cache_cases():
     yield rendered("cache-lazy-object-stream", builder.xref(number=8),
                    "An object stream containing unused strings stays lazy; each retained decoded buffer is charged once",
                    requirement="document-retained-memory")
+
+
+def page_recovery_cases():
+    # Each malformed input is independently constructed with known page order,
+    # geometry and repair identities; no reader supplies these expectations.
+    def repaired(name, objects, repairs, requirement="page-graph-recovery", pages=1):
+        return Case(name, document(objects), OPEN, (requirement,),
+                    "Reported page recovery with strict rejection and independently specified leaves",
+                    strict_valid=False, repairs=repairs, pages=pages)
+
+    for name, page, tags in [
+        ("pages-media-missing", OBJECTS[2].replace(b" /MediaBox [0 0 64 64]", b""), ("pages.media-box",)),
+        ("pages-media-empty", OBJECTS[2].replace(b"[0 0 64 64]", b"[0 0 0 0]"), ("pages.media-box",)),
+        ("pages-media-from-crop", OBJECTS[2].replace(b"/MediaBox", b"/CropBox"), ("pages.media-box",)),
+        ("pages-crop-empty", OBJECTS[2].replace(b"/Resources", b"/CropBox [0 0 0 0] /Resources"), ("pages.crop-box",)),
+        ("pages-crop-disjoint", OBJECTS[2].replace(b"/Resources", b"/CropBox [80 80 90 90] /Resources"), ("pages.crop-box",)),
+    ]:
+        objects = list(OBJECTS); objects[2] = page
+        yield repaired(name, objects, tags, "page-box-recovery")
+    for name, branch, page, tags, count in [
+        ("pages-kids-invalid", b"<< /Type /Pages /Kids [null 99 0 R -1 3 0 R] /Count 1 >>", OBJECTS[2], ("pages.kids-invalid",), 1),
+        ("pages-kids-single", b"<< /Type /Pages /Kids 3 0 R /Count 1 >>", OBJECTS[2], ("pages.kids-invalid",), 1),
+        ("pages-kids-rebuilt", b"<< /Type /Pages /Count 1 >>", OBJECTS[2], ("pages.kids-rebuilt",), 1),
+        ("pages-root-untyped-backlinks", b"<< /Count 1 >>", OBJECTS[2], ("pages.kids-rebuilt", "pages.type-missing"), 1),
+        ("pages-repeat-leaf", b"<< /Type /Pages /Kids [3 0 R 3 0 R] /Count 2 >>", OBJECTS[2], ("pages.repeated-node",), 2),
+        ("pages-cycle-usable", b"<< /Type /Pages /Kids [2 0 R 3 0 R] /Count 1 >>", OBJECTS[2], ("pages.cycle",), 1),
+        ("pages-parent-mismatch", OBJECTS[1], OBJECTS[2].replace(b"/Parent 2 0 R", b"/Parent 99 0 R"), ("pages.parent-mismatch",), 1),
+        ("pages-template-kid", OBJECTS[1], OBJECTS[2].replace(b"/Type /Page ", b"/Type /Template "), ("pages.type-invalid",), 1),
+    ]:
+        yield repaired(name, [OBJECTS[0], branch, page, OBJECTS[3]], tags, pages=count)
+    objects = list(OBJECTS)
+    objects[1] = b"<< /Type /Pages /Kids [5 0 R 5 0 R] /Count 2 >>"
+    objects[2] = OBJECTS[2].replace(b"/Parent 2 0 R", b"/Parent 5 0 R")
+    objects.append(b"<< /Type /Pages /Parent 2 0 R /Kids [3 0 R] /Count 1 >>")
+    yield repaired("pages-repeat-branch", objects, ("pages.repeated-node", "pages.repeated-node"), pages=2)
+    objects = list(OBJECTS)
+    first = OBJECTS[2].replace(b"/Resources << >>", b"/Resources << /ProcSet [/PDF] >>")
+    second = OBJECTS[2].replace(b"/Resources << >>", b"/Resources << /ExtGState << >> >>")
+    objects[1] = b"<< /Type /Pages /Kids [" + first + second + b"] /Count 2 >>"
+    yield repaired("pages-direct-kids", objects, ("pages.direct-kid",), pages=2)
+    for name, branch in [
+        ("pages-cycle-only", b"<< /Type /Pages /Kids [2 0 R] /Count 1 >>"),
+        ("pages-kids-all-invalid", b"<< /Type /Pages /Kids [null 99 0 R] /Count 1 >>"),
+    ]:
+        yield Case(name, document([OBJECTS[0], branch]), INVALID, ("page-graph-recovery",),
+                   "A damaged tree without identifiable leaves cannot become an empty document", strict_valid=False)
+
+    for name, page, tags in [
+        ("syntax-key-solidus", OBJECTS[2].replace(b"/Resources << >>", b"/Resources << ProcSet [/PDF] >>"), ("syntax.key-solidus",)),
+        ("syntax-name-escape", OBJECTS[2].replace(b"/Resources << >>", b"/Resources << /Bad#Key true >>"), ("syntax.name-escape",)),
+        ("syntax-reference-zero", OBJECTS[2].replace(b"/Resources", b"/CropBox 0 0 R /Resources"), ("syntax.reference-zero",)),
+        ("syntax-dictionary-closer", OBJECTS[2][:-2] + b") >>", ("syntax.dictionary-closer",)),
+        ("syntax-dictionary-opener", b"<< " + OBJECTS[2], ("syntax.dictionary-opener",)),
+    ]:
+        objects = list(OBJECTS); objects[2] = page
+        yield repaired(name, objects, tags, "document-lexical-recovery")
+    # Glue complete object 3's endobj to the next header. Recompute every
+    # subsequent offset rather than obtaining offsets from the implementation.
+    builder = Builder()
+    for number, body in enumerate(OBJECTS, 1):
+        builder.obj(number, body)
+        if number == 3:
+            del builder.data[-1:]
+    data, _ = builder.classic()
+    yield Case("object-separator-missing", data, RENDER, ("document-lexical-recovery",),
+               "A proven following object header permits recovery of a missing endobj separator",
+               oracle=RED, strict_valid=False, repairs=("object.separator-missing",))
+    builder = base()
+    builder.entries[3], builder.entries[4] = builder.entries[4], builder.entries[3]
+    data, _ = builder.classic()
+    yield Case("xref-swapped-offsets", data, RENDER, ("xref-lazy-offset-validation",),
+               "Swapped distant offsets reconstruct once before lazy object caching",
+               oracle=RED, strict_valid=False, repairs=("xref.rebuilt",))
+
+
+def object_stream_recovery_cases():
+    for name, kind in [("object-stream-type-invalid", b"Other"), ("object-stream-type-conflict", b"Font")]:
+        builder = Builder()
+        builder.obj(4, OBJECTS[3])
+        builder.packed()
+        at = builder.data.index(b"/Type /ObjStm")
+        # Equal-width replacement preserves every independently computed offset.
+        field = b"/Type /ObjStm"
+        builder.data[at:at+len(field)] = (b"/Type /" + kind).ljust(len(field))
+        if kind == b"Other":
+            yield Case(name, builder.xref(), RENDER, ("object-stream-header-recovery",),
+                       "An unknown Type is inferred only after validating the xref-selected N/First header",
+                       oracle=RED, strict_valid=False, repairs=("object.stream-type",))
+        else:
+            yield Case(name, builder.xref(), INVALID, ("object-stream-header-recovery",),
+                       "A known conflicting dictionary role cannot be inferred as an object stream", strict_valid=False)
+    builder = Builder()
+    builder.obj(4, OBJECTS[3])
+    bodies = bytearray(); pairs = [b"5 0"]
+    for number, body in enumerate(OBJECTS[:3], 1):
+        pairs.append(b"%d %d" % (number, len(bodies)))
+        bodies += body + b"\n"
+        builder.entries[number] = (2, 5, number)
+    header = b" ".join(pairs) + b" "
+    builder.obj(5, stream(header + bodies, b"/Type /ObjStm /N 4 /First %d " % len(header)))
+    builder.entries[5] = (2, 5, 0)
+    yield Case("object-stream-self-entry", builder.xref(), RENDER, ("object-stream-header-recovery",),
+               "The first self entry aliases the first real value; physical stream and original indexes survive reconstruction",
+               oracle=RED, strict_valid=False, repairs=("xref.rebuilt", "object.stream-self-entry"))
+
+    invalid = Builder()
+    invalid.obj(4, OBJECTS[3])
+    bad_header = b"9 0 " + b" ".join(pairs[1:]) + b" "
+    invalid.obj(5, stream(bad_header + bodies, b"/Type /ObjStm /N 4 /First %d " % len(bad_header)))
+    for number in range(1, 4):
+        invalid.entries[number] = (2, 5, number)
+    invalid.entries[9] = (2, 5, 0)
+    yield Case("object-stream-offset-alias", invalid.xref(), INVALID, ("object-stream-header-recovery",),
+               "Two real objects sharing an offset cannot use the narrowly defined self-entry repair", strict_valid=False)
+
+
+def direct_stream_cases():
+    inline = stream(CONTENT)
+    page = OBJECTS[2].replace(b"/Contents 4 0 R", b"/Contents " + inline)
+    data = document([OBJECTS[0], OBJECTS[1], page, OBJECTS[3]])
+    for name, pdf, repairs in [
+        ("direct-stream-contents", data, ("syntax.direct-stream",)),
+        ("direct-stream-rebuilt", replace_startxref(data, 999999), ("xref.rebuilt", "syntax.direct-stream")),
+    ]:
+        yield Case(name, pdf, RENDER, ("direct-stream-recovery",),
+                   "A direct content stream retains its dictionary and original payload range",
+                   oracle=RED, strict_valid=False, repairs=repairs)
+    array = b"[" + inline + b" " + stream(b"") + b"]"
+    for name, objects in [
+        ("direct-stream-array", [OBJECTS[0], OBJECTS[1], OBJECTS[2].replace(b"4 0 R", array), OBJECTS[3]]),
+        ("direct-stream-indirect-array", [OBJECTS[0], OBJECTS[1], OBJECTS[2], array]),
+    ]:
+        yield Case(name, document(objects), RENDER, ("direct-stream-recovery",),
+                   "Direct stream array elements keep distinct ranges in content order, including indirect arrays",
+                   oracle=RED, strict_valid=False, repairs=("syntax.direct-stream", "syntax.direct-stream"))
+    branch = b"<< /Type /Pages /Kids [" + page + b"] /Count 1 >>"
+    for name, objects in [
+        ("direct-stream-direct-page", [OBJECTS[0], branch, OBJECTS[2], OBJECTS[3]]),
+        ("direct-stream-indirect-kids", [OBJECTS[0], b"<< /Type /Pages /Kids 5 0 R /Count 1 >>", OBJECTS[2], OBJECTS[3], b"[" + page + b"]"]),
+    ]:
+        yield Case(name, document(objects), RENDER, ("direct-stream-recovery", "page-graph-recovery"),
+                   "A direct page's source path identifies its own embedded content in the containing object",
+                   oracle=RED, strict_valid=False, repairs=("pages.direct-kid", "syntax.direct-stream"))
+    image = stream(bytes([255]), b"/Type /XObject /Subtype /Image /Width 1 /Height 1 /BitsPerComponent 8 /ColorSpace /DeviceGray ")
+    branch = OBJECTS[1][:-2] + b"/Resources << /XObject << /Unused " + image + b">> >> >>"
+    inherited = OBJECTS[2].replace(b"/Resources << >>", b"")
+    yield Case("direct-stream-resources", document([OBJECTS[0], branch, inherited, OBJECTS[3]]), RENDER,
+               ("direct-stream-recovery",), "A nested resource payload is skipped structurally and stays in the original bytes",
+               oracle=RED, strict_valid=False, repairs=("syntax.direct-stream",))
+    yield Case("direct-stream-encrypted", encrypted(2, direct=True), RENDER, ("direct-stream-recovery",),
+               "A direct payload and its header strings use the containing object's encryption key",
+               oracle=RED, strict_valid=False, repairs=("syntax.direct-stream",),
+               extra={"owner_password": "owner", "marker": "independent"})
+    short = inline.replace(b"/Length %d" % len(CONTENT), b"/Length 1")
+    yield Case("direct-stream-length", document([OBJECTS[0], OBJECTS[1], OBJECTS[2].replace(b"4 0 R", short), OBJECTS[3]]),
+               RENDER, ("direct-stream-recovery",), "One validated dictionary continuation bounds a wrong direct stream length",
+               oracle=RED, strict_valid=False, repairs=("syntax.direct-stream", "stream.length-corrected"))
+    for name, contents in [
+        ("direct-stream-ambiguous", b"[" + short + b" " + stream(b"") + b"]"),
+        ("direct-stream-duplicate-key", inline + b" /Contents 4 0 R"),
+        ("direct-stream-no-terminator", inline.replace(b"endstream", b"")),
+    ]:
+        yield Case(name, document([OBJECTS[0], OBJECTS[1], OBJECTS[2].replace(b"4 0 R", contents), OBJECTS[3]]), INVALID,
+                   ("direct-stream-recovery",), "Ambiguous, shadowed or unterminated payloads cannot be recovered by inventing boundaries",
+                   strict_valid=False)
+
+    encrypted_bytes = encrypted(2)
+    # Rebuild with the independently generated security fields while adding an
+    # illegal embedded stream to Encrypt; no security data is guessed.
+    builder = Builder()
+    marker = encrypted_bytes.index(b"5 0 obj\n") + len(b"5 0 obj\n")
+    encryption = encrypted_bytes[marker:encrypted_bytes.index(b"\nendobj", marker)]
+    for number, body in enumerate(OBJECTS, 1):
+        builder.obj(number, body)
+    builder.obj(5, encryption[:-2] + b" /Invalid " + stream(b"") + b" >>")
+    identifier = bytes.fromhex("00112233445566778899aabbccddeeff").hex().encode()
+    bad, _ = builder.classic(extra=b"/Encrypt 5 0 R /ID [<" + identifier + b"><" + identifier + b">] ")
+    yield Case("direct-stream-encrypt-dictionary", bad, INVALID, ("direct-stream-recovery",),
+               "Security initialization cannot load embedded payload dependencies before the key exists", strict_valid=False)
+
+
+def authorization_event_cases():
+    yield Case("security-embedded-identity-filter", encrypted(4, attachment_only=True, auth_event=b"EFOpen", user_password=b"attachment", identity_attachments=True),
+               RENDER, ("security-authorization-events",),
+               "A named None filter still observes its EFOpen authorization event; standard Identity page data stays readable",
+               oracle=RED, extra={"owner_password": "owner", "marker": "independent"})
+    yield Case("security-embedded-event", encrypted(4, attachment_only=True, auth_event=b"EFOpen", user_password=b"attachment"),
+               RENDER, ("security-authorization-events",),
+               "Identity page data opens strictly without attachment authorization; encrypted embedded bytes stay protected",
+               oracle=RED, extra={"owner_password": "owner", "marker": "independent"})
+    yield Case("security-default-event-override", encrypted(4, auth_event=b"EFOpen"), RENDER,
+               ("security-authorization-events",),
+               "Table 25 requires StrF and StmF to use DocOpen even when their filter declares EFOpen",
+               oracle=RED, extra={"owner_password": "owner", "marker": "independent"})
+    yield Case("security-embedded-doc-open", encrypted(4, attachment_only=True, user_password=b"attachment"),
+               INVALID, ("security-authorization-events",),
+               "A crypt filter's default DocOpen event requires a password even if it encrypts only an attachment",
+               strict_valid=False, extra={"open_error": "password"})
+
+
+def key_length_cases():
+    yield Case("security-length-missing", encrypted(3, omit_length=True), RENDER,
+               ("security-key-length-recovery",),
+               "Missing Length selects a wrong 40-bit default; exactly one other legal size authenticates the supplied credential",
+               oracle=RED, strict_valid=False, repairs=("security.key-length",),
+               extra={"owner_password": "owner", "marker": "independent"})
+    yield Case("security-length-missing-password", encrypted(3, omit_length=True, user_password=b"view"), INVALID,
+               ("security-key-length-recovery",),
+               "Changing a missing key length cannot authenticate a wrong credential",
+               strict_valid=False, extra={"open_error": "password"})
+
+
+def catalog_identity_cases():
+    for name, body, valid in [
+        ("catalog-number-zero", OBJECTS[0], True),
+        ("catalog-number-zero-conflict", b"<< /Type /XObject /Pages 2 0 R >>", False),
+    ]:
+        builder = Builder()
+        for number, value in enumerate([body, *OBJECTS[1:]], 1):
+            offset = len(builder.data)
+            builder.obj(0 if number == 1 else number, value)
+            if number == 1:
+                builder.entries[0] = (0, 0, 65535)
+                builder.entries[1] = (1, offset, 0)
+        data, _ = builder.classic()
+        yield Case(name, data, RENDER if valid else INVALID, ("catalog-identity-recovery",),
+                   "Only an exact positive Root xref slot can identify a complete zero-numbered plaintext Catalog",
+                   oracle=RED if valid else None, strict_valid=False,
+                   repairs=("catalog.object-number",) if valid else ())
+    data = encrypted(2).replace(b"1 0 obj", b"0 0 obj", 1)
+    yield Case("catalog-number-zero-encrypted", data, INVALID, ("catalog-identity-recovery",),
+               "A zero-numbered encrypted Catalog has no unambiguous object-key identity", strict_valid=False)

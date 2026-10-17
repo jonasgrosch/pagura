@@ -143,7 +143,7 @@ fn decrypt<'a>(
     let dictionary = object
         .dictionary()
         .ok_or(Error::syntax("stream requires a dictionary"))?;
-    if dictionary.is_name(b"Type", b"XRef") {
+    if dictionary.is_name(b"Type", b"XRef") && !object.is_direct() {
         if explicit.is_some() {
             return Err(Error::syntax("xref streams cannot be encrypted").in_object(object.id()));
         }

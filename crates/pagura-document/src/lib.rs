@@ -9,11 +9,13 @@
 //! [`Document::diagnostics`].
 
 mod catalog;
+mod contents;
 mod diagnostics;
 mod load;
 mod memory;
 mod object;
 mod object_stream;
+mod page_geometry;
 mod pages;
 mod rebuild;
 mod security;
@@ -87,7 +89,10 @@ impl Document {
     ///
     /// Returns a limit error for oversized input or retained-cache storage, syntax errors for
     /// malformed structure that recovery cannot (or may not) repair, and
-    /// `Unsupported` for structures not implemented yet.
+    /// `Unsupported` for structures not implemented yet. DocOpen authorization
+    /// can return `Password`; EFOpen-only filters defer authorization until an
+    /// encrypted embedded stream is requested (7.6.6). Reopen with credentials
+    /// to authorize those embedded streams.
     pub fn open(bytes: impl Into<Arc<[u8]>>, options: &OpenOptions) -> Result<Self> {
         let bytes = bytes.into();
         let limits = options.limits;
@@ -264,7 +269,8 @@ impl Document {
     ///
     /// Returns `Unsupported` for external streams and unimplemented
     /// filters, a limit error if decoding would exceed
-    /// [`Limits::decoded_bytes`], and syntax errors for corrupt data.
+    /// [`Limits::decoded_bytes`], syntax errors for corrupt data, and `Password`
+    /// for embedded encrypted data awaiting EFOpen authorization (7.6.6).
     pub fn stream_data<'a>(&'a self, object: &IndirectObject) -> Result<Cow<'a, [u8]>> {
         stream::decoded(self, object)
     }
@@ -324,32 +330,10 @@ impl Document {
     /// # Errors
     ///
     /// Returns a syntax error for a malformed `/Contents` entry and errors
-    /// from loading the stream objects.
+    /// from loading the stream objects. Repaired direct streams use their
+    /// containing object's identity and retain individual file source ranges.
     pub fn content_streams(&self, page: &Page) -> Result<Vec<&IndirectObject>> {
-        let Some(contents) = page.dictionary().get(b"Contents") else {
-            return Ok(Vec::new());
-        };
-        let invalid = || Error::syntax("Contents must be a stream or array").in_object(page.id());
-        let references = match contents {
-            Value::Reference(id) => {
-                let object = self.object(*id)?;
-                if object.stream_range().is_some() {
-                    return Ok(vec![object]);
-                }
-                object.value().as_array().ok_or_else(invalid)?
-            }
-            Value::Array(values) => values,
-            _ => return Err(invalid()),
-        };
-        references
-            .iter()
-            .map(|value| {
-                let id = value.as_reference().ok_or_else(|| {
-                    Error::syntax("Contents array must hold stream references").in_object(page.id())
-                })?;
-                self.object(id)
-            })
-            .collect()
+        contents::read(self, page)
     }
 }
 

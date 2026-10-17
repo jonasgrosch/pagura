@@ -1,9 +1,9 @@
 //! Lazy object-stream decoding and indexed access, clause 7.5.7.
 
 use crate::xref::integer_offset;
-use crate::{Document, IndirectObject, Location, ObjectSource};
+use crate::{Document, IndirectObject, Location, ObjectSource, tags};
 use pagura_core::syntax::{Origin, Parser};
-use pagura_core::{Diagnostics, Error, ObjectId, Result, Value};
+use pagura_core::{Diagnostic, Diagnostics, Error, ObjectId, Result, Value};
 use std::collections::BTreeSet;
 
 #[derive(Debug)]
@@ -29,7 +29,9 @@ impl Contents {
             .iter()
             .enumerate()
             .filter_map(|(index, &(number, _))| {
-                u32::try_from(index).ok().map(|index| (number, index))
+                (number != 0)
+                    .then(|| u32::try_from(index).ok().map(|index| (number, index)))
+                    .flatten()
             })
     }
 }
@@ -40,19 +42,12 @@ pub(crate) fn parse(
     stream: u32,
     index: u32,
     path: &mut Vec<ObjectId>,
-) -> Result<(IndirectObject, Vec<pagura_core::Diagnostic>)> {
+) -> Result<(IndirectObject, Vec<Diagnostic>)> {
     let stream_id = ObjectId::new(stream, 0);
-    let slot = document
-        .slots
-        .get(&stream_id)
-        .ok_or_else(|| Error::missing_object("object stream is missing").in_object(stream_id))?;
-    if !matches!(slot.location, Location::Offset(_)) {
-        return Err(Error::syntax("object streams cannot be compressed").in_object(stream_id));
-    }
-    let object = document.object_inner(stream_id, path)?;
+    let object = physical(document, stream_id, path)?;
     let dictionary = object
         .dictionary()
-        .filter(|dictionary| dictionary.is_name(b"Type", b"ObjStm"))
+        .filter(|dictionary| stream_dictionary(dictionary))
         .ok_or_else(|| {
             Error::syntax("compressed entry must reference an ObjStm").in_object(stream_id)
         })?;
@@ -82,22 +77,23 @@ pub(crate) fn parse(
             let decoded = chain
                 .decode(&encoded, document.limits().decoded_bytes, &mut diagnostics)
                 .map_err(|error| error.in_object(stream_id))?;
+            let contents = headers(
+                decoded.into_owned(),
+                dictionary,
+                document.limits(),
+                stream_id,
+                &mut diagnostics,
+            )
+            .map_err(|error| error.in_object(stream_id))?;
+            document
+                .retained
+                .charge(contents.retained_bytes(), stream_id)?;
             document.report(
                 diagnostics
                     .take()
                     .into_iter()
                     .map(|diagnostic| diagnostic.in_object(stream_id)),
             );
-            let contents = headers(
-                decoded.into_owned(),
-                dictionary,
-                document.limits(),
-                stream_id,
-            )
-            .map_err(|error| error.in_object(stream_id))?;
-            document
-                .retained
-                .charge(contents.retained_bytes(), stream_id)?;
             Ok(contents)
         })
     };
@@ -145,11 +141,36 @@ pub(crate) fn parse(
     ))
 }
 
+fn physical<'a>(
+    document: &'a Document,
+    stream_id: ObjectId,
+    path: &mut Vec<ObjectId>,
+) -> Result<&'a IndirectObject> {
+    let slot = document
+        .slots
+        .get(&stream_id)
+        .ok_or_else(|| Error::missing_object("object stream is missing").in_object(stream_id))?;
+    if !matches!(slot.location, Location::Offset(_)) {
+        if matches!(slot.location, Location::Compressed { stream, index: 0 } if stream == stream_id.number)
+        {
+            return Err(Diagnostic::new(
+                tags::OBJECT_STREAM_SELF_ENTRY,
+                "object-stream self entry requires its physical stream definition",
+            )
+            .in_object(stream_id)
+            .to_error());
+        }
+        return Err(Error::syntax("object streams cannot be compressed").in_object(stream_id));
+    }
+    document.object_inner(stream_id, path)
+}
+
 pub(crate) fn headers(
     data: Vec<u8>,
     dictionary: &pagura_core::Dictionary,
     limits: pagura_core::Limits,
     id: ObjectId,
+    diagnostics: &mut Diagnostics,
 ) -> Result<Contents> {
     let count = integer_offset(dictionary, b"N")?
         .ok_or(Error::syntax("ObjStm N is missing").in_object(id))?;
@@ -165,7 +186,7 @@ pub(crate) fn headers(
     let mut parser = Parser::new(header, Origin::Stream(id), limits);
     let mut entries = Vec::with_capacity(count);
     let mut numbers = BTreeSet::new();
-    for _ in 0..count {
+    for index in 0..count {
         let number = u32::try_from(parser.unsigned()?)
             .ok()
             .filter(|&number| number != 0)
@@ -184,9 +205,9 @@ pub(crate) fn headers(
                     .in_object(id),
             )?;
         if !numbers.insert(number)
-            || entries
-                .last()
-                .is_some_and(|&(_, previous)| previous >= offset)
+            || entries.last().is_some_and(|&(number, previous)| {
+                previous > offset || (previous == offset && number != 0)
+            })
         {
             return Err(
                 Error::syntax("duplicate object or unordered offsets in ObjStm")
@@ -194,7 +215,32 @@ pub(crate) fn headers(
                     .in_object(id),
             );
         }
-        entries.push((number, offset));
+        if number == id.number {
+            // Only the leading self entry, aliasing the first real object's
+            // zero offset, can be discarded without guessing any object extent.
+            if index != 0 || offset != first {
+                return Err(Error::syntax("invalid object-stream self entry").in_object(id));
+            }
+            diagnostics.repair(
+                Diagnostic::new(
+                    tags::OBJECT_STREAM_SELF_ENTRY,
+                    "leading object-stream self entry discarded; physical definition retained",
+                )
+                .at(parser.position())
+                .in_object(id),
+            )?;
+            entries.push((0, offset));
+        } else {
+            entries.push((number, offset));
+        }
+    }
+    if entries.first().is_some_and(|&(number, _)| number == 0)
+        && entries.get(1).is_none_or(|&(_, offset)| offset != first)
+    {
+        return Err(
+            Error::syntax("self entry must alias the first real object at offset zero")
+                .in_object(id),
+        );
     }
     if !parser.at_end() {
         return Err(Error::syntax("ObjStm header exceeds N")
@@ -204,5 +250,39 @@ pub(crate) fn headers(
     if entries.first().is_some_and(|&(_, offset)| offset != first) {
         return Err(Error::syntax("first ObjStm object offset must be zero").in_object(id));
     }
+    if !dictionary.is_name(b"Type", b"ObjStm") {
+        diagnostics.repair(Diagnostic::new(tags::OBJECT_STREAM_TYPE,
+            "object-stream Type inferred from cross-reference entries and validated N/First header")
+            .in_object(id))?;
+    }
     Ok(Contents { data, entries })
+}
+
+/// Only unknown or absent Type is inferred. Known structural/resource types
+/// remain errors, even if they happen to contain N and First keys (7.5.7).
+fn stream_dictionary(dictionary: &pagura_core::Dictionary) -> bool {
+    dictionary.is_name(b"Type", b"ObjStm")
+        || (dictionary.get(b"N").and_then(Value::as_integer).is_some()
+            && dictionary
+                .get(b"First")
+                .and_then(Value::as_integer)
+                .is_some()
+            && dictionary.get(b"Type").is_none_or(|value| {
+                value.as_name().is_some_and(|name| {
+                    ![
+                        b"Catalog".as_slice(),
+                        b"Page",
+                        b"Pages",
+                        b"XRef",
+                        b"Font",
+                        b"XObject",
+                        b"Annot",
+                        b"Metadata",
+                        b"Action",
+                        b"Filespec",
+                        b"Outlines",
+                    ]
+                    .contains(&name.as_bytes())
+                })
+            }))
 }

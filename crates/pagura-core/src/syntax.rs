@@ -3,6 +3,11 @@
 //! The parser never repairs input silently: every repair goes through a
 //! [`Diagnostics`] sink, which rejects it in [`Recovery::Strict`] mode.
 
+mod direct;
+
+use direct::Context;
+pub use direct::{DirectStream, DirectStreamHandler, PathComponent};
+
 use crate::{
     Diagnostic, Diagnostics, Dictionary, Error, Limits, Name, ObjectId, Position, Recovery, Repair,
     Result, Value,
@@ -11,6 +16,22 @@ use crate::{
 /// Repair applied when a dictionary repeats a key (clause 7.3.7 forbids it):
 /// the last value wins. Readers disagree here, so the repair is always reported.
 pub const DUPLICATE_KEY: Repair = Repair::new("syntax.duplicate-key");
+
+/// A dictionary key with a missing solidus (7.3.7), accepted only when the
+/// entire regular token begins with an ASCII letter. Reserved values are excluded.
+pub const KEY_SOLIDUS: Repair = Repair::new("syntax.key-solidus");
+/// A hash not followed by two hex digits is retained literally (7.3.5).
+pub const NAME_ESCAPE: Repair = Repair::new("syntax.name-escape");
+/// An undefined object-zero reference is read as null (7.3.10).
+pub const ZERO_REFERENCE: Repair = Repair::new("syntax.reference-zero");
+/// A lone closing parenthesis immediately before a dictionary closer (7.3.7).
+pub const DICTIONARY_CLOSER: Repair = Repair::new("syntax.dictionary-closer");
+
+/// A duplicated opening dictionary delimiter before its first key (7.3.7).
+pub const DICTIONARY_OPENER: Repair = Repair::new("syntax.dictionary-opener");
+
+/// A stream illegally used as a direct dictionary/array value (7.3.8.1).
+pub const DIRECT_STREAM: Repair = Repair::new("syntax.direct-stream");
 
 /// PDF white-space characters (clause 7.2.3, Table 1).
 pub const fn is_whitespace(byte: u8) -> bool {
@@ -237,10 +258,42 @@ impl<'a> Parser<'a> {
     /// budget in [`Limits`] would be exceeded.
     pub fn parse(&mut self) -> Result<Value> {
         self.nodes = 0;
-        self.value(0)
+        self.value(0, &mut None)
     }
 
-    fn value(&mut self, depth: usize) -> Result<Value> {
+    /// Parses a value while retaining source ranges of illegal direct streams.
+    ///
+    /// The callback starts before `stream` and must consume its complete payload
+    /// and `endstream`, enforcing stream and dependency budgets. Return its data
+    /// range to retain a descriptor, or `None` for a structural scan only. Neither
+    /// callback nor parser may infer a missing terminator from end of input.
+    /// Dictionaries and source bytes are unchanged; descriptors identify payloads
+    /// separately. Descriptor metadata is capped by [`Limits::document_bytes`]
+    /// before copying source paths. Normal [`Self::parse`] continues to reject direct streams.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::parse`], callback errors, or `syntax.direct-stream` in strict mode.
+    pub fn parse_with_streams(
+        &mut self,
+        handler: &mut DirectStreamHandler<'a, '_>,
+    ) -> Result<(Value, Vec<DirectStream>)> {
+        self.nodes = 0;
+        let mut context = Some(Context {
+            handler,
+            path: Vec::new(),
+            found: Vec::new(),
+            count: 0,
+            bytes: 0,
+        });
+        let value = self.value(0, &mut context)?;
+        Ok((
+            value,
+            context.map_or_else(Vec::new, |context| context.found),
+        ))
+    }
+
+    fn value(&mut self, depth: usize, streams: &mut Option<Context<'a, '_>>) -> Result<Value> {
         if depth > self.limits.depth {
             return Err(self.limit("object nesting depth exceeded"));
         }
@@ -252,10 +305,10 @@ impl<'a> Parser<'a> {
             Some(b'/') => self.name().map(Value::Name),
             Some(b'(') => self.literal_string().map(Value::String),
             Some(b'<') if self.data.get(self.position + 1) == Some(&b'<') => {
-                self.dictionary(depth).map(Value::Dictionary)
+                self.dictionary_value(depth, streams)
             }
             Some(b'<') => self.hex_string().map(Value::String),
-            Some(b'[') => self.array(depth).map(Value::Array),
+            Some(b'[') => self.array(depth, streams).map(Value::Array),
             Some(b'+' | b'-' | b'.' | b'0'..=b'9') => self.number_or_reference(),
             Some(_) if self.keyword(b"true") => Ok(Value::Boolean(true)),
             Some(_) if self.keyword(b"false") => Ok(Value::Boolean(false)),
@@ -280,12 +333,23 @@ impl<'a> Parser<'a> {
         while self.current().is_some_and(is_regular) {
             let mut byte = self.next_byte()?;
             if byte == b'#' {
-                let high = hex_digit(self.next_byte()?);
-                let low = hex_digit(self.next_byte()?);
-                let (Some(high), Some(low)) = (high, low) else {
-                    return Err(self.error("invalid name escape"));
-                };
-                byte = (high << 4) | low;
+                let pair = self
+                    .data
+                    .get(self.position..self.position.saturating_add(2));
+                if let Some((high, low)) =
+                    pair.and_then(|pair| Some((hex_digit(pair[0])?, hex_digit(pair[1])?)))
+                {
+                    self.position += 2;
+                    byte = (high << 4) | low;
+                } else {
+                    self.diagnostics.repair(
+                        Diagnostic::new(
+                            NAME_ESCAPE,
+                            "invalid name escape retained as a literal hash",
+                        )
+                        .at(self.origin.position(self.position - 1)),
+                    )?;
+                }
             }
             if byte == 0 {
                 return Err(self.error("name contains a null byte"));
@@ -391,7 +455,7 @@ impl<'a> Parser<'a> {
         Ok(bytes)
     }
 
-    fn array(&mut self, depth: usize) -> Result<Vec<Value>> {
+    fn array(&mut self, depth: usize, streams: &mut Option<Context<'a, '_>>) -> Result<Vec<Value>> {
         self.position += 1;
         let mut values = Vec::new();
         loop {
@@ -399,36 +463,205 @@ impl<'a> Parser<'a> {
                 self.position += 1;
                 return Ok(values);
             }
-            values.push(self.value(depth + 1)?);
+            if let Some(context) = streams {
+                context.path.push(PathComponent::Index(values.len()));
+            }
+            values.push(self.value(depth + 1, streams)?);
+            if let Some(context) = streams {
+                context.path.pop();
+            }
         }
     }
 
-    fn dictionary(&mut self, depth: usize) -> Result<Dictionary> {
+    fn dictionary(
+        &mut self,
+        depth: usize,
+        streams: &mut Option<Context<'a, '_>>,
+    ) -> Result<Dictionary> {
         self.position += 2;
         let mut dictionary = Dictionary::new();
+        let before_streams = streams.as_ref().map_or(0, |context| context.count);
+        let mut repeated_key = false;
+        self.skip_whitespace();
+        if self.data[self.position..].starts_with(b"<<") {
+            let at = self.position();
+            self.position += 2;
+            self.skip_whitespace();
+            if self.current() != Some(b'/') {
+                return Err(self.error("dictionary key must be a name"));
+            }
+            self.diagnostics.repair(
+                Diagnostic::new(
+                    DICTIONARY_OPENER,
+                    "duplicated dictionary opener before the first key ignored",
+                )
+                .at(at),
+            )?;
+        }
+
         loop {
             self.skip_whitespace();
             if self.data[self.position..].starts_with(b">>") {
                 self.position += 2;
-                return Ok(dictionary);
+                return self.complete_dictionary(
+                    dictionary,
+                    streams.as_ref(),
+                    before_streams,
+                    repeated_key,
+                );
             }
             let key_position = self.position();
-            if self.current() != Some(b'/') {
-                return Err(self.error("dictionary key must be a name"));
+            if self.current() == Some(b')') {
+                let saved = self.position;
+                self.position += 1;
+                self.skip_whitespace();
+                if self.data[self.position..].starts_with(b">>") {
+                    self.diagnostics.repair(
+                        Diagnostic::new(
+                            DICTIONARY_CLOSER,
+                            "stray parenthesis before dictionary closer ignored",
+                        )
+                        .at(key_position),
+                    )?;
+                    self.position += 2;
+                    return self.complete_dictionary(
+                        dictionary,
+                        streams.as_ref(),
+                        before_streams,
+                        repeated_key,
+                    );
+                }
+                self.position = saved;
+            }
+            let bare = self.current() != Some(b'/');
+            if bare {
+                self.bare_key(key_position)?;
             }
             if self.nodes >= self.limits.value_nodes {
                 return Err(self.limit("object value budget exceeded"));
             }
             self.nodes += 1;
-            let key = self.name()?;
-            let value = self.value(depth + 1)?;
+            let key = if bare {
+                // Reuse name decoding, including escaped characters and bounds.
+                // The dictionary opener guarantees a preceding byte exists.
+                self.position -= 1;
+                self.name()?
+            } else {
+                self.name()?
+            };
+            if let Some(context) = streams {
+                context.path.push(PathComponent::Key(key.clone()));
+            }
+            let value = self.value(depth + 1, streams)?;
+            if let Some(context) = streams {
+                context.path.pop();
+            }
             if dictionary.insert(key, value).is_some() {
+                repeated_key = true;
                 self.diagnostics.repair(
                     Diagnostic::new(DUPLICATE_KEY, "dictionary repeats a key; last value kept")
                         .at(key_position),
                 )?;
             }
         }
+    }
+
+    fn bare_key(&mut self, key_position: Position) -> Result<()> {
+        let tail = &self.data[self.position..];
+        let length = tail.iter().take_while(|&&byte| is_regular(byte)).count();
+        let token = &tail[..length];
+        if !token.first().is_some_and(u8::is_ascii_alphabetic)
+            || matches!(
+                token,
+                b"true" | b"false" | b"null" | b"stream" | b"endstream" | b"endobj" | b"obj" | b"R"
+            )
+        {
+            return Err(self.error("dictionary key must be a name"));
+        }
+        self.diagnostics.repair(
+            Diagnostic::new(KEY_SOLIDUS, "dictionary key has no leading solidus").at(key_position),
+        )?;
+        Ok(())
+    }
+
+    fn complete_dictionary(
+        &self,
+        dictionary: Dictionary,
+        streams: Option<&Context<'a, '_>>,
+        before: usize,
+        repeated_key: bool,
+    ) -> Result<Dictionary> {
+        if repeated_key
+            && streams
+                .as_ref()
+                .is_some_and(|context| context.count != before)
+        {
+            return Err(
+                self.error("direct streams cannot be recovered across duplicate dictionary keys")
+            );
+        }
+        Ok(dictionary)
+    }
+
+    fn dictionary_value(
+        &mut self,
+        depth: usize,
+        streams: &mut Option<Context<'a, '_>>,
+    ) -> Result<Value> {
+        let start = self.offset();
+        let dictionary = self.dictionary(depth, streams)?;
+        let before = self.offset();
+        if depth > 0
+            && let Some(context) = streams
+            && self.keyword(b"stream")
+        {
+            self.seek(before)?;
+            self.diagnostics.repair(
+                Diagnostic::new(
+                    DIRECT_STREAM,
+                    "stream used directly in a dictionary or array; source range retained",
+                )
+                .at(self.position()),
+            )?;
+            context.count += 1;
+            let data = (context.handler)(self, &dictionary)?;
+            let marker = self
+                .offset()
+                .checked_sub(9)
+                .filter(|&marker| self.data.get(marker..self.offset()) == Some(b"endstream"))
+                .ok_or_else(|| self.error("direct stream handler did not consume endstream"))?;
+            if let Some(data) = data {
+                if data.start > data.end || data.end > marker || data.start < start {
+                    return Err(self.error("invalid direct stream source range"));
+                }
+                let capacity = if context.found.len() == context.found.capacity() {
+                    context.found.capacity().saturating_mul(2).max(1)
+                } else {
+                    context.found.capacity()
+                };
+                let growth = capacity
+                    .saturating_sub(context.found.capacity())
+                    .saturating_mul(size_of::<DirectStream>());
+                let bytes = context.path.iter().fold(growth, |sum, part| {
+                    sum.saturating_add(part.retained_bytes())
+                });
+                context.bytes = context
+                    .bytes
+                    .checked_add(bytes)
+                    .filter(|&bytes| bytes <= self.limits.document_bytes)
+                    .ok_or_else(|| self.limit("direct stream metadata budget exceeded"))?;
+                context
+                    .found
+                    .try_reserve_exact(capacity.saturating_sub(context.found.len()))
+                    .map_err(|_| self.limit("direct stream metadata allocation failed"))?;
+                context.found.push(DirectStream {
+                    path: context.path.clone(),
+                    source: start..self.offset(),
+                    data,
+                });
+            }
+        }
+        Ok(Value::Dictionary(dictionary))
     }
 
     /// Parses a number, or `N G R` when the integer starts a reference.
@@ -458,6 +691,13 @@ impl<'a> Parser<'a> {
             .parse()
             .map_err(|_| self.error("integer out of range"))?;
         if !signed && let Some(reference) = self.reference_tail(integer) {
+            if reference.number == 0 {
+                self.diagnostics.repair(
+                    Diagnostic::new(ZERO_REFERENCE, "object-zero reference interpreted as null")
+                        .at(self.origin.position(start)),
+                )?;
+                return Ok(Value::Null);
+            }
             return Ok(Value::Reference(reference));
         }
         Ok(Value::Integer(integer))
@@ -466,7 +706,7 @@ impl<'a> Parser<'a> {
     /// Tries to read `G R` after an object number; restores the position
     /// if the following tokens do not form a reference.
     fn reference_tail(&mut self, number: i64) -> Option<ObjectId> {
-        let number = u32::try_from(number).ok().filter(|&n| n > 0)?;
+        let number = u32::try_from(number).ok()?;
         let saved = self.position;
         let generation = self
             .unsigned()
@@ -530,5 +770,54 @@ mod tests {
             .parse()
             .unwrap_err();
         assert_eq!(error.position, Position::Stream { object, offset: 2 });
+    }
+}
+
+#[cfg(test)]
+mod recovery_tests {
+    use super::{
+        DICTIONARY_CLOSER, DICTIONARY_OPENER, KEY_SOLIDUS, NAME_ESCAPE, Origin, Parser,
+        ZERO_REFERENCE,
+    };
+    use crate::{Limits, Recovery, Value};
+
+    #[test]
+    fn lexical_repairs_are_positioned_and_strict_errors_keep_their_tags() {
+        for (bytes, tag) in [
+            (b"<< Bare 1 >>".as_slice(), KEY_SOLIDUS),
+            (b"/Name#Q", NAME_ESCAPE),
+            (b"0 0 R", ZERO_REFERENCE),
+            (b"<< /A 1 ) >>", DICTIONARY_CLOSER),
+            (b"<< << /A 1 >>", DICTIONARY_OPENER),
+        ] {
+            let mut strict = Parser::new(bytes, Origin::File, Limits::default());
+            assert_eq!(strict.parse().unwrap_err().repair, Some(tag));
+            let mut repair =
+                Parser::new(bytes, Origin::File, Limits::default()).with_recovery(Recovery::Repair);
+            repair.parse().unwrap();
+            assert_eq!(repair.take_diagnostics()[0].repair, tag);
+        }
+        let mut parser = Parser::new(b"/A# /B#2 /C#23 0 0 R", Origin::File, Limits::default())
+            .with_recovery(Recovery::Repair);
+        for expected in [b"A#".as_slice(), b"B#2", b"C#"] {
+            assert_eq!(
+                parser.parse().unwrap().as_name().unwrap().as_bytes(),
+                expected
+            );
+        }
+        assert_eq!(parser.parse().unwrap(), Value::Null);
+        for bytes in [
+            b"<< 3 4 >>".as_slice(),
+            b"<< true 4 >>",
+            b"<< stream 4 >>",
+            b"<< /A 1 ) /B 2 >>",
+        ] {
+            assert!(
+                Parser::new(bytes, Origin::File, Limits::default())
+                    .with_recovery(Recovery::Repair)
+                    .parse()
+                    .is_err()
+            );
+        }
     }
 }

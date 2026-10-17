@@ -107,7 +107,16 @@ fn object(
     if !parser.keyword(b"obj") {
         return Err(Error::syntax("missing object header").at(parser.position()));
     }
-    let value = parser.parse()?;
+    let (value, _) = parser.parse_with_streams(&mut |parser, dictionary| {
+        skip_direct(parser, dictionary, id, limits, diagnostics)?;
+        Ok(None)
+    })?;
+    diagnostics.extend(
+        parser
+            .take_diagnostics()
+            .into_iter()
+            .map(|item| item.in_object(id)),
+    );
     if let Some(dictionary) = value.as_dictionary() {
         // Even an xref stream with a damaged body can have a usable trailer.
         if dictionary.is_name(b"Type", b"XRef") {
@@ -135,6 +144,54 @@ fn object(
             location: Location::Offset(offset),
         },
     );
+    Ok(())
+}
+
+/// Skip an embedded payload without interpreting its bytes as PDF tokens.
+/// A fallback terminator needs a following dictionary/array continuation; EOF
+/// cannot establish closure (7.3.8.1). Length/dependency validation runs again
+/// when the complete containing object is loaded into its normal slot.
+fn skip_direct(
+    parser: &mut Parser<'_>,
+    dictionary: &Dictionary,
+    id: ObjectId,
+    limits: Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<()> {
+    if !parser.keyword(b"stream") {
+        return Err(Error::syntax("missing direct stream keyword").in_object(id));
+    }
+    let start = crate::stream::start(parser, diagnostics, Some(id))?;
+    let length = dictionary
+        .get(b"Length")
+        .and_then(Value::as_integer)
+        .and_then(|length| usize::try_from(length).ok());
+    if length.is_some_and(|length| length > limits.stream_bytes) {
+        return Err(Error::limit("stream size budget exceeded").in_object(id));
+    }
+    let declared = length.and_then(|length| start.checked_add(length));
+    if let Some(end) = declared.filter(|&end| end <= parser.data().len()) {
+        parser.seek(end)?;
+        if parser.keyword(b"endstream") {
+            return Ok(());
+        }
+    }
+    let (marker, _) =
+        crate::object::terminator_in(parser.data(), limits, id, start, parser.data().len(), true)?;
+    if let Some(end) = declared {
+        diagnostics.repair(
+            Diagnostic::new(
+                tags::LENGTH_CORRECTED,
+                "direct stream Length corrected to a validated terminator",
+            )
+            .at(Position::File(end))
+            .in_object(id),
+        )?;
+    }
+    parser.seek(marker)?;
+    if !parser.keyword(b"endstream") {
+        return Err(Error::syntax("missing endstream").in_object(id));
+    }
     Ok(())
 }
 
@@ -232,6 +289,7 @@ pub(crate) fn load_streams(
             .and_then(std::sync::OnceLock::into_inner)
             .transpose()?;
         let already_charged = cached.is_some();
+        let mut header_diagnostics = Diagnostics::new(document.recovery());
         let contents = if let Some(contents) = cached {
             contents
         } else {
@@ -247,8 +305,10 @@ pub(crate) fn load_streams(
                     ..document.limits()
                 },
                 id,
+                &mut header_diagnostics,
             )?
         };
+        document.report(header_diagnostics.take());
         let mut reservation = document.retained.reservation();
         if !already_charged {
             reservation.charge(contents.retained_bytes(), id)?;

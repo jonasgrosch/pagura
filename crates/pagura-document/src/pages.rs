@@ -1,6 +1,7 @@
 //! The page tree (ISO 32000-2 clause 7.7.3) as typed pages.
 
 use crate::{Document, tags};
+use pagura_core::syntax::PathComponent;
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ObjectId, Rect, Result, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -72,10 +73,13 @@ pub struct Page {
     user_unit: f64,
     resources: Arc<Dictionary>,
     dictionary: Dictionary,
+    source_path: Vec<PathComponent>,
 }
 
 impl Page {
-    /// The page object's identity.
+    /// The page object's identity. For a repaired direct Kids dictionary this
+    /// is the containing indirect object's identity; [`Self::index`] distinguishes
+    /// its page occurrences. The original dictionary is available unchanged.
     pub fn id(&self) -> ObjectId {
         self.id
     }
@@ -111,6 +115,10 @@ impl Page {
         &self.resources
     }
 
+    pub(crate) fn source_path(&self) -> &[PathComponent] {
+        &self.source_path
+    }
+
     /// The page object's own dictionary. Inherited attributes (Table 31) are
     /// not copied in; the typed accessors above resolve them.
     pub fn dictionary(&self) -> &Dictionary {
@@ -128,12 +136,29 @@ pub(crate) fn read(document: &Document) -> Result<Vec<Page>> {
     let mut walk = Walk {
         document,
         visited: BTreeSet::new(),
+        active: BTreeSet::new(),
+        parents: None,
+        omitted: false,
+        steps: 0,
         pages: Vec::new(),
         shared: BTreeMap::new(),
         diagnostics: Diagnostics::new(document.recovery()),
         reservation: document.retained.reservation(),
     };
-    walk.node(root, Inherited::default(), 0)?;
+    walk.node(root, Inherited::default(), None, 0)?;
+    if walk.pages.is_empty() && walk.omitted {
+        let cyclic = walk
+            .diagnostics
+            .as_slice()
+            .iter()
+            .any(|item| item.repair == tags::PAGE_CYCLE);
+        return Err(if cyclic {
+            Error::cycle("cyclic page tree contains no usable leaves")
+        } else {
+            Error::syntax("damaged page tree contains no usable leaves")
+        }
+        .in_object(root));
+    }
     document.report(walk.diagnostics.take());
     walk.reservation.commit();
     Ok(walk.pages)
@@ -156,12 +181,16 @@ struct Inherited<'a> {
 enum ResourceKey {
     Empty,
     Object(ObjectId),
-    DirectIn(ObjectId),
+    DirectIn(usize),
 }
 
 struct Walk<'a> {
     document: &'a Document,
     visited: BTreeSet<ObjectId>,
+    active: BTreeSet<ObjectId>,
+    parents: Option<BTreeMap<ObjectId, Vec<ObjectId>>>,
+    omitted: bool,
+    steps: usize,
     pages: Vec<Page>,
     /// One resolved copy per resource dictionary, shared by every page using it.
     shared: BTreeMap<ResourceKey, Arc<Dictionary>>,
@@ -170,18 +199,74 @@ struct Walk<'a> {
 }
 
 impl<'a> Walk<'a> {
-    fn node(&mut self, id: ObjectId, inherited: Inherited<'a>, depth: usize) -> Result<()> {
+    fn node(
+        &mut self,
+        id: ObjectId,
+        inherited: Inherited<'a>,
+        parent: Option<ObjectId>,
+        depth: usize,
+    ) -> Result<()> {
         let limits = self.document.limits();
         if depth > limits.depth {
             return Err(Error::limit("page tree depth budget exceeded").in_object(id));
         }
-        if !self.visited.insert(id) {
-            return Err(Error::cycle("page tree node is reachable twice").in_object(id));
+        if self.active.contains(&id) {
+            self.diagnostics.repair(
+                Diagnostic::new(tags::PAGE_CYCLE, "cyclic page-tree child edge omitted")
+                    .in_object(id),
+            )?;
+            self.omitted = true;
+            return Ok(());
         }
+        let repeated = !self.visited.insert(id);
         let object = self.document.object(id)?;
         let dictionary = object
             .dictionary()
             .ok_or_else(|| Error::syntax("page tree node must be a dictionary").in_object(id))?;
+        if repeated {
+            self.diagnostics.repair(
+                Diagnostic::new(
+                    tags::PAGE_REPEAT,
+                    "repeated page-tree node retained in Kids order",
+                )
+                .in_object(id),
+            )?;
+        }
+        self.active.insert(id);
+        let result = self.dictionary_node(id, dictionary, inherited, parent, depth, &[]);
+        self.active.remove(&id);
+        result
+    }
+
+    fn dictionary_node(
+        &mut self,
+        id: ObjectId,
+        dictionary: &'a Dictionary,
+        inherited: Inherited<'a>,
+        parent: Option<ObjectId>,
+        depth: usize,
+        source_path: &[PathComponent],
+    ) -> Result<()> {
+        let limits = self.document.limits();
+        if self.steps >= limits.value_nodes {
+            return Err(Error::limit("page-tree traversal work budget exceeded").in_object(id));
+        }
+        self.steps += 1;
+        if depth > limits.depth {
+            return Err(Error::limit("page tree depth budget exceeded").in_object(id));
+        }
+        if dictionary
+            .get(b"Parent")
+            .is_some_and(|value| value.as_reference() != parent)
+        {
+            self.diagnostics.repair(
+                Diagnostic::new(
+                    tags::PAGE_PARENT,
+                    "Parent disagrees with traversed Kids edge; Kids ancestry used",
+                )
+                .in_object(id),
+            )?;
+        }
         let inherited = Inherited {
             resources: dictionary
                 .get(b"Resources")
@@ -195,14 +280,27 @@ impl<'a> Walk<'a> {
             true
         } else if dictionary.is_name(b"Type", b"Page") {
             false
+        } else if dictionary.is_name(b"Type", b"Template")
+            && parent.is_some()
+            && (dictionary.contains_key(b"Contents") || dictionary.contains_key(b"MediaBox"))
+        {
+            self.diagnostics.repair(
+                Diagnostic::new(
+                    tags::PAGE_TYPE_INVALID,
+                    "Template in Kids displayed as a Page",
+                )
+                .in_object(id),
+            )?;
+            false
         } else if dictionary.contains_key(b"Type") {
             return Err(Error::syntax("page tree node Type must be Pages or Page").in_object(id));
         } else {
             // Leaf evidence comes from the node itself: an inherited MediaBox
             // would make every untyped, childless node look like a page.
-            let branch = branch(self.document, dictionary)?;
             let leaf = !dictionary.contains_key(b"Kids")
                 && (dictionary.contains_key(b"Contents") || dictionary.contains_key(b"MediaBox"));
+            let branch = branch(self.document, dictionary)?
+                || (!leaf && !dictionary.contains_key(b"Kids") && !self.backlinks(id)?.is_empty());
             if !branch && !leaf {
                 return Err(Error::syntax("page tree node has no identifiable Type").in_object(id));
             }
@@ -211,7 +309,7 @@ impl<'a> Walk<'a> {
                     tags::PAGE_TYPE,
                     "missing page-tree Type inferred from Kids or leaf attributes",
                 )
-                .at(match object.source() {
+                .at(match self.document.object(id)?.source() {
                     crate::ObjectSource::File(range) => pagura_core::Position::File(range.start),
                     crate::ObjectSource::Compressed { .. } => pagura_core::Position::Unknown,
                 })
@@ -220,12 +318,12 @@ impl<'a> Walk<'a> {
             branch
         };
         if branch {
-            self.intermediate(id, dictionary, inherited, depth)
+            self.intermediate(id, dictionary, inherited, depth, source_path)
         } else {
             if self.pages.len() >= limits.pages {
                 return Err(Error::limit("page count budget exceeded").in_object(id));
             }
-            let page = self.leaf(id, dictionary, inherited)?;
+            let page = self.leaf(id, dictionary, inherited, source_path)?;
             self.pages.push(page);
             Ok(())
         }
@@ -237,19 +335,95 @@ impl<'a> Walk<'a> {
         dictionary: &'a Dictionary,
         inherited: Inherited<'a>,
         depth: usize,
+        source_path: &[PathComponent],
     ) -> Result<()> {
-        let kids = dictionary
+        let indirect = dictionary
             .get(b"Kids")
-            .map(|kids| self.document.resolve(kids))
-            .transpose()?
-            .and_then(Value::as_array)
-            .ok_or_else(|| Error::syntax("Pages node must have a Kids array").in_object(id))?;
+            .is_some_and(|value| matches!(value, Value::Reference(_)));
+        let (kids, owner) = self.kids_value(id, dictionary)?;
         let before = self.pages.len();
-        for kid in kids {
-            let kid = kid
-                .as_reference()
-                .ok_or_else(|| Error::syntax("Kids must hold indirect references").in_object(id))?;
-            self.node(kid, inherited, depth + 1)?;
+        match kids {
+            Some(Value::Array(kids)) => {
+                for (index, kid) in kids.iter().enumerate() {
+                    if let Some(kid) = kid.as_reference()
+                        && self.document.slots.contains_key(&kid)
+                    {
+                        self.node(kid, inherited, Some(id), depth + 1)?;
+                        continue;
+                    }
+                    if let Value::Dictionary(dictionary) = kid {
+                        self.diagnostics.repair(
+                            Diagnostic::new(
+                                tags::PAGE_DIRECT,
+                                "direct Kids dictionary used with its containing object's identity",
+                            )
+                            .in_object(id),
+                        )?;
+                        let mut path = if indirect {
+                            Vec::new()
+                        } else {
+                            source_path.to_vec()
+                        };
+                        if !indirect {
+                            path.push(PathComponent::Key(pagura_core::Name::new(b"Kids")));
+                        }
+                        path.push(PathComponent::Index(index));
+                        self.dictionary_node(
+                            owner,
+                            dictionary,
+                            inherited,
+                            Some(id),
+                            depth + 1,
+                            &path,
+                        )?;
+                        continue;
+                    }
+                    self.diagnostics.repair(
+                        Diagnostic::new(tags::PAGE_KIDS, "invalid or undefined Kids entry omitted")
+                            .in_object(id),
+                    )?;
+                    self.omitted = true;
+                }
+            }
+            _ if dictionary
+                .get(b"Kids")
+                .and_then(Value::as_reference)
+                .is_some()
+                && kids.is_some_and(|value| value.as_dictionary().is_some()) =>
+            {
+                self.diagnostics.repair(
+                    Diagnostic::new(
+                        tags::PAGE_KIDS,
+                        "single Kids reference treated as a one-element array",
+                    )
+                    .in_object(id),
+                )?;
+                self.node(owner, inherited, Some(id), depth + 1)?;
+            }
+            _ => {
+                if !source_path.is_empty() {
+                    return Err(
+                        Error::syntax("direct Pages dictionary has no usable Kids").in_object(id)
+                    );
+                }
+                let kids = self.backlinks(id)?.to_vec();
+                if kids.is_empty() {
+                    return Err(Error::syntax(
+                        "Pages node has no Kids or explicit Parent backlinks",
+                    )
+                    .in_object(id));
+                }
+                self.diagnostics.repair(
+                    Diagnostic::new(
+                        tags::PAGE_KIDS_REBUILT,
+                        "Kids recovered from explicit Parent backlinks in object-number order",
+                    )
+                    .in_object(id),
+                )?;
+                for kid in kids {
+                    self.node(kid, inherited, Some(id), depth + 1)?;
+                }
+            }
         }
         let found = i64::try_from(self.pages.len() - before).unwrap_or(i64::MAX);
         if dictionary.get(b"Count").and_then(Value::as_integer) != Some(found) {
@@ -264,12 +438,64 @@ impl<'a> Walk<'a> {
         Ok(())
     }
 
+    fn kids_value(
+        &self,
+        id: ObjectId,
+        dictionary: &'a Dictionary,
+    ) -> Result<(Option<&'a Value>, ObjectId)> {
+        let mut kids = dictionary.get(b"Kids");
+        let mut owner = id;
+        for _ in 0..=self.document.limits().depth {
+            let Some(Value::Reference(reference)) = kids else {
+                break;
+            };
+            owner = *reference;
+            if !self.document.slots.contains_key(reference) {
+                kids = None;
+                break;
+            }
+            kids = Some(self.document.object(*reference)?.value());
+        }
+        if kids.is_some_and(|value| matches!(value, Value::Reference(_))) {
+            return Err(Error::limit("Kids reference chain too long").in_object(id));
+        }
+        Ok((kids, owner))
+    }
+
+    /// Built at most once. Only explicit typed Page/Pages children contribute;
+    /// inherited attributes and physical EOF never establish a node's identity.
+    fn backlinks(&mut self, parent: ObjectId) -> Result<&[ObjectId]> {
+        if self.parents.is_none() {
+            let mut parents: BTreeMap<ObjectId, Vec<ObjectId>> = BTreeMap::new();
+            for id in self.document.object_ids() {
+                let object = match self.document.object(id) {
+                    Ok(object) => object,
+                    Err(error) if crate::xref::structural(&error) => continue,
+                    Err(error) => return Err(error),
+                };
+                if let Some(dictionary) = object.dictionary()
+                    && (dictionary.is_name(b"Type", b"Page")
+                        || dictionary.is_name(b"Type", b"Pages"))
+                    && let Some(parent) = dictionary.get(b"Parent").and_then(Value::as_reference)
+                {
+                    parents.entry(parent).or_default().push(id);
+                }
+            }
+            self.parents = Some(parents);
+        }
+        Ok(self
+            .parents
+            .as_ref()
+            .and_then(|parents| parents.get(&parent))
+            .map_or(&[], Vec::as_slice))
+    }
+
     /// Resolves the inherited Resources entry once per resource dictionary.
     fn resources(&mut self, page: ObjectId, inherited: Inherited<'a>) -> Result<Arc<Dictionary>> {
         let key = match inherited.resources {
             None => ResourceKey::Empty,
             Some((_, Value::Reference(reference))) => ResourceKey::Object(*reference),
-            Some((node, _)) => ResourceKey::DirectIn(node),
+            Some((_, value)) => ResourceKey::DirectIn(std::ptr::from_ref(value) as usize),
         };
         if let Some(shared) = self.shared.get(&key) {
             return Ok(Arc::clone(shared));
@@ -298,32 +524,16 @@ impl<'a> Walk<'a> {
         id: ObjectId,
         dictionary: &Dictionary,
         inherited: Inherited<'a>,
+        source_path: &[PathComponent],
     ) -> Result<Page> {
         let document = self.document;
-        let rect = |value: Option<&Value>| -> Result<Option<Rect>> {
-            let Some(value) = value else {
-                return Ok(None);
-            };
-            let values = document.resolve(value)?.as_array().unwrap_or_default();
-            let elements = values
-                .iter()
-                .map(|value| document.resolve(value).cloned())
-                .collect::<Result<Vec<_>>>()?;
-            Rect::from_array(&elements)
-                .filter(|rect| !rect.is_empty())
-                .map(Some)
-                .ok_or_else(|| {
-                    Error::syntax("page box must be four numbers enclosing an area").in_object(id)
-                })
-        };
-        let media_box = rect(inherited.media_box)?
-            .ok_or_else(|| Error::syntax("page has no MediaBox").in_object(id))?;
-        let crop_box = match rect(inherited.crop_box)? {
-            None => media_box,
-            Some(crop) => crop
-                .intersection(&media_box)
-                .ok_or_else(|| Error::syntax("CropBox does not overlap MediaBox").in_object(id))?,
-        };
+        let (media_box, crop_box) = crate::page_geometry::boxes(
+            document,
+            id,
+            inherited.media_box,
+            inherited.crop_box,
+            &mut self.diagnostics,
+        )?;
         let rotation = match inherited.rotate {
             None => Rotation::None,
             Some(value) => document
@@ -347,6 +557,21 @@ impl<'a> Walk<'a> {
                 .retained_bytes()
                 .saturating_sub(size_of::<Dictionary>()),
         );
+        let source_path = source_path.to_vec();
+        let bytes = source_path.iter().fold(
+            bytes.saturating_add(
+                source_path
+                    .capacity()
+                    .saturating_mul(size_of::<PathComponent>()),
+            ),
+            |sum, part| {
+                sum.saturating_add(
+                    part.retained_bytes()
+                        .saturating_sub(size_of::<PathComponent>()),
+                )
+            },
+        );
+
         self.reservation.charge(bytes, id)?;
         Ok(Page {
             id,
@@ -357,6 +582,7 @@ impl<'a> Walk<'a> {
             user_unit,
             resources,
             dictionary,
+            source_path,
         })
     }
 }
@@ -450,5 +676,189 @@ mod retained_tests {
         assert_eq!(limited.retained.used(), initial);
         assert_eq!(limited.pages().unwrap_err(), error);
         assert_eq!(limited.retained.used(), initial);
+    }
+}
+
+#[cfg(test)]
+mod recovery_tests {
+    use crate::{Document, OpenOptions, tags};
+    use pagura_core::{ErrorKind, Limits, ObjectId, Recovery, Rect};
+    use pagura_testkit::fixture;
+    use std::sync::Arc;
+
+    #[test]
+    fn page_repairs_reject_strictly_and_preserve_source_and_geometry() {
+        for (name, tag, count) in [
+            ("pages-media-missing", tags::PAGE_MEDIA_BOX, 1),
+            ("pages-media-empty", tags::PAGE_MEDIA_BOX, 1),
+            ("pages-media-from-crop", tags::PAGE_MEDIA_BOX, 1),
+            ("pages-crop-empty", tags::PAGE_CROP_BOX, 1),
+            ("pages-crop-disjoint", tags::PAGE_CROP_BOX, 1),
+            ("pages-kids-invalid", tags::PAGE_KIDS, 1),
+            ("pages-kids-single", tags::PAGE_KIDS, 1),
+            ("pages-kids-rebuilt", tags::PAGE_KIDS_REBUILT, 1),
+            ("pages-root-untyped-backlinks", tags::PAGE_TYPE, 1),
+            ("pages-repeat-leaf", tags::PAGE_REPEAT, 2),
+            ("pages-repeat-branch", tags::PAGE_REPEAT, 2),
+            ("pages-cycle-usable", tags::PAGE_CYCLE, 1),
+            ("pages-parent-mismatch", tags::PAGE_PARENT, 1),
+            ("pages-template-kid", tags::PAGE_TYPE_INVALID, 1),
+            ("pages-direct-kids", tags::PAGE_DIRECT, 2),
+        ] {
+            let bytes = fixture("document", &format!("{name}.pdf"));
+            let strict = Document::open(
+                bytes.clone(),
+                &OpenOptions {
+                    recovery: Recovery::Strict,
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(strict.pages().unwrap_err().repair, Some(tag), "{name}");
+            let document = Document::open(bytes.clone(), &OpenOptions::default()).unwrap();
+            let pages = document.pages().unwrap();
+            assert_eq!(pages.len(), count, "{name}");
+            assert_eq!(document.original_bytes(), bytes);
+            let letter = matches!(name, "pages-media-missing" | "pages-media-empty");
+            let expected = Rect {
+                x0: 0.0,
+                y0: 0.0,
+                x1: if letter { 612.0 } else { 64.0 },
+                y1: if letter { 792.0 } else { 64.0 },
+            };
+            assert_eq!(pages[0].media_box(), expected, "{name}");
+            assert_eq!(pages[0].crop_box(), expected, "{name}");
+            assert!(document.diagnostics().iter().any(|d| d.repair == tag));
+        }
+    }
+
+    fn preloaded(name: &str, bytes: usize) -> Document {
+        let document = Document::open(
+            fixture("document", &format!("{name}.pdf")),
+            &OpenOptions {
+                limits: Limits {
+                    document_bytes: bytes,
+                    ..Limits::default()
+                },
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        for id in document.object_ids() {
+            document.object(id).unwrap();
+        }
+        document
+    }
+
+    #[test]
+    fn recovered_pages_use_one_cache_and_transactional_memory_reservations() {
+        for name in [
+            "pages-repeat-leaf",
+            "pages-repeat-branch",
+            "pages-cycle-usable",
+            "pages-direct-kids",
+            "pages-root-untyped-backlinks",
+            "pages-media-missing",
+            "xref-swapped-offsets",
+            "object-stream-type-invalid",
+            "object-stream-self-entry",
+            "direct-stream-array",
+            "direct-stream-indirect-array",
+            "direct-stream-direct-page",
+            "direct-stream-indirect-kids",
+            "direct-stream-resources",
+            "direct-stream-encrypted",
+            "security-length-missing",
+            "catalog-number-zero",
+        ] {
+            let document = preloaded(name, 128 * 1024 * 1024);
+            let initial = document.retained.used();
+            let pages = document.pages().unwrap();
+            let count = pages.len();
+            let retained = document.retained.used();
+            let mut unique = Vec::new();
+            let mut expected = 0;
+            for page in pages {
+                expected += size_of::<super::Page>() + page.dictionary.retained_bytes()
+                    - size_of::<pagura_core::Dictionary>()
+                    + page
+                        .source_path
+                        .iter()
+                        .map(pagura_core::syntax::PathComponent::retained_bytes)
+                        .sum::<usize>();
+                if !unique
+                    .iter()
+                    .any(|resource| Arc::ptr_eq(resource, &page.resources))
+                {
+                    unique.push(Arc::clone(&page.resources));
+                    expected += page.resources.retained_bytes() + 2 * size_of::<usize>();
+                }
+            }
+            assert_eq!(retained, initial + expected, "{name}");
+            assert!(retained > initial, "{name}");
+            document.pages().unwrap();
+            assert_eq!(document.retained.used(), retained, "{name}");
+            let exact = preloaded(name, retained);
+            assert_eq!(exact.page_count().unwrap(), count, "{name}");
+            assert_eq!(exact.retained.used(), retained, "{name}");
+            let limited = preloaded(name, retained - 1);
+            let error = limited.pages().unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Limit, "{name}");
+            assert!(error.object.is_some());
+            assert_eq!(limited.retained.used(), initial, "{name}");
+            assert_eq!(limited.pages().unwrap_err(), error);
+        }
+        let repeated = preloaded("pages-repeat-leaf", usize::MAX);
+        let pages = repeated.pages().unwrap();
+        assert_eq!(pages[0].id(), ObjectId::new(3, 0));
+        assert_eq!(pages[1].id(), pages[0].id());
+        assert_eq!(pages[1].index(), 1);
+        assert!(Arc::ptr_eq(&pages[0].resources, &pages[1].resources));
+        let direct = preloaded("pages-direct-kids", usize::MAX);
+        let pages = direct.pages().unwrap();
+        assert_eq!(pages[0].id(), ObjectId::new(2, 0));
+        assert!(!Arc::ptr_eq(&pages[0].resources, &pages[1].resources));
+        assert!(pages[0].resources().contains_key(b"ProcSet"));
+        assert!(pages[1].resources().contains_key(b"ExtGState"));
+    }
+    #[test]
+    fn expanded_page_graphs_obey_work_and_page_limits_without_partial_results() {
+        for work in [true, false] {
+            let mut document = preloaded("pages-repeat-branch", usize::MAX);
+            let initial = document.retained.used();
+            if work {
+                document.options.limits.value_nodes = 4;
+            } else {
+                document.options.limits.pages = 1;
+            }
+            let error = document.pages().unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Limit);
+            assert!(error.object.is_some());
+            assert_eq!(document.retained.used(), initial);
+            assert_eq!(document.pages().unwrap_err(), error);
+        }
+        let strict = Document::open(
+            fixture("document", "xref-swapped-offsets.pdf"),
+            &OpenOptions {
+                recovery: Recovery::Strict,
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(strict.repair, Some(tags::XREF_REBUILT));
+        for (name, tag) in [
+            ("object-stream-type-invalid", tags::OBJECT_STREAM_TYPE),
+            ("object-stream-self-entry", tags::OBJECT_STREAM_SELF_ENTRY),
+        ] {
+            let error = Document::open(
+                fixture("document", &format!("{name}.pdf")),
+                &OpenOptions {
+                    recovery: Recovery::Strict,
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap_err();
+            assert_eq!(error.repair, Some(tag));
+        }
     }
 }

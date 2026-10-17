@@ -1733,6 +1733,889 @@
       "dpi": 72,
       "width": 64,
       "height": 64
+    },
+    {
+      "id": "document/pages-media-missing",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-box-recovery"
+      ],
+      "path": "corpus/generated/document/pages-media-missing.pdf",
+      "sha256": "77da0f0fa521a18a6c3f1b996b8afeefd2f897938df598b9ad2644913478a7b4",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.media-box"
+      ]
+    },
+    {
+      "id": "document/pages-media-empty",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-box-recovery"
+      ],
+      "path": "corpus/generated/document/pages-media-empty.pdf",
+      "sha256": "bce27f14af95f808875f9c91654a9fa05ef385706a5e87d5fac9b9aecbae6148",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.media-box"
+      ]
+    },
+    {
+      "id": "document/pages-media-from-crop",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-box-recovery"
+      ],
+      "path": "corpus/generated/document/pages-media-from-crop.pdf",
+      "sha256": "8218b777e9c36514a43ed4f0c46bfb2a7d28a6b5b1b2ee0fb37f697e3585e6b4",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.media-box"
+      ]
+    },
+    {
+      "id": "document/pages-crop-empty",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-box-recovery"
+      ],
+      "path": "corpus/generated/document/pages-crop-empty.pdf",
+      "sha256": "8337d63e9e0135aca5afe143cbc5999b997b3eecde2f70f31a43c013bed86082",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.crop-box"
+      ]
+    },
+    {
+      "id": "document/pages-crop-disjoint",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-box-recovery"
+      ],
+      "path": "corpus/generated/document/pages-crop-disjoint.pdf",
+      "sha256": "82c1b9a9cc0ed22ebf91d990133c07de605e2b9e3861361b601ec4fbcf16466c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.crop-box"
+      ]
+    },
+    {
+      "id": "document/pages-kids-invalid",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-graph-recovery"
+      ],
+      "path": "corpus/generated/document/pages-kids-invalid.pdf",
+      "sha256": "dbfcf6cb30ed5b8e09f1749ed4b0a6b774ca509325ed48f5640405b4a45e38ad",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.kids-invalid"
+      ]
+    },
+    {
+      "id": "document/pages-kids-single",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-graph-recovery"
+      ],
+      "path": "corpus/generated/document/pages-kids-single.pdf",
+      "sha256": "d1d97538a82266d690a5c4c232ac26529b90f78e5f703b020502424b7cb3fe25",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.kids-invalid"
+      ]
+    },
+    {
+      "id": "document/pages-kids-rebuilt",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-graph-recovery"
+      ],
+      "path": "corpus/generated/document/pages-kids-rebuilt.pdf",
+      "sha256": "92624e20c879eb08885eb271c7e49874a4c93e02e3d463cdab2bed7d8079dad9",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.kids-rebuilt"
+      ]
+    },
+    {
+      "id": "document/pages-root-untyped-backlinks",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-graph-recovery"
+      ],
+      "path": "corpus/generated/document/pages-root-untyped-backlinks.pdf",
+      "sha256": "6c37da2a71f3b6a59c086ac2982cf52a3393f8f88f71c3fddb3939caacb44a2f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.kids-rebuilt",
+        "pages.type-missing"
+      ]
+    },
+    {
+      "id": "document/pages-repeat-leaf",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-graph-recovery"
+      ],
+      "path": "corpus/generated/document/pages-repeat-leaf.pdf",
+      "sha256": "4fb106b75a7d430c3168fe1cbe2bbccf2d9bdf8adaefa69d708d19bde223e78a",
+      "pages": 2,
+      "strict_valid": false,
+      "repairs": [
+        "pages.repeated-node"
+      ]
+    },
+    {
+      "id": "document/pages-cycle-usable",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-graph-recovery"
+      ],
+      "path": "corpus/generated/document/pages-cycle-usable.pdf",
+      "sha256": "750dd97d42a383f88007f6b9242875fba22effdd2abf3b62932640fd86e3de7c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.cycle"
+      ]
+    },
+    {
+      "id": "document/pages-parent-mismatch",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-graph-recovery"
+      ],
+      "path": "corpus/generated/document/pages-parent-mismatch.pdf",
+      "sha256": "e17e4164d64309f55fa6be7c6af7050ef99ebb11e1e118a00ce6b53c96852d74",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.parent-mismatch"
+      ]
+    },
+    {
+      "id": "document/pages-template-kid",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-graph-recovery"
+      ],
+      "path": "corpus/generated/document/pages-template-kid.pdf",
+      "sha256": "77480c4c03269021ba84e9a4d38951e9cdc63d13c0b73947cd863adf245c3ee7",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.type-invalid"
+      ]
+    },
+    {
+      "id": "document/pages-repeat-branch",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-graph-recovery"
+      ],
+      "path": "corpus/generated/document/pages-repeat-branch.pdf",
+      "sha256": "4e557d2b80a1e294cc510dd668feef2a23aa524f3c5130c9c9d3f876dd9fafc9",
+      "pages": 2,
+      "strict_valid": false,
+      "repairs": [
+        "pages.repeated-node",
+        "pages.repeated-node"
+      ]
+    },
+    {
+      "id": "document/pages-direct-kids",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "page-graph-recovery"
+      ],
+      "path": "corpus/generated/document/pages-direct-kids.pdf",
+      "sha256": "fd5f9f012f65d7e4acb3c2a9f75a40fc4046dbb8694aab0643c56665fb8d80ae",
+      "pages": 2,
+      "strict_valid": false,
+      "repairs": [
+        "pages.direct-kid"
+      ]
+    },
+    {
+      "id": "document/pages-cycle-only",
+      "kind": "pdf",
+      "description": "A damaged tree without identifiable leaves cannot become an empty document",
+      "expected": "invalid",
+      "requirements": [
+        "page-graph-recovery"
+      ],
+      "path": "corpus/generated/document/pages-cycle-only.pdf",
+      "sha256": "2c8bd7d603b3b3824573b14c0c3e8c298cf17ce614467032095ee6cfd4ef1fb2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": []
+    },
+    {
+      "id": "document/pages-kids-all-invalid",
+      "kind": "pdf",
+      "description": "A damaged tree without identifiable leaves cannot become an empty document",
+      "expected": "invalid",
+      "requirements": [
+        "page-graph-recovery"
+      ],
+      "path": "corpus/generated/document/pages-kids-all-invalid.pdf",
+      "sha256": "5120c37c816c6ec417faaea801af1210ceeb437cbe470abef453380eee70ffb2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": []
+    },
+    {
+      "id": "document/syntax-key-solidus",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "document-lexical-recovery"
+      ],
+      "path": "corpus/generated/document/syntax-key-solidus.pdf",
+      "sha256": "1524cb0aca4e073e1f617e1103b5fa79254d9ed64bd820ee151ef84c997aa7bf",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.key-solidus"
+      ]
+    },
+    {
+      "id": "document/syntax-name-escape",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "document-lexical-recovery"
+      ],
+      "path": "corpus/generated/document/syntax-name-escape.pdf",
+      "sha256": "4cae710d05bcb483e3fb11ec92898595d69be594ba9115a13625af8b0e48cd08",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.name-escape"
+      ]
+    },
+    {
+      "id": "document/syntax-reference-zero",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "document-lexical-recovery"
+      ],
+      "path": "corpus/generated/document/syntax-reference-zero.pdf",
+      "sha256": "476068ffa32df499bc1ab69b6a492365173896749600f9a3b16ca96754e01654",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.reference-zero"
+      ]
+    },
+    {
+      "id": "document/syntax-dictionary-closer",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "document-lexical-recovery"
+      ],
+      "path": "corpus/generated/document/syntax-dictionary-closer.pdf",
+      "sha256": "c35c76d82c99700e634399649f556d75026801df411a049d63e66707384745fe",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.dictionary-closer"
+      ]
+    },
+    {
+      "id": "document/syntax-dictionary-opener",
+      "kind": "pdf",
+      "description": "Reported page recovery with strict rejection and independently specified leaves",
+      "expected": "open",
+      "requirements": [
+        "document-lexical-recovery"
+      ],
+      "path": "corpus/generated/document/syntax-dictionary-opener.pdf",
+      "sha256": "f81dad6be6e8aebef8c6da129cdc55803889558b1be5bd94b1f54b26b9c9f8f9",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.dictionary-opener"
+      ]
+    },
+    {
+      "id": "document/object-separator-missing",
+      "kind": "pdf",
+      "description": "A proven following object header permits recovery of a missing endobj separator",
+      "expected": "render",
+      "requirements": [
+        "document-lexical-recovery"
+      ],
+      "path": "corpus/generated/document/object-separator-missing.pdf",
+      "sha256": "039a3d29ae0797e5494c3c4370a50115f58c2aed30ea3638f797331a844176d0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.separator-missing"
+      ],
+      "oracle": "corpus/generated/document/object-separator-missing.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/xref-swapped-offsets",
+      "kind": "pdf",
+      "description": "Swapped distant offsets reconstruct once before lazy object caching",
+      "expected": "render",
+      "requirements": [
+        "xref-lazy-offset-validation"
+      ],
+      "path": "corpus/generated/document/xref-swapped-offsets.pdf",
+      "sha256": "b020552feaee900081e4d2cd75a9f60b06851c7ce4274888cc6a2b98fa56aaae",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/xref-swapped-offsets.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/object-stream-type-invalid",
+      "kind": "pdf",
+      "description": "An unknown Type is inferred only after validating the xref-selected N/First header",
+      "expected": "render",
+      "requirements": [
+        "object-stream-header-recovery"
+      ],
+      "path": "corpus/generated/document/object-stream-type-invalid.pdf",
+      "sha256": "35039ab62e6750842960ad8282af8965a2eb27d4ee6775d271f9cbddfaab0ffe",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.stream-type"
+      ],
+      "oracle": "corpus/generated/document/object-stream-type-invalid.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/object-stream-type-conflict",
+      "kind": "pdf",
+      "description": "A known conflicting dictionary role cannot be inferred as an object stream",
+      "expected": "invalid",
+      "requirements": [
+        "object-stream-header-recovery"
+      ],
+      "path": "corpus/generated/document/object-stream-type-conflict.pdf",
+      "sha256": "6c55d6396abf1b72b0c10554a1d9d9f47998d26db3c708061dc1289ca60ba9cb",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": []
+    },
+    {
+      "id": "document/object-stream-self-entry",
+      "kind": "pdf",
+      "description": "The first self entry aliases the first real value; physical stream and original indexes survive reconstruction",
+      "expected": "render",
+      "requirements": [
+        "object-stream-header-recovery"
+      ],
+      "path": "corpus/generated/document/object-stream-self-entry.pdf",
+      "sha256": "29ea0c1fcc85bf98b1914ef61096891b46a0d81b1eb7bbeab1e624a2aa453873",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "object.stream-self-entry"
+      ],
+      "oracle": "corpus/generated/document/object-stream-self-entry.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/object-stream-offset-alias",
+      "kind": "pdf",
+      "description": "Two real objects sharing an offset cannot use the narrowly defined self-entry repair",
+      "expected": "invalid",
+      "requirements": [
+        "object-stream-header-recovery"
+      ],
+      "path": "corpus/generated/document/object-stream-offset-alias.pdf",
+      "sha256": "c873223c27917a4dfe56ce9c88b8db7ddb2e6e2ac7025e50beff8387166cea72",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": []
+    },
+    {
+      "id": "document/direct-stream-contents",
+      "kind": "pdf",
+      "description": "A direct content stream retains its dictionary and original payload range",
+      "expected": "render",
+      "requirements": [
+        "direct-stream-recovery"
+      ],
+      "path": "corpus/generated/document/direct-stream-contents.pdf",
+      "sha256": "3140fc8ce4898266f100a6c0d7fd2ad7a556d0dc7e76c360e495b0bc03786212",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.direct-stream"
+      ],
+      "oracle": "corpus/generated/document/direct-stream-contents.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/direct-stream-rebuilt",
+      "kind": "pdf",
+      "description": "A direct content stream retains its dictionary and original payload range",
+      "expected": "render",
+      "requirements": [
+        "direct-stream-recovery"
+      ],
+      "path": "corpus/generated/document/direct-stream-rebuilt.pdf",
+      "sha256": "113cc5ceda77cbe871b86405ec2563f73e2fd06dbbdd144b529e54836db14313",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "syntax.direct-stream"
+      ],
+      "oracle": "corpus/generated/document/direct-stream-rebuilt.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/direct-stream-array",
+      "kind": "pdf",
+      "description": "Direct stream array elements keep distinct ranges in content order, including indirect arrays",
+      "expected": "render",
+      "requirements": [
+        "direct-stream-recovery"
+      ],
+      "path": "corpus/generated/document/direct-stream-array.pdf",
+      "sha256": "60a2fbbd9357df1c145ab9efb99c546e02e3e87893149b09794770220c08a42d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.direct-stream",
+        "syntax.direct-stream"
+      ],
+      "oracle": "corpus/generated/document/direct-stream-array.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/direct-stream-indirect-array",
+      "kind": "pdf",
+      "description": "Direct stream array elements keep distinct ranges in content order, including indirect arrays",
+      "expected": "render",
+      "requirements": [
+        "direct-stream-recovery"
+      ],
+      "path": "corpus/generated/document/direct-stream-indirect-array.pdf",
+      "sha256": "6798d33ad11d87c73b596a1db505ed2feccc52284f3af39db50903883b1eaecd",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.direct-stream",
+        "syntax.direct-stream"
+      ],
+      "oracle": "corpus/generated/document/direct-stream-indirect-array.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/direct-stream-direct-page",
+      "kind": "pdf",
+      "description": "A direct page's source path identifies its own embedded content in the containing object",
+      "expected": "render",
+      "requirements": [
+        "direct-stream-recovery",
+        "page-graph-recovery"
+      ],
+      "path": "corpus/generated/document/direct-stream-direct-page.pdf",
+      "sha256": "0c2494b27d9b41d215ece2dc4769854055af68eb7f1c24ab0f5186b73ebb2213",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.direct-kid",
+        "syntax.direct-stream"
+      ],
+      "oracle": "corpus/generated/document/direct-stream-direct-page.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/direct-stream-indirect-kids",
+      "kind": "pdf",
+      "description": "A direct page's source path identifies its own embedded content in the containing object",
+      "expected": "render",
+      "requirements": [
+        "direct-stream-recovery",
+        "page-graph-recovery"
+      ],
+      "path": "corpus/generated/document/direct-stream-indirect-kids.pdf",
+      "sha256": "e17b17385cb01f72b3381428d57fd4f4855a876f671a3ca73515d65bc43e3dda",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "pages.direct-kid",
+        "syntax.direct-stream"
+      ],
+      "oracle": "corpus/generated/document/direct-stream-indirect-kids.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/direct-stream-resources",
+      "kind": "pdf",
+      "description": "A nested resource payload is skipped structurally and stays in the original bytes",
+      "expected": "render",
+      "requirements": [
+        "direct-stream-recovery"
+      ],
+      "path": "corpus/generated/document/direct-stream-resources.pdf",
+      "sha256": "947b555edfa0b07b3a72d96701d390e8b520760a0f2ac2a3df843780cd2c766f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.direct-stream"
+      ],
+      "oracle": "corpus/generated/document/direct-stream-resources.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/direct-stream-encrypted",
+      "kind": "pdf",
+      "description": "A direct payload and its header strings use the containing object's encryption key",
+      "expected": "render",
+      "requirements": [
+        "direct-stream-recovery"
+      ],
+      "path": "corpus/generated/document/direct-stream-encrypted.pdf",
+      "sha256": "9225ade7e23cb85cdac496b2e6c18d60eb55788830d51e7ea2dc278cf5150552",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.direct-stream"
+      ],
+      "oracle": "corpus/generated/document/direct-stream-encrypted.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner",
+      "marker": "independent"
+    },
+    {
+      "id": "document/direct-stream-length",
+      "kind": "pdf",
+      "description": "One validated dictionary continuation bounds a wrong direct stream length",
+      "expected": "render",
+      "requirements": [
+        "direct-stream-recovery"
+      ],
+      "path": "corpus/generated/document/direct-stream-length.pdf",
+      "sha256": "7426bc3596297ecd7e6234d9c6b406ee5e5dbd0ebf9a8f2cd6a22a551d6dc449",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.direct-stream",
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/document/direct-stream-length.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/direct-stream-ambiguous",
+      "kind": "pdf",
+      "description": "Ambiguous, shadowed or unterminated payloads cannot be recovered by inventing boundaries",
+      "expected": "invalid",
+      "requirements": [
+        "direct-stream-recovery"
+      ],
+      "path": "corpus/generated/document/direct-stream-ambiguous.pdf",
+      "sha256": "ac01438d1b2158dfbbd2aa48876d6bf7601490f1a33385408bf03a20d42ec6b4",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": []
+    },
+    {
+      "id": "document/direct-stream-duplicate-key",
+      "kind": "pdf",
+      "description": "Ambiguous, shadowed or unterminated payloads cannot be recovered by inventing boundaries",
+      "expected": "invalid",
+      "requirements": [
+        "direct-stream-recovery"
+      ],
+      "path": "corpus/generated/document/direct-stream-duplicate-key.pdf",
+      "sha256": "eac568bc1e0d8211b1a898451a33f9cbb987227250d8096f4753d90116f5224f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": []
+    },
+    {
+      "id": "document/direct-stream-no-terminator",
+      "kind": "pdf",
+      "description": "Ambiguous, shadowed or unterminated payloads cannot be recovered by inventing boundaries",
+      "expected": "invalid",
+      "requirements": [
+        "direct-stream-recovery"
+      ],
+      "path": "corpus/generated/document/direct-stream-no-terminator.pdf",
+      "sha256": "045458dfcf671f55752594e11aa068cbff26b5e55448d860e47b82061d2aaffc",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": []
+    },
+    {
+      "id": "document/direct-stream-encrypt-dictionary",
+      "kind": "pdf",
+      "description": "Security initialization cannot load embedded payload dependencies before the key exists",
+      "expected": "invalid",
+      "requirements": [
+        "direct-stream-recovery"
+      ],
+      "path": "corpus/generated/document/direct-stream-encrypt-dictionary.pdf",
+      "sha256": "e40aa636eca9d6470dfb742697ad39e95f01946c786f7ef768b0430b379c1c4a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": []
+    },
+    {
+      "id": "document/security-embedded-identity-filter",
+      "kind": "pdf",
+      "description": "A named None filter still observes its EFOpen authorization event; standard Identity page data stays readable",
+      "expected": "render",
+      "requirements": [
+        "security-authorization-events"
+      ],
+      "path": "corpus/generated/document/security-embedded-identity-filter.pdf",
+      "sha256": "c6a71a966daae14d8b03adca6f46e17300fef483f556236b4391baad9ee1f501",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-embedded-identity-filter.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner",
+      "marker": "independent"
+    },
+    {
+      "id": "document/security-embedded-event",
+      "kind": "pdf",
+      "description": "Identity page data opens strictly without attachment authorization; encrypted embedded bytes stay protected",
+      "expected": "render",
+      "requirements": [
+        "security-authorization-events"
+      ],
+      "path": "corpus/generated/document/security-embedded-event.pdf",
+      "sha256": "3a48bd85d711dcee3a91db74217b4fcfcd8202a8c6aeba29b584739e9c9c9869",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-embedded-event.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner",
+      "marker": "independent"
+    },
+    {
+      "id": "document/security-default-event-override",
+      "kind": "pdf",
+      "description": "Table 25 requires StrF and StmF to use DocOpen even when their filter declares EFOpen",
+      "expected": "render",
+      "requirements": [
+        "security-authorization-events"
+      ],
+      "path": "corpus/generated/document/security-default-event-override.pdf",
+      "sha256": "8c76405b4e70fba1fd5c3c80e9b9af94c0c75b38d48957f6e7b1642fe7a44fb2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-default-event-override.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner",
+      "marker": "independent"
+    },
+    {
+      "id": "document/security-embedded-doc-open",
+      "kind": "pdf",
+      "description": "A crypt filter's default DocOpen event requires a password even if it encrypts only an attachment",
+      "expected": "invalid",
+      "requirements": [
+        "security-authorization-events"
+      ],
+      "path": "corpus/generated/document/security-embedded-doc-open.pdf",
+      "sha256": "f20b75f54ea16fa688749d0ae890f1599728b4d3e3b946083e0f129d8db4a95c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "open_error": "password"
+    },
+    {
+      "id": "document/security-length-missing",
+      "kind": "pdf",
+      "description": "Missing Length selects a wrong 40-bit default; exactly one other legal size authenticates the supplied credential",
+      "expected": "render",
+      "requirements": [
+        "security-key-length-recovery"
+      ],
+      "path": "corpus/generated/document/security-length-missing.pdf",
+      "sha256": "b7199191603227deee92ed9bd50adfa2f25cebf7edb9446dc8d2e3a6d8f48758",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.key-length"
+      ],
+      "oracle": "corpus/generated/document/security-length-missing.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner",
+      "marker": "independent"
+    },
+    {
+      "id": "document/security-length-missing-password",
+      "kind": "pdf",
+      "description": "Changing a missing key length cannot authenticate a wrong credential",
+      "expected": "invalid",
+      "requirements": [
+        "security-key-length-recovery"
+      ],
+      "path": "corpus/generated/document/security-length-missing-password.pdf",
+      "sha256": "2dbcf202c639c262dc66de3d4c42139350b98d5ef89e970d58c322120cc0220b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "open_error": "password"
+    },
+    {
+      "id": "document/catalog-number-zero",
+      "kind": "pdf",
+      "description": "Only an exact positive Root xref slot can identify a complete zero-numbered plaintext Catalog",
+      "expected": "render",
+      "requirements": [
+        "catalog-identity-recovery"
+      ],
+      "path": "corpus/generated/document/catalog-number-zero.pdf",
+      "sha256": "a119966c57ec09c0bc3501e4a231276e959272130d0e5b83e95bb461686fc1c2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "catalog.object-number"
+      ],
+      "oracle": "corpus/generated/document/catalog-number-zero.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/catalog-number-zero-conflict",
+      "kind": "pdf",
+      "description": "Only an exact positive Root xref slot can identify a complete zero-numbered plaintext Catalog",
+      "expected": "invalid",
+      "requirements": [
+        "catalog-identity-recovery"
+      ],
+      "path": "corpus/generated/document/catalog-number-zero-conflict.pdf",
+      "sha256": "d05dfa97b7c77441c6be4db07ea7addb5363f7759f1382e55e52dedb2339dedf",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": []
+    },
+    {
+      "id": "document/catalog-number-zero-encrypted",
+      "kind": "pdf",
+      "description": "A zero-numbered encrypted Catalog has no unambiguous object-key identity",
+      "expected": "invalid",
+      "requirements": [
+        "catalog-identity-recovery"
+      ],
+      "path": "corpus/generated/document/catalog-number-zero-encrypted.pdf",
+      "sha256": "cfd442ed45ea900da54b6c1423e94107b0af8aff781e87885fa89f881bac4724",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": []
     }
   ]
 }

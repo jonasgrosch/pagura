@@ -6,7 +6,7 @@
 use crate::{Document, ObjectSource, tags};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Diagnostic, Diagnostics, Error, ObjectId, Position, Result};
-use pagura_crypto::standard::SecurityParams;
+use pagura_crypto::standard::{self, FileKey, SecurityParams};
 
 pub(crate) fn position(document: &Document, id: Option<ObjectId>) -> Position {
     id.and_then(|id| document.object(id).ok())
@@ -48,6 +48,55 @@ pub(crate) fn hashes(
         }
     }
     Ok(())
+}
+
+/// A missing V=2 Length defaults to 40 bits (Table 20). Only one successful
+/// authentication at another legal size can establish a replacement; the
+/// supplied password and all other parameters stay fixed (Algorithms 2, 6, 7).
+/// No cipher or password algorithm is duplicated in the document layer.
+pub(crate) fn authenticate(
+    document: &Document,
+    id: Option<ObjectId>,
+    params: &SecurityParams,
+    missing_length: bool,
+    diagnostics: &mut Diagnostics,
+) -> Result<FileKey> {
+    let original = match standard::authenticate(params, &document.options.password) {
+        Ok(key) => return Ok(key),
+        Err(error) => error,
+    };
+    if !missing_length
+        || params.version != 2
+        || params.revision != 3
+        || original.kind != pagura_core::ErrorKind::Password
+    {
+        return Err(original);
+    }
+    let mut candidate = params.clone();
+    let mut found = None;
+    // The 5-byte default has already failed. Each other size is tried once.
+    for length in 6..=16 {
+        candidate.key_length = length;
+        match standard::authenticate(&candidate, &document.options.password) {
+            Ok(key) if found.is_none() => found = Some(key),
+            Ok(_) => return Err(original),
+            Err(error) if error.kind == pagura_core::ErrorKind::Password => {}
+            Err(error) => return Err(error),
+        }
+    }
+    let Some(key) = found else {
+        return Err(original);
+    };
+    let mut diagnostic = Diagnostic::new(
+        tags::KEY_LENGTH_MISSING,
+        "missing legacy Length recovered from a unique authenticated key size",
+    )
+    .at(position(document, id));
+    if let Some(id) = id {
+        diagnostic = diagnostic.in_object(id);
+    }
+    diagnostics.repair(diagnostic)?;
+    Ok(key)
 }
 
 fn zero_padded(hash: &[u8], expected: usize) -> bool {
