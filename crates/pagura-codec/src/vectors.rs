@@ -4,7 +4,7 @@ use pagura_core::{Diagnostics, Dictionary, ErrorKind, Name, Position, Recovery, 
 use pagura_testkit::{assert_bytes_eq, fixture, fixture_path};
 use std::collections::BTreeMap;
 
-fn options(name: &str) -> BTreeMap<String, String> {
+pub(super) fn options(name: &str) -> BTreeMap<String, String> {
     String::from_utf8(fixture("codec", &format!("{name}.params")))
         .unwrap()
         .lines()
@@ -101,6 +101,9 @@ fn independent_vectors_exact_errors_repairs_and_caps() {
     assert!(names.len() > 200);
     for name in names {
         let params = options(&name);
+        if params["filter"].starts_with("encode-") {
+            continue;
+        }
         let chain = chain(&params);
         let encoded = fixture("codec", &format!("{name}.in"));
         let expected = fixture("codec", &format!("{name}.out"));

@@ -304,6 +304,7 @@ def predictors(bits, colors, columns, png):
 
 
 def cases():
+    yield from encoding_cases()
     yield from external_format_cases()
     rng = random.Random(0x50414755)
     data = bytes(rng.randrange(256) for _ in range(4096)) + b"ABC\0" * 2048
@@ -559,3 +560,151 @@ def cases():
         encoded = bytes(int(bits[i:i + 8], 2) for i in range(0, len(bits), 8))
         yield vector(f"lzw-iso-ec{early}-frozen-entry4095-clear", encoded, b"A" * (3842 * 2) + b"B",
                      "filter-lzw", "LZWDecode", early=early, repair="filter.lzw-full-table")
+
+
+def png_filter_candidates(row, previous, channels):
+    """PNG 9.2-9.4/12.8: independent forward filters and signed-byte scores."""
+    candidates = [bytearray() for _ in range(5)]
+    for i, value in enumerate(row):
+        a = row[i-channels] if i >= channels else 0
+        b = previous[i] if previous else 0
+        c = previous[i-channels] if previous and i >= channels else 0
+        for target, prediction in zip(candidates, [0, a, b, (a+b)//2, paeth(a,b,c)]):
+            target.append((value - prediction) % 256)
+    scores = [sum(abs(value if value < 128 else value - 256) for value in row)
+              for row in candidates]
+    tag = min(range(5), key=lambda n: (scores[n], n))
+    return tag, bytes(candidates[tag])
+
+
+def encoding_cases():
+    rng = random.Random(0x5246431951)
+    for label, plain, block_type in [
+        ("empty", b"", 1), ("tiny", b"hello", 1),
+        ("all-bytes", bytes(range(256)) * 4, None),
+        ("incompressible", rng.randbytes(8192), 0),
+        ("dynamic", b"A" * 8192, 2),
+        ("multiblock", rng.randbytes(65535) + b"ABACABADABACABA" * 10000, None),
+        ("window-wrap", bytes(range(251)) * 800, None),
+        ("lazy", b"abcdefgabcdeabcdefgabcdef" * 4000, None),
+    ]:
+        extra = {} if block_type is None else dict(block_type=block_type)
+        yield vector("compress-" + label, plain, plain, "encode-flate", "encode-flate", **extra)
+    # Construct two-row examples selecting every filter, with the choice
+    # established by independent signed scores, never by the Rust encoder.
+    for channels, layout in [(1,"gray"),(3,"rgb"),(4,"rgba")]:
+        for tag in range(5):
+            for _ in range(256):
+                previous = rng.randbytes(17 * channels)
+                row = bytearray()
+                for i, above in enumerate(previous):
+                    left = row[i-channels] if i >= channels else 0
+                    corner = previous[i-channels] if i >= channels else 0
+                    prediction = [0,left,above,(left+above)//2,paeth(left,above,corner)][tag]
+                    delta = (rng.randrange(256) if tag == 0 else
+                             rng.randrange(1,256) if tag == 1 and i < channels else
+                             rng.randrange(-1,2) if tag == 4 else 0)
+                    row.append((prediction + delta) % 256)
+                if png_filter_candidates(row, previous, channels)[0] == tag:
+                    break
+            else:
+                raise AssertionError("could not construct filter example")
+            plain = previous + row
+            yield vector(f"png-encode-{layout}-filter{tag}", plain, plain,
+                         "encode-png", "encode-png", width=17, height=2, channels=channels)
+        # PNG 6.2 preserves all colours even when alpha is zero or partial.
+        plain = bytes([0, 255, 128, 1][:channels])
+        yield vector(f"png-encode-{layout}-one-pixel", plain, plain,
+                     "encode-png", "encode-png", width=1, height=1, channels=channels)
+    plain = rng.randbytes(257 * 257 * 4)
+    yield vector("png-encode-rgba-multiple-idat", plain, plain, "encode-png", "encode-png",
+                 width=257, height=257, channels=4)
+    yield vector("png-encode-straight-alpha", bytes([255,12,90,0, 255,128,64,128]),
+                 bytes([255,12,90,0, 255,128,64,128]), "encode-png", "encode-png", width=2, height=1, channels=4)
+
+
+def decode_png(encoded):
+    """Independent PNG 5/9/11.2 decoder for encoder tests; never invokes Pagura."""
+    assert encoded[:8] == b"\x89PNG\r\n\x1a\n"
+    pos, chunks, compressed = 8, [], bytearray()
+    while pos < len(encoded):
+        size = int.from_bytes(encoded[pos:pos+4], "big")
+        assert size <= 0x7fffffff and pos + 12 + size <= len(encoded)
+        name = encoded[pos+4:pos+8]
+        data = encoded[pos+8:pos+8+size]
+        crc = int.from_bytes(encoded[pos+8+size:pos+12+size], "big")
+        assert binascii.crc32(name + data) == crc
+        chunks.append(name)
+        if name == b"IHDR":
+            assert len(chunks) == 1 and len(data) == 13
+            width, height, depth, color, compression, method, interlace = struct.unpack(">IIBBBBB", data)
+            assert 0 < width <= 0x7fffffff and 0 < height <= 0x7fffffff
+            assert depth == 8 and color in (0,2,6) and (compression,method,interlace) == (0,0,0)
+            channels = {0:1,2:3,6:4}[color]
+        elif name == b"IDAT":
+            assert len(chunks) >= 2 and all(c == b"IDAT" for c in chunks[1:])
+            compressed.extend(data)
+        else:
+            assert name == b"IEND" and not data and pos + 12 == len(encoded)
+        pos += size + 12
+    assert chunks[0] == b"IHDR" and chunks[-1] == b"IEND" and b"IDAT" in chunks
+    raw = inflate_exact(compressed)
+    stride = width * channels
+    assert len(raw) == height * (stride + 1)
+    pixels, previous = bytearray(), b""
+    tags = []
+    for start in range(0, len(raw), stride+1):
+        tag = raw[start]
+        assert 0 <= tag <= 4
+        row = bytearray()
+        for i, delta in enumerate(raw[start+1:start+1+stride]):
+            a = row[i-channels] if i >= channels else 0
+            b = previous[i] if previous else 0
+            c = previous[i-channels] if previous and i >= channels else 0
+            prediction = [0,a,b,(a+b)//2,paeth(a,b,c)][tag]
+            row.append((delta + prediction) % 256)
+        # Check the optional encoder heuristic too, including deterministic ties.
+        chosen, filtered = png_filter_candidates(row, previous, channels)
+        assert chosen == tag and filtered == raw[start+1:start+1+stride]
+        pixels.extend(row)
+        tags.append(tag)
+        previous = row
+    return width, height, channels, bytes(pixels), tags
+
+
+def inflate_exact(encoded):
+    decoder = zlib.decompressobj()
+    plain = decoder.decompress(encoded) + decoder.flush()
+    assert decoder.eof and not decoder.unused_data and not decoder.unconsumed_tail
+    return plain
+
+
+def verify_encoded_batch(payload):
+    """Validate Rust-produced bytes passed by the Rust tests, not generated here.
+
+    Frames are >BIIIII (kind, encoded size, pixel size, width, height, channels),
+    followed by encoded and expected bytes. All expected bytes are independent
+    fixture data; this module never imports, runs or calls the product.
+    """
+    count, pos = 0, 0
+    while pos < len(payload):
+        kind, size, plain_size, width, height, channels = struct.unpack_from(">BIIIII", payload, pos)
+        pos += 21
+        encoded, expected = payload[pos:pos+size], payload[pos+size:pos+size+plain_size]
+        pos += size + plain_size
+        assert len(expected) == plain_size
+        if kind == 0:
+            assert inflate_exact(encoded) == expected
+        else:
+            assert kind == 1
+            w, h, c, pixels, _ = decode_png(encoded)
+            assert (w,h,c,pixels) == (width,height,channels,expected)
+        count += 1
+    assert pos == len(payload)
+    return count
+
+
+if __name__ == "__main__":
+    import sys
+    assert sys.argv[1:] == ["verify"]
+    print(f"Independent Python oracle verified {verify_encoded_batch(sys.stdin.buffer.read())} encoded streams/images")

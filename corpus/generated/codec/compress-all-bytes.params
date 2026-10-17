@@ -1,0 +1,4 @@
+filter=encode-flate
+outcome=valid
+repair=none
+cap=1024

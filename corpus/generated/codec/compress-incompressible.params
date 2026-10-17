@@ -1,0 +1,5 @@
+filter=encode-flate
+outcome=valid
+repair=none
+cap=8192
+block_type=0

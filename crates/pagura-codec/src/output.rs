@@ -215,7 +215,7 @@ impl Output {
     }
 }
 
-fn paeth(left: u8, above: u8, upper_left: u8) -> u8 {
+pub(crate) fn paeth(left: u8, above: u8, upper_left: u8) -> u8 {
     // PNG Second Edition 9.4: exact arithmetic; ties prefer left, then above.
     let p = i16::from(left) + i16::from(above) - i16::from(upper_left);
     let a = (p - i16::from(left)).abs();

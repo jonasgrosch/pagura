@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "codec",
-  "scope": "Verified PDF filter rules and locators against ISO 32000-2:2020(E), sponsored edition including Errata Collection 3: 7.4.1-7.4.5, 7.4.10, Tables 6-10 and 14; parameter/chain context 7.3.7-7.3.9 and Table 5; whitespace 7.2.3 Table 1. Verified external framing, coding tables and predictor arithmetic against RFC 1950 (May 1996) 2.1-2.3, RFC 1951 (May 1996) 3.1-3.3, PNG Second Edition (W3C Recommendation 10 November 2003) 9.1-9.4 and Table 9.1, and TIFF Revision 6.0 (3 June 1992) sections 13-14 pp.58-65. The TIFF review covers PDF LZW correspondence and Predictor 2, not TIFF containers. Image-codec clauses 7.4.6-7.4.9 are excluded. No external primary-text review in this scope remains pending. General incomplete-Huffman-tree rejection and other documented choices are policy, not normative verdicts; caps and recovery are verified only against project policy. Representational dimension limits remain explicit gaps.",
+  "scope": "Verified PDF filter rules and locators against ISO 32000-2:2020(E), sponsored edition including Errata Collection 3: 7.4.1-7.4.5, 7.4.10, Tables 6-10 and 14; parameter/chain context 7.3.7-7.3.9 and Table 5; whitespace 7.2.3 Table 1. Verified external framing, coding tables and predictor arithmetic against RFC 1950 (May 1996) 2.1-2.3, RFC 1951 (May 1996) 3.1-3.3, PNG Second Edition (W3C Recommendation 10 November 2003) 9.1-9.4 and Table 9.1, and TIFF Revision 6.0 (3 June 1992) sections 13-14 pp.58-65. The TIFF review covers PDF LZW correspondence and Predictor 2, not TIFF containers. Image-codec clauses 7.4.6-7.4.9 are excluded. No external primary-text review in this scope remains pending. General incomplete-Huffman-tree rejection and other documented choices are policy, not normative verdicts; caps and recovery are verified only against project policy. Representational dimension limits remain explicit gaps. Output encoding additionally verified against RFC 1950 2.2/2.3, RFC 1951 3.1.1/3.2.2-3.2.7, and PNG Second Edition 5.2-5.6, 6.2, 9, 11.2.2/11.2.4/11.2.5 and 12.8. Encoding effort, block boundaries, adaptive-filter ties and byte budgets are documented project choices.",
   "verification_source": {
     "reference": "iso32000-2-full-text",
     "edition": "ISO 32000-2:2020(E), sponsored edition including Errata Collection 3",
@@ -607,6 +607,123 @@
         "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
       ],
       "gaps": "Security-handler algorithm selection, CF name resolution and private security-handler parameters are delegated outside this codec boundary and were not audited here."
+    },
+    {
+      "id": "encode-flate",
+      "reference": "rfc1951",
+      "clauses": [
+        "3.1.1",
+        "3.2.2",
+        "3.2.3",
+        "3.2.4",
+        "3.2.5",
+        "3.2.6",
+        "3.2.7"
+      ],
+      "tables": [],
+      "status": "implemented",
+      "verdict": "verified",
+      "rules": [
+        {
+          "locator": "RFC 1950 2.2/2.3; RFC 1951 3.1.1/3.2.3-3.2.7",
+          "rule": "Emit a zlib header without FDICT, a complete DEFLATE block sequence and big-endian Adler-32; stored blocks align and complement LEN, and compressed blocks obey the fixed/dynamic alphabets and match ranges.",
+          "implementation": "Agrees: all three block types, exact bit-cost selection, cross-block history and deterministic Fast/Default modes.",
+          "fixtures": "compress-empty/tiny/incompressible/dynamic select all three types; every codec input and expected output round-trips at both levels and is independently inflated by Python zlib.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "RFC 1951 3.2.2/3.2.7",
+          "rule": "Canonical literal/distance codes have at most 15 bits; code-length codes have at most 7 bits and use the prescribed order and repeat symbols.",
+          "implementation": "Agrees: binary package-merge constructs complete bounded trees with stable ties.",
+          "fixtures": "Exhaustive small optimal-cost oracle and skewed Huffman tests, plus Python validation of dynamic output.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "CONTRIBUTING.md, Rust quality bar; Limits",
+          "rule": "Bound input, output and encoder work before growth; no global state or host capabilities enter compression.",
+          "implementation": "Input uses decoded_bytes; output uses stream_bytes; matcher visits at most 32/128 links and 258 bytes per match, and scratch is bounded by one 65535-byte block plus 32 KiB window and finite Huffman alphabets.",
+          "fixtures": "Exact input/output budget tests and multiblock/window-wrap/lazy fixtures.",
+          "verdict": "verified"
+        }
+      ],
+      "tests": [
+        "pagura-codec encoding_tests",
+        "pagura-codec flate::huffman::tests"
+      ],
+      "gaps": "",
+      "documented_choices": [
+        "Fast is greedy with at most 32 chain links; Default uses 128 links and one-byte lazy matching. These are effort choices, not zlib numerical level compatibility.",
+        "Block boundaries are at 65535 input bytes. Selection compares exact encoded bit costs of the generated token sequence, including dynamic headers, stored alignment and final padding; equal costs prefer fixed, then stored. This is not global parsing/block-boundary optimality.",
+        "Package-merge is an independent construction algorithm; the RFC prescribes code properties, not a tree-building method.",
+        "Huffman package storage scales with the active alphabet, including at most two dummy symbols; matching compares bounded chunks and rejects candidates unable to improve the current length. These choices preserve the encoded token sequence while reducing temporary allocation and prefix comparisons."
+      ]
+    },
+    {
+      "id": "encode-png",
+      "reference": "w3c-png-2003",
+      "clauses": [
+        "5.2",
+        "5.3",
+        "5.5",
+        "5.6",
+        "6.2",
+        "9.1",
+        "9.2",
+        "9.3",
+        "9.4",
+        "11.2.2",
+        "11.2.4",
+        "11.2.5",
+        "12.8",
+        "12.9"
+      ],
+      "tables": [
+        "5.3",
+        "9.1",
+        "11.1"
+      ],
+      "status": "implemented",
+      "verdict": "verified",
+      "rules": [
+        {
+          "locator": "PNG Second Edition 5.2-5.6; 11.2.2/11.2.4/11.2.5, Table 11.1; 12.9",
+          "rule": "PNG starts with its signature and IHDR, has consecutive zlib IDAT data, and ends with IEND; each chunk CRC covers its type and data, excluding its length.",
+          "implementation": "Agrees: non-interlaced eight-bit Gray/RGB/RGBA, positive 31-bit dimensions, 64 KiB IDAT payloads and reflected CRC-32.",
+          "fixtures": "Python independently parses every chunk, checks binascii CRCs, headers and complete zlib termination; png-encode-rgba-multiple-idat covers chunk splitting.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "PNG Second Edition 9.1-9.4, Table 9.1; 12.8",
+          "rule": "Apply one of five byte filters per row; the recommended adaptive heuristic minimizes absolute signed filtered bytes.",
+          "implementation": "Agrees: all five candidates are scored with wide arithmetic; ties prefer the lower tag.",
+          "fixtures": "png-encode-{gray,rgb,rgba}-filter{0..4}; Python independently unfilters pixels and recomputes the adaptive minimum.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "PNG Second Edition 6.2; 11.2.2, Table 11.1",
+          "rule": "RGBA stores RGB followed by unassociated alpha; transparent and partially transparent colors remain sample data.",
+          "implementation": "Agrees: input straight alpha and hidden colors are copied without conversion.",
+          "fixtures": "png-encode-straight-alpha, rgba-one-pixel and independent exact-pixel comparison.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "CONTRIBUTING.md, Rust quality bar; Limits",
+          "rule": "Check pixel and byte budgets, dimensions and the exact input byte count before encoding.",
+          "implementation": "Agrees: pixels and decoded_bytes bound input, stream_bytes bounds complete PNG including framing; a filtered-image buffer adds one bounded tag per row. Invalid dimensions and pixel counts return InvalidArgument; budgets/overflow/allocation return Limit, all positioned.",
+          "fixtures": "Dimension, short/long pixel slice, overflow and exact output cap tests.",
+          "verdict": "verified"
+        }
+      ],
+      "tests": [
+        "pagura-codec encoding_tests",
+        "tools.fixturegen.codec independent PNG decoder"
+      ],
+      "gaps": "Only eight-bit Gray/RGB/straight RGBA, non-interlaced; no palette, ancillary colour metadata or streaming encoder API.",
+      "documented_choices": [
+        "Adaptive filter ties choose the lower numeric tag. IDAT payloads are at most 65536 bytes.",
+        "PNG has no implicit colour-space conversion or unpremultiplication; callers provide straight samples and their colour-management policy.",
+        "Scratch includes one filtered image plus two rows and bounded compression state. Filter tags are additional framing beyond the decoded pixel byte budget."
+      ]
     }
   ]
 }

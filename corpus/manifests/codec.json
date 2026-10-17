@@ -5,6 +5,650 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "codec/compress-empty",
+      "kind": "vector",
+      "description": "compress empty",
+      "requirements": [
+        "encode-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/compress-empty.in",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/compress-empty.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/compress-empty.params",
+          "sha256": "2a250e28330d63648a7b4b36e0c761eb058e634b06a3b05fbb5990224a0f9761"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/compress-tiny",
+      "kind": "vector",
+      "description": "compress tiny",
+      "requirements": [
+        "encode-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/compress-tiny.in",
+          "sha256": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/compress-tiny.out",
+          "sha256": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/compress-tiny.params",
+          "sha256": "e1c4d9963d473b3538e38628162ac2b4ddffa0a315b9dc1a86fd11e4500987e2"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/compress-all-bytes",
+      "kind": "vector",
+      "description": "compress all bytes",
+      "requirements": [
+        "encode-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/compress-all-bytes.in",
+          "sha256": "785b0751fc2c53dc14a4ce3d800e69ef9ce1009eb327ccf458afe09c242c26c9"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/compress-all-bytes.out",
+          "sha256": "785b0751fc2c53dc14a4ce3d800e69ef9ce1009eb327ccf458afe09c242c26c9"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/compress-all-bytes.params",
+          "sha256": "b57266cd09bf3f6322cb12734ea51ac0be8bd70f93cc8c6b0a0bbcf790b947db"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/compress-incompressible",
+      "kind": "vector",
+      "description": "compress incompressible",
+      "requirements": [
+        "encode-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/compress-incompressible.in",
+          "sha256": "7b4ea745e9e88bbb6a764b1bb70c88e0741546f0915045c4c6c6ad452bce8054"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/compress-incompressible.out",
+          "sha256": "7b4ea745e9e88bbb6a764b1bb70c88e0741546f0915045c4c6c6ad452bce8054"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/compress-incompressible.params",
+          "sha256": "21c6ed8305a7a25c8a48b6e66c4986dc2444ada20fbea239474878294f086335"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/compress-dynamic",
+      "kind": "vector",
+      "description": "compress dynamic",
+      "requirements": [
+        "encode-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/compress-dynamic.in",
+          "sha256": "f8ca02c69621dd84cd1212ebfd7d6cdc9ba6ad658854f29567723531912d1a35"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/compress-dynamic.out",
+          "sha256": "f8ca02c69621dd84cd1212ebfd7d6cdc9ba6ad658854f29567723531912d1a35"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/compress-dynamic.params",
+          "sha256": "0088833f2369e2b81f758bf97ca9b11801e8f386715d51bf8cfe49d476e73b49"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/compress-multiblock",
+      "kind": "vector",
+      "description": "compress multiblock",
+      "requirements": [
+        "encode-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/compress-multiblock.in",
+          "sha256": "dfc6799de840156ecd627be41b5b905c9bd981b652a2a4e033b5fee27c3ad77b"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/compress-multiblock.out",
+          "sha256": "dfc6799de840156ecd627be41b5b905c9bd981b652a2a4e033b5fee27c3ad77b"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/compress-multiblock.params",
+          "sha256": "6861159fd9ad278b35e9dd360acbbde7e65e63b10e7c7f078d360349e590ddb4"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/compress-window-wrap",
+      "kind": "vector",
+      "description": "compress window wrap",
+      "requirements": [
+        "encode-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/compress-window-wrap.in",
+          "sha256": "be1af103c3aabb63f9cfad689d972ed5d9879b037af23ea7c5047ea1ef1b6a28"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/compress-window-wrap.out",
+          "sha256": "be1af103c3aabb63f9cfad689d972ed5d9879b037af23ea7c5047ea1ef1b6a28"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/compress-window-wrap.params",
+          "sha256": "7fa142aeb9cca0a88daf431362655b6eb33af4a873ac1f1e6dd17d36aadff409"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/compress-lazy",
+      "kind": "vector",
+      "description": "compress lazy",
+      "requirements": [
+        "encode-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/compress-lazy.in",
+          "sha256": "927ddf206b8d4a7b1d22a2923e75b234d580c8508842ba4e27c839e029972a8f"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/compress-lazy.out",
+          "sha256": "927ddf206b8d4a7b1d22a2923e75b234d580c8508842ba4e27c839e029972a8f"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/compress-lazy.params",
+          "sha256": "3df46cc0e27d9b55fed06348abc6dfd4964b8b8a1cc447a3e06497ae6c22e133"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-gray-filter0",
+      "kind": "vector",
+      "description": "png encode gray filter0",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-gray-filter0.in",
+          "sha256": "2971ce9ff1b19f8f4391a169dbf62f9f1636a3ebffc71beef26fbeb179bc81f4"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-gray-filter0.out",
+          "sha256": "2971ce9ff1b19f8f4391a169dbf62f9f1636a3ebffc71beef26fbeb179bc81f4"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-gray-filter0.params",
+          "sha256": "800ee75bf14915c6db16e666cf8efc69718a28945a9232b8a6a00f23f16de766"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-gray-filter1",
+      "kind": "vector",
+      "description": "png encode gray filter1",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-gray-filter1.in",
+          "sha256": "8fee97b9264df3beb8e41ea74ba38f36d2c9e9e4a048b75f466705c930980b0a"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-gray-filter1.out",
+          "sha256": "8fee97b9264df3beb8e41ea74ba38f36d2c9e9e4a048b75f466705c930980b0a"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-gray-filter1.params",
+          "sha256": "800ee75bf14915c6db16e666cf8efc69718a28945a9232b8a6a00f23f16de766"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-gray-filter2",
+      "kind": "vector",
+      "description": "png encode gray filter2",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-gray-filter2.in",
+          "sha256": "247ed98f70247fc14560ad058a3b62890b6d411ae7c02303ad17f50910c625aa"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-gray-filter2.out",
+          "sha256": "247ed98f70247fc14560ad058a3b62890b6d411ae7c02303ad17f50910c625aa"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-gray-filter2.params",
+          "sha256": "800ee75bf14915c6db16e666cf8efc69718a28945a9232b8a6a00f23f16de766"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-gray-filter3",
+      "kind": "vector",
+      "description": "png encode gray filter3",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-gray-filter3.in",
+          "sha256": "85d7bce598df8170ab11ec0f01b3bf016dbaf4478b8f40756d30cc2e3e1f2b16"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-gray-filter3.out",
+          "sha256": "85d7bce598df8170ab11ec0f01b3bf016dbaf4478b8f40756d30cc2e3e1f2b16"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-gray-filter3.params",
+          "sha256": "800ee75bf14915c6db16e666cf8efc69718a28945a9232b8a6a00f23f16de766"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-gray-filter4",
+      "kind": "vector",
+      "description": "png encode gray filter4",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-gray-filter4.in",
+          "sha256": "81c0ce37fd736ef78a198d95e7d3d5b58f8d9fe0f57caf47e7fc7fa99abec8b8"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-gray-filter4.out",
+          "sha256": "81c0ce37fd736ef78a198d95e7d3d5b58f8d9fe0f57caf47e7fc7fa99abec8b8"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-gray-filter4.params",
+          "sha256": "800ee75bf14915c6db16e666cf8efc69718a28945a9232b8a6a00f23f16de766"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-gray-one-pixel",
+      "kind": "vector",
+      "description": "png encode gray one pixel",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-gray-one-pixel.in",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-gray-one-pixel.out",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-gray-one-pixel.params",
+          "sha256": "7a1fe1774e05b33cf78243357dccf8d2b0e78f5a8b2407d39b7d0b56c03111cb"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-rgb-filter0",
+      "kind": "vector",
+      "description": "png encode rgb filter0",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter0.in",
+          "sha256": "4e33f0cff3404d70bce661e14e3450284f2f3f5df2dffdde3a2618895a1e1930"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter0.out",
+          "sha256": "4e33f0cff3404d70bce661e14e3450284f2f3f5df2dffdde3a2618895a1e1930"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter0.params",
+          "sha256": "13cdaa8f857451873095e744ee3f54184b3611e9c0ab72a88b1ade731002e7ab"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-rgb-filter1",
+      "kind": "vector",
+      "description": "png encode rgb filter1",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter1.in",
+          "sha256": "2072ac1e99d14b5f06f92af333fbfe1e7c38c322fc00defbb6a1b2cdf1fc4057"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter1.out",
+          "sha256": "2072ac1e99d14b5f06f92af333fbfe1e7c38c322fc00defbb6a1b2cdf1fc4057"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter1.params",
+          "sha256": "13cdaa8f857451873095e744ee3f54184b3611e9c0ab72a88b1ade731002e7ab"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-rgb-filter2",
+      "kind": "vector",
+      "description": "png encode rgb filter2",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter2.in",
+          "sha256": "3c5c59ccedadbe12fcaebf98fad49e570ca09e20e41b77bdfd5ce436ed76d742"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter2.out",
+          "sha256": "3c5c59ccedadbe12fcaebf98fad49e570ca09e20e41b77bdfd5ce436ed76d742"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter2.params",
+          "sha256": "13cdaa8f857451873095e744ee3f54184b3611e9c0ab72a88b1ade731002e7ab"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-rgb-filter3",
+      "kind": "vector",
+      "description": "png encode rgb filter3",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter3.in",
+          "sha256": "50c5d926f204658b20c84d86973200b61c5316e156949b57eb027ae0a079429e"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter3.out",
+          "sha256": "50c5d926f204658b20c84d86973200b61c5316e156949b57eb027ae0a079429e"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter3.params",
+          "sha256": "13cdaa8f857451873095e744ee3f54184b3611e9c0ab72a88b1ade731002e7ab"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-rgb-filter4",
+      "kind": "vector",
+      "description": "png encode rgb filter4",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter4.in",
+          "sha256": "5f5b1f91dd9f88b6853a1aa0ad8f1cb34559a218e1a68c483b25e89dfc83a8d1"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter4.out",
+          "sha256": "5f5b1f91dd9f88b6853a1aa0ad8f1cb34559a218e1a68c483b25e89dfc83a8d1"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-rgb-filter4.params",
+          "sha256": "13cdaa8f857451873095e744ee3f54184b3611e9c0ab72a88b1ade731002e7ab"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-rgb-one-pixel",
+      "kind": "vector",
+      "description": "png encode rgb one pixel",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-rgb-one-pixel.in",
+          "sha256": "f742b965f156c10374bc23aea96e3a8aff8facd6fc079defeaa30219ad86f211"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-rgb-one-pixel.out",
+          "sha256": "f742b965f156c10374bc23aea96e3a8aff8facd6fc079defeaa30219ad86f211"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-rgb-one-pixel.params",
+          "sha256": "c4fe93f657fa11193c8321e13215daf4e7be8c4696ab838efe2f7a54f5954118"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-rgba-filter0",
+      "kind": "vector",
+      "description": "png encode rgba filter0",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter0.in",
+          "sha256": "43188a50fa80bea496e0425d3776e875c9ac91b7518de519a00a28552287ad75"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter0.out",
+          "sha256": "43188a50fa80bea496e0425d3776e875c9ac91b7518de519a00a28552287ad75"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter0.params",
+          "sha256": "471465f0e4a923bc9e91ef3fa7d3507e0672073a4a7044162a86343dc5be66b2"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-rgba-filter1",
+      "kind": "vector",
+      "description": "png encode rgba filter1",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter1.in",
+          "sha256": "168e0b00ad95950893e711c3bbc2ad0cffea190ab93696cdcc2ab9c4b109b7a7"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter1.out",
+          "sha256": "168e0b00ad95950893e711c3bbc2ad0cffea190ab93696cdcc2ab9c4b109b7a7"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter1.params",
+          "sha256": "471465f0e4a923bc9e91ef3fa7d3507e0672073a4a7044162a86343dc5be66b2"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-rgba-filter2",
+      "kind": "vector",
+      "description": "png encode rgba filter2",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter2.in",
+          "sha256": "1a119e53807cd47057ab3c66a49389042698ea6ec06109f97a671134a40c637c"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter2.out",
+          "sha256": "1a119e53807cd47057ab3c66a49389042698ea6ec06109f97a671134a40c637c"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter2.params",
+          "sha256": "471465f0e4a923bc9e91ef3fa7d3507e0672073a4a7044162a86343dc5be66b2"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-rgba-filter3",
+      "kind": "vector",
+      "description": "png encode rgba filter3",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter3.in",
+          "sha256": "42522357307a2bd1c451aa4d5e5f67864102d62369d0884afcfb19cdc0ba9db6"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter3.out",
+          "sha256": "42522357307a2bd1c451aa4d5e5f67864102d62369d0884afcfb19cdc0ba9db6"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter3.params",
+          "sha256": "471465f0e4a923bc9e91ef3fa7d3507e0672073a4a7044162a86343dc5be66b2"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-rgba-filter4",
+      "kind": "vector",
+      "description": "png encode rgba filter4",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter4.in",
+          "sha256": "cb077e4e1510951e233b9a0c0e62c4313bc419fe103a2b86c80ee2300033bdc5"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter4.out",
+          "sha256": "cb077e4e1510951e233b9a0c0e62c4313bc419fe103a2b86c80ee2300033bdc5"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-rgba-filter4.params",
+          "sha256": "471465f0e4a923bc9e91ef3fa7d3507e0672073a4a7044162a86343dc5be66b2"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-rgba-one-pixel",
+      "kind": "vector",
+      "description": "png encode rgba one pixel",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-rgba-one-pixel.in",
+          "sha256": "6509423fd9da5c225d2f8619ffae394b40f9f7686fee55a38c54b1424ac65f46"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-rgba-one-pixel.out",
+          "sha256": "6509423fd9da5c225d2f8619ffae394b40f9f7686fee55a38c54b1424ac65f46"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-rgba-one-pixel.params",
+          "sha256": "cb6b461be227a16b67413d012ff5eb3e15ffe0f55de873bcbb6e1c23f89b4e4f"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-rgba-multiple-idat",
+      "kind": "vector",
+      "description": "png encode rgba multiple idat",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-rgba-multiple-idat.in",
+          "sha256": "a4ae1d45e6e9675456cf1e47ff1e652ebd15936893c07d6254beb506fd64257f"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-rgba-multiple-idat.out",
+          "sha256": "a4ae1d45e6e9675456cf1e47ff1e652ebd15936893c07d6254beb506fd64257f"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-rgba-multiple-idat.params",
+          "sha256": "9028a73479ef252c32ffb5367de2bea76abd9519ecb33e46e9417fb20cea7208"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-encode-straight-alpha",
+      "kind": "vector",
+      "description": "png encode straight alpha",
+      "requirements": [
+        "encode-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-encode-straight-alpha.in",
+          "sha256": "2412f762134b3f9580f276f2034a62a74c3caa1983b6d6eb17101ed6cf1bec12"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-encode-straight-alpha.out",
+          "sha256": "2412f762134b3f9580f276f2034a62a74c3caa1983b6d6eb17101ed6cf1bec12"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-encode-straight-alpha.params",
+          "sha256": "dd75026c4c3398abc74490811477282741d90575994a40fd5a2fb510ab86742b"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
       "id": "codec/zlib-rfc1950-cinfo0-level0",
       "kind": "vector",
       "description": "zlib rfc1950 cinfo0 level0",

@@ -5,6 +5,8 @@
 //! filter vocabulary and parameters but nothing about documents: callers
 //! resolve indirect references before building a [`FilterChain`], and the
 //! security handler removes the `Crypt` filter before decoding.
+//! [`flate::compress`] provides zlib output for stream writing; [`png::encode`]
+//! encodes eight-bit Gray, RGB and straight RGBA images without host capabilities.
 //!
 //! Every decoder enforces a caller-supplied output cap *while* decoding, so
 //! a small hostile input can never allocate more than the cap. Damaged data
@@ -12,9 +14,13 @@
 //! repair reported through [`Diagnostics`], never a silent success (ADR 0003).
 
 mod ascii;
-mod flate;
+mod encoding;
+#[cfg(test)]
+mod encoding_tests;
+pub mod flate;
 mod lzw;
 mod output;
+pub mod png;
 
 use pagura_core::syntax::is_whitespace;
 use pagura_core::{

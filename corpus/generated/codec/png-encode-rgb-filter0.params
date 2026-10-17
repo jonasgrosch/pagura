@@ -1,0 +1,7 @@
+filter=encode-png
+outcome=valid
+repair=none
+cap=102
+width=17
+height=2
+channels=3
