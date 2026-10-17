@@ -87,6 +87,22 @@ impl<'a> Reader<'a> {
         Ok(u32::from_be_bytes([b[0], b[1], b[2], b[3]]))
     }
 
+    /// A.7.4/A.7.5 require every marker fragment to end on a header boundary.
+    pub fn packet_boundary(&self, start: usize) -> Result<()> {
+        if let Some(spans) = self.source_map {
+            let lo = self.logical_origin + start;
+            let hi = self.logical_origin + self.offset;
+            let index = spans.partition_point(|s| s.logical <= lo);
+            if let Some(span) = spans.get(index).filter(|s| s.logical < hi) {
+                return Err(syntax(
+                    "JPEG 2000 packed marker splits a packet header",
+                    span.source,
+                ));
+            }
+        }
+        Ok(())
+    }
+
     pub fn finish(&self) -> Result<()> {
         if self.remaining() == 0 {
             Ok(())

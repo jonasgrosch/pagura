@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "jpx",
-  "scope": "Verified only the PDF JPX permissions, prohibitions and image-dictionary contracts against the local ISO_32000-2_sponsored_EC3.txt (ISO 32000-2:2020 with Errata Collection 3), clause 7.4.9 and clause 8.9.5 Table 87 (Width, Height, ColorSpace, BitsPerComponent, ImageMask, Decode, SMask, SMaskInData). ITU-T T.800 / ISO/IEC 15444-1 codec and JP2 mechanics and ITU-T T.801 / ISO/IEC 15444-2 JPX baseline mechanics are pending primary-text review; generated source-sample oracles and OpenJPEG differential results are evidence, not specification verification.",
+  "scope": "Reviewed the implemented Part 1 decoding subset against ITU-T T.800 (06/2019), local itu-t800-2019.txt: Annex A marker syntax and placement; B.1-B.12 grids, partitions, packets and progressions; C.3 and Table C.2 arithmetic decoding; D.1-D.7 coefficient modelling and termination; E.1 dequantization; F.2-F.3 synthesis; G.1-G.4 level shift, component transforms and sampling; H.1 ROI; I.3-I.5 and I.8 JP2 boxes. Per-requirement verdicts distinguish agreement, corrected disagreements, documented choices and explicit unsupported subsets; this is not complete format conformance certification. PDF permissions and dictionary contracts remain checked against ISO 32000-2 EC3 7.4.9 and 8.9.5 Table 87. Only Part 2 extension semantics (T.801), ICC profile conformance (ISO 15076-1/ICC.1) and external colour definitions remain pending primary-text review; their bytes/identifiers are preserved without colour conversion.",
   "requirements": [
     {
       "id": "jpx-part1",
@@ -9,8 +9,8 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
-      "status": "Full code-block MQ/raw coding, tag trees and all six Part 1 style flags; signed 1-16-bit components",
+      "codec_reference": "ITU-T T.800 (06/2019), A.5.1, B.10.2-B.10.7, C.3.1-C.3.7, Table C.2, D.1-D.3, Table D.6, Table D.7",
+      "status": "Corrected: The 47 MQ states and transition entries agree with Table C.2; scan/context routines agree with D.1-D.3 and D.7 initialization. Added the directly specified Table D.6 coefficient column; Rust expectations agree. Empty arithmetic segments are allowed by D.4.1 synthetic extension.",
       "tests": [
         "jpx/gray",
         "jpx/zero",
@@ -42,23 +42,34 @@
         "jpx/layer-contributions-1",
         "jpx/layer-contributions-4",
         "jpx/layer-contributions-63",
+        "jpx/roi-precision-limit",
         "jpx/packet-lengths",
         "jpx/pdf-depth-17",
-        "jpx/roi-precision-limit"
+        "jpx/model-column"
       ],
-      "gaps": "Current sample representation rejects depths 17-38 explicitly; incomplete bit-plane quality truncation and coefficient precision above 30 bits remain unsupported.",
+      "gaps": "Samples above 16 bits, coded magnitudes above 30 bits and partial bit-plane quality output are explicitly Unsupported.",
       "pdf_review": {
         "rule": "PDF allows different per-component depths from 1 through 38; JPEG 2000 algorithms are delegated to the external format standard.",
-        "verdict": "partial: decoder explicitly supports 1-16 bits and rejects higher supported PDF depths as Unsupported; sample oracles agree for that subset, not a complete implementation.",
-        "implementation_expectations": "partial: decoder explicitly supports 1-16 bits and rejects higher supported PDF depths as Unsupported; sample oracles agree for that subset, not a complete implementation.",
+        "verdict": "PDF rule checked; corrected for the supported Part 1 subset; see codec_review and gaps",
+        "implementation_expectations": "The 47 MQ states and transition entries agree with Table C.2; scan/context routines agree with D.1-D.3 and D.7 initialization. Added the directly specified Table D.6 coefficient column; Rust expectations agree. Empty arithmetic segments are allowed by D.4.1 synthetic extension.",
         "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
-        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification"
       },
-      "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
-        "depends_on": "Component headers, MQ probability transitions, pass scanning, sign contexts, reset, segmentation symbols and tag-tree encodings.",
-        "evidence": "Exact OpenJPEG comparisons for each style flag and combinations through modes-63, nonterminated/raw/terminated segments split across layers, ROI and ROI+bypass combinations, plus the earlier signed/precision/code-block vectors."
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "A.5.1",
+          "B.10.2-B.10.7",
+          "C.3.1-C.3.7",
+          "Table C.2",
+          "D.1-D.3",
+          "Table D.6",
+          "Table D.7"
+        ],
+        "rule": "Component precision/sign/spacing and zero-plane metadata determine coefficient coding; MQ contexts evolve per the probability table, with stripe scanning, immediate significance and separate refinement/cleanup passes.",
+        "verdict": "Corrected",
+        "implementation_expectations": "The 47 MQ states and transition entries agree with Table C.2; scan/context routines agree with D.1-D.3 and D.7 initialization. Added the directly specified Table D.6 coefficient column; Rust expectations agree. Empty arithmetic segments are allowed by D.4.1 synthetic extension."
       }
     },
     {
@@ -67,8 +78,8 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
-      "status": "Reversible 5/3 synthesis with reference-grid parity, symmetric extension and singleton dimensions",
+      "codec_reference": "ITU-T T.800 (06/2019), B.5, F.2, F.3.1-F.3.8.2.1, Tables F.1-F.7",
+      "status": "Corrected: Corrected the singleton 9/7 case and removed a compensating factor of two from high-pass synthesis; the scale now agrees directly with F-7. Integer lifting and boundaries agree. A small chosen-coefficient oracle isolates reversible lifting from the forward transform.",
       "tests": [
         "jpx/reversible-1",
         "jpx/reversible-2",
@@ -84,21 +95,30 @@
         "jpx/singleton-7-1-0-1-0",
         "jpx/singleton-7-1-0-1-1",
         "jpx/singleton-1-1-1-1-0",
-        "jpx/singleton-1-1-1-1-1"
+        "jpx/singleton-1-1-1-1-1",
+        "jpx/lifting-known-answer",
+        "jpx/quant-gain-known-answer"
       ],
-      "gaps": "Component precision above 16 bits and coefficient precision above 30 bit planes exceed the current representation.",
+      "gaps": "Floating-point 9/7 arithmetic uses Table F.4 approximations; reversible intermediates exceeding the exact arithmetic bound return Unsupported.",
       "pdf_review": {
         "rule": "PDF permits lossless JPEG 2000 and resolution progressions; it does not define inverse lifting or border extension.",
-        "verdict": "permission verified; implementation and generator agree on the tested subset, while the algorithm remains pending primary-text review.",
-        "implementation_expectations": "permission verified; implementation and generator agree on the tested subset, while the algorithm remains pending primary-text review.",
+        "verdict": "PDF rule checked; corrected for the supported Part 1 subset; see codec_review and gaps",
+        "implementation_expectations": "Corrected the singleton 9/7 case and removed a compensating factor of two from high-pass synthesis; the scale now agrees directly with F-7. Integer lifting and boundaries agree. A small chosen-coefficient oracle isolates reversible lifting from the forward transform.",
         "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
-        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification"
       },
-      "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
-        "depends_on": "5/3 and 9/7 lifting, transform order, reference-grid parity, symmetric border extension and singleton rules.",
-        "evidence": "reversible-1/2/3, offset, odd and singleton vectors: exact reversible OpenJPEG comparisons, tolerance 1 for irreversible singleton vectors."
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "B.5",
+          "F.2",
+          "F.3.1-F.3.8.2.1",
+          "Tables F.1-F.7"
+        ],
+        "rule": "Synthesis interleaves subbands, filters horizontally before vertically with symmetric extension, and divides odd-origin singleton coefficients by two for either transform.",
+        "verdict": "Corrected",
+        "implementation_expectations": "Corrected the singleton 9/7 case and removed a compensating factor of two from high-pass synthesis; the scale now agrees directly with F-7. Integer lifting and boundaries agree. A small chosen-coefficient oracle isolates reversible lifting from the forward transform."
       }
     },
     {
@@ -107,8 +127,8 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
-      "status": "All five progression orders, multiple/non-default precincts, overlapping POC ranges, deferred tile-part POC declarations and PPM/PPT headers",
+      "codec_reference": "ITU-T T.800 (06/2019), B.8-B.12.3, A.8.1, A.8.2",
+      "status": "Corrected: Corrected mandatory-SOP handling, tile-part sequence resets, and rejection of unspecified packet padding bits. Added unused-padding and optional-SOP vectors. An incomplete final progression volume is permitted by B.12.3 and is now classified Unsupported rather than malformed.",
       "tests": [
         "jpx/rct-progression-0",
         "jpx/rct-progression-1",
@@ -134,21 +154,29 @@
         "jpx/spatial-offset-1",
         "jpx/spatial-offset-2",
         "jpx/spatial-offset-3",
-        "jpx/spatial-offset-4"
+        "jpx/spatial-offset-4",
+        "jpx/packet-unused-bits",
+        "jpx/incomplete-progression"
       ],
-      "gaps": "Other coding parameter changes after the first tile-part remain unsupported; all T.800 mechanics pending primary-text review.",
+      "gaps": "Incomplete final volumes and partial bit-plane reconstruction remain unsupported; no successful partial image is returned.",
       "pdf_review": {
         "rule": "JPEG 2000 progression information is carried by the image data; PDF supplies no decoding parameters for it.",
-        "verdict": "PDF delegation and progression permissions verified; generated full-quality expectations agree with the decoder and OpenJPEG on the listed organizations, not a primary-text codec verification.",
-        "implementation_expectations": "PDF delegation and progression permissions verified; generated full-quality expectations agree with the decoder and OpenJPEG on the listed organizations, not a primary-text codec verification.",
+        "verdict": "PDF rule checked; corrected for the supported Part 1 subset; see codec_review and gaps",
+        "implementation_expectations": "Corrected mandatory-SOP handling, tile-part sequence resets, and rejection of unspecified packet padding bits. Added unused-padding and optional-SOP vectors. An incomplete final progression volume is permitted by B.12.3 and is now classified Unsupported rather than malformed.",
         "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
-        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification"
       },
-      "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
-        "depends_on": "Reference-grid precinct alignment, five progression orders, overlapping POC inclusion, tile-wide POC scope (including later declarations), layer contributions and PPM/PPT fragmentation.",
-        "evidence": "Exact OpenJPEG comparisons for precincts-0..4, spatial-offset-0..4, spatial-offset-boundary, poc/overlap/tile-part/deferred-declaration, packed-ppm/ppt and zero-coefficient variants, plus combined-reversible; combined-lossy tolerance 3."
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "B.8-B.12.3",
+          "A.8.1",
+          "A.8.2"
+        ],
+        "rule": "Packets identify one layer/component/resolution/precinct, inherit inclusion state across layers, and follow progression volumes without repeating packets; SOP is optional when enabled and its sequence counts packets across the tile.",
+        "verdict": "Corrected",
+        "implementation_expectations": "Corrected mandatory-SOP handling, tile-part sequence resets, and rejection of unspecified packet padding bits. Added unused-padding and optional-SOP vectors. An incomplete final progression volume is permitted by B.12.3 and is now classified Unsupported rather than malformed."
       }
     },
     {
@@ -157,28 +185,36 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
-      "status": "Inverse reversible component transform and DC level shift",
+      "codec_reference": "ITU-T T.800 (06/2019), G.1.2, G.2.2, G.3.2, G.4",
+      "status": "Corrected: RCT and ICT equations agree with G-6-G-8 and G-12-G-14. Added explicit same-spacing/same-precision validation, including cases with coincident finite grid sizes. Signed sample bias is an output API convention, not an extra normative unsigned level shift.",
       "tests": [
         "jpx/rct-progression-0",
         "jpx/rct-progression-1",
         "jpx/rct-progression-2",
         "jpx/rct-progression-3",
-        "jpx/rct-progression-4"
+        "jpx/rct-progression-4",
+        "jpx/transform-precision"
       ],
-      "gaps": "",
+      "gaps": "Values are returned as unsigned-offset samples with signedness retained; colour management is outside this codec.",
       "pdf_review": {
         "rule": "PDF permits multiple-component JPEG 2000 images; component-transform mathematics comes from the external format standard.",
-        "verdict": "permission verified; tested transform expectations agree with decoder and differential results, with T.800 mechanics pending.",
-        "implementation_expectations": "permission verified; tested transform expectations agree with decoder and differential results, with T.800 mechanics pending.",
+        "verdict": "PDF rule checked; corrected for the supported Part 1 subset; see codec_review and gaps",
+        "implementation_expectations": "RCT and ICT equations agree with G-6-G-8 and G-12-G-14. Added explicit same-spacing/same-precision validation, including cases with coincident finite grid sizes. Signed sample bias is an output API convention, not an extra normative unsigned level shift.",
         "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
-        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification"
       },
-      "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
-        "depends_on": "RCT, component-transform eligibility, signed sample representation and DC level shifting.",
-        "evidence": "rct-progression-0 through -4, tiles and signed source-pixel vectors compare exactly with OpenJPEG."
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "G.1.2",
+          "G.2.2",
+          "G.3.2",
+          "G.4"
+        ],
+        "rule": "Inverse component transforms use the first three components after synthesis, which must have equal sample spacing and precision; level shifting follows transformation.",
+        "verdict": "Corrected",
+        "implementation_expectations": "RCT and ICT equations agree with G-6-G-8 and G-12-G-14. Added explicit same-spacing/same-precision validation, including cases with coincident finite grid sizes. Signed sample bias is an output API convention, not an extra normative unsigned level shift."
       }
     },
     {
@@ -187,28 +223,37 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
-      "status": "Multiple tiles and packet-boundary tile-parts; tile-wide POC declarations collected before packet decoding",
+      "codec_reference": "ITU-T T.800 (06/2019), A.4.1-A.4.4, A.6.1-A.6.5, B.3, B.5, B.11",
+      "status": "Corrected: Tile bounds, component ceil division and part assembly agree. Corrected TPsot=255 rejection and later coding-marker classification. Main/component defaults now respect Annex A marker-order independence instead of requiring COC/QCC after COD/QCD.",
       "tests": [
         "jpx/tiles",
         "jpx/tile-parts",
         "jpx/precincts-tiles",
         "jpx/tile-coding",
-        "jpx/final-tile-part"
+        "jpx/final-tile-part",
+        "jpx/tile-part-index-255"
       ],
-      "gaps": "Coding-parameter changes other than POC after the first tile-part remain unsupported.",
+      "gaps": "Extended capability/profile-specific machinery, PLM and CRG remain explicitly unsupported. Tile and allocation/work caps are project policy.",
       "pdf_review": {
         "rule": "PDF describes tiled and progressive JPEG 2000 data but does not define tile or tile-part marker mechanics.",
-        "verdict": "permission verified; tested tile expectations agree with the decoder and OpenJPEG, with T.800 mechanics pending.",
-        "implementation_expectations": "permission verified; tested tile expectations agree with the decoder and OpenJPEG, with T.800 mechanics pending.",
+        "verdict": "PDF rule checked; corrected for the supported Part 1 subset; see codec_review and gaps",
+        "implementation_expectations": "Tile bounds, component ceil division and part assembly agree. Corrected TPsot=255 rejection and later coding-marker classification. Main/component defaults now respect Annex A marker-order independence instead of requiring COC/QCC after COD/QCD.",
         "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
-        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification"
       },
-      "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
-        "depends_on": "Tile-grid clipping, tile-component bounds, SOT lengths, tile-part sequencing and coding-parameter inheritance.",
-        "evidence": "Exact OpenJPEG comparisons for tiles, tile-parts, final-tile-part, tile-coding, precincts-tiles, packed-ppm/ppt and deferred POC declarations."
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "A.4.1-A.4.4",
+          "A.6.1-A.6.5",
+          "B.3",
+          "B.5",
+          "B.11"
+        ],
+        "rule": "Tile components are clipped on the common grid, parts are ordered per tile, Psot=0 reaches final EOC, and coding defaults/component overrides occur only in main or first tile-part headers.",
+        "verdict": "Corrected",
+        "implementation_expectations": "Tile bounds, component ceil division and part assembly agree. Corrected TPsot=255 rejection and later coding-marker classification. Main/component defaults now respect Annex A marker-order independence instead of requiring COC/QCC after COD/QCD."
       }
     },
     {
@@ -217,26 +262,38 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
-      "status": "Scalar expounded/derived dequantization, 9/7 lifting and ICT, including combined precinct/PPT/mode case; tolerance 3",
+      "codec_reference": "ITU-T T.800 (06/2019), A.6.4, A.6.5, E.1.1.1, E.1.1.2, Table E.1, F.3.8.2, G.3.2",
+      "status": "Corrected: Corrected missing subband gain in E-3/E-4 and the mirrored high-pass scale in F-7. Corrected derived exponents to E-5, using decomposition level rather than the reversed resolution index. Chosen-coefficient and three-level vectors isolate these rules.",
       "tests": [
         "jpx/irreversible",
         "jpx/derived-quantization",
-        "jpx/combined-lossy"
+        "jpx/combined-lossy",
+        "jpx/quant-gain-known-answer",
+        "jpx/derived-three-levels"
       ],
-      "gaps": "No bit-exact irreversible output claim; T.800 mechanics pending primary-text review.",
+      "gaps": "Choice r=1/2 in E-6; nearest integer output and endpoint clipping for overflow per the G.1.2 note. Irreversible vectors declare tolerance 1 or 3, observed differential maximum 2.",
       "pdf_review": {
         "rule": "PDF permits JPEG 2000 image compression; quantization and irreversible reconstruction are external format rules.",
-        "verdict": "permission verified; source-pixel oracles and decoder agree within declared tolerance, not a primary-text algorithm verification.",
-        "implementation_expectations": "permission verified; source-pixel oracles and decoder agree within declared tolerance, not a primary-text algorithm verification.",
+        "verdict": "PDF rule checked; corrected for the supported Part 1 subset; see codec_review and gaps",
+        "implementation_expectations": "Corrected missing subband gain in E-3/E-4 and the mirrored high-pass scale in F-7. Corrected derived exponents to E-5, using decomposition level rather than the reversed resolution index. Chosen-coefficient and three-level vectors isolate these rules.",
         "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
-        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification"
       },
-      "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
-        "depends_on": "Scalar quantization steps, 9/7 normalization and lifting, ICT coefficients and reconstruction rounding.",
-        "evidence": "irreversible, derived-quantization and combined-lossy compare with OpenJPEG within the declared source-pixel tolerance 3; observed maximum difference 2."
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "A.6.4",
+          "A.6.5",
+          "E.1.1.1",
+          "E.1.1.2",
+          "Table E.1",
+          "F.3.8.2",
+          "G.3.2"
+        ],
+        "rule": "Quantization uses nominal component depth plus subband gain, derives exponents by decomposition level, and reconstructs nonzero coefficients with a decoder-chosen offset before inverse filtering.",
+        "verdict": "Corrected",
+        "implementation_expectations": "Corrected missing subband gain in E-3/E-4 and the mirrored high-pass scale in F-7. Corrected derived exponents to E-5, using decomposition level rather than the reversed resolution index. Chosen-coefficient and three-level vectors isolate these rules."
       }
     },
     {
@@ -245,8 +302,8 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
-      "status": "JP2 bounds, ihdr, colr methods 1-3, cdef, res and extended box lengths",
+      "codec_reference": "ITU-T T.800 (06/2019), I.3.1-I.3.5, I.4, I.5.1-I.5.4, I.8",
+      "status": "Corrected / partial: Corrected nested zero-length acceptance, ignored reserved PREC/APPROX as prescribed, accepted additional colr and codestream boxes using the first, and validated resolution superbox multiplicity/content. PDF enumeration 19 remains forbidden unless colour interpretation is explicitly ignored for a dictionary override.",
       "tests": [
         "jpx/final-box",
         "jpx/bit-depth-box",
@@ -256,21 +313,41 @@
         "jpx/resolution-extended",
         "jpx/channel-alpha",
         "jpx/pdf-colour-19",
-        "jpx/pdf-colour-12"
+        "jpx/pdf-colour-12",
+        "jpx/channel-premultiplied",
+        "jpx/colour-first-method",
+        "jpx/colour-ignored-fields",
+        "jpx/additional-codestream",
+        "jpx/nested-zero-box",
+        "jpx/resolution-empty",
+        "jpx/resolution-repeat"
       ],
-      "gaps": "Multiple colour specifications need negotiation. Premultiplied, partial and per-colour opacity definitions require a richer public image API. ICC profile bytes are preserved, not interpreted.",
+      "gaps": "Full JPX baseline and method-3/full-ICC extension semantics require T.801. Restricted ICC profiles are retained, not validated or applied. Per-colour, unspecified and multiple-description cdef layouts return Unsupported.",
       "pdf_review": {
         "rule": "PDF requires full JPX packaging and baseline features, excludes colour 19, permits CMYK 12, and defers dictionary colour and opacity use to the stated image entries.",
-        "verdict": "partial: colour 19 rejection is corrected; decoder preserves colour and alpha metadata, while full JPX, colour negotiation and dictionary interactions need caller support.",
-        "implementation_expectations": "partial: colour 19 rejection is corrected; decoder preserves colour and alpha metadata, while full JPX, colour negotiation and dictionary interactions need caller support.",
+        "verdict": "PDF rule checked; corrected / partial for the supported Part 1 subset; see codec_review and gaps",
+        "implementation_expectations": "Corrected nested zero-length acceptance, ignored reserved PREC/APPROX as prescribed, accepted additional colr and codestream boxes using the first, and validated resolution superbox multiplicity/content. PDF enumeration 19 remains forbidden unless colour interpretation is explicitly ignored for a dictionary override.",
         "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
-        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification"
+      },
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "I.3.1-I.3.5",
+          "I.4",
+          "I.5.1-I.5.4",
+          "I.8"
+        ],
+        "rule": "Boxes are bounded length-delimited structures; a zero-length child requires a zero-length parent, JP2 uses the first colour method and first codestream, and channel interpretation follows palette mapping.",
+        "verdict": "Corrected / partial",
+        "implementation_expectations": "Corrected nested zero-length acceptance, ignored reserved PREC/APPROX as prescribed, accepted additional colr and codestream boxes using the first, and validated resolution superbox multiplicity/content. PDF enumeration 19 remains forbidden unless colour interpretation is explicitly ignored for a dictionary override."
       },
       "external_review": {
         "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1 and ITU-T T.801 / ISO/IEC 15444-2",
-        "depends_on": "JP2 lengths and header encodings, colr/profile methods, cdef associations and resolution boxes; JPX baseline details also depend on T.801.",
-        "evidence": "color-1, resolution-extended, final-box and bit-depth-box compare exactly with OpenJPEG; color-2/3 are accepted; channel-alpha has independent channel-order expectations."
+        "standard": "ITU-T T.801 / ISO/IEC 15444-2",
+        "depends_on": "Full JPX baseline set, non-JP2 extension boxes, full ICC method 3 and extended colour negotiation; Part 1 cdef including premultiplied opacity is verified separately against T.800 I.5.3.6.",
+        "evidence": "JP2-compatible boxes and preserved metadata are exercised by generated vectors; no complete JPX baseline or colour-managed output claim."
       }
     },
     {
@@ -279,24 +356,39 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
-      "status": "JP2 palette and component mapping, applied before channel definitions",
+      "codec_reference": "ITU-T T.800 (06/2019), I.3.4, I.5.3.4, Table I.12, Table I.13, I.5.3.5, Table I.14, Table I.15",
+      "status": "Corrected / choice: Palette lookup and signed-offset representation agree for supported depths; corrected the 1024-entry maximum and palette/mapping presence test. Geometry and source-component provenance follow each mapping. Generator palettes derive channel samples by explicit table lookup.",
       "tests": [
-        "jpx/palette"
+        "jpx/palette",
+        "jpx/palette-opacity-origin",
+        "jpx/palette-entry-limit",
+        "jpx/mapping-without-palette",
+        "jpx/palette-direct-map",
+        "jpx/palette-padding"
       ],
-      "gaps": "Palette and component precision limited to 16 bits.",
+      "gaps": "Columns above 16 bits are Unsupported. I.5.3.4 does not specify out-of-table index recovery; endpoint clamping is the documented lookup choice.",
       "pdf_review": {
         "rule": "PDF permits a JPEG 2000 palette and allows a PDF ColorSpace override; PDF Indexed spaces retain the 256-colour limit.",
-        "verdict": "permission verified; codec palette expectations agree with the decoder, but box encodings and endpoint mapping remain pending T.800 review; PDF Indexed validation belongs to the caller.",
-        "implementation_expectations": "permission verified; codec palette expectations agree with the decoder, but box encodings and endpoint mapping remain pending T.800 review; PDF Indexed validation belongs to the caller.",
+        "verdict": "PDF rule checked; corrected / choice for the supported Part 1 subset; see codec_review and gaps",
+        "implementation_expectations": "Palette lookup and signed-offset representation agree for supported depths; corrected the 1024-entry maximum and palette/mapping presence test. Geometry and source-component provenance follow each mapping. Generator palettes derive channel samples by explicit table lookup.",
         "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
-        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification"
       },
-      "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
-        "depends_on": "pclr/cmap layouts, signed values, palette index endpoint selection and ordering before channel definitions.",
-        "evidence": "palette compares exactly with OpenJPEG; source oracle is the independently specified palette lookup, not decoded output."
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "I.3.4",
+          "I.5.3.4",
+          "Table I.12",
+          "Table I.13",
+          "I.5.3.5",
+          "Table I.14",
+          "Table I.15"
+        ],
+        "rule": "Palette and mapping boxes occur together, palette entries are row-major with 1-1024 rows and 1-38-bit columns, and cmap specifies either direct use or palette columns before cdef.",
+        "verdict": "Corrected / choice",
+        "implementation_expectations": "Palette lookup and signed-offset representation agree for supported depths; corrected the 1024-entry maximum and palette/mapping presence test. Geometry and source-component provenance follow each mapping. Generator palettes derive channel samples by explicit table lookup."
       }
     },
     {
@@ -305,9 +397,10 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
-      "status": "Truncations, tag-tree precision, impossible tile counts and box lengths fail with bounded work",
+      "codec_reference": "ITU-T T.800 (06/2019), A.1.3, A.4-A.9, B.10, C.3.4, D.4-D.6, I.4",
+      "status": "Corrected / policy: Fixed packed-header source-boundary validation, contribution FF endings, syntax/unsupported distinctions and predictable-tail checks. New malformed expectations derive from individual field/ordering/padding rules. Resource limits and strict error reporting remain ADR policy rather than T.800 numeric requirements.",
       "tests": [
+        "jpx/contribution-final-ff",
         "jpx/packed-stuffing",
         "jpx/truncated",
         "jpx/bad-tag-tree",
@@ -325,19 +418,28 @@
         "jpx/packed-conflict",
         "jpx/ppm-unused"
       ],
-      "gaps": "No recovery or invented pixels; allocation accounting conservatively includes temporary buffers.",
+      "gaps": "This decoder is not a complete codestream conformance validator: optional TLM/PLT hints receive structural validation but are not used for seeking or fully cross-checked against decoded lengths.",
       "pdf_review": {
         "rule": "PDF requires conforming JPEG 2000 structures but does not prescribe decoder budgets or malformed-data recovery.",
-        "verdict": "documented policy: strict errors and bounded allocations/work follow ADR 0003 and ADR 0010; hostile expectations agree with the decoder, not a claimed PDF repair mandate.",
-        "implementation_expectations": "documented policy: strict errors and bounded allocations/work follow ADR 0003 and ADR 0010; hostile expectations agree with the decoder, not a claimed PDF repair mandate.",
+        "verdict": "PDF rule checked; corrected / policy for the supported Part 1 subset; see codec_review and gaps",
+        "implementation_expectations": "Fixed packed-header source-boundary validation, contribution FF endings, syntax/unsupported distinctions and predictable-tail checks. New malformed expectations derive from individual field/ordering/padding rules. Resource limits and strict error reporting remain ADR policy rather than T.800 numeric requirements.",
         "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
-        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification"
       },
-      "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
-        "depends_on": "Exact invalid marker/box/tag-tree classifications rely on T.800; resource limits are project policy.",
-        "evidence": "Original malformed vectors plus poc-range, precinct-size, ppm-index, ppt-index, packed-conflict, ppm-unused and packed-stuffing; original source position is checked across a header-fragment boundary. Truncation/mutation tests cover POC, PPM/PPT and the combined case."
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "A.1.3",
+          "A.4-A.9",
+          "B.10",
+          "C.3.4",
+          "D.4-D.6",
+          "I.4"
+        ],
+        "rule": "Length and placement fields delimit structures; packet contributions cannot end in FF, synthetic arithmetic termination is not physical marker data, and predictable tails and cleanup symbols provide error detection.",
+        "verdict": "Corrected / policy",
+        "implementation_expectations": "Fixed packed-header source-boundary validation, contribution FF endings, syntax/unsupported distinctions and predictable-tail checks. New malformed expectations derive from individual field/ordering/padding rules. Resource limits and strict error reporting remain ADR policy rather than T.800 numeric requirements."
       }
     },
     {
@@ -350,27 +452,43 @@
       "tables": [
         "87: Width, Height, ColorSpace, BitsPerComponent, ImageMask, Decode, SMask, SMaskInData"
       ],
-      "status": "PDF text verified; dictionary enforcement is partly outside this codec API",
+      "status": "Verified / caller integration: The additive options API reports opacity kind, returned/source channel, original component and palette column, plus per-channel geometry; stored premultiplied values are preserved. Colour and cdef metadata can be disregarded independently. Existing decode signature and image representation are unchanged.",
       "pdf_review": {
         "rule": "JPX is for image XObjects with matching dimensions; dictionary colour overrides embedded colour; dictionary bit depth is ignored; absent dictionary colour suppresses Decode except for a one-channel one-bit stencil; nonzero SMaskInData selects embedded opacity, excludes SMask and requires one alpha for all colours.",
-        "verdict": "partial implementation: dispatch checks dimensions, ordinary component count, ignores dictionary BitsPerComponent, drops Decode when required and rejects simultaneous SMask/nonzero SMaskInData; embedded alpha values 1/2, colour negotiation/CMYK and full-file enforcement remain caller gaps.",
+        "verdict": "PDF rule checked; verified / caller integration for the supported Part 1 subset; see codec_review and gaps",
         "source": "ISO_32000-2_sponsored_EC3.txt: 7.4.9 lines 3561-3702; 8.9.5 Table 87 lines 15635-15772",
-        "implementation_expectations": "Codec vectors exercise colour metadata and a supported/unsupported bit-depth boundary; no PDF dictionary fixture is claimed because these paths belong to the image facade.",
-        "documented_choice": "Raw codestream input remains a standalone codec convenience, not evidence that a bare codestream meets the PDF full-JPX-file rule; ICC bytes are preserved without declaring profile conformance.",
-        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
-      },
-      "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1 and ITU-T T.801 / ISO/IEC 15444-2",
-        "depends_on": "JPEG 2000 header precision encodings, baseline JPX feature classification, colour and opacity channel box encodings.",
-        "evidence": "Independent source-pixel/metadata fixtures plus OpenJPEG 2.5.4 differential acceptance; PDF dictionary semantics are read from the local PDF text, not inferred from OpenJPEG."
+        "implementation_expectations": "The additive options API reports opacity kind, returned/source channel, original component and palette column, plus per-channel geometry; stored premultiplied values are preserved. Colour and cdef metadata can be disregarded independently. Existing decode signature and image representation are unchanged.",
+        "documented_choice": "Raw codestream support is a standalone codec convenience; the PDF facade enforces full-file and dictionary rules. ICC payloads are preserved without profile conformance claims. ignore_opacity bypasses all cdef associations and retains source channel order; palette mapping and the inverse coding transform remain active.",
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification"
       },
       "tests": [
         "jpx/pdf-colour-19",
         "jpx/pdf-colour-12",
         "jpx/pdf-depth-17"
       ],
-      "gaps": "Caller must enforce full JPX file packaging, implement SMaskInData 1/2 and ICC/CMYK/baseline colour selection, and validate any excluded inline path. Codec cannot inspect PDF dictionaries through decode(data, limits)."
+      "gaps": "The image facade must adopt decode_with_options and use its placement/kind metadata. Full-file enforcement and PDF dictionary semantics remain caller responsibilities; T.801-only baseline details remain pending.",
+      "codec_reference": "ITU-T T.800 (06/2019), A.5.1, B.2, G.4, I.5.3.6, Table I.16, Table I.17",
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "A.5.1",
+          "B.2",
+          "G.4",
+          "I.5.3.6",
+          "Table I.16",
+          "Table I.17"
+        ],
+        "rule": "cdef distinguishes colour, straight opacity and premultiplied opacity, with unsigned opacity samples; PDF decides whether embedded colour/opacity are used.",
+        "verdict": "Verified / caller integration",
+        "implementation_expectations": "The additive options API reports opacity kind, returned/source channel, original component and palette column, plus per-channel geometry; stored premultiplied values are preserved. Colour and cdef metadata can be disregarded independently. Existing decode signature and image representation are unchanged."
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.801 / ISO/IEC 15444-2",
+        "depends_on": "Full JPX baseline set, non-JP2 extension boxes, full ICC method 3 and extended colour negotiation; Part 1 cdef including premultiplied opacity is verified separately against T.800 I.5.3.6.",
+        "evidence": "JP2-compatible boxes and preserved metadata are exercised by generated vectors; no complete JPX baseline or colour-managed output claim."
+      }
     },
     {
       "id": "jpx-precincts",
@@ -378,20 +496,14 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review",
-      "status": "Multiple/default/non-default precincts, independently sized resolution precincts, clipped reference-grid origins and code-block groups",
+      "codec_reference": "ITU-T T.800 (06/2019), B.2, B.3, B.5-B.7, B.12.1.1-B.12.1.5, Table B.1",
+      "status": "Verified / constrained: Bounds agree with B-1-B-18 and spatial ordering with B.12. Components keep distinct sample grids. Added power-of-two spacing validation for RPCL/PCRL; existing clipped-origin and empty-precinct vectors cover alignment.",
       "pdf_review": {
         "rule": "PDF delegates progression and precinct organization to JPEG 2000 rather than specifying its grid mathematics.",
-        "locator_verdict": "verified delegation against local PDF text; no codec algorithm verified",
-        "verdict": "implementation and source-sample expectations agree on the differential vectors; T.800 mechanics remain pending primary-text review",
-        "implementation_expectations": "All listed reversible source pixels are exact; irreversible combinations use the documented tolerance 3.",
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification",
+        "verdict": "PDF rule checked; verified / constrained for the supported Part 1 subset; see codec_review and gaps",
+        "implementation_expectations": "Bounds agree with B-1-B-18 and spatial ordering with B.12. Components keep distinct sample grids. Added power-of-two spacing validation for RPCL/PCRL; existing clipped-origin and empty-precinct vectors cover alignment.",
         "source": "ISO_32000-2_sponsored_EC3.txt: 7.4.9, lines 3561-3702"
-      },
-      "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
-        "depends_on": "Precinct and subband partition bounds, effective code-block exponents, tag-tree scope, reference-grid alignment and spatial progression positions.",
-        "evidence": "precincts-0..4, precincts-offset, precincts-tiles, precincts-default-multiple, spatial-offset-0..4 and spatial-offset-boundary; exact OpenJPEG source pixels."
       },
       "tests": [
         "jpx/precincts-0",
@@ -410,10 +522,25 @@
         "jpx/spatial-offset-2",
         "jpx/spatial-offset-3",
         "jpx/spatial-offset-4",
-        "jpx/poc-deferred-declaration",
+        "jpx/poc-forward-declaration",
+        "jpx/spatial-sampling",
         "jpx/precinct-size"
       ],
-      "gaps": "T.800 primary text unavailable locally; differential agreement is not specification verification."
+      "gaps": "Coordinate arithmetic above the supported 31-bit grid returns Unsupported rather than calling a valid SIZ grid malformed.",
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "B.2",
+          "B.3",
+          "B.5-B.7",
+          "B.12.1.1-B.12.1.5",
+          "Table B.1"
+        ],
+        "rule": "Precincts and code blocks are anchored at zero, clipped to component/resolution/subband bounds, with effective block exponents limited by precinct size.",
+        "verdict": "Verified / constrained",
+        "implementation_expectations": "Bounds agree with B-1-B-18 and spatial ordering with B.12. Components keep distinct sample grids. Added power-of-two spacing validation for RPCL/PCRL; existing clipped-origin and empty-precinct vectors cover alignment."
+      }
     },
     {
       "id": "jpx-poc",
@@ -421,30 +548,39 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review",
-      "status": "POC ranges, overlap suppression, main/tile scope and later tile-part declarations resolved before packet decoding",
+      "codec_reference": "ITU-T T.800 (06/2019), A.6.6, Table A.32, B.12.2, B.12.3",
+      "status": "Corrected: Removed lookahead that retroactively applied later declarations. Corrected generator declarations, added a minimized negative deferred-declaration vector, and retained forward declarations and overlapping volumes. Subsequent declarations extend only the already declared tile-local schedule.",
       "pdf_review": {
         "rule": "PDF expects the image data to provide its own progression information.",
-        "locator_verdict": "verified delegation against local PDF text; no codec algorithm verified",
-        "verdict": "implementation and source-sample expectations agree on the differential vectors; T.800 mechanics remain pending primary-text review",
-        "implementation_expectations": "All listed reversible source pixels are exact; irreversible combinations use the documented tolerance 3.",
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification",
+        "verdict": "PDF rule checked; corrected for the supported Part 1 subset; see codec_review and gaps",
+        "implementation_expectations": "Removed lookahead that retroactively applied later declarations. Corrected generator declarations, added a minimized negative deferred-declaration vector, and retained forward declarations and overlapping volumes. Subsequent declarations extend only the already declared tile-local schedule.",
         "source": "ISO_32000-2_sponsored_EC3.txt: 7.4.9, lines 3561-3702"
-      },
-      "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
-        "depends_on": "POC field sizes/ranges and scope, missing-packet classification, inclusion masks and tile-wide deferred declaration ordering.",
-        "evidence": "poc, poc-overlap, poc-tile-part, poc-deferred-declaration and combined-reversible compare exactly with OpenJPEG; poc-range is rejected."
       },
       "tests": [
         "jpx/poc",
         "jpx/poc-overlap",
         "jpx/poc-tile-part",
         "jpx/combined-reversible",
+        "jpx/poc-forward-declaration",
         "jpx/poc-deferred-declaration",
-        "jpx/poc-range"
+        "jpx/poc-range",
+        "jpx/poc-wide-zero-end"
       ],
-      "gaps": "T.800 primary text unavailable locally; differential agreement is not specification verification."
+      "gaps": "Incomplete final volumes are explicitly Unsupported; no normative claim is inferred from OpenJPEG acceptance of retroactive declarations.",
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "A.6.6",
+          "Table A.32",
+          "B.12.2",
+          "B.12.3"
+        ],
+        "rule": "POC entries describe ordered volumes without duplicate packets, at most one marker per header; tile-local POC starts in the first part and each volume must be declared before its packets.",
+        "verdict": "Corrected",
+        "implementation_expectations": "Removed lookahead that retroactively applied later declarations. Corrected generator declarations, added a minimized negative deferred-declaration vector, and retained forward declarations and overlapping volumes. Subsequent declarations extend only the already declared tile-local schedule. Table A.32 CEpoc=0 is interpreted as end index 256 for both field widths; a 257-component vector isolates this alias."
+      }
     },
     {
       "id": "jpx-packed-headers",
@@ -452,20 +588,14 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review",
-      "status": "PPM/PPT fragment ordering, Nppm tile-part records, EPH/SOP placement, zero-codeword packets and original source offsets",
+      "codec_reference": "ITU-T T.800 (06/2019), A.7.4, Table A.38, A.7.5, Table A.39, B.10.1, A.8.1, A.8.2",
+      "status": "Corrected / constrained: Reset PPT index scope, ordered fragments by their index rather than physical position, rejected duplicate indices and mid-header fragments, and corrected generator splitting. Original source spans survive reassembly. PPM/PPT conflicts are rejected.",
       "pdf_review": {
         "rule": "PDF defines no JPX decode parameters; packed packet-header details are external JPEG 2000 syntax.",
-        "locator_verdict": "verified delegation against local PDF text; no codec algorithm verified",
-        "verdict": "implementation and source-sample expectations agree on the differential vectors; T.800 mechanics remain pending primary-text review",
-        "implementation_expectations": "All listed reversible source pixels are exact; irreversible combinations use the documented tolerance 3.",
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification",
+        "verdict": "PDF rule checked; corrected / constrained for the supported Part 1 subset; see codec_review and gaps",
+        "implementation_expectations": "Reset PPT index scope, ordered fragments by their index rather than physical position, rejected duplicate indices and mid-header fragments, and corrected generator splitting. Original source spans survive reassembly. PPM/PPT conflicts are rejected.",
         "source": "ISO_32000-2_sponsored_EC3.txt: 7.4.9, lines 3561-3702"
-      },
-      "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
-        "depends_on": "PPM/PPT index scope, Nppm field boundaries, Ippm/Ippt concatenation, packet header/body separation, byte stuffing and marker placement.",
-        "evidence": "packed-ppm/ppt, packed-zero-ppm/ppt and combined-reversible compare exactly with OpenJPEG; combined-lossy tolerance 3. Index/conflict/unused/stuffing vectors reject deterministically, with a checked source offset."
       },
       "tests": [
         "jpx/packed-ppm",
@@ -474,13 +604,33 @@
         "jpx/packed-zero-ppm",
         "jpx/packed-zero-ppt",
         "jpx/combined-reversible",
+        "jpx/packed-index-order",
+        "jpx/ppt-early-headers",
+        "jpx/packed-mixed-parts",
+        "jpx/packed-header-split",
         "jpx/packed-stuffing",
         "jpx/ppm-index",
         "jpx/ppt-index",
         "jpx/packed-conflict",
         "jpx/ppm-unused"
       ],
-      "gaps": "T.800 primary text unavailable locally; differential agreement is not specification verification."
+      "gaps": "PPT headers/data split across different tile-parts are not implemented; supported packed headers accompany the corresponding part. Index gaps are accepted because the clause specifies increasing order but no contiguous-number rule.",
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "A.7.4",
+          "Table A.38",
+          "A.7.5",
+          "Table A.39",
+          "B.10.1",
+          "A.8.1",
+          "A.8.2"
+        ],
+        "rule": "PPM contains per-part Nppm/header sequences, PPT indices are relative to the current header, fragments concatenate by index, and each marker ends after a complete packet header.",
+        "verdict": "Corrected / constrained",
+        "implementation_expectations": "Reset PPT index scope, ordered fragments by their index rather than physical position, rejected duplicate indices and mid-header fragments, and corrected generator splitting. Original source spans survive reassembly. PPM/PPT conflicts are rejected."
+      }
     },
     {
       "id": "jpx-roi",
@@ -488,28 +638,38 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review",
-      "status": "Per-component maxshift, ROI/background separation and bypass activation accounting for the ROI shift",
+      "codec_reference": "ITU-T T.800 (06/2019), A.6.3, Table A.26, D.2.2, D.6, H.1, H.2.1",
+      "status": "Corrected: ROI de-scaling agrees with H.1 for full decoded coefficients. Removed the ROI-dependent delay in bypass selection: D.6 counts significant bit-planes without adding the ROI shift. Generator and Rust now agree with this text-derived rule; OpenJPEG differs on ROI+bypass vectors.",
       "pdf_review": {
         "rule": "PDF permits JPEG 2000 image data and delegates ROI encoding mechanics to the format standard.",
-        "locator_verdict": "verified delegation against local PDF text; no codec algorithm verified",
-        "verdict": "implementation and source-sample expectations agree on the differential vectors; T.800 mechanics remain pending primary-text review",
-        "implementation_expectations": "All listed reversible source pixels are exact; irreversible combinations use the documented tolerance 3.",
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification",
+        "verdict": "PDF rule checked; corrected for the supported Part 1 subset; see codec_review and gaps",
+        "implementation_expectations": "ROI de-scaling agrees with H.1 for full decoded coefficients. Removed the ROI-dependent delay in bypass selection: D.6 counts significant bit-planes without adding the ROI shift. Generator and Rust now agree with this text-derived rule; OpenJPEG differs on ROI+bypass vectors.",
         "source": "ISO_32000-2_sponsored_EC3.txt: 7.4.9, lines 3561-3702"
-      },
-      "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
-        "depends_on": "RGN style/range, ROI-adjusted code-block precision, maxshift coefficient selection, de-scaling and the bypass bit-plane threshold.",
-        "evidence": "roi-4 and roi-12 compare exactly with OpenJPEG; combined-reversible exercises ROI with bypass/reset/termination/causal coding, precincts, deferred POC and PPM."
       },
       "tests": [
         "jpx/roi-4",
         "jpx/roi-12",
         "jpx/combined-reversible",
-        "jpx/roi-precision-limit"
+        "jpx/roi-precision-limit",
+        "jpx/roi-bypass"
       ],
-      "gaps": "Coded coefficient precision is limited to 30 bits, including ROI shift; larger declarations return Unsupported before packet parsing. T.800 primary-text review remains pending."
+      "gaps": "Coded precision including ROI is limited to 30 magnitude planes. Higher valid declarations return Unsupported before packet parsing.",
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "A.6.3",
+          "Table A.26",
+          "D.2.2",
+          "D.6",
+          "H.1",
+          "H.2.1"
+        ],
+        "rule": "Maxshift adds coding precision and separates ROI/background magnitude ranges; the ordinary bit-plane scan is unchanged and bypass starts at the fifth significant bit-plane.",
+        "verdict": "Corrected",
+        "implementation_expectations": "ROI de-scaling agrees with H.1 for full decoded coefficients. Removed the ROI-dependent delay in bypass selection: D.6 counts significant bit-planes without adding the ROI shift. Generator and Rust now agree with this text-derived rule; OpenJPEG differs on ROI+bypass vectors."
+      }
     },
     {
       "id": "jpx-codeblock-modes",
@@ -517,20 +677,14 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review",
-      "status": "Raw bypass, MQ reset, per-pass termination, predictable termination codewords, vertical-causal contexts and segmentation symbols",
+      "codec_reference": "ITU-T T.800 (06/2019), A.6.1, A.6.2, Table A.19, D.1-D.7, Tables D.1-D.9",
+      "status": "Corrected: Scan/pass/context/causal/reset/segmentation-symbol logic agrees. Corrected the ROI+bypass start and completed predictable MQ/raw termination validation. Ordinary flush alternatives remain accepted under D.4.2, rather than demanding one arbitrary encoder flush.",
       "pdf_review": {
         "rule": "PDF delegates entropy coding to JPEG 2000 and supplies no parameters that replace the embedded code-block style.",
-        "locator_verdict": "verified delegation against local PDF text; no codec algorithm verified",
-        "verdict": "implementation and source-sample expectations agree on the differential vectors; T.800 mechanics remain pending primary-text review",
-        "implementation_expectations": "All listed reversible source pixels are exact; irreversible combinations use the documented tolerance 3.",
+        "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification",
+        "verdict": "PDF rule checked; corrected for the supported Part 1 subset; see codec_review and gaps",
+        "implementation_expectations": "Scan/pass/context/causal/reset/segmentation-symbol logic agrees. Corrected the ROI+bypass start and completed predictable MQ/raw termination validation. Ordinary flush alternatives remain accepted under D.4.2, rather than demanding one arbitrary encoder flush.",
         "source": "ISO_32000-2_sponsored_EC3.txt: 7.4.9, lines 3561-3702"
-      },
-      "external_review": {
-        "status": "pending primary-text review",
-        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
-        "depends_on": "Segment capacities, raw bit stuffing/signs, MQ context lifetime/reset, predictable flush, causal neighbours, cleanup symbols and layer-segment assembly.",
-        "evidence": "modes-1/2/4/8/16/32, combinations 3/5/6/9/12/17/20/24/34/36/63 and layer-contributions-0/1/4/63 compare exactly with OpenJPEG; combined-lossy tolerance 3."
       },
       "tests": [
         "jpx/modes-1",
@@ -555,23 +709,172 @@
         "jpx/layer-contributions-1",
         "jpx/layer-contributions-4",
         "jpx/layer-contributions-63",
-        "jpx/combined-reversible"
+        "jpx/combined-reversible",
+        "jpx/roi-bypass"
       ],
-      "gaps": "Termination integrity validation is not implemented. T.800 primary-text review remains pending; differential decoding agreement does not verify its normative error-detection requirements."
+      "gaps": "Partial-quality block reconstruction remains Unsupported; predictable verification uses a constant-storage arithmetic interval replay.",
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "A.6.1",
+          "A.6.2",
+          "Table A.19",
+          "D.1-D.7",
+          "Tables D.1-D.9"
+        ],
+        "rule": "Block flags control context resets, segment termination, fifth-plane raw bypass, stripe-boundary causality, predictable flush and cleanup segmentation symbols.",
+        "verdict": "Corrected",
+        "implementation_expectations": "Scan/pass/context/causal/reset/segmentation-symbol logic agrees. Corrected the ROI+bypass start and completed predictable MQ/raw termination validation. Ordinary flush alternatives remain accepted under D.4.2, rather than demanding one arbitrary encoder flush."
+      }
+    },
+    {
+      "id": "jpx-marker-syntax",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ITU-T T.800 (06/2019), A.1.1-A.1.3, A.4.1-A.4.4, A.5.1, A.6.1-A.6.6, A.7.1, A.7.3-A.7.5, A.8.1, A.8.2, A.9.2",
+      "status": "Corrected / partial: Reviewed every parsed marker; corrected marker-order assumptions, reserved no-parameter skipping, unused exponent bits, optional SOP, POC uniqueness and TPsot range; comments and pointer entries get structural range/length checks.",
+      "tests": [
+        "jpx/marker-order",
+        "jpx/reserved-markers",
+        "jpx/optional-sop",
+        "jpx/quant-transform-mismatch",
+        "jpx/ignored-marker-bits",
+        "jpx/quant-extra-steps",
+        "jpx/tlm-empty",
+        "jpx/comment-registration",
+        "jpx/tile-part-index-255"
+      ],
+      "gaps": "CAP, PRF, PLM, CRG and unsupported capability/profile machinery return Unsupported. TLM/PLT are structurally checked but consistency with all decoded byte lengths is not fully validated.",
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "A.1.1-A.1.3",
+          "A.4.1-A.4.4",
+          "A.5.1",
+          "A.6.1-A.6.6",
+          "A.7.1",
+          "A.7.3-A.7.5",
+          "A.8.1",
+          "A.8.2",
+          "A.9.2"
+        ],
+        "rule": "Marker placement, length, scope and component/default inheritance are explicit; no-parameter reserved markers and unused bits have prescribed reader handling.",
+        "verdict": "Corrected / partial",
+        "implementation_expectations": "Reviewed every parsed marker; corrected marker-order assumptions, reserved no-parameter skipping, unused exponent bits, optional SOP, POC uniqueness and TPsot range; comments and pointer entries get structural range/length checks."
+      }
+    },
+    {
+      "id": "jpx-termination",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ITU-T T.800 (06/2019), C.2.4, C.2.6-C.2.8, C.3.4, D.4.1-D.4.3, D.5, D.6",
+      "status": "Implemented / verified: Added constant-storage MQ interval replay with byte-for-byte predictable flush comparison, raw padding/stuffing/length checks and all-segment internal-marker checks. Single-coefficient known answer and one-bit tail/padding corruptions test the prescribed rules independently of reconstruction.",
+      "tests": [
+        "jpx/roi-bypass",
+        "jpx/ordinary-empty-segments",
+        "jpx/termination-known-answer",
+        "jpx/termination-mq-tail",
+        "jpx/termination-raw-padding"
+      ],
+      "gaps": "Ordinary flushes deliberately have no canonical-byte equality check; D.4.2 permits alternatives that decode the signalled passes.",
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "C.2.4",
+          "C.2.6-C.2.8",
+          "C.3.4",
+          "D.4.1-D.4.3",
+          "D.5",
+          "D.6"
+        ],
+        "rule": "Ordinary codewords permit synthetic FF extension and alternative flushes; predictable MQ flush is fixed by D.4.2 and predictable raw padding alternates zero/one.",
+        "verdict": "Implemented / verified",
+        "implementation_expectations": "Added constant-storage MQ interval replay with byte-for-byte predictable flush comparison, raw padding/stuffing/length checks and all-segment internal-marker checks. Single-coefficient known answer and one-bit tail/padding corruptions test the prescribed rules independently of reconstruction."
+      }
+    },
+    {
+      "id": "jpx-options",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ITU-T T.800 (06/2019), B.2, G.4, I.5.3.4-I.5.3.6, Tables I.16-I.19",
+      "status": "Implemented / verified: decode_with_options returns the existing image plus geometry and opacity metadata; defaults match decode. Metadata-ignore options preserve channel samples and bypass colour/cdef interpretation, while box lengths and structural fields are still checked.",
+      "tests": [
+        "jpx/channel-premultiplied",
+        "jpx/palette-opacity-origin",
+        "jpx/opacity-signed"
+      ],
+      "gaps": "Only one whole-image unsigned opacity channel is represented. Per-colour, multiple or unspecified channel associations remain explicit Unsupported; unpremultiplication belongs to painting.",
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "B.2",
+          "G.4",
+          "I.5.3.4-I.5.3.6",
+          "Tables I.16-I.19"
+        ],
+        "rule": "Palette mapping precedes channel definitions; opacity types 1/2 distinguish straight from stored premultiplied colour and retain channel/component provenance.",
+        "verdict": "Implemented / verified",
+        "implementation_expectations": "decode_with_options returns the existing image plus geometry and opacity metadata; defaults match decode. Metadata-ignore options preserve channel samples and bypass colour/cdef interpretation, while box lengths and structural fields are still checked."
+      }
+    },
+    {
+      "id": "jpx-subsampling",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ITU-T T.800 (06/2019), A.5.1, B.1-B.3, B.5, G.4, I.5.3.1.1",
+      "status": "Implemented / verified: Returned component_geometry preserves spacing and first-sample reference-grid origin after palette mapping and cdef reordering. A nonzero-origin three-component vector has different non-power-of-two steps and independent B-1/B-2 placement/sample expectations.",
+      "tests": [
+        "jpx/component-placement",
+        "jpx/spatial-sampling",
+        "jpx/grid-high-origin"
+      ],
+      "gaps": "No resampling is performed. Image width/height describe the reference-grid area, not the Annex I default gcd-reduced display dimensions. CRG fractional registration is not implemented.",
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "A.5.1",
+          "B.1-B.3",
+          "B.5",
+          "G.4",
+          "I.5.3.1.1"
+        ],
+        "rule": "Component samples lie at integer multiples of SIZ separation; their first in-image coordinate uses ceiling division, independently in each axis.",
+        "verdict": "Implemented / verified",
+        "implementation_expectations": "Returned component_geometry preserves spacing and first-sample reference-grid origin after palette mapping and cdef reordering. A nonzero-origin three-component vector has different non-power-of-two steps and independent B-1/B-2 placement/sample expectations."
+      }
     }
   ],
   "external_standards": [
     {
-      "name": "ITU-T T.800 / ISO/IEC 15444-1",
-      "status": "pending primary-text review",
-      "depends_on": "Codestream markers, grids, precincts, progression, packet and tag-tree syntax, MQ/EBCOT, ROI, quantization, DWT, MCT and JP2 box fields. No local primary text was available for this review.",
-      "evidence": "Independent Python encoder source pixels; OpenJPEG 2.5.4 differential decoding of the listed vectors. Not primary-text verification."
-    },
-    {
       "name": "ITU-T T.801 / ISO/IEC 15444-2",
       "status": "pending primary-text review",
-      "depends_on": "Exact JPX baseline feature set, extension boxes, full ICC colour method and channel association encodings. PDF 7.4.9 specifies the PDF exceptions but does not define those encodings.",
-      "evidence": "JP2-compatible generated subset and OpenJPEG acceptance; no claim of full JPX baseline conformance."
+      "depends_on": "Full JPX baseline, extended colour methods/enumerations and negotiation, extension boxes. Part 1 cdef encodings are defined by T.800 I.5.3.6, not pending.",
+      "evidence": "Preserved extension identifiers and method-3 payload; generated JP2-compatible subset only."
+    },
+    {
+      "name": "ISO 15076-1 / ICC.1",
+      "status": "pending primary-text review",
+      "depends_on": "Full restricted/full ICC profile conformance, tag semantics and colour transforms; profiles are only preserved by this codec.",
+      "evidence": "Generated ICC header/profile bytes are accepted, but no profile conformance or colour-managed output is claimed."
+    },
+    {
+      "name": "IEC 61966-2-1 and ITU-R BT.601 referenced by T.800 Table I.10",
+      "status": "pending primary-text review",
+      "depends_on": "External enumerated colour definitions; this codec preserves the identifiers and samples without colour conversion.",
+      "evidence": "Source-channel values only; colour interpretation belongs to the image/painter layer."
     }
   ],
   "pdf_source": {
@@ -585,15 +888,141 @@
   },
   "differential_evidence": {
     "engine": "OpenJPEG 2.5.4",
-    "kind": "differential evidence, not primary-text verification",
-    "source_sample_vectors": 87,
-    "results": "All reversible source-pixel comparisons exact; irreversible differences at most 2, within per-vector tolerances 1 or 3. ICC and channel/CMYK metadata assertions are separate from colour-managed output comparisons.",
-    "choices_and_gaps": [
-      "Raw codestream support is a standalone convenience; the PDF full-file rule must be enforced by the image facade.",
-      "No claim that PDF text specifies T.800 marker, entropy-coding, wavelet or box mechanics.",
-      "T.800-dependent strict corruption errors, progression collection and packed-header fragment handling remain pending primary-text review.",
-      "Predictable-termination codewords decode in the differential vectors; termination integrity validation is not implemented and awaits T.800 primary-text review.",
-      "Floating-point irreversible rounding is tolerance-tested, not claimed bit-exact."
+    "kind": "supporting differential evidence; normative verdicts come from primary text",
+    "source_sample_vectors": 100,
+    "results": "100 comparisons pass: exact reversible results and irreversible differences at most 2 within declared tolerances 1 or 3. Five text-derived decoder cases disagree, listed separately. Six ICC/opacity/CMYK metadata cases and the 257-component POC case use independent sample/metadata assertions rather than comparable colour-managed PNM output.",
+    "disagreements": [
+      {
+        "vectors": [
+          "jpx/packed-ppt",
+          "jpx/packed-zero-ppt"
+        ],
+        "observed": "OpenJPEG rejects PPT indices restarted per header; T.800 A.7.5 scopes the index to the current header."
+      },
+      {
+        "vectors": [
+          "jpx/roi-bypass",
+          "jpx/combined-reversible"
+        ],
+        "observed": "OpenJPEG sample differences 131 and 15 respectively; T.800 D.6 starts bypass after four significant bit-planes without an ROI-dependent delay."
+      },
+      {
+        "vectors": [
+          "jpx/ignored-marker-bits"
+        ],
+        "observed": "OpenJPEG rejects nonzero unused exponent/padding bits; A.1.3 prescribes ignoring unused bits even though conforming encoders must write zero."
+      }
+    ],
+    "choices": [
+      "E.1 reconstruction parameter r=1/2; irreversible output rounded to nearest integer and clipped to sample endpoints.",
+      "I.5.3.4 leaves out-of-table palette index handling unspecified; endpoint clamping is retained.",
+      "A.7.4/A.7.5 fragment indices are sorted by value; gaps are accepted, duplicate indices rejected.",
+      "Standalone raw codestream support does not establish the PDF full-file requirement.",
+      "Limits are conservative cumulative allocation/work policies, not format limits."
     ]
-  }
+  },
+  "codec_source": {
+    "id": "itu-t800-2019",
+    "file": "text/itu-t800-2019.txt",
+    "edition": "ITU-T T.800 (06/2019)",
+    "sha256": "1d542cec6a1156c3942e7631d62955e2895f3975dc5eb40c7ac126dd5cf411ce",
+    "verified_locators": [
+      "Annex A",
+      "B.1-B.12",
+      "C.3, Table C.2",
+      "D.1-D.7",
+      "E.1",
+      "F.2-F.3",
+      "G.1-G.4",
+      "H.1",
+      "I.3-I.5, I.8"
+    ]
+  },
+  "marker_review": [
+    {
+      "markers": "SOC / SOT / SOD / EOC",
+      "clauses": [
+        "A.4.1-A.4.4"
+      ],
+      "verdict": "checked; lengths, tile-part order/count, final Psot=0 and complete EOC boundaries enforced"
+    },
+    {
+      "markers": "SIZ",
+      "clauses": [
+        "A.5.1",
+        "Table A.9",
+        "Table A.11"
+      ],
+      "verdict": "checked; legal unsupported precision/grid/capability declarations are explicit Unsupported"
+    },
+    {
+      "markers": "COD / COC / QCD / QCC",
+      "clauses": [
+        "A.6.1",
+        "A.6.2",
+        "A.6.4",
+        "A.6.5"
+      ],
+      "verdict": "corrected; independent header order, precedence, quantization/transform relationship and truncated subband parameter counts"
+    },
+    {
+      "markers": "RGN",
+      "clauses": [
+        "A.6.3",
+        "Table A.26",
+        "H.1"
+      ],
+      "verdict": "checked for maxshift and supported coded precision"
+    },
+    {
+      "markers": "POC",
+      "clauses": [
+        "A.6.6",
+        "B.12.3"
+      ],
+      "verdict": "corrected; one per header, first-part presence, declaration before packet use and volume deduplication"
+    },
+    {
+      "markers": "PPM / PPT",
+      "clauses": [
+        "A.7.4",
+        "A.7.5"
+      ],
+      "verdict": "corrected; index scope/order, complete-header fragment boundaries, Nppm fields, exclusive header placement and physical error positions; early PPT/header-data parts remain unsupported"
+    },
+    {
+      "markers": "SOP / EPH",
+      "clauses": [
+        "A.8.1",
+        "A.8.2"
+      ],
+      "verdict": "corrected; optional enabled SOP, tile-wide packet counts, mandatory signalled EPH and packed-header placement"
+    },
+    {
+      "markers": "TLM / PLT",
+      "clauses": [
+        "A.7.1",
+        "A.7.3"
+      ],
+      "verdict": "partial validation: structural field/range/varint checks, no use as seeking authority, no full semantic consistency checking"
+    },
+    {
+      "markers": "COM / reserved no-parameter markers",
+      "clauses": [
+        "A.9.2",
+        "A.1.3"
+      ],
+      "verdict": "corrected registration/length handling and bounded skipping of FF30-FF3F"
+    },
+    {
+      "markers": "CAP / PRF / PLM / CRG",
+      "clauses": [
+        "A.5.2",
+        "A.5.3",
+        "A.7.2",
+        "A.9.1"
+      ],
+      "verdict": "reviewed, explicitly Unsupported; CRG fractional placement is not silently discarded"
+    }
+  ]
 }

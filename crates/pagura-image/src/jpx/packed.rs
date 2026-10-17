@@ -8,45 +8,38 @@ use super::io::{Budget, Reader, Span, syntax, usize_from};
 pub(super) struct Fragments {
     bytes: Vec<u8>,
     spans: Vec<Span>,
-    next_index: u16,
-    first_index: u16,
+    indices: Vec<u8>,
 }
 
 impl Fragments {
-    pub fn with_index(index: u16) -> Self {
-        Self {
-            next_index: index,
-            first_index: index,
-            ..Self::default()
-        }
-    }
-
-    pub fn end_index(&self) -> u16 {
-        self.next_index
-    }
-
     pub fn present(&self) -> bool {
-        self.next_index != self.first_index
+        !self.indices.is_empty()
     }
 
     pub fn push(&mut self, fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<()> {
-        if u16::from(fields.u8()?) != self.next_index {
+        let index = fields.u8()?;
+        let Err(slot) = self.indices.binary_search(&index) else {
             return Err(syntax(
-                "out-of-order JPEG 2000 packed-header marker",
+                "duplicate JPEG 2000 packed-header index",
                 fields.position() - 1,
             ));
+        };
+        let source = fields.position();
+        let bytes = fields.take(fields.remaining())?;
+        if bytes.is_empty() {
+            return Err(syntax("empty JPEG 2000 packed-header fragment", source));
         }
-        self.next_index += 1;
-        if fields.remaining() != 0 {
-            budget.push(
-                &mut self.spans,
-                Span {
-                    logical: self.bytes.len(),
-                    source: fields.position(),
-                },
-            )?;
-            budget.append(&mut self.bytes, fields.take(fields.remaining())?)?;
+        let logical = self.spans.get(slot).map_or(self.bytes.len(), |s| s.logical);
+        budget.append(&mut self.bytes, bytes)?;
+        budget.work(self.bytes.len() - logical)?;
+        self.bytes[logical..].rotate_right(bytes.len());
+        for span in &mut self.spans[slot..] {
+            span.logical += bytes.len();
         }
+        budget.push(&mut self.spans, Span { logical, source })?;
+        self.spans[slot..].rotate_right(1);
+        budget.push(&mut self.indices, index)?;
+        self.indices[slot..].rotate_right(1);
         Ok(())
     }
 

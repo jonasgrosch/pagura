@@ -1,4 +1,4 @@
-//! JPEG 2000 inverse lifting; T.800 primary-text review pending.
+//! Inverse wavelet synthesis, T.800 F.2–F.3.
 
 use pagura_core::Result;
 
@@ -26,8 +26,8 @@ impl Plane {
 
 fn inverse_line(line: &mut [f64], origin: u32, reversible: bool) -> Result<()> {
     if line.len() == 1 {
-        if origin % 2 == 1 && reversible {
-            line[0] = (line[0] * 0.5).trunc();
+        if origin % 2 == 1 {
+            line[0] *= 0.5;
         }
         return Ok(());
     }
@@ -39,7 +39,7 @@ fn inverse_line(line: &mut [f64], origin: u32, reversible: bool) -> Result<()> {
     } else {
         const K: f64 = 1.230_174_104_914_001;
         for (i, value) in line.iter_mut().enumerate() {
-            *value *= if i % 2 == low { K } else { 2.0 / K };
+            *value *= if i % 2 == low { K } else { 1.0 / K };
         }
         lift(line, low, |sum| -0.443_506_852_043_971 * sum);
         lift(line, high, |sum| -0.882_911_075_530_934 * sum);
@@ -101,7 +101,7 @@ pub(super) fn synthesize(
         }
     }
     let mut column = budget.filled(height, 0.0)?;
-    // Reconstruction order is differential-tested; reversible rounding makes it significant.
+    // T.800 F.3.2 requires horizontal synthesis before vertical synthesis.
     for x in 0..width {
         for (y, value) in column.iter_mut().enumerate() {
             *value = result.values[y * width + x];

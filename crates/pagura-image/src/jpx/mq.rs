@@ -1,10 +1,10 @@
-//! JPEG 2000 binary arithmetic decoding; T.800 primary-text review pending.
+//! Binary arithmetic decoding, T.800 C.3.1–C.3.7.
 
 use pagura_core::Result;
 
 use super::io::syntax;
 
-// MQ probability estimates and transitions; the external table locator is unverified.
+// Probability estimates and transitions, T.800 Table C.2.
 const STATES: [(u32, u8, u8, bool); 47] = [
     (0x5601, 1, 1, true),
     (0x3401, 2, 6, false),
@@ -69,10 +69,16 @@ pub(super) struct Decoder<'a> {
     c: u32,
     bits: u8,
     contexts: [Context; 19],
+    termination: Option<super::termination::Check<'a>>,
 }
 
 impl<'a> Decoder<'a> {
-    pub fn new(bytes: &'a [u8], base: usize, contexts: [Context; 19]) -> Result<Self> {
+    pub fn new(
+        bytes: &'a [u8],
+        base: usize,
+        contexts: [Context; 19],
+        predictable: bool,
+    ) -> Result<Self> {
         let mut decoder = Self {
             bytes,
             position: 0,
@@ -81,6 +87,7 @@ impl<'a> Decoder<'a> {
             c: u32::from(bytes.first().copied().unwrap_or(255)) << 16,
             bits: 0,
             contexts,
+            termination: predictable.then(|| super::termination::Check::new(bytes)),
         };
         decoder.byte_in()?;
         decoder.c <<= 7;
@@ -112,7 +119,7 @@ impl<'a> Decoder<'a> {
         let next = self.bytes.get(self.position + 1).copied().unwrap_or(255);
         if previous == 255 {
             if next > 143 {
-                // Terminated segments use an implicit marker; primary T.800 review is pending.
+                // D.4.1 supplies synthetic FF bytes; C.3.4 holds the marker pointer.
                 self.c = self.c.wrapping_add(0xff00);
                 self.bits = 8;
                 if self.position + 1 < self.bytes.len() {
@@ -134,7 +141,32 @@ impl<'a> Decoder<'a> {
         Ok(())
     }
 
+    pub fn finish(self) -> Result<()> {
+        if let Some(check) = self.termination {
+            check.finish()?;
+        }
+        // D.4 permits alternate ordinary flushes; it does not mandate a byte pattern.
+        for (offset, bytes) in self.bytes.windows(2).enumerate() {
+            if bytes[0] == 255 && bytes[1] > 143 {
+                return Err(syntax(
+                    "marker inside JPEG 2000 arithmetic segment",
+                    self.base + offset,
+                ));
+            }
+        }
+        Ok(())
+    }
+
     pub fn bit(&mut self, context: usize) -> Result<bool> {
+        let old = self.contexts[context];
+        let value = self.decision(context)?;
+        if let Some(check) = &mut self.termination {
+            check.decision(STATES[usize::from(old.state)].0, value == old.mps)?;
+        }
+        Ok(value)
+    }
+
+    fn decision(&mut self, context: usize) -> Result<bool> {
         let old = self.contexts[context];
         let (estimate, mps_next, lps_next, switch) = STATES[usize::from(old.state)];
         self.a -= estimate;

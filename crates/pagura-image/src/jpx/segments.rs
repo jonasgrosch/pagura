@@ -29,6 +29,6 @@ pub(super) fn end(first: usize, modes: u8) -> usize {
     }
 }
 
-pub(super) fn raw(pass: usize, modes: u8, roi: u8) -> bool {
-    modes & BYPASS != 0 && pass >= 10 + 3 * usize::from(roi) && !pass.is_multiple_of(3)
+pub(super) fn raw(pass: usize, modes: u8) -> bool {
+    modes & BYPASS != 0 && pass >= 10 && !pass.is_multiple_of(3)
 }

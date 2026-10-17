@@ -1,4 +1,4 @@
-//! JPEG 2000 coding/quantization markers; T.800 primary-text review pending.
+//! Coding and quantization markers, T.800 A.6–A.7.
 
 use pagura_core::Result;
 
@@ -17,7 +17,7 @@ pub(super) struct Style {
 
 fn read_style(reader: &mut Reader<'_>, flags: u8, budget: &mut Budget<'_>) -> Result<Style> {
     let levels = reader.u8()?;
-    let block = [reader.u8()?, reader.u8()?];
+    let block = [reader.u8()? & 15, reader.u8()? & 15];
     let modes = reader.u8()?;
     let transform = reader.u8()?;
     if levels > 32
@@ -89,12 +89,6 @@ fn read_quantization(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result
     for _ in 0..count {
         if kind == 0 {
             let value = reader.u8()?;
-            if value & 7 != 0 {
-                return Err(syntax(
-                    "invalid reversible JPEG 2000 quantization step",
-                    reader.position() - 1,
-                ));
-            }
             steps.push((value >> 3, 0));
         } else {
             let value = reader.u16()?;
@@ -190,16 +184,16 @@ impl Configuration {
                 self.transform = transform == 1;
                 self.markers = [flags & 2 != 0, flags & 4 != 0];
                 let style = read_style(fields, flags, budget)?;
-                for entry in &mut self.styles {
+                for (index, entry) in self.styles.iter_mut().enumerate() {
+                    if self.seen_components[index] & 1 != 0 {
+                        continue;
+                    }
                     budget.charge::<[u8; 2]>(style.precincts.len())?;
                     *entry = style.clone();
                 }
                 self.has_style = true;
             }
             0xff53 => {
-                if !self.has_style {
-                    return Err(syntax("JPEG 2000 COC precedes COD", fields.position()));
-                }
                 let component = component_index(fields, self.styles.len())?;
                 self.component_marker(component, 1, fields.position())?;
                 let flags = fields.u8()?;
@@ -214,16 +208,16 @@ impl Configuration {
             0xff5c => {
                 self.default_marker(1, 2, fields.position())?;
                 let quant = read_quantization(fields, budget)?;
-                for entry in &mut self.quants {
+                for (index, entry) in self.quants.iter_mut().enumerate() {
+                    if self.seen_components[index] & 2 != 0 {
+                        continue;
+                    }
                     budget.charge::<(u8, u16)>(quant.steps.len())?;
                     *entry = quant.clone();
                 }
                 self.has_quant = true;
             }
             0xff5d => {
-                if !self.has_quant {
-                    return Err(syntax("JPEG 2000 QCC precedes QCD", fields.position()));
-                }
                 let component = component_index(fields, self.styles.len())?;
                 self.component_marker(component, 2, fields.position())?;
                 self.quants[component] = read_quantization(fields, budget)?;
@@ -237,20 +231,16 @@ impl Configuration {
                 self.roi[component] = fields.u8()?;
                 fields.finish()?;
             }
-            0xff5f => {
-                let values = progression::changes(fields, self.styles.len(), self.layers, budget)?;
-                if !self.seen_defaults[2] {
-                    self.progressions.clear();
-                }
-                self.seen_defaults[2] = true;
-                for value in values {
-                    budget.push(&mut self.progressions, value)?;
-                }
-            }
+            0xff5f => self.progression_marker(fields, budget)?,
             0xff55 => validate_tile_lengths(fields)?,
             0xff58 => validate_packet_lengths(fields, budget)?,
             0xff64 => {
-                fields.u16()?;
+                if fields.u16()? > 1 || fields.remaining() == 0 {
+                    return Err(syntax(
+                        "invalid JPEG 2000 comment registration or length",
+                        fields.position(),
+                    ));
+                }
                 fields.take(fields.remaining())?;
             }
             _ => {
@@ -263,13 +253,39 @@ impl Configuration {
         Ok(())
     }
 
-    fn default_marker(&mut self, index: usize, component_flag: u8, position: usize) -> Result<()> {
-        if self.seen_defaults[index]
-            || self
-                .seen_components
-                .iter()
-                .any(|&v| v & component_flag != 0)
-        {
+    fn progression_marker(
+        &mut self,
+        fields: &mut Reader<'_>,
+        budget: &mut Budget<'_>,
+    ) -> Result<()> {
+        if self.seen_defaults[2] {
+            return Err(syntax(
+                "repeated JPEG 2000 POC in one header",
+                fields.position(),
+            ));
+        }
+        let values = progression::changes(
+            fields,
+            self.styles.len(),
+            if self.layers == 0 {
+                usize::MAX
+            } else {
+                self.layers
+            },
+            budget,
+        )?;
+        if !self.seen_defaults[2] {
+            self.progressions.clear();
+        }
+        self.seen_defaults[2] = true;
+        for value in values {
+            budget.push(&mut self.progressions, value)?;
+        }
+        Ok(())
+    }
+
+    fn default_marker(&mut self, index: usize, _component_flag: u8, position: usize) -> Result<()> {
+        if self.seen_defaults[index] {
             return Err(syntax(
                 "repeated or misplaced JPEG 2000 default marker",
                 position,
@@ -287,6 +303,10 @@ impl Configuration {
         Ok(())
     }
 
+    pub fn has_local_poc(&self) -> bool {
+        self.seen_defaults[2]
+    }
+
     pub fn validate(&self) -> Result<()> {
         if !self.has_style || !self.has_quant {
             return Err(syntax(
@@ -298,8 +318,8 @@ impl Configuration {
             return Err(syntax("JPEG 2000 progression exceeds tile layer count", 0));
         }
         for (style, quant) in self.styles.iter().zip(&self.quants) {
-            if (quant.kind != 1 && quant.steps.len() != 1 + 3 * usize::from(style.levels))
-                || (style.reversible && quant.kind != 0)
+            if (quant.kind != 1 && quant.steps.len() < 1 + 3 * usize::from(style.levels))
+                || (style.reversible != (quant.kind == 0))
             {
                 return Err(syntax(
                     "JPEG 2000 quantization does not match coding style",
@@ -333,7 +353,7 @@ fn validate_tile_lengths(fields: &mut Reader<'_>) -> Result<()> {
     fields.u8()?; // Ztlm orders optional tables; decoding does not depend on them.
     let style = fields.u8()?;
     let tile_bytes = usize::from((style >> 4) & 3);
-    if style & 0x8f != 0 || tile_bytes == 3 {
+    if tile_bytes == 3 {
         return Err(syntax(
             "invalid JPEG 2000 tile-length table style",
             fields.position() - 1,
@@ -346,12 +366,47 @@ fn validate_tile_lengths(fields: &mut Reader<'_>) -> Result<()> {
             fields.position(),
         ));
     }
-    fields.take(fields.remaining())?;
+    if fields.remaining() == 0 {
+        return Err(syntax(
+            "empty JPEG 2000 tile-length table",
+            fields.position(),
+        ));
+    }
+    while fields.remaining() != 0 {
+        let tile = match tile_bytes {
+            0 => 0,
+            1 => u16::from(fields.u8()?),
+            _ => fields.u16()?,
+        };
+        if tile == 65535 || tile_bytes == 1 && tile == 255 {
+            return Err(syntax(
+                "invalid JPEG 2000 tile-length index",
+                fields.position(),
+            ));
+        }
+        let length = if length_bytes == 2 {
+            u32::from(fields.u16()?)
+        } else {
+            fields.u32()?
+        };
+        if length < 14 {
+            return Err(syntax(
+                "invalid JPEG 2000 tile-length value",
+                fields.position(),
+            ));
+        }
+    }
     Ok(())
 }
 
 fn validate_packet_lengths(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<()> {
     fields.u8()?; // Zplt.
+    if fields.remaining() == 0 {
+        return Err(syntax(
+            "empty JPEG 2000 packet-length table",
+            fields.position(),
+        ));
+    }
     let mut value = 0_u32;
     let mut continued = false;
     while fields.remaining() != 0 {

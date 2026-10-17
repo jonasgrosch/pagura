@@ -756,7 +756,7 @@
       "files": {
         ".jpx": {
           "path": "corpus/generated/jpx/markers.jpx",
-          "sha256": "1f2393678d03b4af23b7c90e22566f239a270593ae8e9896cec218387e5e0c6f"
+          "sha256": "c7e3e622c37722051072fe5db7b49c4d6c02b8aaa6fc2bb1ae9963ac6e44eba5"
         },
         ".samples": {
           "path": "corpus/generated/jpx/markers.samples",
@@ -796,7 +796,7 @@
       "files": {
         ".jpx": {
           "path": "corpus/generated/jpx/derived-quantization.jpx",
-          "sha256": "a595d3547b062ce0991001a6b9ce57ffb14f155c633d89293a6dc2d021030b2d"
+          "sha256": "9885a00b2d298a7179220e810c360f7c75cf126ae3b329d26426d9cb48dac31c"
         },
         ".samples": {
           "path": "corpus/generated/jpx/derived-quantization.samples",
@@ -1207,7 +1207,7 @@
       "files": {
         ".jpx": {
           "path": "corpus/generated/jpx/poc-tile-part.jpx",
-          "sha256": "f1ac46ed67ccb8cdc8fad3dbe6427f0f727be37f445926c17ae8a830c24199ac"
+          "sha256": "45aceca330a4c241d7f8f389c31d18326072860c16439257bf97079140cd89a9"
         },
         ".samples": {
           "path": "corpus/generated/jpx/poc-tile-part.samples",
@@ -1270,7 +1270,7 @@
       "files": {
         ".jpx": {
           "path": "corpus/generated/jpx/packed-ppm.jpx",
-          "sha256": "6fc91b8840e838b0827e481864ac284e248a21dbf5e9e945983d86338f5bf2cc"
+          "sha256": "1ed7737070da109a5943bdfb70c9a5ae6a886dc80bcea42cb75884edbe1675ce"
         },
         ".samples": {
           "path": "corpus/generated/jpx/packed-ppm.samples",
@@ -1291,7 +1291,7 @@
       "files": {
         ".jpx": {
           "path": "corpus/generated/jpx/packed-ppt.jpx",
-          "sha256": "b46db6c6861728622c095b5c06af25c2bbd187c8d55014acdc8329e5bc1f7f70"
+          "sha256": "8245bc0a57afff44d10fe28d0c14329195c6d754bfb6043f3aae34a43f8a2ae6"
         },
         ".samples": {
           "path": "corpus/generated/jpx/packed-ppt.samples",
@@ -1315,7 +1315,7 @@
       "files": {
         ".jpx": {
           "path": "corpus/generated/jpx/combined-lossy.jpx",
-          "sha256": "26e248849725c0b54b007c53b11326a13862a1cb5fafb95398517fa1cd6a4021"
+          "sha256": "02ece98765137ace978f7e38fa935c4dce9858a432700d66354f7194afbd40af"
         },
         ".samples": {
           "path": "corpus/generated/jpx/combined-lossy.samples",
@@ -1419,7 +1419,7 @@
       "files": {
         ".jpx": {
           "path": "corpus/generated/jpx/packed-zero-ppm.jpx",
-          "sha256": "0c41822f1f9f77c780d04c90a05147ea5b206e957f37b9e1054966badd19f44c"
+          "sha256": "0c98adb340c21733346988d8e7107a8cd3a8a420ae4f751f35c43a5a63a512c3"
         },
         ".samples": {
           "path": "corpus/generated/jpx/packed-zero-ppm.samples",
@@ -1439,7 +1439,7 @@
       "files": {
         ".jpx": {
           "path": "corpus/generated/jpx/packed-zero-ppt.jpx",
-          "sha256": "b26034fcaf466d47ce08258a75a598c7349a4775b7288ff717abe4af4411a232"
+          "sha256": "2d4dbc88cbbdc4deb7498651ee0985ca2178e84178f250227bfe092340755a27"
         },
         ".samples": {
           "path": "corpus/generated/jpx/packed-zero-ppt.samples",
@@ -1483,7 +1483,7 @@
       "files": {
         ".jpx": {
           "path": "corpus/generated/jpx/combined-reversible.jpx",
-          "sha256": "debf0babd687564b50ef7d59e4d80abf75970c9a1a6dde56d385267e4648ff29"
+          "sha256": "e50f5102437802b7ecb2c45d199265717b4de07f9d800e99d368ce63743b3f77"
         },
         ".samples": {
           "path": "corpus/generated/jpx/combined-reversible.samples",
@@ -1620,7 +1620,7 @@
       "alpha": null
     },
     {
-      "id": "jpx/poc-deferred-declaration",
+      "id": "jpx/poc-forward-declaration",
       "kind": "vector",
       "description": "Independently encoded input pixels",
       "requirements": [
@@ -1629,11 +1629,11 @@
       ],
       "files": {
         ".jpx": {
-          "path": "corpus/generated/jpx/poc-deferred-declaration.jpx",
-          "sha256": "84ad7c5afee1252ca1274e1a8cce4c7a4a2871a441b20edc51051c9252d7a121"
+          "path": "corpus/generated/jpx/poc-forward-declaration.jpx",
+          "sha256": "52a02f704c62792897922e117cb5980760bb95f7f93ec43bc93bfce49a8743fd"
         },
         ".samples": {
-          "path": "corpus/generated/jpx/poc-deferred-declaration.samples",
+          "path": "corpus/generated/jpx/poc-forward-declaration.samples",
           "sha256": "35af995556faa2669189bdaaefae82e2cf6b8b1f74f2e2163673d6ba03fb2c54"
         }
       },
@@ -1942,6 +1942,869 @@
       "error": "unsupported"
     },
     {
+      "id": "jpx/packet-unused-bits",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-progression"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/packet-unused-bits.jpx",
+          "sha256": "90730585ec4b4473635db4f6a11b6e7a9b2b9e6981290529fe8ca59b1d02a16b"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/packet-unused-bits.samples",
+          "sha256": "41ee5fa3c6c2ecf89b2c4e3f4180c893a159f734a753ad4ee8fa5d78fb9dbc66"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/poc-wide-zero-end",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-poc"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/poc-wide-zero-end.jpx",
+          "sha256": "c7ac54e1dcbd464fc2c2bb341ad76c80be86c9da7231496a796d7b6e4c19084f"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/poc-wide-zero-end.samples",
+          "sha256": "9f9e5052db96ef9756a19203427e68d2ebdfc4fd9b8cf2d8f6f27146ad46ba23"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/model-column",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-part1"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/model-column.jpx",
+          "sha256": "0b5bccc191775709f88a578c0a90eb6629caf9b4a942e71415efb75786e0cd7f"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/model-column.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/lifting-known-answer",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/lifting-known-answer.jpx",
+          "sha256": "1daeb9ca090b5411f2296d938a49dab5d9b7369138b85b727b93ec5e3cd91015"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/lifting-known-answer.samples",
+          "sha256": "b3a72bbeff9dd4f75ed430bc7f9008d9604159030f94e5ef6d53b2e8a73baa92"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/quant-gain-known-answer",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-irreversible",
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/quant-gain-known-answer.jpx",
+          "sha256": "302e1da7e784dfb7e8d1ee1eb405b3d3d715a4a1e7f50f1c16fa66a0a6ad4f11"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/quant-gain-known-answer.samples",
+          "sha256": "64fb7cd036b4dbf8396d338351985397a3330cde517517cc55923987a75d00c7"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/derived-three-levels",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-irreversible"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/derived-three-levels.jpx",
+          "sha256": "90d230f77fdd6402499b95d23a82eec9b7bbe46628e280618583dc54df521fdc"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/derived-three-levels.samples",
+          "sha256": "9cf1caf02bfdde62e125e93c7c0052eb0ee7aa9f058c3e468db87f11d9532c09"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/roi-bypass",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-roi",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/roi-bypass.jpx",
+          "sha256": "13dfdec64b8a31bcf2935f4815efdfdde266128b3317225f3c06e84492168a84"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/roi-bypass.samples",
+          "sha256": "87b3c3555e8193e1e577c5935963bdd0489b5cf6c6516e664f1b9dca19d1666d"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/ordinary-empty-segments",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/ordinary-empty-segments.jpx",
+          "sha256": "27a6a3e83d6b54a87a4149bb6484a9988c3dae661bfeeddf11c2db8ba54e52bf"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/ordinary-empty-segments.samples",
+          "sha256": "a52af466fca31efa8db7306c69ee7b4963da94c909ee1721622d09f5f5c448d4"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/termination-known-answer",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/termination-known-answer.jpx",
+          "sha256": "5cc7757df9ccc5e8a44725388a7a08e57d74d81f82a3cdc19ec82b2803621487"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/termination-known-answer.samples",
+          "sha256": "a040a010db395c099efe042e14964d5fde4e9303de59e1ad59297555e065c9f8"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/termination-mq-tail",
+      "kind": "vector",
+      "description": "D.4.2 predictable MQ tail differs by one bit",
+      "requirements": [
+        "jpx-termination"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/termination-mq-tail.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/termination-mq-tail.jpx",
+          "sha256": "6d834345db326826e094e4b820bdd5cffcb9086582df296f4a8563bce850eab4"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/termination-raw-padding",
+      "kind": "vector",
+      "description": "D.6 raw predictable padding starts at zero and alternates",
+      "requirements": [
+        "jpx-termination"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/termination-raw-padding.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/termination-raw-padding.jpx",
+          "sha256": "3ea9263b70805e203d93cb55de2eac7f0f7e792fe7f4b8dae650fa511fc43c88"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/channel-premultiplied",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-options",
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/channel-premultiplied.jpx",
+          "sha256": "7b70dd862cc231eccaefb153227c3017a13539b90d64610c4b0d4c9de459a867"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/channel-premultiplied.samples",
+          "sha256": "b689f11c802d3c54a3e351329dbbf62ddf6e10ec9616018a2eb8b0277f52f11d"
+        }
+      },
+      "color": "unspecified",
+      "alpha": 3
+    },
+    {
+      "id": "jpx/palette-opacity-origin",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-options",
+        "jpx-palette"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/palette-opacity-origin.jpx",
+          "sha256": "282e44d33532fd6f318e99f2fc064b320385a78b97c09f48d439114ca0583157"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/palette-opacity-origin.samples",
+          "sha256": "8c034e1ccc1ff46c722735fb98ef5daafaa7ed2aae1161c6a7a039aca8502d84"
+        }
+      },
+      "color": "unspecified",
+      "alpha": 1
+    },
+    {
+      "id": "jpx/colour-first-method",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/colour-first-method.jpx",
+          "sha256": "a0630e19c412640b6526aba60586d127cd6fd7cbe9f24c45839a7afa1ba8e5b7"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/colour-first-method.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/colour-ignored-fields",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/colour-ignored-fields.jpx",
+          "sha256": "eb72d6d115e4dd21e9739d2fe8eed4bf0eae6e948706477c623d30ad12f9660c"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/colour-ignored-fields.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/additional-codestream",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/additional-codestream.jpx",
+          "sha256": "368bec274c0602b4899d881b52f0d31608e8efea316865b75d2f0bcd17016531"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/additional-codestream.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/marker-order",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/marker-order.jpx",
+          "sha256": "00faa8660ff115f51e3a7013098478643092549e21f1a7c4818c47e1143373bb"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/marker-order.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/reserved-markers",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/reserved-markers.jpx",
+          "sha256": "8a82bc0f6ab48045cdafff4b9d89cba17dc9d10514a14a5f84f4a36f61357940"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/reserved-markers.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/optional-sop",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/optional-sop.jpx",
+          "sha256": "9152b166a1b4e5220bfe3773d57725d44b0971755260c92c5c478867e1a1af55"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/optional-sop.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/component-placement",
+      "kind": "vector",
+      "description": "B-1/B-2 locate samples at integer multiples of each component's step",
+      "requirements": [
+        "jpx-subsampling"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/component-placement.jpx",
+          "sha256": "58c8d1b6642593df5e3f4de1e30eb8adb56db60ff64ad5414ad116b6a434c194"
+        },
+        ".placement": {
+          "path": "corpus/generated/jpx/component-placement.placement",
+          "sha256": "b1ec22a600d62772db34371107198f415fe2faec22e63aa35931b8d6640c44ea"
+        }
+      }
+    },
+    {
+      "id": "jpx/poc-deferred-declaration",
+      "kind": "vector",
+      "description": "A.6.6/B.12.3 require a tile POC in its first tile-part",
+      "requirements": [
+        "jpx-poc"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/poc-deferred-declaration.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/poc-deferred-declaration.jpx",
+          "sha256": "b7ba541f98735b5f7099b9c8abdb3fbf139eb31dc42bceb7d4461f57d9232e76"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/packed-index-order",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-packed-headers"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/packed-index-order.jpx",
+          "sha256": "44f9ce53e958dace1df73395b4dd081d7c5630ed623aaef7facb0b5cd839a838"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/packed-index-order.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/nested-zero-box",
+      "kind": "vector",
+      "description": "I.4 permits a zero-length child only in a zero-length parent",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/nested-zero-box.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/nested-zero-box.jpx",
+          "sha256": "856da8f7e65174c8e4148c6273e32e364b8bda4b2912d34dc11dda1b0fd3aaff"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/quant-transform-mismatch",
+      "kind": "vector",
+      "description": "A.6.4 quantization representation must match the wavelet transform",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/quant-transform-mismatch.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/quant-transform-mismatch.jpx",
+          "sha256": "2597235559c5f403cc4a9d05395ea3f8c736ad176975c313595cf68ba18f4d63"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/incomplete-progression",
+      "kind": "vector",
+      "description": "B.12.3 permits an incomplete final volume; partial-quality reconstruction is unsupported",
+      "requirements": [
+        "jpx-progression"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/incomplete-progression.error",
+          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/incomplete-progression.jpx",
+          "sha256": "9dad8ba05364d0f592fb32dfaf151fb85e54c4b82c1a676ece86a551d85ec3cd"
+        }
+      },
+      "error": "unsupported"
+    },
+    {
+      "id": "jpx/ppt-early-headers",
+      "kind": "vector",
+      "description": "A.7.5 permits earlier-part headers; this organization is explicitly unsupported",
+      "requirements": [
+        "jpx-packed-headers"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/ppt-early-headers.error",
+          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/ppt-early-headers.jpx",
+          "sha256": "96d8f48afabe4d408510d91725ec64d15c783e3c3e96f3a27b79e92b85ef5e38"
+        }
+      },
+      "error": "unsupported"
+    },
+    {
+      "id": "jpx/packed-mixed-parts",
+      "kind": "vector",
+      "description": "A.7.4/A.7.5 forbid mixed inline and PPT headers for one tile",
+      "requirements": [
+        "jpx-packed-headers"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/packed-mixed-parts.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/packed-mixed-parts.jpx",
+          "sha256": "4af13c22a81219ae7f7c6000e0f70402bce90e37cb98aa61f3341a7cae087e81"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/palette-entry-limit",
+      "kind": "vector",
+      "description": "I.5.3.4 limits palettes to 1024 rows",
+      "requirements": [
+        "jpx-palette"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/palette-entry-limit.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/palette-entry-limit.jpx",
+          "sha256": "8bd77fe75e506b6136dee5f211b784df98a9530a419e88ed152424e6a652f1b4"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/ignored-marker-bits",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/ignored-marker-bits.jpx",
+          "sha256": "25e11ccc36596bd7923a7a24177ebd1cb83ba1e0ba423350da679505798de843"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/ignored-marker-bits.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/quant-extra-steps",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/quant-extra-steps.jpx",
+          "sha256": "5a680fd78bda972ad5ea6ceccc7099ad761530d12b77a2ea4d89e22b79ad8b3a"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/quant-extra-steps.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/tlm-empty",
+      "kind": "vector",
+      "description": "A.7.1 requires a nonempty list of tile lengths",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/tlm-empty.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/tlm-empty.jpx",
+          "sha256": "a1e82e16f3532e9b0b51175f0c70f11459f19e2ae2dcd31985df3bd1006fa26f"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/comment-registration",
+      "kind": "vector",
+      "description": "A.9.2 reserves comment registrations other than zero and one",
+      "requirements": [
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/comment-registration.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/comment-registration.jpx",
+          "sha256": "abc212dde62bad1037e001e47746eb3ba68be71a25d6b7d5bfbd718a4c6d0ce1"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/tile-part-index-255",
+      "kind": "vector",
+      "description": "A.4.2 limits the tile-part index to 254",
+      "requirements": [
+        "jpx-tiles",
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/tile-part-index-255.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/tile-part-index-255.jpx",
+          "sha256": "e53022c912554829f22cf1b2b42dbaa235b8c45af71afb3d06ba11b6be31b1e7"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/transform-precision",
+      "kind": "vector",
+      "description": "G.2 requires equal input precision for the first three transform components",
+      "requirements": [
+        "jpx-rct"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/transform-precision.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/transform-precision.jpx",
+          "sha256": "9ceb4390ca7253ca64f9d8c8b78ddae390bab69f1539a9c4ad5cdb241ce16a8e"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/spatial-sampling",
+      "kind": "vector",
+      "description": "B.12.1.3 requires power-of-two component separations",
+      "requirements": [
+        "jpx-precincts",
+        "jpx-subsampling"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/spatial-sampling.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/spatial-sampling.jpx",
+          "sha256": "7a3a442d351a0ea5c3e230c84dc7cee56ed80edbe9531717c6c023aa55cdd95a"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/contribution-final-ff",
+      "kind": "vector",
+      "description": "B.10.7 forbids a code-block packet contribution ending in FF",
+      "requirements": [
+        "jpx-hostile"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/contribution-final-ff.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/contribution-final-ff.jpx",
+          "sha256": "7bb7703546b28cc6a159f21c2481ae4e7c62bc55028eacb26d4576642bf07b99"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/mapping-without-palette",
+      "kind": "vector",
+      "description": "I.5.3.4 requires palette and component mapping boxes together",
+      "requirements": [
+        "jpx-palette"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/mapping-without-palette.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/mapping-without-palette.jpx",
+          "sha256": "f6dcc4c69dd9bf1cfceb4c95ec8e721ee8951967bf520fe2711b45e49bf1c954"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/palette-direct-map",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-palette"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/palette-direct-map.jpx",
+          "sha256": "c904be230857068c0d348d7df50b379054f754eecf860c4b0af11fb949a4d005"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/palette-direct-map.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/palette-padding",
+      "kind": "vector",
+      "description": "I.5.3.4 requires zeros above the palette sample precision",
+      "requirements": [
+        "jpx-palette"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/palette-padding.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/palette-padding.jpx",
+          "sha256": "8d2513fa2a13ea9bb0314fcd10af83302041f641290e9a80fb413416d03e4c6a"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/resolution-empty",
+      "kind": "vector",
+      "description": "I.5.3.7 requires a capture or display resolution child",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/resolution-empty.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/resolution-empty.jpx",
+          "sha256": "064a9b486208884a8139a38453d33ed74f314e78716732d6f4e550af4d7792e9"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/resolution-repeat",
+      "kind": "vector",
+      "description": "I.5.3.7 permits at most one resolution superbox",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/resolution-repeat.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/resolution-repeat.jpx",
+          "sha256": "b42cba604befd2aacc39ecacb89fc00b994ac05217fda7f4a8a75360ee2e67e5"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/opacity-signed",
+      "kind": "vector",
+      "description": "I.5.3.6 requires unsigned opacity components",
+      "requirements": [
+        "jpx-options"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/opacity-signed.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/opacity-signed.jpx",
+          "sha256": "9a11517bede9c6417cbfb9d7d49709ebc040685ebe38f81b6a7052a6147ec6b4"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/grid-high-origin",
+      "kind": "vector",
+      "description": "A.5.1 permits 32-bit grids; the current arithmetic explicitly supports 31 bits",
+      "requirements": [
+        "jpx-subsampling"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/grid-high-origin.error",
+          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/grid-high-origin.jpx",
+          "sha256": "8452305539d3ad502cfd173b2aeaac222ee36d5dad56daeb3edf44033a2a0c4d"
+        }
+      },
+      "error": "unsupported"
+    },
+    {
+      "id": "jpx/packed-header-split",
+      "kind": "vector",
+      "description": "A.7.4 requires complete packet headers at marker boundaries",
+      "requirements": [
+        "jpx-packed-headers"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/packed-header-split.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/packed-header-split.jpx",
+          "sha256": "8cc257daa9b6eb60f645560818f0e7f527ec7328d0c4a95efb5fa59756caee08"
+        }
+      },
+      "error": "syntax"
+    },
+    {
       "id": "jpx/packed-stuffing",
       "kind": "vector",
       "description": "Packet stuffing error reports the original packed-header fragment byte",
@@ -1956,11 +2819,11 @@
         },
         ".jpx": {
           "path": "corpus/generated/jpx/packed-stuffing.jpx",
-          "sha256": "5b5f9988c96ef22fe238a87355a4ea82bcd86f0a9e6bd3ce8e1fbf91f6c0bd23"
+          "sha256": "36b3721171e8a5b2aafec54ed21a7f03414a0b4fb9f5621b791860dd2a755008"
         },
         ".offset": {
           "path": "corpus/generated/jpx/packed-stuffing.offset",
-          "sha256": "95aebc97bc646c67fdcd923a5965b001f3c8a5c4d3a77075112e12a3a311d760"
+          "sha256": "816c83d0ac08a94e91547a30df27dbbe88c7643cfa3c99d33120fd361173759a"
         }
       },
       "error": "syntax"
@@ -2191,7 +3054,7 @@
         },
         ".jpx": {
           "path": "corpus/generated/jpx/ppm-index.jpx",
-          "sha256": "a480bfe44009feda00e9da815aa3445b14e7fe1858c51a12ec321ba4b461d082"
+          "sha256": "218c8f810d3ee0f18294ba306a40e6e5051e3943a9b108ae54209d9a033db6cf"
         }
       },
       "error": "syntax"
@@ -2211,7 +3074,7 @@
         },
         ".jpx": {
           "path": "corpus/generated/jpx/ppt-index.jpx",
-          "sha256": "3f978c8e3b9844f3185c620bd56b2a3acb9018e7f521751ac31351967e3c87db"
+          "sha256": "d1f99fbe3a499357c339c447cf8ee5e398ab53f7aff3f243bb555891e1180e07"
         }
       },
       "error": "syntax"

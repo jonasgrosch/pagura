@@ -1,4 +1,4 @@
-//! Packet headers, tag trees and contributions; T.800 primary-text review pending.
+//! Packet headers, tag trees and contributions, T.800 B.9–B.10.
 
 use pagura_core::{Error, Result};
 
@@ -56,15 +56,9 @@ impl<'a, 'b> Bits<'a, 'b> {
     }
 
     fn finish(self) -> Result<()> {
-        if u16::from(self.byte) & ((1_u16 << self.remaining) - 1) != 0 {
-            return Err(syntax(
-                "nonzero JPEG 2000 packet padding",
-                self.byte_position,
-            ));
-        }
         if self.byte == 255 {
             let position = self.reader.position();
-            if self.reader.u8()? != 0 {
+            if self.reader.u8()? & 128 != 0 {
                 return Err(syntax("invalid JPEG 2000 packet padding byte", position));
             }
         }
@@ -398,6 +392,7 @@ pub(super) struct Parameters {
     pub markers: [bool; 2],
     pub sequence: u16,
     pub modes: u8,
+    pub tile_headers: bool,
 }
 
 fn headers(
@@ -406,6 +401,7 @@ fn headers(
     parameters: &Parameters,
     budget: &mut Budget<'_>,
 ) -> Result<Vec<Contribution>> {
+    let start = reader.offset;
     let mut bits = Bits::new(reader);
     let mut contributions = Vec::new();
     if bits.bit()? {
@@ -424,6 +420,7 @@ fn headers(
     if parameters.markers[1] && reader.u16()? != 0xff92 {
         return Err(syntax("missing JPEG 2000 EPH marker", reader.position()));
     }
+    reader.packet_boundary(start)?;
     Ok(contributions)
 }
 
@@ -435,8 +432,11 @@ pub(super) fn read(
     budget: &mut Budget<'_>,
 ) -> Result<()> {
     budget.work(1)?;
-    if parameters.markers[0]
-        && (body.u16()? != 0xff91 || body.u16()? != 4 || body.u16()? != parameters.sequence)
+    if body.data.get(body.offset..body.offset.saturating_add(2)) == Some(&[255, 145])
+        && (!parameters.markers[0]
+            || body.u16()? != 0xff91
+            || body.u16()? != 4
+            || body.u16()? != parameters.sequence)
     {
         return Err(syntax("invalid JPEG 2000 SOP marker", body.position()));
     }
@@ -455,7 +455,19 @@ pub(super) fn read(
             segment.base = body.position();
         }
         let source = body.position();
+        if parameters.tile_headers && contribution.length > body.remaining() {
+            return Err(super::unsupported(
+                "JPEG 2000 PPT headers preceding a later tile-part are not implemented",
+                body.position(),
+            ));
+        }
         let bytes = body.take(contribution.length)?;
+        if bytes.last() == Some(&255) {
+            return Err(syntax(
+                "JPEG 2000 code-block contribution ends in FF",
+                source + bytes.len() - 1,
+            ));
+        }
         if !bytes.is_empty() {
             budget.push(
                 &mut segment.spans,

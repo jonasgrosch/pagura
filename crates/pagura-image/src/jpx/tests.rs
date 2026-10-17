@@ -127,7 +127,7 @@ fn malformed_inputs_have_positions() -> Result<(), Box<dyn std::error::Error>> {
         }
         checked += 1;
     }
-    assert_eq!(checked, 19);
+    assert_eq!(checked, 41);
     Ok(())
 }
 
@@ -241,4 +241,148 @@ fn packed_and_progression_boundaries_never_panic() {
             }
         }
     }
+}
+
+#[test]
+fn options_preserve_opacity_kind_origin_and_stored_samples() -> pagura_core::Result<()> {
+    use super::{OpacityKind, Options, decode_with_options};
+    for (name, kind) in [
+        ("channel-alpha", OpacityKind::Straight),
+        ("channel-premultiplied", OpacityKind::Premultiplied),
+    ] {
+        let bytes = fixture("jpx", &format!("{name}.jpx"));
+        let decoded = decode_with_options(&bytes, &Limits::default(), &Options::default())?;
+        let opacity = decoded
+            .opacity
+            .ok_or(pagura_core::Error::syntax("missing test opacity"))?;
+        assert_eq!(opacity.kind, kind);
+        assert_eq!(
+            (
+                opacity.channel,
+                opacity.source_channel,
+                opacity.source_component
+            ),
+            (3, 0, 0)
+        );
+        assert_eq!(opacity.palette_column, None);
+        assert_eq!(decoded.image.alpha, Some(3));
+        let ignored = decode_with_options(
+            &bytes,
+            &Limits::default(),
+            &Options {
+                ignore_color: true,
+                ignore_opacity: true,
+            },
+        )?;
+        assert_eq!(ignored.image.color, JpxColor::Unspecified);
+        assert_eq!(ignored.opacity, None);
+        assert_eq!(ignored.image.alpha, None);
+        // Ignore cdef retains source channel zero; interpreting it moves exactly
+        // that plane to opacity, without rescaling either it or the colour planes.
+        assert_eq!(ignored.image.components[0], decoded.image.components[3]);
+        assert_eq!(ignored.image.components[1], decoded.image.components[2]);
+        assert_eq!(ignored.image.components[2], decoded.image.components[0]);
+        assert_eq!(ignored.image.components[3], decoded.image.components[1]);
+    }
+    let palette = decode_with_options(
+        &fixture("jpx", "palette-opacity-origin.jpx"),
+        &Limits::default(),
+        &Options::default(),
+    )?;
+    let alpha = palette
+        .opacity
+        .ok_or(pagura_core::Error::syntax("missing test palette opacity"))?;
+    assert_eq!(
+        (
+            alpha.channel,
+            alpha.source_channel,
+            alpha.source_component,
+            alpha.palette_column
+        ),
+        (1, 0, 0, Some(1))
+    );
+    assert_eq!(palette.component_geometry[0], palette.component_geometry[1]);
+    let color_only = decode_with_options(
+        &fixture("jpx", "channel-alpha.jpx"),
+        &Limits::default(),
+        &Options {
+            ignore_color: true,
+            ignore_opacity: false,
+        },
+    )?;
+    assert_eq!(color_only.image.color, JpxColor::Unspecified);
+    assert!(color_only.opacity.is_some());
+    let channel_only = decode_with_options(
+        &fixture("jpx", "channel-alpha.jpx"),
+        &Limits::default(),
+        &Options {
+            ignore_color: false,
+            ignore_opacity: true,
+        },
+    )?;
+    assert_eq!(channel_only.image.color, JpxColor::Enumerated(16));
+    assert!(channel_only.opacity.is_none());
+    // A PDF colour-space override does not need to interpret an embedded space.
+    let decoded = decode_with_options(
+        &fixture("jpx", "pdf-colour-19.jpx"),
+        &Limits::default(),
+        &Options {
+            ignore_color: true,
+            ..Options::default()
+        },
+    )?;
+    assert_eq!(decoded.image.color, JpxColor::Unspecified);
+    Ok(())
+}
+
+#[test]
+fn subsampled_components_retain_reference_grid_placement() -> Result<(), Box<dyn std::error::Error>>
+{
+    use super::{ComponentGeometry, Options, decode_with_options};
+    let decoded = decode_with_options(
+        &fixture("jpx", "component-placement.jpx"),
+        &Limits::default(),
+        &Options::default(),
+    )?;
+    let text = String::from_utf8(fixture("jpx", "component-placement.placement"))?;
+    let values = text
+        .split_whitespace()
+        .map(str::parse::<u32>)
+        .collect::<Result<Vec<_>, _>>()?;
+    assert_eq!(
+        [
+            decoded.image.width,
+            decoded.image.height,
+            decoded.reference_origin[0],
+            decoded.reference_origin[1]
+        ],
+        values[..4]
+    );
+    assert_eq!(decoded.image.components.len(), usize::try_from(values[4])?);
+    let mut offset = 5;
+    for (component, geometry) in decoded
+        .image
+        .components
+        .iter()
+        .zip(decoded.component_geometry)
+    {
+        assert_eq!(
+            geometry,
+            ComponentGeometry {
+                step: [values[offset], values[offset + 1]],
+                origin: [values[offset + 2], values[offset + 3]]
+            }
+        );
+        assert_eq!(
+            [component.width, component.height],
+            values[offset + 4..offset + 6]
+        );
+        offset += 6;
+        for &sample in &component.samples {
+            assert_eq!(u32::from(sample), values[offset]);
+            offset += 1;
+        }
+    }
+    assert_eq!(offset, values.len());
+    Ok(())
 }

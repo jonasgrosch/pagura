@@ -1,7 +1,6 @@
 //! Precinct reference-grid positions and bounded progression changes.
 //!
-//! These are T.800-dependent mechanics, pending primary-text review; source
-//! sample oracles are compared with OpenJPEG (PDF 7.4.9 delegates the format).
+//! T.800 B.2–B.7 and B.12 define the geometry and progression volumes.
 
 use pagura_core::{Error, Result};
 
@@ -128,7 +127,8 @@ pub(super) fn changes(
         } else {
             usize::from(fields.u16()?)
         };
-        if components == 256 && component_end == 0 {
+        // Table A.32 assigns zero the end-index value 256, including the wide field.
+        if component_end == 0 {
             component_end = 256;
         }
         let order = fields.u8()?;

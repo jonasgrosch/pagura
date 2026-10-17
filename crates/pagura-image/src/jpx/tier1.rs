@@ -1,4 +1,4 @@
-//! JPEG 2000 code-block bit planes; T.800 primary-text review pending.
+//! Coefficient bit modelling, T.800 D.1–D.7, Tables D.1–D.7.
 
 use pagura_core::Result;
 
@@ -224,7 +224,6 @@ pub(super) struct Parameters {
     pub planes: u8,
     pub passes: usize,
     pub modes: u8,
-    pub roi: u8,
 }
 
 enum Entropy<'a> {
@@ -250,13 +249,53 @@ struct Raw<'a> {
     base: usize,
     byte: u8,
     remaining: u8,
+    synthetic: bool,
 }
 
 impl Raw<'_> {
+    fn finish(mut self, predictable: bool) -> Result<()> {
+        for (offset, bytes) in self.data.windows(2).enumerate() {
+            if bytes[0] == 255 && bytes[1] & 128 != 0 {
+                return Err(syntax("invalid JPEG 2000 bypass bit stuffing", offset + 1));
+            }
+        }
+        if !predictable {
+            return Ok(());
+        }
+        // D.6: unused raw bits alternate 0,1; a final FF requires a stuffed byte.
+        if self.remaining == 0 && self.byte == 255 {
+            self.byte =
+                self.data.get(self.offset).copied().ok_or_else(|| {
+                    syntax("missing JPEG 2000 bypass termination byte", self.offset)
+                })?;
+            self.offset += 1;
+            self.remaining = 7;
+            if self.byte & 128 != 0 {
+                return Err(syntax(
+                    "invalid JPEG 2000 bypass bit stuffing",
+                    self.offset - 1,
+                ));
+            }
+        }
+        let mask = (1_u16 << self.remaining) - 1;
+        let expected = (0..self.remaining).fold(0_u16, |v, i| (v << 1) | u16::from(i % 2));
+        if self.synthetic
+            || u16::from(self.byte) & mask != expected
+            || self.offset != self.data.len()
+        {
+            return Err(syntax(
+                "invalid JPEG 2000 predictable bypass termination",
+                self.offset.saturating_sub(1),
+            ));
+        }
+        Ok(())
+    }
+
     fn bit(&mut self) -> Result<bool> {
         if self.remaining == 0 {
             let stuffed = self.byte == 255;
             let next = self.data.get(self.offset).copied();
+            self.synthetic |= next.is_none();
             self.byte = next.unwrap_or(255);
             if stuffed && next.is_some() && self.byte & 128 != 0 {
                 return Err(syntax(
@@ -321,22 +360,22 @@ fn decode_segment_inner(
     p: &Parameters,
     contexts: &mut [Context; 19],
 ) -> Result<()> {
-    if segment.data.is_empty()
-        && p.modes & segments::PREDICTABLE == 0
-        && !segments::raw(segment.first, p.modes, p.roi)
-    {
-        return Err(syntax("empty JPEG 2000 arithmetic segment", 0));
-    }
-    let mut decoder = if segments::raw(segment.first, p.modes, p.roi) {
+    let mut decoder = if segments::raw(segment.first, p.modes) {
         Entropy::Raw(Raw {
             data: &segment.data,
             offset: 0,
             base: 0,
             byte: 0,
             remaining: 0,
+            synthetic: false,
         })
     } else {
-        Entropy::Mq(Decoder::new(&segment.data, 0, *contexts)?)
+        Entropy::Mq(Decoder::new(
+            &segment.data,
+            0,
+            *contexts,
+            p.modes & segments::PREDICTABLE != 0,
+        )?)
     };
     for pass in segment.first..segment.first + segment.passes {
         let plane = p.planes
@@ -366,8 +405,12 @@ fn decode_segment_inner(
             }
         }
     }
-    if let Entropy::Mq(decoder) = decoder {
-        *contexts = decoder.contexts();
+    match decoder {
+        Entropy::Mq(decoder) => {
+            *contexts = decoder.contexts();
+            decoder.finish()?;
+        }
+        Entropy::Raw(decoder) => decoder.finish(p.modes & segments::PREDICTABLE != 0)?,
     }
     Ok(())
 }
