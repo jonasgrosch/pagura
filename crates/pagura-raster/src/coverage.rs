@@ -82,6 +82,10 @@ impl Windings {
             outside: count,
         }
     }
+    fn reset(&mut self) {
+        self.values.fill(0);
+        self.outside = self.values.len();
+    }
     // Closing a span contributes +area; opening contributes -area.
     fn step(&mut self, edge: Edge) -> Result<i32> {
         let was_inside = self.outside == 0;
@@ -187,11 +191,23 @@ pub(crate) fn coverage(
     let stride = usize::try_from(width).map_err(|_| Error::limit("mask width exceeds usize"))?;
     let mut row = Row::new(stride, origin.0, limits.raster_work)?;
     let mut edges = edges(shapes, (width, height), origin, limits, &mut row)?;
+    // Edges have already validated the geometry and its budgets. A rectangular
+    // intersection containing the whole viewport has exactly unit area in every
+    // cell; no scanline arithmetic or sorting is needed.
+    if !shapes.is_empty() && shapes.iter().all(|s| s.covers(origin, (width, height))) {
+        row.charge(out.len())?;
+        out.fill(255);
+        return Ok(());
+    }
     row.sorted(edges.len())?;
     edges.sort_unstable_by(|a, b| a.a.y.total_cmp(&b.a.y));
     let mut active: Vec<Edge> = Vec::new();
     let mut next = 0;
     let mut vertices = Vec::new();
+    let mut sweep = Sweep {
+        top: Vec::new(),
+        winding: Windings::new(shapes.len()),
+    };
     out.fill(0);
     for (y, output) in out.chunks_exact_mut(stride).enumerate() {
         let lo = f64::from(u32::try_from(y).map_err(|_| Error::limit("row exceeds u32"))?)
@@ -228,7 +244,7 @@ pub(crate) fn coverage(
                 &active,
                 interval[0],
                 interval[1],
-                shapes.len(),
+                &mut sweep,
                 &mut row,
                 limits,
             )?;
@@ -239,28 +255,41 @@ pub(crate) fn coverage(
     Ok(())
 }
 
+// Scratch belongs to the sweep, not to an individual vertex interval.
+struct Sweep {
+    top: Vec<Edge>,
+    winding: Windings,
+}
+
 fn strip(
     active: &[Edge],
     lo: f64,
     hi: f64,
-    count: usize,
+    sweep: &mut Sweep,
     row: &mut Row,
     limits: &Limits,
 ) -> Result<()> {
     let mid = lo.midpoint(hi);
-    let mut top: Vec<_> = active
-        .iter()
-        .copied()
-        .filter(|e| e.a.y < mid && e.b.y > mid)
-        .collect();
+    let Sweep { top, winding } = sweep;
+    top.clear();
+    top.extend(
+        active
+            .iter()
+            .copied()
+            .filter(|e| e.a.y < mid && e.b.y > mid),
+    );
+    winding.reset();
     row.sorted(top.len())?;
     top.sort_unstable_by(|a, b| endpoint(*a, *b, lo, false));
     if top
         .windows(2)
-        .all(|pair| endpoint(pair[0], pair[1], hi, true).is_le())
+        // Equal x at hi is a meeting, not a crossing inside
+        // this strip. The order at lo already gives the interior order; slope
+        // tie-breaking here would send ordinary closing vertices through the
+        // exact crossing integrator unnecessarily.
+        .all(|pair| pair[0].x(hi).total_cmp(&pair[1].x(hi)).is_le())
     {
-        let mut winding = Windings::new(count);
-        for edge in top {
+        for &edge in top.iter() {
             row.edge(edge, lo, hi, winding.step(edge)?)?;
         }
         return Ok(());
@@ -274,7 +303,6 @@ fn strip(
             .get_mut(index)
             .ok_or(Error::invalid_argument("invalid edge rank"))? = rank;
     }
-    let mut winding = Windings::new(count);
     let mut start = 0;
     let mut end = 0;
     for (i, &rank) in ranks.iter().enumerate() {
@@ -288,7 +316,7 @@ fn strip(
         if let [edge] = block {
             row.edge(*edge, lo, hi, winding.step(*edge)?)?;
         } else {
-            crossing(block, lo, hi, &winding, row, limits)?;
+            crossing(block, lo, hi, winding, row, limits)?;
             for &edge in block {
                 winding.step(edge)?;
             }
@@ -531,15 +559,19 @@ fn clipped(
     if lo >= hi {
         return Ok(());
     }
-    let mut events = vec![lo, hi];
+    // At most two horizontal viewport crossings, plus the two endpoints.
+    let mut events = [lo, hi, 0.0, 0.0];
+    let mut count = 2;
     if a.x != b.x {
         for x in [bounds[0], bounds[2]] {
             let y = a.y + (b.y - a.y) * ((x - a.x) / (b.x - a.x));
             if y > lo && y < hi {
-                events.push(y);
+                events[count] = y;
+                count += 1;
             }
         }
     }
+    let events = &mut events[..count];
     events.sort_unstable_by(f64::total_cmp);
     for interval in events.windows(2) {
         if out.len() >= limits.path_segments {

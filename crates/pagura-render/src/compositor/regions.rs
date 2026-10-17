@@ -1,7 +1,7 @@
 //! Conservative group allocation bounds: source geometry, hard clips and tile.
 //! Cubic control hulls contain the curve; stroke padding includes miters/caps.
 use super::{Group, Tile};
-use crate::display::{Clip, Command, Mark};
+use crate::display::{Clip, Command, Mark, PathCommand};
 use pagura_core::{Error, Result};
 use pagura_raster::{Path, Point, Segment, Transform};
 use std::sync::Arc;
@@ -62,25 +62,7 @@ fn commands_region(
     let mut total = None;
     for command in commands {
         let (region, clip) = match command {
-            Command::Path(p) => {
-                let pad = match &p.mark {
-                    Mark::Fill(_) => (0.0, 0.0),
-                    Mark::Stroke(s, t, adjust) => {
-                        let t = t.then(device);
-                        let r = s.width * 0.5;
-                        let extra = if *adjust { 0.5 } else { 0.0 };
-                        let factor = s.miter_limit.max(2.0);
-                        (
-                            (r * t.a.hypot(t.c) + extra).max(0.5) * factor,
-                            (r * t.b.hypot(t.d) + extra).max(0.5) * factor,
-                        )
-                    }
-                };
-                (
-                    path_region(&p.path, device, tile, pad, work)?,
-                    p.clip.as_ref(),
-                )
-            }
+            Command::Path(p) => (paint_region(p, tile, device, work)?, p.clip.as_ref()),
             Command::Image(i) => {
                 let mut path = pagura_raster::PathBuilder::new();
                 path.rect(0.0, 0.0, 1.0, 1.0);
@@ -107,6 +89,47 @@ fn commands_region(
         }
     }
     Ok(total)
+}
+/// Cull from the control hull before outlining strokes or rebuilding clips.
+/// Padding contains caps, miters, hairlines and device stroke adjustment.
+pub(super) fn path_visible(
+    path: &PathCommand,
+    tile: Tile,
+    device: Transform,
+    work: &mut usize,
+    maximum: usize,
+) -> Result<bool> {
+    Ok(paint_region(
+        path,
+        tile,
+        device,
+        &mut Work {
+            used: work,
+            maximum,
+        },
+    )?
+    .is_some())
+}
+fn paint_region(
+    p: &PathCommand,
+    tile: Tile,
+    device: Transform,
+    work: &mut Work<'_>,
+) -> Result<Option<Tile>> {
+    let pad = match &p.mark {
+        Mark::Fill(_) => (0.0, 0.0),
+        Mark::Stroke(s, t, adjust) => {
+            let t = t.then(device);
+            let r = s.width * 0.5;
+            let extra = if *adjust { 0.5 } else { 0.0 };
+            let factor = s.miter_limit.max(2.0);
+            (
+                (r * t.a.hypot(t.c) + extra).max(0.5) * factor,
+                (r * t.b.hypot(t.d) + extra).max(0.5) * factor,
+            )
+        }
+    };
+    path_region(&p.path, device, tile, pad, work)
 }
 fn clip_region(
     mut clip: Option<&Arc<Clip>>,

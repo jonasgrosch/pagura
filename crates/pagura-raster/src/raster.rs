@@ -502,6 +502,10 @@ fn composite(target: &mut Pixmap, mask: &Mask, paint: Paint, offset: (u32, u32))
             if coverage == 0 {
                 continue;
             }
+            if coverage == 255 && color.a == 255 {
+                *pixel = [color.r, color.g, color.b, 255];
+                continue;
+            }
             let alpha = multiply(color.a, coverage);
             let inverse = 255 - alpha;
             for (channel, source) in pixel.iter_mut().zip([color.r, color.g, color.b, 255]) {

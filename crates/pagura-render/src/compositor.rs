@@ -62,9 +62,15 @@ impl Pixel {
         } else {
             alpha
         };
-        let blend = state
-            .blend
-            .apply(base.straight(), color, model.components());
+        // Normal returns the source unchanged (11.3.5); avoid unpremultiplying
+        // the backdrop, while retaining the compositing arithmetic and rounding.
+        let blend = if state.blend == crate::blend::BlendMode::Normal {
+            color
+        } else {
+            state
+                .blend
+                .apply(base.straight(), color, model.components())
+        };
         let value = [0, 1, 2, 3].map(|i| {
             (1.0 - opacity) * base.color[i]
                 + opacity * ((1.0 - base.alpha) * color[i] + base.alpha * blend[i])
@@ -195,9 +201,15 @@ impl Context {
         pixels
             .try_reserve_exact(count)
             .map_err(|_| Error::limit("group allocation failed"))?;
-        for y in tile.y..tile.y + tile.height {
-            for x in tile.x..tile.x + tile.width {
-                pixels.push(initial.pixel(x, y));
+        match initial {
+            Backdrop::Transparent => pixels.resize(count, Pixel::default()),
+            Backdrop::Color(color) => pixels.resize(count, Pixel::source(color, 1.0)),
+            Backdrop::Surface(_) => {
+                for y in tile.y..tile.y + tile.height {
+                    for x in tile.x..tile.x + tile.width {
+                        pixels.push(initial.pixel(x, y));
+                    }
+                }
             }
         }
         Ok(Surface { tile, pixels })
@@ -398,14 +410,27 @@ impl Context {
         Ok(())
     }
     fn path_mask(&mut self, p: &PathCommand, tile: Tile) -> Result<Option<Mask>> {
+        // Preserve the explicit singular-pen error even for off-tile marks.
+        let inverse = match &p.mark {
+            Mark::Fill(_) => Transform::IDENTITY,
+            Mark::Stroke(_, ctm, _) => ctm.inverse().ok_or(Error::unsupported(
+                crate::features::SINGULAR_STROKE,
+                "singular stroke transform",
+            ))?,
+        };
+        if !regions::path_visible(
+            p,
+            tile,
+            self.device,
+            &mut self.work,
+            self.limits.raster_work,
+        )? {
+            return Ok(None);
+        }
         let clip = self.clip(p.clip.as_ref(), tile)?;
         let mask = match &p.mark {
             Mark::Fill(rule) => clip.clipped_path(&p.path, self.device, *rule, self.limits)?,
             Mark::Stroke(stroke, ctm, adjust) => {
-                let inverse = ctm.inverse().ok_or(Error::unsupported(
-                    crate::features::SINGULAR_STROKE,
-                    "singular stroke transform",
-                ))?;
                 let path = p.path.transformed(inverse);
                 let outline = if *adjust {
                     adjusted_stroke_outline
@@ -870,8 +895,11 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
                     .iter_mut()
                     .zip(pixels)
                 {
-                    let color = model.rgb(pixel.straight());
                     let alpha = pixel.alpha;
+                    if alpha == 0.0 {
+                        continue;
+                    }
+                    let color = model.rgb(pixel.straight());
                     for (i, out) in target.iter_mut().enumerate().take(3) {
                         *out = quantize(color[i] * alpha + f64::from(*out) / 255.0 * (1.0 - alpha));
                     }
