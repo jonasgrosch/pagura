@@ -2,15 +2,32 @@
   "schema": 1,
   "latency_ratio_max": 0.8,
   "peak_rss_ratio_max": 1.0,
-  "statistics": ["median", "p95"],
+  "statistics": [
+    "median",
+    "p95"
+  ],
   "confidence": 0.95,
   "bootstrap_resamples": 5000,
   "minimum_samples": 100,
   "minimum_warmups": 5,
   "timeout_seconds": 30,
   "maximum_output_bytes": 67108864,
-  "required_engines": ["pdfium", "mupdf", "pdfjs", "poppler", "hayro", "quartz", "adobe"],
-  "settings": {"dpi": 72, "page": 0, "background": "white", "output": "RGB8 PPM", "box": "MediaBox=CropBox", "annotations": true},
+  "required_engines": [
+    "pdfium",
+    "mupdf",
+    "pdfjs",
+    "poppler",
+    "hayro",
+    "quartz"
+  ],
+  "settings": {
+    "dpi": 72,
+    "page": 0,
+    "background": "white",
+    "output": "RGB8 PPM",
+    "box": "MediaBox=CropBox",
+    "annotations": true
+  },
   "quality": "exact independent analytic pixels for bootstrap; reviewed per-feature oracles required for release",
   "runner": "dedicated runner required; shared desktop results are exploratory"
 }

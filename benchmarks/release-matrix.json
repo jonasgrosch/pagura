@@ -11,8 +11,7 @@
         "pdfjs",
         "poppler",
         "hayro",
-        "quartz",
-        "adobe"
+        "quartz"
       ]
     },
     {
@@ -24,8 +23,7 @@
         "pdfjs",
         "poppler",
         "hayro",
-        "quartz",
-        "adobe"
+        "quartz"
       ]
     },
     {
@@ -37,8 +35,7 @@
         "pdfjs",
         "poppler",
         "hayro",
-        "quartz",
-        "adobe"
+        "quartz"
       ]
     },
     {
@@ -50,8 +47,7 @@
         "pdfjs",
         "poppler",
         "hayro",
-        "quartz",
-        "adobe"
+        "quartz"
       ]
     },
     {
@@ -63,8 +59,7 @@
         "pdfjs",
         "poppler",
         "hayro",
-        "quartz",
-        "adobe"
+        "quartz"
       ]
     },
     {
@@ -75,8 +70,7 @@
         "mupdf",
         "pdfjs",
         "poppler",
-        "quartz",
-        "adobe"
+        "quartz"
       ]
     },
     {
@@ -84,8 +78,7 @@
       "implemented": false,
       "engines": [
         "pdfium",
-        "mupdf",
-        "adobe"
+        "mupdf"
       ]
     },
     {
@@ -93,8 +86,7 @@
       "implemented": false,
       "engines": [
         "pdfium",
-        "mupdf",
-        "adobe"
+        "mupdf"
       ]
     }
   ],

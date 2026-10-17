@@ -77,7 +77,7 @@ class GateTests(unittest.TestCase):
         verdict = gate({"schema": 1, "suite": "release"})
         self.assertFalse(verdict["pass"])
         self.assertTrue(any("empty" in reason for reason in verdict["reasons"]))
-        self.assertTrue(any("adobe" in reason for reason in verdict["reasons"]))
+        self.assertTrue(any("missing engine identity: pdfium" in reason for reason in verdict["reasons"]))
 
     def test_stale_identity_and_incomparable_settings_fail(self):
         with tempfile.TemporaryDirectory() as folder:
