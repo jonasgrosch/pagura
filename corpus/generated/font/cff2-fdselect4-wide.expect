@@ -1,0 +1,7 @@
+count 5
+outline 1
+m 0 0
+l 200 0
+l 200 400
+l 0 400
+h

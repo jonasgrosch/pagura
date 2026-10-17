@@ -3,7 +3,7 @@ matrix 0.001 0 0 0.001 0 0
 name A 1
 advance 1 600
 advance 4 600
-code unicode 128512 1
+code full 128512 1
 outline 1
 m 0 0
 l 100 0

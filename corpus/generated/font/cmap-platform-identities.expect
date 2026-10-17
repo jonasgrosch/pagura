@@ -1,0 +1,7 @@
+has unicode 1
+has full 1
+has platform0 1
+has mac 0
+code unicode 65 1
+code full 65 2
+code platform0 65 3

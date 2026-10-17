@@ -1,15 +1,17 @@
 {
   "schema": 2,
   "area": "font",
-  "scope": "ISO 32000-2 clause 9.9, Table 124; font layouts from the referenced Type 1, CFF/Type 2 and OpenType formats. Analytic expectations from independent Python writers.",
+  "scope": "Verified only the PDF program constraints against local ISO 32000-2:2020 sponsored EC3 text: 9.6.3, 9.6.5.1/2/4, 9.7.4.1/2/3, 9.9.1/2, Tables 124/125. Binary layouts, algorithms and numeric format limits in Type 1 (including Supplement 5015), CFF 5176, Type 2 5177, TrueType Reference Manual and OpenType/ISO 14496-22:2019 remain pending primary-text review. Project resource budgets are not ISO requirements; independently written generators alone are not specification verification.",
   "requirements": [
     {
       "id": "font-truetype",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "9.9"
+        "9.6.3",
+        "9.6.5.4",
+        "9.9.1"
       ],
-      "status": "TrueType simple and composite outlines, cmap 0/4/6/12, hmtx and post",
+      "status": "TrueType/OpenType glyf outlines, cmap 0/2/4/6/10/12/13, exact subtable identities, hmtx and post; internal layouts pending primary-text review",
       "tests": [
         "font/truetype-cmap0",
         "font/truetype-cmap4",
@@ -17,17 +19,50 @@
         "font/truetype-cmap12",
         "font/truetype-short-flags",
         "font/truetype-repeat-flags",
-        "font/truetype-implied-points"
+        "font/truetype-implied-points",
+        "font/cmap-platform-identities",
+        "font/required-glyf-missing",
+        "font/required-head-missing",
+        "font/required-hhea-missing",
+        "font/required-hmtx-missing",
+        "font/required-loca-missing",
+        "font/required-maxp-missing",
+        "font/vertical-tables-ignored",
+        "font/truetype-cid-no-cmap",
+        "font/truetype-cmap2",
+        "font/truetype-cmap10",
+        "font/truetype-cmap13",
+        "font/truetype-cmap14"
       ],
-      "gaps": "No hint execution; post versions 1/2/3; other post and cmap formats remain unsupported."
+      "gaps": "Other cmap/post formats and collections are unsupported. Format 14 UVS does not change single-code PDF glyph selection and is intentionally not used. Instruction dependencies require TrueType primary review.",
+      "tables": [
+        "124"
+      ],
+      "verification": {
+        "primary_text": "ISO 32000-2:2020 sponsored EC3 local text",
+        "rule": "Require the six glyf-program tables, keep PDF-selected (3,1) distinct from (3,10) and platform 0, and ignore font vertical tables for PDF metrics.",
+        "verdict": "corrected: exact Unicode subtable identities were conflated; program-layer constraints now agree with the ISO text and minimized expectations",
+        "implementation": "Requires glyf/head/hhea/hmtx/loca/maxp; separates (3,1), (3,10), and platform 0; allows cmap-free CID programs; ignores vhea/vmtx.",
+        "expectations": "Required-table rejection, cmap identity and ignored-vertical-table fixtures derive from these ISO rules; low-level outline/cmap binary interpretations remain pending.",
+        "outside": "PdfFont::load must enforce cmap presence for simple fonts and absence for CIDFontType2, instruction-dependent auxiliary tables, and table-preservation obligations. PdfFont glyph selection must choose the single (3,0) high-byte range before lookup and use (1,0)/post fallbacks per 9.6.5.4.",
+        "pending": [
+          "TrueType Reference Manual: table layouts, quadratics, composites, cmap and post binary formats, instruction dependencies",
+          "OpenType / ISO/IEC 14496-22:2019: sfnt layouts, cmap identities beyond PDF-selected encodings, newer cmap formats"
+        ],
+        "external_status": "pending primary-text review",
+        "evidence": "ISO-derived PDF constraints plus analytic binary fixtures. Secondary read-fonts 0.41.0 comparison agrees on 26 cmap 10/13 code queries. Its mapping API does not implement format 2; no differential claim for format 2 or a primary-format known-answer dataset.",
+        "choices": "Platform 0 and (3,10) are exposed separately; supplementary Unicode mappings never impersonate PDF (3,1). Format 14 is unused because 9.6.5.4 selects by a single mapped value, while 9.7.4.2 uses explicit CIDs/GIDs. Legacy component offsets use unscaled translation; external semantics pending."
+      }
     },
     {
       "id": "font-cff",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "9.9"
+        "9.7.4.1",
+        "9.7.4.2",
+        "9.9.1"
       ],
-      "status": "CFF/CID CFF INDEX, DICT, charsets, encodings, FDSelect, Type 2 and default-instance CFF2",
+      "status": "CFF/CID CFF, all 391 standard SIDs, ISOAdobe/Expert/ExpertSubset and custom charsets, Standard/Expert/custom encodings, FDSelect 0/3/4, default CFF2 charstring and Private DICT blends; external definitions pending primary review",
       "tests": [
         "font/cff",
         "font/cff-cid",
@@ -38,15 +73,53 @@
         "font/cff-global",
         "font/cff-flex",
         "font/cff-arithmetic",
-        "font/cff-cid-fd-array"
+        "font/cff-cid-fd-array",
+        "font/opentype-cff-pdf-minimum",
+        "font/opentype-cff-missing-cmap",
+        "font/cff-multiple-fonts",
+        "font/cff-standard-sids",
+        "font/cff-expert-charset",
+        "font/cff-expert-subset",
+        "font/cff-custom-charset0",
+        "font/cff-custom-charset1",
+        "font/cff-custom-charset2",
+        "font/cff-custom-encoding0-supplement",
+        "font/cff2-fdselect4",
+        "font/cff2-private-blend",
+        "font/cff2-fdselect4-wide",
+        "font/cff2-private-blend-override",
+        "font/cff2-font-dict-matrix"
       ],
-      "gaps": "Expert predefined charsets/encoding, standard expert SIDs, FDSelect format 4 and Private DICT blends remain unsupported."
+      "gaps": "Nondefault variations, CFF2 Font DICT matrices and arbitrary PostScript are unsupported. All low-level CFF/Type 2/CFF2 definitions remain pending primary-text review despite analytic and secondary evidence.",
+      "tables": [
+        "124",
+        "125"
+      ],
+      "verification": {
+        "primary_text": "ISO 32000-2:2020 sponsored EC3 local text",
+        "rule": "Embed one CFF font, use charset CIDs for CID-keyed CFF and direct GIDs otherwise, and require CFF plus cmap rather than glyf tables for OpenType CFF.",
+        "verdict": "corrected: OpenType CFF was incorrectly required to contain the glyf branch metrics/header tables; PDF-minimum CFF+cmap fonts now agree with the text",
+        "implementation": "Rejects multiple CFF fonts, resolves nonidentity charset CIDs, requires cmap for OpenType CFF, and uses charstring advances when optional hmtx/hhea are absent.",
+        "expectations": "Single-font, nonidentity CID, minimal OpenType and missing-cmap cases agree with ISO; INDEX/DICT/charstring binary encodings and CFF2 are not verified by ISO.",
+        "outside": "PdfFont::load must validate FontFile3 subtype/dictionary compatibility, omit CFF Length1/2/3 entries, and retain direct-GID selection for non-CID CFF as already implemented.",
+        "pending": [
+          "Adobe Technical Note 5176: INDEX, DICT, charsets, predefined encodings and SID tables, FDArray/FDSelect",
+          "Adobe Technical Note 5177: Type 2 operators, widths, flex, seac, subroutines and stack limits",
+          "OpenType / ISO/IEC 14496-22:2019: CFF2, variation stores and blend semantics"
+        ],
+        "external_status": "pending primary-text review",
+        "evidence": "Secondary read-fonts 0.41.0 comparison: 668 glyph-name mappings and 1792 code mappings across the seven metadata fixtures agree, with undefined entries normalized against GID 0; the gap at ExpertEncoding code 92 was corrected following that comparison. Analytic fixtures exercise FDSelect 4 and Private DICT blends; no external known-answer dataset or primary-format verification. Secondary skrifa 0.46.2 agrees on bounds and curve counts of six default CFF2 glyphs: static, charstring blend, inherited/overridden Private DICT blends, FDSelect 4 and FD index 256. Font DICT matrix behavior disagreed and is explicitly unsupported; these comparisons are not primary-text verification.",
+        "choices": "CFF2 uses default normalized coordinates only; Private DICT vsindex initializes charstring variation selection, which a charstring vsindex can override (secondary skrifa 0.46.2 agreement, pending primary review). CFF2 Font DICT matrices return explicit Unsupported after a secondary disagreement. Random is deterministic 0.5 and flex retains curves; external semantics remain pending."
+      }
     },
     {
       "id": "font-type1",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "9.9"
+        "9.6.5.1",
+        "9.6.5.2",
+        "9.9.1",
+        "9.9.2"
       ],
       "status": "Type 1 PFA/PFB framing, eexec and charstring ciphers, subroutines, flex and seac",
       "tests": [
@@ -56,17 +129,35 @@
         "font/type1-leniv",
         "font/type1-hint-replacement",
         "font/type1-custom-encoding",
-        "font/type1-lexical"
+        "font/type1-lexical",
+        "font/type1-missing-notdef",
+        "font/type1-paint-type-ignored"
       ],
-      "gaps": "Static dictionary extraction; computed PostScript dictionaries and custom OtherSubrs are unsupported."
+      "gaps": "Static dictionary extraction; computed PostScript dictionaries and custom OtherSubrs are unsupported.",
+      "tables": [
+        "124",
+        "125"
+      ],
+      "verification": {
+        "primary_text": "ISO 32000-2:2020 sponsored EC3 local text",
+        "rule": "Type 1 exposes named glyphs and a built-in encoding with .notdef; ignore PaintType and constrain PDF eexec to binary.",
+        "verdict": "agrees at the generic program layer; PDF embedding restrictions require caller enforcement",
+        "implementation": "Requires .notdef and an encoding; returns the same geometry regardless of PaintType; supports standalone PFA hex and PFB as generic reader extensions.",
+        "expectations": "Missing-.notdef rejection and PaintType-invariant outline follow the ISO text; hex/PFB successes are standalone-format tests, not valid-PDF claims.",
+        "outside": "PdfFont::load/program must validate FontFile Length1/2/3 boundaries and binary-only eexec; enforce subset naming and encoding fallback to .notdef at the PDF dictionary layer.",
+        "pending": [
+          "Adobe Type 1 Font Format: PFA/PFB framing, ciphers, static dictionaries, charstrings, flex and hint replacement",
+          "Adobe Technical Note 5015, Type 1 Font Format Supplement: supplemented Type 1 programs"
+        ],
+        "external_status": "pending primary-text review",
+        "evidence": "Analytic outlines and independently authored binary fixtures only; no differential run or external known-answer dataset has been used."
+      }
     },
     {
       "id": "font-bounds",
-      "reference": "iso32000-2-full-text",
-      "clauses": [
-        "9.9"
-      ],
-      "status": "Bounded reads, counts, stacks, subroutine/glyph recursion and interpreter operations",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "Bounded parsers and outlines; exact linear operator/segment budgets, branching-subroutine exhaustion, prefix and expanded format mutation tests",
       "tests": [
         "font/truncated-directory",
         "font/recursive-component",
@@ -83,9 +174,42 @@
         "font/invalid-cmap-range",
         "font/descending-loca",
         "font/truncated-hmtx",
-        "font/invalid-post"
+        "font/invalid-post",
+        "font/cmap2-invalid-key",
+        "font/cmap2-invalid-offset",
+        "font/cmap10-invalid-count",
+        "font/cmap13-invalid-overlap",
+        "font/cff2-fd-index",
+        "font/cff2-fd-sentinel",
+        "font/cff2-fd-order",
+        "font/cff2-dict-underflow",
+        "font/cff2-dict-vsindex",
+        "font/cff2-dict-stack",
+        "font/cff-linear-64",
+        "font/cff-linear-subr-64",
+        "font/cff-linear-128",
+        "font/cff-linear-subr-128",
+        "font/cff-linear-256",
+        "font/cff-linear-subr-256",
+        "font/cff-branching-subrs",
+        "font/cff-nonfinite"
       ],
-      "gaps": "Budget violations are syntax errors with standalone-buffer positions; malformed outlines are reported lazily."
+      "gaps": "Budget violations are syntax errors with standalone-buffer positions; malformed outlines are reported lazily.",
+      "tables": [],
+      "verification": {
+        "primary_text": "CONTRIBUTING.md and ADR 0009 project policy",
+        "rule": "Bound every font parse and outline by explicit budgets; reject exhaustion with a buffer position.",
+        "verdict": "project policy tested; removed the unsupported claim that ISO 9.9 specifies these budgets",
+        "implementation": "Caps bytes, values, glyphs, operations, segments and recursion; positions syntax failures in the relevant font buffer.",
+        "expectations": "Hostile vectors and mutation tests assert project budgets and failure positions, independently of any ISO numeric limit.",
+        "outside": "No shared API change required; dedicated font fuzz target remains future work.",
+        "pending": [
+          "Adobe Type 1 Font Format: normative Type 1 operand stack limits",
+          "Adobe Technical Note 5177 and OpenType CFF2: normative operand/subroutine limits"
+        ],
+        "external_status": "pending primary-text review",
+        "evidence": "Project-policy fixtures measure exact operation/segment budgets for 64/128/256-line glyphs with and without subroutines; branching recursion and mutation tests exercise shared exhaustion. No claim that ISO 9.9 specifies numeric budgets."
+      }
     }
   ]
 }

@@ -17,7 +17,8 @@ pub(crate) struct Sfnt {
     glyf: Range<usize>,
     cff: Option<crate::cff::Cff>,
     locations: Vec<usize>,
-    advances: Vec<u16>,
+    advances: Option<Vec<u16>>,
+    glyph_count: u32,
     units: u16,
     cmaps: Vec<cmap::Cmap>,
     names: BTreeMap<Name, GlyphId>,
@@ -32,43 +33,35 @@ impl Sfnt {
                 .ok_or_else(|| bad(0, "missing required sfnt table"))?;
             Ok(Read::new(&data[range.clone()], range.start))
         };
-        let (units, location_format) = header(table(b"head")?)?;
-        let mut maxp = table(b"maxp")?;
-        let maxp_version = maxp.u32()?;
-        if maxp_version
-            != if signature == 0x0001_0000 {
-                0x0001_0000
+        let (units, location_format, glyph_count, advances, cff) = if signature == 0x4f54_544f {
+            let cff = cff_tables(data, &tables, limits)?;
+            let count =
+                usize::try_from(cff.glyph_count()).map_err(|_| bad(0, "glyph count overflow"))?;
+            // ISO 32000-2, 9.9.1 Table 124: CFF OpenType needs CFF and cmap,
+            // without imposing glyf's head/hhea/hmtx/loca/maxp requirements.
+            table(b"cmap")?;
+            if tables.contains_key(b"maxp") {
+                let mut maxp = table(b"maxp")?;
+                if maxp.u32()? != 0x0000_5000 || usize::from(maxp.u16()?) != count {
+                    return Err(bad(maxp.at(), "CFF and maxp glyph counts disagree"));
+                }
+            }
+            let units = if tables.contains_key(b"head") {
+                header(table(b"head")?)?.0
             } else {
-                0x0000_5000
-            }
-        {
-            return Err(bad(maxp.at(), "invalid maxp version for glyf"));
-        }
-        let glyph_count = usize::from(maxp.u16()?);
-        if signature == 0x0001_0000 {
-            maxp.skip(26)?;
-        }
-        if glyph_count == 0 {
-            return Err(bad(maxp.at(), "font has no glyphs"));
-        }
-        cap(
-            glyph_count,
-            limits.objects.min(limits.value_nodes),
-            maxp.at(),
-        )?;
-        let advances = metrics(table(b"hhea")?, table(b"hmtx")?, glyph_count)?;
-        let cff = if signature == 0x4f54_544f {
-            let range = tables
-                .get(b"CFF ")
-                .or_else(|| tables.get(b"CFF2"))
-                .ok_or_else(|| bad(0, "missing OpenType CFF table"))?;
-            let cff = crate::cff::Cff::parse(data, range.clone(), limits)?;
-            if usize::try_from(cff.glyph_count()).ok() != Some(glyph_count) {
-                return Err(bad(range.start, "CFF and maxp glyph counts disagree"));
-            }
-            Some(cff)
+                1000
+            };
+            let advances = if tables.contains_key(b"hhea") || tables.contains_key(b"hmtx") {
+                Some(metrics(table(b"hhea")?, table(b"hmtx")?, count)?)
+            } else {
+                None
+            };
+            (units, 0, count, advances, Some(cff))
         } else {
-            None
+            let (units, location_format) = header(table(b"head")?)?;
+            let glyph_count = maxp_count(table(b"maxp")?, signature, limits)?;
+            let advances = Some(metrics(table(b"hhea")?, table(b"hmtx")?, glyph_count)?);
+            (units, location_format, glyph_count, advances, None)
         };
         let (glyf, locations) = if cff.is_none() {
             let glyf = tables
@@ -109,6 +102,7 @@ impl Sfnt {
             cff,
             locations,
             advances,
+            glyph_count: u32::try_from(glyph_count).map_err(|_| bad(0, "glyph count overflow"))?,
             units,
             cmaps,
             names,
@@ -124,7 +118,7 @@ impl Sfnt {
         self.cff.as_ref()?.encoding()
     }
     pub fn glyph_count(&self) -> u32 {
-        u32::try_from(self.advances.len()).unwrap_or(0)
+        self.glyph_count
     }
     pub fn matrix(&self) -> Transform {
         self.cff.as_ref().map_or_else(
@@ -135,11 +129,15 @@ impl Sfnt {
             crate::cff::Cff::matrix,
         )
     }
-    pub fn advance(&self, glyph: GlyphId) -> Option<f64> {
-        self.advances
-            .get(usize::try_from(glyph.0).ok()?)
-            .copied()
-            .map(f64::from)
+    pub fn advance(&self, data: &[u8], glyph: GlyphId, limits: &Limits) -> Option<f64> {
+        if let Some(advances) = &self.advances {
+            advances
+                .get(usize::try_from(glyph.0).ok()?)
+                .copied()
+                .map(f64::from)
+        } else {
+            self.cff.as_ref()?.advance(data, glyph, limits)
+        }
     }
     pub fn name(&self, name: &[u8]) -> Option<GlyphId> {
         self.cff
@@ -257,4 +255,38 @@ fn header(mut head: Read<'_>) -> Result<(u16, i16)> {
         return Err(bad(head.at(), "invalid glyph data format"));
     }
     Ok((units, location_format))
+}
+
+fn cff_tables(data: &[u8], tables: &Tables, limits: &Limits) -> Result<crate::cff::Cff> {
+    let range = tables
+        .get(b"CFF ")
+        .or_else(|| tables.get(b"CFF2"))
+        .ok_or_else(|| bad(0, "missing OpenType CFF table"))?;
+    crate::cff::Cff::parse(data, range.clone(), limits)
+}
+
+fn maxp_count(mut maxp: Read<'_>, signature: u32, limits: &Limits) -> Result<usize> {
+    let maxp_version = maxp.u32()?;
+    if maxp_version
+        != if signature == 0x0001_0000 {
+            0x0001_0000
+        } else {
+            0x0000_5000
+        }
+    {
+        return Err(bad(maxp.at(), "invalid maxp version for glyf"));
+    }
+    let glyph_count = usize::from(maxp.u16()?);
+    if signature == 0x0001_0000 {
+        maxp.skip(26)?;
+    }
+    if glyph_count == 0 {
+        return Err(bad(maxp.at(), "font has no glyphs"));
+    }
+    cap(
+        glyph_count,
+        limits.objects.min(limits.value_nodes),
+        maxp.at(),
+    )?;
+    Ok(glyph_count)
 }

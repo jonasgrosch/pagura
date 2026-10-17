@@ -1,0 +1,9 @@
+count 6
+name exclamsmall 1
+name Hungarumlautsmall 2
+name dollaroldstyle 3
+name Semibold 4
+name custom 5
+encoding 65 exclamsmall
+encoding 68 Semibold
+encoding 80 custom

@@ -7,6 +7,8 @@ use std::collections::BTreeMap;
 use std::ops::Range;
 
 mod dict;
+mod predefined;
+mod select;
 pub(crate) mod strings;
 mod type2;
 mod variation;
@@ -17,8 +19,8 @@ struct Private {
     default_width: f64,
     nominal_width: f64,
     matrix: Transform,
-    vsindex: usize,
     parse_work: usize,
+    vsindex: usize,
 }
 
 #[derive(Debug)]
@@ -148,7 +150,12 @@ impl Cff {
                 limits,
             )?)
         };
-        let (private, select) = dictionaries(table, &top, data, glyphs.len(), cid, cff2, limits)?;
+        let context = Context {
+            cff2,
+            variations: &variations,
+        };
+        let (private, select) =
+            dictionaries(table, &top, data, glyphs.len(), cid, context, limits)?;
         Ok(Self {
             glyphs,
             global,
@@ -199,7 +206,7 @@ fn private_dict(
     table: Read<'_>,
     top: &dict::Dict,
     limits: &Limits,
-    cff2: bool,
+    context: Context<'_>,
     matrix: Transform,
 ) -> Result<Private> {
     let pair = top.values(18).unwrap_or(&[0.0, 0.0]);
@@ -211,7 +218,12 @@ fn private_dict(
     cap(size, limits.operations, table.base)?;
     let mut r = table.tail(offset)?;
     let at = r.at();
-    let private = dict::parse(Read::new(r.take(size)?, at), limits)?;
+    let bytes = Read::new(r.take(size)?, at);
+    let private = if context.cff2 {
+        dict::parse_private(bytes, limits, context.variations)?
+    } else {
+        dict::parse(bytes, limits)?
+    };
     let subrs = if private.has(19) {
         index(
             &mut table.tail(
@@ -220,18 +232,11 @@ fn private_dict(
                     .ok_or_else(|| bad(at, "private offset overflow"))?,
             )?,
             limits,
-            cff2,
+            context.cff2,
         )?
     } else {
         Vec::new()
     };
-    if cff2 && private.has(23) {
-        return Err(pagura_core::Error::unsupported(
-            crate::features::VARIATIONS,
-            "CFF2 Private DICT blend is not implemented",
-        )
-        .at(pagura_core::Position::Buffer(at)));
-    }
     let parse_work = size.saturating_add(subrs.len());
     cap(parse_work, limits.operations, at)?;
     Ok(Private {
@@ -239,8 +244,8 @@ fn private_dict(
         default_width: private.number(20, 0.0)?,
         nominal_width: private.number(21, 0.0)?,
         matrix,
-        vsindex: private.offset(22, Some(0))?,
         parse_work,
+        vsindex: private.offset(22, Some(0))?,
     })
 }
 
@@ -254,11 +259,15 @@ fn charset(table: Read<'_>, offset: usize, glyphs: usize, limits: &Limits) -> Re
             .collect();
     }
     if offset <= 2 {
-        return Err(pagura_core::Error::unsupported(
-            crate::features::FORMAT,
-            "predefined expert CFF charset is not implemented",
-        )
-        .at(pagura_core::Position::Buffer(table.base)));
+        let predefined = if offset == 1 {
+            predefined::EXPERT
+        } else {
+            predefined::EXPERT_SUBSET
+        };
+        return predefined
+            .get(..glyphs)
+            .map(<[u16]>::to_vec)
+            .ok_or_else(|| bad(table.base, "predefined CFF charset glyph count exceeded"));
     }
     let mut r = table.tail(offset)?;
     let format = r.u8()?;
@@ -277,52 +286,6 @@ fn charset(table: Read<'_>, offset: usize, glyphs: usize, limits: &Limits) -> Re
             return Err(bad(r.at(), "CFF charset range exceeds glyph count"));
         }
         result.extend(first..=first + left);
-    }
-    Ok(result)
-}
-
-fn fdselect(mut r: Read<'_>, glyphs: usize, fonts: usize, limits: &Limits) -> Result<Vec<usize>> {
-    cap(glyphs, limits.value_nodes, r.at())?;
-    let format = r.u8()?;
-    let mut result = Vec::with_capacity(glyphs);
-    match format {
-        0 => {
-            for _ in 0..glyphs {
-                result.push(usize::from(r.u8()?));
-            }
-        }
-        3 => {
-            let count = usize::from(r.u16()?);
-            if count == 0 || count > glyphs {
-                return Err(bad(r.at(), "invalid FDSelect range count"));
-            }
-            let mut first = usize::from(r.u16()?);
-            if first != 0 {
-                return Err(bad(r.at(), "FDSelect must start at glyph zero"));
-            }
-            for _ in 0..count {
-                let fd = usize::from(r.u8()?);
-                let next = usize::from(r.u16()?);
-                if next <= first || next > glyphs {
-                    return Err(bad(r.at(), "invalid FDSelect range"));
-                }
-                result.resize(next, fd);
-                first = next;
-            }
-            if first != glyphs {
-                return Err(bad(r.at(), "invalid FDSelect sentinel"));
-            }
-        }
-        _ => {
-            return Err(pagura_core::Error::unsupported(
-                crate::features::FORMAT,
-                "FDSelect format is not implemented",
-            )
-            .at(pagura_core::Position::Buffer(r.at())));
-        }
-    }
-    if result.iter().any(|&fd| fd >= fonts) {
-        return Err(bad(r.at(), "FDSelect index outside FDArray"));
     }
     Ok(result)
 }
@@ -388,13 +351,14 @@ fn dictionaries(
     data: &[u8],
     glyphs: usize,
     cid: bool,
-    cff2: bool,
+    context: Context<'_>,
     limits: &Limits,
 ) -> Result<(Vec<Private>, Vec<usize>)> {
+    let cff2 = context.cff2;
     let (private, select) = if cid || cff2 && top.has(0x0c24) {
         let mut array = table.tail(top.offset(0x0c24, None)?)?;
         let fonts = index(&mut array, limits, cff2)?;
-        if fonts.is_empty() || fonts.len() > 256 {
+        if fonts.is_empty() || fonts.len() > if cff2 { 65536 } else { 256 } {
             return Err(bad(array.at(), "invalid CFF FDArray count"));
         }
         let mut private = Vec::with_capacity(fonts.len());
@@ -403,11 +367,20 @@ fn dictionaries(
             cap(font.len(), remaining.operations, font.start)?;
             remaining.operations = remaining.operations.saturating_sub(font.len());
             let dict = dict::parse(Read::new(&data[font.clone()], font.start), limits)?;
+            if cff2 && dict.has(0x0c07) {
+                // Secondary outline readers disagree for this unreviewed
+                // CFF2 combination. Keep it explicit until primary review.
+                return Err(pagura_core::Error::unsupported(
+                    crate::features::FORMAT,
+                    "CFF2 Font DICT matrices are not supported",
+                )
+                .at(pagura_core::Position::Buffer(font.start)));
+            }
             let parsed = private_dict(
                 table,
                 &dict,
                 &remaining,
-                cff2,
+                context,
                 dict.matrix(Transform::IDENTITY)?,
             )?;
             remaining.value_nodes = remaining.value_nodes.saturating_sub(parsed.subrs.len() + 1);
@@ -417,7 +390,7 @@ fn dictionaries(
         let select = if cff2 && !top.has(0x0c25) && private.len() == 1 {
             vec![0; glyphs]
         } else {
-            fdselect(
+            select::parse(
                 table.tail(top.offset(0x0c25, None)?)?,
                 glyphs,
                 private.len(),
@@ -427,9 +400,21 @@ fn dictionaries(
         (private, select)
     } else {
         (
-            vec![private_dict(table, top, limits, cff2, Transform::IDENTITY)?],
+            vec![private_dict(
+                table,
+                top,
+                limits,
+                context,
+                Transform::IDENTITY,
+            )?],
             vec![0; glyphs],
         )
     };
     Ok((private, select))
+}
+
+#[derive(Clone, Copy)]
+struct Context<'a> {
+    cff2: bool,
+    variations: &'a [Vec<f64>],
 }

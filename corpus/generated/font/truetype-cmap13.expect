@@ -1,0 +1,8 @@
+has platform0 1
+has unicode 0
+code platform0 65 1
+code platform0 67 1
+code platform0 128512 2
+code platform0 1114111 2
+absent platform0 68
+absent platform0 1114112

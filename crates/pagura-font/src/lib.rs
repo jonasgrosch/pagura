@@ -55,6 +55,10 @@ pub struct GlyphId(pub u32);
 pub enum CmapSubtable {
     /// (3, 1): Windows Unicode BMP.
     WindowsUnicode,
+    /// (3, 10): Windows full Unicode; distinct from PDF's (3, 1) selection.
+    WindowsUnicodeFull,
+    /// Platform 0 Unicode subtables, distinct from Windows encodings.
+    Unicode,
     /// (3, 0): Windows Symbol.
     WindowsSymbol,
     /// (1, 0): Macintosh Roman.
@@ -163,7 +167,7 @@ impl FontProgram {
     /// to obtain their structured error.
     pub fn advance(&self, glyph: GlyphId) -> Option<f64> {
         match self.parsed.as_ref() {
-            Program::Sfnt(p) => p.advance(glyph),
+            Program::Sfnt(p) => p.advance(&self.data, glyph, &self.limits),
             Program::Cff(p) => p.advance(&self.data, glyph, &self.limits),
             Program::Type1(p) => p.advance(glyph, &self.limits),
         }
@@ -179,7 +183,7 @@ impl FontProgram {
     }
 
     /// Whether the program has a usable TrueType `cmap` subtable of this kind
-    /// (formats 0, 4, 6 or 12). How a PDF character code selects a TrueType
+    /// (formats 0, 2, 4, 6, 10, 12 or 13). How a PDF character code selects a TrueType
     /// glyph depends on which subtables exist (clause 9.6.5.4).
     pub fn has_cmap_subtable(&self, subtable: CmapSubtable) -> bool {
         match self.parsed.as_ref() {

@@ -1,6 +1,7 @@
 //! ISOAdobe glyph names and StandardEncoding (TN 5176 appendices).
+use super::predefined;
 use crate::read::{Read, bad, cap};
-use pagura_core::{Limits, Name, Position, Result};
+use pagura_core::{Limits, Name, Result};
 use std::ops::Range;
 
 const ISO_ADOBE: &str = ".notdef space exclam quotedbl numbersign dollar percent ampersand quoteright parenleft parenright asterisk plus comma hyphen period slash zero one two three four five six seven eight nine colon semicolon less equal greater question at A B C D E F G H I J K L M N O P Q R S T U V W X Y Z bracketleft backslash bracketright asciicircum underscore quoteleft a b c d e f g h i j k l m n o p q r s t u v w x y z braceleft bar braceright asciitilde exclamdown cent sterling fraction yen florin section currency quotesingle quotedblleft guillemotleft guilsinglleft guilsinglright fi fl endash dagger daggerdbl periodcentered paragraph bullet quotesinglbase quotedblbase quotedblright guillemotright ellipsis perthousand questiondown grave acute circumflex tilde macron breve dotaccent dieresis ring cedilla hungarumlaut ogonek caron emdash AE ordfeminine Lslash Oslash OE ordmasculine ae dotlessi lslash oslash oe germandbls onesuperior logicalnot mu trademark Eth onehalf plusminus Thorn onequarter divide brokenbar degree thorn threequarters twosuperior registered minus eth multiply threesuperior copyright Aacute Acircumflex Adieresis Agrave Aring Atilde Ccedilla Eacute Ecircumflex Edieresis Egrave Iacute Icircumflex Idieresis Igrave Ntilde Oacute Ocircumflex Odieresis Ograve Otilde Scaron Uacute Ucircumflex Udieresis Ugrave Yacute Ydieresis Zcaron aacute acircumflex adieresis agrave aring atilde ccedilla eacute ecircumflex edieresis egrave iacute icircumflex idieresis igrave ntilde oacute ocircumflex odieresis ograve otilde scaron uacute ucircumflex udieresis ugrave yacute ydieresis zcaron";
@@ -42,19 +43,17 @@ pub(super) fn sid(
     data: &[u8],
     limits: &Limits,
 ) -> Result<Name> {
-    if sid < 229 {
-        return ISO_ADOBE
-            .split_ascii_whitespace()
-            .nth(usize::from(sid))
-            .map(|s| Name::new(s.as_bytes()))
-            .ok_or_else(|| bad(0, "invalid standard SID"));
-    }
     if sid < 391 {
-        return Err(pagura_core::Error::unsupported(
-            crate::features::FORMAT,
-            "expert standard CFF string is not implemented",
-        )
-        .at(Position::Buffer(0)));
+        let value = if sid < 229 {
+            ISO_ADOBE.split_ascii_whitespace().nth(usize::from(sid))
+        } else {
+            predefined::EXPERT_STRINGS
+                .split_ascii_whitespace()
+                .nth(usize::from(sid) - 229)
+        }
+        .ok_or_else(|| bad(0, "invalid standard CFF SID"))?;
+        cap(value.len(), limits.string_bytes, 0)?;
+        return Ok(Name::new(value.as_bytes()));
     }
     let range = strings
         .get(usize::from(sid) - 391)
@@ -83,11 +82,12 @@ pub(super) fn encoding(
         return Ok(result);
     }
     if offset == 1 {
-        return Err(pagura_core::Error::unsupported(
-            crate::features::FORMAT,
-            "ExpertEncoding is not implemented",
-        )
-        .at(Position::Buffer(table.base)));
+        for code in 0..=255_u8 {
+            if let Some(id) = predefined::expert_sid(code) {
+                result[usize::from(code)] = Some(sid(id, strings, data, limits)?);
+            }
+        }
+        return Ok(result);
     }
     let mut r = table.tail(offset)?;
     let format = r.u8()?;

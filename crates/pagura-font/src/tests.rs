@@ -15,33 +15,12 @@ fn vector(name: &str, format: FontFormat) {
     let bytes = pagura_testkit::fixture("font", &format!("{name}.font"));
     let expected =
         String::from_utf8(pagura_testkit::fixture("font", &format!("{name}.expect"))).unwrap();
-    let parsed = FontProgram::parse(bytes, format, &Limits::default());
-    if expected == "parse-error\n" {
-        let error = parsed.unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Syntax, "{name}: {error}");
-        assert!(matches!(error.position, Position::Buffer(_)));
+    let Some(font) = expected_parse(bytes, format, &expected, name) else {
         return;
-    }
-    let font = parsed.unwrap_or_else(|e| panic!("{name}: {e}"));
+    };
     assert_eq!(font.format(), format);
     let mut glyph = None;
     let mut builder = PathBuilder::new();
-    let check = |glyph: Option<GlyphId>, builder: &mut PathBuilder| {
-        if let Some(glyph) = glyph {
-            let actual = font
-                .outline(glyph)
-                .unwrap_or_else(|e| panic!("{name} {glyph:?}: {e}"));
-            let expected = builder.finish();
-            assert_eq!(
-                actual.segments().len(),
-                expected.segments().len(),
-                "{name} {glyph:?}: {actual:?} vs {expected:?}"
-            );
-            for (a, b) in actual.segments().iter().zip(expected.segments()) {
-                compare_segment(*a, *b, name);
-            }
-        }
-    };
     for line in expected.lines() {
         let words: Vec<_> = line.split_ascii_whitespace().collect();
         let n = |i: usize| words[i].parse::<f64>().unwrap();
@@ -64,27 +43,48 @@ fn vector(name: &str, format: FontFormat) {
                     .as_bytes(),
                 words[2].as_bytes()
             ),
+            "has" => {
+                let selection = selection(words[1]);
+                assert_eq!(font.has_cmap_subtable(selection), u(2) != 0, "{name}");
+            }
+            "absent" => assert_eq!(
+                font.glyph_for_code(selection(words[1]), u(2)),
+                None,
+                "{name}"
+            ),
             "code" => {
-                let selection = match words[1] {
-                    "mac" => CmapSubtable::MacRoman,
-                    "symbol" => CmapSubtable::WindowsSymbol,
-                    _ => CmapSubtable::WindowsUnicode,
-                };
+                let selection = selection(words[1]);
                 assert_eq!(
                     font.glyph_for_code(selection, u(2)),
                     Some(GlyphId(u(3))),
                     "{name}"
                 );
             }
-            "outline" => {
-                check(glyph.take(), &mut builder);
-                glyph = Some(GlyphId(u(1)));
-            }
-            "outline-error" => {
-                let error = font.outline(GlyphId(u(1))).unwrap_err();
-                assert_eq!(error.kind, ErrorKind::Syntax, "{name}: {error}");
+            "budget" => budget(
+                &font,
+                GlyphId(u(1)),
+                usize::try_from(u(2)).unwrap(),
+                usize::try_from(u(3)).unwrap(),
+            ),
+            "budget-error" => {
+                let limited = FontProgram::parse(
+                    font.data().to_vec(),
+                    format,
+                    &Limits {
+                        operations: usize::try_from(u(2)).unwrap(),
+                        ..Limits::default()
+                    },
+                )
+                .unwrap();
+                let error = limited.outline(GlyphId(u(1))).unwrap_err();
+                assert_eq!(error.kind, ErrorKind::Syntax);
                 assert!(matches!(error.position, Position::Buffer(_)));
             }
+            "outline" => {
+                check_outline(&font, name, glyph.take(), &mut builder);
+                glyph = Some(GlyphId(u(1)));
+            }
+            "outline-error" => outline_error(&font, GlyphId(u(1)), name),
             "m" => {
                 builder.move_to(Point::new(n(1), n(2)));
             }
@@ -106,7 +106,7 @@ fn vector(name: &str, format: FontFormat) {
             _ => panic!("invalid font expectation"),
         }
     }
-    check(glyph, &mut builder);
+    check_outline(&font, name, glyph, &mut builder);
     assert!(font.outline(GlyphId(u32::MAX)).is_err());
     assert_eq!(font.advance(GlyphId(u32::MAX)), None);
     assert_eq!(font.glyph_for_name(b"no such glyph"), None);
@@ -163,6 +163,7 @@ fn invalid_tables_charstrings_and_cycles_have_buffer_positions() {
         "cff-mask",
         "cff-seac-cycle",
         "cff-index-overflow",
+        "cff-nonfinite",
     ] {
         vector(name, FontFormat::Cff);
     }
@@ -231,11 +232,11 @@ fn cmap_missing_glyph_and_unicode_ranges() {
     );
     let full = font("truetype-cmap12", FontFormat::TrueType);
     assert_eq!(
-        full.glyph_for_code(CmapSubtable::WindowsUnicode, 0x1f601),
+        full.glyph_for_code(CmapSubtable::WindowsUnicodeFull, 0x1f601),
         Some(GlyphId(2))
     );
     assert_eq!(
-        full.glyph_for_code(CmapSubtable::WindowsUnicode, 0x1f602),
+        full.glyph_for_code(CmapSubtable::WindowsUnicodeFull, 0x1f602),
         None
     );
 }
@@ -343,6 +344,12 @@ fn mutated_programs_respect_small_budgets() {
     for (name, format) in [
         ("cff", FontFormat::Cff),
         ("cff-cid-fd-array", FontFormat::Cff),
+        ("cff-expert-charset", FontFormat::Cff),
+        ("cff2-private-blend", FontFormat::OpenType),
+        ("cff2-fdselect4", FontFormat::OpenType),
+        ("truetype-cmap2", FontFormat::TrueType),
+        ("truetype-cmap10", FontFormat::TrueType),
+        ("truetype-cmap13", FontFormat::TrueType),
         ("cff2-default-blend", FontFormat::OpenType),
         ("truetype-cmap4", FontFormat::TrueType),
         ("type1-pfb", FontFormat::Type1),
@@ -361,4 +368,189 @@ fn mutated_programs_respect_small_budgets() {
             }
         }
     }
+}
+
+#[test]
+fn pdf_program_constraints_from_iso_text() {
+    for name in [
+        "cmap-platform-identities",
+        "vertical-tables-ignored",
+        "required-glyf-missing",
+        "required-head-missing",
+        "required-hhea-missing",
+        "required-hmtx-missing",
+        "required-loca-missing",
+        "required-maxp-missing",
+    ] {
+        vector(name, FontFormat::TrueType);
+    }
+    for name in ["opentype-cff-pdf-minimum", "opentype-cff-missing-cmap"] {
+        vector(name, FontFormat::OpenType);
+    }
+    let full = font("truetype-cmap12", FontFormat::TrueType);
+    assert!(!full.has_cmap_subtable(CmapSubtable::WindowsUnicode));
+    assert!(full.has_cmap_subtable(CmapSubtable::WindowsUnicodeFull));
+}
+
+#[test]
+fn pdf_font_count_and_notdef_rules() {
+    vector("cff-multiple-fonts", FontFormat::Cff);
+    vector("type1-missing-notdef", FontFormat::Type1);
+    vector("type1-paint-type-ignored", FontFormat::Type1);
+    vector("truetype-cid-no-cmap", FontFormat::TrueType);
+}
+
+fn selection(name: &str) -> CmapSubtable {
+    match name {
+        "mac" => CmapSubtable::MacRoman,
+        "symbol" => CmapSubtable::WindowsSymbol,
+        "full" => CmapSubtable::WindowsUnicodeFull,
+        "platform0" => CmapSubtable::Unicode,
+        _ => CmapSubtable::WindowsUnicode,
+    }
+}
+
+#[test]
+fn extended_font_formats_from_independent_vectors() {
+    for name in [
+        "cff-standard-sids",
+        "cff-expert-charset",
+        "cff-expert-subset",
+        "cff-custom-charset0",
+        "cff-custom-charset1",
+        "cff-custom-charset2",
+        "cff-custom-encoding0-supplement",
+    ] {
+        vector(name, FontFormat::Cff);
+    }
+    for name in [
+        "truetype-cmap2",
+        "truetype-cmap10",
+        "truetype-cmap13",
+        "truetype-cmap14",
+        "cmap2-invalid-key",
+        "cmap2-invalid-offset",
+        "cmap10-invalid-count",
+        "cmap13-invalid-overlap",
+    ] {
+        vector(name, FontFormat::TrueType);
+    }
+    for name in [
+        "cff2-fdselect4",
+        "cff2-fdselect4-wide",
+        "cff2-private-blend",
+        "cff2-private-blend-override",
+        "cff2-font-dict-matrix",
+        "cff2-fd-index",
+        "cff2-fd-sentinel",
+        "cff2-fd-order",
+        "cff2-dict-underflow",
+        "cff2-dict-vsindex",
+        "cff2-dict-stack",
+    ] {
+        vector(name, FontFormat::OpenType);
+    }
+}
+
+fn budget(font: &FontProgram, glyph: GlyphId, operations: usize, segments: usize) {
+    let limits = Limits {
+        operations,
+        path_segments: segments,
+        ..Limits::default()
+    };
+    let p = FontProgram::parse(font.data().to_vec(), font.format(), &limits).unwrap();
+    assert_eq!(p.outline(glyph).unwrap().segments().len(), segments);
+    for limits in [
+        Limits {
+            operations: operations - 1,
+            ..limits
+        },
+        Limits {
+            path_segments: segments - 1,
+            ..limits
+        },
+    ] {
+        let p = FontProgram::parse(font.data().to_vec(), font.format(), &limits).unwrap();
+        let error = p.outline(glyph).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        assert!(matches!(error.position, Position::Buffer(_)));
+    }
+}
+#[test]
+fn outline_work_scales_with_input_and_expansion() {
+    for n in [64, 128, 256] {
+        vector(&format!("cff-linear-{n}"), FontFormat::Cff);
+        vector(&format!("cff-linear-subr-{n}"), FontFormat::Cff);
+    }
+    vector("cff-branching-subrs", FontFormat::Cff);
+}
+
+fn check_outline(
+    font: &FontProgram,
+    name: &str,
+    glyph: Option<GlyphId>,
+    builder: &mut PathBuilder,
+) {
+    if let Some(glyph) = glyph {
+        let actual = font
+            .outline(glyph)
+            .unwrap_or_else(|e| panic!("{name} {glyph:?}: {e}"));
+        let expected = builder.finish();
+        assert_eq!(
+            actual.segments().len(),
+            expected.segments().len(),
+            "{name} {glyph:?}: {actual:?} vs {expected:?}"
+        );
+        for (a, b) in actual.segments().iter().zip(expected.segments()) {
+            compare_segment(*a, *b, name);
+        }
+    }
+}
+
+#[test]
+fn compressed_unicode_ranges_do_not_expand() {
+    let bytes = pagura_testkit::fixture("font", "truetype-cmap13.font");
+    let p = FontProgram::parse(
+        bytes,
+        FontFormat::TrueType,
+        &Limits {
+            objects: 8,
+            value_nodes: 8,
+            operations: 64,
+            ..Limits::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        p.glyph_for_code(CmapSubtable::Unicode, 0x0010_ffff),
+        Some(GlyphId(2))
+    );
+}
+
+fn outline_error(font: &FontProgram, glyph: GlyphId, name: &str) {
+    let error = font.outline(glyph).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Syntax, "{name}: {error}");
+    assert!(matches!(error.position, Position::Buffer(_)));
+}
+
+fn expected_parse(
+    bytes: Vec<u8>,
+    format: FontFormat,
+    expected: &str,
+    name: &str,
+) -> Option<FontProgram> {
+    let parsed = FontProgram::parse(bytes, format, &Limits::default());
+    if let Some(tag) = expected.trim().strip_prefix("unsupported ") {
+        let error = parsed.unwrap_err();
+        assert_eq!(error.feature().unwrap().as_str(), tag);
+        assert!(matches!(error.position, Position::Buffer(_)));
+        return None;
+    }
+    if expected == "parse-error\n" {
+        let error = parsed.unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax, "{name}: {error}");
+        assert!(matches!(error.position, Position::Buffer(_)));
+        return None;
+    }
+    Some(parsed.unwrap_or_else(|e| panic!("{name}: {e}")))
 }

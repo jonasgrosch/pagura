@@ -1,4 +1,4 @@
-//! CFF DICT numbers and operators, independently decoded from TN 5176.
+//! Checked CFF DICT evaluation; TN 5176 and CFF2 primary review pending.
 use crate::read::{Read, bad, cap};
 use pagura_core::{Limits, Result};
 use pagura_raster::Transform;
@@ -91,10 +91,19 @@ fn real_number(r: &mut Read<'_>) -> Result<f64> {
         }
     }
 }
-pub(super) fn parse(mut r: Read<'_>, limits: &Limits) -> Result<Dict> {
+pub(super) fn parse(r: Read<'_>, limits: &Limits) -> Result<Dict> {
+    parse_inner(r, limits, None)
+}
+
+pub(super) fn parse_private(r: Read<'_>, limits: &Limits, variations: &[Vec<f64>]) -> Result<Dict> {
+    parse_inner(r, limits, Some(variations))
+}
+
+fn parse_inner(mut r: Read<'_>, limits: &Limits, variations: Option<&[Vec<f64>]>) -> Result<Dict> {
     let mut entries = BTreeMap::new();
     let mut stack = Vec::new();
     let mut work = 0;
+    let mut vsindex = 0;
     while r.pos < r.data.len() {
         work += 1;
         cap(work, limits.operations, r.at())?;
@@ -108,6 +117,24 @@ pub(super) fn parse(mut r: Read<'_>, limits: &Limits) -> Result<Dict> {
             } else {
                 u16::from(byte)
             };
+            if let Some(variations) = variations {
+                if op == 22 {
+                    let [value] = stack.as_slice() else {
+                        return Err(bad(r.at(), "invalid CFF2 DICT vsindex operands"));
+                    };
+                    vsindex = integer(*value, r.at())?;
+                    if vsindex >= variations.len() {
+                        return Err(bad(r.at(), "CFF2 DICT vsindex out of range"));
+                    }
+                    entries.insert(22, std::mem::take(&mut stack));
+                    cap(entries.len(), limits.value_nodes, r.at())?;
+                    continue;
+                }
+                if op == 23 {
+                    blend(&mut stack, vsindex, variations, r.at())?;
+                    continue;
+                }
+            }
             if entries.insert(op, std::mem::take(&mut stack)).is_some() {
                 return Err(bad(r.at(), "duplicate CFF DICT operator"));
             }
@@ -121,4 +148,62 @@ pub(super) fn parse(mut r: Read<'_>, limits: &Limits) -> Result<Dict> {
         entries,
         at: r.base,
     })
+}
+
+// DICT delta-encoded arrays are accumulated by their consumers, after blending.
+fn blend(stack: &mut Vec<f64>, vsindex: usize, variations: &[Vec<f64>], at: usize) -> Result<()> {
+    let count = integer(
+        stack
+            .pop()
+            .ok_or_else(|| bad(at, "missing CFF2 DICT blend count"))?,
+        at,
+    )?;
+    let coefficients = variations
+        .get(vsindex)
+        .ok_or_else(|| bad(at, "missing CFF2 DICT variation data"))?;
+    let size = count
+        .checked_mul(coefficients.len() + 1)
+        .ok_or_else(|| bad(at, "CFF2 DICT blend size overflow"))?;
+    if count == 0 || size > stack.len() {
+        return Err(bad(at, "CFF2 DICT blend stack underflow"));
+    }
+    let first = stack.len() - size;
+    for i in 0..count {
+        let mut value = stack[first + i];
+        for (j, coefficient) in coefficients.iter().enumerate() {
+            value += coefficient * stack[first + count + i * coefficients.len() + j];
+        }
+        if !value.is_finite() {
+            return Err(bad(at, "nonfinite CFF2 DICT blend result"));
+        }
+        stack[first + i] = value;
+    }
+    stack.truncate(first + count);
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Read, parse_private};
+    use pagura_core::{ErrorKind, Limits, Position};
+    #[test]
+    fn blends_preserve_preceding_operands_and_feed_dict_operators() {
+        // The first coefficient is zero at default, the second one is one.
+        let data = [144, 149, 159, 169, 140, 23, 6]; // 5,10,20,30,1 blend BlueValues
+        let dict =
+            parse_private(Read::new(&data, 100), &Limits::default(), &[vec![0.0, 1.0]]).unwrap();
+        assert_eq!(dict.values(6), Some([5.0, 40.0].as_slice()));
+        let small = Limits {
+            value_nodes: 1,
+            ..Limits::default()
+        };
+        assert!(parse_private(Read::new(&[139, 19, 139, 22], 0), &small, &[vec![1.0]]).is_err());
+        for malformed in [&[140, 23][..], &[140, 22][..], &[139, 23][..]] {
+            let e = parse_private(Read::new(malformed, 20), &Limits::default(), &[vec![1.0]])
+                .err()
+                .unwrap();
+            assert_eq!(e.kind, ErrorKind::Syntax);
+            assert!(matches!(e.position, Position::Buffer(_)));
+        }
+    }
 }

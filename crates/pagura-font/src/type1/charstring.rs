@@ -270,7 +270,9 @@ fn run(
             _ => return Err(bad(at, "invalid Type 1 charstring operator")),
         }
         cap(s.stack.len(), 24.min(w.limits.value_nodes), at)?;
-        if s.stack.iter().any(|n| !n.is_finite()) {
+        // Finite operands are an invariant: arithmetic writes only the top
+        // operand, and blend validates every value it writes in place.
+        if s.stack.last().is_some_and(|n| !n.is_finite()) {
             return Err(bad(at, "nonfinite Type 1 operand"));
         }
     }

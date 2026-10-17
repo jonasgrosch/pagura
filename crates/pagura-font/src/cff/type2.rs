@@ -79,6 +79,8 @@ fn load(
         width: None,
         hints: 0,
         seac: None,
+        // Inherited selection agrees with skrifa 0.46.2; CFF2's primary
+        // text remains pending review (see the requirement registry).
         vsindex: private.vsindex,
     };
     run(
@@ -316,7 +318,9 @@ fn run(
             if font.cff2 { 513 } else { 48 }.min(work.limits.value_nodes),
             at,
         )?;
-        if state.stack.iter().any(|n| !n.is_finite()) {
+        // Finite operands are an invariant: arithmetic writes only the top
+        // operand, and blend validates every value it writes in place.
+        if state.stack.last().is_some_and(|n| !n.is_finite()) {
             return Err(bad(at, "nonfinite charstring operand"));
         }
     }
@@ -347,6 +351,9 @@ fn blend(font: &Cff, state: &mut State, at: usize) -> Result<()> {
         let mut value = state.stack[start + i];
         for (j, coefficient) in coefficients.iter().enumerate() {
             value += coefficient * state.stack[start + count + i * coefficients.len() + j];
+        }
+        if !value.is_finite() {
+            return Err(bad(at, "nonfinite charstring blend result"));
         }
         state.stack[start + i] = value;
     }

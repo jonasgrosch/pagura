@@ -1,12 +1,15 @@
-//! Validated cmap formats 0, 4, 6 and 12; selection never expands code ranges.
+//! Validated cmap formats 0, 2, 4, 6, 10, 12 and 13; selection never expands code ranges.
 use crate::read::{Read, bad, cap};
 use crate::{CmapSubtable, GlyphId};
 use pagura_core::{Limits, Result};
+use std::ops::Range;
+
+mod extended;
 
 #[derive(Debug)]
 pub(super) struct Cmap {
     pub selection: CmapSubtable,
-    offset: usize,
+    range: Range<usize>,
     format: u16,
 }
 
@@ -24,30 +27,42 @@ pub(super) fn parse(mut r: Read<'_>, glyphs: usize, limits: &Limits) -> Result<V
         let offset = r.offset()?;
         let mut sub = r.tail(offset)?;
         let format = sub.u16()?;
-        if !matches!(format, 0 | 4 | 6 | 12) {
+        if !matches!(format, 0 | 2 | 4 | 6 | 10 | 12 | 13) {
             continue;
         }
-        validate(r.tail(offset)?, glyphs, limits, &mut work)?;
+        let length = validate(r.tail(offset)?, glyphs, limits, &mut work)?;
         let selection = match (platform, encoding) {
-            (0, _) | (3, 1 | 10) => CmapSubtable::WindowsUnicode,
+            (3, 1) => CmapSubtable::WindowsUnicode,
+            (3, 10) => CmapSubtable::WindowsUnicodeFull,
+            (0, _) => CmapSubtable::Unicode,
             (3, 0) => CmapSubtable::WindowsSymbol,
             (1, 0) => CmapSubtable::MacRoman,
             _ => continue,
         };
         result.push(Cmap {
             selection,
-            offset: r.base + offset,
+            range: r.base + offset..r.base + offset + length,
             format,
         });
     }
     // Prefer full Unicode over BMP; keep the directory order for ties.
-    result.sort_by_key(|c| std::cmp::Reverse(c.format));
+    result.sort_by_key(|c| {
+        std::cmp::Reverse(match c.format {
+            12 => 7,
+            10 => 6,
+            4 => 5,
+            6 => 4,
+            2 => 3,
+            0 => 2,
+            _ => 1,
+        })
+    });
     Ok(result)
 }
 
-fn validate(mut r: Read<'_>, glyphs: usize, limits: &Limits, work: &mut usize) -> Result<()> {
+fn validate(mut r: Read<'_>, glyphs: usize, limits: &Limits, work: &mut usize) -> Result<usize> {
     let format = r.u16()?;
-    let length = if format == 12 {
+    let length = if matches!(format, 10 | 12 | 13) {
         if r.u16()? != 0 {
             return Err(bad(r.at(), "invalid cmap reserved field"));
         }
@@ -72,6 +87,8 @@ fn validate(mut r: Read<'_>, glyphs: usize, limits: &Limits, work: &mut usize) -
                 }
             }
         }
+        2 => extended::validate_two(r, glyphs, limits, work)?,
+        10 => extended::validate_ten(r, glyphs, limits, work)?,
         6 => {
             r.skip(6)?;
             let first = usize::from(r.u16()?);
@@ -88,7 +105,7 @@ fn validate(mut r: Read<'_>, glyphs: usize, limits: &Limits, work: &mut usize) -
             }
         }
         4 => validate_four(r, glyphs, limits, work)?,
-        12 => {
+        12 | 13 => {
             r.skip(12)?;
             let count = r.offset()?;
             *work = work.saturating_add(count);
@@ -103,7 +120,7 @@ fn validate(mut r: Read<'_>, glyphs: usize, limits: &Limits, work: &mut usize) -
                     || end > 0x0010_ffff
                     || previous.is_some_and(|p| start <= p)
                     || gid
-                        .checked_add(end - start)
+                        .checked_add(if format == 13 { 0 } else { end - start })
                         .is_none_or(|g| u64::from(g) >= glyphs as u64)
                 {
                     return Err(bad(r.at(), "invalid cmap group"));
@@ -113,7 +130,7 @@ fn validate(mut r: Read<'_>, glyphs: usize, limits: &Limits, work: &mut usize) -
         }
         _ => return Err(bad(r.at(), "invalid cmap format")),
     }
-    Ok(())
+    Ok(length)
 }
 
 fn validate_four(mut r: Read<'_>, glyphs: usize, limits: &Limits, work: &mut usize) -> Result<()> {
@@ -201,7 +218,7 @@ fn lookup_four(data: &[u8], code: u16, count: usize, ranges: usize) -> Result<u1
 
 impl Cmap {
     pub fn lookup(&self, data: &[u8], code: u32) -> Option<GlyphId> {
-        let mut r = Read::new(data.get(self.offset..)?, self.offset);
+        let mut r = Read::new(data.get(self.range.clone())?, self.range.start);
         let glyph = match self.format {
             0 => {
                 if code > 255 {
@@ -210,10 +227,20 @@ impl Cmap {
                 r.skip(6 + usize::try_from(code).ok()?).ok()?;
                 u32::from(r.u8().ok()?)
             }
-            6 => {
-                r.skip(6).ok()?;
-                let first = u32::from(r.u16().ok()?);
-                let count = u32::from(r.u16().ok()?);
+            2 => {
+                if code > 65535 {
+                    return None;
+                }
+                u32::from(extended::lookup_two(r.data, code).ok()?)
+            }
+            6 | 10 => {
+                let (first, count) = if self.format == 10 {
+                    r.skip(12).ok()?;
+                    (r.u32().ok()?, r.u32().ok()?)
+                } else {
+                    r.skip(6).ok()?;
+                    (u32::from(r.u16().ok()?), u32::from(r.u16().ok()?))
+                };
                 if code < first || code - first >= count {
                     return None;
                 }
@@ -226,7 +253,7 @@ impl Cmap {
                 let count = usize::from(r.u16().ok()?) / 2;
                 u32::from(lookup_four(r.data, code, count, 16 + 6 * count).ok()?)
             }
-            12 => {
+            12 | 13 => {
                 r.skip(12).ok()?;
                 let count = r.offset().ok()?;
                 let mut low = 0;
@@ -242,7 +269,9 @@ impl Cmap {
                     } else if code > end {
                         low = mid + 1;
                     } else {
-                        return Some(GlyphId(gid + code - start));
+                        return Some(GlyphId(
+                            gid + if self.format == 13 { 0 } else { code - start },
+                        ));
                     }
                 }
                 return None;
@@ -251,4 +280,9 @@ impl Cmap {
         };
         Some(GlyphId(glyph))
     }
+}
+
+fn charge(work: &mut usize, count: usize, limits: &Limits, at: usize) -> Result<()> {
+    *work = work.saturating_add(count);
+    cap(*work, limits.operations, at)
 }
