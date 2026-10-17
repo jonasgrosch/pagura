@@ -33,12 +33,11 @@ pub(crate) fn decoded<'a>(
     let decoded = chain
         .decode(&data, document.limits().decoded_bytes, &mut diagnostics)
         .map_err(|error| error.in_object(object.id()))?;
-    document.record(
+    document.report(
         diagnostics
             .take()
             .into_iter()
-            .map(|diagnostic| diagnostic.in_object(object.id()))
-            .collect(),
+            .map(|diagnostic| diagnostic.in_object(object.id())),
     );
     Ok(match decoded {
         Cow::Owned(bytes) => Cow::Owned(bytes),
@@ -66,12 +65,11 @@ pub(crate) fn image<'a>(
     let decoded = chain
         .decode(&data, document.limits().decoded_bytes, &mut diagnostics)
         .map_err(|error| error.in_object(object.id()))?;
-    document.record(
+    document.report(
         diagnostics
             .take()
             .into_iter()
-            .map(|diagnostic| diagnostic.in_object(object.id()))
-            .collect(),
+            .map(|diagnostic| diagnostic.in_object(object.id())),
     );
     let data = match decoded {
         Cow::Owned(bytes) => Cow::Owned(bytes),

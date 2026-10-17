@@ -222,6 +222,55 @@
         "document/security-indirect-filter"
       ],
       "gaps": "crypt-filter scalar fields currently require direct values"
+    },
+    {
+      "id": "document-diagnostic-bounds",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "C.1"
+      ],
+      "status": "implemented; retention policy in ADR 0012",
+      "tests": [
+        "document/diagnostics-repeated-decode",
+        "pagura-document diagnostics unit tests"
+      ],
+      "gaps": "suppression counts omitted report occurrences, not distinct omitted identities"
+    },
+    {
+      "id": "document-retained-memory",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.10",
+        "7.5.7",
+        "7.7.3.4",
+        "C.1"
+      ],
+      "status": "implemented; accounting policy in ADR 0012",
+      "tests": [
+        "document/cache-large-values",
+        "document/cache-lazy-object-stream",
+        "document/pages-shared-resources",
+        "pagura-core retained estimates",
+        "pagura-document memory and page reservation tests"
+      ],
+      "gaps": "estimated retained caches; original input, temporary work, security auxiliary state and rendering/caller allocations use separate budgets"
+    },
+    {
+      "id": "document-loading-bounds",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.8.1",
+        "7.3.10",
+        "C.1"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/length-self-cycle",
+        "document/length-mutual-cycle",
+        "document/length-chain-depth",
+        "document/length-chain-short"
+      ],
+      "gaps": "dependency cycles are errors; excessive acyclic reference depth is a Limit, never a guessed stream length"
     }
   ]
 }

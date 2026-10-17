@@ -1610,6 +1610,129 @@
       "width": 64,
       "height": 64,
       "owner_password": "owner"
+    },
+    {
+      "id": "document/length-self-cycle",
+      "kind": "pdf",
+      "description": "Cyclic stream Length dependencies fail with a structured cycle error during page compilation",
+      "expected": "open",
+      "requirements": [
+        "document-loading-bounds"
+      ],
+      "path": "corpus/generated/document/length-self-cycle.pdf",
+      "sha256": "714cc7de58bd1f766fce93d621ce913276df47c169d65f4f345b67508d08c47d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "cycle"
+    },
+    {
+      "id": "document/length-mutual-cycle",
+      "kind": "pdf",
+      "description": "Cyclic stream Length dependencies fail with a structured cycle error during page compilation",
+      "expected": "open",
+      "requirements": [
+        "document-loading-bounds"
+      ],
+      "path": "corpus/generated/document/length-mutual-cycle.pdf",
+      "sha256": "33d699f85885af519920160b89e54930acba6732af0bbf95f26f2966489d0f2a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "cycle"
+    },
+    {
+      "id": "document/length-chain-short",
+      "kind": "pdf",
+      "description": "Indirect Length aliases terminate at an integer or fail at the configured reference-depth limit",
+      "expected": "render",
+      "requirements": [
+        "document-loading-bounds"
+      ],
+      "path": "corpus/generated/document/length-chain-short.pdf",
+      "sha256": "c208219acdf86badc5b2eb064ea97fb919bead8421df35d04f98de510b6d400b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/length-chain-short.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/length-chain-depth",
+      "kind": "pdf",
+      "description": "Indirect Length aliases terminate at an integer or fail at the configured reference-depth limit",
+      "expected": "open",
+      "requirements": [
+        "document-loading-bounds"
+      ],
+      "path": "corpus/generated/document/length-chain-depth.pdf",
+      "sha256": "fb9b67eec773b1c13d308e0ba1aad7c34861d003a147fec165977d83a3739a91",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "limit"
+    },
+    {
+      "id": "document/diagnostics-repeated-decode",
+      "kind": "pdf",
+      "description": "Repeated decoding produces the same positioned repair and retains it once per document",
+      "expected": "render",
+      "requirements": [
+        "document-diagnostic-bounds"
+      ],
+      "path": "corpus/generated/document/diagnostics-repeated-decode.pdf",
+      "sha256": "e7eac6f3a9b86f2d1e78de552e613b7d43af5f5701e7e0949d24b1d467bb182f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "filter.trailing-data"
+      ],
+      "oracle": "corpus/generated/document/diagnostics-repeated-decode.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/cache-large-values",
+      "kind": "pdf",
+      "description": "Independent large unused string objects exercise aggregate cache accounting with lowered API budgets",
+      "expected": "render",
+      "requirements": [
+        "document-retained-memory"
+      ],
+      "path": "corpus/generated/document/cache-large-values.pdf",
+      "sha256": "c04231aad689794324020586a2d9fa76e39641a66d437256575c40c0f2ab9b53",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/cache-large-values.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/cache-lazy-object-stream",
+      "kind": "pdf",
+      "description": "An object stream containing unused strings stays lazy; each retained decoded buffer is charged once",
+      "expected": "render",
+      "requirements": [
+        "document-retained-memory"
+      ],
+      "path": "corpus/generated/document/cache-lazy-object-stream.pdf",
+      "sha256": "52165654a662e6e1817cd323fa5cea0fff6bcc927e873b3c8425f6d43e22fed2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/cache-lazy-object-stream.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
     }
   ]
 }

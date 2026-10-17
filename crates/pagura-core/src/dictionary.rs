@@ -35,6 +35,26 @@ impl Dictionary {
         }
     }
 
+    /// Estimate index storage with 64 bytes of tree bookkeeping per entry;
+    /// cloned index keys own their heap bytes independently of entry keys.
+    pub(crate) fn allocation_bytes(&self) -> usize {
+        let entries = self
+            .entries
+            .capacity()
+            .saturating_mul(size_of::<(Name, Value)>());
+        let keys = self.entries.iter().fold(0_usize, |sum, (name, _)| {
+            sum.saturating_add(name.heap_bytes())
+        });
+        let index = self.index.as_ref().map_or(0, |index| {
+            index.keys().fold(0_usize, |sum, name| {
+                sum.saturating_add(size_of::<(Name, usize)>())
+                    .saturating_add(64)
+                    .saturating_add(name.heap_bytes())
+            })
+        });
+        entries.saturating_add(keys).saturating_add(index)
+    }
+
     fn position(&self, key: &[u8]) -> Option<usize> {
         match &self.index {
             Some(index) => index.get(key).copied(),

@@ -12,6 +12,7 @@ mod error;
 mod limits;
 mod name;
 mod rect;
+mod retained;
 pub mod syntax;
 mod value;
 

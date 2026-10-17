@@ -385,6 +385,8 @@ def cases():
 
     yield from field_recovery_cases()
     yield from structural_recovery_cases()
+    yield from bounded_loading_cases()
+    yield from retained_cache_cases()
 
 
 def replace_startxref(data, offset):
@@ -557,3 +559,37 @@ def structural_recovery_cases():
         data = document(objects, b"/Encrypt 5 0 R /ID [" + hex_string(ID) + b" " + hex_string(ID) + b"] ")
         yield rendered(name, data, "Unencrypted crypt-filter dictionaries may be indirect (7.3.10, 7.6.2 and 7.6.6)",
                        requirement="security-indirect-filters", extra={"owner_password": "owner"})
+
+
+def bounded_loading_cases():
+    for name, lengths in [("length-self-cycle", {4: 4}), ("length-mutual-cycle", {4: 5, 5: 4})]:
+        objects = list(OBJECTS[:3])
+        for number in sorted(lengths):
+            objects.append(b"<< /Length %d 0 R >>\nstream\n" % lengths[number] + CONTENT + b"\nendstream")
+        yield Case(name, document(objects), OPEN, ("document-loading-bounds",),
+                   "Cyclic stream Length dependencies fail with a structured cycle error during page compilation",
+                   extra={"render_error": "cycle"})
+    for name, count, expected in [("length-chain-short", 3, RENDER), ("length-chain-depth", 70, OPEN)]:
+        objects = [*OBJECTS[:3], b"<< /Length 5 0 R >>\nstream\n" + CONTENT + b"\nendstream"]
+        objects.extend(b"%d 0 R" % (number + 1) for number in range(5, 5 + count - 1))
+        objects.append(str(len(CONTENT)).encode())
+        yield Case(name, document(objects), expected, ("document-loading-bounds",),
+                   "Indirect Length aliases terminate at an integer or fail at the configured reference-depth limit",
+                   oracle=RED if expected == RENDER else None,
+                   extra={} if expected == RENDER else {"render_error": "limit"})
+    objects = list(OBJECTS)
+    objects[3] = stream(CONTENT.hex().encode() + b">extra", b"/Filter /ASCIIHexDecode ")
+    yield Case("diagnostics-repeated-decode", document(objects), RENDER, ("document-diagnostic-bounds",),
+               "Repeated decoding produces the same positioned repair and retains it once per document",
+               oracle=RED, strict_valid=False, repairs=("filter.trailing-data",))
+
+
+def retained_cache_cases():
+    yield rendered("cache-large-values", document([*OBJECTS, *[b"(" + bytes([65 + i]) * 2048 + b")" for i in range(16)]]),
+                   "Independent large unused string objects exercise aggregate cache accounting with lowered API budgets",
+                   requirement="document-retained-memory")
+    builder = base()
+    builder.packed(number=5, values=[(6, b"(" + b"A" * 2048 + b")"), (7, b"(" + b"B" * 2048 + b")")])
+    yield rendered("cache-lazy-object-stream", builder.xref(number=8),
+                   "An object stream containing unused strings stays lazy; each retained decoded buffer is charged once",
+                   requirement="document-retained-memory")

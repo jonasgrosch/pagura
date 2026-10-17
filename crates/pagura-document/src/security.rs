@@ -80,7 +80,7 @@ pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
         document.resolve(value)
     })?;
     let key = standard::authenticate(&params, &document.options.password)?;
-    document.record(diagnostics.take());
+    document.report(diagnostics.take());
     Ok(Some(Security {
         key,
         encrypt: id,

@@ -10,6 +10,9 @@
 pub struct Limits {
     /// Maximum input file size in bytes.
     pub file_bytes: usize,
+    /// Aggregate estimated bytes retained by document object, object-stream and
+    /// page/resource caches (ADR 0012). Excludes input bytes and temporary work.
+    pub document_bytes: usize,
     /// Maximum nesting depth of arrays, dictionaries and graph traversals.
     pub depth: usize,
     /// Maximum number of cross-reference entries across all revisions.
@@ -45,6 +48,7 @@ impl Default for Limits {
         const MIB: usize = 1024 * 1024;
         Self {
             file_bytes: 512 * MIB,
+            document_bytes: 128 * MIB,
             depth: 64,
             objects: 4_000_000,
             value_nodes: 1_000_000,

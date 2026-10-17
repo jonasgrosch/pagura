@@ -38,6 +38,13 @@ impl Name {
         }
     }
 
+    pub(crate) fn heap_bytes(&self) -> usize {
+        match &self.0 {
+            Repr::Heap(bytes) => bytes.len(),
+            Repr::Inline { .. } => 0,
+        }
+    }
+
     /// The decoded bytes of the name, without the leading solidus.
     pub fn as_bytes(&self) -> &[u8] {
         match &self.0 {

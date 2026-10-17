@@ -218,22 +218,44 @@ pub(crate) fn load_streams(
         if !visited.insert(id) || !document.slots.contains_key(&id) {
             continue;
         }
-        let object = document.object(id)?;
-        let Some(dictionary) = object
+        if !document
+            .object(id)?
             .dictionary()
-            .filter(|dictionary| dictionary.is_name(b"Type", b"ObjStm"))
-        else {
+            .is_some_and(|dictionary| dictionary.is_name(b"Type", b"ObjStm"))
+        {
             continue;
+        }
+        let had_cache = document.object_streams.contains_key(&id.number);
+        let cached = document
+            .object_streams
+            .remove(&id.number)
+            .and_then(std::sync::OnceLock::into_inner)
+            .transpose()?;
+        let already_charged = cached.is_some();
+        let contents = if let Some(contents) = cached {
+            contents
+        } else {
+            let object = document.object(id)?;
+            let dictionary = object
+                .dictionary()
+                .ok_or_else(|| Error::syntax("object stream must be a dictionary").in_object(id))?;
+            crate::object_stream::headers(
+                document.stream_data(object)?.into_owned(),
+                dictionary,
+                Limits {
+                    objects: remaining,
+                    ..document.limits()
+                },
+                id,
+            )?
         };
-        let contents = crate::object_stream::headers(
-            document.stream_data(object)?.into_owned(),
-            dictionary,
-            Limits {
-                objects: remaining,
-                ..document.limits()
-            },
-            id,
-        )?;
+        let mut reservation = document.retained.reservation();
+        if !already_charged {
+            reservation.charge(contents.retained_bytes(), id)?;
+        }
+        if !had_cache {
+            reservation.charge(crate::memory::stream_slot_bytes(), id)?;
+        }
         remaining = remaining
             .checked_sub(contents.len())
             .ok_or(Error::limit("reconstruction object budget exceeded").in_object(id))?;
@@ -262,7 +284,13 @@ pub(crate) fn load_streams(
                 if physical_offset(document, old)? > physical {
                     continue;
                 }
-                document.slots.remove(&old);
+                if let Some(slot) = document.slots.remove(&old)
+                    && let Some(Ok(object)) = slot.object.get()
+                {
+                    document.retained.release(object.retained_bytes());
+                }
+            } else {
+                reservation.charge(crate::memory::slot_bytes(), ObjectId::new(number, 0))?;
             }
             document.slots.insert(
                 ObjectId::new(number, 0),
@@ -278,6 +306,7 @@ pub(crate) fn load_streams(
         document
             .object_streams
             .insert(id.number, std::sync::OnceLock::from(Ok(contents)));
+        reservation.commit();
     }
     Ok(())
 }
@@ -330,9 +359,16 @@ pub(crate) fn catalog(document: &mut crate::Document) -> Result<()> {
         )
         .in_object(id),
     )?;
-    document.record(diagnostics.take());
+    document.report(diagnostics.take());
+    let before = document.trailer.retained_bytes();
     document
         .trailer
         .insert(Name::new(b"Root"), Value::Reference(id));
+    let after = document.trailer.retained_bytes();
+    if after >= before {
+        document.retained.charge(after - before, id)?;
+    } else {
+        document.retained.release(before - after);
+    }
     Ok(())
 }

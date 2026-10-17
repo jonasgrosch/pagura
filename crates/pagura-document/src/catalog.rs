@@ -71,7 +71,7 @@ pub(crate) fn validate(document: &Document) -> Result<()> {
     }
     let mut diagnostics = Diagnostics::new(document.recovery());
     diagnostics.repair(diagnostic)?;
-    document.record(diagnostics.take());
+    document.report(diagnostics.take());
     Ok(())
 }
 

@@ -131,9 +131,11 @@ pub(crate) fn read(document: &Document) -> Result<Vec<Page>> {
         pages: Vec::new(),
         shared: BTreeMap::new(),
         diagnostics: Diagnostics::new(document.recovery()),
+        reservation: document.retained.reservation(),
     };
     walk.node(root, Inherited::default(), 0)?;
-    document.record(walk.diagnostics.take());
+    document.report(walk.diagnostics.take());
+    walk.reservation.commit();
     Ok(walk.pages)
 }
 
@@ -152,6 +154,7 @@ struct Inherited<'a> {
 /// Resources entry of the page-tree node that defines it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum ResourceKey {
+    Empty,
     Object(ObjectId),
     DirectIn(ObjectId),
 }
@@ -163,6 +166,7 @@ struct Walk<'a> {
     /// One resolved copy per resource dictionary, shared by every page using it.
     shared: BTreeMap<ResourceKey, Arc<Dictionary>>,
     diagnostics: Diagnostics,
+    reservation: crate::memory::Reservation<'a>,
 }
 
 impl<'a> Walk<'a> {
@@ -262,21 +266,29 @@ impl<'a> Walk<'a> {
 
     /// Resolves the inherited Resources entry once per resource dictionary.
     fn resources(&mut self, page: ObjectId, inherited: Inherited<'a>) -> Result<Arc<Dictionary>> {
-        let Some((node, value)) = inherited.resources else {
-            return Ok(Arc::default());
-        };
-        let key = match value {
-            Value::Reference(reference) => ResourceKey::Object(*reference),
-            _ => ResourceKey::DirectIn(node),
+        let key = match inherited.resources {
+            None => ResourceKey::Empty,
+            Some((_, Value::Reference(reference))) => ResourceKey::Object(*reference),
+            Some((node, _)) => ResourceKey::DirectIn(node),
         };
         if let Some(shared) = self.shared.get(&key) {
             return Ok(Arc::clone(shared));
         }
-        let resources = match self.document.resolve(value)? {
-            Value::Dictionary(resources) => Arc::new(resources.clone()),
-            Value::Null => Arc::default(),
+        let value = inherited
+            .resources
+            .map(|(_, value)| self.document.resolve(value))
+            .transpose()?;
+        let dictionary = match value {
+            Some(Value::Dictionary(resources)) => Some(resources),
+            None | Some(Value::Null) => None,
             _ => return Err(Error::syntax("Resources must be a dictionary").in_object(page)),
         };
+        let resources =
+            dictionary.map_or_else(Arc::default, |dictionary| Arc::new(dictionary.clone()));
+        let bytes = resources
+            .retained_bytes()
+            .saturating_add(2 * size_of::<usize>());
+        self.reservation.charge(bytes, page)?;
         self.shared.insert(key, Arc::clone(&resources));
         Ok(resources)
     }
@@ -329,6 +341,13 @@ impl<'a> Walk<'a> {
                 .ok_or_else(|| Error::syntax("UserUnit must be a positive number").in_object(id))?,
         };
         let resources = self.resources(id, inherited)?;
+        let dictionary = dictionary.clone();
+        let bytes = size_of::<Page>().saturating_add(
+            dictionary
+                .retained_bytes()
+                .saturating_sub(size_of::<Dictionary>()),
+        );
+        self.reservation.charge(bytes, id)?;
         Ok(Page {
             id,
             index: self.pages.len(),
@@ -337,7 +356,7 @@ impl<'a> Walk<'a> {
             rotation,
             user_unit,
             resources,
-            dictionary: dictionary.clone(),
+            dictionary,
         })
     }
 }
@@ -370,5 +389,66 @@ mod tests {
         // The page dictionary is the page object's own, without inherited entries.
         assert!(!inherited.dictionary().contains_key(b"Resources"));
         assert!(!inherited.dictionary().contains_key(b"MediaBox"));
+    }
+}
+
+#[cfg(test)]
+mod retained_tests {
+    use super::Page;
+    use crate::{Document, OpenOptions};
+    use pagura_core::{Dictionary, ErrorKind, Limits};
+    use pagura_testkit::fixture;
+    use std::sync::Arc;
+
+    fn open(bytes: usize) -> Document {
+        let document = Document::open(
+            fixture("document", "pages-shared-resources.pdf"),
+            &OpenOptions {
+                limits: Limits {
+                    document_bytes: bytes,
+                    ..Limits::default()
+                },
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        for id in document.object_ids() {
+            document.object(id).unwrap();
+        }
+        document
+    }
+
+    #[test]
+    fn shared_resource_storage_is_charged_once_and_failed_walks_release_reservations() {
+        let document = open(usize::MAX);
+        let initial = document.retained.used();
+        let pages = document.pages().unwrap();
+        let mut unique = Vec::new();
+        let mut expected = 0;
+        for page in pages {
+            expected +=
+                size_of::<Page>() + page.dictionary.retained_bytes() - size_of::<Dictionary>();
+            if !unique
+                .iter()
+                .any(|resource| Arc::ptr_eq(resource, &page.resources))
+            {
+                unique.push(Arc::clone(&page.resources));
+                expected += page.resources.retained_bytes() + 2 * size_of::<usize>();
+            }
+        }
+        assert_eq!(unique.len(), 2);
+        assert_eq!(document.retained.used(), initial + expected);
+        let exact = open(initial + expected);
+        assert_eq!(exact.page_count().unwrap(), 4);
+        assert_eq!(exact.retained.used(), initial + expected);
+        exact.pages().unwrap();
+        assert_eq!(exact.retained.used(), initial + expected);
+        let limited = open(initial + expected - 1);
+        let error = limited.pages().unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
+        assert!(error.object.is_some());
+        assert_eq!(limited.retained.used(), initial);
+        assert_eq!(limited.pages().unwrap_err(), error);
+        assert_eq!(limited.retained.used(), initial);
     }
 }

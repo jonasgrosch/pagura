@@ -28,6 +28,12 @@ pub struct IndirectObject {
 }
 
 impl IndirectObject {
+    pub(crate) fn retained_bytes(&self) -> usize {
+        self.value
+            .retained_bytes()
+            .saturating_sub(size_of::<Value>())
+    }
+
     /// Creates an object record. Used by this crate's parsers.
     pub(crate) fn new(
         id: ObjectId,
@@ -249,16 +255,40 @@ fn stream_length(
     dictionary: &Dictionary,
     path: &mut Vec<ObjectId>,
 ) -> Result<usize> {
-    let length = match dictionary.get(b"Length") {
-        Some(Value::Integer(length)) => *length,
-        Some(Value::Reference(length_id)) => document
-            .object_inner(*length_id, path)?
-            .value()
-            .as_integer()
-            .ok_or_else(|| {
-                Error::syntax("indirect stream Length must be an integer").in_object(id)
-            })?,
-        _ => return Err(Error::syntax("stream Length must be an integer").in_object(id)),
+    let mut value = dictionary
+        .get(b"Length")
+        .ok_or_else(|| Error::syntax("stream Length must be an integer").in_object(id))?;
+    let mut visited = Vec::new();
+    let length = loop {
+        match value {
+            Value::Integer(length) => break *length,
+            Value::Reference(reference) => {
+                if visited.contains(reference) {
+                    return Err(Error::cycle("indirect stream Length cycle").in_object(*reference));
+                }
+                if visited.len() >= document.limits().depth {
+                    return Err(
+                        Error::limit("indirect stream Length depth exceeded").in_object(*reference)
+                    );
+                }
+                if dictionary.is_name(b"Type", b"ObjStm")
+                    && document.slots.get(reference).is_some_and(|slot| {
+                        matches!(slot.location, crate::Location::Compressed { .. })
+                    })
+                {
+                    return Err(
+                        Error::syntax("object stream Length cannot be compressed").in_object(id)
+                    );
+                }
+                visited.push(*reference);
+                value = document.object_inner(*reference, path)?.value();
+            }
+            _ => {
+                return Err(
+                    Error::syntax("indirect stream Length must be an integer").in_object(id)
+                );
+            }
+        }
     };
     let length = usize::try_from(length)
         .map_err(|_| Error::syntax("stream Length is negative").in_object(id))?;
@@ -503,5 +533,39 @@ mod tests {
             document.object(ObjectId::new(4, 0)).unwrap_err().kind,
             ErrorKind::Limit
         );
+    }
+}
+
+#[cfg(test)]
+mod length_dependencies {
+    use crate::{Document, OpenOptions};
+    use pagura_core::{ErrorKind, ObjectId, Recovery};
+    use pagura_testkit::fixture;
+
+    #[test]
+    fn cyclic_and_deep_lengths_remain_structured_errors_in_both_modes() {
+        for (name, expected) in [
+            ("length-self-cycle", ErrorKind::Cycle),
+            ("length-mutual-cycle", ErrorKind::Cycle),
+            ("length-chain-depth", ErrorKind::Limit),
+        ] {
+            for recovery in [Recovery::Strict, Recovery::Repair] {
+                let document = Document::open(
+                    fixture("document", &format!("{name}.pdf")),
+                    &OpenOptions {
+                        recovery,
+                        ..OpenOptions::default()
+                    },
+                )
+                .unwrap();
+                assert_eq!(document.page_count().unwrap(), 1);
+                let error = document
+                    .content_streams(document.page(0).unwrap())
+                    .unwrap_err();
+                assert_eq!(error.kind, expected);
+                let number = if expected == ErrorKind::Limit { 69 } else { 4 };
+                assert_eq!(error.object, Some(ObjectId::new(number, 0)));
+            }
+        }
     }
 }

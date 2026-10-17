@@ -13,6 +13,14 @@ pub(crate) struct Contents {
 }
 
 impl Contents {
+    pub(crate) fn retained_bytes(&self) -> usize {
+        self.data.capacity().saturating_add(
+            self.entries
+                .capacity()
+                .saturating_mul(size_of::<(u32, usize)>()),
+        )
+    }
+
     pub(crate) fn len(&self) -> usize {
         self.entries.len()
     }
@@ -74,20 +82,23 @@ pub(crate) fn parse(
             let decoded = chain
                 .decode(&encoded, document.limits().decoded_bytes, &mut diagnostics)
                 .map_err(|error| error.in_object(stream_id))?;
-            document.record(
+            document.report(
                 diagnostics
                     .take()
                     .into_iter()
-                    .map(|diagnostic| diagnostic.in_object(stream_id))
-                    .collect(),
+                    .map(|diagnostic| diagnostic.in_object(stream_id)),
             );
-            headers(
+            let contents = headers(
                 decoded.into_owned(),
                 dictionary,
                 document.limits(),
                 stream_id,
             )
-            .map_err(|error| error.in_object(stream_id))
+            .map_err(|error| error.in_object(stream_id))?;
+            document
+                .retained
+                .charge(contents.retained_bytes(), stream_id)?;
+            Ok(contents)
         })
     };
     let contents = contents.as_ref().map_err(Clone::clone)?;

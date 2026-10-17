@@ -9,7 +9,9 @@
 //! [`Document::diagnostics`].
 
 mod catalog;
+mod diagnostics;
 mod load;
+mod memory;
 mod object;
 mod object_stream;
 mod pages;
@@ -67,15 +69,15 @@ pub struct Document {
     revisions: Vec<Revision>,
     object_streams: BTreeMap<u32, OnceLock<Result<object_stream::Contents>>>,
     security: Option<security::Security>,
-    open_diagnostics: Vec<Diagnostic>,
-    lazy_diagnostics: Mutex<Vec<Diagnostic>>,
+    diagnostics: Mutex<diagnostics::Log>,
+    retained: memory::Budget,
 }
 
 /// One cross-reference entry and its lazily parsed object.
 #[derive(Debug)]
 struct Slot {
     location: Location,
-    object: OnceLock<IndirectObject>,
+    object: OnceLock<Result<IndirectObject>>,
 }
 
 impl Document {
@@ -83,7 +85,7 @@ impl Document {
     ///
     /// # Errors
     ///
-    /// Returns a limit error for oversized input, syntax errors for
+    /// Returns a limit error for oversized input or retained-cache storage, syntax errors for
     /// malformed structure that recovery cannot (or may not) repair, and
     /// `Unsupported` for structures not implemented yet.
     pub fn open(bytes: impl Into<Arc<[u8]>>, options: &OpenOptions) -> Result<Self> {
@@ -147,26 +149,43 @@ impl Document {
         self.slots.keys().copied()
     }
 
-    /// Every repair applied so far: those made while opening, then those
-    /// made while loading objects lazily, in discovery order.
+    /// Distinct reported repairs, in discovery order. Identity is the repair tag,
+    /// object and position; the first message is retained. At most 1,024 entries
+    /// are retained across opening, lazy decoding and external reports.
     pub fn diagnostics(&self) -> Vec<Diagnostic> {
-        let lazy = self
-            .lazy_diagnostics
+        self.diagnostics
             .lock()
-            .unwrap_or_else(PoisonError::into_inner);
-        self.open_diagnostics
-            .iter()
-            .chain(lazy.iter())
-            .cloned()
-            .collect()
+            .unwrap_or_else(PoisonError::into_inner)
+            .items
+            .clone()
     }
 
-    fn record(&self, diagnostics: Vec<Diagnostic>) {
-        if !diagnostics.is_empty() {
-            self.lazy_diagnostics
+    /// Number of reports omitted after the 1,024-entry diagnostic cap was reached.
+    /// Repeated retained identities are deduplicated without incrementing this
+    /// count. Omitted identities are not stored, so their repeated reports count
+    /// again. The count saturates at `usize::MAX` (ADR 0012).
+    pub fn suppressed_diagnostics(&self) -> usize {
+        self.diagnostics
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .suppressed
+    }
+
+    /// Reports repairs from any document consumer, using the same bounded store
+    /// as document parsing. Deduplicates by repair tag, object and position.
+    ///
+    /// Callers must obtain permission to repair through
+    /// [`Diagnostics::repair`] with this document's [`Self::recovery`] mode
+    /// before applying a repair. Reporting records evidence; it does not grant
+    /// permission to repair in Strict mode. See [`Self::suppressed_diagnostics`].
+    pub fn report(&self, diagnostics: impl IntoIterator<Item = Diagnostic>) {
+        // Evaluate user iterators outside the lock: they may themselves access
+        // the document or report a diagnostic.
+        for diagnostic in diagnostics {
+            self.diagnostics
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner)
-                .extend(diagnostics);
+                .push(diagnostic);
         }
     }
 
@@ -175,7 +194,8 @@ impl Document {
     /// # Errors
     ///
     /// Returns `MissingObject` if `id` is not an in-use entry, and syntax
-    /// or limit errors if the object cannot be parsed.
+    /// or limit errors if the object cannot be parsed or retained within
+    /// [`Limits::document_bytes`].
     pub fn object(&self, id: ObjectId) -> Result<&IndirectObject> {
         self.object_inner(id, &mut Vec::new())
     }
@@ -264,7 +284,8 @@ impl Document {
     ///
     /// # Errors
     ///
-    /// Returns errors from interpreting the page tree.
+    /// Returns errors from interpreting the page tree, including a limit error
+    /// if retaining its complete pages/resources exceeds [`Limits::document_bytes`].
     pub fn pages(&self) -> Result<&[Page]> {
         match self
             .pages

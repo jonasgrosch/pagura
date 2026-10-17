@@ -15,9 +15,46 @@ impl Document {
         table: xref::XrefTable,
         diagnostics: Vec<pagura_core::Diagnostic>,
     ) -> Result<Self> {
+        let root = table
+            .trailer
+            .get(b"Root")
+            .and_then(Value::as_reference)
+            .or_else(|| {
+                table
+                    .entries
+                    .iter()
+                    .find(|(number, _)| **number != 0)
+                    .map(|(&number, entry)| ObjectId::new(number, entry.generation))
+            })
+            .unwrap_or(ObjectId::new(0, 0));
+        let retained = crate::memory::Budget::new(options.limits.document_bytes);
+        // Include eager metadata before constructing the slot map. Per-node tree
+        // bookkeeping is an estimate, consistent with the core dictionary index.
+        let structure = table
+            .entries
+            .values()
+            .filter(|entry| !matches!(entry.location, Location::Free))
+            .count()
+            .saturating_mul(crate::memory::slot_bytes())
+            .saturating_add(table.trailer.retained_bytes())
+            .saturating_add(
+                table
+                    .revisions
+                    .capacity()
+                    .saturating_mul(size_of::<crate::Revision>()),
+            );
+        let structure = table.revisions.iter().fold(structure, |sum, revision| {
+            sum.saturating_add(
+                revision
+                    .trailer()
+                    .retained_bytes()
+                    .saturating_sub(size_of::<pagura_core::Dictionary>()),
+            )
+        });
+        retained.charge(structure, root)?;
         let rebuilt = table.rebuild_remaining;
         let rebuild_streams = table.rebuild_streams;
-        let object_streams = table
+        let object_streams: std::collections::BTreeMap<_, _> = table
             .entries
             .values()
             .filter_map(|entry| match entry.location {
@@ -25,6 +62,12 @@ impl Document {
                 _ => None,
             })
             .collect();
+        retained.charge(
+            object_streams
+                .len()
+                .saturating_mul(crate::memory::stream_slot_bytes()),
+            root,
+        )?;
         let slots = table
             .entries
             .into_iter()
@@ -48,9 +91,10 @@ impl Document {
             object_streams,
             security: None,
             pages: OnceLock::new(),
-            open_diagnostics: diagnostics,
-            lazy_diagnostics: Mutex::new(Vec::new()),
+            diagnostics: Mutex::new(crate::diagnostics::Log::default()),
+            retained,
         };
+        document.report(diagnostics);
         document.security = security::read(&document)?;
         document.options.password.clear();
         if let Some(remaining) = rebuilt {
@@ -82,7 +126,7 @@ impl Document {
             Error::missing_object("object is not in use or its generation differs").in_object(id)
         })?;
         if let Some(object) = slot.object.get() {
-            return Ok(object);
+            return object.as_ref().map_err(Clone::clone);
         }
         path.push(id);
         let result = match slot.location {
@@ -97,10 +141,14 @@ impl Document {
         if let Some(security) = &self.security {
             security.decrypt_object(&mut object)?;
         }
-        Ok(slot.object.get_or_init(|| {
-            self.record(diagnostics);
-            object
-        }))
+        slot.object
+            .get_or_init(|| {
+                self.retained.charge(object.retained_bytes(), id)?;
+                self.report(diagnostics);
+                Ok(object)
+            })
+            .as_ref()
+            .map_err(Clone::clone)
     }
 
     pub(crate) fn resolve_inner<'a>(
