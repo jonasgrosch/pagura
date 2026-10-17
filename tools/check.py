@@ -10,7 +10,7 @@ OFFLINE = ["--locked", "--offline"]
 COMMANDS = [
     ([sys.executable, "tools/policy.py"], {}),
     ([sys.executable, "tools/fixtures.py", "--check"], {}),
-    ([sys.executable, "tools/fontdata.py", "verify"], {}),
+    ([sys.executable, "tools/bundled_data.py", "verify"], {}),
     (CARGO + ["fmt", "--all", "--", "--check"], {}),
     (CARGO + ["clippy", *OFFLINE, "--workspace", "--all-targets", "--", "-D", "warnings"], {}),
     (CARGO + ["test", *OFFLINE, "--workspace", "--all-targets"], {}),

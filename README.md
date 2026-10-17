@@ -66,6 +66,6 @@ Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or
 otherwise, any contribution intentionally submitted for inclusion in Pagura
 shall be dual licensed as above, without any additional terms or conditions.
 
-The font metrics, font outlines and CMaps in [`data/`](data/README.md) are
-third-party data under their own permissive licences (Adobe's AFM notice,
-Apache-2.0 and BSD-3-Clause).
+The font metrics, font outlines, CMaps and Unicode data in [`data/`](data/README.md)
+are third-party data under their own permissive licences (Adobe's AFM notice,
+Apache-2.0, BSD-3-Clause and the Unicode License V3).

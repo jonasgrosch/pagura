@@ -15,6 +15,36 @@
    "url": "https://github.com/adobe-type-tools/cmap-resources/archive/refs/tags/20231115.tar.gz",
    "sha256": "a88c3beee8d2f139b47f9d7e932ec198be24991dd46fcaef2961b4b5ea855ea2",
    "licence": "BSD-3-Clause (data/cmaps/LICENSE.md)"
+  },
+  "unicode-data": {
+   "url": "https://www.unicode.org/Public/3.2-Update/UnicodeData-3.2.0.txt",
+   "sha256": "5e444028b6e76d96f9dc509609c5e3222bf609056f35e5fcde7e6fb8a58cd446",
+   "licence": "Unicode License V3 (data/unicode/LICENSE)"
+  },
+  "composition-exclusions": {
+   "url": "https://www.unicode.org/Public/3.2-Update/CompositionExclusions-3.2.0.txt",
+   "sha256": "1d3a450d0f39902710df4972ac4a60ec31fbcb54ffd4d53cd812fc1200c732cb",
+   "licence": "Unicode License V3 (data/unicode/LICENSE)"
+  },
+  "derived-normalization": {
+   "url": "https://www.unicode.org/Public/3.2-Update/DerivedNormalizationProps-3.2.0.txt",
+   "sha256": "bab49295e5f9064213762447224ccd83cea0cced0db5dcfc96f9c8a935ef67ee",
+   "licence": "Unicode License V3 (data/unicode/LICENSE)"
+  },
+  "normalization-corrections": {
+   "url": "https://www.unicode.org/Public/3.2-Update/NormalizationCorrections-3.2.0.txt",
+   "sha256": "baaf9e087853800dd850f7925420b629b27b686ecf446379a2a3d32bcba2fa35",
+   "licence": "Unicode License V3 (data/unicode/LICENSE)"
+  },
+  "normalization-test": {
+   "url": "https://www.unicode.org/Public/3.2-Update/NormalizationTest-3.2.0.txt",
+   "sha256": "c4513869bb7098d19838be4a1fd5d760843c5804bfe03bd6bbb20623ceb6e57d",
+   "licence": "Unicode License V3 (data/unicode/LICENSE)"
+  },
+  "unicode-license": {
+   "url": "https://www.unicode.org/license.txt",
+   "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96",
+   "licence": "Unicode License V3"
   }
  },
  "standard_14": {
@@ -168,6 +198,12 @@
   "fonts/Tinos-Bold.ttf": "f28af65ead96dfa99af139e0d4932fde6c602154116c49dd4db9057e4cf1f1f0",
   "fonts/Tinos-BoldItalic.ttf": "c7ddcea49e5b84fb50df15b512a6422a4868bed5724312b3421749188cecdc2b",
   "fonts/Tinos-Italic.ttf": "e6a5bc3aa15fdcc9b8111be15f67d04e9834f415898fc1a85ef489a39eb75d03",
-  "fonts/Tinos-Regular.ttf": "57c72d7e8aacdbbbb47a49e8005760cf1bdc82f6f5500c4c3fc72fdae67c7591"
+  "fonts/Tinos-Regular.ttf": "57c72d7e8aacdbbbb47a49e8005760cf1bdc82f6f5500c4c3fc72fdae67c7591",
+  "unicode/CompositionExclusions-3.2.0.txt": "1d3a450d0f39902710df4972ac4a60ec31fbcb54ffd4d53cd812fc1200c732cb",
+  "unicode/DerivedNormalizationProps-3.2.0-nfkc.txt": "f329da648117b6fd8354958082eaf44682c11bd030ed8daedd6b759e57177c29",
+  "unicode/LICENSE": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96",
+  "unicode/NormalizationCorrections-3.2.0.txt": "baaf9e087853800dd850f7925420b629b27b686ecf446379a2a3d32bcba2fa35",
+  "unicode/NormalizationTest-3.2.0.txt": "c4513869bb7098d19838be4a1fd5d760843c5804bfe03bd6bbb20623ceb6e57d",
+  "unicode/UnicodeData-3.2.0-normalization.txt": "03880f72b19a79dc160c21f62978f14363e9f46090fcc39e30c5d7ee56c568d8"
  }
 }

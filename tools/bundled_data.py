@@ -1,8 +1,12 @@
-"""Bundled font data (ADR 0009): pinned sources, extraction and verification.
+"""Bundled third-party data: pinned sources, extraction and verification.
 
-    python3 tools/fontdata.py fetch    # download the pinned source archives
-    python3 tools/fontdata.py build    # extract the selected files into data/
-    python3 tools/fontdata.py verify   # every file in data/ matches data/lock.json
+    python3 tools/bundled_data.py fetch    # download the pinned sources
+    python3 tools/bundled_data.py build    # extract the selected files into data/
+    python3 tools/bundled_data.py verify   # every file in data/ matches data/lock.json
+
+Font metrics, substitute outlines and predefined CMaps serve non-embedded
+fonts (ADR 0009); Unicode 3.2.0 normalization data serves SASLprep for
+revision 6 passwords (RFC 3454 section 4, ISO 32000-2 7.6.4.3.3).
 
 Sources are pinned by SHA-256. Archives are cached in $PAGURA_DATA_SOURCES
 (default ~/.cache/pagura-data-sources) and read member by member; nothing in
@@ -51,7 +55,36 @@ SOURCES = {
         "https://github.com/adobe-type-tools/cmap-resources/archive/refs/tags/20231115.tar.gz",
         "a88c3beee8d2f139b47f9d7e932ec198be24991dd46fcaef2961b4b5ea855ea2",
         "cmap-resources-20231115.tar.gz", "BSD-3-Clause (data/cmaps/LICENSE.md)"),
+    # Stringprep fixes Unicode 3.2 (RFC 3454 sections 3 and 4).
+    "unicode-data": Source(
+        "https://www.unicode.org/Public/3.2-Update/UnicodeData-3.2.0.txt",
+        "5e444028b6e76d96f9dc509609c5e3222bf609056f35e5fcde7e6fb8a58cd446",
+        "UnicodeData-3.2.0.txt", "Unicode License V3 (data/unicode/LICENSE)"),
+    "composition-exclusions": Source(
+        "https://www.unicode.org/Public/3.2-Update/CompositionExclusions-3.2.0.txt",
+        "1d3a450d0f39902710df4972ac4a60ec31fbcb54ffd4d53cd812fc1200c732cb",
+        "CompositionExclusions-3.2.0.txt", "Unicode License V3 (data/unicode/LICENSE)"),
+    "derived-normalization": Source(
+        "https://www.unicode.org/Public/3.2-Update/DerivedNormalizationProps-3.2.0.txt",
+        "bab49295e5f9064213762447224ccd83cea0cced0db5dcfc96f9c8a935ef67ee",
+        "DerivedNormalizationProps-3.2.0.txt", "Unicode License V3 (data/unicode/LICENSE)"),
+    "normalization-corrections": Source(
+        "https://www.unicode.org/Public/3.2-Update/NormalizationCorrections-3.2.0.txt",
+        "baaf9e087853800dd850f7925420b629b27b686ecf446379a2a3d32bcba2fa35",
+        "NormalizationCorrections-3.2.0.txt", "Unicode License V3 (data/unicode/LICENSE)"),
+    "normalization-test": Source(
+        "https://www.unicode.org/Public/3.2-Update/NormalizationTest-3.2.0.txt",
+        "c4513869bb7098d19838be4a1fd5d760843c5804bfe03bd6bbb20623ceb6e57d",
+        "NormalizationTest-3.2.0.txt", "Unicode License V3 (data/unicode/LICENSE)"),
+    "unicode-license": Source(
+        "https://www.unicode.org/license.txt",
+        "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96",
+        "unicode-license.txt", "Unicode License V3"),
 }
+
+# Derived normalization properties NFKC needs (UAX #15): composition
+# exclusions and the NFKC quick-check values.
+NORMALIZATION_PROPERTIES = ("Full_Composition_Exclusion", "NFKC_NO", "NFKC_MAYBE")
 
 # The standard 14 fonts (9.6.2.2): Adobe metrics, and a metric-compatible
 # Apache-2.0 outline where one exists. Symbol and ZapfDingbats have none.
@@ -92,6 +125,31 @@ UNICODE = {
 
 def cache() -> Path:
     return Path(os.environ.get("PAGURA_DATA_SOURCES", "~/.cache/pagura-data-sources")).expanduser()
+
+
+def unicode_selection() -> dict[str, bytes]:
+    """Unicode 3.2.0 normalization data, projected to what NFKC needs. Kept
+    lines are byte-for-byte originals; the projections are described in
+    data/README.md and data/lock.json."""
+    out: dict[str, bytes] = {}
+    data = archive("unicode-data").decode("utf-8")
+    kept = [line for line in data.splitlines()
+            if line and (line.split(";")[3] != "0" or line.split(";")[5] != "")]
+    out["unicode/UnicodeData-3.2.0-normalization.txt"] = ("\n".join(kept) + "\n").encode()
+    out["unicode/CompositionExclusions-3.2.0.txt"] = archive("composition-exclusions")
+    derived = archive("derived-normalization").decode("utf-8").splitlines()
+    head = []
+    for line in derived:
+        if not line.startswith("#"):
+            break
+        head.append(line)
+    rows = [line for line in derived if line and not line.startswith("#")
+            and line.split(";")[1].split("#")[0].strip() in NORMALIZATION_PROPERTIES]
+    out["unicode/DerivedNormalizationProps-3.2.0-nfkc.txt"] = ("\n".join(head + rows) + "\n").encode()
+    out["unicode/NormalizationCorrections-3.2.0.txt"] = archive("normalization-corrections")
+    out["unicode/NormalizationTest-3.2.0.txt"] = archive("normalization-test")
+    out["unicode/LICENSE"] = archive("unicode-license")
+    return out
 
 
 def sha256(data: bytes) -> str:
@@ -158,6 +216,7 @@ def selection() -> dict[str, bytes]:
         for ordering, (collection, column) in UNICODE.items():
             text = cmaps.extractfile(members[f"{prefix}{collection}/cid2code.txt"]).read().decode("utf-8")
             out[f"cmaps/{collection}/cid2unicode.txt"] = project(text, collection, column).encode()
+    out.update(unicode_selection())
     return out
 
 
