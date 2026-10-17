@@ -189,6 +189,17 @@ class ConversionTests(unittest.TestCase):
         self.policy["maximum_output_bytes"] = 100
         self.assertEqual(self.measure("oversize")["status"], "invalid-output")
 
+    def test_page_tolerance_preserves_exact_metrics_and_gate_hash_controls(self):
+        result = self.measure('wrong', tolerance=1)
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['oracle_difference']['max_channel_error'], 1)
+        self.assertEqual(result['max_channel_error'], 1)
+        cell = {'status': 'measured', 'engine': 'fake', 'oracle_pixels_sha256': sha(b'abc'),
+                'samples': [{'pair': i, 'order': ['pagura', 'fake'], 'pagura': result, 'baseline': result} for i in range(2)]}
+        verdict = evaluate_cell(cell, {**self.policy, 'minimum_samples': 2})
+        self.assertFalse(verdict['pass'])
+        self.assertIn('incorrect, failed or missing output', verdict['reasons'])
+
     def test_stage_availability_is_explicit_and_required_where_supported(self):
         self.assertEqual(self.measure("no-timers")["stages_status"], "unavailable")
         self.assertEqual(self.measure("no-timers", stages_required=True)["status"], "invalid-timings")
@@ -346,8 +357,10 @@ class ConversionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 reports.local_report_path(root / "raw.json")
             self.assertEqual(reports.local_report_path(raw), raw.resolve())
+            reports.write_summary(raw, local / "summary.md")
+            self.assertIn(sha(raw.read_bytes()), (local / "summary.md").read_text())
             with self.assertRaises(ValueError):
-                reports.write_summary(raw, local / "summary.md")
+                reports.write_summary(raw, root / "outside.md")
 
 
 class FormatAndStageTests(unittest.TestCase):
@@ -483,8 +496,8 @@ from pathlib import Path
 mode = sys.argv[1]
 args = sys.argv[2:]
 if args[0] == 'convert':
-    source, target, dpi = args[2:]
-    first, last = 0, 1
+    source, target, dpi, *bounds = args[2:]
+    first, last = map(int, bounds) if bounds else (0, 1)
 elif mode == 'poppler':
     source, target = args[-2:]
     target = str(Path(target).parent)
@@ -615,8 +628,9 @@ class DocumentTests(unittest.TestCase):
         self.assertFalse(gate(report)['pass'])
 
     def test_document_ranges_and_commands_are_equal_work(self):
-        with self.assertRaisesRegex(ValueError, 'no range option'):
-            self.run_report(cases=self.cases[1:])
+        subset = self.run_report(cases=self.cases[1:])
+        self.assertEqual(subset['document_cells'][0]['pages'], [1])
+        self.assertEqual(subset['document_cells'][0]['samples'][0]['pagura']['status'], 'ok')
         duplicate = [self.cases[0], self.cases[0]]
         with self.assertRaises(ValueError):
             documents.document_jobs(duplicate, {'pagura': []})
@@ -632,6 +646,16 @@ class DocumentTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'must be empty'):
             documents.measure_document(command, self.directory, {0: None}, self.policy,
                                        stages_required=True, image_sink={})
+
+    def test_document_tolerance_accepts_last_page_and_retains_exact_difference(self):
+        cases = [{**case, 'tolerance': 1} for case in self.cases]
+        report = self.run_report('wrong-later', cases=cases)
+        result = report['document_cells'][0]['samples'][0]['baseline']
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['pages'][1]['oracle_difference']['max_channel_error'], 1)
+        self.assertEqual(result['pages'][1]['pixels_sha256'], sha(b'abd'))
+        self.assertEqual(report['cells'][1]['tolerance'], 1)
+        self.assertFalse(gate(report)['pass'])
 
     def test_stage_parser_document_totals_and_page_set(self):
         record = {'schema': 1, 'open_ns': 10,
@@ -649,7 +673,8 @@ class DocumentTests(unittest.TestCase):
         with patch('bench.run_conversion') as run:
             cli.main(['convert', '--engines', 'pagura,pdfium'])
             self.assertFalse(run.call_args.args[0].process_per_page)
-            cli.main(['convert', '--process-per-page'])
+            cli.main(['convert', '--process-per-page', '--no-rss'])
+            self.assertTrue(run.call_args.args[0].no_rss)
             self.assertTrue(run.call_args.args[0].process_per_page)
         cases = self.cases + [{**case, 'dpi': 144} for case in self.cases]
         report = self.run_report(cases=cases)
@@ -663,8 +688,8 @@ class PythonAdapterBoundaryTests(unittest.TestCase):
         import io
         import runpy
         import types
-        for backend in ('pdfium', 'mupdf'):
-            with self.subTest(backend=backend), tempfile.TemporaryDirectory() as directory:
+        for backend, needs_pass in (('pdfium', True), ('mupdf', True), ('mupdf', False)):
+            with self.subTest(backend=backend, needs_pass=needs_pass), tempfile.TemporaryDirectory() as directory:
                 clock, events = [0], []
                 class Image:
                     def convert(self, mode):
@@ -693,6 +718,7 @@ class PythonAdapterBoundaryTests(unittest.TestCase):
                     def close(self):
                         pass
                 class Document:
+                    needs_pass = False
                     def __init__(self, source):
                         clock[0] += 100
                         events.append(('open', source))
@@ -723,6 +749,118 @@ class PythonAdapterBoundaryTests(unittest.TestCase):
                 self.assertEqual(record['total_ns'], 480)
                 self.assertEqual(events, [('open', 'fake-input'), ('pages', 2), ('load', 0), ('render', 0), ('load', 1), ('render', 1)])
                 self.assertEqual(sorted(path.name for path in Path(directory).iterdir()), ['page-0001.ppm', 'page-0002.ppm'])
+
+
+
+class ManifestOptionTests(unittest.TestCase):
+    def test_generated_page_count_password_oracle_scope_and_tolerance(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'input.pdf').write_bytes(b'two-page metadata; no engine oracle')
+            (root / 'oracle.ppm').write_bytes(b'P6\n1 1\n255\nabc')
+            case = {'id': 'independent/two-pages', 'path': 'input.pdf', 'sha256': sha((root / 'input.pdf').read_bytes()),
+                    'oracle': 'oracle.ppm', 'oracle_sha256': sha((root / 'oracle.ppm').read_bytes()),
+                    'pages': 2, 'dpi': 72, 'password': 'owner literal', 'tolerance': 1}
+            with patch.object(corpus, 'ROOT', root), patch.object(corpus, 'render_cases', return_value=[case]):
+                cases, _ = corpus.corpus_cases(None, None, dpis=(72, 144))
+                self.assertEqual([(item['page'], item['dpi']) for item in cases], [(0, 72), (0, 144), (1, 72), (1, 144)])
+                self.assertEqual(sum('oracle' in item for item in cases), 1)
+                self.assertTrue(all(item['password'] == 'owner literal' and item['tolerance'] == 1 and item['page_count'] == 2 for item in cases))
+                pages = documents.document_jobs([item for item in cases if item['dpi'] == 72], {'pagura': []})[0]
+                command = documents.document_command('pagura', ['pagura'], pages, root)
+                self.assertEqual(command[-2:], ['0', '1'])
+                self.assertEqual(command[1:3], ['--password', 'owner literal'])
+
+    def test_tolerance_acceptance_preserves_exact_metrics_and_never_resizes(self):
+        from benchkit.images import verify_pixels, validate_tolerance
+        actual, oracle = (1, 1, b'abd'), (1, 1, b'abc')
+        self.assertEqual(verify_pixels(actual, oracle)['status'], 'incorrect')
+        accepted = verify_pixels(actual, oracle, 1)
+        self.assertEqual(accepted['status'], 'ok')
+        self.assertEqual(accepted['oracle_difference']['max_channel_error'], 1)
+        self.assertEqual(accepted['oracle_difference']['different_channels'], 1)
+        self.assertEqual(verify_pixels((2, 1, b'abcdef'), oracle, 255)['status'], 'incorrect')
+        self.assertEqual(verify_pixels(actual, None, 255)['status'], 'unverified')
+        for value in (-1, 256, True, 1.5, '1'):
+            with self.assertRaises(ValueError):
+                validate_tolerance(value)
+
+    def test_password_flags_are_literal_for_every_engine_and_both_password_roles(self):
+        secret = 'literal $value with spaces'
+        case = {'id': 'credential', 'path': '/input.pdf', 'page': 1, 'page_count': 3, 'dpi': 72, 'password': secret}
+        for name in ('pagura', 'pdfium', 'mupdf', 'pdfjs', 'hayro', 'quartz', 'poppler'):
+            for command in (engine_tools.command_for(name, [name], case, Path('/output.ppm')),
+                            documents.document_command(name, [name], [case], Path('/pages'))):
+                if name == 'poppler':
+                    self.assertEqual(command[command.index('-upw') + 1], secret)
+                    self.assertEqual(command[command.index('-opw') + 1], secret)
+                else:
+                    self.assertEqual(command[command.index('--password') + 1], secret)
+        self.assertIn('--password', engine_tools.password_command('pagura', ['pagura'], {'password': ''}))
+
+    def test_selected_real_pages_stay_in_place_and_manifest_options_are_checked(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'input.pdf').write_bytes(b'pinned external document')
+            manifest = root / 'manifest.json'
+            document = {'id': 'real', 'path': 'input.pdf', 'sha256': sha((root / 'input.pdf').read_bytes()),
+                        'pages': 6, 'selected_pages': [3], 'password': 'p', 'tolerance': 1}
+            def save():
+                manifest.write_text(json.dumps({'schema': 1, 'documents': [document]}))
+            save()
+            cases, _ = corpus.corpus_cases(root, manifest)
+            self.assertEqual([case['page'] for case in cases], [3])
+            self.assertEqual(cases[0]['path'], str((root / 'input.pdf').resolve()))
+            self.assertEqual(cases[0]['password'], 'p')
+            command = documents.document_command('pagura', ['pagura'], cases, root / 'out')
+            self.assertEqual(command[-2:], ['3', '3'])
+            for selected in ([], [3, 3], [6], [True]):
+                document['selected_pages'] = selected
+                save()
+                with self.assertRaises(ValueError):
+                    corpus.corpus_cases(root, manifest)
+
+    def test_structured_unsupported_is_distinct_from_failed_and_still_blocks_statistics(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            script = root / 'unsupported.py'
+            script.write_text('import json\nprint(json.dumps({"status":"unsupported","feature":"security.password"}))\nraise SystemExit(3)\n')
+            output = root / 'out'
+            output.mkdir()
+            with patch.object(measurement, 'rss_wrapper', return_value=[]):
+                result = documents.measure_document([sys.executable, str(script)], output, {0: None}, read_json(POLICY_PATH), stages_required=True, image_sink={})
+            self.assertEqual(result['status'], 'unsupported')
+            self.assertEqual(result['pages'][0]['status'], 'unsupported')
+            self.assertEqual(result['feature'], 'security.password')
+            script.write_text('raise SystemExit(3)\n')
+            with patch.object(measurement, 'rss_wrapper', return_value=[]):
+                result = documents.measure_document([sys.executable, str(script)], output, {0: None}, read_json(POLICY_PATH), stages_required=True, image_sink={})
+            self.assertEqual(result['status'], 'failed')
+
+    def test_python_adapters_pass_passwords_to_public_apis(self):
+        import io
+        import runpy
+        import types
+        from unittest.mock import MagicMock
+        for backend, needs_pass in (('pdfium', True), ('mupdf', True), ('mupdf', False)):
+            with self.subTest(backend=backend, needs_pass=needs_pass), tempfile.TemporaryDirectory() as directory:
+                doc = MagicMock()
+                doc.needs_pass = needs_pass
+                doc.authenticate.return_value = 1
+                doc.__len__.return_value = 1
+                doc.page_count = 1
+                raster = doc.__getitem__.return_value.get_pixmap.return_value
+                raster.tobytes.return_value = b'P6\n1 1\n255\nabc'
+                api = types.SimpleNamespace(PdfDocument=MagicMock(return_value=doc), open=MagicMock(return_value=doc),
+                                            Matrix=lambda *args: None, csRGB='RGB')
+                module = 'pypdfium2' if backend == 'pdfium' else 'pymupdf'
+                args = ['python_engine.py', backend, '--password', 'secret with spaces', 'input.pdf', directory, '72', '0', '0']
+                with patch.dict(sys.modules, {module: api}), patch.object(sys, 'argv', args), patch('sys.stdout', io.StringIO()):
+                    runpy.run_path(str(engine_tools.ADAPTERS / 'python_engine.py'), run_name='__main__')
+                if backend == 'pdfium':
+                    api.PdfDocument.assert_called_once_with('input.pdf', password='secret with spaces')
+                else:
+                    doc.authenticate.assert_called_once_with('secret with spaces')
 
 
 if __name__ == "__main__":

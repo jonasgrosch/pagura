@@ -6,11 +6,12 @@ import tempfile
 from pathlib import Path
 
 from .config import ROOT, sha
-from .images import normalize, pixel_difference
+from .images import normalize, pixel_difference, verify_pixels
 from .measurement import run_process, preserve_failure
 from .reports import new_report
 from .statistics import comparison_statistics
 from .timings import parse_document_stages
+from .engines import password_command
 
 GOOD = ("ok", "unverified")
 METRICS = ("elapsed_ns", "engine_ns", "open_ns", "render_ns", "emit_ns")
@@ -25,8 +26,8 @@ def document_jobs(cases, bases):
     for pages in grouped.values():
         pages.sort(key=lambda case: case["page"])
         first = pages[0]
-        if any((case["path"], case["sha256"], case.get("page_count")) !=
-               (first["path"], first["sha256"], first.get("page_count")) for case in pages):
+        if any((case["path"], case["sha256"], case.get("page_count"), case.get("password")) !=
+               (first["path"], first["sha256"], first.get("page_count"), first.get("password")) for case in pages):
             raise ValueError("conflicting document metadata")
         indices = [case["page"] for case in pages]
         if indices != list(range(indices[0], indices[-1] + 1)):
@@ -34,8 +35,6 @@ def document_jobs(cases, bases):
         count = first.get("page_count")
         if type(count) is not int or not 1 <= count <= 100_000 or indices[0] < 0 or indices[-1] >= count:
             raise ValueError("document mode requires a valid declared page_count")
-        if any(name in bases for name in ("pagura", "revision")) and indices != list(range(count)):
-            raise ValueError("Pagura convert has no range option; select the whole document or use --process-per-page")
         jobs.append(pages)
     return jobs
 
@@ -45,10 +44,9 @@ def document_command(name, base, pages, output):
     case = pages[0]
     source, dpi = str(case["path"]), str(case["dpi"])
     first, last = pages[0]["page"], pages[-1]["page"]
+    base = password_command(name, base, case)
     if name in ("pagura", "revision"):
-        if first != 0 or last + 1 != case["page_count"]:
-            raise ValueError("Pagura document conversion requires all pages")
-        return base + ["convert", "--timings", source, str(output), dpi]
+        return base + ["convert", "--timings", source, str(output), dpi, str(first), str(last)]
     if name == "poppler":
         return base + ["-r", dpi, "-f", str(first + 1), "-l", str(last + 1), source, str(output / "page")]
     return base + [source, str(output), dpi, str(first), str(last)]
@@ -65,7 +63,7 @@ def expected_pages(pages):
             if sha(data) != case["oracle_sha256"]:
                 raise ValueError("oracle changed after manifest validation")
             pixels = normalize(data)
-            image = {"path": path, "sha256": case["oracle_sha256"], "pixels_sha256": sha(pixels[2])}
+            image = {"path": path, "sha256": case["oracle_sha256"], "pixels_sha256": sha(pixels[2]), "tolerance": case.get("tolerance", 0)}
         expected[case["page"]] = image
     return expected
 
@@ -82,7 +80,7 @@ def measure_document(command, output, expected, policy, *, stages_required, imag
     indices = list(expected)
     result["pages"] = []
     if result["exit_code"] != 0 or result["status"] == "timeout":
-        result["pages"] = [{"page": page, "status": result["status"], "exit_code": result["exit_code"]} for page in indices]
+        result["pages"] = [{"page": page, "status": result["status"], "exit_code": result["exit_code"], "feature": result.get("feature")} for page in indices]
         return result
     files = {}
     output_error = None
@@ -111,11 +109,9 @@ def measure_document(command, output, expected, policy, *, stages_required, imag
                 raise ValueError("oversize output")
             data = path.read_bytes()
             actual = normalize(data)
-            run.update(status="unverified" if oracle is None else "ok" if actual == oracle else "incorrect",
-                       width=actual[0], height=actual[1], pixels_sha256=sha(actual[2]), output_sha256=sha(data))
+            run.update(verify_pixels(actual, oracle, pinned.get("tolerance", 0) if pinned else 0))
+            run.update(width=actual[0], height=actual[1], pixels_sha256=sha(actual[2]), output_sha256=sha(data))
             image_sink[page] = path
-            if oracle is not None and actual != oracle:
-                run["oracle_difference"] = pixel_difference(actual, oracle)
         except (ValueError, OSError) as error:
             run.update(status="invalid-output", diagnostic=str(error))
         if path is not None:
@@ -155,6 +151,7 @@ def document_report(cases, bases, identities, policy, *, samples, warmups, seed,
     """Pair complete document conversions, with per-page verification and stages."""
     jobs = document_jobs(cases, bases)
     report = new_report(identities, samples, warmups, seed, input_digest, operation, revision, process_per_page=False)
+    report["measurement_options"] = {"rss_enabled": policy.get("measure_rss", True)}
     rng = random.Random(seed)
     rng.shuffle(jobs)
     directory = ROOT / "benchmarks/results/local"
@@ -180,7 +177,8 @@ def document_report(cases, bases, identities, policy, *, samples, warmups, seed,
                 for page, oracle in expected.items():
                     cells[page] = {**common, "page": page, "samples": [], "warmup_failures": [],
                         "verification": "independent-oracle" if oracle else "unverified",
-                        "oracle_pixels_sha256": oracle["pixels_sha256"] if oracle else None}
+                        "oracle_pixels_sha256": oracle["pixels_sha256"] if oracle else None,
+                        "tolerance": oracle.get("tolerance", 0) if oracle else 0}
                 report["document_cells"].append(document)
                 report["cells"].extend(cells.values())
                 if all(identities[name]["status"] == "available" for name in ("pagura", engine)):

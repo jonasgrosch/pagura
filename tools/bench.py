@@ -15,7 +15,7 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("doctor")
     measure_args = sub.add_parser("run")
-    measure_args.add_argument("--engines", default="pagura,poppler,pdfium,mupdf,pdfjs,hayro,quartz,adobe")
+    measure_args.add_argument("--engines", default="pagura,poppler,pdfium,mupdf,pdfjs,hayro,quartz")
     measure_args.add_argument("--suite", choices=["smoke", "release"], default="smoke")
     measure_args.add_argument("--samples", type=int, default=10)
     measure_args.add_argument("--warmups", type=int, default=3)
@@ -31,10 +31,11 @@ def main(argv=None):
         convert_args.add_argument("--warmups", type=int, default=3)
         convert_args.add_argument("--seed", type=int, default=42017)
         convert_args.add_argument("--output")
+        convert_args.add_argument("--no-rss", action="store_true", help="omit unavailable RSS instrumentation; blocks release acceptance")
         convert_args.add_argument("--process-per-page", action="store_true", default=name == "regress",
                                   help="relaunch and reopen for every page (default for regress)")
         if name == "convert":
-            convert_args.add_argument("--engines", default="pagura,poppler,pdfium,mupdf,pdfjs,hayro,quartz,adobe")
+            convert_args.add_argument("--engines", default="pagura,poppler,pdfium,mupdf,pdfjs,hayro,quartz")
         else:
             convert_args.add_argument("--revision", required=True)
     summary_args = sub.add_parser("summary")

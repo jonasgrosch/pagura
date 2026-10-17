@@ -3,7 +3,13 @@ import Foundation
 import CoreGraphics
 
 enum Failure: Error { case input, render }
-let args = CommandLine.arguments
+var args = CommandLine.arguments
+var password: String? = nil
+if let index = args.firstIndex(of: "--password") {
+    guard index + 1 < args.count else { throw Failure.input }
+    password = args[index + 1]
+    args.removeSubrange(index...(index + 1))
+}
 if args.count == 2 && args[1] == "--version" {
     print("Apple CoreGraphics; " + ProcessInfo.processInfo.operatingSystemVersionString)
 } else {
@@ -12,6 +18,11 @@ if args.count == 2 && args[1] == "--version" {
           first >= 0, first <= last, last < 100_000 else { throw Failure.input }
     let started = DispatchTime.now().uptimeNanoseconds
     guard let document = CGPDFDocument(URL(fileURLWithPath: args[1]) as CFURL) else { throw Failure.input }
+    if let password = password {
+        guard document.unlockWithPassword(password) else { throw Failure.input }
+    } else if document.isEncrypted && !document.isUnlocked {
+        guard document.unlockWithPassword("") else { throw Failure.input }
+    }
     let indices = 0..<document.numberOfPages
     guard indices.contains(last) else { throw Failure.input }
     let opened = DispatchTime.now().uptimeNanoseconds

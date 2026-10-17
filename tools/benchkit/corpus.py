@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 from .config import ROOT, MANIFESTS, read_json, sha
-from .images import normalize
+from .images import normalize, validate_tolerance
 
 
 def manifest_digest():
@@ -47,17 +47,22 @@ def corpus_cases(directory, manifest, selection="all", dpis=(72,)):
             raise ValueError("--manifest requires --corpus")
         cases = []
         for case in render_cases():
-            selected_pages(selection, 1)
-            for dpi in dpis:
-                clone = {**case, "path": str(ROOT / case["path"]), "page": 0, "dpi": dpi, "page_count": 1}
-                if dpi != case["dpi"]:
-                    clone.pop("oracle", None)
-                    clone.pop("oracle_sha256", None)
-                elif sha((ROOT / case["oracle"]).read_bytes()) != case["oracle_sha256"]:
-                    raise ValueError("changed generated oracle")
-                if sha(Path(clone["path"]).read_bytes()) != case["sha256"]:
-                    raise ValueError("changed generated PDF")
-                cases.append(clone)
+            count = case.get("pages", 1)
+            indices = selected_pages(selection, count)
+            validate_tolerance(case.get("tolerance", 0))
+            if "password" in case and not isinstance(case["password"], str):
+                raise ValueError("password must be a string")
+            if sha((ROOT / case["path"]).read_bytes()) != case["sha256"]:
+                raise ValueError("changed generated PDF")
+            for page in indices:
+                for dpi in dpis:
+                    clone = {**case, "path": str(ROOT / case["path"]), "page": page, "dpi": dpi, "page_count": count}
+                    if dpi != case["dpi"] or page != 0:
+                        clone.pop("oracle", None)
+                        clone.pop("oracle_sha256", None)
+                    elif sha((ROOT / case["oracle"]).read_bytes()) != case["oracle_sha256"]:
+                        raise ValueError("changed generated oracle")
+                    cases.append(clone)
         return cases, manifest_digest()
     directory = Path(directory).resolve()
     manifest = Path(manifest).resolve() if manifest else directory / "manifest.json"
@@ -80,12 +85,24 @@ def corpus_cases(directory, manifest, selection="all", dpis=(72,)):
             raise ValueError("document requires id, path, sha256 and pages")
         if not isinstance(document.get("oracles", []), list):
             raise ValueError("oracles must be a list")
+        if "password" in document and not isinstance(document["password"], str):
+            raise ValueError("password must be a string")
+        validate_tolerance(document.get("tolerance", 0))
         identifier = document.get("id")
         if not isinstance(identifier, str) or not identifier or identifier in identifiers:
             raise ValueError("document IDs must be unique nonempty strings")
         identifiers.add(identifier)
         source = pinned(document["path"], document["sha256"])
         pages = selected_pages(selection, document["pages"])
+        if "selected_pages" in document:
+            selected = document["selected_pages"]
+            if (not isinstance(selected, list) or not selected or
+                    any(type(page) is not int or not 0 <= page < document["pages"] for page in selected) or
+                    len(set(selected)) != len(selected)):
+                raise ValueError("selected_pages must contain unique in-range zero-based pages")
+            if selection != "all" and not set(pages) <= set(selected):
+                raise ValueError("CLI page selection exceeds manifest selected_pages")
+            pages = sorted(selected) if selection == "all" else pages
         oracles = {}
         for oracle in document.get("oracles", []):
             if not isinstance(oracle, dict) or not {"page", "dpi", "path", "sha256"} <= oracle.keys():
@@ -96,12 +113,15 @@ def corpus_cases(directory, manifest, selection="all", dpis=(72,)):
                 raise ValueError("invalid or duplicate oracle cell")
             path = pinned(oracle["path"], oracle["sha256"])
             normalize(Path(path).read_bytes())
-            oracles[key] = (path, oracle["sha256"])
+            oracles[key] = (path, oracle["sha256"], validate_tolerance(oracle.get("tolerance", document.get("tolerance", 0))))
         for page in pages:
             for dpi in dpis:
                 case = {"id": identifier, "path": source, "sha256": document["sha256"], "page": page, "dpi": dpi, "page_count": document["pages"]}
+                case["tolerance"] = document.get("tolerance", 0)
+                if "password" in document:
+                    case["password"] = document["password"]
                 if (page, dpi) in oracles:
-                    case["oracle"], case["oracle_sha256"] = oracles[page, dpi]
+                    case["oracle"], case["oracle_sha256"], case["tolerance"] = oracles[page, dpi]
                 cases.append(case)
     return cases, sha(raw)
 

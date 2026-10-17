@@ -27,8 +27,8 @@ Node resolves packages from this same external cache. Dependency locks remain in
 `benchmarks/`. No competitor source, tests or history are needed or read.
 
 Set `PAGURA_POPPLER` to the actual `pdftoppm` binary when PATH supplies a launcher.
-Poppler is supplied by the operating system; Adobe remains explicitly unavailable
-without a licensed adapter. Doctor probes versions, reports missing executables,
+Poppler is supplied by the operating system. Adobe is not a required baseline
+(ADR 0011). Doctor probes versions, reports missing executables,
 and explains setup. It does not install anything. Python engine versions include
 wrapper and backend; PDF.js records Node and Canvas versions; artifact hashes
 cover executables, adapters, locks and discoverable backend libraries.
@@ -77,20 +77,20 @@ with no `-singlefile`. Its numeric output suffixes are mapped to page indices;
 missing, extra or duplicate page files fail verification. Poppler has no internal
 timers: stages remain unavailable and only document process time is compared.
 
-**Pagura document comparisons use whole documents or contiguous ranges**
-(`pagura convert INPUT OUTDIR DPI FIRST LAST`, zero-based). Standalone competitor command construction supports
-contiguous ranges; disjoint ranges require separate processes and are rejected in
-document mode. `--process-per-page` explicitly restores the original page subset
-track: both engines reopen for every selected page, with a separate label and
-statistics. It is also the existing default for `regress`; regression behaviour
-has otherwise stayed the same.
+Pagura's integrated CLI now supports zero-based inclusive conversion ranges:
+`pagura convert --timings INPUT OUTDIR DPI FIRST LAST`. Document mode forwards
+exactly the selected range to every engine. Disjoint ranges require separate
+processes and remain rejected in document mode. `--process-per-page` restores the
+original per-page track; it is the existing default for `regress`.
 
 Document/DPI jobs and within-pair engine order are seeded and randomized.
 OS filesystem caches warm after warmups; this is not a cold-storage test.
 `elapsed_ns` includes common system-time instrumentation.
 RSS is per child, not cumulative `getrusage` across previously finished children.
 A failing instrumentation wrapper fails the sample; missing RSS cannot pass the
-gate. Timeouts terminate the process group on POSIX.
+gate. `--no-rss` explicitly omits unavailable instrumentation in exploratory
+conversion/regression runs and records `rss_enabled: false` and null RSS.
+It does not change checked-in policy or make the release gate eligible. Timeouts terminate the process group on POSIX.
 
 Adapters emit P6 PPM (Pagura, PDFium, MuPDF, Poppler) or packed RGBA8 (PDF.js,
 hayro, CoreGraphics). The harness also accepts RGB/RGB_ALPHA P7 PAM. RGBA8 has an
@@ -124,6 +124,33 @@ lengths; they never trim pixel whitespace or resize output to match an oracle.
 ```
 
 Manifest/oracle page indices are zero-based; CLI page selections are one-based.
+A document may declare `selected_pages: [0, 3]`; these must be unique, in range
+and contiguous for a single document-mode job. This permits benchmarking existing
+renderable pages in place without extracting/copying a PDF. A CLI selection must
+stay within the declared selection. The original total `pages` remains metadata.
+
+Generated cases expand their actual manifest `pages` count. Their primary oracle
+applies only to page 0 at its declared DPI; additional pages/DPIs stay unverified.
+A descriptive `page_oracles` string is never treated as a pixel oracle.
+
+Manifest `password` strings, including empty passwords, are passed literally to
+Pagura `--password`, PDFium's constructor, MuPDF authentication, PDF.js document
+loading, hayro `Pdf::new_with_password`, CoreGraphics unlocking and both Poppler
+`-upw`/`-opw` roles. Authentication belongs to open. Commands and manifests in
+private raw reports may contain credentials. Explicit passwords are authenticated even
+when an engine auto-opens the document with an empty user password. An adapter without a password API
+may emit `{ "status": "unsupported", "feature": "security.password" }` and exit
+3; this is distinguished from failed authentication and remains gate-blocking.
+Native adapter overrides `PAGURA_HAYRO` / `PAGURA_QUARTZ` select rebuilt executables
+outside the repository; reports hash the actual selected binaries.
+
+`tolerance` is an integer per-channel maximum absolute RGB8 difference (0..255,
+default 0). Generated cases inherit it; arbitrary manifests can set a document
+value or override it per oracle. Dimensions must still match exactly. Every
+oracled output retains exact mean/max/channel/difference counts and pixel hashes,
+even when within tolerance. Unverified output never becomes verified from a
+bound or agreement. The release gate's existing exact-hash controls remain.
+
 Paths are relative to the corpus and must resolve within it. Every input and
 oracle hash is checked; duplicate document IDs/oracle cells and out-of-range
 pages fail validation. The operator supplies page counts and independent oracles;
@@ -140,7 +167,8 @@ investigation data. The report also compares every available engine pair using
 each engine's first successfully decoded measured output, explicitly identifying
 the pair indices and pixel hashes. This representative comparison does not imply
 that all outputs across the run are identical. Dimensions that differ remain
-incomparable. No tolerance, blur mask, realignment or resizing hides differences.
+incomparable. No blur mask, realignment or resizing hides differences; declared tolerances do
+not suppress exact difference metrics.
 
 All measured pairs and warmup failures remain in the report. Any failed measured
 output suppresses performance ratios; invalid output is never dropped to obtain
@@ -184,7 +212,8 @@ python3 tools/bench.py gate benchmarks/results/local/conversion.json
 python3 tools/bench.py run --suite smoke --samples 10 --warmups 3
 ```
 
-The summary command creates a new Markdown file with input, source, policy and
+The summary command creates a new Markdown file (including under ignored
+`benchmarks/results/local/` for private exploratory runs) with input, source, policy and
 raw-report digests. It never overwrites existing summaries. Review summaries
 before committing, especially when IDs reveal private corpus information. The
 gate exits 2 when blocked. Smoke, conversion and regression evidence cannot pass
@@ -197,10 +226,10 @@ boundaries; they have not been reclassified as conversion evidence.
 
 ## Remaining release work
 
-Real competitors must be run after integration; offline fake engines verify the
-harness rather than competitor API compatibility. Add equal-work persistent
+Offline fake engines verify harness contracts; actual installed adapter versions
+and raw measurements must still accompany any real comparison. Add equal-work persistent
 open/warm/tile/text/save tracks, reviewed per-feature real-document oracles and
-colour/annotation/box policies, Adobe access, fixed concurrency, multiple-platform
+colour/annotation/box policies, fixed concurrency, multiple-platform
 attestations and aggregation. A release protocol also needs pre-registered
 replication and multiple-comparison handling; per-cell confidence bounds are not
 a simultaneous family-wise claim. No correctness or 20% superiority claim is

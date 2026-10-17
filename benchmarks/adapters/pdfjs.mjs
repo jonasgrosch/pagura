@@ -14,6 +14,12 @@ if (process.argv[2] === '--version') {
     canvas: require('@napi-rs/canvas/package.json').version}));
 } else {
   const args = process.argv.slice(2);
+  let password;
+  const passwordIndex = args.indexOf('--password');
+  if (passwordIndex >= 0) {
+    password = args[passwordIndex + 1];
+    args.splice(passwordIndex, 2);
+  }
   if (![4, 5].includes(args.length)) throw new Error('expected INPUT OUTPUT DPI PAGE or INPUT OUTDIR DPI FIRST LAST');
   const [source, target, dpi, first, last = first] = args;
   if (!Number.isInteger(Number(first)) || !Number.isInteger(Number(last)) || Number(first) < 0 || Number(last) < Number(first)) {
@@ -22,7 +28,7 @@ if (process.argv[2] === '--version') {
   const started = process.hrtime.bigint();
   const packageRoot = pathToFileURL(path.join(cache, 'node/node_modules/pdfjs-dist/'));
   const loading = pdfjs.getDocument({
-    data: new Uint8Array(fs.readFileSync(source)),
+    data: new Uint8Array(fs.readFileSync(source)), password,
     cMapUrl: fileURLToPath(new URL('cmaps/', packageRoot)), cMapPacked: true,
     standardFontDataUrl: fileURLToPath(new URL('standard_fonts/', packageRoot)),
     wasmUrl: fileURLToPath(new URL('wasm/', packageRoot)), isEvalSupported: false,

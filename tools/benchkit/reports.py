@@ -78,8 +78,8 @@ def write_summary(report_path, destination):
     report = json.loads(data)
     destination = Path(destination).resolve()
     summaries = (ROOT / "benchmarks/results").resolve()
-    if not destination.is_relative_to(summaries) or destination.is_relative_to(summaries / "local") or destination.suffix != ".md":
-        raise ValueError("summary must be Markdown under benchmarks/results/, outside local/")
+    if not destination.is_relative_to(summaries) or destination.suffix != ".md":
+        raise ValueError("summary must be Markdown under benchmarks/results/")
     text = conversion_markdown(report) if report.get("operation") in ("conversion", "regression") else markdown(report)
     text += "\nRaw report SHA-256: `" + sha(data) + "`\n"
     text += "Generated manifest SHA-256: `" + report["manifest_sha256"] + "`\n"

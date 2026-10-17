@@ -7,14 +7,14 @@
       "id": "bench-stage-timers",
       "reference": "ADR 0007",
       "clauses": [],
-      "status": "implemented; validated against installed competitors",
+      "status": "implemented; all six external adapters exercised on generated and real documents",
       "tests": [
         "tools/test_bench.py:ConversionTests",
         "tools/test_bench.py:DocumentTests",
         "tools/test_bench.py:FormatAndStageTests",
         "tools/test_bench.py:PythonAdapterBoundaryTests"
       ],
-      "gaps": "requires the competitor installations"
+      "gaps": "Poppler exposes process timing only; controlled runner and peak RSS remain unavailable"
     },
     {
       "id": "bench-output-normalization",
@@ -67,7 +67,19 @@
       "tests": [
         "tools/test_bench.py:DocumentTests"
       ],
-      "gaps": "requires the competitor installations"
+      "gaps": "generated additional pages without pixel oracles and real-document pages remain unverified"
+    },
+    {
+      "id": "bench-manifest-options",
+      "reference": "ADR 0002 and ADR 0007",
+      "clauses": [],
+      "status": "password forwarding, explicit tolerance and selected pages implemented",
+      "tests": [
+        "tools/test_bench.py:ManifestOptionTests",
+        "tools/test_bench.py:DocumentTests",
+        "tools/test_bench.py:ConversionTests"
+      ],
+      "gaps": "144 DPI cases without independent oracles remain unverified"
     }
   ]
 }

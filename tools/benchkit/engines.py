@@ -19,15 +19,12 @@ def engines():
         "pdfium": [str(python), str(ADAPTERS / "python_engine.py"), "pdfium"],
         "mupdf": [str(python), str(ADAPTERS / "python_engine.py"), "mupdf"],
         "pdfjs": [shutil.which("node") or "node", str(ADAPTERS / "pdfjs.mjs")],
-        "hayro": [str(CACHE / ("hayro-target/release/pagura-hayro-competitor" + exe))],
-        "quartz": [str(CACHE / "quartz")],
-        "adobe": None,
+        "hayro": [os.environ.get("PAGURA_HAYRO") or str(CACHE / ("hayro-target/release/pagura-hayro-competitor" + exe))],
+        "quartz": [os.environ.get("PAGURA_QUARTZ") or str(CACHE / "quartz")],
     }
 
 
 def identify(name, command):
-    if command is None:
-        return {"status": "unavailable", "reason": "licensed Adobe adapter not configured"}
     try:
         result = subprocess.run(command + (["-v"] if name == "poppler" else ["--version"]),
                                 capture_output=True, text=True, timeout=20, cwd=ROOT)
@@ -57,6 +54,7 @@ def identify(name, command):
 def command_for(name, base, case, output):
     source = str(ROOT / case["path"])
     page = str(case.get("page", 0) + 1)
+    base = password_command(name, base, case)
     if name in ("pagura", "revision"):
         return base + ["render", source, str(output), str(case["dpi"]), str(case.get("page", 0))]
     if name == "poppler":
@@ -67,7 +65,7 @@ def command_for(name, base, case, output):
 def conversion_command(name, base, case, output):
     command = command_for(name, base, case, output)
     if name in ("pagura", "revision"):
-        command.insert(len(base) + 1, "--timings")
+        command.insert(len(password_command(name, base, case)) + 1, "--timings")
     return command
 
 
@@ -95,3 +93,15 @@ def revision_engine(revision, repository=ROOT):
         finally:
             subprocess.run(["git", "worktree", "remove", "--force", str(worktree)], cwd=repository, check=True)
 
+
+
+def password_command(name, base, case):
+    """Forward the manifest credential without shell interpolation or guessing its role."""
+    if "password" not in case:
+        return list(base)
+    password = case["password"]
+    if not isinstance(password, str):
+        raise ValueError("password must be a string")
+    if name == "poppler":
+        return base + ["-upw", password, "-opw", password]
+    return base + ["--password", password]

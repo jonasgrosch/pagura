@@ -8,11 +8,21 @@ use std::io::Write;
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut args: Vec<String> = std::env::args().skip(1).collect();
     if args.as_slice() == ["--version"] {
         println!("hayro 0.8.0; standalone public-API adapter");
         return Ok(());
     }
+    let password = if let Some(index) = args.iter().position(|arg| arg == "--password") {
+        if index + 1 >= args.len() {
+            return Err("missing password value".into());
+        }
+        let value = args.remove(index + 1);
+        args.remove(index);
+        value
+    } else {
+        String::new()
+    };
     if !matches!(args.len(), 4 | 5) {
         return Err("expected INPUT OUTPUT DPI PAGE or INPUT OUTDIR DPI FIRST LAST".into());
     }
@@ -23,7 +33,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Err("DPI must be finite and positive".into());
     }
     let started = Instant::now();
-    let pdf = Pdf::new(std::fs::read(&args[0])?).map_err(|e| format!("{e:?}"))?;
+    let pdf = Pdf::new_with_password(std::fs::read(&args[0])?, &password)
+        .map_err(|e| format!("{e:?}"))?;
     let pages = pdf.pages();
     if first > last || last >= pages.len() {
         return Err("page range outside document".into());

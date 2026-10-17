@@ -21,6 +21,7 @@ def page_report(cases, bases, identities, policy, *, samples, warmups, seed, inp
     if not cases:
         raise ValueError("empty conversion corpus")
     report = new_report(identities, samples, warmups, seed, input_digest, operation, revision, process_per_page=True)
+    report["measurement_options"] = {"rss_enabled": policy.get("measure_rss", True)}
     rng = random.Random(seed)
     jobs = list(cases)
     rng.shuffle(jobs)
@@ -61,7 +62,7 @@ def page_report(cases, bases, identities, policy, *, samples, warmups, seed, inp
                             cell["commands"][name] = command
                             decoded = []
                             result = measure(command, output, expected, policy, page=case["page"],
-                                             stages_required=name != "poppler", image_sink=decoded)
+                                             stages_required=name != "poppler", image_sink=decoded, tolerance=case.get("tolerance", 0))
                             sample["pagura" if name == "pagura" else "baseline"] = result
                             preserve_failure(output, result, policy,
                                              f"{temporary}/{case['id']}/{case['page']}/{case['dpi']}/{name}/{pair}")
@@ -101,6 +102,7 @@ def run_conversion(args):
     if not 2 <= args.samples <= 1000 or not 0 <= args.warmups <= 100:
         raise ValueError("samples must be 2..1000 and warmups 0..100")
     policy = read_json(POLICY_PATH)
+    policy["measure_rss"] = not args.no_rss
     cases, digest = corpus_cases(args.corpus, args.manifest, args.pages, tuple(int(dpi) for dpi in args.dpis.split(",")))
     if not args.process_per_page:
         from .documents import document_jobs

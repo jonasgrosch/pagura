@@ -45,6 +45,11 @@ def _dimensions(width, height):
 def _rgba_rgb(pixels, premultiplied=False):
     """Composite RGBA8 on white with integer round-to-nearest for straight alpha."""
     rgb = bytearray(len(pixels) // 4 * 3)
+    alpha = pixels[3::4]
+    if alpha.count(255) == len(alpha):
+        for channel in range(3):
+            rgb[channel::3] = pixels[channel::4]
+        return bytes(rgb)
     for index in range(0, len(pixels), 4):
         alpha = pixels[index + 3]
         for channel in range(3):
@@ -115,6 +120,10 @@ def pixel_difference(first, second):
     """Investigation data only: no resizing, alignment, tolerances or correctness claim."""
     if first[:2] != second[:2]:
         return {"status": "dimension-mismatch", "first_dimensions": first[:2], "second_dimensions": second[:2]}
+    if first[2] == second[2]:
+        return {"status": "comparable", "different_channels": 0,
+                "mean_channel_error": 0.0, "max_channel_error": 0,
+                "channel_mean_errors": [0.0, 0.0, 0.0], "channel_max_errors": [0, 0, 0]}
     sums, maxima, different = [0, 0, 0], [0, 0, 0], 0
     for index, (a, b) in enumerate(zip(first[2], second[2])):
         value = abs(a - b)
@@ -127,3 +136,21 @@ def pixel_difference(first, second):
             "mean_channel_error": sum(sums) / (pixels * 3), "max_channel_error": max(maxima),
             "channel_mean_errors": [value / pixels for value in sums], "channel_max_errors": maxima}
 
+
+
+def validate_tolerance(value):
+    """A declared per-channel absolute RGB8 bound, never an inferred tolerance."""
+    if type(value) is not int or not 0 <= value <= 255:
+        raise ValueError("tolerance must be an integer in 0..255")
+    return value
+
+
+def verify_pixels(actual, expected, tolerance=0):
+    """Apply the independent manifest bound and retain exact disagreement metrics."""
+    tolerance = validate_tolerance(tolerance)
+    if expected is None:
+        return {"status": "unverified", "tolerance": tolerance}
+    difference = pixel_difference(actual, expected)
+    accepted = difference["status"] == "comparable" and difference["max_channel_error"] <= tolerance
+    return {"status": "ok" if accepted else "incorrect", "tolerance": tolerance,
+            "oracle_difference": difference}

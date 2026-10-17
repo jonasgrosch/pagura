@@ -1,5 +1,6 @@
 """Process timing, bounded output verification and failure evidence."""
 import os
+import json
 import platform
 import re
 import shutil
@@ -10,7 +11,7 @@ import threading
 import time
 from pathlib import Path
 from .config import ROOT, sha
-from .images import normalize
+from .images import normalize, verify_pixels
 from .timings import parse_stages
 
 
@@ -27,7 +28,7 @@ def run_process(command, policy, *, log_budget=65536):
     """Run once with timeout and per-child RSS; verification follows process exit."""
     with tempfile.TemporaryFile() as log:
         system = platform.system()
-        wrapper = rss_wrapper()
+        wrapper = rss_wrapper() if policy.get("measure_rss", True) else []
         timed_out, process = False, None
         def expire():
             nonlocal timed_out
@@ -64,13 +65,22 @@ def run_process(command, policy, *, log_budget=65536):
     rss_values = re.findall(r"(\d+)\s+maximum resident set size", diagnostic) if system == "Darwin" else re.findall(r"PAGURA_RSS_KIB=(\d+)", diagnostic)
     result = {"status": "timeout" if timed_out else "failed", "exit_code": process.returncode,
               "elapsed_ns": elapsed, "peak_rss_bytes": int(rss_values[-1]) * (1024 if system == "Linux" else 1) if rss_values else None}
+    result["rss_status"] = "available" if result["peak_rss_bytes"] is not None else "unavailable"
+    if process.returncode == 3 and not timed_out:
+        for line in diagnostic.splitlines():
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(record, dict) and record.get("status") == "unsupported" and isinstance(record.get("feature"), str):
+                result.update(status="unsupported", feature=record["feature"])
     if process.returncode or timed_out:
         result["diagnostic"] = diagnostic[-4000:]
         return result, diagnostic
     return result, diagnostic
 
 
-def measure(command, output, expected, policy, *, page=None, stages_required=False, image_sink=None):
+def measure(command, output, expected, policy, *, page=None, stages_required=False, image_sink=None, tolerance=0):
     """Time the whole adapter process; decode/verify its raw output after timing.
 
     Peak RSS comes from this child, never cumulative resource.getrusage values.
@@ -86,8 +96,8 @@ def measure(command, output, expected, policy, *, page=None, stages_required=Fal
             raise ValueError("oversize output")
         data = output.read_bytes()
         actual = normalize(data)
-        result.update(status=("unverified" if expected is None else "ok" if actual == expected else "incorrect"),
-                      pixels_sha256=sha(actual[2]), output_sha256=sha(data),
+        result.update(verify_pixels(actual, expected, tolerance))
+        result.update(pixels_sha256=sha(actual[2]), output_sha256=sha(data),
                       width=actual[0], height=actual[1])
         if expected is not None and actual[:2] == expected[:2] and actual != expected:
             result["different_channels"] = sum(a != b for a, b in zip(actual[2], expected[2]))

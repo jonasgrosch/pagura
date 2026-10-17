@@ -19,6 +19,11 @@ else:
     raise ValueError("unknown engine")
 
 args = sys.argv[2:]
+password = None
+if "--password" in args:
+    position = args.index("--password")
+    password = args[position + 1]
+    del args[position:position + 2]
 if len(args) not in (4, 5):
     raise ValueError("expected INPUT OUTPUT DPI PAGE or INPUT OUTDIR DPI FIRST LAST (zero-based)")
 source, target, dpi = args[:3]
@@ -26,7 +31,15 @@ first, last = int(args[3]), int(args[-1])
 if not 0 <= first <= last:
     raise ValueError("invalid page range")
 started = perf_counter_ns()
-document = backend.PdfDocument(source) if engine == "pdfium" else backend.open(source)
+document = (backend.PdfDocument(source, password=password) if password is not None else backend.PdfDocument(source)) if engine == "pdfium" else backend.open(source)
+if engine == "mupdf" and (password is not None or document.needs_pass):
+    if not hasattr(document, "authenticate"):
+        print(json.dumps({"schema": 1, "status": "unsupported", "feature": "security.password"}))
+        document.close()
+        raise SystemExit(3)
+    if not document.authenticate(password or ""):
+        document.close()
+        raise ValueError("document password rejected")
 try:
     count = len(document) if engine == "pdfium" else document.page_count
     indices = range(count)  # page-list metadata, without loading individual pages
