@@ -1,6 +1,6 @@
 # Scoreboard: verapdf
 
-Recorded 2026-10-17T18:26:43+00:00 at commit `4390401`; binary SHA-256 `5f8a67a475781cf9…`;
+Recorded 2026-10-17T18:44:55+00:00 at commit `21e75c4`; binary SHA-256 `16bbc42e2162f09c…`;
 corpus digest `58a0f31c0ab96e5e…` over 2906 files. Pages scanned at 72 dpi.
 
 | Metric | Value |

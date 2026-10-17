@@ -1,6 +1,6 @@
 # Scoreboard: pdfjs
 
-Recorded 2026-10-17T18:26:44+00:00 at commit `4390401`; binary SHA-256 `5f8a67a475781cf9…`;
+Recorded 2026-10-17T18:44:57+00:00 at commit `21e75c4`; binary SHA-256 `16bbc42e2162f09c…`;
 corpus digest `928cf4a073e547ed…` over 997 files. Pages scanned at 72 dpi.
 
 | Metric | Value |
@@ -57,7 +57,7 @@ corpus digest `928cf4a073e547ed…` over 997 files. Pages scanned at 72 dpi.
 |---|---:|
 | `xref.rebuilt` | 201 |
 | `xref.stream-boundary` | 60 |
-| `filter.trailing-data` | 14 |
+| `filter.trailing-data` | 12 |
 | `xref.offset-corrected` | 10 |
 | `stream.length-corrected` | 9 |
 | `stream.eol` | 5 |

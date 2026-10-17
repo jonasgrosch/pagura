@@ -1,6 +1,6 @@
 # Scoreboard: adversarial
 
-Recorded 2026-10-17T18:26:34+00:00 at commit `4390401`; binary SHA-256 `5f8a67a475781cf9…`;
+Recorded 2026-10-17T18:44:44+00:00 at commit `21e75c4`; binary SHA-256 `16bbc42e2162f09c…`;
 corpus digest `ed1fe0647e32ee9a…` over 1416 files. Pages scanned at 72 dpi.
 
 | Metric | Value |
@@ -53,9 +53,7 @@ corpus digest `ed1fe0647e32ee9a…` over 1416 files. Pages scanned at 72 dpi.
 |---|---:|
 | `xref.offset-corrected` | 384 |
 | `stream.eol` | 218 |
-| `filter.trailing-data` | 199 |
-| `filter.raw-deflate` | 87 |
-| `filter.truncated` | 87 |
+| `filter.trailing-data` | 197 |
 | `xref.rebuilt` | 73 |
 | `file.header-offset` | 46 |
 | `stream.length-corrected` | 14 |
@@ -65,6 +63,8 @@ corpus digest `ed1fe0647e32ee9a…` over 1416 files. Pages scanned at 72 dpi.
 | `catalog.type-missing` | 3 |
 | `syntax.duplicate-key` | 3 |
 | `pages.type-missing` | 2 |
+| `filter.raw-deflate` | 1 |
+| `filter.truncated` | 1 |
 | `catalog.type-invalid` | 1 |
 | `security.permissions-unsigned` | 1 |
 

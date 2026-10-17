@@ -1,6 +1,6 @@
 # Scoreboard: differences
 
-Recorded 2026-10-17T18:26:46+00:00 at commit `4390401`; binary SHA-256 `5f8a67a475781cf9…`;
+Recorded 2026-10-17T18:45:01+00:00 at commit `21e75c4`; binary SHA-256 `16bbc42e2162f09c…`;
 corpus digest `98dfe9832b9b99ab…` over 37 files. Pages scanned at 72 dpi.
 
 | Metric | Value |

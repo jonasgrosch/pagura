@@ -1,6 +1,6 @@
 # Scoreboard: realworld
 
-Recorded 2026-10-17T18:26:31+00:00 at commit `4390401`; binary SHA-256 `5f8a67a475781cf9…`;
+Recorded 2026-10-17T18:44:40+00:00 at commit `21e75c4`; binary SHA-256 `16bbc42e2162f09c…`;
 corpus digest `9c0e0b1e40f8a5cf…` over 1000 files. Pages scanned at 72 dpi.
 
 | Metric | Value |
@@ -49,7 +49,7 @@ corpus digest `9c0e0b1e40f8a5cf…` over 1000 files. Pages scanned at 72 dpi.
 | Repair | Count |
 |---|---:|
 | `xref.offset-corrected` | 384 |
-| `filter.trailing-data` | 351 |
+| `filter.trailing-data` | 342 |
 | `xref.stream-boundary` | 143 |
 | `stream.eol` | 16 |
 | `xref.rebuilt` | 15 |

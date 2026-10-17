@@ -1,6 +1,6 @@
 # Scoreboard: qpdf
 
-Recorded 2026-10-17T18:26:45+00:00 at commit `4390401`; binary SHA-256 `5f8a67a475781cf9…`;
+Recorded 2026-10-17T18:44:59+00:00 at commit `21e75c4`; binary SHA-256 `16bbc42e2162f09c…`;
 corpus digest `580f302df3467dc9…` over 717 files. Pages scanned at 72 dpi.
 
 | Metric | Value |
@@ -46,8 +46,8 @@ corpus digest `580f302df3467dc9…` over 717 files. Pages scanned at 72 dpi.
 | Repair | Count |
 |---|---:|
 | `xref.rebuilt` | 48 |
-| `object.end-missing` | 28 |
 | `trailer.reconstructed` | 17 |
+| `object.end-missing` | 16 |
 | `xref.stream-boundary` | 12 |
 | `syntax.duplicate-key` | 5 |
 | `stream.length-corrected` | 3 |

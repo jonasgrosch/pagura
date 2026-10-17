@@ -1,6 +1,6 @@
 # Scoreboard: pdfium
 
-Recorded 2026-10-17T18:26:46+00:00 at commit `4390401`; binary SHA-256 `5f8a67a475781cf9…`;
+Recorded 2026-10-17T18:45:00+00:00 at commit `21e75c4`; binary SHA-256 `16bbc42e2162f09c…`;
 corpus digest `118d5cae2cc0a461…` over 343 files. Pages scanned at 72 dpi.
 
 | Metric | Value |
@@ -45,8 +45,8 @@ corpus digest `118d5cae2cc0a461…` over 343 files. Pages scanned at 72 dpi.
 |---|---:|
 | `xref.rebuilt` | 43 |
 | `stream.length-corrected` | 32 |
-| `object.end-missing` | 15 |
 | `filter.truncated` | 13 |
+| `object.end-missing` | 11 |
 | `xref.offset-corrected` | 9 |
 | `pages.count-mismatch` | 4 |
 | `syntax.duplicate-key` | 3 |

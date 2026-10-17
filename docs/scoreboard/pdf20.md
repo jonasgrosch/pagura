@@ -1,6 +1,6 @@
 # Scoreboard: pdf20
 
-Recorded 2026-10-17T18:26:46+00:00 at commit `4390401`; binary SHA-256 `5f8a67a475781cf9…`;
+Recorded 2026-10-17T18:45:01+00:00 at commit `21e75c4`; binary SHA-256 `16bbc42e2162f09c…`;
 corpus digest `d64185ac2dfd4ccd…` over 7 files. Pages scanned at 72 dpi.
 
 | Metric | Value |
