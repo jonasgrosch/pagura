@@ -27,6 +27,7 @@ pub struct Session {
     version: Option<u32>,
     generations: BTreeMap<u32, u32>,
     cache: PageCache,
+    cancellation: crate::Cancellation,
 }
 
 impl Default for Session {
@@ -41,6 +42,7 @@ impl Session {
     pub fn new(limits: Limits) -> Self {
         Self {
             limits,
+            cancellation: crate::Cancellation::default(),
             documents: BTreeMap::new(),
             retained_bytes: 0,
             next_handle: 1,
@@ -52,12 +54,32 @@ impl Session {
     }
 
     /// Set the compiled-page cache accounting budget; zero disables retention.
-    /// At most eight lists are retained. Charges estimate source and geometry
+    /// At most eight lists are retained. Charges estimate command and geometry
     /// storage; they are not a total heap-memory measurement.
     #[must_use]
     pub fn with_cache_bytes(mut self, bytes: usize) -> Self {
         self.cache = PageCache::new(bytes);
         self
+    }
+
+    /// Attach a native supervisor flag. Generated tiles observe it before and
+    /// after compilation/painting; executing engine calls still run to completion.
+    #[must_use]
+    pub fn with_cancellation(mut self, cancellation: crate::Cancellation) -> Self {
+        self.cancellation = cancellation;
+        self
+    }
+
+    /// Snapshot source and compiled-page retention, excluding document internals,
+    /// temporary allocations, allocator overhead and transport buffers.
+    pub fn stats(&self) -> protocol::SessionStats {
+        let (charged, lists) = self.cache.accounting();
+        protocol::SessionStats {
+            source_bytes: u64::try_from(self.retained_bytes).unwrap_or(u64::MAX),
+            cache_bytes: u64::try_from(charged).unwrap_or(u64::MAX),
+            documents: u32::try_from(self.documents.len()).unwrap_or(u32::MAX),
+            lists: u32::try_from(lists).unwrap_or(u32::MAX),
+        }
     }
 
     /// Maximum body size, derived from the configured input, password, decoded
@@ -178,11 +200,15 @@ impl Session {
     fn execute(&mut self, request: Request<'_>) -> Result<Response> {
         match request {
             Request::Hello(version) => Ok(Response::Hello(version)),
+            Request::Stats => {
+                self.require_extensions()?;
+                Ok(Response::Stats(self.stats()))
+            }
             Request::Generation {
                 document,
                 generation,
             } => {
-                self.require_generations()?;
+                self.require_extensions()?;
                 self.document(document)?;
                 let current = self.generations.entry(document).or_default();
                 if generation == 0 || generation < *current {
@@ -199,7 +225,7 @@ impl Session {
                 scale,
                 tile,
             } => {
-                self.require_generations()?;
+                self.require_extensions()?;
                 self.document_at(document, 9)?;
                 let current = self.generations.get(&document).copied().unwrap_or(0);
                 if generation < current {
@@ -211,7 +237,14 @@ impl Session {
                             .at(Position::Buffer(5)),
                     );
                 }
-                match self.render(document, page, scale, tile, 4)? {
+                if self.cancellation.is_cancelled() {
+                    return Ok(Response::Skipped(generation));
+                }
+                let response = self.render(document, page, scale, tile, Some(generation))?;
+                if self.cancellation.is_cancelled() {
+                    return Ok(Response::Skipped(generation));
+                }
+                match response {
                     Response::Tile {
                         width,
                         height,
@@ -248,7 +281,7 @@ impl Session {
                 page,
                 scale,
                 tile,
-            } => self.render(document, page, scale, tile, 0),
+            } => self.render(document, page, scale, tile, None),
             Request::Diagnostics(handle) => {
                 Ok(Response::Diagnostics(self.document(handle)?.diagnostics()))
             }
@@ -272,8 +305,9 @@ impl Session {
         page: u32,
         scale: f64,
         tile: pagura::Tile,
-        offset: usize,
+        generation: Option<u32>,
     ) -> Result<Response> {
+        let offset = if generation.is_some() { 4 } else { 0 };
         // Bound response storage before rendering or allocating straight pixels.
         let pixel_bytes = u64::from(tile.width) * u64::from(tile.height);
         if pixel_bytes > u64::try_from(self.limits.pixels).unwrap_or(u64::MAX)
@@ -312,10 +346,19 @@ impl Session {
             list
         } else {
             let list = Arc::new(pagura::compile_page(document, page)?);
+            if let Some(response) = self.cancelled(generation) {
+                return Ok(response);
+            }
             self.cache.insert(key, Arc::clone(&list));
             list
         };
+        if let Some(response) = self.cancelled(generation) {
+            return Ok(response);
+        }
         let pixmap = list.render_tile(&options, tile)?;
+        if let Some(response) = self.cancelled(generation) {
+            return Ok(response);
+        }
         Ok(Response::Tile {
             width: pixmap.width(),
             height: pixmap.height(),
@@ -355,13 +398,17 @@ impl Session {
         })
     }
 
-    fn require_generations(&self) -> Result<()> {
+    fn cancelled(&self, generation: Option<u32>) -> Option<Response> {
+        generation
+            .filter(|_| self.cancellation.is_cancelled())
+            .map(Response::Skipped)
+    }
+
+    fn require_extensions(&self) -> Result<()> {
         if self.version == Some(protocol::VERSION_1_1) {
             Ok(())
         } else {
-            Err(Error::invalid_argument(
-                "viewport generations require protocol 1.1",
-            ))
+            Err(Error::invalid_argument("request requires protocol 1.1"))
         }
     }
 
@@ -719,6 +766,78 @@ mod tests {
                 })
                 .is_err()
         );
+    }
+
+    #[test]
+    fn retention_and_supervisor_cancellation_release_on_close() {
+        let control = crate::Cancellation::default();
+        let mut session = Session::default().with_cancellation(control.clone());
+        session
+            .order(1, &Request::Hello(protocol::VERSION_1_1))
+            .unwrap();
+        let pdf = fixture("classic", "rectangle.pdf");
+        session
+            .execute(Request::Open {
+                bytes: &pdf,
+                recovery: pagura::Recovery::Strict,
+                password: &[],
+            })
+            .unwrap();
+        session
+            .execute(Request::Generation {
+                document: 1,
+                generation: 1,
+            })
+            .unwrap();
+        let tile = Request::GenerationTile {
+            generation: 1,
+            document: 1,
+            page: 0,
+            scale: 1.,
+            tile: pagura::Tile {
+                x: 0,
+                y: 0,
+                width: 64,
+                height: 64,
+            },
+        };
+        std::thread::scope(|scope| {
+            scope.spawn(|| control.cancel()).join().unwrap();
+        });
+        assert_eq!(session.execute(tile).unwrap(), Response::Skipped(1));
+        assert_eq!(session.stats().cache_bytes, 0);
+        control.reset();
+        assert!(matches!(
+            session.execute(tile).unwrap(),
+            Response::GenerationTile { .. }
+        ));
+        assert_eq!(
+            session.stats(),
+            protocol::SessionStats {
+                source_bytes: pdf.len() as u64,
+                cache_bytes: 4608,
+                documents: 1,
+                lists: 1
+            }
+        );
+        session.execute(Request::Close(1)).unwrap();
+        assert_eq!(
+            session.stats(),
+            protocol::SessionStats {
+                source_bytes: 0,
+                cache_bytes: 0,
+                documents: 0,
+                lists: 0
+            }
+        );
+        let bytes = protocol::encode(7, &Response::Stats(session.stats()), 1024).unwrap();
+        assert_eq!(&bytes[..9], &[29, 0, 0, 0, 137, 7, 0, 0, 0]);
+        assert_eq!(&bytes[9..], &[0; 24]);
+        assert!(protocol::decode(&[9, 1, 0, 0, 0], Limits::default()).is_ok());
+        assert!(protocol::decode(&[9, 1, 0, 0, 0, 0], Limits::default()).is_err());
+        let mut base = Session::default();
+        base.order(1, &Request::Hello(protocol::VERSION)).unwrap();
+        assert!(base.execute(Request::Stats).is_err());
     }
 
     #[test]

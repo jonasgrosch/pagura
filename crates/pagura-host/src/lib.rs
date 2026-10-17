@@ -5,7 +5,9 @@
 //! delegated to the facade and cannot execute host commands or perform I/O.
 
 mod cache;
+mod control;
 pub mod protocol;
 mod session;
 
+pub use control::Cancellation;
 pub use session::{Session, SessionEnd};

@@ -80,6 +80,22 @@ inside interpretation/rasterization. Generations do not wrap: reopen the session
 if the u32 space is exhausted. Buffer error offsets refer to the actual v1.1
 payload fields, including the additional generation word.
 
+## Session accounting (v1.1)
+
+Request kind 9 has no payload. Response kind 137 contains:
+`u64 source_bytes | u64 cache_bytes | u32 documents | u32 lists`.
+This additive request requires a v1.1 handshake; v1 rejects it with an
+operational InvalidArgument error. No existing layouts change.
+
+Source bytes count original input retained across open documents; cache bytes
+are compiled-list policy charges described below. Close releases both counts
+for that handle. The counters exclude document-internal caches, temporary
+allocations, allocator overhead, request/response buffers and JavaScript data.
+They are not total live bytes. Document's internal ADR 0012 counter currently
+has no public accessor. The shim separately reports linear-memory byte length
+as a sideband message, outside the protocol; WebAssembly memory cannot shrink
+when allocations are freed. Neither value is process RSS.
+
 ## Compiled page retention
 
 The session reuses immutable display lists keyed by document handle and page
@@ -88,7 +104,7 @@ The LRU retains at most eight entries, with a default accounting budget of
 min(Limits.decoded_bytes, 64 MiB). Session::with_cache_bytes can reduce this or
 set zero to disable retention. Oversized lists render without being retained.
 
-The charge is 32 times source bytes plus 4096 bytes per painted mark and a
+The charge is 4096 bytes per painted mark and a
 fixed 512-byte header charge. These are explicit **estimates**, not measured
 retained heap sizes: the renderer's public API exposes mark count but no allocation count.
 The accounting budget and entry cap bound retention policy; they are not a
@@ -147,3 +163,29 @@ imports trap with their exact name. The UI reads a user-selected file and
 transfers bytes; PDF content never controls file access, URLs or script execution.
 EOF can be signalled on the shared stdin mailbox; termination releases the
 entire session. There is no cancellation within a synchronous request in v1.
+
+## Supervisor cancellation and execution recovery
+
+Native embedders can attach a cloneable Cancellation flag through
+Session::with_cancellation. Generated tiles observe it before compilation,
+between compilation and painting, and after painting before publishing pixels.
+Cancellation produces the existing kind 136 skipped response. A compiled list
+cancelled before admission is not cached; successfully admitted lists remain
+valid. Reset the flag only after acknowledgement, before the next generation.
+v1 requests retain their original behavior. This is a host-boundary check,
+not a checkpoint inside the engine. The current WASI command cannot observe an
+external flag during rendering: no unsafe memory exports or extra descriptors
+are introduced. Engine checkpoints and their WASI control bridge need separate
+APIs. A skipped result carries no pixels and cannot become a partial success.
+
+The browser client rejects active and queued requests on fatal execution,
+Limit errors or its startup/request deadline, terminates the execution thread,
+and never reuses failed memory. The viewer creates a fresh instance and reopens
+its retained source at the same page, zoom and relative scroll anchor, with the
+same recovery policy and password. It makes one automatic attempt per selected
+file; subsequent failure requires reopening explicitly. Errors remain visible
+after a successful recovery. Ordinary Syntax/Unsupported/Password errors keep
+their structured handling. The browser shim checks its 512 MiB linear-memory
+budget at I/O boundaries; the 30-second client deadline also covers an engine
+that never returns to an import. These are detection boundaries, not a hard
+peak-memory allocation limit or an in-engine interruption guarantee.

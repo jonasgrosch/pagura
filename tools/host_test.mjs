@@ -11,6 +11,7 @@ import { spawnSync } from 'node:child_process';
 import { WASI } from 'node:wasi';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { FrameDecoder, encodeRequest, HostError, decodeResponse, MAX_FILE, VERSION_1_1 } from '../web/protocol.mjs';
+import { HostFailure, failureReason } from '../web/failure.mjs';
 import { SessionClient } from '../web/client.mjs';
 import { createWasi } from '../web/wasi.mjs';
 import { runHost } from '../web/worker.mjs';
@@ -19,7 +20,7 @@ import { fixtureUrl, loadFixture } from '../web/fixtures.mjs';
 
 if (!isMainThread) {
   try { await runHost(workerData.module, workerData.shared, (message, transfer = []) => parentPort.postMessage(message, transfer)); }
-  catch (error) { parentPort.postMessage({ type: 'fatal', message: String(error) }); }
+  catch (error) { parentPort.postMessage({ type: 'fatal', reason: failureReason(error), message: String(error) }); }
 } else {
   await main();
 }
@@ -208,6 +209,26 @@ async function main() {
     }
     await testTwoPages(client, root, native, wasiRun);
     await testGenerations(client, root, native, wasiRun);
+    const emptyStats = { sourceBytes: 0, cacheBytes: 0, documents: 0, lists: 0 };
+    assert.deepEqual(await client.stats(), emptyStats);
+    const retainedPdf = new Uint8Array(await readFile(join(root, 'corpus/generated/classic/rectangle.pdf')));
+    const retained = await client.open(retainedPdf);
+    await client.renderTile(retained.document, 0, 1, { x: 0, y: 0, width: 64, height: 64 });
+    assert.deepEqual(await client.stats(), { sourceBytes: retainedPdf.length, cacheBytes: 4608, documents: 1, lists: 1 });
+    assert.ok(client.wasmBytes > 0);
+    await client.close(retained.document); assert.deepEqual(await client.stats(), emptyStats);
+    const statsInput = Buffer.concat([encodeRequest(1, 1, { version: VERSION_1_1 }), encodeRequest(9, 2)]);
+    const statsNative = spawnSync(native, [], { input: statsInput, timeout: 30000 });
+    assert.equal(statsNative.status, 0); bytesEqual((await wasiRun(statsInput, 'stats')).bytes, statsNative.stdout, 'retention native/WASI parity');
+    assert.deepEqual(parse(statsNative.stdout)[1].value, emptyStats);
+    assert.throws(() => client.injectFailure('trap'), /disabled/);
+    const hung = new SessionClient({ addEventListener() {}, postMessage() {}, terminate() {} }, { timeoutMs: 10 });
+    await assert.rejects(hung.hello(), (error) => error instanceof HostFailure && error.reason === 'deadline exceeded');
+    const deadlineListeners = new Map();
+    const stalled = new SessionClient({ addEventListener: (type, fn) => deadlineListeners.set(type, fn), postMessage() {}, terminate() {} }, { timeoutMs: 10 });
+    deadlineListeners.get('message')({ data: { type: 'ready' } });
+    await assert.rejects(stalled.pageInfo(1, 0), (error) => error instanceof HostFailure && error.reason === 'deadline exceeded');
+
     // Explicit unsupported failures survive browser framing with context/tag.
     const unsupported = await client.open(new Uint8Array(await readFile(join(root, 'corpus/generated/classic/pattern-unsupported.pdf'))));
     await assert.rejects(client.renderTile(unsupported.document, 0, 1, { x: 0, y: 0, width: 64, height: 64 }),
@@ -242,6 +263,7 @@ async function main() {
       });
     });
     client.input.end(); assert.equal(await cleanExit, 0);
+    await testClientFailures();
     testCodecAndCapabilities();
     await testFixtureLoading();
     await testViewer(TestWorker, root, manifest);
@@ -262,6 +284,30 @@ async function main() {
   } finally {
     client?.destroy();
     await Promise.all(files.map((file) => file.close())); await rm(scratch, { recursive: true, force: true });
+  }
+}
+
+async function testClientFailures() {
+  assert.equal(failureReason(new WebAssembly.RuntimeError('unreachable')), 'trap');
+  assert.equal(failureReason(new RangeError('out of memory')), 'memory failure');
+  assert.equal(failureReason(new Error('memory allocation failed')), 'memory failure');
+  for (const reason of ['trap', 'memory failure', 'budget exceeded']) {
+    const listeners = new Map(); let terminated = 0, notified = 0;
+    const thread = { addEventListener: (type, fn) => listeners.set(type, fn), postMessage() {}, terminate: () => { terminated++; } };
+    const client = new SessionClient(thread, { onFailure: () => { notified++; } });
+    const message = (data) => listeners.get('message')({ data });
+    message({ type: 'ready', wasmBytes: 65536 });
+    const first = client.pageInfo(1, 0), queued = client.stats();
+    const rejected = [first, queued].map((promise) => assert.rejects(promise, (error) => error instanceof HostFailure && error.reason === reason));
+    await new Promise((done) => setTimeout(done, 0));
+    if (reason === 'budget exceeded') {
+      client.receive({ kind: 255, id: 1, value: new HostError(2, '', '', 'tile response budget exceeded', {}) });
+    } else message({ type: 'fatal', reason, message: 'execution failed' });
+    await Promise.all(rejected);
+    assert.equal(terminated, 1); assert.equal(notified, 1);
+    message({ type: 'stdout', bytes: new Uint8Array([255]) });
+    client.destroy(); assert.equal(terminated, 1); assert.equal(notified, 1);
+    assert.equal(client.decoder.body, null);
   }
 }
 
@@ -348,7 +394,7 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
   const original = new Map(['window', 'document', 'Worker', 'ImageData', 'requestAnimationFrame', 'crossOriginIsolated', 'fetch']
     .map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   const fakeWindow = new Element('window'); fakeWindow.devicePixelRatio = 1;
-  fakeWindow.location = new URL(startup?.url ?? 'http://localhost:8000/');
+  fakeWindow.location = new URL(startup?.url ?? 'http://localhost:8000/?debug=1');
   Object.assign(globalThis, {
     window: fakeWindow,
     document: { activeElement: null, getElementById: (id) => elements.get(id), createElement: (name) => new Element(name), body: { classList: { add() {}, remove() {} } } },
@@ -373,6 +419,7 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
   try {
     await import(`../web/viewer.mjs?test=${startup?.name ?? 'continuous'}`);
     if (startup) {
+      assert.equal(fakeWindow.paguraDebug, undefined);
       if (startup.error) {
         assert.equal(elements.get('error').hidden, false); assert.match(elements.get('error').textContent, startup.error);
         assert.equal(elements.get('page-surface').children.length, 0);
@@ -435,6 +482,24 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
     }
     fakeWindow.dispatch('keydown', { key: 'Home' }); await waitFor(() => settledPage(0)); checkPage(0);
     fakeWindow.dispatch('keydown', { key: 'PageDown' }); await waitFor(() => settledPage(1)); checkPage(1);
+    for (const reason of ['trap', 'memory', 'budget', 'deadline']) {
+      await pick(twoPages); await waitFor(ready);
+      elements.get('zoom').value = '2'; elements.get('zoom').dispatch('change');
+      elements.get('page').value = '2'; elements.get('page').dispatch('change');
+      await waitFor(() => settledPage(1) && view(1).style.width === '128px');
+      fakeWindow.paguraDebug.fail(reason);
+      await waitFor(() => ready() && elements.get('error').textContent.includes('document reopened'));
+      assert.equal(elements.get('page').value, '2'); assert.equal(view(1).style.width, '128px');
+      assert.equal(elements.get('error').hidden, false);
+      assert.match(elements.get('error').textContent, /page 2, 200%/);
+      const expected = [];
+      for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) expected.push(...(x >= 64 && y < 64 ? [0, 0, 255] : [255, 255, 255]));
+      checkPixels({ rgba: canvases(1)[0].image.data }, expected);
+      fakeWindow.paguraDebug.fail(reason);
+      await waitFor(() => elements.get('error').textContent.includes('Automatic recovery stopped'));
+      assert.equal(canvases(1).length, 0);
+      elements.get('zoom').value = '1';
+    }
     const rectangle = manifest.cases.find((entry) => entry.id === 'classic/rectangle');
     await pick(rectangle); await waitFor(ready);
     elements.get('zoom').value = '2'; elements.get('zoom').dispatch('change');
@@ -478,6 +543,10 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
     await waitFor(() => elements.get('password-dialog').open && elements.get('password-feedback').textContent.includes('Incorrect'));
     elements.get('password').value = encrypted.password; elements.get('password-form').dispatch('submit');
     await waitFor(ready); assert.equal(elements.get('password').value, ''); assert.equal(elements.get('password-dialog').open, false);
+    checkPixels({ rgba: canvases()[0].image.data }, ppmPixels(await readFile(join(root, encrypted.oracle)), encrypted.width, encrypted.height));
+    fakeWindow.paguraDebug.fail('trap');
+    await waitFor(() => ready() && elements.get('error').textContent.includes('document reopened'));
+    assert.equal(elements.get('password-dialog').open, false);
     checkPixels({ rgba: canvases()[0].image.data }, ppmPixels(await readFile(join(root, encrypted.oracle)), encrypted.width, encrypted.height));
     await pick(encrypted); await waitFor(() => elements.get('password-dialog').open); elements.get('password-cancel').dispatch('click');
     await waitFor(() => elements.get('status').textContent === 'Opening cancelled'); assert.equal(canvases().length, 0);

@@ -31,7 +31,9 @@ normal viewing lists applied repairs below the document.
   document region.
 - Password-protected PDFs open an accessible modal with retry, Cancel and Escape.
   The field is cleared when submitted, cancelled or replaced by another file;
-  temporary password bytes are cleared after each open attempt. Text entry sends
+  temporary password bytes are cleared after each open attempt. A private copy
+  remains in memory for automatic recovery until a new file is selected or the
+  page closes. Text entry sends
   UTF-8 bytes. Non-ASCII legacy passwords requiring PDFDocEncoding are not
   converted by the UI; callers can use SessionClient.open with explicit raw
   bytes. ISO 32000-2 7.6.4.3.2 and 7.6.4.3.3 distinguish those encodings.
@@ -61,8 +63,8 @@ device pixels. The session keeps an LRU with a default 64 MiB accounting budget
 all entries for that document. Lists exceeding the accounting budget render
 without retention. Session::with_cache_bytes(0) disables retention.
 
-Accounting charges 32 source bytes per input byte and 4096 bytes per painted
-mark, plus a fixed 512-byte header charge. These are estimates: DisplayList
+Accounting charges 4096 bytes per painted mark, plus a fixed 512-byte header
+charge; the input file size does not affect compiled-list admission. These are estimates: DisplayList
 exposes no retained allocation size. The weight budget is not a hard process-memory ceiling;
 expanded paths/resources may differ from the estimate. Per-operation renderer
 limits remain in force. A renderer allocation-size API would allow accurate
@@ -143,3 +145,61 @@ other. The profile separately measures 64 compilations and 64 cached-list tile
 paints. These are exploratory diagnostics, not the sample count, confidence
 intervals, memory measurements or controlled runner required by the release
 policy in benchmarks/policy.json. They make no cross-engine speed claim.
+
+## Failure recovery
+
+A module trap, allocation failure, Limit response, unexpected exit, or a
+30-second startup/request deadline terminates the current execution thread.
+The viewer reports the failure, restarts the host, and reopens the retained
+local bytes at the same page, zoom and relative scroll position. It retains
+the recovery policy and a private password copy for that document's lifetime.
+The recovery notice stays visible after successful rendering. Only one
+automatic attempt is allowed per selected file; another failure stops rendering
+and asks the user to reopen explicitly. Selecting another file takes precedence
+over an ongoing recovery. Syntax, Unsupported and password errors retain their
+usual behavior. The shim detects linear memory over 512 MiB at I/O boundaries;
+this does not constrain transient peak allocations inside an engine call.
+
+For local development only, open `http://localhost:8000/?debug=1` and call
+`window.paguraDebug.fail('trap')`, `'memory'`, `'budget'` or `'deadline'` from the
+console. This injects a client failure and follows the same termination and
+reopen path without changing the engine. The hook is absent without that flag
+or on a non-loopback hostname. Tests also cover an actual client deadline and
+a structured Limit response; injected failures are not evidence of physical
+browser OOM behavior.
+
+## Session measurements
+
+```
+node web/host_benchmark.mjs target/wasm32-wasip1/release/pagura-host.wasm /absolute/path/to/external-multipage.pdf > /tmp/host.json
+```
+
+The dependency-free harness drives identical operations through Node WASI and
+the browser shim/mailbox running in Node's execution threads. The Node WASI
+harness replaces stdin/stdout imports with in-memory buffers so external PDFs
+are read in place, never written into request files or copied into the project.
+It measures document open through page geometry and first tile, 16 warm panning
+tiles, and five
+zoom changes (50%, 100%, 150%, 200%, 100%); two warmups and five samples are
+reported with raw timings and medians. Many-rectangles uses 256-pixel tiles;
+the two small classic pages use 32-pixel tiles and external pages use 128.
+The ready-session timings exclude module compilation, instantiation and
+execution-thread startup. A separate fresh-instance series includes instantiation,
+thread startup and hello through open/geometry/first tile, with two warmups and
+five raw samples per document. It still excludes module compilation, network
+loading, file reads and Canvas presentation; Node receives a compiled module.
+External Unsupported results are recorded explicitly as latency to failure,
+never as successful first tiles or warm rendering. Classic scale-1 pixels use
+independent PPM oracles; all successful outputs have identical hashes across
+runtimes, including zoom results. Hash parity alone is not an external oracle.
+
+Each memory series starts in a fresh instance, then performs 50 open/render/close
+cycles: either the same many-rectangles input or an alternating mix of three
+classic inputs and the external document. Every cycle records live source bytes,
+compiled-list charges, document/list counts and linear-memory size, and asserts
+zero host counters after close. `SessionClient.stats()` exposes protocol kind 9;
+`wasmBytes` exposes the last sideband memory sample. Counts exclude document
+internals and temporary/transport/JavaScript allocations. All raw cycle records,
+medians, input and module digests and runtime/hardware identifiers go to stdout.
+These exploratory samples are not release evidence, an RSS leak proof or a
+measurement of browser layout/Canvas/GPU costs. No external corpus data is served.

@@ -192,6 +192,39 @@
         "crypto/r2-rc4-40-password-user"
       ],
       "gaps": "Text entry uses UTF-8. Raw byte passwords remain available through the client; non-ASCII legacy PDFDocEncoding conversion and engine SASLprep limitations remain."
+    },
+    {
+      "id": "host-retention-telemetry",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "additive v1.1 session stats and separate linear-memory sideband",
+      "tests": [
+        "pagura-host session::tests::retention_and_supervisor_cancellation_release_on_close",
+        "tools/host_test.mjs retention native/WASI parity",
+        "web/host_benchmark.mjs"
+      ],
+      "gaps": "Source and compiled-list estimates exclude document internals, transient allocations, transport and JS. Document retained counter has no public accessor. Linear memory is a high-water capacity, not live heap or RSS."
+    },
+    {
+      "id": "host-execution-recovery",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "bounded automatic restart with document, password, page and zoom replay",
+      "tests": [
+        "tools/host_test.mjs testClientFailures",
+        "tools/host_test.mjs testViewer"
+      ],
+      "gaps": "Client-only injected traps, memory, budgets and deadlines exercise recovery; physical browser OOM and browser interaction still need runtime validation. One automatic retry per selected file. The 512 MiB memory check runs at I/O boundaries; request deadline is 30 seconds."
+    },
+    {
+      "id": "host-supervisor-cancellation",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "safe native flag with pre/post compilation and painting checks for generated tiles",
+      "tests": [
+        "pagura-host session::tests::retention_and_supervisor_cancellation_release_on_close"
+      ],
+      "gaps": "No engine checkpoints within operators or display-list commands; no WASI bridge to the supervisor flag. Current browser generations skip queued work, and fatal deadlines terminate the execution thread."
     }
   ]
 }

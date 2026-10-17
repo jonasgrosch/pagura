@@ -4,7 +4,7 @@ use pagura::{Diagnostic, Error, ErrorKind, ObjectId, Position, Recovery, Result,
 
 /// The compatible base session version.
 pub const VERSION: u32 = 1;
-/// Protocol 1.1, adding viewport generations without changing v1 frames.
+/// Protocol 1.1, adding viewport generations and stats without changing v1 frames.
 pub const VERSION_1_1: u32 = 0x0001_0001;
 /// Kind byte for structured error responses.
 pub const ERROR_KIND: u8 = 255;
@@ -65,6 +65,21 @@ pub enum Request<'a> {
     Diagnostics(u32),
     /// Release a document; handles are never reused.
     Close(u32),
+    /// Snapshot session retention accounting (v1.1).
+    Stats,
+}
+
+/// Session-owned retention accounting, not allocator or total-heap telemetry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SessionStats {
+    /// Original input bytes owned by open documents.
+    pub source_bytes: u64,
+    /// Estimated compiled-list retention charges.
+    pub cache_bytes: u64,
+    /// Open document count.
+    pub documents: u32,
+    /// Retained compiled-list count.
+    pub lists: u32,
 }
 
 /// A request and its nonzero correlation identifier.
@@ -123,6 +138,8 @@ pub enum Response {
         /// Straight RGBA8 bytes.
         rgba: Vec<u8>,
     },
+    /// Retention accounting (v1.1).
+    Stats(SessionStats),
     /// Repairs in discovery order.
     Diagnostics(Vec<Diagnostic>),
     /// The handle has been released.
@@ -192,6 +209,7 @@ pub fn decode(body: &[u8], limits: pagura::Limits) -> Result<RequestFrame<'_>> {
                 height: reader.u32()?,
             },
         },
+        9 => Request::Stats,
         _ => return Err(Error::syntax("unknown request kind").at(Position::Buffer(0))),
     };
     if reader.offset != body.len() {
@@ -269,6 +287,7 @@ pub fn encode(id: u32, response: &Response, max_body: usize) -> Result<Vec<u8>> 
         Response::Close => 134,
         Response::Generation(_) => 135,
         Response::Skipped(_) | Response::GenerationTile { .. } => 136,
+        Response::Stats(_) => 137,
         Response::Error(_) => ERROR_KIND,
     }])?;
     out.push(&id.to_le_bytes())?;
@@ -333,6 +352,12 @@ fn encode_payload(out: &mut Encoder, response: &Response) -> Result<()> {
             out.push(&[1])?;
             out.push(&generation.to_le_bytes())?;
             encode_tile(out, *width, *height, rgba)?;
+        }
+        Response::Stats(stats) => {
+            out.push(&stats.source_bytes.to_le_bytes())?;
+            out.push(&stats.cache_bytes.to_le_bytes())?;
+            out.push(&stats.documents.to_le_bytes())?;
+            out.push(&stats.lists.to_le_bytes())?;
         }
         Response::Close => (),
         Response::Error(error) => {

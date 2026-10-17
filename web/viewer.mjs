@@ -11,6 +11,9 @@ const TILE = 256, MAX_TILES = 128, MAX_PAGES = 32, MAX_EXTENT = 10000000;
 let client, handle = null, layout = new PageLayout(0), page = 0, zoom = 1;
 let documentEpoch = 0, generation = 0, drawing = false, scheduled = false, dirty = false;
 const infos = new Map(), views = new Map();
+const debug = new URL(window.location.href).searchParams.get('debug') === '1'
+  && ['localhost', '127.0.0.1', '[::1]'].includes(new URL(window.location.href).hostname);
+let source = null, recoveryAttempts = 0, recovering = false;
 
 function report(error) { errorBox.textContent = String(error); errorBox.hidden = false; status.textContent = 'Page unavailable'; }
 function controls() {
@@ -23,7 +26,40 @@ function controls() {
 }
 function createClient() {
   if (!crossOriginIsolated || typeof SharedArrayBuffer !== 'function') throw new Error('Cross-origin isolation is required. Start python3 tools/serve_web.py and open http://localhost:8000.');
-  return new SessionClient(new Worker(new URL('./worker.mjs', import.meta.url), { type: 'module' }));
+  const current = new SessionClient(new Worker(new URL('./worker.mjs', import.meta.url), { type: 'module' }), { debug,
+    onFailure: (error) => { if (client === current) void recover(error); } });
+  return current;
+}
+async function recover(error) {
+  if (recovering) return;
+  if (!source || recoveryAttempts >= 1) {
+    handle = null; client?.destroy();
+    for (const view of views.values()) view.element.remove(); views.clear();
+    report(`${error}. Automatic recovery stopped; reopen the file to retry.`); return;
+  }
+  recovering = true; recoveryAttempts++;
+  const saved = source, position = anchor(), epoch = ++documentEpoch;
+  handle = null; infos.clear(); views.clear(); surface.replaceChildren();
+  report(`${error}. Restarting the PDF host…`); status.textContent = 'Recovering document…';
+  try {
+    client?.destroy(); client = createClient(); const current = client;
+    await current.hello();
+    const opened = await current.open(saved.bytes, saved.recovery, saved.password);
+    if (epoch !== documentEpoch) return;
+    handle = opened.document; page = Math.min(position.index, Math.max(0, opened.pages - 1));
+    if (layout.count !== opened.pages) layout = new PageLayout(opened.pages);
+    if (opened.pages) { await pageInfo(page, epoch); if (epoch !== documentEpoch) return; }
+    updateLayout();
+    if (opened.pages) restore({ ...position, index: page });
+    controls();
+    errorBox.textContent = `${error}. PDF host restarted; document reopened at page ${page + 1}, ${Math.round(zoom * 100)}%.`;
+    errorBox.hidden = false; invalidate();
+  } catch (failure) {
+    if (epoch === documentEpoch) {
+      handle = null; client?.destroy();
+      report(`${failure}. Automatic recovery stopped; reopen the file to retry.`);
+    }
+  } finally { recovering = false; }
 }
 function invalidate() {
   if (handle !== null) { generation = client.invalidate(handle); status.textContent = 'Updating visible pages…'; }
@@ -206,6 +242,7 @@ async function navigate(index) {
 async function openFile(file) {
   if (!file) return;
   cancelPassword();
+  source?.password.fill(0); source = null; recoveryAttempts = 0;
   const epoch = ++documentEpoch;
   handle = null; infos.clear(); views.clear(); surface.replaceChildren(); surface.hidden = true;
   layout = new PageLayout(0); page = 0; controls(); errorBox.hidden = true;
@@ -213,12 +250,15 @@ async function openFile(file) {
   $('diagnostic-count').textContent = 'Repairs: 0'; $('repair-list').replaceChildren();
   try {
     if (file.size > MAX_FILE) throw new Error('PDF exceeds the 512 MiB input budget');
-    client?.destroy(); client = createClient(); const current = client; await current.hello();
+    client?.destroy();
     const bytes = new Uint8Array(await file.arrayBuffer()); if (epoch !== documentEpoch) return;
+    source = { bytes, password: new Uint8Array(), recovery: $('strict').checked ? 0 : 1 };
+    const saved = source;
+    client = createClient(); const current = client; await current.hello();
     let password = new Uint8Array(), retried = false, opened;
     for (;;) {
       const attemptedPassword = password;
-      try { opened = await current.open(bytes, $('strict').checked ? 0 : 1, password); break; }
+      try { opened = await current.open(bytes, saved.recovery, password); saved.password = password.slice(); break; }
       catch (error) {
         if (epoch !== documentEpoch) return;
         if (!(error instanceof HostError) || error.category !== 6) throw error;
@@ -290,7 +330,8 @@ window.addEventListener('resize', () => {
   else invalidate();
   ratio = window.devicePixelRatio;
 });
-window.addEventListener('pagehide', () => client?.destroy());
+window.addEventListener('pagehide', () => { source?.password.fill(0); source = null; client?.destroy(); });
+if (debug) window.paguraDebug = Object.freeze({ fail: (reason) => client.injectFailure(reason) });
 let startupEpoch = documentEpoch;
 try {
   client = createClient(); await client.hello(); status.textContent = 'Ready — open a PDF';

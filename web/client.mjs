@@ -1,9 +1,12 @@
+import { HostFailure } from './failure.mjs';
 import { encodeRequest, FrameDecoder, HostError, VERSION_1_1 } from './protocol.mjs';
 import { createInput, InputWriter } from './transport.mjs';
 
 /** Long-lived serial session. Recreate the client after a trap/terminal failure. */
 export class SessionClient {
-  constructor(worker) {
+  constructor(worker, { onFailure = () => {}, timeoutMs = 30000, debug = false } = {}) {
+    this.onFailure = onFailure; this.timeoutMs = timeoutMs; this.debug = debug; this.wasmBytes = 0;
+    this.timer = setTimeout(() => this.fail(new HostFailure('deadline exceeded', 'startup exceeded its time budget')), timeoutMs);
     this.worker = worker; this.input = new InputWriter(createInput()); this.nextId = 1;
     this.generations = new Map(); this.selectedGenerations = new Map();
     this.tail = Promise.resolve(); this.pending = null; this.failure = null; this.queued = 0;
@@ -12,15 +15,17 @@ export class SessionClient {
     // Keep worker startup failures observed even before the first request.
     this.ready.catch(() => {});
     worker.addEventListener('message', ({ data }) => {
+      if (this.failure) return;
       try {
-        if (data.type === 'ready') this.resolveReady();
+        if (data.type === 'ready') { clearTimeout(this.timer); this.wasmBytes = data.wasmBytes ?? 0; this.resolveReady(); }
+        else if (data.type === 'memory') this.wasmBytes = data.wasmBytes;
         else if (data.type === 'drain') this.input.pump();
         else if (data.type === 'stdout') this.decoder.feed(data.bytes);
-        else if (data.type === 'fatal') this.fail(new Error(data.message));
+        else if (data.type === 'fatal') this.fail(new HostFailure(data.reason ?? 'execution failure', data.message));
         else if (data.type === 'exit') { this.decoder.finish(); this.fail(new Error(`Host session exited (${data.code})`)); }
       } catch (error) { this.fail(error); }
     });
-    worker.addEventListener('error', (event) => this.fail(new Error(event.message || 'Host worker failed')));
+    worker.addEventListener('error', (event) => this.fail(new HostFailure('execution failure', event.message || 'Host execution failed')));
     worker.addEventListener('messageerror', () => this.fail(new Error('Invalid worker message')));
     worker.postMessage({ type: 'start', shared: this.input.control.buffer });
   }
@@ -28,14 +33,20 @@ export class SessionClient {
     if (frame.kind === 255 && frame.id === 0) { this.fail(frame.value); return; }
     const pending = this.pending;
     if (!pending || frame.id !== pending.id || (frame.kind !== 255 && frame.kind !== pending.kind + 128)) throw new Error('Mismatched host response');
-    this.pending = null;
+    if (frame.value instanceof HostError && frame.value.category === 2) {
+      this.fail(new HostFailure('budget exceeded', frame.value)); return;
+    }
+    clearTimeout(this.timer); this.pending = null;
     if (frame.value instanceof HostError) pending.reject(frame.value); else pending.resolve(frame.value);
   }
-  fail(error) {
+  fail(error, notify = true) {
     if (this.failure) return;
+    clearTimeout(this.timer);
     this.failure = error; this.rejectReady(error);
     if (this.pending) { this.pending.reject(error); this.pending = null; }
-    this.input.queue = []; this.worker.terminate();
+    this.input.queue = []; this.input.offset = 0;
+    this.decoder = new FrameDecoder(() => {}); this.worker.terminate();
+    if (notify) queueMicrotask(() => this.onFailure(error));
   }
   request(kind, values) {
     if (this.failure) return Promise.reject(this.failure);
@@ -51,6 +62,7 @@ export class SessionClient {
       const id = this.nextId++, bytes = encodeRequest(kind, id, values);
       return new Promise((resolve, reject) => {
         this.pending = { id, kind, resolve, reject };
+        this.timer = setTimeout(() => this.fail(new HostFailure('deadline exceeded', 'request exceeded its time budget')), this.timeoutMs);
         try { this.input.write(bytes); } catch (error) { this.fail(error); }
       });
     });
@@ -79,10 +91,20 @@ export class SessionClient {
     }
     return this.request(8, { document, page, scale, ...tile, generation });
   }
+  stats() { return this.request(9); }
+  /** Development injection stays in the client; no engine instruction changes. */
+  injectFailure(reason) {
+    if (!this.debug) throw new Error('Failure injection is disabled');
+    const failures = { trap: new WebAssembly.RuntimeError('injected trap'), memory: new RangeError('injected memory exhaustion'),
+      budget: new HostError(2, '', '', 'injected budget exhaustion', {}), deadline: new Error('injected deadline') };
+    if (!Object.hasOwn(failures, reason)) throw new Error('Unknown injected failure');
+    const names = { trap: 'trap', memory: 'memory failure', budget: 'budget exceeded', deadline: 'deadline exceeded' };
+    this.fail(new HostFailure(names[reason], failures[reason]));
+  }
   diagnostics(document) { return this.request(5, { document }); }
   close(document) {
     this.generations.delete(document); this.selectedGenerations.delete(document);
     return this.request(6, { document });
   }
-  destroy() { this.fail(new Error('Host session closed')); }
+  destroy() { this.fail(new Error('Host session closed'), false); }
 }

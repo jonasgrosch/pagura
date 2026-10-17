@@ -69,6 +69,10 @@ impl PageCache {
         self.entries.push_back(Entry { key, charge, list });
     }
 
+    pub(crate) fn accounting(&self) -> (usize, usize) {
+        (self.charged, self.entries.len())
+    }
+
     pub(crate) fn close(&mut self, document: u32) {
         self.entries.retain(|entry| {
             if entry.key.0 == document {

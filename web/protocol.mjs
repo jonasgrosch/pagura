@@ -89,6 +89,7 @@ export function decodeResponse(body) {
       } else throw new Error('Invalid generated tile status');
       break;
     }
+    case 137: value = { sourceBytes: r.offset64(), cacheBytes: r.offset64(), documents: r.u32(), lists: r.u32() }; break;
     case 255: {
       const category = r.u8(), tag = r.text(), repair = r.text(), message = r.text();
       if (category < 1 || category > 7 || (category === 3) !== (tag.length > 0) || (repair.length > 0 && category !== 1)) throw new Error('Invalid structured error');
@@ -123,7 +124,7 @@ export class FrameDecoder {
   finish() { if (this.used || this.body) throw new Error('Truncated response at host exit'); }
 }
 
-/** Encode the six canonical requests. All numeric arguments are checked. */
+/** Encode canonical v1 and additive v1.1 requests. All numeric arguments are checked. */
 export function encodeRequest(kind, id, values = {}) {
   const u32 = (value) => {
     if (!Number.isInteger(value) || value < 0 || value > 0xffffffff) throw new Error('Expected a u32 argument');
@@ -133,6 +134,7 @@ export function encodeRequest(kind, id, values = {}) {
   let size;
   switch (kind) {
     case 1: size = 9; break;
+    case 9: size = 5; break;
     case 2:
       if (!(values.bytes instanceof Uint8Array) || !(values.password instanceof Uint8Array)) throw new Error('Open requires byte arrays');
       if (values.bytes.length > MAX_FILE || values.password.length > 32 * 1024 * 1024) throw new Error('Open byte budget exceeded');
@@ -154,7 +156,7 @@ export function encodeRequest(kind, id, values = {}) {
   if (kind === 1) integer(values.version ?? 1);
   if (kind === 2) { bytes[offset++] = values.recovery; blob(values.password); blob(values.bytes); }
   if (kind === 8) integer(values.generation);
-  if (kind >= 3) integer(values.document);
+  if (kind >= 3 && kind <= 8) integer(values.document);
   if (kind === 7) integer(values.generation);
   if (kind === 3 || kind === 4 || kind === 8) integer(values.page);
   if (kind === 4 || kind === 8) {
