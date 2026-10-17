@@ -407,7 +407,7 @@
         "document/security-embedded-doc-open",
         "document/security-embedded-identity-filter"
       ],
-      "gaps": "EFOpen-only crypt filters can leave a document without an authenticated key while Identity page data remains readable. Embedded encrypted data still returns Password until reopened with credentials. StrF/StmF force DocOpen as Table 25 requires; other DocOpen filters retain eager authentication. Malformed security parameters are never deferred."
+      "gaps": "EFOpen-only Standard-handler filters are reported as extensions to 7.6.4.1; Identity main-page data may remain readable without an attachment key. Encrypted embedded data still requires credentials. StmF/StrF force DocOpen regardless of AuthEvent contents. CFM None is handler delegation and cannot silently become Identity."
     },
     {
       "id": "security-key-length-recovery",
@@ -441,6 +441,137 @@
         "document/catalog-number-zero-encrypted"
       ],
       "gaps": "Only a complete, explicitly typed plaintext Catalog numbered zero is recovered at the exact positive trailer Root xref offset. A matching nearby positive header takes precedence. Generation, Pages reference, endobj and absence of stream payloads are required. Other roles, arbitrary renumbering and encrypted object-key guesses are rejected. No second object slot or retained copy is created."
+    },
+    {
+      "id": "security-dictionary-policy",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.9",
+        "7.6.2",
+        "7.6.4.1",
+        "7.6.6"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/security-identity-shadow",
+        "document/security-auth-event-override",
+        "document/security-v4-default-length",
+        "document/security-filter-type",
+        "document/security-filter-type-null",
+        "document/security-filter-length",
+        "document/security-filter-length-null",
+        "document/security-filter-name",
+        "document/security-auth-event-ignored-invalid",
+        "document/security-handler-delegation"
+      ],
+      "gaps": "Identity shadows are ignored before resolving their values. StmF/StrF ignore AuthEvent entirely. V=4 defaults to 128 bits. CF Type, missing required Length, nonstandard Standard-handler names and EFOpen-only extensions are reported deviations; Table 25 with EC3 issue 184 expresses Standard AES lengths in bytes. CFM None delegates to the handler, whose unspecified Standard cipher is explicitly Unsupported rather than Identity."
+    },
+    {
+      "id": "security-metadata-scope",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.6.4.2",
+        "7.6.4.3.2",
+        "14.3.2"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/security-object-metadata",
+        "document/security-v1-metadata"
+      ],
+      "gaps": "EncryptMetadata applies only to V=4/5 and only to the catalog-referenced document-level Metadata stream. Object-level Metadata still decrypts. The catalog identity is checked lazily after handler initialization, outside cache publication locks."
+    },
+    {
+      "id": "security-identifiers",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.5.5",
+        "7.6.4.3.2",
+        "7.6.4.3.3",
+        "14.4"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/security-id-missing",
+        "document/security-id-single",
+        "document/security-id-short"
+      ],
+      "gaps": "Malformed required IDs are reported, not synthesized or padded. The first legacy identifier bytes remain unchanged for hashing; absent/unusable legacy key material is still an error. R5/R6 authentication does not consume IDs, so malformed IDs can be reported without affecting its authenticated key."
+    },
+    {
+      "id": "security-permissions-validation",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.6.4.3.3",
+        "7.6.4.4.12"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/security-permissions-inconsistent"
+      ],
+      "gaps": "Password authentication and Algorithm 13 consistency remain separate. Inconsistent causes a strict security.perms-mismatch error or an explicit repair diagnostic; dictionary permission bytes remain unchanged and malformed security lengths still fail."
+    },
+    {
+      "id": "security-short-rc4",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.6.2",
+        "7.6.3.2",
+        "7.6.4.3.2",
+        "C.1"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/r4-zero-padded-40",
+        "document/r4-zero-padded-48",
+        "document/security-zero-padded-40",
+        "document/security-zero-padded-48",
+        "document/security-zero-padded-bad-checksum"
+      ],
+      "gaps": "An explicit crypto compatibility API authenticates short R4 keys while normal authentication keeps fixed-size checks. Zero-padded object derivation is selected only with a complete zlib checksum and xref-matching object directory, before encrypted objects/strings are cached. Only the first physical xref-selected Flate object stream is probed; no string-only or rebuilt-without-xref inference. All temporary data obey decoded/document byte limits; successful caches use their existing one-time charges. Independent stdlib MD5/RC4 known answers include generation 513 and separate user/owner authentication. This is a documented deviation from Algorithm 1."
+    },
+    {
+      "id": "identifier-syntax",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.2.3",
+        "7.3.10"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/syntax-reference-object-zeroes",
+        "document/syntax-reference-generation-zeroes",
+        "document/syntax-name-braces"
+      ],
+      "gaps": "EC3 issue 379 disallows leading zeros in reference object/generation numbers. Reported recovery preserves the numeric identity after a complete reference token is proven; ordinary integer spellings are unchanged. Braces are regular PDF characters outside Type 4 functions and therefore need no repair in names."
+    },
+    {
+      "id": "security-legacy-permissions",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.6.4.2",
+        "7.6.4.3.2",
+        "7.6.4.4.2"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/security-legacy-permission-selector"
+      ],
+      "gaps": "Nonconforming R2 revision-selector permissions use an explicit compatibility authentication path. Raw P bytes and the R2 hash/RC4 algorithms are preserved. Normal crypto authentication still rejects the selector violation; viewing recovery never guesses a password or changes access flags."
+    },
+    {
+      "id": "password-text-encoding",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.6.4.3.2",
+        "7.6.4.3.3",
+        "D.3"
+      ],
+      "status": "implemented",
+      "tests": [
+        "crypto/r3-pdfdocencoding-euro"
+      ],
+      "gaps": "Only the CLI Unicode password path converts defined Annex D.3 code points to PDFDocEncoding for authenticated R2-R4 handlers. R5/R6 keep UTF-8. Unrepresentable input is never replaced lossily; the Document API and host protocol remain byte-oriented. The independent Euro vector covers both byte and CLI entry points."
     }
   ]
 }

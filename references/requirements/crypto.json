@@ -157,6 +157,23 @@
         "crypto/r6-saslprep-{unicode-passwords,bidi-passwords,normalized-boundary,correction-passwords}"
       ],
       "gaps": "No pending normalization implementation or data. B.1/C.1.2 overlap and authentication-query A.1 policy remain explicit choices, as documented in saslprep_decisions."
+    },
+    {
+      "id": "security-legacy-compatibility",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.6.2",
+        "7.6.3.2",
+        "7.6.4.2",
+        "7.6.4.3.2"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/r4-zero-padded-40",
+        "document/r4-zero-padded-48",
+        "document/security-legacy-permission-selector"
+      ],
+      "gaps": "Normal authentication remains normative. Explicit compatibility authenticates only short R4 keys or R2 selector violations, preserving all hash inputs. The opaque zero-padded decryption API is R4-short-only and requires document-side evidence/reporting. Independent encryption-side known answers are deviations, not normative standard examples."
     }
   ],
   "primary_text": {
@@ -985,7 +1002,8 @@
       "discrepancy": "Rejects an Identity redefinition instead of ignoring it.",
       "reproducer": "crypto/dictionary-identity-shadow",
       "expected": "strict open should succeed and default streams decrypt",
-      "observed": "Strict open returns Syntax: CF must not redefine Identity."
+      "initial_observed": "Strict open returns Syntax: CF must not redefine Identity.",
+      "resolution": "Fixed: ignore Identity CF entries without resolving their values (Table 20)."
     },
     {
       "id": "auth-event-default",
@@ -996,7 +1014,8 @@
       "discrepancy": "Rejects a selected EFOpen filter instead of treating StmF/StrF use as DocOpen.",
       "reproducer": "crypto/dictionary-auth-event-default",
       "expected": "strict open should use DocOpen",
-      "observed": "Strict open returns Syntax: EFOpen crypt filter used outside an embedded file."
+      "initial_observed": "Strict open returns Syntax: EFOpen crypt filter used outside an embedded file.",
+      "resolution": "Conforming in the current implementation; Table 25 overrides AuthEvent for StrF/StmF. Regression coverage also checks an ignored invalid value."
     },
     {
       "id": "v4-no-length",
@@ -1007,7 +1026,8 @@
       "discrepancy": "Absent V=4 Length defaults to 40 rather than the fixed 128-bit file key.",
       "reproducer": "crypto/dictionary-v4-no-length",
       "expected": "strict open should use 16-byte key",
-      "observed": "Strict open returns Unsupported(security.crypt-length) because the defaulted 40-bit file key disagrees with the 16-byte crypt filter."
+      "initial_observed": "Strict open returns Unsupported(security.crypt-length) because the defaulted 40-bit file key disagrees with the 16-byte crypt filter.",
+      "resolution": "Fixed: V=4 defaults to 128 bits, independently of optional legacy Length."
     },
     {
       "id": "crypt-type",
@@ -1018,7 +1038,8 @@
       "discrepancy": "Does not validate the optional crypt-filter Type.",
       "reproducer": "crypto/dictionary-crypt-filter-type",
       "expected": "strict syntax error",
-      "observed": "Strict open succeeds without diagnostics and the stream decrypts."
+      "initial_observed": "Strict open succeeds without diagnostics and the stream decrypts.",
+      "resolution": "Reported repair security.crypt-filter-type; explicit CF membership supplies the intended dictionary role."
     },
     {
       "id": "crypt-length",
@@ -1029,7 +1050,8 @@
       "discrepancy": "Accepts a missing required crypt-filter Length.",
       "reproducer": "crypto/dictionary-crypt-filter-no-length",
       "expected": "strict syntax error",
-      "observed": "Strict open succeeds without diagnostics and the stream decrypts."
+      "initial_observed": "Strict open succeeds without diagnostics and the stream decrypts.",
+      "resolution": "Reported repair security.crypt-filter-length; the authenticated file key supplies the omitted length. Observed in qpdf metadata-crypt-filter.pdf."
     },
     {
       "id": "standard-name",
@@ -1040,7 +1062,8 @@
       "discrepancy": "Accepts crypt-filter names beyond the stated standard-handler support.",
       "reproducer": "crypto/dictionary-standard-filter-name",
       "expected": "reject or explicitly report nonconforming extension support",
-      "observed": "Strict open succeeds without diagnostics and the stream decrypts."
+      "initial_observed": "Strict open succeeds without diagnostics and the stream decrypts.",
+      "resolution": "Reported repair security.crypt-filter-name qualifies nonstandard Standard-handler names."
     },
     {
       "id": "cfm-none",
@@ -1051,7 +1074,8 @@
       "discrepancy": "Treats security-handler delegation as unprocessed Identity data.",
       "reproducer": "crypto/dictionary-cfm-none",
       "expected": "unsupported or rejected for the Standard handler, not silent Identity",
-      "observed": "Strict open succeeds without diagnostics and the plaintext input passes through unchanged."
+      "initial_observed": "Strict open succeeds without diagnostics and the plaintext input passes through unchanged.",
+      "resolution": "Explicit Unsupported(security.CFM); handler delegation does not identify a supported Standard cipher."
     },
     {
       "id": "other-metadata",
@@ -1062,7 +1086,8 @@
       "discrepancy": "Skips every Type Metadata stream instead of only document-level XMP.",
       "reproducer": "crypto/dictionary-other-metadata",
       "expected": "stream_data(7 0) equals .expected",
-      "observed": "Strict open succeeds without diagnostics, but stream_data(7 0) differs from the independent plaintext."
+      "initial_observed": "Strict open succeeds without diagnostics, but stream_data(7 0) differs from the independent plaintext.",
+      "resolution": "Fixed: exemption requires the catalog document-level Metadata identity, not Type alone."
     },
     {
       "id": "legacy-metadata",
@@ -1073,7 +1098,8 @@
       "discrepancy": "Applies an inapplicable EncryptMetadata false flag to V=1 stream selection.",
       "reproducer": "crypto/dictionary-legacy-metadata",
       "expected": "stream_data(6 0) equals .expected",
-      "observed": "Strict open succeeds without diagnostics, but stream_data(6 0) differs from the independent plaintext."
+      "initial_observed": "Strict open succeeds without diagnostics, but stream_data(6 0) differs from the independent plaintext.",
+      "resolution": "Fixed: EncryptMetadata is ignored for V=1/2."
     },
     {
       "id": "perms-report",
@@ -1084,7 +1110,8 @@
       "discrepancy": "Drops the authenticated key's Inconsistent status without a strict rejection or diagnostic.",
       "reproducer": "crypto/dictionary-perms-mismatch",
       "expected": "strict rejection or explicit reported recovery",
-      "observed": "Strict and Repair open both succeed with zero diagnostics although the crypto key reports a permissions mismatch."
+      "initial_observed": "Strict and Repair open both succeed with zero diagnostics although the crypto key reports a permissions mismatch.",
+      "resolution": "Reported repair security.perms-mismatch after authentication; strict mode rejects that tag."
     },
     {
       "id": "identifier",
@@ -1095,7 +1122,8 @@
       "discrepancy": "Accepts missing or malformed required IDs for V=5 files.",
       "reproducer": "crypto/dictionary-id-{absent,one,short}",
       "expected": "strict syntax error",
-      "observed": "All three V=5 inputs (absent ID, one element, one-byte identifiers) open strictly without diagnostics and decrypt their streams."
+      "initial_observed": "All three V=5 inputs (absent ID, one element, one-byte identifiers) open strictly without diagnostics and decrypt their streams.",
+      "resolution": "Reported repair security.document-id for malformed required IDs; legacy hash inputs are preserved, and missing legacy key material is still unusable."
     },
     {
       "id": "legacy-text-encoding",
@@ -1107,7 +1135,8 @@
       "discrepancy": "The CLI text flag is converted directly to UTF-8 bytes, and document authentication forwards them unchanged. Legacy authentication requires PDFDocEncoding; raw byte API callers can already supply it.",
       "reproducer": "crypto/r3-pdfdocencoding-euro.pdf",
       "expected": "The text password U+20AC is converted to its PDFDocEncoding byte before authenticating R3; prepared byte API succeeds.",
-      "observed": "Prepared PDFDocEncoding bytes open through Document successfully; UTF-8 bytes fail with Password. The release CLI text password U+20AC also reports Password."
+      "initial_observed": "Prepared PDFDocEncoding bytes open through Document successfully; UTF-8 bytes fail with Password. The release CLI text password U+20AC also reports Password.",
+      "resolution": "Fixed in the CLI Unicode entry path using Annex D.3; raw Document/host byte APIs are unchanged."
     }
   ],
   "recovery_review": {

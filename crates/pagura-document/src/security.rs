@@ -1,9 +1,8 @@
 //! Standard-handler integration and encryption exceptions, clause 7.6.
 
+use crate::security_dictionary::Policy;
 use crate::{Document, IndirectObject, ObjectSource, tags};
-use pagura_core::{
-    Diagnostic, Diagnostics, Dictionary, Error, Feature, Name, ObjectId, Result, Value,
-};
+use pagura_core::{Dictionary, Error, Feature, Name, ObjectId, Result, Value};
 use pagura_crypto::standard::{CryptMethod, FileKey, SecurityParams};
 use std::collections::BTreeMap;
 
@@ -20,6 +19,7 @@ pub(crate) struct Security {
     embedded_authorization: bool,
     encrypt_metadata: bool,
     crypt_filters: bool,
+    derivation: crate::security_padding::Derivation,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -53,51 +53,42 @@ pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
             "non-Standard security handler is not implemented",
         ));
     }
-    let mut diagnostics = Diagnostics::new(document.recovery());
-    let position = crate::security_repair::position(document, id);
-    let mut permissions = None;
-    if let Ok(value) = integer(dictionary, b"P")
-        && i32::try_from(value).is_err()
-        && let Ok(unsigned) = u32::try_from(value)
-    {
-        let mut diagnostic = Diagnostic::new(
-            tags::PERMISSIONS_UNSIGNED,
-            "unsigned 32-bit permissions reinterpreted as signed two's complement",
-        )
-        .at(position);
-        if let Some(id) = id {
-            diagnostic = diagnostic.in_object(id);
-        }
-        diagnostics.repair(diagnostic)?;
-        permissions = Some(i32::from_le_bytes(unsigned.to_le_bytes()));
-    }
+    let mut policy = Policy::new(document, id);
+    let permissions = policy.unsigned_permissions(dictionary)?;
     // Normalize one scalar without cloning the source dictionary/value tree.
     let mut params = parameters(dictionary, document.trailer(), permissions)?;
-    crate::security_repair::hashes(document, id, &mut params, &mut diagnostics)?;
-    let (filters, strings, streams, embedded) = methods(dictionary, &params, |value| {
-        uncompressed(
-            document,
-            value,
-            "crypt filter dictionary cannot be compressed",
-        )?;
-        document.resolve(value)
-    })?;
-    let deferred = params.version >= 4
-        && strings == CryptMethod::Identity
-        && streams == CryptMethod::Identity
-        && filters.values().all(|filter| filter.embedded_only);
-    let key = match crate::security_repair::authenticate(
+    policy.identifiers(document.trailer())?;
+    crate::security_repair::hashes(document, id, &mut params, &mut policy.diagnostics)?;
+    let (filters, strings, streams, embedded) = methods(
+        dictionary,
+        &params,
+        |value| {
+            uncompressed(
+                document,
+                value,
+                "crypt filter dictionary cannot be compressed",
+            )?;
+            document.resolve(value)
+        },
+        &mut policy,
+    )?;
+    let key = authenticate_document(
         document,
         id,
         &params,
         !dictionary.contains_key(b"Length"),
-        &mut diagnostics,
-    ) {
-        Ok(key) => Some(key),
-        Err(error) if deferred && error.kind == pagura_core::ErrorKind::Password => None,
-        Err(error) => return Err(error),
-    };
-    document.report(diagnostics.take());
+        &filters,
+        (strings, streams),
+        &mut policy,
+    )?;
+    let derivation = crate::security_padding::select(
+        document,
+        key.as_ref(),
+        params.version == 4 && params.revision == 4 && params.key_length != 16,
+        (strings, streams),
+        &mut policy,
+    )?;
+    document.report(policy.diagnostics.take());
     let embedded_authorization = dictionary
         .get_name(b"EFF")
         .and_then(|name| filters.get(name.as_bytes()))
@@ -112,7 +103,62 @@ pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
         embedded_authorization,
         encrypt_metadata: params.encrypt_metadata,
         crypt_filters: params.version >= 4,
+        derivation,
     }))
+}
+
+fn authenticate_document(
+    document: &Document,
+    id: Option<ObjectId>,
+    params: &SecurityParams,
+    missing_length: bool,
+    filters: &BTreeMap<Vec<u8>, CryptFilter>,
+    (strings, streams): (CryptMethod, CryptMethod),
+    policy: &mut Policy,
+) -> Result<Option<FileKey>> {
+    let short_key = params.version == 4 && params.revision == 4 && params.key_length != 16;
+    if short_key {
+        policy.repair(
+            tags::SHORT_KEY,
+            "nonstandard short V=4 RC4 key size requires explicit legacy authentication",
+        )?;
+    }
+    let deferred = params.version >= 4
+        && strings == CryptMethod::Identity
+        && streams == CryptMethod::Identity
+        && filters.values().all(|filter| filter.embedded_only);
+    let selector = params.version == 1
+        && params.revision == 2
+        && u32::from_le_bytes(params.permissions.to_le_bytes()) & 0x0d00 != 0x0d00;
+    if selector {
+        policy.repair(
+            tags::PERMISSION_SELECTOR,
+            "R2 revision-only permissions conflict; original revision and hash bytes preserved",
+        )?;
+    }
+    let authentication = if short_key || selector {
+        pagura_crypto::standard::authenticate_legacy_compatibility(
+            params,
+            &document.options.password,
+        )
+    } else {
+        crate::security_repair::authenticate(
+            document,
+            id,
+            params,
+            missing_length,
+            &mut policy.diagnostics,
+        )
+    };
+    let key = match authentication {
+        Ok(key) => Some(key),
+        Err(error) if deferred && error.kind == pagura_core::ErrorKind::Password => None,
+        Err(error) => return Err(error),
+    };
+    if let Some(key) = &key {
+        policy.permissions(key)?;
+    }
+    Ok(key)
 }
 
 /// The encryption dictionary and its crypt filters are read before the handler
@@ -173,6 +219,9 @@ fn parameters(
     let bits = match version {
         1 => 40,
         5 => 256,
+        4 => dictionary
+            .get(b"Length")
+            .map_or(Ok(128), |_| integer(dictionary, b"Length"))?,
         _ => dictionary
             .get(b"Length")
             .map_or(Ok(40), |_| integer(dictionary, b"Length"))?,
@@ -180,19 +229,24 @@ fn parameters(
     if bits % 8 != 0 || !(40..=256).contains(&bits) || (version != 5 && bits > 128) {
         return Err(Error::syntax("invalid encryption key Length"));
     }
-    let encrypt_metadata = match dictionary.get(b"EncryptMetadata") {
+    let encrypt_metadata = match dictionary.get(b"EncryptMetadata").filter(|_| version >= 4) {
         None => true,
         Some(Value::Boolean(value)) => *value,
         _ => return Err(Error::syntax("EncryptMetadata must be a boolean")),
     };
-    let document_id = match trailer.get(b"ID") {
-        Some(Value::Array(values)) => values
-            .first()
-            .and_then(Value::as_string)
-            .map(<[u8]>::to_vec)
-            .ok_or(Error::syntax("trailer ID must begin with a string"))?,
-        None if version == 5 => Vec::new(),
-        _ => return Err(Error::syntax("encrypted document requires a trailer ID")),
+    let document_id = trailer
+        .get(b"ID")
+        .and_then(Value::as_array)
+        .and_then(|ids| ids.first())
+        .and_then(Value::as_string);
+    let document_id = match document_id {
+        Some(bytes) if !bytes.is_empty() => bytes.to_vec(),
+        _ if version == 5 => Vec::new(),
+        _ => {
+            return Err(Error::syntax(
+                "encrypted legacy document requires its first trailer ID",
+            ));
+        }
     };
     Ok(SecurityParams {
         version,
@@ -226,6 +280,7 @@ fn methods<'a>(
     dictionary: &'a Dictionary,
     params: &SecurityParams,
     resolve: impl Fn(&'a Value) -> Result<&'a Value>,
+    policy: &mut Policy,
 ) -> Result<Methods> {
     if params.version < 4 {
         return Ok((
@@ -243,48 +298,32 @@ fn methods<'a>(
             .ok_or(Error::syntax("CF must be a dictionary"))?;
         for (name, value) in dictionary.iter() {
             if name == b"Identity" {
-                return Err(Error::syntax("CF must not redefine Identity"));
+                continue;
             }
             let filter = resolve(value)?
                 .as_dictionary()
                 .ok_or(Error::syntax("crypt filter must be a dictionary"))?;
-            let method = match filter.get_name(b"CFM").map(Name::as_bytes) {
-                None | Some(b"None") => CryptMethod::Identity,
-                Some(b"V2") if params.version == 4 => CryptMethod::Rc4,
-                Some(b"AESV2") if params.version == 4 => CryptMethod::AesV2,
-                Some(b"AESV3") if params.version == 5 => CryptMethod::AesV3,
-                _ => {
-                    return Err(Error::unsupported(
-                        Feature::new("security.CFM"),
-                        "unsupported crypt filter method",
-                    ));
-                }
-            };
-            if filter.contains_key(b"CFM") && filter.get_name(b"CFM").is_none() {
-                return Err(Error::syntax("CFM must be a name"));
+            if name != b"StdCF" {
+                policy.repair(
+                    tags::CRYPT_NAME,
+                    "nonstandard crypt-filter name used with the Standard security handler",
+                )?;
             }
-            if let Some(length) = filter.get(b"Length") {
-                let length = length
-                    .as_integer()
-                    .and_then(|n| usize::try_from(n).ok())
-                    .ok_or(Error::syntax("crypt filter Length must be nonnegative"))?;
-                if method != CryptMethod::Identity && length != params.key_length {
-                    return Err(Error::unsupported(
-                        Feature::new("security.crypt-length"),
-                        "crypt filter key length differs from the file key",
-                    ));
-                }
+            let method = crypt_method(filter, params, policy)?;
+            if filter.is_name(b"AuthEvent", b"EFOpen") && !defaults.contains(&Some(name)) {
+                policy.repair(
+                    tags::CRYPT_EVENT,
+                    "EFOpen-only filter used as a Standard-handler extension",
+                )?;
             }
-            if let Some(event) = filter.get(b"AuthEvent")
+            if let Some(event) = filter.get(b"AuthEvent").filter(|value| !value.is_null())
+                && !defaults.contains(&Some(name))
                 && !matches!(
                     event.as_name().map(Name::as_bytes),
                     Some(b"DocOpen" | b"EFOpen")
                 )
             {
                 return Err(Error::syntax("invalid crypt filter AuthEvent"));
-            }
-            if method == CryptMethod::AesV2 && params.key_length != 16 {
-                return Err(Error::syntax("AESV2 requires a 128-bit file key"));
             }
             filters.insert(
                 name.as_bytes().to_vec(),
@@ -308,6 +347,68 @@ fn methods<'a>(
     let streams = select(b"StmF", CryptMethod::Identity)?;
     let embedded = select(b"EFF", streams)?;
     Ok((filters, strings, streams, embedded))
+}
+
+fn crypt_method(
+    filter: &Dictionary,
+    params: &SecurityParams,
+    policy: &mut Policy,
+) -> Result<CryptMethod> {
+    if filter
+        .get(b"Type")
+        .filter(|value| !value.is_null())
+        .is_some_and(|value| !matches!(value, Value::Name(name) if name == b"CryptFilter"))
+    {
+        policy.repair(
+            tags::CRYPT_TYPE,
+            "crypt-filter Type corrected from its explicit CF dictionary membership",
+        )?;
+    }
+    if filter.contains_key(b"CFM") && filter.get_name(b"CFM").is_none() {
+        return Err(Error::syntax("CFM must be a name"));
+    }
+    let method = match filter.get_name(b"CFM").map(Name::as_bytes) {
+        None | Some(b"None") => {
+            return Err(Error::unsupported(
+                Feature::new("security.CFM"),
+                "Standard handler cannot dispatch the delegated None crypt-filter method",
+            ));
+        }
+        Some(b"V2") if params.version == 4 => CryptMethod::Rc4,
+        Some(b"AESV2") if params.version == 4 => CryptMethod::AesV2,
+        Some(b"AESV3") if params.version == 5 => CryptMethod::AesV3,
+        _ => {
+            return Err(Error::unsupported(
+                Feature::new("security.CFM"),
+                "unsupported crypt filter method",
+            ));
+        }
+    };
+    if filter.contains_key(b"CFM") && filter.get_name(b"CFM").is_none() {
+        return Err(Error::syntax("CFM must be a name"));
+    }
+    if let Some(length) = filter.get(b"Length").filter(|value| !value.is_null()) {
+        let length = length
+            .as_integer()
+            .and_then(|n| usize::try_from(n).ok())
+            .ok_or(Error::syntax("crypt filter Length must be nonnegative"))?;
+        if method != CryptMethod::Identity && length != params.key_length {
+            return Err(Error::unsupported(
+                Feature::new("security.crypt-length"),
+                "crypt filter key length differs from the file key",
+            ));
+        }
+    }
+    if filter.get(b"Length").is_none_or(Value::is_null) {
+        policy.repair(
+            tags::CRYPT_LENGTH,
+            "missing crypt-filter Length inferred from the file key size",
+        )?;
+    }
+    if method == CryptMethod::AesV2 && params.key_length != 16 {
+        return Err(Error::syntax("AESV2 requires a 128-bit file key"));
+    }
+    Ok(method)
 }
 
 fn lookup(
@@ -334,15 +435,27 @@ impl Security {
     /// of Crypt filters belong to the stream-access module (7.6).
     pub(crate) fn stream_method(
         &self,
-        dictionary: &Dictionary,
+        document: &Document,
+        object: &IndirectObject,
         explicit: crate::stream::CryptSelection,
     ) -> Result<CryptMethod> {
+        let dictionary = object
+            .dictionary()
+            .ok_or_else(|| Error::syntax("stream requires a dictionary").in_object(object.id()))?;
         if !matches!(explicit, crate::stream::CryptSelection::Default) && !self.crypt_filters {
             return Err(Error::syntax(
                 "Crypt filters require encryption version 4 or 5",
             ));
         }
-        if !self.encrypt_metadata && dictionary.is_name(b"Type", b"Metadata") {
+        if !self.encrypt_metadata
+            && !object.is_direct()
+            && dictionary.is_name(b"Type", b"Metadata")
+            && document
+                .catalog()?
+                .get(b"Metadata")
+                .and_then(Value::as_reference)
+                == Some(object.id())
+        {
             return Ok(CryptMethod::Identity);
         }
         let authorization = match &explicit {
@@ -384,6 +497,11 @@ impl Security {
         data: &[u8],
     ) -> Result<Vec<u8>> {
         match (&self.key, method) {
+            (Some(key), CryptMethod::Rc4)
+                if self.derivation == crate::security_padding::Derivation::ZeroPadded =>
+            {
+                key.decrypt_legacy_zero_padded(id, data)
+            }
             (Some(key), _) => key.decrypt(method, id, data),
             (None, CryptMethod::Identity) => {
                 let mut copy = Vec::new();
@@ -415,9 +533,9 @@ impl Security {
         let key = self.key.as_ref().ok_or_else(|| {
             Error::password("encrypted strings require an authenticated password").in_object(id)
         })?;
-        decrypt_strings(key, self.strings, id, &mut object.value)?;
+        decrypt_strings(key, self.strings, self.derivation, id, &mut object.value)?;
         for direct in object.direct_objects_mut() {
-            decrypt_strings(key, self.strings, id, &mut direct.value)?;
+            decrypt_strings(key, self.strings, self.derivation, id, &mut direct.value)?;
         }
         Ok(())
     }
@@ -426,18 +544,24 @@ impl Security {
 fn decrypt_strings(
     key: &FileKey,
     method: CryptMethod,
+    derivation: crate::security_padding::Derivation,
     id: ObjectId,
     value: &mut Value,
 ) -> Result<()> {
     match value {
         Value::String(bytes) => {
-            *bytes = key
-                .decrypt(method, id, bytes)
-                .map_err(|error| error.in_object(id))?;
+            *bytes = if derivation == crate::security_padding::Derivation::ZeroPadded
+                && method == CryptMethod::Rc4
+            {
+                key.decrypt_legacy_zero_padded(id, bytes)
+            } else {
+                key.decrypt(method, id, bytes)
+            }
+            .map_err(|error| error.in_object(id))?;
         }
         Value::Array(values) => {
             for value in values {
-                decrypt_strings(key, method, id, value)?;
+                decrypt_strings(key, method, derivation, id, value)?;
             }
         }
         Value::Dictionary(dictionary) => {
@@ -452,7 +576,7 @@ fn decrypt_strings(
                 if signature && name.as_bytes() == b"Contents" {
                     continue;
                 }
-                decrypt_strings(key, method, id, value)?;
+                decrypt_strings(key, method, derivation, id, value)?;
             }
         }
         _ => {}
@@ -462,7 +586,19 @@ fn decrypt_strings(
 
 #[cfg(test)]
 mod tests {
-    use super::{lookup, methods};
+    use super::lookup;
+    fn methods<'a>(
+        dictionary: &'a Dictionary,
+        params: &pagura_crypto::standard::SecurityParams,
+        resolve: impl Fn(&'a Value) -> pagura_core::Result<&'a Value>,
+    ) -> pagura_core::Result<super::Methods> {
+        super::methods(
+            dictionary,
+            params,
+            resolve,
+            &mut crate::security_dictionary::Policy::permissive(),
+        )
+    }
     use crate::stream::validate_crypt;
     use crate::{Document, OpenOptions};
     use pagura_core::syntax::{Origin, Parser};
@@ -507,7 +643,7 @@ mod tests {
             assert_eq!(params.user_encrypted_key.as_deref(), Some(&b"ue"[..]));
             assert_eq!(params.encrypted_permissions.as_deref(), Some(&b"perms"[..]));
             assert_eq!(params.document_id, [0, 0x11, 0x22, 0x33]);
-            assert!(!params.encrypt_metadata);
+            assert_eq!(params.encrypt_metadata, version < 4);
         }
     }
 
@@ -564,8 +700,7 @@ mod tests {
             b"/CF << /X << /CFM 1 >> >>".as_slice(),
             b"/StmF /Missing",
             b"/StrF 1",
-            b"/CF << /Identity << >> >>",
-            b"/CF << /X << /AuthEvent /Wrong >> >>",
+            b"/CF << /X << /CFM /V2 /Length 16 /AuthEvent /Wrong >> >>",
         ] {
             let mut encryption = dictionary(b"<< /V 4 /R 4 /Length 128 /O () /U () /P -4 >>");
             encryption.extend(dictionary(&[b"<< ".as_slice(), entry, b" >>"].concat()));
@@ -676,12 +811,21 @@ mod authorization_events {
 
     #[test]
     fn embedded_file_authorization_does_not_block_identity_page_data() {
-        for name in [
-            "security-embedded-event",
-            "security-embedded-identity-filter",
-        ] {
+        for name in ["security-embedded-event"] {
             let bytes = fixture("document", &format!("{name}.pdf"));
-            for recovery in [Recovery::Strict, Recovery::Repair] {
+            assert_eq!(
+                Document::open(
+                    bytes.clone(),
+                    &OpenOptions {
+                        recovery: Recovery::Strict,
+                        ..OpenOptions::default()
+                    }
+                )
+                .unwrap_err()
+                .repair,
+                Some(crate::tags::CRYPT_EVENT)
+            );
+            for recovery in [Recovery::Repair] {
                 for password in [b"".as_slice(), b"wrong"] {
                     let document = Document::open(
                         bytes.clone(),
@@ -714,7 +858,12 @@ mod authorization_events {
                     let retained = document.retained.used();
                     assert_eq!(document.stream_data(embedded).unwrap_err(), error);
                     assert_eq!(document.retained.used(), retained);
-                    assert_eq!(document.diagnostics(), []);
+                    assert!(
+                        document
+                            .diagnostics()
+                            .iter()
+                            .any(|d| d.repair == crate::tags::CRYPT_EVENT)
+                    );
                 }
                 for password in [b"attachment".as_slice(), b"owner"] {
                     let document = Document::open(

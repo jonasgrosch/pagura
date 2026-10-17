@@ -19,6 +19,8 @@ mod page_geometry;
 mod pages;
 mod rebuild;
 mod security;
+mod security_dictionary;
+mod security_padding;
 mod security_repair;
 mod stream;
 pub mod tags;
@@ -339,3 +341,6 @@ impl Document {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod security_tests;

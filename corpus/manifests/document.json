@@ -531,7 +531,7 @@
         "document-security"
       ],
       "path": "corpus/generated/document/security-r4.pdf",
-      "sha256": "96fa85354913cb90ba81109374b27047050cd27172bac04a20f081bc7bea30e4",
+      "sha256": "9dc28e2c58330866033daac2d98dd8e21810b32ce97405cbfa5f326b8a88c311",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -552,7 +552,7 @@
         "document-security"
       ],
       "path": "corpus/generated/document/security-crypt-identity.pdf",
-      "sha256": "63f6d9d1c5f1bacb762c2e69dfb5c441cee2fda8413f6990772e43c57f31847d",
+      "sha256": "488c083fc71c58f6830896a27088b8172400d9a591a4635fe1fb1947599a5210",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -982,7 +982,7 @@
         "document-security"
       ],
       "path": "corpus/generated/document/security-rebuilt.pdf",
-      "sha256": "cdcca62ad28bdd1253eefc50a1b3ce0a0357ed8538af84a232c5ca6c856a36c4",
+      "sha256": "5fe10b3236ac802d3a844e835bbba43672d96bf23de8bd9b0f13d9f5aa9c2ada",
       "pages": 1,
       "strict_valid": false,
       "repairs": [
@@ -1005,7 +1005,7 @@
         "document-security"
       ],
       "path": "corpus/generated/document/security-rebuilt-object-stream.pdf",
-      "sha256": "5b0e853075349d27059c9828dacf3d3fdef611b8aa0e99468ec61d5073940c0b",
+      "sha256": "09a136b37495e282a3fb6a3a2f3669d20eee87b76c8c0b6934c04e05922f574f",
       "pages": 1,
       "strict_valid": false,
       "repairs": [
@@ -2455,37 +2455,33 @@
     {
       "id": "document/security-embedded-identity-filter",
       "kind": "pdf",
-      "description": "A named None filter still observes its EFOpen authorization event; standard Identity page data stays readable",
-      "expected": "render",
+      "description": "None delegates to the Standard handler and cannot silently act as Identity",
+      "expected": "invalid",
       "requirements": [
         "security-authorization-events"
       ],
       "path": "corpus/generated/document/security-embedded-identity-filter.pdf",
-      "sha256": "c6a71a966daae14d8b03adca6f46e17300fef483f556236b4391baad9ee1f501",
+      "sha256": "a1bc68a138ca64daeba05cb697cfa4dff24b4aca276156381e9061492165cc19",
       "pages": 1,
-      "strict_valid": true,
+      "strict_valid": false,
       "repairs": [],
-      "oracle": "corpus/generated/document/security-embedded-identity-filter.ppm",
-      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
-      "dpi": 72,
-      "width": 64,
-      "height": 64,
-      "owner_password": "owner",
-      "marker": "independent"
+      "open_error": "unsupported"
     },
     {
       "id": "document/security-embedded-event",
       "kind": "pdf",
-      "description": "Identity page data opens strictly without attachment authorization; encrypted embedded bytes stay protected",
+      "description": "EFOpen-only Standard filters are a reported extension; Identity page data remains readable while embedded bytes stay protected",
       "expected": "render",
       "requirements": [
         "security-authorization-events"
       ],
       "path": "corpus/generated/document/security-embedded-event.pdf",
-      "sha256": "3a48bd85d711dcee3a91db74217b4fcfcd8202a8c6aeba29b584739e9c9c9869",
+      "sha256": "bb955d95f2d9ba6cf492c2379502f8f6147c9b295749960e1914e1e9342205ec",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
+      "strict_valid": false,
+      "repairs": [
+        "security.crypt-filter-event"
+      ],
       "oracle": "corpus/generated/document/security-embedded-event.ppm",
       "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
       "dpi": 72,
@@ -2503,7 +2499,7 @@
         "security-authorization-events"
       ],
       "path": "corpus/generated/document/security-default-event-override.pdf",
-      "sha256": "8c76405b4e70fba1fd5c3c80e9b9af94c0c75b38d48957f6e7b1642fe7a44fb2",
+      "sha256": "51d998d6531a550312ae5110824c7cacdea8de1e905d952f57dc53d177440f57",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -2524,7 +2520,7 @@
         "security-authorization-events"
       ],
       "path": "corpus/generated/document/security-embedded-doc-open.pdf",
-      "sha256": "f20b75f54ea16fa688749d0ae890f1599728b4d3e3b946083e0f129d8db4a95c",
+      "sha256": "ccc24cc87169754794d5db52fc2c65c6357e31c337d2e0f3a4610777c324d202",
       "pages": 1,
       "strict_valid": false,
       "repairs": [],
@@ -2567,6 +2563,541 @@
       "strict_valid": false,
       "repairs": [],
       "open_error": "password"
+    },
+    {
+      "id": "document/security-identity-shadow",
+      "kind": "pdf",
+      "description": "Tables 20 and 25 determine filter defaults; nonconforming dictionary fields are explicitly qualified",
+      "expected": "render",
+      "requirements": [
+        "security-dictionary-policy"
+      ],
+      "path": "corpus/generated/document/security-identity-shadow.pdf",
+      "sha256": "31ffa005d2d10089db5eea3a35ad4e0d8204a7e88af8ad9bfb2862382935938e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-identity-shadow.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-auth-event-override",
+      "kind": "pdf",
+      "description": "Tables 20 and 25 determine filter defaults; nonconforming dictionary fields are explicitly qualified",
+      "expected": "render",
+      "requirements": [
+        "security-dictionary-policy"
+      ],
+      "path": "corpus/generated/document/security-auth-event-override.pdf",
+      "sha256": "aba273a5fecf5bc4278a92f2c9b0e2ae50cc081f928f3e6c627f95ae373d9ca9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-auth-event-override.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-v4-default-length",
+      "kind": "pdf",
+      "description": "Tables 20 and 25 determine filter defaults; nonconforming dictionary fields are explicitly qualified",
+      "expected": "render",
+      "requirements": [
+        "security-dictionary-policy"
+      ],
+      "path": "corpus/generated/document/security-v4-default-length.pdf",
+      "sha256": "0626ae05d55aaeccfb4d5af4542da897237ec1badd32c31e97868d2a0b35f18f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-v4-default-length.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-filter-type-null",
+      "kind": "pdf",
+      "description": "Tables 20 and 25 determine filter defaults; nonconforming dictionary fields are explicitly qualified",
+      "expected": "render",
+      "requirements": [
+        "security-dictionary-policy"
+      ],
+      "path": "corpus/generated/document/security-filter-type-null.pdf",
+      "sha256": "224459af59dd2a6cbc298c218b0cf6687a2fb735374ef4c594e87fca9f300159",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-filter-type-null.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-auth-event-ignored-invalid",
+      "kind": "pdf",
+      "description": "Tables 20 and 25 determine filter defaults; nonconforming dictionary fields are explicitly qualified",
+      "expected": "render",
+      "requirements": [
+        "security-dictionary-policy"
+      ],
+      "path": "corpus/generated/document/security-auth-event-ignored-invalid.pdf",
+      "sha256": "5bee34baf083f9b33608379596257ad5ba51f56dc190750ab7d9d8932af2fdec",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-auth-event-ignored-invalid.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-filter-length-null",
+      "kind": "pdf",
+      "description": "Tables 20 and 25 determine filter defaults; nonconforming dictionary fields are explicitly qualified",
+      "expected": "render",
+      "requirements": [
+        "security-dictionary-policy"
+      ],
+      "path": "corpus/generated/document/security-filter-length-null.pdf",
+      "sha256": "daf456013066876e9634a88db495b21f73a8e4c7d06f5b77e76e3dc9e1d9d45d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.crypt-filter-length"
+      ],
+      "oracle": "corpus/generated/document/security-filter-length-null.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-filter-type",
+      "kind": "pdf",
+      "description": "Tables 20 and 25 determine filter defaults; nonconforming dictionary fields are explicitly qualified",
+      "expected": "render",
+      "requirements": [
+        "security-dictionary-policy"
+      ],
+      "path": "corpus/generated/document/security-filter-type.pdf",
+      "sha256": "a4027e34effc6b1d4eff90a8b52cb00a674f75f1e0a6af1bcedcb21ac758c8b7",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.crypt-filter-type"
+      ],
+      "oracle": "corpus/generated/document/security-filter-type.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-filter-length",
+      "kind": "pdf",
+      "description": "Tables 20 and 25 determine filter defaults; nonconforming dictionary fields are explicitly qualified",
+      "expected": "render",
+      "requirements": [
+        "security-dictionary-policy"
+      ],
+      "path": "corpus/generated/document/security-filter-length.pdf",
+      "sha256": "bec9024b97c96616a964073397a735ff43cbac0e7cea5abcb4fdd3961835a7a3",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.crypt-filter-length"
+      ],
+      "oracle": "corpus/generated/document/security-filter-length.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-filter-name",
+      "kind": "pdf",
+      "description": "Tables 20 and 25 determine filter defaults; nonconforming dictionary fields are explicitly qualified",
+      "expected": "render",
+      "requirements": [
+        "security-dictionary-policy"
+      ],
+      "path": "corpus/generated/document/security-filter-name.pdf",
+      "sha256": "6b0e7b1a7728db59579f10efcfdd5e0dbfdaa2c6d05210dc04e49039adbc6971",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.crypt-filter-name"
+      ],
+      "oracle": "corpus/generated/document/security-filter-name.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-handler-delegation",
+      "kind": "pdf",
+      "description": "None delegates to the handler and does not specify a cipher for Standard",
+      "expected": "invalid",
+      "requirements": [
+        "security-dictionary-policy"
+      ],
+      "path": "corpus/generated/document/security-handler-delegation.pdf",
+      "sha256": "b7f290f969f2314f67af1c5d20089e0ba9cea01bbe88f1af4a484ea1f4b20b9c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "open_error": "unsupported"
+    },
+    {
+      "id": "document/security-object-metadata",
+      "kind": "pdf",
+      "description": "Only catalog Metadata is exempt; the unrelated Metadata stream remains encrypted",
+      "expected": "render",
+      "requirements": [
+        "security-metadata-scope"
+      ],
+      "path": "corpus/generated/document/security-object-metadata.pdf",
+      "sha256": "530905fe731d747e6057fff13a05839d72a63615e1c0312a20fce3eda4f16044",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-object-metadata.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-v1-metadata",
+      "kind": "pdf",
+      "description": "EncryptMetadata is ignored for V=1; document metadata still decrypts",
+      "expected": "render",
+      "requirements": [
+        "security-metadata-scope"
+      ],
+      "path": "corpus/generated/document/security-v1-metadata.pdf",
+      "sha256": "1ab2a04a37c3e79036d433f490af75311c8fd691371665f604093e45b0a0f166",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-v1-metadata.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-id-missing",
+      "kind": "pdf",
+      "description": "Table 15 requires two direct 16-byte identifiers; R6 authentication does not depend on them",
+      "expected": "render",
+      "requirements": [
+        "security-identifiers"
+      ],
+      "path": "corpus/generated/document/security-id-missing.pdf",
+      "sha256": "5410fe19d275d8c6760ff970ce67e18b6a331b0de8cc8767267108e2aad3199a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.document-id"
+      ],
+      "oracle": "corpus/generated/document/security-id-missing.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-id-single",
+      "kind": "pdf",
+      "description": "Table 15 requires two direct 16-byte identifiers; R6 authentication does not depend on them",
+      "expected": "render",
+      "requirements": [
+        "security-identifiers"
+      ],
+      "path": "corpus/generated/document/security-id-single.pdf",
+      "sha256": "72628be4d9d02da721445910460c985a3beb9a0999bfb4069d34d2d066df2680",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.document-id"
+      ],
+      "oracle": "corpus/generated/document/security-id-single.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-id-short",
+      "kind": "pdf",
+      "description": "Table 15 requires two direct 16-byte identifiers; R6 authentication does not depend on them",
+      "expected": "render",
+      "requirements": [
+        "security-identifiers"
+      ],
+      "path": "corpus/generated/document/security-id-short.pdf",
+      "sha256": "f1f33f7dc970eadcaf4295b5227c401e5484661ee31b3de413f67b3a0ec65cc6",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.document-id"
+      ],
+      "oracle": "corpus/generated/document/security-id-short.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-permissions-inconsistent",
+      "kind": "pdf",
+      "description": "Algorithm 13 consistency differs from password authentication and is reported after a valid key is obtained",
+      "expected": "render",
+      "requirements": [
+        "security-permissions-validation"
+      ],
+      "path": "corpus/generated/document/security-permissions-inconsistent.pdf",
+      "sha256": "d2479619df97bda07ba8c1f614b7576c9aae85761de6c7c8adfe5431086f1585",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.perms-mismatch"
+      ],
+      "oracle": "corpus/generated/document/security-permissions-inconsistent.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/r4-zero-padded-40",
+      "kind": "vector",
+      "description": "Independently derived 16-byte zero-padded RC4 object key, object 0x01020304 generation 513",
+      "requirements": [
+        "security-short-rc4"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/document/r4-zero-padded-40.cipher",
+          "sha256": "6c702450cec27efb951a0e73a279c1e9a97baf3a869599c9a783f7fd03b93b80"
+        },
+        ".key": {
+          "path": "corpus/generated/document/r4-zero-padded-40.key",
+          "sha256": "e212349dee0f57e85d15e1d6de52cb39c30f446f44f4243097678097c8bee5f6"
+        },
+        ".method": {
+          "path": "corpus/generated/document/r4-zero-padded-40.method",
+          "sha256": "47cfe5eb8ada0e7492d86a6b47dc93e354c32af4a3cf489e0c65067cb48277d9"
+        },
+        ".owner": {
+          "path": "corpus/generated/document/r4-zero-padded-40.owner",
+          "sha256": "4c1029697ee358715d3a14a2add817c4b01651440de808371f78165ac90dc581"
+        },
+        ".params": {
+          "path": "corpus/generated/document/r4-zero-padded-40.params",
+          "sha256": "c0d931512145db31cad8845a7c635c2f2893ae9dbe1980b1e9fbe460e1ed2ebd"
+        },
+        ".plain": {
+          "path": "corpus/generated/document/r4-zero-padded-40.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".user": {
+          "path": "corpus/generated/document/r4-zero-padded-40.user",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "document/security-zero-padded-bad-checksum",
+      "kind": "pdf",
+      "description": "A recognizable decompressed prefix without the complete zlib checksum cannot select a key convention",
+      "expected": "invalid",
+      "requirements": [
+        "security-short-rc4"
+      ],
+      "path": "corpus/generated/document/security-zero-padded-bad-checksum.pdf",
+      "sha256": "2c9eaea57f875a33e0ca9e986eb8d52bcce5d56bff8a146c2702d44b92c2968c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [],
+      "open_error": "syntax"
+    },
+    {
+      "id": "document/security-zero-padded-40",
+      "kind": "pdf",
+      "description": "A full zlib checksum and xref-matching object index establish the nonstandard key convention before strings are cached",
+      "expected": "render",
+      "requirements": [
+        "security-short-rc4"
+      ],
+      "path": "corpus/generated/document/security-zero-padded-40.pdf",
+      "sha256": "3ae7437406003127456bb0f4355d0b1a009b0582fb46610953348b93640e8ec4",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.short-key",
+        "security.key-padding"
+      ],
+      "oracle": "corpus/generated/document/security-zero-padded-40.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner"
+    },
+    {
+      "id": "document/r4-zero-padded-48",
+      "kind": "vector",
+      "description": "Independently derived 16-byte zero-padded RC4 object key, object 0x01020304 generation 513",
+      "requirements": [
+        "security-short-rc4"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/document/r4-zero-padded-48.cipher",
+          "sha256": "eaa282ed6478792fd509ee1b874374d59af64f2067104d90d41e792cd0bca1fc"
+        },
+        ".key": {
+          "path": "corpus/generated/document/r4-zero-padded-48.key",
+          "sha256": "9879fcbbe515f40d2289ad9cf57e8bde93196141e1aec79a1d01d04014a6eb48"
+        },
+        ".method": {
+          "path": "corpus/generated/document/r4-zero-padded-48.method",
+          "sha256": "47cfe5eb8ada0e7492d86a6b47dc93e354c32af4a3cf489e0c65067cb48277d9"
+        },
+        ".owner": {
+          "path": "corpus/generated/document/r4-zero-padded-48.owner",
+          "sha256": "4c1029697ee358715d3a14a2add817c4b01651440de808371f78165ac90dc581"
+        },
+        ".params": {
+          "path": "corpus/generated/document/r4-zero-padded-48.params",
+          "sha256": "55b6cd795a216fb392de76680f6be2299588c84f3cfabc06cf823d9c79cce1f7"
+        },
+        ".plain": {
+          "path": "corpus/generated/document/r4-zero-padded-48.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".user": {
+          "path": "corpus/generated/document/r4-zero-padded-48.user",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "document/security-zero-padded-48",
+      "kind": "pdf",
+      "description": "A full zlib checksum and xref-matching object index establish the nonstandard key convention before strings are cached",
+      "expected": "render",
+      "requirements": [
+        "security-short-rc4"
+      ],
+      "path": "corpus/generated/document/security-zero-padded-48.pdf",
+      "sha256": "f787baf8d9eca5d4ba6f4e90503aeb412a988fd401bab28d14d4654b9091cc68",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.short-key",
+        "security.key-padding"
+      ],
+      "oracle": "corpus/generated/document/security-zero-padded-48.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner"
+    },
+    {
+      "id": "document/syntax-reference-object-zeroes",
+      "kind": "pdf",
+      "description": "EC3 issue 379 forbids leading zeros in object and generation numbers; numeric identity is preserved with a report",
+      "expected": "render",
+      "requirements": [
+        "identifier-syntax"
+      ],
+      "path": "corpus/generated/document/syntax-reference-object-zeroes.pdf",
+      "sha256": "c5be5daf12ad8538f075a9ca5132172e07a53117a9a6a8f5ed197e4ec7cc04bd",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.reference-leading-zero"
+      ],
+      "oracle": "corpus/generated/document/syntax-reference-object-zeroes.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/syntax-reference-generation-zeroes",
+      "kind": "pdf",
+      "description": "EC3 issue 379 forbids leading zeros in object and generation numbers; numeric identity is preserved with a report",
+      "expected": "render",
+      "requirements": [
+        "identifier-syntax"
+      ],
+      "path": "corpus/generated/document/syntax-reference-generation-zeroes.pdf",
+      "sha256": "4202d7fcb60b56c9c5c565e0f98d85b04445f083aaaadecabd2ee3d482794e14",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "syntax.reference-leading-zero"
+      ],
+      "oracle": "corpus/generated/document/syntax-reference-generation-zeroes.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/syntax-name-braces",
+      "kind": "pdf",
+      "description": "Braces are regular name characters outside Type 4 calculator functions (7.2.3)",
+      "expected": "render",
+      "requirements": [
+        "identifier-syntax"
+      ],
+      "path": "corpus/generated/document/syntax-name-braces.pdf",
+      "sha256": "19f03cfd758836b77bce8ce0bcc0fa06fe3cd6354eb37d6b1707b88b6634d40d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/syntax-name-braces.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-legacy-permission-selector",
+      "kind": "pdf",
+      "description": "Nonconforming R2 selector flags preserve the exact raw permissions in the authenticated hash",
+      "expected": "render",
+      "requirements": [
+        "security-legacy-permissions"
+      ],
+      "path": "corpus/generated/document/security-legacy-permission-selector.pdf",
+      "sha256": "56814aa06a372e987e0ca8bf322590837b74ead08c54cac6f64fbc71241d1db2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.permission-selector"
+      ],
+      "oracle": "corpus/generated/document/security-legacy-permission-selector.ppm",
+      "oracle_sha256": "e27344ae6cf1380964b0213457ffccdbc9186dcfeacaad266d7805a9f4bf7cfe",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
     },
     {
       "id": "document/catalog-number-zero",

@@ -155,7 +155,7 @@ fn decrypt<'a>(
         Some(Some(name)) => CryptSelection::Named(name),
     };
     let method = security
-        .stream_method(dictionary, selection)
+        .stream_method(document, object, selection)
         .map_err(|error| error.in_object(object.id()))?;
     if method == CryptMethod::Identity {
         return Ok(Cow::Borrowed(raw));

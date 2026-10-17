@@ -163,8 +163,8 @@ def encrypted(revision, identity=False, compressed=False, direct=False,
         encryption = encryption.replace(b"/Length %d " % (length * 8), b"", 1)
     if revision == 4:
         event = b"/AuthEvent /" + auth_event + b" " if auth_event else b""
-        encryption += b"/CF << /RC << /CFM /" + (b"None" if identity_attachments else b"V2") + b" /Length 16 " + event + b">> >> "
-        encryption += b"/StrF /Identity /StmF /Identity /EFF /RC " if attachment_only else b"/StrF /RC /StmF /RC "
+        encryption += b"/CF << /StdCF << /CFM /" + (b"None" if identity_attachments else b"V2") + b" /Length 16 " + event + b">> >> "
+        encryption += b"/StrF /Identity /StmF /Identity /EFF /StdCF " if attachment_only else b"/StrF /StdCF /StmF /StdCF "
     encryption += b">>"
     objects = list(OBJECTS)
     objects[0] = OBJECTS[0].replace(b"/Pages", b"/Marker <" + (b"independent" if attachment_only else encrypt(1, b"independent")).hex().encode() + b"> /Pages")
@@ -407,6 +407,10 @@ def cases():
     yield from direct_stream_cases()
     yield from authorization_event_cases()
     yield from key_length_cases()
+    yield from security_dictionary_cases()
+    yield from short_rc4_cases()
+    yield from identifier_syntax_cases()
+    yield from legacy_selector_cases()
     yield from catalog_identity_cases()
 
 
@@ -797,13 +801,13 @@ def direct_stream_cases():
 
 def authorization_event_cases():
     yield Case("security-embedded-identity-filter", encrypted(4, attachment_only=True, auth_event=b"EFOpen", user_password=b"attachment", identity_attachments=True),
-               RENDER, ("security-authorization-events",),
-               "A named None filter still observes its EFOpen authorization event; standard Identity page data stays readable",
-               oracle=RED, extra={"owner_password": "owner", "marker": "independent"})
+               INVALID, ("security-authorization-events",),
+               "None delegates to the Standard handler and cannot silently act as Identity",
+               strict_valid=False, extra={"open_error": "unsupported"})
     yield Case("security-embedded-event", encrypted(4, attachment_only=True, auth_event=b"EFOpen", user_password=b"attachment"),
                RENDER, ("security-authorization-events",),
-               "Identity page data opens strictly without attachment authorization; encrypted embedded bytes stay protected",
-               oracle=RED, extra={"owner_password": "owner", "marker": "independent"})
+               "EFOpen-only Standard filters are a reported extension; Identity page data remains readable while embedded bytes stay protected",
+               oracle=RED, strict_valid=False, repairs=("security.crypt-filter-event",), extra={"owner_password": "owner", "marker": "independent"})
     yield Case("security-default-event-override", encrypted(4, auth_event=b"EFOpen"), RENDER,
                ("security-authorization-events",),
                "Table 25 requires StrF and StmF to use DocOpen even when their filter declares EFOpen",
@@ -846,3 +850,121 @@ def catalog_identity_cases():
     data = encrypted(2).replace(b"1 0 obj", b"0 0 obj", 1)
     yield Case("catalog-number-zero-encrypted", data, INVALID, ("catalog-identity-recovery",),
                "A zero-numbered encrypted Catalog has no unambiguous object-key identity", strict_valid=False)
+
+
+def security_dictionary_cases():
+    from .crypto import parameters, encrypted_objects, ID, hex_string
+    oracle = opaque_rectangles(64, 64, [((8, 8, 48, 32), (255, 0, 0)), ((0, 0, 8, 8), (0, 0, 255))])
+    p, key = parameters(4, b"", b"owner-secret")
+    base = encrypted_objects(p, key, "AESV2")
+    trailer = b"/Encrypt 5 0 R /ID [" + hex_string(ID) + b" " + hex_string(ID) + b"] "
+    for name, change, repairs in [
+        ("security-identity-shadow", lambda d: d.replace(b"/CF <<", b"/CF << /Identity 7 ", 1), ()),
+        ("security-auth-event-override", lambda d: d.replace(b"/AuthEvent /DocOpen", b"/AuthEvent /EFOpen"), ()),
+        ("security-v4-default-length", lambda d: d.replace(b"/Length 128 ", b"", 1), ()),
+        ("security-filter-type-null", lambda d: d.replace(b"/CFM /AESV2", b"/Type null /CFM /AESV2"), ()),
+        ("security-auth-event-ignored-invalid", lambda d: d.replace(b"/AuthEvent /DocOpen", b"/AuthEvent /Wrong"), ()),
+        ("security-filter-length-null", lambda d: d.replace(b"/Length 16 ", b"/Length null ", 1), ("security.crypt-filter-length",)),
+        ("security-filter-type", lambda d: d.replace(b"/CFM /AESV2", b"/Type /Wrong /CFM /AESV2"), ("security.crypt-filter-type",)),
+        ("security-filter-length", lambda d: d.replace(b"/Length 16 ", b"", 1), ("security.crypt-filter-length",)),
+        ("security-filter-name", lambda d: d.replace(b"StdCF", b"OtherCF"), ("security.crypt-filter-name",)),
+    ]:
+        objects = list(base); objects[4] = change(objects[4])
+        yield Case(name, document(objects, trailer), RENDER, ("security-dictionary-policy",),
+                   "Tables 20 and 25 determine filter defaults; nonconforming dictionary fields are explicitly qualified",
+                   oracle=oracle, repairs=repairs, strict_valid=not repairs)
+    objects = encrypted_objects(p, key, "Identity")
+    objects[4] = objects[4].replace(b"/CFM /Identity", b"/CFM /None")
+    # Identity uses no CF entry in the independent encoder. Use the original
+    # AES dictionary with a delegated None method, retaining harmless plaintext.
+    objects[4] = base[4].replace(b"/CFM /AESV2", b"/CFM /None")
+    yield Case("security-handler-delegation", document(objects, trailer), INVALID, ("security-dictionary-policy",),
+               "None delegates to the handler and does not specify a cipher for Standard", strict_valid=False,
+               extra={"open_error": "unsupported"})
+    p, key = parameters(4, b"", b"owner-secret", metadata=False)
+    objects = encrypted_objects(p, key, "AESV2")
+    from .crypto import encrypt
+    objects[0] = objects[0].replace(b" >>", b" /OtherMetadata 7 0 R >>", 1)
+    objects.append(stream(encrypt(key, "AESV2", 7, b"private metadata"), b"/Type /Metadata /Subtype /XML "))
+    yield Case("security-object-metadata", document(objects, trailer), RENDER, ("security-metadata-scope",),
+               "Only catalog Metadata is exempt; the unrelated Metadata stream remains encrypted", oracle=oracle)
+    p, key = parameters(2, b"", b"owner-secret")
+    objects = encrypted_objects(p, key, "V2")
+    objects[4] = objects[4][:-2] + b" /EncryptMetadata false >>"
+    yield Case("security-v1-metadata", document(objects, trailer), RENDER, ("security-metadata-scope",),
+               "EncryptMetadata is ignored for V=1; document metadata still decrypts", oracle=oracle)
+    p, key = parameters(6, b"", b"owner-secret")
+    base = encrypted_objects(p, key, "AESV3")
+    for name, ids in [
+        ("security-id-missing", b""),
+        ("security-id-single", b"/ID ["+hex_string(ID)+b"] "),
+        ("security-id-short", b"/ID [<00> <00>] "),
+    ]:
+        yield Case(name, document(base, b"/Encrypt 5 0 R " + ids), RENDER, ("security-identifiers",),
+                   "Table 15 requires two direct 16-byte identifiers; R6 authentication does not depend on them",
+                   oracle=oracle, strict_valid=False, repairs=("security.document-id",))
+    objects=list(base)
+    objects[4]=objects[4].replace(b"/P -4 ",b"/P -8 ")
+    yield Case("security-permissions-inconsistent", document(objects, trailer), RENDER, ("security-permissions-validation",),
+               "Algorithm 13 consistency differs from password authentication and is reported after a valid key is obtained",
+               oracle=oracle, strict_valid=False, repairs=("security.perms-mismatch",))
+
+
+def short_rc4_cases():
+    from .crypto import parameters, rc4, ID, vector, PLAIN
+    for length in [5, 6]:
+        p, key = parameters(4, b"", b"owner", metadata=False, length=length)
+        # Generation-aware known-answer data use independent MD5 and RC4;
+        # ordinary authenticate must still reject this nonstandard R4 key size.
+        raw = vector(f"r4-zero-padded-{length*8}", p, key, b"", b"owner", "V2")
+        files = dict(raw.files)
+        object_key = hashlib.md5(key.ljust(16, b"\0") + bytes([4, 3, 2, 1, 2])).digest()
+        files[".cipher"] = rc4(object_key, PLAIN)
+        from .model import Vector
+        yield Vector(raw.name, files, ("security-short-rc4",),
+                     "Independently derived 16-byte zero-padded RC4 object key, object 0x01020304 generation 513")
+        def encode(number, data):
+            digest=hashlib.md5(key.ljust(16,b"\0")+number.to_bytes(3,"little")+bytes(2)).digest()
+            return rc4(digest,data)
+        builder=Builder();builder.obj(4,stream(encode(4,CONTENT)))
+        bodies=bytearray();pairs=[]
+        for number,body in enumerate(OBJECTS[:3],1):
+            pairs.append(b"%d %d"%(number,len(bodies)));bodies+=body+b"\n";builder.entries[number]=(2,5,number-1)
+        header=b" ".join(pairs)+b" "
+        builder.obj(5,stream(encode(5,zlib.compress(header+bodies)),b"/Type /ObjStm /N 3 /First %d /Filter /FlateDecode "%len(header)))
+        builder.obj(6,b"<< /Title <"+encode(6,b"independent").hex().encode()+b"> >>")
+        from .crypto import encryption_dictionary
+        builder.obj(7,encryption_dictionary(p,"V2",False))
+        ids=ID.hex().encode()
+        data=builder.xref(number=8,extra=b"/Encrypt 7 0 R /Info 6 0 R /ID [<"+ids+b"><"+ids+b">]")
+        if length == 5:
+            corrupt=bytearray(data)
+            start=data.index(b"\nstream\n",builder.entries[5][1])+len(b"\nstream\n")
+            corrupt[start+len(zlib.compress(header+bodies))-1]^=1
+            yield Case("security-zero-padded-bad-checksum",bytes(corrupt),INVALID,("security-short-rc4",),
+                       "A recognizable decompressed prefix without the complete zlib checksum cannot select a key convention",
+                       strict_valid=False,extra={"open_error":"syntax"})
+        yield Case(f"security-zero-padded-{length*8}",data,RENDER,("security-short-rc4",),
+                   "A full zlib checksum and xref-matching object index establish the nonstandard key convention before strings are cached",
+                   oracle=RED,strict_valid=False,repairs=("security.short-key","security.key-padding"),extra={"owner_password":"owner"})
+
+
+def identifier_syntax_cases():
+    for name,reference in [("syntax-reference-object-zeroes",b"02 0 R"),("syntax-reference-generation-zeroes",b"2 00 R")]:
+        objects=list(OBJECTS);objects[0]=OBJECTS[0].replace(b"2 0 R",reference)
+        yield Case(name,document(objects),RENDER,("identifier-syntax",),
+                   "EC3 issue 379 forbids leading zeros in object and generation numbers; numeric identity is preserved with a report",
+                   oracle=RED,strict_valid=False,repairs=("syntax.reference-leading-zero",))
+    objects=list(OBJECTS);objects[0]=objects[0][:-2]+b" /A{B /C}D >>"
+    yield Case("syntax-name-braces",document(objects),RENDER,("identifier-syntax",),
+               "Braces are regular name characters outside Type 4 calculator functions (7.2.3)",oracle=RED)
+
+
+def legacy_selector_cases():
+    from .crypto import parameters, encrypted_objects, ID, hex_string
+    p,key=parameters(2,b"",b"owner-secret",permissions=-3884)
+    objects=encrypted_objects(p,key,"V2")
+    oracle=opaque_rectangles(64,64,[((8,8,48,32),(255,0,0)),((0,0,8,8),(0,0,255))])
+    yield Case("security-legacy-permission-selector",document(objects,b"/Encrypt 5 0 R /ID ["+hex_string(ID)+b" "+hex_string(ID)+b"] "),RENDER,
+               ("security-legacy-permissions",),"Nonconforming R2 selector flags preserve the exact raw permissions in the authenticated hash",
+               oracle=oracle,strict_valid=False,repairs=("security.permission-selector",))

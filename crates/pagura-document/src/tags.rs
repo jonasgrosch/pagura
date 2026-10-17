@@ -100,3 +100,23 @@ pub const KEY_LENGTH_MISSING: Repair = Repair::new("security.key-length");
 /// A plaintext Catalog numbered zero uses the exact positive Root xref slot
 /// (7.3.10, 7.5.4, Table 15); other identities and encrypted files are rejected.
 pub const CATALOG_OBJECT_NUMBER: Repair = Repair::new("catalog.object-number");
+
+/// Malformed required file identifiers preserved for authenticated recovery (Table 15).
+pub const DOCUMENT_ID: Repair = Repair::new("security.document-id");
+/// Nonconforming crypt-filter Type recovered from its explicit CF membership (Table 25).
+pub const CRYPT_TYPE: Repair = Repair::new("security.crypt-filter-type");
+/// Missing required crypt-filter Length inferred from its authenticated file key (Table 25).
+pub const CRYPT_LENGTH: Repair = Repair::new("security.crypt-filter-length");
+/// A nonstandard Standard-handler crypt-filter name (7.6.4.1).
+pub const CRYPT_NAME: Repair = Repair::new("security.crypt-filter-name");
+/// EFOpen-only Standard-handler filter accepted as an extension (7.6.4.1, Table 25).
+pub const CRYPT_EVENT: Repair = Repair::new("security.crypt-filter-event");
+/// Password authenticated but Algorithm 13 permissions consistency failed.
+pub const PERMS_MISMATCH: Repair = Repair::new("security.perms-mismatch");
+/// Nonstandard V=4 short RC4 key size (7.6.2 Table 20).
+pub const SHORT_KEY: Repair = Repair::new("security.short-key");
+/// Short RC4 file key padded to 16 bytes for object derivation (7.6.3.2).
+pub const KEY_PADDING: Repair = Repair::new("security.key-padding");
+
+/// R2 permission bits violate Table 21's selector; raw hash bytes are preserved.
+pub const PERMISSION_SELECTOR: Repair = Repair::new("security.permission-selector");

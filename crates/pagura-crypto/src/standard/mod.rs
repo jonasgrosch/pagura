@@ -158,6 +158,32 @@ impl FileKey {
             .map_err(|error| error.in_object(object))
     }
 
+    /// Decrypts a legacy RC4 object whose writer zero-padded a short R4 file
+    /// key to 16 bytes before MD5 object-key derivation, then used the full
+    /// 16-byte RC4 object key. This is an explicit compatibility deviation from
+    /// ISO 32000-2 7.6.3.2 Algorithm 1, not normal RC4 key derivation.
+    /// The caller must establish the convention from authenticated structure
+    /// and report its use; no private key bytes are exposed.
+    ///
+    /// # Errors
+    ///
+    /// Returns Syntax unless this is an authenticated R4 key of 5–15 bytes;
+    /// returns Limit on allocation failure. Errors carry the object identity.
+    pub fn decrypt_legacy_zero_padded(&self, object: ObjectId, data: &[u8]) -> Result<Vec<u8>> {
+        if self.revision != 4 || !(5..16).contains(&self.key.len()) {
+            return Err(
+                Error::syntax("zero-padded object derivation requires a short R4 key")
+                    .in_object(object),
+            );
+        }
+        let mut padded = [0; 16];
+        padded[..self.key.len()].copy_from_slice(&self.key);
+        let derived = legacy::object_key(&padded, CryptMethod::Rc4, object);
+        let mut output = copy_bytes(data).map_err(|error| error.in_object(object))?;
+        Rc4::new(&derived)?.apply_keystream(&mut output);
+        Ok(output)
+    }
+
     fn decrypt_inner(&self, method: CryptMethod, object: ObjectId, data: &[u8]) -> Result<Vec<u8>> {
         if method == CryptMethod::Identity {
             return copy_bytes(data);
@@ -238,12 +264,41 @@ impl FileKey {
 /// revisions outside 2–6 or missing normalization data; `Syntax` for structurally
 /// malformed parameters; and `Limit` if mapping or hashing allocation fails.
 pub fn authenticate(params: &SecurityParams, password: &[u8]) -> Result<FileKey> {
-    validate_params(params)?;
+    validate_params(params, false)?;
     if params.revision >= 5 {
         modern::authenticate(params, password)
     } else {
         legacy::authenticate(params, password)
     }
+}
+
+/// Authenticates an explicitly nonconforming legacy document: either R4 with
+/// a 5–15 byte RC4 key, or R2 with revision-3-only permissions restricted.
+/// Normal [`authenticate`] still enforces Tables 20–22's revision/key selection.
+/// The document caller must report the deviation before using this operation;
+/// no password, permissions, identifier or hash bytes are inferred or changed.
+/// Algorithms 2–7 otherwise apply without modification (7.6.4.3–7.6.4.4).
+///
+/// # Errors
+///
+/// As [`authenticate`], and Syntax unless one of the two documented legacy
+/// deviations is present. Raw permissions bytes remain part of the file-key hash.
+pub fn authenticate_legacy_compatibility(
+    params: &SecurityParams,
+    password: &[u8],
+) -> Result<FileKey> {
+    let short = params.version == 4 && params.revision == 4 && (5..16).contains(&params.key_length);
+    let later_mask = (1u32 << 8) | (1 << 10) | (1 << 11);
+    let selector = params.version == 1
+        && params.revision == 2
+        && u32::from_le_bytes(params.permissions.to_le_bytes()) & later_mask != later_mask;
+    if !short && !selector {
+        return Err(Error::syntax(
+            "legacy compatibility requires an explicit revision or key-size deviation",
+        ));
+    }
+    validate_params(params, true)?;
+    legacy::authenticate(params, password)
 }
 
 fn file_key(params: &SecurityParams, key: Vec<u8>, authority: Authority) -> FileKey {
@@ -254,7 +309,7 @@ fn file_key(params: &SecurityParams, key: Vec<u8>, authority: Authority) -> File
         permissions_validation: PermissionsValidation::NotApplicable,
     }
 }
-fn validate_params(params: &SecurityParams) -> Result<()> {
+fn validate_params(params: &SecurityParams, legacy_compatibility: bool) -> Result<()> {
     if !(2..=6).contains(&params.revision) {
         return Err(Error::unsupported(
             features::REVISION,
@@ -273,12 +328,20 @@ fn validate_params(params: &SecurityParams) -> Result<()> {
     let permission_bits = u32::from_le_bytes(params.permissions.to_le_bytes());
     let later_restrictions = permission_bits & later_mask != later_mask;
     let valid = match params.revision {
-        2 => params.version == 1 && params.key_length == 5 && !later_restrictions,
+        2 => {
+            params.version == 1
+                && params.key_length == 5
+                && (!later_restrictions || legacy_compatibility)
+        }
         3 => {
             (params.version == 1 && params.key_length == 5 && later_restrictions)
                 || (params.version == 2 && (5..=16).contains(&params.key_length))
         }
-        4 => params.version == 4 && params.key_length == 16,
+        4 => {
+            params.version == 4
+                && (params.key_length == 16
+                    || (legacy_compatibility && (5..16).contains(&params.key_length)))
+        }
         _ => params.version == 5 && params.key_length == 32,
     };
     if !valid {
@@ -349,7 +412,10 @@ mod tests {
     use std::collections::BTreeMap;
 
     pub(super) fn params(name: &str) -> SecurityParams {
-        let bytes = fixture("crypto", &format!("{name}.params"));
+        params_in("crypto", name)
+    }
+    fn params_in(area: &str, name: &str) -> SecurityParams {
+        let bytes = fixture(area, &format!("{name}.params"));
         let text = std::str::from_utf8(&bytes).unwrap();
         let fields: BTreeMap<_, _> = text
             .lines()
@@ -415,6 +481,68 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn nonstandard_short_rc4_keys_require_the_explicit_compatibility_apis() {
+        let object = ObjectId::new(0x0102_0304, 513);
+        for name in ["r4-zero-padded-40", "r4-zero-padded-48"] {
+            let params = params_in("document", name);
+            assert_eq!(
+                authenticate(&params, b"").unwrap_err().kind,
+                ErrorKind::Syntax
+            );
+            let cipher = fixture("document", &format!("{name}.cipher"));
+            let plain = fixture("document", &format!("{name}.plain"));
+            for (password, authority) in [
+                (b"".as_slice(), Authority::User),
+                (b"owner".as_slice(), Authority::Owner),
+            ] {
+                let key = authenticate_legacy_compatibility(&params, password).unwrap();
+                assert_eq!(key.authority(), authority);
+                assert_eq!(key.key, fixture("document", &format!("{name}.key")));
+                assert_eq!(
+                    key.decrypt_legacy_zero_padded(object, &cipher).unwrap(),
+                    plain
+                );
+                assert_ne!(
+                    key.decrypt(CryptMethod::Rc4, object, &cipher).unwrap(),
+                    plain
+                );
+                assert_ne!(
+                    key.decrypt_legacy_zero_padded(ObjectId::new(object.number, 514), &cipher)
+                        .unwrap(),
+                    plain
+                );
+            }
+            assert_eq!(
+                authenticate_legacy_compatibility(&params, b"wrong")
+                    .unwrap_err()
+                    .kind,
+                ErrorKind::Password
+            );
+        }
+        for name in [
+            "r2-rc4-40-empty",
+            "r3-rc4-128-empty",
+            "r4-aesv2-empty",
+            "r6-aesv3-empty",
+        ] {
+            let params = params(name);
+            assert_eq!(
+                authenticate_legacy_compatibility(&params, b"")
+                    .unwrap_err()
+                    .kind,
+                ErrorKind::Syntax
+            );
+            let key = authenticate(&params, b"").unwrap();
+            let error = key
+                .decrypt_legacy_zero_padded(object, b"ciphertext")
+                .unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Syntax);
+            assert_eq!(error.object, Some(object));
+        }
+    }
+
     #[test]
     fn independent_handler_oracles_all_revisions_and_authorities() {
         for name in [

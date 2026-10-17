@@ -33,17 +33,18 @@ pub const DICTIONARY_OPENER: Repair = Repair::new("syntax.dictionary-opener");
 /// A stream illegally used as a direct dictionary/array value (7.3.8.1).
 pub const DIRECT_STREAM: Repair = Repair::new("syntax.direct-stream");
 
+/// Leading zeros in reference identifiers (7.3.10, EC3 issue 379).
+pub const LEADING_ZERO_REFERENCE: Repair = Repair::new("syntax.reference-leading-zero");
+
 /// PDF white-space characters (clause 7.2.3, Table 1).
 pub const fn is_whitespace(byte: u8) -> bool {
     matches!(byte, 0 | 9 | 10 | 12 | 13 | 32)
 }
 
-/// PDF delimiter characters (clause 7.2.3, Table 2).
+/// PDF delimiter characters (clause 7.2.3, Table 2). Braces are regular
+/// outside Type 4 calculator functions; their tokenizer handles them separately.
 pub const fn is_delimiter(byte: u8) -> bool {
-    matches!(
-        byte,
-        b'(' | b')' | b'<' | b'>' | b'[' | b']' | b'{' | b'}' | b'/' | b'%'
-    )
+    matches!(byte, b'(' | b')' | b'<' | b'>' | b'[' | b']' | b'/' | b'%')
 }
 
 /// Regular characters: neither white space nor delimiters.
@@ -690,7 +691,16 @@ impl<'a> Parser<'a> {
         let integer: i64 = text
             .parse()
             .map_err(|_| self.error("integer out of range"))?;
-        if !signed && let Some(reference) = self.reference_tail(integer) {
+        if !signed && let Some((reference, generation_zeroes)) = self.reference_tail(integer) {
+            if generation_zeroes || (token.len() > 1 && token.first() == Some(&b'0')) {
+                self.diagnostics.repair(
+                    Diagnostic::new(
+                        LEADING_ZERO_REFERENCE,
+                        "leading zeros removed from reference object or generation number",
+                    )
+                    .at(self.origin.position(start)),
+                )?;
+            }
             if reference.number == 0 {
                 self.diagnostics.repair(
                     Diagnostic::new(ZERO_REFERENCE, "object-zero reference interpreted as null")
@@ -705,18 +715,20 @@ impl<'a> Parser<'a> {
 
     /// Tries to read `G R` after an object number; restores the position
     /// if the following tokens do not form a reference.
-    fn reference_tail(&mut self, number: i64) -> Option<ObjectId> {
+    fn reference_tail(&mut self, number: i64) -> Option<(ObjectId, bool)> {
         let number = u32::try_from(number).ok()?;
         let saved = self.position;
-        let generation = self
-            .unsigned()
-            .ok()
-            .and_then(|g| u16::try_from(g).ok())
-            .filter(|_| self.keyword(b"R"));
-        if generation.is_none() {
-            self.position = saved;
+        self.skip_whitespace();
+        let start = self.position;
+        let generation = self.unsigned().ok().and_then(|g| u16::try_from(g).ok());
+        let zeroes = self.position > start + 1 && self.data.get(start) == Some(&b'0');
+        if let Some(generation) = generation
+            && self.keyword(b"R")
+        {
+            return Some((ObjectId::new(number, generation), zeroes));
         }
-        generation.map(|generation| ObjectId::new(number, generation))
+        self.position = saved;
+        None
     }
 }
 
@@ -819,5 +831,56 @@ mod recovery_tests {
                     .is_err()
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod identifier_tests {
+    use super::{LEADING_ZERO_REFERENCE, Origin, Parser};
+    use crate::{Limits, ObjectId, Position, Recovery, Value};
+
+    #[test]
+    fn identifier_zeroes_are_reported_only_after_a_complete_reference() {
+        for bytes in [b"01 0 R".as_slice(), b"1 00 R", b"01 00 R"] {
+            let error = Parser::new(bytes, Origin::File, Limits::default())
+                .parse()
+                .unwrap_err();
+            assert_eq!(error.repair, Some(LEADING_ZERO_REFERENCE));
+            assert_eq!(error.position, Position::File(0));
+            let mut parser =
+                Parser::new(bytes, Origin::File, Limits::default()).with_recovery(Recovery::Repair);
+            assert_eq!(
+                parser.parse().unwrap(),
+                Value::Reference(ObjectId::new(1, 0))
+            );
+            assert_eq!(parser.take_diagnostics().len(), 1);
+        }
+        let mut parser = Parser::new(b"[01 00 1 0]", Origin::Buffer, Limits::default());
+        assert_eq!(
+            parser.parse().unwrap(),
+            Value::Array(vec![
+                Value::Integer(1),
+                Value::Integer(0),
+                Value::Integer(1),
+                Value::Integer(0)
+            ])
+        );
+        assert_eq!(parser.take_diagnostics(), []);
+    }
+
+    #[test]
+    fn braces_are_regular_characters_in_ordinary_pdf_names() {
+        let mut parser = Parser::new(b"[/A{B /C}D /E#7bF]", Origin::Buffer, Limits::default());
+        assert_eq!(
+            parser.parse().unwrap(),
+            Value::Array(vec![
+                Value::name(b"A{B"),
+                Value::name(b"C}D"),
+                Value::name(b"E{F")
+            ])
+        );
+        assert_eq!(parser.take_diagnostics(), []);
+        assert!(!super::is_delimiter(b'{'));
+        assert!(!super::is_delimiter(b'}'));
     }
 }

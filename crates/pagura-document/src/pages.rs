@@ -769,6 +769,9 @@ mod recovery_tests {
             "direct-stream-resources",
             "direct-stream-encrypted",
             "security-length-missing",
+            "security-zero-padded-40",
+            "security-zero-padded-48",
+            "security-legacy-permission-selector",
             "catalog-number-zero",
         ] {
             let document = preloaded(name, 128 * 1024 * 1024);

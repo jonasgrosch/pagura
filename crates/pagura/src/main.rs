@@ -2,6 +2,8 @@
 //! The `pagura` command-line tool: inspection, PDF-to-image conversion,
 //! corpus scanning and internal profiling.
 
+mod password;
+
 use pagura::{Document, Limits, OpenOptions, Pixmap, Recovery, RenderOptions, Rgba8};
 use std::error::Error;
 use std::fmt::Write as _;
@@ -151,7 +153,10 @@ fn load(path: &str, limits: Limits) -> CliResult<Vec<u8>> {
 
 fn open(path: &str, flags: &Flags) -> CliResult<Document> {
     let options = flags.open_options();
-    Ok(Document::open(load(path, options.limits)?, &options)?)
+    Ok(password::open(
+        load(path, options.limits)?.into(),
+        &options,
+    )?)
 }
 
 /// Creates `path` and writes `bytes`; never truncates an existing file.
