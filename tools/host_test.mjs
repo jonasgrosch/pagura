@@ -10,10 +10,11 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { WASI } from 'node:wasi';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
-import { FrameDecoder, encodeRequest, HostError, decodeResponse, MAX_FILE } from '../web/protocol.mjs';
+import { FrameDecoder, encodeRequest, HostError, decodeResponse, MAX_FILE, VERSION_1_1 } from '../web/protocol.mjs';
 import { SessionClient } from '../web/client.mjs';
 import { createWasi } from '../web/wasi.mjs';
 import { runHost } from '../web/worker.mjs';
+import { PageLayout } from '../web/layout.mjs';
 import { fixtureUrl, loadFixture } from '../web/fixtures.mjs';
 
 if (!isMainThread) {
@@ -96,6 +97,28 @@ async function testTwoPages(client, root, native, wasiRun) {
     checkPixels(frames[index + 4].value, expected);
     checkPixels(await client.renderTile(opened.document, 1, 1, tile), expected);
   }
+  await client.close(opened.document);
+}
+
+async function testGenerations(client, root, native, wasiRun) {
+  const pdf = new Uint8Array(await readFile(join(root, 'corpus/generated/classic/rectangle.pdf')));
+  const tile = { x: 0, y: 0, width: 64, height: 64 };
+  const input = Buffer.concat([encodeRequest(1, 1, { version: VERSION_1_1 }),
+    encodeRequest(2, 2, { bytes: pdf, recovery: 0, password: new Uint8Array() }),
+    encodeRequest(7, 3, { document: 1, generation: 2 }),
+    encodeRequest(8, 4, { document: 1, page: 0xffffffff, scale: 1, ...tile, generation: 1 }),
+    encodeRequest(8, 5, { document: 1, page: 0, scale: 1, ...tile, generation: 2 })]);
+  const result = spawnSync(native, [], { input, timeout: 30000 }); assert.ifError(result.error); assert.equal(result.status, 0);
+  const wasi = await wasiRun(input, 'generations'); assert.equal(wasi.code, 0);
+  bytesEqual(wasi.bytes, result.stdout, 'generation native/WASI parity');
+  const frames = parse(wasi.bytes); assert.equal(frames[3].kind, 136); assert.equal(frames[3].value.cancelled, true);
+  const expected = ppmPixels(await readFile(join(root, 'corpus/generated/classic/rectangle.ppm')), 64, 64);
+  checkPixels(frames[4].value, expected);
+  const opened = await client.open(pdf); const old = client.invalidate(opened.document);
+  const queued = client.renderGenerationTile(opened.document, 0, 1, tile, old);
+  const latest = client.invalidate(opened.document);
+  assert.equal((await queued).cancelled, true);
+  checkPixels(await client.renderGenerationTile(opened.document, 0, 1, tile, latest), expected);
   await client.close(opened.document);
 }
 
@@ -184,6 +207,7 @@ async function main() {
       tested++;
     }
     await testTwoPages(client, root, native, wasiRun);
+    await testGenerations(client, root, native, wasiRun);
     // Explicit unsupported failures survive browser framing with context/tag.
     const unsupported = await client.open(new Uint8Array(await readFile(join(root, 'corpus/generated/classic/text-unsupported.pdf'))));
     await assert.rejects(client.renderTile(unsupported.document, 0, 1, { x: 0, y: 0, width: 64, height: 64 }),
@@ -242,6 +266,11 @@ async function main() {
 }
 
 function testCodecAndCapabilities() {
+  const layout = new PageLayout(3);
+  assert.equal(layout.top(2, 1), 1632);
+  layout.setHeight(0, 64); layout.setHeight(1, 128);
+  assert.equal(layout.top(2, 2), 432); assert.equal(layout.pageAt(431, 2), 1);
+  assert.equal(layout.pageAt(432, 2), 2); assert.throws(() => layout.setHeight(0, NaN));
   bytesEqual(encodeRequest(1, 7), Uint8Array.from([9, 0, 0, 0, 1, 7, 0, 0, 0, 1, 0, 0, 0]), 'literal JS handshake oracle');
   for (const bytes of [new Uint8Array([0, 0, 0, 0]), new Uint8Array([255, 255, 255, 255])]) {
     assert.throws(() => new FrameDecoder(() => {}).feed(bytes));
@@ -286,28 +315,35 @@ function testCodecAndCapabilities() {
 async function testViewer(TestWorker, root, manifest, startup = null) {
   class Element {
     constructor(id) {
-      this.id = id; this.children = []; this.listeners = new Map(); this.style = {};
-      this.hidden = ['page-surface', 'error'].includes(id); this.value = id === 'zoom' ? '1' : '1';
-      this.scrollTop = 0; this.scrollLeft = 0; this.checked = false; this.textContent = '';
+      this.id = id; this.tagName = id.toUpperCase(); this.children = []; this.listeners = new Map(); this.style = {}; this.attributes = new Map();
+      this.hidden = ['page-surface', 'error'].includes(id); this.value = '1'; this.scrollTop = 0; this.scrollLeft = 0;
+      this.clientWidth = 300; this.clientHeight = 300; this.checked = false; this.textContent = '';
     }
-    addEventListener(type, listener) {
-      const list = this.listeners.get(type) ?? []; list.push(listener); this.listeners.set(type, list);
-    }
-    dispatch(type, extra = {}) { for (const fn of this.listeners.get(type) ?? []) fn({ target: this, ...extra }); }
-    replaceChildren(...children) { this.children = children; for (const child of children) child.parent = this; }
+    addEventListener(type, listener) { const list = this.listeners.get(type) ?? []; list.push(listener); this.listeners.set(type, list); }
+    removeEventListener(type, listener) { this.listeners.set(type, (this.listeners.get(type) ?? []).filter((fn) => fn !== listener)); }
+    dispatch(type, extra = {}) { for (const fn of [...this.listeners.get(type) ?? []]) fn({ target: this, preventDefault() {}, ...extra }); }
+    replaceChildren(...children) { for (const child of this.children) child.parent = null; this.children = children; for (const child of children) child.parent = this; }
     append(child) { this.children.push(child); child.parent = this; }
     remove() { if (this.parent) this.parent.children = this.parent.children.filter((child) => child !== this); }
-    setAttribute(name, value) { this[name] = value; }
-    removeAttribute(name) { delete this[name]; }
+    setAttribute(name, value) { this.attributes.set(name, value); }
+    getAttribute(name) { return this.attributes.get(name); }
+    removeAttribute(name) { this.attributes.delete(name); }
+    focus() { globalThis.document.activeElement = this; }
+    showModal() { this.open = true; }
+    close() { this.open = false; }
     getBoundingClientRect() {
-      if (this.id === 'viewport') return { left: 0, top: 0, right: 300, bottom: 300 };
-      return { left: -elements.get('viewport').scrollLeft, top: -elements.get('viewport').scrollTop,
-        right: parseFloat(this.style.width), bottom: parseFloat(this.style.height) };
+      const viewport = elements.get('viewport');
+      if (this.id === 'viewport') return { left: 0, top: 0, right: viewport.clientWidth, bottom: viewport.clientHeight };
+      const width = parseFloat(this.style.width) || 0, height = parseFloat(this.style.height) || 0;
+      const left = Math.max(0, ((parseFloat(elements.get('page-surface').style.width) || width) - width) / 2) - viewport.scrollLeft;
+      const top = (parseFloat(this.style.top) || 0) - viewport.scrollTop;
+      return { left, top, right: left + width, bottom: top + height };
     }
     getContext(kind) { assert.equal(kind, '2d'); return { putImageData: (image) => { this.image = image; } }; }
   }
   const ids = ['page-surface', 'viewport', 'status', 'error', 'page', 'zoom', 'previous', 'next', 'count',
-    'file', 'strict', 'filename', 'diagnostic-count', 'repair-list', 'diagnostics'];
+    'file', 'strict', 'filename', 'diagnostic-count', 'repair-list', 'diagnostics', 'custom-zoom',
+    'password-dialog', 'password', 'password-feedback', 'password-form', 'password-cancel'];
   const elements = new Map(ids.map((id) => [id, new Element(id)]));
   const original = new Map(['window', 'document', 'Worker', 'ImageData', 'requestAnimationFrame', 'crossOriginIsolated', 'fetch']
     .map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
@@ -315,7 +351,7 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
   fakeWindow.location = new URL(startup?.url ?? 'http://localhost:8000/');
   Object.assign(globalThis, {
     window: fakeWindow,
-    document: { getElementById: (id) => elements.get(id), createElement: (name) => new Element(name), body: { classList: { add() {}, remove() {} } } },
+    document: { activeElement: null, getElementById: (id) => elements.get(id), createElement: (name) => new Element(name), body: { classList: { add() {}, remove() {} } } },
     Worker: TestWorker, crossOriginIsolated: true,
     requestAnimationFrame: (fn) => setTimeout(fn, 0),
     ImageData: class { constructor(data, width, height) { this.data = data; this.width = width; this.height = height; } },
@@ -329,24 +365,23 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
     }
   };
   const pick = async (entry) => {
-    const picker = elements.get('file'); picker.files = [new File([await readFile(join(root, entry.path))], entry.id + '.pdf')];
-    picker.dispatch('change');
+    const picker = elements.get('file'); picker.files = [new File([await readFile(join(root, entry.path))], entry.id + '.pdf')]; picker.dispatch('change');
   };
   const ready = () => elements.get('status').textContent === 'Visible tiles rendered';
+  const view = (index) => elements.get('page-surface').children.find((element) => element.getAttribute('data-page') === String(index));
+  const canvases = (index = 0) => view(index)?.children.filter((element) => element.tagName === 'CANVAS') ?? [];
   try {
-    await import(`../web/viewer.mjs?host-test=${startup?.name ?? 'default'}`);
+    await import(`../web/viewer.mjs?test=${startup?.name ?? 'continuous'}`);
     if (startup) {
       if (startup.error) {
-        assert.equal(elements.get('error').hidden, false);
-        assert.match(elements.get('error').textContent, startup.error);
+        assert.equal(elements.get('error').hidden, false); assert.match(elements.get('error').textContent, startup.error);
         assert.equal(elements.get('page-surface').children.length, 0);
       } else {
-        await waitFor(ready);
-        assert.equal(elements.get('filename').textContent, 'two-pages.pdf');
+        await waitFor(ready); assert.equal(elements.get('filename').textContent, 'two-pages.pdf');
         assert.equal(elements.get('count').textContent, 'of 2');
         const first = manifest.cases.find((entry) => entry.id === 'classic/two-pages');
-        checkPixels({ rgba: elements.get('page-surface').children[0].image.data },
-          ppmPixels(await readFile(join(root, first.oracle)), 64, 64));
+        checkPixels({ rgba: canvases()[0].image.data }, ppmPixels(await readFile(join(root, first.oracle)), 64, 64));
+        assert.equal(view(0).getAttribute('role'), 'img');
       }
       return;
     }
@@ -357,73 +392,98 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
       assert.equal(elements.get('diagnostic-count').textContent, `Repairs: ${entry.repairs.length}`);
       assert.equal(elements.get('page').value, '1');
       const rgb = ppmPixels(await readFile(join(root, entry.oracle)), entry.width, entry.height);
-      for (const canvas of elements.get('page-surface').children) {
+      assert.ok(canvases().length > 0);
+      for (const canvas of canvases()) {
         const x = parseFloat(canvas.style.left), y = parseFloat(canvas.style.top), rgba = canvas.image.data;
         for (let row = 0; row < canvas.height; row++) for (let column = 0; column < canvas.width; column++) {
           const pixel = (row * canvas.width + column) * 4, oracle = ((y + row) * entry.width + x + column) * 3;
-          const tolerance = entry.tolerance ?? 0;
-          const differs = [0, 1, 2].some((channel) => Math.abs(rgba[pixel + channel] - rgb[oracle + channel]) > tolerance);
-          if (differs || rgba[pixel + 3] !== 255) {
-            assert.fail(`Viewer canvas mismatch: ${entry.id}, (${x + column}, ${y + row})`);
-          }
+          const differs = [0, 1, 2].some((channel) => Math.abs(rgba[pixel + channel] - rgb[oracle + channel]) > (entry.tolerance ?? 0));
+          if (differs || rgba[pixel + 3] !== 255) assert.fail(`Viewer canvas mismatch: ${entry.id}, (${x + column}, ${y + row})`);
         }
       }
       if (entry.id === 'classic/many-rectangles') {
-        const viewport = elements.get('viewport'), canvases = () => elements.get('page-surface').children;
-        viewport.scrollTop = 400; viewport.dispatch('scroll');
+        const viewport = elements.get('viewport'); viewport.scrollTop = 400; viewport.dispatch('scroll');
         await waitFor(() => canvases().length === 2 && canvases().every((canvas) => parseFloat(canvas.style.top) === 256) && ready());
-        viewport.scrollTop = 0; viewport.dispatch('scroll');
-        await waitFor(() => canvases().length === 4 && ready());
+        viewport.scrollTop = 0; viewport.dispatch('scroll'); await waitFor(() => canvases().length === 4 && ready());
       }
     }
     const twoPages = manifest.cases.find((entry) => entry.id === 'classic/two-pages');
+    elements.get('viewport').clientHeight = 40;
     await pick(twoPages); await waitFor(ready);
+    assert.ok(view(0)); assert.equal(view(1), undefined);
+    elements.get('viewport').scrollTop = 112; elements.get('viewport').dispatch('scroll');
+    await waitFor(() => ready() && canvases(1).length > 0);
+    assert.ok(view(0) === undefined, 'Offscreen page element must be evicted');
+    checkPixels({ rgba: canvases(1)[0].image.data }, secondPageRgb({ x: 0, y: 0, width: 64, height: 64 }));
+    elements.get('viewport').clientHeight = 300; elements.get('viewport').scrollTop = 0;
+    elements.get('viewport').dispatch('scroll'); await waitFor(() => ready() && canvases(0).length > 0);
+    // Both pages coexist when visible, with independently checked content.
+    assert.ok(view(0)); assert.ok(view(1));
     const firstPage = ppmPixels(await readFile(join(root, twoPages.oracle)), 64, 64);
     const checkPage = (index) => {
-      assert.equal(elements.get('page').value, String(index + 1));
-      assert.equal(elements.get('count').textContent, 'of 2');
-      assert.equal(elements.get('previous').disabled, index === 0);
-      assert.equal(elements.get('next').disabled, index === 1);
-      assert.equal(elements.get('page-surface').children.length, 1);
-      const canvas = elements.get('page-surface').children[0];
-      checkPixels({ rgba: canvas.image.data }, index === 0 ? firstPage : secondPageRgb({ x: 0, y: 0, width: 64, height: 64 }));
+      assert.equal(elements.get('page').value, String(index + 1)); assert.equal(elements.get('count').textContent, 'of 2');
+      assert.equal(elements.get('previous').disabled, index === 0); assert.equal(elements.get('next').disabled, index === 1);
+      checkPixels({ rgba: canvases(index)[0].image.data }, index === 0 ? firstPage : secondPageRgb({ x: 0, y: 0, width: 64, height: 64 }));
     };
     checkPage(0);
-    elements.get('next').dispatch('click'); await waitFor(ready); checkPage(1);
-    elements.get('previous').dispatch('click'); await waitFor(ready); checkPage(0);
+    const settledPage = (index) => ready() && elements.get('page').value === String(index + 1) && canvases(index).length > 0;
+    elements.get('next').dispatch('click'); await waitFor(() => settledPage(1)); checkPage(1);
+    elements.get('previous').dispatch('click'); await waitFor(() => settledPage(0)); checkPage(0);
     for (const index of [1, 0, 1]) {
       elements.get('page').value = String(index + 1); elements.get('page').dispatch('change');
-      await waitFor(ready); checkPage(index);
+      await waitFor(() => settledPage(index)); checkPage(index);
     }
+    fakeWindow.dispatch('keydown', { key: 'Home' }); await waitFor(() => settledPage(0)); checkPage(0);
+    fakeWindow.dispatch('keydown', { key: 'PageDown' }); await waitFor(() => settledPage(1)); checkPage(1);
     const rectangle = manifest.cases.find((entry) => entry.id === 'classic/rectangle');
     await pick(rectangle); await waitFor(ready);
     elements.get('zoom').value = '2'; elements.get('zoom').dispatch('change');
     elements.get('zoom').value = '1'; elements.get('zoom').dispatch('change');
-    await waitFor(ready); assert.equal(elements.get('page-surface').style.width, '64px');
-    fakeWindow.devicePixelRatio = 2; fakeWindow.dispatch('resize');
-    await waitFor(ready); assert.equal(elements.get('page-surface').children[0].width, 128);
-    assert.equal(elements.get('page-surface').style.width, '64px');
-    fakeWindow.devicePixelRatio = 1; fakeWindow.dispatch('resize'); await waitFor(ready);
-    // Unsupported content clears any partial tiles and names the failure.
+    await waitFor(ready); assert.equal(view(0).style.width, '64px');
+    fakeWindow.devicePixelRatio = 2; fakeWindow.dispatch('resize'); await waitFor(() => ready() && canvases()[0]?.width === 128);
+    assert.equal(view(0).style.width, '64px');
+    fakeWindow.devicePixelRatio = 1; fakeWindow.dispatch('resize'); await waitFor(() => ready() && canvases()[0]?.width === 64);
+    elements.get('zoom').value = 'fit-width'; elements.get('zoom').dispatch('change'); await waitFor(ready);
+    assert.equal(view(0).style.width, '252px');
+    elements.get('viewport').clientHeight = 200;
+    elements.get('zoom').value = 'fit-page'; elements.get('zoom').dispatch('change'); await waitFor(ready);
+    assert.equal(view(0).style.height, '152px');
+    let prevented = false;
+    elements.get('viewport').dispatch('wheel', { ctrlKey: true, deltaY: -50, deltaMode: 0, clientY: 100, preventDefault() { prevented = true; } });
+    await waitFor(ready); assert.equal(prevented, true); assert.ok(parseFloat(view(0).style.width) > 152);
+    elements.get('viewport').dispatch('touchstart', { touches: [{ clientX: 0, clientY: 0 }, { clientX: 10, clientY: 0 }] });
+    const beforePinch = parseFloat(view(0).style.width);
+    elements.get('viewport').dispatch('touchmove', { touches: [{ clientX: 0, clientY: 0 }, { clientX: 20, clientY: 0 }] });
+    await waitFor(ready); assert.ok(parseFloat(view(0).style.width) > beforePinch);
+    elements.get('viewport').dispatch('touchend');
+    fakeWindow.dispatch('keydown', { key: '0' }); await waitFor(ready);
+    assert.equal(view(0).style.width, '64px'); elements.get('viewport').clientHeight = 300;
     await pick(manifest.cases.find((entry) => entry.id === 'classic/text-unsupported'));
     await waitFor(() => !elements.get('error').hidden);
-    assert.match(elements.get('error').textContent, /Unsupported \[[^\]]+\]/);
-    assert.equal(elements.get('page-surface').children.length, 0);
-    // Drop uses the same open path and releases a failed worker session.
-    fakeWindow.dispatch('drop', { preventDefault() {}, dataTransfer: { files: [new File([await readFile(join(root, rectangle.path))], 'dropped.pdf')] } });
+    assert.match(elements.get('error').textContent, /Unsupported \[[^\]]+\]/); assert.equal(canvases().length, 0);
+    fakeWindow.dispatch('drop', { dataTransfer: { files: [new File([await readFile(join(root, rectangle.path))], 'dropped.pdf')] } });
     await waitFor(ready); assert.equal(elements.get('filename').textContent, 'dropped.pdf');
-    elements.get('page').value = '2'; elements.get('page').dispatch('change');
-    assert.equal(elements.get('page').value, '1');
+    elements.get('page').value = '2'; elements.get('page').dispatch('change'); assert.equal(elements.get('page').value, '1');
     elements.get('strict').checked = true;
     await pick(manifest.cases.find((entry) => entry.id === 'classic/trailing-bytes'));
     await waitFor(() => !elements.get('error').hidden);
     assert.match(elements.get('error').textContent, /Syntax.*recovery would repair it \[file\.trailing-bytes\]/);
     assert.equal(elements.get('page').disabled, true);
+    elements.get('strict').checked = false;
+    const crypto = JSON.parse(await readFile(join(root, 'corpus/manifests/crypto.json'), 'utf8'));
+    const encrypted = crypto.cases.find((entry) => entry.expected === 'render' && entry.password === 'user-secret' && entry.id.includes('r2-'));
+    assert.ok(encrypted);
+    await pick(encrypted); await waitFor(() => elements.get('password-dialog').open);
+    elements.get('password').value = 'wrong'; elements.get('password-form').dispatch('submit');
+    await waitFor(() => elements.get('password-dialog').open && elements.get('password-feedback').textContent.includes('Incorrect'));
+    elements.get('password').value = encrypted.password; elements.get('password-form').dispatch('submit');
+    await waitFor(ready); assert.equal(elements.get('password').value, ''); assert.equal(elements.get('password-dialog').open, false);
+    checkPixels({ rgba: canvases()[0].image.data }, ppmPixels(await readFile(join(root, encrypted.oracle)), encrypted.width, encrypted.height));
+    await pick(encrypted); await waitFor(() => elements.get('password-dialog').open); elements.get('password-cancel').dispatch('click');
+    await waitFor(() => elements.get('status').textContent === 'Opening cancelled'); assert.equal(canvases().length, 0);
   } finally {
     fakeWindow.dispatch('pagehide');
-    for (const [key, descriptor] of original) {
-      if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
-    }
+    for (const [key, descriptor] of original) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key]; }
   }
 }
 

@@ -40,8 +40,16 @@ position — the structured `pagura_core::Error`, never free text alone.
 Frames are bounded by `Limits`; oversized or malformed frames end the session
 with an error frame. Tiles are returned as straight RGBA8 for `ImageData`.
 
+Protocol 1.1, negotiated through `hello`, only adds requests: a client selects
+a viewport *generation* per document, and tiles requested for an older
+generation are answered as skipped before compilation or painting. v1 frames
+and their meaning are unchanged; a v1 session rejects the new kinds.
+
 ## Consequences
 
-One long-lived instance holds open documents and their caches. Each request
-is synchronous; cancellation and parallel tiles come with threads later.
+One long-lived instance holds open documents and their caches, including a
+bounded LRU of compiled pages, so panning and zooming reuse one display list.
+Each request is synchronous: generations drop stale queued tiles, but a tile
+already executing finishes. Interrupting it and parallel tiles come with
+threads later.
 The protocol is also how native shells and benchmarks can drive a warm engine.

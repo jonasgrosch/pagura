@@ -2,8 +2,10 @@
 
 use pagura::{Diagnostic, Error, ErrorKind, ObjectId, Position, Recovery, Result, Tile};
 
-/// The only supported session version.
+/// The compatible base session version.
 pub const VERSION: u32 = 1;
+/// Protocol 1.1, adding viewport generations without changing v1 frames.
+pub const VERSION_1_1: u32 = 0x0001_0001;
 /// Kind byte for structured error responses.
 pub const ERROR_KIND: u8 = 255;
 
@@ -37,6 +39,26 @@ pub enum Request<'a> {
         /// Device pixels per default user-space unit.
         scale: f64,
         /// Device-pixel rectangle (ADR 0004).
+        tile: Tile,
+    },
+    /// Select the newest viewport generation for a document (v1.1).
+    Generation {
+        /// Session-local document handle.
+        document: u32,
+        /// Monotonically increasing, nonzero generation.
+        generation: u32,
+    },
+    /// A tile which may be skipped before compilation or painting (v1.1).
+    GenerationTile {
+        /// Viewport generation previously selected for the document.
+        generation: u32,
+        /// Session-local document handle.
+        document: u32,
+        /// Zero-based page index.
+        page: u32,
+        /// Pixels per user-space unit.
+        scale: f64,
+        /// Device rectangle.
         tile: Tile,
     },
     /// Snapshot all repairs discovered so far.
@@ -84,6 +106,21 @@ pub enum Response {
         /// Height in pixels.
         height: u32,
         /// Row-major, top-left-origin, straight RGBA8 bytes.
+        rgba: Vec<u8>,
+    },
+    /// Selected viewport generation (v1.1).
+    Generation(u32),
+    /// A stale tile was not compiled or rendered (v1.1).
+    Skipped(u32),
+    /// Complete pixels for a viewport generation (v1.1).
+    GenerationTile {
+        /// Viewport generation.
+        generation: u32,
+        /// Tile width.
+        width: u32,
+        /// Tile height.
+        height: u32,
+        /// Straight RGBA8 bytes.
         rgba: Vec<u8>,
     },
     /// Repairs in discovery order.
@@ -139,6 +176,22 @@ pub fn decode(body: &[u8], limits: pagura::Limits) -> Result<RequestFrame<'_>> {
         },
         5 => Request::Diagnostics(reader.u32()?),
         6 => Request::Close(reader.u32()?),
+        7 => Request::Generation {
+            document: reader.u32()?,
+            generation: reader.u32()?,
+        },
+        8 => Request::GenerationTile {
+            generation: reader.u32()?,
+            document: reader.u32()?,
+            page: reader.u32()?,
+            scale: reader.f64()?,
+            tile: Tile {
+                x: reader.u32()?,
+                y: reader.u32()?,
+                width: reader.u32()?,
+                height: reader.u32()?,
+            },
+        },
         _ => return Err(Error::syntax("unknown request kind").at(Position::Buffer(0))),
     };
     if reader.offset != body.len() {
@@ -214,6 +267,8 @@ pub fn encode(id: u32, response: &Response, max_body: usize) -> Result<Vec<u8>> 
         Response::Tile { .. } => 132,
         Response::Diagnostics(_) => 133,
         Response::Close => 134,
+        Response::Generation(_) => 135,
+        Response::Skipped(_) | Response::GenerationTile { .. } => 136,
         Response::Error(_) => ERROR_KIND,
     }])?;
     out.push(&id.to_le_bytes())?;
@@ -254,18 +309,7 @@ fn encode_payload(out: &mut Encoder, response: &Response) -> Result<()> {
             height,
             rgba,
         } => {
-            let expected = u64::from(*width) * u64::from(*height);
-            if *width == 0
-                || *height == 0
-                || expected.checked_mul(4) != u64::try_from(rgba.len()).ok()
-            {
-                return Err(Error::invalid_argument(
-                    "tile byte count does not match dimensions",
-                ));
-            }
-            out.push(&width.to_le_bytes())?;
-            out.push(&height.to_le_bytes())?;
-            out.push(rgba)?;
+            encode_tile(out, *width, *height, rgba)?;
         }
         Response::Diagnostics(items) => {
             out.count(items.len())?;
@@ -274,6 +318,21 @@ fn encode_payload(out: &mut Encoder, response: &Response) -> Result<()> {
                 out.string(item.message)?;
                 out.context(item.object, item.position)?;
             }
+        }
+        Response::Generation(generation) => out.push(&generation.to_le_bytes())?,
+        Response::Skipped(generation) => {
+            out.push(&[0])?;
+            out.push(&generation.to_le_bytes())?;
+        }
+        Response::GenerationTile {
+            generation,
+            width,
+            height,
+            rgba,
+        } => {
+            out.push(&[1])?;
+            out.push(&generation.to_le_bytes())?;
+            encode_tile(out, *width, *height, rgba)?;
         }
         Response::Close => (),
         Response::Error(error) => {
@@ -293,6 +352,18 @@ fn encode_payload(out: &mut Encoder, response: &Response) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn encode_tile(out: &mut Encoder, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+    let expected = u64::from(width) * u64::from(height);
+    if width == 0 || height == 0 || expected.checked_mul(4) != u64::try_from(rgba.len()).ok() {
+        return Err(Error::invalid_argument(
+            "tile byte count does not match dimensions",
+        ));
+    }
+    out.push(&width.to_le_bytes())?;
+    out.push(&height.to_le_bytes())?;
+    out.push(rgba)
 }
 
 struct Encoder {
@@ -470,6 +541,31 @@ mod tests {
         )
         .unwrap();
         assert_eq!(&bytes[bytes.len() - 10..], &[0, 1, 5, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn generation_layouts_are_additive_and_truncations_fail() {
+        assert_eq!(
+            encode(9, &Response::Skipped(1), 1024).unwrap(),
+            [10, 0, 0, 0, 136, 9, 0, 0, 0, 0, 1, 0, 0, 0]
+        );
+        assert_eq!(
+            encode(8, &Response::Generation(2), 1024).unwrap(),
+            [9, 0, 0, 0, 135, 8, 0, 0, 0, 2, 0, 0, 0]
+        );
+        let mut bodies = vec![vec![7, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]];
+        let mut tile = vec![8, 3, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0];
+        tile.extend(1_f64.to_le_bytes());
+        for value in [0_u32, 0, 1, 1] {
+            tile.extend(value.to_le_bytes());
+        }
+        bodies.push(tile);
+        for body in bodies {
+            assert!(decode(&body, Limits::default()).is_ok());
+            for end in 0..body.len() {
+                assert!(decode(&body[..end], Limits::default()).is_err());
+            }
+        }
     }
 
     #[test]

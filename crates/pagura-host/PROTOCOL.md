@@ -1,8 +1,7 @@
-# Pagura session protocol v1
+# Pagura session protocol v1 and v1.1
 
 ADR 0005 defines a synchronous command over stdin/stdout, identically on native
 and wasm32-wasip1. This document freezes the v1 byte layout, including the refused-repair field.
-The earlier round-1 layout was a draft: rebuild host and clients together.
 Future incompatible changes require a new protocol version. No JSON, newline,
 platform-sized integers, implicit padding, compression, or unsolicited frames.
 All integers and IEEE-754 binary64 values are **little endian**. PDF and password
@@ -16,7 +15,7 @@ before a complete body is read uses identifier zero. Complete but malformed
 bodies use the identifier from that body. There is exactly one response per
 complete valid request. Callers serialize requests; the host flushes responses.
 
-The first request must be `hello(1)`. Repeated hello, unsupported versions,
+The first request is `hello(1)` for v1 or `hello(65537)` (0x00010001) for v1.1. Repeated hello, unsupported versions,
 non-increasing IDs, unknown kinds, invalid recovery bytes, trailing payload,
 truncation and oversized frames emit one error and **end the session**. Clean
 EOF between frames is successful. EOF inside a frame is malformed. Native exit
@@ -29,7 +28,7 @@ responses and keep the session alive. A failed open consumes no handle.
 
 | Request kind | Request payload | Success kind | Success payload |
 |---|---|---|---|
-| 1 hello | `u32 version` | 129 | `u32 version` (1) |
+| 1 hello | `u32 version` | 129 | `u32 version` (echoes the negotiated version) |
 | 2 open | `u8 recovery` (0 strict, 1 repair), `blob password`, `blob pdf` | 130 | `u32 handle`, `u32 page_count` |
 | 3 page_info | `u32 handle`, `u32 page` | 131 | `f64 crop_x0,y0,x1,y1`, `u16 clockwise_rotation`, `f64 user_unit`, `u32 width,height` |
 | 4 render_tile | `u32 handle,page`, `f64 scale`, `u32 x,y,width,height` | 132 | `u32 width,height`, exactly `width*height*4` bytes straight RGBA8 |
@@ -50,6 +49,52 @@ Handles are valid only within one session. A document is retained only after
 open and page-tree validation succeed. Open's repair mode is forwarded directly
 to the document API (ADR 0003); diagnostics snapshots contain repairs discovered
 so far, in discovery order, including repairs made during lazy rendering.
+
+## Viewport generations (v1.1)
+
+Version 1.1 is additive. The byte layouts and semantics of request kinds 1–6
+and their responses remain unchanged, and native/stdio clients can keep using
+v1. New kinds require hello(65537); using them in a v1 session returns an
+InvalidArgument error without ending the session.
+
+| Request kind | Payload | Success kind | Payload |
+|---|---|---|---|
+| 7 generation | `u32 handle,generation` | 135 | `u32 generation` |
+| 8 generation_tile | `u32 generation`, then the complete render_tile payload | 136 | `u8 status`, `u32 generation`, then tile data only for status 1 |
+
+Generation values are nonzero, monotonically increasing per open document;
+selecting the same value is idempotent. Close releases the selection. A future
+or unselected generation is InvalidArgument. For a generation older than the
+selected value, status 0 is returned **before page lookup, compilation or
+painting**, with no dimensions or pixels. Status 1 is followed by
+`u32 width,height | straight RGBA8 bytes`, identically to a v1 tile. Error
+responses still use kind 255 and retain the existing structured fields.
+
+The browser increments its local generation as soon as the viewport changes.
+Before transmitting a queued tile it checks that generation and skips obsolete
+requests locally. It sends kind 7 before the first tile of the newest view.
+This matters for a synchronous transport: a later generation frame cannot
+overtake an earlier frame already being processed. A tile already executing
+is allowed to finish; its stale pixels are discarded. There is no interruption
+inside interpretation/rasterization. Generations do not wrap: reopen the session
+if the u32 space is exhausted. Buffer error offsets refer to the actual v1.1
+payload fields, including the additional generation word.
+
+## Compiled page retention
+
+The session reuses immutable display lists keyed by document handle and page
+index across tiles and zoom levels. Close releases all lists for that handle.
+The LRU retains at most eight entries, with a default accounting budget of
+min(Limits.decoded_bytes, 64 MiB). Session::with_cache_bytes can reduce this or
+set zero to disable retention. Oversized lists render without being retained.
+
+The charge is 32 times source bytes plus 4096 bytes per painted mark and a
+fixed 512-byte header charge. These are explicit **estimates**, not measured
+retained heap sizes: the renderer's public API exposes mark count but no allocation count.
+The accounting budget and entry cap bound retention policy; they are not a
+hard ceiling on allocator or process memory, especially for expanded resources.
+Per-operation renderer Limits still apply. Exact cache memory accounting would
+require an allocation-size API from the renderer.
 
 ## Structured failures and diagnostics
 
@@ -82,7 +127,7 @@ Diagnostic records describe repairs that **were applied**:
 ## Budgets and capabilities
 
 Session::new accepts facade Limits. Maximum body length is
-`min(u32::MAX, max(file_bytes + string_bytes + 14, pixels*4 + 13,
+`min(u32::MAX, max(file_bytes + string_bytes + 14, pixels*4 + 18,
 decoded_bytes, 1024))` with saturating arithmetic. The 1024-byte minimum allows
 structured errors even with zero operation budgets. Check it before reserving
 request memory; allocations use fallible reservation. Each pdf/password blob is

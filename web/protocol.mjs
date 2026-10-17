@@ -1,6 +1,7 @@
 /** Project-owned protocol v1 codec. See crates/pagura-host/PROTOCOL.md. */
 export const MAX_FRAME = 512 * 1024 * 1024 + 32 * 1024 * 1024 + 14;
 export const MAX_FILE = 512 * 1024 * 1024;
+export const VERSION_1_1 = 0x00010001;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 class Reader {
@@ -77,6 +78,17 @@ export function decodeResponse(body) {
       value = Array.from({ length: count }, () => ({ tag: r.text(), message: r.text(), ...r.context() })); break;
     }
     case 134: value = null; break;
+    case 135: value = { generation: r.u32() }; break;
+    case 136: {
+      const status = r.u8(), generation = r.u32();
+      if (status === 0) value = { cancelled: true, generation };
+      else if (status === 1) {
+        const width = r.u32(), height = r.u32(), size = width * height * 4;
+        if (!width || !height || !Number.isSafeInteger(size)) throw new Error('Invalid tile dimensions');
+        value = { width, height, rgba: r.take(size), generation, cancelled: false };
+      } else throw new Error('Invalid generated tile status');
+      break;
+    }
     case 255: {
       const category = r.u8(), tag = r.text(), repair = r.text(), message = r.text();
       if (category < 1 || category > 7 || (category === 3) !== (tag.length > 0) || (repair.length > 0 && category !== 1)) throw new Error('Invalid structured error');
@@ -126,10 +138,10 @@ export function encodeRequest(kind, id, values = {}) {
       if (values.bytes.length > MAX_FILE || values.password.length > 32 * 1024 * 1024) throw new Error('Open byte budget exceeded');
       if (![0, 1].includes(values.recovery)) throw new Error('Invalid recovery mode');
       size = 14 + values.password.length + values.bytes.length; break;
-    case 3: size = 13; break;
-    case 4:
+    case 3: case 7: size = 13; break;
+    case 4: case 8:
       if (!Number.isFinite(values.scale) || values.scale <= 0) throw new Error('Scale must be positive and finite');
-      size = 37; break;
+      size = kind === 8 ? 41 : 37; break;
     case 5: case 6: size = 9; break;
     default: throw new Error('Unknown request kind');
   }
@@ -141,9 +153,11 @@ export function encodeRequest(kind, id, values = {}) {
   const blob = (data) => { integer(data.length); bytes.set(data, offset); offset += data.length; };
   if (kind === 1) integer(values.version ?? 1);
   if (kind === 2) { bytes[offset++] = values.recovery; blob(values.password); blob(values.bytes); }
+  if (kind === 8) integer(values.generation);
   if (kind >= 3) integer(values.document);
-  if (kind === 3 || kind === 4) integer(values.page);
-  if (kind === 4) {
+  if (kind === 7) integer(values.generation);
+  if (kind === 3 || kind === 4 || kind === 8) integer(values.page);
+  if (kind === 4 || kind === 8) {
     view.setFloat64(offset, values.scale, true); offset += 8;
     for (const key of ['x', 'y', 'width', 'height']) integer(values[key]);
   }

@@ -1,13 +1,13 @@
 {
   "schema": 2,
   "area": "host",
-  "scope": "Project-owned protocol v1 (ADR 0005), WASI preview 1 ABI, and the existing independently generated classic corpus. ISO 32000-2 clause locators 7.5, 7.7.3.3 and 7.8.2 are cited from the facade contract; full ISO text and upstream WASI specifications were not available offline for verification. No competitor source, tests or history was consulted.",
+  "scope": "Project-owned session protocols v1/v1.1 (ADR 0005), WASI preview 1 and independently generated fixtures. ISO 32000-2:2020 EC3 clauses 7.7.3.3 (Table 31), 7.8.2, 8.3.2.3 and 7.6.4.3.2-7.6.4.3.3 were verified in the locally supplied reference; no standard text is reproduced.",
   "requirements": [
     {
       "id": "host-wire-v1",
       "reference": "project-policy",
       "clauses": [],
-      "status": "frozen v1 including the distinct refused-repair field",
+      "status": "v1 layouts preserved; additive v1.1 viewport generations",
       "tests": [
         "pagura-host protocol::tests::hello_has_an_independent_literal_wire_oracle",
         "pagura-host protocol::tests::decoding_rejects_every_truncation_and_trailing_bytes",
@@ -69,7 +69,7 @@
       "id": "host-wasi-parity",
       "reference": "project-policy",
       "clauses": [],
-      "status": "verified for all 13 classic render cases and page 2 of two-pages",
+      "status": "verified for all classic render cases and page 2 of two-pages",
       "tests": [
         "pagura-host session::tests::classic_tiles_match_independent_ppm_and_page_geometry",
         "tools/host_test.mjs native/WASI complete response identity",
@@ -100,19 +100,19 @@
         "tools/host_test.mjs testCodecAndCapabilities",
         "tools/host_test.mjs runHost worker_threads bridge"
       ],
-      "gaps": "Browser runtime launch was sandbox-blocked. Node's WASI run explicitly passes empty args/env/preopens; browser shim returns empty args/env, no preopens and traps unknown imports by name."
+      "gaps": "Native and WASI parity plus empty args/env/preopens are exercised offline; actual touch and modal interaction require browser checks."
     },
     {
       "id": "host-browser-viewer",
       "reference": "project-policy",
       "clauses": [],
-      "status": "implemented; viewer logic and Canvas inputs checked in DOM harness",
+      "status": "continuous lazy pages with zoom, gestures, keyboard controls and password entry",
       "tests": [
         "tools/host_test.mjs testViewer",
         "web/README.md manual browser validation instructions",
         "web/test_server.py"
       ],
-      "gaps": "Verified in a real browser: cross-origin isolation, exact pixels at device pixel ratio 2, navigation and the unsupported banner; picker and drop interaction are not automated. Multi-page navigation and startup loading pass the DOM harness. Password prompting is not implemented; raw password bytes are supported by the protocol client."
+      "gaps": "New layout, touch gestures and modal need real-browser interaction checks. The visual image roles do not provide tagged-PDF text. UTF-8 password text is supported; legacy PDFDocEncoding text conversion is not implemented in the UI."
     },
     {
       "id": "host-multipage-navigation",
@@ -138,6 +138,60 @@
         "tools/host_test.mjs testViewer startup cases"
       ],
       "gaps": "Serving remains loopback-only and disabled unless --fixtures is supplied; only corpus/generated is exposed."
+    },
+    {
+      "id": "host-compiled-cache",
+      "reference": "project-policy",
+      "clauses": [
+        "7.8.2"
+      ],
+      "status": "session LRU with configurable accounting budget and eight-entry cap",
+      "tests": [
+        "pagura-host cache::tests::hits_refresh_lru_eviction_and_close_release_charges",
+        "pagura-host session::tests::generations_skip_before_compilation_and_cached_tiles_share_one_list",
+        "web/tile_benchmark.mjs"
+      ],
+      "gaps": "The renderer exposes mark count but no retained heap size; weights are estimates, not a process-memory ceiling. Oversized entries are not retained."
+    },
+    {
+      "id": "host-viewport-generations",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "additive protocol v1.1 and queued-client cancellation",
+      "tests": [
+        "pagura-host protocol::tests::generation_layouts_are_additive_and_truncations_fail",
+        "pagura-host session::tests::generations_skip_before_compilation_and_cached_tiles_share_one_list",
+        "tools/host_test.mjs testGenerations"
+      ],
+      "gaps": "An executing synchronous tile finishes; only stale queued work and its pixels are discarded. Generations do not wrap."
+    },
+    {
+      "id": "host-continuous-layout",
+      "reference": "project-policy",
+      "clauses": [
+        "7.7.3.3",
+        "8.3.2.3"
+      ],
+      "status": "lazy continuous pages, compact height index and bounded DOM/tiles",
+      "tests": [
+        "tools/host_test.mjs testViewer",
+        "tools/host_test.mjs testCodecAndCapabilities"
+      ],
+      "gaps": "32 visible pages, 128 visible tiles, 256 detailed metadata entries, 200000 height records and a 10-million-CSS-pixel layout budget; excess is explicit."
+    },
+    {
+      "id": "host-password-prompt",
+      "reference": "project-policy",
+      "clauses": [
+        "7.6.4.3.2",
+        "7.6.4.3.3"
+      ],
+      "status": "accessible modal, wrong-password retry, cancellation and cleared temporary values",
+      "tests": [
+        "tools/host_test.mjs testViewer",
+        "crypto/r2-rc4-40-password-user"
+      ],
+      "gaps": "Text entry uses UTF-8. Raw byte passwords remain available through the client; non-ASCII legacy PDFDocEncoding conversion and engine SASLprep limitations remain."
     }
   ]
 }

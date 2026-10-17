@@ -1,9 +1,11 @@
 //! Session lifetime, document budgets and transport boundaries.
 
+use crate::cache::PageCache;
 use crate::protocol::{self, Request, Response};
 use pagura::{Document, Error, Limits, OpenOptions, Position, RenderOptions, Result};
 use std::collections::BTreeMap;
 use std::io::{self, Read, Write};
+use std::sync::Arc;
 
 /// Why a session stopped. Operational PDF errors do not stop a session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,7 +24,9 @@ pub struct Session {
     retained_bytes: usize,
     next_handle: u32,
     last_request: u32,
-    greeted: bool,
+    version: Option<u32>,
+    generations: BTreeMap<u32, u32>,
+    cache: PageCache,
 }
 
 impl Default for Session {
@@ -41,8 +45,19 @@ impl Session {
             retained_bytes: 0,
             next_handle: 1,
             last_request: 0,
-            greeted: false,
+            version: None,
+            generations: BTreeMap::new(),
+            cache: PageCache::new(limits.decoded_bytes.min(64 * 1024 * 1024)),
         }
+    }
+
+    /// Set the compiled-page cache accounting budget; zero disables retention.
+    /// At most eight lists are retained. Charges estimate source and geometry
+    /// storage; they are not a total heap-memory measurement.
+    #[must_use]
+    pub fn with_cache_bytes(mut self, bytes: usize) -> Self {
+        self.cache = PageCache::new(bytes);
+        self
     }
 
     /// Maximum body size, derived from the configured input, password, decoded
@@ -52,7 +67,7 @@ impl Session {
             .file_bytes
             .saturating_add(self.limits.string_bytes)
             .saturating_add(14)
-            .max(self.limits.pixels.saturating_mul(4).saturating_add(13))
+            .max(self.limits.pixels.saturating_mul(4).saturating_add(18))
             .max(self.limits.decoded_bytes)
             .max(1024)
             .min(u32::MAX as usize)
@@ -138,8 +153,11 @@ impl Session {
             .at(Position::Buffer(1)));
         }
         match request {
-            Request::Hello(version) if !self.greeted && *version == protocol::VERSION => {
-                self.greeted = true;
+            Request::Hello(version)
+                if self.version.is_none()
+                    && matches!(*version, protocol::VERSION | protocol::VERSION_1_1) =>
+            {
+                self.version = Some(*version);
             }
             Request::Hello(_) => {
                 return Err(
@@ -147,7 +165,7 @@ impl Session {
                         .at(Position::Buffer(5)),
                 );
             }
-            _ if !self.greeted => {
+            _ if self.version.is_none() => {
                 return Err(Error::invalid_argument("hello must be the first request")
                     .at(Position::Buffer(0)));
             }
@@ -160,6 +178,53 @@ impl Session {
     fn execute(&mut self, request: Request<'_>) -> Result<Response> {
         match request {
             Request::Hello(version) => Ok(Response::Hello(version)),
+            Request::Generation {
+                document,
+                generation,
+            } => {
+                self.require_generations()?;
+                self.document(document)?;
+                let current = self.generations.entry(document).or_default();
+                if generation == 0 || generation < *current {
+                    return Err(Error::invalid_argument("viewport generation must increase")
+                        .at(Position::Buffer(9)));
+                }
+                *current = generation;
+                Ok(Response::Generation(generation))
+            }
+            Request::GenerationTile {
+                generation,
+                document,
+                page,
+                scale,
+                tile,
+            } => {
+                self.require_generations()?;
+                self.document_at(document, 9)?;
+                let current = self.generations.get(&document).copied().unwrap_or(0);
+                if generation < current {
+                    return Ok(Response::Skipped(generation));
+                }
+                if generation == 0 || generation != current {
+                    return Err(
+                        Error::invalid_argument("viewport generation was not selected")
+                            .at(Position::Buffer(5)),
+                    );
+                }
+                match self.render(document, page, scale, tile, 4)? {
+                    Response::Tile {
+                        width,
+                        height,
+                        rgba,
+                    } => Ok(Response::GenerationTile {
+                        generation,
+                        width,
+                        height,
+                        rgba,
+                    }),
+                    response => Ok(response),
+                }
+            }
             Request::Open {
                 bytes,
                 recovery,
@@ -183,38 +248,7 @@ impl Session {
                 page,
                 scale,
                 tile,
-            } => {
-                // Bound response storage before rendering or allocating straight pixels.
-                let pixel_bytes = u64::from(tile.width) * u64::from(tile.height);
-                if pixel_bytes > u64::try_from(self.limits.pixels).unwrap_or(u64::MAX)
-                    || pixel_bytes
-                        .checked_mul(4)
-                        .and_then(|n| n.checked_add(13))
-                        .is_none_or(|n| {
-                            n > u64::try_from(self.max_frame_bytes()).unwrap_or(u64::MAX)
-                        })
-                {
-                    return Err(Error::limit("tile response budget exceeded"));
-                }
-                let document = self.document(document)?;
-                let page = document
-                    .page(index(page)?)
-                    .map_err(|error| error.at(Position::Buffer(9)))?;
-                if !(scale.is_finite() && scale > 0.0) {
-                    return Err(Error::invalid_argument("scale must be positive and finite")
-                        .at(Position::Buffer(13)));
-                }
-                let options = RenderOptions {
-                    scale,
-                    ..RenderOptions::default()
-                };
-                let pixmap = pagura::render_tile(document, page, &options, tile)?;
-                Ok(Response::Tile {
-                    width: pixmap.width(),
-                    height: pixmap.height(),
-                    rgba: pixmap.to_straight_rgba(),
-                })
-            }
+            } => self.render(document, page, scale, tile, 0),
             Request::Diagnostics(handle) => {
                 Ok(Response::Diagnostics(self.document(handle)?.diagnostics()))
             }
@@ -222,12 +256,71 @@ impl Session {
                 let document = self.documents.remove(&handle).ok_or(
                     Error::invalid_argument("unknown document handle").at(Position::Buffer(5)),
                 )?;
+                self.cache.close(handle);
+                self.generations.remove(&handle);
                 self.retained_bytes = self
                     .retained_bytes
                     .saturating_sub(document.original_bytes().len());
                 Ok(Response::Close)
             }
         }
+    }
+
+    fn render(
+        &mut self,
+        document: u32,
+        page: u32,
+        scale: f64,
+        tile: pagura::Tile,
+        offset: usize,
+    ) -> Result<Response> {
+        // Bound response storage before rendering or allocating straight pixels.
+        let pixel_bytes = u64::from(tile.width) * u64::from(tile.height);
+        if pixel_bytes > u64::try_from(self.limits.pixels).unwrap_or(u64::MAX)
+            || pixel_bytes
+                .checked_mul(4)
+                .and_then(|n| n.checked_add(13))
+                .is_none_or(|n| n > u64::try_from(self.max_frame_bytes()).unwrap_or(u64::MAX))
+        {
+            return Err(Error::limit("tile response budget exceeded"));
+        }
+        let key = (document, page);
+        let cached = self.cache.get(key);
+        let document = self.document_at(document, 5 + offset)?;
+        let page = document
+            .page(index(page)?)
+            .map_err(|error| error.at(Position::Buffer(9 + offset)))?;
+        if !(scale.is_finite() && scale > 0.0) {
+            return Err(Error::invalid_argument("scale must be positive and finite")
+                .at(Position::Buffer(13 + offset)));
+        }
+        let options = RenderOptions {
+            scale,
+            ..RenderOptions::default()
+        };
+        // Validate geometry before compilation or cache admission.
+        let (width, height) = pagura::device_size(page, &options)?;
+        if tile.width == 0
+            || tile.height == 0
+            || tile.x.checked_add(tile.width).is_none_or(|n| n > width)
+            || tile.y.checked_add(tile.height).is_none_or(|n| n > height)
+        {
+            return Err(Error::invalid_argument("tile lies outside the page")
+                .at(Position::Buffer(21 + offset)));
+        }
+        let list = if let Some(list) = cached {
+            list
+        } else {
+            let list = Arc::new(pagura::compile_page(document, page)?);
+            self.cache.insert(key, Arc::clone(&list));
+            list
+        };
+        let pixmap = list.render_tile(&options, tile)?;
+        Ok(Response::Tile {
+            width: pixmap.width(),
+            height: pixmap.height(),
+            rgba: pixmap.to_straight_rgba(),
+        })
     }
 
     fn open(
@@ -262,10 +355,24 @@ impl Session {
         })
     }
 
+    fn require_generations(&self) -> Result<()> {
+        if self.version == Some(protocol::VERSION_1_1) {
+            Ok(())
+        } else {
+            Err(Error::invalid_argument(
+                "viewport generations require protocol 1.1",
+            ))
+        }
+    }
+
     fn document(&self, handle: u32) -> Result<&Document> {
+        self.document_at(handle, 5)
+    }
+
+    fn document_at(&self, handle: u32, offset: usize) -> Result<&Document> {
         self.documents
             .get(&handle)
-            .ok_or(Error::invalid_argument("unknown document handle").at(Position::Buffer(5)))
+            .ok_or(Error::invalid_argument("unknown document handle").at(Position::Buffer(offset)))
     }
 
     fn send(&self, output: &mut impl Write, id: u32, response: &Response) -> io::Result<()> {
@@ -527,6 +634,91 @@ mod tests {
             }
             assert_eq!(&response[13..], expected);
         }
+    }
+
+    #[test]
+    fn generations_skip_before_compilation_and_cached_tiles_share_one_list() {
+        let mut session = Session::default();
+        session
+            .order(1, &Request::Hello(protocol::VERSION_1_1))
+            .unwrap();
+        let pdf = fixture("classic", "rectangle.pdf");
+        session
+            .execute(Request::Open {
+                bytes: &pdf,
+                recovery: pagura::Recovery::Strict,
+                password: &[],
+            })
+            .unwrap();
+        session
+            .execute(Request::Generation {
+                document: 1,
+                generation: 2,
+            })
+            .unwrap();
+        let stale = Request::GenerationTile {
+            generation: 1,
+            document: 1,
+            page: u32::MAX,
+            scale: f64::NAN,
+            tile: pagura::Tile {
+                x: u32::MAX,
+                y: 0,
+                width: 1,
+                height: 1,
+            },
+        };
+        assert_eq!(session.execute(stale).unwrap(), Response::Skipped(1));
+        assert!(session.cache.get((1, 0)).is_none());
+        let current = Request::GenerationTile {
+            generation: 2,
+            document: 1,
+            page: 0,
+            scale: 1.0,
+            tile: pagura::Tile {
+                x: 0,
+                y: 0,
+                width: 32,
+                height: 32,
+            },
+        };
+        assert!(matches!(
+            session.execute(current).unwrap(),
+            Response::GenerationTile { .. }
+        ));
+        let invalid_scale = Request::GenerationTile {
+            generation: 2,
+            document: 1,
+            page: 0,
+            scale: f64::NAN,
+            tile: pagura::Tile {
+                x: 0,
+                y: 0,
+                width: 1,
+                height: 1,
+            },
+        };
+        assert_eq!(
+            session.execute(invalid_scale).unwrap_err().position,
+            Position::Buffer(17)
+        );
+        let first = session.cache.get((1, 0)).unwrap();
+        session.execute(current).unwrap();
+        assert!(Arc::ptr_eq(&first, &session.cache.get((1, 0)).unwrap()));
+        session.execute(Request::Close(1)).unwrap();
+        assert!(session.cache.get((1, 0)).is_none());
+        let mut original = Session::default();
+        original
+            .order(1, &Request::Hello(protocol::VERSION))
+            .unwrap();
+        assert!(
+            original
+                .execute(Request::Generation {
+                    document: 1,
+                    generation: 1
+                })
+                .is_err()
+        );
     }
 
     #[test]

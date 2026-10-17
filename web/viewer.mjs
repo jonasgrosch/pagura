@@ -1,180 +1,304 @@
 import { SessionClient } from './client.mjs';
-import { MAX_FILE } from './protocol.mjs';
+import { MAX_FILE, HostError } from './protocol.mjs';
 import { loadFixture } from './fixtures.mjs';
+import { PageLayout } from './layout.mjs';
+import { requestPassword, cancelPassword } from './password.mjs';
 
-const element = (id) => document.getElementById(id);
-const surface = element('page-surface'), viewport = element('viewport');
-const status = element('status'), errorBox = element('error');
-const pageInput = element('page'), zoomInput = element('zoom');
-const TILE = 256, MAX_CACHED_TILES = 128, MAX_EXTENT = 10_000_000;
-let client, handle = null, pages = 0, page = 0, generation = 0, opening = 0;
-let geometry = null, scale = 1, deviceWidth = 0, deviceHeight = 0;
-let tiles = new Map(), drawing = false, rerender = false, failed = false;
+const $ = (id) => document.getElementById(id);
+const viewport = $('viewport'), surface = $('page-surface'), status = $('status'), errorBox = $('error');
+const pageInput = $('page'), zoomInput = $('zoom');
+const TILE = 256, MAX_TILES = 128, MAX_PAGES = 32, MAX_EXTENT = 10000000;
+let client, handle = null, layout = new PageLayout(0), page = 0, zoom = 1;
+let documentEpoch = 0, generation = 0, drawing = false, scheduled = false, dirty = false;
+const infos = new Map(), views = new Map();
 
-function report(error) {
-  errorBox.textContent = String(error); errorBox.hidden = false;
-  status.textContent = 'Page unavailable';
-}
+function report(error) { errorBox.textContent = String(error); errorBox.hidden = false; status.textContent = 'Page unavailable'; }
 function controls() {
-  pageInput.disabled = !pages; zoomInput.disabled = !pages;
-  element('previous').disabled = !pages || page <= 0;
-  element('next').disabled = !pages || page >= pages - 1;
-  pageInput.max = String(pages); pageInput.value = String(page + 1);
-  element('count').textContent = `of ${pages}`;
+  const count = layout.count;
+  pageInput.disabled = !count; zoomInput.disabled = !count;
+  $('previous').disabled = !count || page === 0; $('next').disabled = !count || page === count - 1;
+  pageInput.max = String(count);
+  if (document.activeElement !== pageInput) pageInput.value = String(page + 1);
+  $('count').textContent = `of ${count}`;
 }
-function clearPage() {
-  generation++; tiles.clear(); surface.replaceChildren(); surface.hidden = true;
-  surface.removeAttribute('data-failed'); failed = false; geometry = null;
-}
-function failPage(error, token) {
-  if (token !== generation) return;
-  failed = true; tiles.clear(); surface.replaceChildren();
-  surface.setAttribute('data-failed', ''); report(error);
-}
-async function repairs(documentHandle, token) {
-  const diagnostics = await client.diagnostics(documentHandle);
-  if (token !== generation) return;
-  element('diagnostic-count').textContent = `Repairs: ${diagnostics.length}`;
-  element('repair-list').replaceChildren(...diagnostics.map((item) => {
-    const li = document.createElement('li');
-    const location = item.object ? ` (object ${item.object.number} ${item.object.generation})` : '';
-    li.textContent = `[${item.tag}] ${item.message}${location}`; return li;
-  }));
-  element('diagnostics').open = diagnostics.length > 0;
-}
-async function openFile(file) {
-  if (!file) return;
-  const attempt = ++opening;
-  clearPage(); handle = null; pages = 0; controls();
-  errorBox.hidden = true; status.textContent = 'Opening…'; element('filename').textContent = file.name;
-  element('diagnostic-count').textContent = 'Repairs: 0'; element('repair-list').replaceChildren();
-  try {
-    if (file.size > MAX_FILE) throw new Error('PDF exceeds the 512 MiB input budget');
-    // One document per viewer: restart the worker to release old caches and any
-    // in-flight request. Protocol sessions themselves support multiple documents.
-    client?.destroy(); client = createClient();
-    const current = client;
-    await current.hello();
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    if (attempt !== opening) return;
-    const result = await current.open(bytes, element('strict').checked ? 0 : 1);
-    if (attempt !== opening) return;
-    handle = result.document; pages = result.pages; page = 0; controls();
-    if (!pages) { status.textContent = 'Document has no pages'; return; }
-    await showPage();
-  } catch (error) { if (attempt === opening) report(error); }
-}
-async function showPage() {
-  if (handle === null) return;
-  clearPage(); const token = generation, documentHandle = handle;
-  errorBox.hidden = true; status.textContent = 'Loading page…'; controls();
-  try {
-    geometry = await client.pageInfo(documentHandle, page);
-    if (token !== generation) return;
-    scale = Number(zoomInput.value) * window.devicePixelRatio;
-    // Use the same unrounded physical geometry as device_size, not its rounded
-    // scale-1 dimensions; rotation swaps the physical extents.
-    let width = (geometry.crop[2] - geometry.crop[0]) * geometry.userUnit;
-    let height = (geometry.crop[3] - geometry.crop[1]) * geometry.userUnit;
-    if (geometry.rotation === 90 || geometry.rotation === 270) [width, height] = [height, width];
-    deviceWidth = Math.max(1, Math.ceil(width * scale - 1e-9));
-    deviceHeight = Math.max(1, Math.ceil(height * scale - 1e-9));
-    if (!Number.isFinite(deviceWidth) || !Number.isFinite(deviceHeight) || deviceWidth > MAX_EXTENT || deviceHeight > MAX_EXTENT) {
-      throw new Error('Page exceeds the viewer layout budget; reduce zoom');
-    }
-    surface.style.width = `${deviceWidth / window.devicePixelRatio}px`;
-    surface.style.height = `${deviceHeight / window.devicePixelRatio}px`;
-    surface.hidden = false; viewport.scrollTop = 0; viewport.scrollLeft = 0;
-    scheduleDraw(); await repairs(documentHandle, token);
-  } catch (error) { failPage(error, token); }
-}
-function visibleTiles() {
-  const bounds = surface.getBoundingClientRect(), view = viewport.getBoundingClientRect();
-  const ratio = window.devicePixelRatio;
-  const left = Math.max(0, Math.floor((view.left - bounds.left) * ratio / TILE));
-  const top = Math.max(0, Math.floor((view.top - bounds.top) * ratio / TILE));
-  const right = Math.min(Math.ceil(deviceWidth / TILE), Math.ceil((view.right - bounds.left) * ratio / TILE));
-  const bottom = Math.min(Math.ceil(deviceHeight / TILE), Math.ceil((view.bottom - bounds.top) * ratio / TILE));
-  const visible = [];
-  for (let row = top; row < bottom; row++) for (let column = left; column < right; column++) visible.push({ x: column * TILE, y: row * TILE });
-  // Bound work even on abnormally large viewports. Normal display sizes fit.
-  if (visible.length > MAX_CACHED_TILES) throw new Error('Visible page exceeds the tile budget; use a smaller window');
-  return visible;
-}
-async function drawVisible() {
-  if (drawing) { rerender = true; return; }
-  if (surface.hidden || !geometry || failed || handle === null) return;
-  drawing = true;
-  const token = generation, documentHandle = handle, pageIndex = page, renderScale = scale;
-  try {
-    const visible = visibleTiles(), visibleKeys = new Set(visible.map(({ x, y }) => `${x},${y}`));
-    // Evict offscreen canvases first; retained pixel memory is bounded by tile count.
-    for (const [key, canvas] of tiles) if (!visibleKeys.has(key)) { canvas.remove(); tiles.delete(key); }
-    for (const { x, y } of visible) {
-      if (token !== generation) break;
-      const key = `${x},${y}`;
-      if (tiles.has(key)) continue;
-      status.textContent = 'Rendering visible tiles…';
-      const tile = await client.renderTile(documentHandle, pageIndex, renderScale,
-        { x, y, width: Math.min(TILE, deviceWidth - x), height: Math.min(TILE, deviceHeight - y) });
-      if (token !== generation) break;
-      const canvas = document.createElement('canvas'); canvas.className = 'tile'; canvas.width = tile.width; canvas.height = tile.height;
-      const ratio = window.devicePixelRatio;
-      Object.assign(canvas.style, { left: `${x / ratio}px`, top: `${y / ratio}px`, width: `${tile.width / ratio}px`, height: `${tile.height / ratio}px` });
-      const context = canvas.getContext('2d');
-      if (!context) throw new Error('Canvas 2D rendering is unavailable');
-      context.putImageData(new ImageData(new Uint8ClampedArray(tile.rgba.buffer, tile.rgba.byteOffset, tile.rgba.byteLength), tile.width, tile.height), 0, 0);
-      tiles.set(key, canvas); surface.append(canvas);
-    }
-    if (token === generation) { status.textContent = 'Visible tiles rendered'; await repairs(documentHandle, token); }
-  } catch (error) { failPage(error, token); }
-  finally { drawing = false; if (rerender) { rerender = false; scheduleDraw(); } }
-}
-let scheduled = false;
-function scheduleDraw() {
-  if (scheduled) return;
-  scheduled = true; requestAnimationFrame(() => { scheduled = false; void drawVisible(); });
-}
-function navigate(value) {
-  if (!Number.isInteger(value) || value < 0 || value >= pages) { controls(); return; }
-  page = value; void showPage();
-}
-element('previous').addEventListener('click', () => navigate(page - 1));
-element('next').addEventListener('click', () => navigate(page + 1));
-pageInput.addEventListener('change', () => navigate(Number(pageInput.value) - 1));
-zoomInput.addEventListener('change', () => { if (handle !== null) void showPage(); });
-element('file').addEventListener('change', (event) => { void openFile(event.target.files[0]); event.target.value = ''; });
-window.addEventListener('dragover', (event) => { event.preventDefault(); document.body.classList.add('dragging'); });
-window.addEventListener('dragleave', (event) => { if (!event.relatedTarget) document.body.classList.remove('dragging'); });
-window.addEventListener('drop', (event) => { event.preventDefault(); document.body.classList.remove('dragging'); void openFile(event.dataTransfer.files[0]); });
-viewport.addEventListener('scroll', scheduleDraw, { passive: true });
-let pixelRatio = window.devicePixelRatio;
-window.addEventListener('resize', () => {
-  if (pixelRatio !== window.devicePixelRatio) { pixelRatio = window.devicePixelRatio; if (handle !== null) void showPage(); }
-  else scheduleDraw();
-});
-window.addEventListener('pagehide', () => client?.destroy());
-
 function createClient() {
   if (!crossOriginIsolated || typeof SharedArrayBuffer !== 'function') throw new Error('Cross-origin isolation is required. Start python3 tools/serve_web.py and open http://localhost:8000.');
   return new SessionClient(new Worker(new URL('./worker.mjs', import.meta.url), { type: 'module' }));
 }
-
-async function openStartupFixture() {
-  const values = new URL(window.location.href).searchParams.getAll('file');
-  if (!values.length) return;
-  const attempt = opening;
-  try {
-    if (values.length !== 1) throw new Error('Startup file must be specified once');
-    status.textContent = 'Loading fixture…';
-    const file = await loadFixture(values[0], window.location.href);
-    // A picker/drop during the fetch takes precedence over startup loading.
-    if (attempt === opening) await openFile(file);
-  } catch (error) { if (attempt === opening) report(error); }
+function invalidate() {
+  if (handle !== null) { generation = client.invalidate(handle); status.textContent = 'Updating visible pages…'; }
+  dirty = true; schedule();
 }
-
+function schedule() {
+  if (scheduled) return;
+  scheduled = true;
+  requestAnimationFrame(() => { scheduled = false; void draw(); });
+}
+function anchor(point = 0) {
+  const index = layout.pageAt(viewport.scrollTop + point, zoom);
+  return { index, fraction: (viewport.scrollTop + point - layout.top(index, zoom)) / (layout.heights[index] * zoom || 1), point };
+}
+function restore(position) {
+  viewport.scrollTop = Math.max(0, layout.top(position.index, zoom) + position.fraction * layout.heights[position.index] * zoom - position.point);
+}
+function updateLayout() {
+  const height = layout.height(zoom);
+  if (!Number.isFinite(height) || height > MAX_EXTENT) throw new Error('Document exceeds the viewer layout budget; reduce zoom');
+  let width = Math.max(1, viewport.clientWidth - 48);
+  for (const info of infos.values()) if (info.width) width = Math.max(width, info.width * zoom);
+  if (width > MAX_EXTENT) throw new Error('Page exceeds the viewer layout budget; reduce zoom');
+  surface.style.height = `${height}px`;
+  surface.style.width = `${width}px`;
+  surface.hidden = !layout.count;
+  for (const [index, view] of views) {
+    const info = infos.get(index);
+    Object.assign(view.element.style, { top: `${layout.top(index, zoom)}px`,
+      width: `${(info?.width ?? 612) * zoom}px`, height: `${layout.heights[index] * zoom}px` });
+  }
+}
+function geometry(info) {
+  let width = (info.crop[2] - info.crop[0]) * info.userUnit;
+  let height = (info.crop[3] - info.crop[1]) * info.userUnit;
+  if (info.rotation === 90 || info.rotation === 270) [width, height] = [height, width];
+  return { ...info, width, height };
+}
+async function pageInfo(index, epoch) {
+  const existing = infos.get(index);
+  if (existing) return existing.promise ?? existing;
+  const promise = client.pageInfo(handle, index).then((raw) => {
+    if (epoch !== documentEpoch) return null;
+    const position = anchor(), info = geometry(raw);
+    const offset = position.fraction * layout.heights[position.index] * zoom;
+    infos.set(index, info); layout.setHeight(index, info.height); updateLayout();
+    // Newly measured heights keep the same pixel offset in the anchor page;
+    // zoom changes instead retain a proportional position in known geometry.
+    position.fraction = Math.min(offset, layout.heights[position.index] * zoom + layout.gap - 1)
+      / (layout.heights[position.index] * zoom);
+    restore(position);
+    // Retain compact heights for every page, but bound detailed metadata.
+    if (infos.size > 256) for (const key of infos.keys()) {
+      if (!views.has(key) && key !== index) { infos.delete(key); break; }
+    }
+    return info;
+  }).catch((error) => { if (epoch === documentEpoch) infos.delete(index); throw error; });
+  infos.set(index, { promise }); return promise;
+}
+function pageView(index) {
+  if (views.has(index)) return views.get(index);
+  const element = document.createElement('section'); element.className = 'pdf-page';
+  element.setAttribute('data-page', String(index)); element.setAttribute('role', 'img');
+  element.setAttribute('aria-label', `Page ${index + 1}`); element.setAttribute('aria-busy', 'true');
+  const message = document.createElement('p'); message.className = 'page-message'; message.textContent = `Loading page ${index + 1}…`;
+  element.append(message); surface.append(element);
+  const view = { element, message, tiles: new Map(), failed: false }; views.set(index, view); return view;
+}
+function visiblePages() {
+  const top = Math.max(0, viewport.scrollTop - 24), bottom = top + viewport.clientHeight;
+  const first = layout.pageAt(top, zoom), last = layout.pageAt(bottom, zoom);
+  if (last - first + 1 > MAX_PAGES) throw new Error('Too many visible pages; increase zoom');
+  return Array.from({ length: last - first + 1 }, (_, offset) => first + offset);
+}
+function tileRequests(index, info) {
+  const ratio = window.devicePixelRatio, scale = zoom * ratio;
+  const width = Math.max(1, Math.ceil(info.width * scale - 1e-9)), height = Math.max(1, Math.ceil(info.height * scale - 1e-9));
+  const bounds = views.get(index).element.getBoundingClientRect(), visible = viewport.getBoundingClientRect();
+  const left = Math.max(0, Math.floor((visible.left - bounds.left) * ratio / TILE) * TILE);
+  const top = Math.max(0, Math.floor((visible.top - bounds.top) * ratio / TILE) * TILE);
+  const right = Math.min(width, Math.ceil((visible.right - bounds.left) * ratio));
+  const bottom = Math.min(height, Math.ceil((visible.bottom - bounds.top) * ratio));
+  const requests = [];
+  for (let y = top; y < bottom; y += TILE) for (let x = left; x < right; x += TILE) {
+    if (requests.length >= MAX_TILES) throw new Error('Visible page exceeds the tile budget; use a smaller window');
+    requests.push({ x, y, width: Math.min(TILE, width - x), height: Math.min(TILE, height - y) });
+  }
+  return requests;
+}
+function failPage(index, error) {
+  const view = views.get(index); if (!view) return;
+  view.failed = true; view.tiles.clear(); view.element.replaceChildren(view.message);
+  view.message.hidden = false; view.message.setAttribute('role', 'alert'); view.message.textContent = String(error);
+  view.element.setAttribute('aria-busy', 'false'); report(`Page ${index + 1}: ${error}`);
+}
+async function diagnostics(epoch) {
+  const items = await client.diagnostics(handle);
+  if (epoch !== documentEpoch) return;
+  $('diagnostic-count').textContent = `Repairs: ${items.length}`;
+  $('repair-list').replaceChildren(...items.map((item) => {
+    const li = document.createElement('li'); li.textContent = `[${item.tag}] ${item.message}`; return li;
+  }));
+  $('diagnostics').open = items.length > 0;
+}
+async function draw() {
+  if (drawing || handle === null || !layout.count) return;
+  drawing = true; dirty = false;
+  const epoch = documentEpoch, token = generation, documentHandle = handle;
+  try {
+    // Heights become precise only as the visible range is loaded.
+    for (let pass = 0; pass < MAX_PAGES; pass++) {
+      const indexes = visiblePages();
+      for (const [index, view] of views) if (!indexes.includes(index)) { view.element.remove(); views.delete(index); }
+      for (const index of indexes) pageView(index);
+      const missing = indexes.find((index) => !infos.get(index)?.width);
+      if (missing === undefined) break;
+      await pageInfo(missing, epoch);
+      if (epoch !== documentEpoch || token !== generation) return;
+    }
+    updateLayout();
+    let total = 0;
+    for (const index of visiblePages()) {
+      if (epoch !== documentEpoch || token !== generation) return;
+      const info = infos.get(index), view = pageView(index);
+      if (!info?.width || view.failed) continue;
+      const requests = tileRequests(index, info); total += requests.length;
+      if (total > MAX_TILES) throw new Error('Visible pages exceed the tile budget; increase zoom');
+      const keys = new Set(requests.map(({ x, y }) => `${x},${y}`));
+      for (const [key, canvas] of view.tiles) if (!keys.has(key)) { canvas.remove(); view.tiles.delete(key); }
+      try {
+        for (const tile of requests) {
+          if (epoch !== documentEpoch || token !== generation) return;
+          const key = `${tile.x},${tile.y}`; if (view.tiles.has(key)) continue;
+          status.textContent = 'Rendering visible tiles…';
+          const image = await client.renderGenerationTile(documentHandle, index, zoom * window.devicePixelRatio, tile, token);
+          if (epoch !== documentEpoch || token !== generation || image.cancelled) return;
+          const canvas = document.createElement('canvas'); canvas.className = 'tile'; canvas.width = image.width; canvas.height = image.height;
+          canvas.setAttribute('aria-hidden', 'true');
+          const ratio = window.devicePixelRatio;
+          Object.assign(canvas.style, { left: `${tile.x / ratio}px`, top: `${tile.y / ratio}px`, width: `${image.width / ratio}px`, height: `${image.height / ratio}px` });
+          const context = canvas.getContext('2d'); if (!context) throw new Error('Canvas 2D rendering is unavailable');
+          context.putImageData(new ImageData(new Uint8ClampedArray(image.rgba.buffer, image.rgba.byteOffset, image.rgba.byteLength), image.width, image.height), 0, 0);
+          view.tiles.set(key, canvas); view.element.append(canvas);
+        }
+        view.message.hidden = true; view.element.setAttribute('aria-busy', 'false');
+      } catch (error) { if (epoch === documentEpoch && token === generation) failPage(index, error); }
+    }
+    if (epoch === documentEpoch && token === generation) {
+      await diagnostics(epoch);
+      if (epoch === documentEpoch && token === generation) {
+        controls();
+        status.textContent = [...views.values()].some((view) => view.failed) ? 'Some pages are unavailable' : 'Visible tiles rendered';
+      }
+    }
+  } catch (error) { if (epoch === documentEpoch && token === generation) report(error); }
+  finally { drawing = false; if (dirty) schedule(); }
+}
+function fit(mode, info) {
+  const width = (viewport.clientWidth - 48) / info.width;
+  return mode === 'fit-page' ? Math.min(width, (viewport.clientHeight - 48) / info.height) : width;
+}
+function changeZoom(value, point = viewport.clientHeight / 2) {
+  if (!Number.isFinite(value) || handle === null) return;
+  const position = anchor(point), previousZoom = zoom;
+  zoom = Math.min(8, Math.max(0.1, value));
+  try { updateLayout(); } catch (error) { zoom = previousZoom; report(error); return; }
+  for (const view of views.values()) view.element.remove(); views.clear();
+  $('custom-zoom').textContent = `${Math.round(zoom * 100)}%`; restore(position); invalidate();
+}
+async function navigate(index) {
+  if (!Number.isInteger(index) || index < 0 || index >= layout.count || handle === null) { pageInput.value = String(page + 1); return; }
+  const epoch = documentEpoch; status.textContent = 'Loading page…';
+  try {
+    const info = await pageInfo(index, epoch); if (!info || epoch !== documentEpoch) return;
+    page = index;
+    if (zoomInput.value.startsWith('fit-')) changeZoom(fit(zoomInput.value, info));
+    viewport.scrollTop = layout.top(index, zoom); pageInput.value = String(index + 1); controls(); invalidate();
+  } catch (error) { if (epoch === documentEpoch) report(error); }
+}
+async function openFile(file) {
+  if (!file) return;
+  cancelPassword();
+  const epoch = ++documentEpoch;
+  handle = null; infos.clear(); views.clear(); surface.replaceChildren(); surface.hidden = true;
+  layout = new PageLayout(0); page = 0; controls(); errorBox.hidden = true;
+  $('filename').textContent = file.name; status.textContent = 'Opening…';
+  $('diagnostic-count').textContent = 'Repairs: 0'; $('repair-list').replaceChildren();
+  try {
+    if (file.size > MAX_FILE) throw new Error('PDF exceeds the 512 MiB input budget');
+    client?.destroy(); client = createClient(); const current = client; await current.hello();
+    const bytes = new Uint8Array(await file.arrayBuffer()); if (epoch !== documentEpoch) return;
+    let password = new Uint8Array(), retried = false, opened;
+    for (;;) {
+      const attemptedPassword = password;
+      try { opened = await current.open(bytes, $('strict').checked ? 0 : 1, password); break; }
+      catch (error) {
+        if (epoch !== documentEpoch) return;
+        if (!(error instanceof HostError) || error.category !== 6) throw error;
+        password.fill(0);
+        password = await requestPassword(retried ? 'Incorrect password. Try again.' : 'This PDF requires a password.');
+        if (epoch !== documentEpoch) { password?.fill(0); return; }
+        if (password === null) { status.textContent = 'Opening cancelled'; return; }
+        retried = true;
+      } finally { attemptedPassword.fill(0); }
+      if (epoch !== documentEpoch) return;
+    }
+    if (epoch !== documentEpoch) return;
+    handle = opened.document; layout = new PageLayout(opened.pages); controls();
+    if (!opened.pages) { status.textContent = 'Document has no pages'; return; }
+    await pageInfo(0, epoch); if (epoch !== documentEpoch) return;
+    zoom = zoomInput.value.startsWith('fit-') ? fit(zoomInput.value, infos.get(0)) : zoomInput.value === 'custom' ? zoom : Number(zoomInput.value);
+    if (!Number.isFinite(zoom)) zoom = 1;
+    zoom = Math.min(8, Math.max(0.1, zoom)); updateLayout(); viewport.scrollTop = 0; viewport.scrollLeft = 0; invalidate();
+  } catch (error) { if (epoch === documentEpoch) report(error); }
+}
+$('previous').addEventListener('click', () => { void navigate(page - 1); });
+$('next').addEventListener('click', () => { void navigate(page + 1); });
+pageInput.addEventListener('change', () => { void navigate(Number(pageInput.value) - 1); });
+zoomInput.addEventListener('change', () => {
+  const info = infos.get(page); if (!info?.width) return;
+  changeZoom(zoomInput.value.startsWith('fit-') ? fit(zoomInput.value, info) : Number(zoomInput.value));
+});
+$('file').addEventListener('change', (event) => { void openFile(event.target.files[0]); event.target.value = ''; });
+window.addEventListener('dragover', (event) => { event.preventDefault(); document.body.classList.add('dragging'); });
+window.addEventListener('dragleave', (event) => { if (!event.relatedTarget) document.body.classList.remove('dragging'); });
+window.addEventListener('drop', (event) => { event.preventDefault(); document.body.classList.remove('dragging'); void openFile(event.dataTransfer.files[0]); });
+viewport.addEventListener('scroll', () => {
+  if (layout.count) { page = layout.pageAt(viewport.scrollTop + 1, zoom); controls(); }
+  invalidate();
+}, { passive: true });
+viewport.addEventListener('wheel', (event) => {
+  if (!event.ctrlKey && !event.metaKey) return;
+  event.preventDefault(); zoomInput.value = 'custom';
+  const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.clientHeight : 1);
+  changeZoom(zoom * Math.exp(-Math.max(-1000, Math.min(1000, delta)) * 0.002), event.clientY - viewport.getBoundingClientRect().top);
+}, { passive: false });
+let pinch = null;
+viewport.addEventListener('touchstart', (event) => {
+  if (event.touches.length !== 2) return;
+  event.preventDefault(); const [a, b] = event.touches;
+  pinch = { distance: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), zoom };
+}, { passive: false });
+viewport.addEventListener('touchmove', (event) => {
+  if (!pinch || event.touches.length !== 2) return;
+  event.preventDefault(); const [a, b] = event.touches; zoomInput.value = 'custom';
+  if (pinch.distance > 0) changeZoom(pinch.zoom * Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) / pinch.distance,
+    (a.clientY + b.clientY) / 2 - viewport.getBoundingClientRect().top);
+}, { passive: false });
+for (const type of ['touchend', 'touchcancel']) viewport.addEventListener(type, () => { pinch = null; });
+window.addEventListener('keydown', (event) => {
+  if (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(event.target?.tagName) || event.altKey) return;
+  if (['PageDown', 'PageUp', 'Home', 'End'].includes(event.key)) {
+    event.preventDefault(); void navigate(event.key === 'Home' ? 0 : event.key === 'End' ? layout.count - 1 : page + (event.key === 'PageDown' ? 1 : -1));
+  } else if (['+', '=', '-', '0'].includes(event.key)) {
+    event.preventDefault(); zoomInput.value = event.key === '0' ? '1' : 'custom'; changeZoom(event.key === '0' ? 1 : zoom * (event.key === '-' ? 1 / 1.2 : 1.2));
+  }
+});
+let ratio = window.devicePixelRatio;
+window.addEventListener('resize', () => {
+  if (handle === null) return;
+  const info = infos.get(page);
+  if (zoomInput.value.startsWith('fit-') && info?.width) changeZoom(fit(zoomInput.value, info));
+  else if (ratio !== window.devicePixelRatio) changeZoom(zoom);
+  else invalidate();
+  ratio = window.devicePixelRatio;
+});
+window.addEventListener('pagehide', () => client?.destroy());
+let startupEpoch = documentEpoch;
 try {
-  client = createClient();
-  await client.hello(); status.textContent = 'Ready — open a PDF';
-  await openStartupFixture();
-} catch (error) { report(error); }
+  client = createClient(); await client.hello(); status.textContent = 'Ready — open a PDF';
+  const values = new URL(window.location.href).searchParams.getAll('file');
+  if (values.length) {
+    if (values.length !== 1) throw new Error('Startup file must be specified once');
+    const epoch = documentEpoch; startupEpoch = epoch; status.textContent = 'Loading fixture…';
+    const file = await loadFixture(values[0], window.location.href);
+    if (epoch === documentEpoch) await openFile(file);
+  }
+} catch (error) { if (startupEpoch === documentEpoch) report(error); }

@@ -1,29 +1,84 @@
 # Browser viewer
 
-From the repository root, with the pinned toolchain installed:
-
-```
-cargo wasm
-python3 tools/serve_web.py
-```
-
-Open http://localhost:8000 in a browser supporting core WebAssembly SIMD,
-module workers, SharedArrayBuffer, and cross-origin isolation. No npm packages,
-bundler, CDN, installation or network refresh is involved. The server serves
-only web/ and the built command, with COOP/COEP; do not open index.html as a
-file URL. Select/drop corpus/generated/classic/rectangle.pdf, navigate pages
-and change zoom. The file stays in the browser. Strict validation can be
-selected before opening; otherwise reported repairs are shown below the page.
-Unsupported pages display an explicit tagged error and remove partial tiles.
-Strict-mode errors also name the refused repair, for example
-`recovery would repair it [file.trailing-bytes]`; that repair was not applied.
-The interim foundation renderer deliberately rejects many PDFs and fractional
-edges at some zoom/devicePixelRatio values; this is displayed as Unsupported.
-
-For automated real-browser checks, opt in to **development fixtures**:
+Build the pinned WASI command and serve the dependency-free viewer:
 
 ```
 cargo wasm --offline
+python3 tools/serve_web.py
+```
+
+Open http://localhost:8000 in a browser with WebAssembly SIMD, module threads,
+SharedArrayBuffer and cross-origin isolation. There is no npm package, bundler,
+CDN or build step for the HTML/CSS/JavaScript. Do not open index.html as a file
+URL: the server provides the required COOP/COEP headers.
+
+Select a PDF or drop it onto the viewer. Pages scroll continuously. Metadata
+and pixels load as pages approach the visible region; offscreen canvases and
+page elements are discarded. Previous/next and numbered navigation scroll to a
+page without changing documents. Unimplemented content produces a tagged error
+on the affected page and clears partial pixels for that page. Other pages can
+still render. Strict validation rejects repairs and names the refused repair;
+normal viewing lists applied repairs below the document.
+
+## Controls
+
+- Zoom: fit width, fit page, percentage presets, or Ctrl/Command-wheel. Two-finger
+  touch pinch also changes document zoom. Fit presets use the selected page's
+  physical dimensions; changing the selected page or resizing recalculates them.
+- Keyboard: Page Up/Down select adjacent pages, Home/End select the first/last,
+  +/− change zoom and 0 restores 100%. Editing fields and buttons keep their
+  normal keyboard behavior. Zoom is limited to 10%–800%. Native arrow-key scrolling works in the focusable
+  document region.
+- Password-protected PDFs open an accessible modal with retry, Cancel and Escape.
+  The field is cleared when submitted, cancelled or replaced by another file;
+  temporary password bytes are cleared after each open attempt. Text entry sends
+  UTF-8 bytes. Non-ASCII legacy passwords requiring PDFDocEncoding are not
+  converted by the UI; callers can use SessionClient.open with explicit raw
+  bytes. ISO 32000-2 7.6.4.3.2 and 7.6.4.3.3 distinguish those encodings.
+- Controls have labels and standard focus order. Pages have named image roles,
+  loading states and explicit failures. This is visual navigation accessibility,
+  not tagged-PDF text extraction or a screen-reader text representation.
+
+The layout uses page geometry from ISO 32000-2 7.7.3.3 (Table 31) and 8.3.2.3.
+Compact prefix sums retain discovered heights without creating a DOM element
+for every page. Detailed metadata is capped at 256 pages, visible page elements
+at 32, and canvases at 128 tiles. Tiles are 256 device pixels, painted at
+zoom × devicePixelRatio. Layout extents are limited to 10 million CSS pixels;
+exceeding a budget displays an error rather than silently truncating a document.
+
+## Session and caching
+
+The browser negotiates protocol v1.1; existing protocol v1 clients remain
+supported. See crates/pagura-host/PROTOCOL.md for the byte layouts. A viewport
+change invalidates queued old-generation tiles before transmission. The host
+also skips a stale generation before compilation or painting. The current
+synchronous tile cannot be interrupted; its result is discarded if obsolete.
+Opening another file replaces the instance and releases its caches.
+
+Compiled display lists are cached per document/page, independently of zoom or
+device pixels. The session keeps an LRU with a default 64 MiB accounting budget
+(or Limits.decoded_bytes, if smaller) and at most eight entries. Close releases
+all entries for that document. Lists exceeding the accounting budget render
+without retention. Session::with_cache_bytes(0) disables retention.
+
+Accounting charges 32 source bytes per input byte and 4096 bytes per painted
+mark, plus a fixed 512-byte header charge. These are estimates: DisplayList
+exposes no retained allocation size. The weight budget is not a hard process-memory ceiling;
+expanded paths/resources may differ from the estimate. Per-operation renderer
+limits remain in force. A renderer allocation-size API would allow accurate
+retention accounting. Keeping the cache in the session preserves separation
+between source documents and rendering state. Caching pixels instead would
+consume more memory and require additional keys for zoom and output settings.
+
+The project-written WASI shim exposes no preopened directories, sockets,
+environment or arguments. Only the dedicated execution thread blocks on
+Atomics.wait; stdin is a 64 KiB shared mailbox and stdout uses transferred byte
+chunks. Unknown WASI imports trap by name. PDF interpretation receives no URL
+or file capabilities. A user-selected file stays local to the browser.
+
+## Development fixtures
+
+```
 python3 tools/serve_web.py --fixtures
 ```
 
@@ -33,47 +88,28 @@ Then open:
 http://localhost:8000/?file=/fixtures/classic/two-pages.pdf
 ```
 
-The development-only `--fixtures` flag additionally serves files beneath
-`corpus/generated/` read-only at `/fixtures/`, with the same isolation headers,
-traversal rejection and symlink containment as web/. It stays loopback-only;
-there is no upload or write endpoint, no directory listing, and private/reference
-corpora are never mapped. Without the flag, fixture URLs return HTTP 404. The
-normal picker/drop viewer continues to work without it.
+The development-only flag additionally serves corpus/generated read-only at
+/fixtures/, on loopback only, with the same isolation and path protections.
+Without the flag those URLs return HTTP 404. There are no upload/write routes
+or directory listings; private/reference corpora are never exposed.
 
-The `file` parameter loads one same-origin `/fixtures/` URL at startup. A root
-path or an absolute URL with the viewer's exact origin is accepted. Other
-origins, other paths, traversal (including encoded parents/backslashes),
-credentials, queries/fragments inside the file URL, and repeated `file`
-parameters are rejected with a visible error before fetching. Redirects are
-refused, credentials are omitted and received bytes are capped at 512 MiB.
-This URL comes from the viewer location, never from interpreted PDF content.
-Picking/dropping a file during the startup fetch takes precedence.
+Startup loading accepts one same-origin /fixtures/ URL. Other origins or paths,
+parent traversal, credentials, nested query/fragment and duplicate file
+parameters are rejected before fetching. Redirects are refused, credentials
+are omitted, and received bytes are capped at 512 MiB. Picking/dropping another
+file takes precedence over a pending startup load.
 
-Automation can wait for `#status` to read `Visible tiles rendered`, then check
-`#error` is hidden, inspect `.tile` canvases and drive `#next`, `#previous` or
-`#page`. The two-page fixture has a red 16×16 square at PDF (8, 8) on page 1;
-page 2 has a blue 32×32 square at PDF (32, 32). At scale 1, page 2's top-left
-pixel coordinates x=32..63, y=0..31 are blue and all other pixels are white.
-Use `?file=/fixtures/classic/text-unsupported.pdf` to check a visible tagged
-failure and `?file=/fixtures/classic/trailing-bytes.pdf` to check repair display.
+Automation can wait for #status = "Visible tiles rendered" and #error hidden,
+then inspect .tile canvases inside section[data-page="0"] or another zero-based
+page section. Both pages of two-pages.pdf coexist when visible. Its second page
+is white except for the blue square at device x=32..63, y=0..31 at scale 1.
+text-unsupported.pdf exercises the failure banner; trailing-bytes.pdf exercises
+repair display. Existing real-browser verification covered isolation, exact
+DPR-2 pixels, navigation and the explicit failure banner. The continuous layout,
+new gestures and modal also have offline DOM tests and need browser interaction
+checks on the target devices.
 
-Tiles are 256 device pixels and only the visible region is requested at
-zoom × devicePixelRatio. Offscreen canvases are discarded. The viewer caps
-visible tiles at 128 and layout extents at 10 million device pixels; the host
-has independent Limits. Opening another file replaces the worker, releasing
-its document caches and pending work. Page/zoom generations discard stale
-results. The protocol also supports multiple documents in a single session.
-
-The worker owns a project-written preview 1 shim (wasi.mjs). Only its thread
-blocks on Atomics.wait. Main-thread stdin uses a 64 KiB shared mailbox with
-atomic ownership and asynchronous drain notifications; responses arrive as
-transferred byte chunks. No preopened directories, network APIs, environment
-or arguments are exposed to the module. Unknown WASI imports trap by name.
-The worker itself fetches only the fixed built module URL; PDF bytes cannot
-influence that URL. Synchronous rendering has no in-request cancellation;
-destroying/replacing the worker releases the session.
-
-Verification (no downloads):
+## Verification and exploratory profiling
 
 ```
 cargo build --locked --offline -p pagura-host
@@ -81,23 +117,29 @@ cargo wasm --offline
 node tools/host_test.mjs
 ```
 
-The test runs all classic render cases natively, under node:wasi with empty
-args/env/preopens, and through the actual browser shim/client in a Node worker.
-It checks complete response byte identity and independently generated PPM pixels,
-plus malformed framing, structured errors, tiled assembly and capability denials.
-It also exercises viewer.mjs with a minimal DOM/Canvas harness, including all
-classic oracles, tile eviction on scroll, rapid zoom changes, DPR changes, drop,
-repair display, refused repair tags and clearing tiles on unsupported input.
-Both page_info results and page-2 full/partial tiles of two-pages.pdf are
-checked against independently computed geometry. The DOM harness tests
-previous/next/numbered navigation and startup fixture loading/rejection. In-memory HTTP handler
-tests verify headers, MIME types and path containment without opening a socket.
-These checks do not claim actual browser layout or browser interaction coverage.
+Tests preserve complete native/WASI response identity and independent classic
+PPM oracles, plus page-2 full/partial geometry oracles, generation skips, cache
+reuse/eviction, continuous lazy layout, navigation, fit presets, gestures,
+password retry/cancel, diagnostics and explicit failures. In-memory HTTP tests
+check isolation headers, MIME types and path containment without a socket bind.
+The DOM harness does not establish real-browser layout or touch behavior.
 
-A real-browser check (served with `--fixtures`, opened at
-`/?file=/fixtures/classic/two-pages.pdf`) confirmed cross-origin isolation,
-pixel-exact tiles at device pixel ratio 2, previous/next navigation and the
-explicit unsupported-content banner. File picker and drag-and-drop are not
-automated. The
-viewer has no password prompt; callers can send raw password bytes through
-SessionClient.
+Build release binaries for each revision and run the same workload against each:
+
+```
+cargo build --locked --offline --release -p pagura-host
+cargo wasm --offline
+node web/tile_benchmark.mjs target/release/pagura-host target/wasm32-wasip1/release/pagura-host.wasm > /tmp/tiles.json
+cargo run --locked --offline --release -p pagura-host --example tile_profile -- corpus/generated/classic/many-rectangles.pdf
+```
+
+The benchmark emits binary/input/output hashes, hardware/runtime identities and
+raw seconds/tiles-per-second samples. It uses two warmups and five alternating
+samples per runtime for 64 fixed tiles of many-rectangles.pdf, verifying every
+pixel against its independent PPM after timing. Native samples include process
+startup; WASI samples include _start/open and exclude module instantiation.
+Compare revisions within each runtime, not native and WASI timings to each
+other. The profile separately measures 64 compilations and 64 cached-list tile
+paints. These are exploratory diagnostics, not the sample count, confidence
+intervals, memory measurements or controlled runner required by the release
+policy in benchmarks/policy.json. They make no cross-engine speed claim.

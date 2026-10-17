@@ -20,6 +20,8 @@
     <span id="count">of 0</span>
     <button id="next" disabled aria-label="Next page">→</button>
     <label>Zoom <select id="zoom" disabled>
+      <option value="fit-width">Fit width</option><option value="fit-page">Fit page</option>
+      <option id="custom-zoom" value="custom">Custom</option>
       <option value="0.5">50%</option><option value="0.75">75%</option>
       <option value="1" selected>100%</option><option value="1.5">150%</option>
       <option value="2">200%</option><option value="3">300%</option>
@@ -27,11 +29,20 @@
     <span id="status" role="status" aria-live="polite">Starting engine…</span>
   </nav>
   <div id="error" role="alert" hidden></div>
-  <main id="viewport" aria-label="PDF page" tabindex="0"><div id="page-surface" hidden></div></main>
+  <main id="viewport" aria-label="PDF pages" role="region" tabindex="0"><div id="page-surface" hidden></div></main>
   <aside>
     <details id="diagnostics"><summary id="diagnostic-count">Repairs: 0</summary><ul id="repair-list"></ul></details>
     <p>Local preview engine. Unsupported content is reported explicitly. Documents stay in this browser.</p>
   </aside>
+  <dialog id="password-dialog" aria-labelledby="password-title" aria-describedby="password-feedback">
+    <form id="password-form">
+      <h2 id="password-title">Unlock PDF</h2>
+      <p id="password-feedback" role="status"></p>
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="off" required>
+      <div><button type="button" id="password-cancel">Cancel</button><button type="submit">Open</button></div>
+    </form>
+  </dialog>
   <script type="module" src="./viewer.mjs"></script>
 </body>
 </html>
