@@ -83,9 +83,28 @@ survive edits. A repaired document is saved only by full rewrite.
 
 ## Performance policy
 
-First remove redundant parsing, allocation and copying, then improve data layout,
-caching, scheduling and algorithms. Profile before optimizing. Keep algorithmic
-fallbacks explicit and bounded. Do not trade fidelity, security, portability or
-the no-unsafe rule for speed. WebAssembly builds use SIMD128 through
-autovectorization; architecture-specific native builds are a separately labeled
-benchmark track with identical competitor tuning.
+Speed is earned without spending quality. Every optimization leaves the code at
+least as clean as it found it, and the preferred levers, in order, are:
+
+1. **Do less work by acting smarter**: a better algorithm, a representation that
+   makes the common case cheap, work avoided or done once (caching, sharing,
+   early rejection) rather than done faster.
+2. **Simplify**: less code, fewer special cases and a cleaner architecture. A
+   simpler design that is also faster is the ideal result.
+3. **Then improve data layout, scheduling and locality**, so the compiler can
+   vectorize (SIMD128 through autovectorization in WebAssembly).
+
+Added complexity must be defended against the speed it buys: the change records
+the measured gain, the code it adds or removes and the alternatives considered,
+and a small gain does not justify a large or fragile mechanism. Profile before
+optimizing, keep algorithmic fallbacks explicit and bounded, and keep every
+output identical unless a documented, independently verified reason says
+otherwise. Never trade fidelity, security, portability or the no-unsafe rule
+for speed.
+
+When an area stalls, study how the best-in-class implementation of that
+specific problem works (ADR 0006: inspiration, never copied or translated code),
+then build something cleaner, more idiomatic and faster than it.
+
+Architecture-specific native builds are a separately labeled benchmark track
+with identical competitor tuning.
