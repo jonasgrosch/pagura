@@ -6,11 +6,16 @@ version = 4
 name = "pagura"
 version = "0.1.0"
 dependencies = [
+ "pagura-codec",
  "pagura-core",
  "pagura-document",
+ "pagura-font",
+ "pagura-host",
+ "pagura-image",
  "pagura-raster",
  "pagura-render",
  "pagura-testkit",
+ "pagura-text",
  "pagura-write",
 ]
 

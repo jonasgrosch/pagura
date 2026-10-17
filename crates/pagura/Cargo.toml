@@ -19,4 +19,11 @@ pagura-render.workspace = true
 pagura-write.workspace = true
 
 [dev-dependencies]
+# The fuzz regression replay (tests/fuzz_regressions.rs) drives these
+# crates through the same code as the fuzz targets.
+pagura-codec.workspace = true
+pagura-font.workspace = true
+pagura-host = { path = "../pagura-host" }
+pagura-image.workspace = true
 pagura-testkit.workspace = true
+pagura-text.workspace = true

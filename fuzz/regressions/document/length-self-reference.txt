@@ -1,0 +1,1 @@
+A content stream whose /Length refers to its own object (7.3.8.2) once made object loading recurse without bound.

@@ -1,0 +1,75 @@
+{
+  "schema": 2,
+  "area": "fuzz",
+  "scope": "Coverage-guided robustness of the public APIs (fuzz/, ADR 0003-0005, 0009, 0010). Clause 7.3.8.2 (stream extent, Table 5) and 7.3.10 were verified in the locally supplied ISO 32000-2:2020 EC3 text; the other requirements are project policy.",
+  "requirements": [
+    {
+      "id": "fuzz-no-panic",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "nine cargo-fuzz targets; every input ends in a value or a structured error with well-formed tags; strict mode reports no repairs",
+      "tests": [
+        "fuzz/fuzz_targets/syntax.rs",
+        "fuzz/fuzz_targets/filters.rs",
+        "fuzz/fuzz_targets/document.rs",
+        "fuzz/fuzz_targets/render.rs",
+        "fuzz/fuzz_targets/font.rs",
+        "fuzz/fuzz_targets/image.rs",
+        "fuzz/fuzz_targets/text.rs",
+        "fuzz/fuzz_targets/content.rs",
+        "fuzz/fuzz_targets/host.rs",
+        "tools/fuzz_smoke.py"
+      ],
+      "gaps": "Routine runs are 30 s per target; no sustained campaign on dedicated hardware, no coverage report per crate."
+    },
+    {
+      "id": "fuzz-bounded-work",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "every target runs under reduced Limits with a 10 s time limit and a 2 GiB memory limit per input",
+      "tests": [
+        "tools/fuzz_smoke.py",
+        "fuzz/src/lib.rs limits"
+      ],
+      "gaps": "Limits bound work per operation, not process memory; libFuzzer's limits are the only process-level bound."
+    },
+    {
+      "id": "fuzz-result-contracts",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "decoded samples match image sizes and bit depths, filter output caps hold, glyph codes cover decoded strings, tiles equal the whole page (ADR 0004), and host responses follow PROTOCOL.md",
+      "tests": [
+        "fuzz/src/image.rs",
+        "fuzz/src/filters.rs",
+        "fuzz/src/text.rs",
+        "fuzz/src/content.rs",
+        "fuzz/src/host.rs"
+      ],
+      "gaps": "No differential comparison with other engines."
+    },
+    {
+      "id": "fuzz-regressions-replayed",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "every minimized finding in fuzz/regressions/ is replayed on stable Rust through the fuzz drivers; unfixed findings are listed explicitly and fail once fixed",
+      "tests": [
+        "pagura/tests/fuzz_regressions.rs"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "fuzz-stream-length-cycles",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.8.2",
+        "7.3.10"
+      ],
+      "status": "an indirect /Length that refers to its own stream, or two streams whose lengths refer to each other, ends in a structured error",
+      "tests": [
+        "fuzz/regressions/document/length-self-reference",
+        "fuzz/regressions/document/length-mutual-reference"
+      ],
+      "gaps": ""
+    }
+  ]
+}

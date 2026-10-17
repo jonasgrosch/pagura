@@ -108,6 +108,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "pagura-font"
+version = "0.1.0"
+dependencies = [
+ "pagura-core",
+ "pagura-raster",
+]
+
+[[package]]
 name = "pagura-fuzz"
 version = "0.0.0"
 dependencies = [
@@ -115,6 +123,26 @@ dependencies = [
  "pagura",
  "pagura-codec",
  "pagura-core",
+ "pagura-font",
+ "pagura-host",
+ "pagura-image",
+ "pagura-text",
+]
+
+[[package]]
+name = "pagura-host"
+version = "0.1.0"
+dependencies = [
+ "pagura",
+]
+
+[[package]]
+name = "pagura-image"
+version = "0.1.0"
+dependencies = [
+ "pagura-codec",
+ "pagura-core",
+ "pagura-document",
 ]
 
 [[package]]
@@ -130,6 +158,18 @@ version = "0.1.0"
 dependencies = [
  "pagura-core",
  "pagura-document",
+ "pagura-image",
+ "pagura-raster",
+ "pagura-text",
+]
+
+[[package]]
+name = "pagura-text"
+version = "0.1.0"
+dependencies = [
+ "pagura-core",
+ "pagura-document",
+ "pagura-font",
  "pagura-raster",
 ]
 

@@ -1,7 +1,8 @@
 # Coverage-guided fuzzing with cargo-fuzz (libFuzzer). This is test tooling in
-# its own workspace, like the benchmark adapters: libFuzzer is C++ and its
-# entry points need `no_mangle`, so this crate cannot forbid unsafe code and
-# must never become a product dependency. The product crates under test keep
+# its own workspace, like the benchmark adapters, and must never become a
+# product dependency. libFuzzer is C++ and its entry points need `no_mangle`,
+# so the one-line binaries in fuzz_targets/ cannot forbid unsafe code; the
+# drivers in src/ do, and the product crates under test keep
 # `forbid(unsafe_code)`. Run with the nightly toolchain: see fuzz/README.md.
 [package]
 name = "pagura-fuzz"
@@ -15,11 +16,21 @@ cargo-fuzz = true
 [workspace]
 members = ["."]
 
+[lib]
+path = "src/lib.rs"
+test = false
+doc = false
+bench = false
+
 [dependencies]
 libfuzzer-sys = "=0.4.13"
 pagura = { path = "../crates/pagura" }
 pagura-codec = { path = "../crates/pagura-codec" }
 pagura-core = { path = "../crates/pagura-core" }
+pagura-font = { path = "../crates/pagura-font" }
+pagura-host = { path = "../crates/pagura-host" }
+pagura-image = { path = "../crates/pagura-image" }
+pagura-text = { path = "../crates/pagura-text" }
 
 [[bin]]
 name = "syntax"
@@ -45,6 +56,41 @@ bench = false
 [[bin]]
 name = "render"
 path = "fuzz_targets/render.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "font"
+path = "fuzz_targets/font.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "image"
+path = "fuzz_targets/image.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "text"
+path = "fuzz_targets/text.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "content"
+path = "fuzz_targets/content.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "host"
+path = "fuzz_targets/host.rs"
 test = false
 doc = false
 bench = false
