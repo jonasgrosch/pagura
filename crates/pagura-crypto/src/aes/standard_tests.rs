@@ -94,3 +94,68 @@ fn appendix_b_all_intermediate_states_and_inverse_transformations() {
     aes.decrypt_block(&mut decrypted);
     assert_eq!(decrypted, plain);
 }
+
+#[test]
+fn sp800_38a_appendix_f2_cbc_encrypt_decrypt_and_intermediate_blocks() {
+    for bits in [128, 256] {
+        let name = format!("cbc-aes{bits}-f2");
+        let key = fixture("crypto", &format!("{name}.key"));
+        let iv: [u8; 16] = fixture("crypto", &format!("{name}.iv")).try_into().unwrap();
+        let aes = if bits == 128 {
+            Aes::new128(key.as_slice().try_into().unwrap())
+        } else {
+            Aes::new256(key.as_slice().try_into().unwrap())
+        };
+        let plain = fixture("crypto", &format!("{name}.plain"));
+        let cipher = fixture("crypto", &format!("{name}.cipher"));
+        let chained = fixture("crypto", &format!("{name}.chained"));
+        let mut encrypted = plain.clone();
+        aes.encrypt_cbc(&iv, &mut encrypted).unwrap();
+        assert_eq!(encrypted, cipher, "{name}");
+        // Fixed published ciphertext, independent of the encryption result.
+        let mut decrypted = cipher.clone();
+        aes.decrypt_cbc(&iv, &mut decrypted).unwrap();
+        assert_eq!(decrypted, plain, "{name}");
+        let mut previous = iv;
+        for ((input, output), chained) in plain
+            .as_chunks::<16>()
+            .0
+            .iter()
+            .zip(cipher.as_chunks::<16>().0)
+            .zip(chained.as_chunks::<16>().0)
+        {
+            let mut block = *chained;
+            aes.encrypt_block(&mut block);
+            assert_eq!(&block, output, "{name}");
+            let mut block = *output;
+            aes.decrypt_block(&mut block);
+            assert_eq!(&block, chained, "{name}");
+            // Section 6.2: input block is plaintext XOR IV/previous ciphertext.
+            let mut mixed = *input;
+            add_key(&mut mixed, &previous);
+            assert_eq!(&mixed, chained, "{name}");
+            previous = *output;
+        }
+        for split in (0..=plain.len()).step_by(16) {
+            let mut encrypted = plain.clone();
+            aes.encrypt_cbc(&iv, &mut encrypted[..split]).unwrap();
+            let chain = if split == 0 {
+                &iv
+            } else {
+                encrypted[split - 16..split].try_into().unwrap()
+            };
+            let chain = *chain;
+            aes.encrypt_cbc(&chain, &mut encrypted[split..]).unwrap();
+            assert_eq!(encrypted, cipher, "{name} split {split}");
+            let mut decrypted = cipher.clone();
+            let chain = if split == 0 {
+                &iv
+            } else {
+                cipher[split - 16..split].try_into().unwrap()
+            };
+            aes.decrypt_cbc(&iv, &mut decrypted[..split]).unwrap();
+            aes.decrypt_cbc(chain, &mut decrypted[split..]).unwrap();
+            assert_eq!(decrypted, plain, "{name} split {split}");
+        }
+    }
+}

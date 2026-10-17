@@ -3,8 +3,8 @@
 use pagura_core::{Error, Result};
 
 use super::{
-    Authority, FileKey, PermissionsCheck, PermissionsValidation, SASLPREP, SecurityParams, aes_key,
-    equal, file_key,
+    Authority, FileKey, PermissionsCheck, PermissionsValidation, SecurityParams, aes_key, equal,
+    file_key,
 };
 use crate::{Aes, Sha256, sha256, sha384, sha512};
 
@@ -76,12 +76,16 @@ fn modern_hash(revision: u8, password: &[u8], salt: &[u8], user: &[u8]) -> Resul
         .map_err(|_| Error::syntax("invalid revision 6 hash"))
 }
 pub(super) fn authenticate(params: &SecurityParams, password: &[u8]) -> Result<FileKey> {
-    if params.revision == 6 && !password.iter().all(|byte| (0x20..=0x7e).contains(byte)) {
-        return Err(Error::unsupported(
-            SASLPREP,
-            "revision 6 password requires unimplemented SASLprep processing",
-        ));
-    }
+    let prepared = if params.revision == 6 {
+        let text = std::str::from_utf8(password).map_err(|error| {
+            Error::password("revision 6 password is not valid UTF-8")
+                .at(pagura_core::Position::Buffer(error.valid_up_to()))
+        })?;
+        Some(super::saslprep::prepare(text)?)
+    } else {
+        None
+    };
+    let password = prepared.as_deref().map_or(password, str::as_bytes);
     let password = &password[..password.len().min(127)];
     let user = (
         Authority::User,

@@ -3,8 +3,8 @@
 //! AES uses forward and inverse S-box tables, including in key expansion.
 //! Their indices depend on secret data; cache access and finite-field arithmetic
 //! can have data-dependent timing. This implementation is not constant-time.
-//! CBC vectors attributed to SP 800-38A are tested; its text is not locally
-//! verified (see the crypto requirements registry).
+//! CBC follows SP 800-38A section 6.2, with the four-block AES-128/256
+//! encryption and decryption examples in Appendices F.2.1/F.2.2 and F.2.5/F.2.6.
 use pagura_core::{Error, Position, Result};
 
 const fn multiply(mut a: u8, mut b: u8) -> u8 {

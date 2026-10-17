@@ -1,4 +1,5 @@
-//! RC4 as specified by the legacy PDF algorithms; vectors from RFC 6229.
+//! Legacy PDF RC4, corroborated by RFC 6229 section 2 test vectors.
+//! RFC 6229 is informational; it does not specify the cipher algorithm.
 use pagura_core::{Error, Result};
 
 /// Stateful legacy RC4 cipher. Debug output never includes its state.
@@ -101,6 +102,42 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn rfc6229_both_key_families_at_every_listed_offset() {
+        for bits in [40, 128, 256] {
+            for family in [1, 2] {
+                let name = format!("rc4-rfc6229-{bits}-key{family}");
+                let key = pagura_testkit::fixture("crypto", &format!("{name}.key"));
+                let samples = pagura_testkit::fixture("crypto", &format!("{name}.samples"));
+                let mut contiguous = vec![0; 4112];
+                Rc4::new(&key).unwrap().apply_keystream(&mut contiguous);
+                let mut streamed = vec![0; 4112];
+                let mut rc4 = Rc4::new(&key).unwrap();
+                for chunk in streamed.chunks_mut(13) {
+                    rc4.apply_keystream(chunk);
+                    rc4.apply_keystream(&mut []);
+                }
+                assert_eq!(streamed, contiguous, "{name}");
+                let mut count = 0;
+                for line in std::str::from_utf8(&samples).unwrap().lines() {
+                    let (offset, hex) = line.split_once(' ').unwrap();
+                    let offset: usize = offset.parse().unwrap();
+                    for (index, pair) in hex.as_bytes().as_chunks::<2>().0.iter().enumerate() {
+                        let expected =
+                            u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap();
+                        assert_eq!(
+                            contiguous[offset + index],
+                            expected,
+                            "{name} offset {offset}"
+                        );
+                    }
+                    count += 1;
+                }
+                assert_eq!(count, 18);
+            }
+        }
+    }
+
     #[test]
     fn invalid_keys_and_debug_redaction() {
         assert!(Rc4::new(&[]).is_err());

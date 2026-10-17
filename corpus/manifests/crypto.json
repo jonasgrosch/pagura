@@ -271,6 +271,560 @@
       "rounds": 72
     },
     {
+      "id": "crypto/cbc-aes128-f2",
+      "kind": "vector",
+      "description": "SP 800-38A F.2.1/F.2.2 four-block encryption/decryption and intermediate blocks",
+      "requirements": [
+        "crypto-cipher-vectors"
+      ],
+      "files": {
+        ".chained": {
+          "path": "corpus/generated/crypto/cbc-aes128-f2.chained",
+          "sha256": "181cc40b7a197d6500c15c0c344079c67c4274118b9d3903165624c6bcd204c7"
+        },
+        ".cipher": {
+          "path": "corpus/generated/crypto/cbc-aes128-f2.cipher",
+          "sha256": "513fa7823dc3053dc643a44b8fb8dd62360b0044f1ab6965f83629d2b164bf14"
+        },
+        ".iv": {
+          "path": "corpus/generated/crypto/cbc-aes128-f2.iv",
+          "sha256": "be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a8991"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/cbc-aes128-f2.key",
+          "sha256": "d4ffb8b77f7d6b26196e9a070e983f6701a4c42dec813d4de1a535d20a7df536"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/cbc-aes128-f2.plain",
+          "sha256": "d1960c02a724b54ba53df3e4e6ae97b8d72b874e4007839aaf37bf8112067b9a"
+        }
+      }
+    },
+    {
+      "id": "crypto/cbc-aes256-f2",
+      "kind": "vector",
+      "description": "SP 800-38A F.2.5/F.2.6 four-block encryption/decryption and intermediate blocks",
+      "requirements": [
+        "crypto-cipher-vectors"
+      ],
+      "files": {
+        ".chained": {
+          "path": "corpus/generated/crypto/cbc-aes256-f2.chained",
+          "sha256": "571939d1e6ac8c3de07e93258b65413044e0aa604ff229d5f2b8bf050dd63e72"
+        },
+        ".cipher": {
+          "path": "corpus/generated/crypto/cbc-aes256-f2.cipher",
+          "sha256": "6427027cd16c7448061f51cf59602a0022072ea42b556ab4c2c80e92600e0059"
+        },
+        ".iv": {
+          "path": "corpus/generated/crypto/cbc-aes256-f2.iv",
+          "sha256": "be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a8991"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/cbc-aes256-f2.key",
+          "sha256": "b93c72b74bc8487d29827005f80d635918f91bc22b14d7ed05714d58f96702dd"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/cbc-aes256-f2.plain",
+          "sha256": "d1960c02a724b54ba53df3e4e6ae97b8d72b874e4007839aaf37bf8112067b9a"
+        }
+      }
+    },
+    {
+      "id": "crypto/rc4-rfc6229-40-key1",
+      "kind": "vector",
+      "description": "RFC 6229 section 2, 40-bit key family 1, all 18 listed samples; informational vectors, not a cipher specification",
+      "requirements": [
+        "crypto-cipher-vectors"
+      ],
+      "files": {
+        ".key": {
+          "path": "corpus/generated/crypto/rc4-rfc6229-40-key1.key",
+          "sha256": "74f81fe167d99b4cb41d6d0ccda82278caee9f3e2f25d5e5a3936ff3dcec60d0"
+        },
+        ".samples": {
+          "path": "corpus/generated/crypto/rc4-rfc6229-40-key1.samples",
+          "sha256": "c5f826a5c05fb2a28d9cdb557e1e4ef100fb462276747a73e2dfc8e204827a7b"
+        }
+      }
+    },
+    {
+      "id": "crypto/rc4-rfc6229-128-key1",
+      "kind": "vector",
+      "description": "RFC 6229 section 2, 128-bit key family 1, all 18 listed samples; informational vectors, not a cipher specification",
+      "requirements": [
+        "crypto-cipher-vectors"
+      ],
+      "files": {
+        ".key": {
+          "path": "corpus/generated/crypto/rc4-rfc6229-128-key1.key",
+          "sha256": "5dfbabeedf318bf33c0927c43d7630f51b82f351740301354fa3d7fc51f0132e"
+        },
+        ".samples": {
+          "path": "corpus/generated/crypto/rc4-rfc6229-128-key1.samples",
+          "sha256": "c4a715997d758969e009eded454ca988ede126a81d1102153c22dc907d9c9d82"
+        }
+      }
+    },
+    {
+      "id": "crypto/rc4-rfc6229-256-key1",
+      "kind": "vector",
+      "description": "RFC 6229 section 2, 256-bit key family 1, all 18 listed samples; informational vectors, not a cipher specification",
+      "requirements": [
+        "crypto-cipher-vectors"
+      ],
+      "files": {
+        ".key": {
+          "path": "corpus/generated/crypto/rc4-rfc6229-256-key1.key",
+          "sha256": "ae216c2ef5247a3782c135efa279a3e4cdc61094270f5d2be58c6204b7a612c9"
+        },
+        ".samples": {
+          "path": "corpus/generated/crypto/rc4-rfc6229-256-key1.samples",
+          "sha256": "b8669e207a7b3ddae86047443f39fa8195eb64f7c22b3f523c7ca8f9482672bb"
+        }
+      }
+    },
+    {
+      "id": "crypto/rc4-rfc6229-40-key2",
+      "kind": "vector",
+      "description": "RFC 6229 section 2, 40-bit key family 2, all 18 listed samples; informational vectors, not a cipher specification",
+      "requirements": [
+        "crypto-cipher-vectors"
+      ],
+      "files": {
+        ".key": {
+          "path": "corpus/generated/crypto/rc4-rfc6229-40-key2.key",
+          "sha256": "589016983a5aa84c76025a1274c8aa20a6085fbb8c1a941b83e660676580d117"
+        },
+        ".samples": {
+          "path": "corpus/generated/crypto/rc4-rfc6229-40-key2.samples",
+          "sha256": "5433554364a5abf8c6389d80c2d9bb17802bfd0060ceb913180c37f73171301d"
+        }
+      }
+    },
+    {
+      "id": "crypto/rc4-rfc6229-128-key2",
+      "kind": "vector",
+      "description": "RFC 6229 section 2, 128-bit key family 2, all 18 listed samples; informational vectors, not a cipher specification",
+      "requirements": [
+        "crypto-cipher-vectors"
+      ],
+      "files": {
+        ".key": {
+          "path": "corpus/generated/crypto/rc4-rfc6229-128-key2.key",
+          "sha256": "29d7fea132d42d0892b4e79dc1b5de9c452b5779e3c154d26f6fd1e467fc5cf9"
+        },
+        ".samples": {
+          "path": "corpus/generated/crypto/rc4-rfc6229-128-key2.samples",
+          "sha256": "005e69172d9ecab67e763b7a0d7a1e2c6d9a55739d6710c154907e97738cb61e"
+        }
+      }
+    },
+    {
+      "id": "crypto/rc4-rfc6229-256-key2",
+      "kind": "vector",
+      "description": "RFC 6229 section 2, 256-bit key family 2, all 18 listed samples; informational vectors, not a cipher specification",
+      "requirements": [
+        "crypto-cipher-vectors"
+      ],
+      "files": {
+        ".key": {
+          "path": "corpus/generated/crypto/rc4-rfc6229-256-key2.key",
+          "sha256": "54a798a8f0281b110248244d815d2c5448d020351b5dc15db65aab4f89a5b39d"
+        },
+        ".samples": {
+          "path": "corpus/generated/crypto/rc4-rfc6229-256-key2.samples",
+          "sha256": "d93cab647d8d876e7669da34118db4de80b7dacacfe5b8117de246b8c21de0ea"
+        }
+      }
+    },
+    {
+      "id": "crypto/saslprep-table-membership",
+      "kind": "vector",
+      "description": "All fourteen RFC 3454 Unicode 3.2 table memberships independently derived from Python stringprep",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".ranges": {
+          "path": "corpus/generated/crypto/saslprep-table-membership.ranges",
+          "sha256": "22e8f5df7caff5c9160805fad3aae5282d316024172ccc6b285e4b804059138d"
+        }
+      }
+    },
+    {
+      "id": "crypto/saslprep-mapping",
+      "kind": "vector",
+      "description": "RFC 4013 section 2.1: every B.1/C.1.2 point in context, including overlap and case preservation; mapping stage only",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".cases": {
+          "path": "corpus/generated/crypto/saslprep-mapping.cases",
+          "sha256": "8e8c5a36b445403ad21cb076d5f1b67e688d317b68806d50d32d4793806fbf86"
+        }
+      }
+    },
+    {
+      "id": "crypto/saslprep-output-checks",
+      "kind": "vector",
+      "description": "Prohibition table boundaries, stored-string unassigned points, mixed bidi and endpoint rules; validation stage only, no normalization claim",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".cases": {
+          "path": "corpus/generated/crypto/saslprep-output-checks.cases",
+          "sha256": "9dccc93cb588bffa0606dff62764c54df4adc39ebdc918c61003041760014669"
+        }
+      }
+    },
+    {
+      "id": "crypto/saslprep-supported-subset",
+      "kind": "vector",
+      "description": "Complete preparation for mapped ASCII; explicit unsupported normalization for all other Unicode",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".cases": {
+          "path": "corpus/generated/crypto/saslprep-supported-subset.cases",
+          "sha256": "125ae89adb6894f947afb25481da826347b61e5a82903cba42fcd70216509d0d"
+        }
+      }
+    },
+    {
+      "id": "crypto/r6-saslprep-mapping-removal",
+      "kind": "vector",
+      "description": "Algorithm 2.A: mapping and validation precede 127-byte truncation and authentication",
+      "requirements": [
+        "security-r6",
+        "security-saslprep"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.cipher",
+          "sha256": "6311060b604e80ee32aa967273e5626255c73bd96afcd405b857246ae339c96f"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.key",
+          "sha256": "4fc5992bfc6bfee26b672c8ce92df5f2bc341f4a3c6f2d8131818232b06fdedd"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.method",
+          "sha256": "a392beca2d548d42aaf5dfde0f515a7b9e2df4e1209a9d10079b2da7092ca0ce"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.owner",
+          "sha256": "03f99ad2bb8f470ab4a6b65dd51dca8f63c4a36d52a66b22d706c14dbfec5983"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.params",
+          "sha256": "679e79524d3459f2bf7e173a05529281df05569e51d5bbb4498000cb6652dd38"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".prepared": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.prepared",
+          "sha256": "5eb1f0f9433a0b6f61dd40a6c4369a77cbeaa0a98402d5b4f1add182dd7f4e23"
+        },
+        ".size0": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.size0",
+          "sha256": "b155f285fddd5c8c74e3781b605cfda0d6b0c34c0afd37a1a3c4e65a0370e1ff"
+        },
+        ".size1": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.size1",
+          "sha256": "bd53cf5b8a1aa8fa9d81606b8ad312714c0d619ede567634f12e205bb5bd3ef5"
+        },
+        ".size15": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.size15",
+          "sha256": "038868484eef36bd24902569deef1a5c576dda510bbebf41a1947255cb08b3fc"
+        },
+        ".size16": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.size16",
+          "sha256": "731956e5a8fb75a965bf5ca7c0efd2df8709552eb8fc738d9052655d886d368f"
+        },
+        ".size17": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.size17",
+          "sha256": "b3a6a69a94f7abe2fad854cb79eaa00c554cabc2a5111976efa42fdb13e7390e"
+        },
+        ".size31": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.size31",
+          "sha256": "4e67398fc2a2e76a2adeb9db3ac7a6bfdea6c914d9dde6411bdba181c8e18611"
+        },
+        ".size32": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.size32",
+          "sha256": "de46a20a59ae43251e19e475d52a70b88eb55fb289f455e26cfd94135f866c44"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-removal.user",
+          "sha256": "66ee500d0df0a686a4233493a695a41b77ee53e43e3f1a6fd15e10c18da4e0c8"
+        }
+      }
+    },
+    {
+      "id": "crypto/r6-saslprep-mapping-space",
+      "kind": "vector",
+      "description": "Algorithm 2.A: mapping and validation precede 127-byte truncation and authentication",
+      "requirements": [
+        "security-r6",
+        "security-saslprep"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.cipher",
+          "sha256": "d9f54978932f9e7db8ef382b9850b81730bb57e37b9fcae4c02d5fa207a5d263"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.key",
+          "sha256": "03e97eb41615fad140392d005e9a65da19d431a2a60f5ed3b49b8cf9085a5c98"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.method",
+          "sha256": "a392beca2d548d42aaf5dfde0f515a7b9e2df4e1209a9d10079b2da7092ca0ce"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.owner",
+          "sha256": "03f99ad2bb8f470ab4a6b65dd51dca8f63c4a36d52a66b22d706c14dbfec5983"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.params",
+          "sha256": "e53db12d4fae572f7a36c88a1b3b6c443a58c73294e453f723a45913851268fd"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".prepared": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.prepared",
+          "sha256": "fae03495e87212023a11e9c8fc8abaa6f5e5fa3633735d08b8943a97669f5e04"
+        },
+        ".size0": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.size0",
+          "sha256": "a822e68630be48f9c3edf7f3ce7957909ace4be692540614e9ac6724d79a9a8e"
+        },
+        ".size1": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.size1",
+          "sha256": "a2e2f7d24bc1e5e58a0597e4c1f42c055e1ca1e829ccdb41fbcecb8686e22204"
+        },
+        ".size15": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.size15",
+          "sha256": "f01f7d067493a9ca9096f156128c6fe3128c3e2c27e2b2280bb313c150a9f93a"
+        },
+        ".size16": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.size16",
+          "sha256": "3011fcb329eb5a7b184f81849385e6b67a50251acf28dede3b60e9738fedbea5"
+        },
+        ".size17": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.size17",
+          "sha256": "4bde47eb9c7af39e5f854a6af1ed236407aa386768cc7e3187820816103d03a8"
+        },
+        ".size31": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.size31",
+          "sha256": "06d7a98d0eff42e46423479b09239caec9aead368f7186fbe2244122f116d479"
+        },
+        ".size32": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.size32",
+          "sha256": "ca86d4fb4eeb8d8969c5a3d5984f8b88c7582f34f8116b11d100695802d9abbd"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-space.user",
+          "sha256": "f8102714bf9ff8090736ea643e570a29462c2730e98087b20e65c0798e00de79"
+        }
+      }
+    },
+    {
+      "id": "crypto/r6-saslprep-mapping-empty",
+      "kind": "vector",
+      "description": "Algorithm 2.A: mapping and validation precede 127-byte truncation and authentication",
+      "requirements": [
+        "security-r6",
+        "security-saslprep"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.cipher",
+          "sha256": "90402515c8fe45dddc7295e95af6602a26bee2c6b53b23ab6d96a5a30065381e"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.key",
+          "sha256": "1cc365e2b5e0e33131f153c1bc4b08fede70d60fe8dd88d5b1b38a23d226de08"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.method",
+          "sha256": "a392beca2d548d42aaf5dfde0f515a7b9e2df4e1209a9d10079b2da7092ca0ce"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.owner",
+          "sha256": "03f99ad2bb8f470ab4a6b65dd51dca8f63c4a36d52a66b22d706c14dbfec5983"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.params",
+          "sha256": "c83242835de9ae8234b081a5bbad3fe1850adf4713595da853b0f2838da365ba"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".prepared": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.prepared",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".size0": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.size0",
+          "sha256": "07ad6bed25e88ffc95037e76ce197bda5d11e30c1326641fc26ce78f327a5a7e"
+        },
+        ".size1": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.size1",
+          "sha256": "b6f2818db9b85a596a37ae764556c81b7cb3c91835d1d8bbf9c0b9511f392aea"
+        },
+        ".size15": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.size15",
+          "sha256": "29489ab5f378cb0cc1d555aaf094ee8aa75a2fc95563b42333ba257c4a54934f"
+        },
+        ".size16": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.size16",
+          "sha256": "564e6a2e2970b8ba0342a4d2835ea88b3362a62ab14060c2b4fcaea91d74007d"
+        },
+        ".size17": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.size17",
+          "sha256": "ac95815ef1f873480d24f8ee873dceae06836b820debe31cfe14e854641749c9"
+        },
+        ".size31": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.size31",
+          "sha256": "32d90d162701094b260effac81d4507446e4d46d8c484ddaee3972a36966cd9e"
+        },
+        ".size32": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.size32",
+          "sha256": "519f1a0aa411bd86f917589c0a198e5d42645e456b543ace459a705d5f27f5f6"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-empty.user",
+          "sha256": "f4e48e664a603543865edc77bbc76dd1dd53dc9d0c30f651bbad7c8231091348"
+        }
+      }
+    },
+    {
+      "id": "crypto/r6-saslprep-mapping-before-truncation",
+      "kind": "vector",
+      "description": "Algorithm 2.A: mapping and validation precede 127-byte truncation and authentication",
+      "requirements": [
+        "security-r6",
+        "security-saslprep"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.cipher",
+          "sha256": "831760ea4fb9522e4a05850a493ba6154a0dba289ec647b6c772408ec734adbd"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.key",
+          "sha256": "9470c3c67edd2012e454afb841921ad5d5da67f324dab12899f430711f6f346f"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.method",
+          "sha256": "a392beca2d548d42aaf5dfde0f515a7b9e2df4e1209a9d10079b2da7092ca0ce"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.owner",
+          "sha256": "03f99ad2bb8f470ab4a6b65dd51dca8f63c4a36d52a66b22d706c14dbfec5983"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.params",
+          "sha256": "d7e3491790a7ae1ab25cf7df22f2380adf9f8a7fb49ef7b17915e84cefcfddc7"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".prepared": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.prepared",
+          "sha256": "2ebd78fa4442e704ef5968fba0928fb107bd182e925e5b5ed534e61f111159dc"
+        },
+        ".size0": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.size0",
+          "sha256": "a00e922f1db83072e0fbb4100960d280f84e33f47ac79f828a039580d726b061"
+        },
+        ".size1": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.size1",
+          "sha256": "457716bfc71e50d083daa40819895031bddc97e7fb1340b09391dfddebb6430f"
+        },
+        ".size15": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.size15",
+          "sha256": "2dc3bc228ad03e2d1d8658be0ab58699d009f65fd1b0b850fa9243fe20597545"
+        },
+        ".size16": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.size16",
+          "sha256": "d7164995e72d5c4482dfbf20e1955b2848d35279887b72e6e3bb73607c48054b"
+        },
+        ".size17": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.size17",
+          "sha256": "513d021ebd69287a97944883f97ebd7b452db6e1398d2c1905aa8b620c6bfc84"
+        },
+        ".size31": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.size31",
+          "sha256": "bffe32a60876bee461f8d7128a1862b57d474baf5a97661b0ee56937a92cf2ab"
+        },
+        ".size32": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.size32",
+          "sha256": "9f492a057f2465c566937d75d7483e99da495147fee0fb6995302b53e1cd8762"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r6-saslprep-mapping-before-truncation.user",
+          "sha256": "49de1e68ab66a2a7f439ecb567a3e0eef70616ca21e1acc09cbf5eaaec29fcd7"
+        }
+      }
+    },
+    {
+      "id": "crypto/r6-saslprep-invalid-utf8",
+      "kind": "vector",
+      "description": "Parameter rejection independent of cipher output",
+      "requirements": [
+        "security-r6"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/crypto/r6-saslprep-invalid-utf8.error",
+          "sha256": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-saslprep-invalid-utf8.params",
+          "sha256": "c83242835de9ae8234b081a5bbad3fe1850adf4713595da853b0f2838da365ba"
+        },
+        ".password": {
+          "path": "corpus/generated/crypto/r6-saslprep-invalid-utf8.password",
+          "sha256": "a8100ae6aa1940d0b663bb31cd466142ebbdbd5187131b92d93818987832eb89"
+        }
+      },
+      "authentication_error": "password"
+    },
+    {
+      "id": "crypto/r6-saslprep-invalid-utf8-after-truncation",
+      "kind": "vector",
+      "description": "Parameter rejection independent of cipher output",
+      "requirements": [
+        "security-r6"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/crypto/r6-saslprep-invalid-utf8-after-truncation.error",
+          "sha256": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-saslprep-invalid-utf8-after-truncation.params",
+          "sha256": "c83242835de9ae8234b081a5bbad3fe1850adf4713595da853b0f2838da365ba"
+        },
+        ".password": {
+          "path": "corpus/generated/crypto/r6-saslprep-invalid-utf8-after-truncation.password",
+          "sha256": "f32bc87905d333d8902144e580f0c37997036f6766035e0387d7ca0847f47a22"
+        }
+      },
+      "authentication_error": "password"
+    },
+    {
       "id": "crypto/hash-padding-boundaries",
       "kind": "vector",
       "description": "hashlib oracles at every length around 64/128-byte padding boundaries",
@@ -3931,7 +4485,7 @@
       "files": {
         ".error": {
           "path": "corpus/generated/crypto/r6-saslprep-ascii-control.error",
-          "sha256": "aa029a3d184a40491c90a2e041034de5d495959a9f8b58b513915a3bab5635cc"
+          "sha256": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"
         },
         ".params": {
           "path": "corpus/generated/crypto/r6-saslprep-ascii-control.params",
@@ -3942,7 +4496,7 @@
           "sha256": "620bfdaa346b088fb49998d92f19a7eaf6bfc2fb0aee015753966da1028cb731"
         }
       },
-      "authentication_error": "unsupported:security.saslprep"
+      "authentication_error": "password"
     },
     {
       "id": "crypto/r6-saslprep-control-after-truncation",
@@ -3954,7 +4508,7 @@
       "files": {
         ".error": {
           "path": "corpus/generated/crypto/r6-saslprep-control-after-truncation.error",
-          "sha256": "aa029a3d184a40491c90a2e041034de5d495959a9f8b58b513915a3bab5635cc"
+          "sha256": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"
         },
         ".params": {
           "path": "corpus/generated/crypto/r6-saslprep-control-after-truncation.params",
@@ -3965,7 +4519,7 @@
           "sha256": "85bbe7d0b3f0e83383685b3dba9ad582998e0ab4864866e1549f4be0b2acd8d8"
         }
       },
-      "authentication_error": "unsupported:security.saslprep"
+      "authentication_error": "password"
     },
     {
       "id": "crypto/r6-saslprep-unicode",

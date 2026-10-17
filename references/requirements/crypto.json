@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "crypto",
-  "scope": "Verified the byte-oriented MD5 implementation against local RFC 1321 (April 1992), SHA-256/384/512 against local FIPS 180-4 (August 2015), and AES-128/256 against local FIPS 197-upd1 (May 2023), including constants, padding, schedules, round order and the printed numeric examples. This extends the ISO 32000-2:2020 sponsored EC3 audit of clauses 7.6, 7.3, 7.5.5 and Table D.3, including Algorithm 2.B digest selection and truncation. SP 800-38A CBC and RFC 6229 vector attribution remain pending because their texts are unavailable; RC4 has corroborating implementation/vector evidence, not a normative-standard verification. Separately linked NIST worked examples are not supplied locally. SASLprep, host-codepage conversion, R5 extension provenance, crypt-filter text conflicts and document integration retain the qualifications below; this is not a complete PDF conformance or side-channel certification.",
+  "scope": "Verified byte-oriented MD5 against RFC 1321, SHA-256/384/512 against FIPS 180-4, AES-128/256 against FIPS 197-upd1, and CBC encryption/decryption against SP 800-38A section 6.2 and Appendices F.2.1/F.2.2/F.2.5/F.2.6. RC4 samples are checked against informational RFC 6229 section 2; this is vector evidence, not a normative cipher specification. The ISO 32000-2:2020 sponsored EC3 audit includes Algorithm 2.A SASLprep mapping, output, bidi and unassigned rules verified against RFC 4013 over RFC 3454 Unicode 3.2 tables, generated from the appendices and exhaustively compared with Python stringprep. Unicode 3.2 NFKC implementation remains pending its data: only mapped ASCII passes the explicit normalization boundary. Other genuine qualifications remain: separately linked NIST examples are not locally supplied, R5 extension provenance is unverified, and the documented crypt-filter text conflicts, host-codepage conversion and document integration findings are outside this claim. No complete PDF conformance or side-channel certification is made.",
   "requirements": [
     {
       "id": "crypto-hash-vectors",
@@ -25,8 +25,8 @@
       "reference": "published-crypto-standards",
       "clauses": [
         "FIPS 197-upd1 sections 3.4-3.5, 4.1-4.4, 5.1-5.3.4; Tables 3-6; Appendices A.1, A.3, B and C",
-        "SP 800-38A F.2 (pending primary-text check)",
-        "RFC 6229 section 2 (pending primary-text check)"
+        "SP 800-38A section 6.2 and Appendices F.2.1, F.2.2, F.2.5, F.2.6",
+        "RFC 6229 sections 1-2 (informational test vectors, not a cipher specification)"
       ],
       "status": "implemented",
       "tests": [
@@ -34,9 +34,9 @@
         "tools/fixturegen/crypto.py self_check",
         "corpus/manifests/crypto.json"
       ],
-      "gaps": "AES-128/256 algorithm and the examples printed in FIPS 197-upd1 are verified. Its Appendix C links to a separate examples document; the older Appendix-C-attributed block values remain corroborating tests rather than values rechecked in the 2023 text. SP 800-38A and RFC 6229 are still unavailable locally: CBC mode and RC4 vector locators/attribution remain pending. AES-192 and a constant-time implementation are outside the supported scope.",
-      "verification": "partial-primary-text-aes-verified-cbc-rc4-attribution-pending",
-      "known_answer_coverage": "All 256 forward and 256 inverse AES substitution entries; all 44 AES-128 and 60 AES-256 expansion words from Appendices A.1/A.3; Appendix B cipher output and all 39 intermediate states, inverse transformations, and fixed-ciphertext decryption. Existing older Appendix-C-attributed AES-128/256 block tests, four-block SP-800-38A-attributed CBC-128/256 tests, and RFC-6229-attributed RC4 tests for seven key sizes and offsets 0,16,256 are retained. Python AES/RC4 self-checks independently corroborate the fixed attributed values; they do not establish primary-source provenance."
+      "gaps": "Separately linked FIPS 197-upd1 Appendix C examples are not locally supplied; older attributed block values remain corroborating tests. RFC 6229 provides informational RC4 test vectors rather than a normative cipher specification. AES-192 and a constant-time implementation are outside supported scope.",
+      "verification": "verified-primary-text-aes-cbc-and-informational-rc4-vectors",
+      "known_answer_coverage": "All AES substitution entries; complete AES-128/256 Appendix A expansions; Appendix B output and 39 intermediate states; SP 800-38A F.2.1/F.2.2 and F.2.5/F.2.6 four-block encryption/decryption including intermediate blocks, fixed-ciphertext decryption and every block split. RFC 6229 section 2: both key families at 40/128/256 bits and every one of the 18 listed offsets, 108 samples total; all seven existing key-size initial samples and 40-bit offset samples rechecked. All 252 printed samples across fourteen keys were also independently compared with the Python encryptor when checking the source."
     },
     {
       "id": "security-r2",
@@ -115,7 +115,7 @@
         "corpus/manifests/crypto.json",
         "standard::modern::tests independent Algorithm 13 outcome vectors"
       ],
-      "gaps": "Only printable ASCII preprocessing is supported; other input returns security.saslprep before truncation. RFC 4013/3454 are not locally verified. Document-layer findings remain open.",
+      "gaps": "Unicode 3.2 NFKC data is not yet supplied. SASLprep maps B.1 to nothing and C.1.2 to ASCII space, but only mapped ASCII can currently pass normalization; other Unicode explicitly returns security.saslprep before truncation. Prohibition, stored-string A.1 rejection and bidi validation are implemented and independently tested as stages; full non-ASCII preparation is not claimed. Document-layer findings remain open.",
       "permissions_policy": "Password-authenticated keys report Validated or Inconsistent(PermissionsCheck); the document caller owns strict/reported-repair policy. Structural errors remain Syntax."
     },
     {
@@ -133,6 +133,24 @@
         "crypto/dictionary-* vector inputs and explicit API expectations"
       ],
       "gaps": "Integration findings below are not fixes to the document crate and are not counted as conformance successes."
+    },
+    {
+      "id": "security-saslprep",
+      "reference": "rfc4013",
+      "clauses": [
+        "ISO 32000-2:2020 7.6.4.3.3(a-b)",
+        "RFC 4013 sections 2.1-2.5 and 3",
+        "RFC 3454 sections 2-7, Appendices A.1, B.1, C.1.2, C.2.1-C.9, D.1-D.2"
+      ],
+      "status": "partial",
+      "verification": "profile-and-table-rules-verified-normalization-data-pending",
+      "tests": [
+        "pagura-crypto standard::saslprep tests",
+        "pagura-crypto mapped-password authentication tests",
+        "tools/fixturegen/crypto.py saslprep_examples",
+        "crates/pagura-crypto/tools/generate_stringprep.py --rfc PATH --check"
+      ],
+      "gaps": "Unicode 3.2 NFKC normalization awaits approved source data. Positive NFKC-dependent examples are prepared in saslprep_normalization_examples() but are deliberately excluded from cases() and the manifest; no ignored or skipped Rust tests are added."
     }
   ],
   "primary_text": {
@@ -426,8 +444,8 @@
       "id": "algorithm-2.A-a",
       "locator": "7.6.4.3.3 Algorithm 2.A(a)",
       "paraphrase": "Prepare Unicode with the required SASLprep profile before UTF-8 conversion.",
-      "implementation": "Printable ASCII only; control/non-ASCII input returns security.saslprep before truncation.",
-      "vectors": "r6-saslprep-* confirms explicit unsupported outcomes.",
+      "implementation": "UTF-8 is validated, then B.1/C.1.2 mapping, explicit Unicode 3.2 NFKC boundary, output restrictions and bidi checks run in the required order. Only mapped ASCII passes normalization until its Unicode data is available. ASCII controls and invalid UTF-8 now fail as Password; other Unicode remains explicitly unsupported.",
+      "vectors": "saslprep-* stage oracles; r6-saslprep-mapping-* authenticated-key oracles; rejection before truncation. NFKC-dependent positive cases remain outside the manifest.",
       "verdict": "partial-preprocessing"
     },
     {
@@ -435,7 +453,7 @@
       "locator": "7.6.4.3.3 Algorithm 2.A(b)",
       "paraphrase": "Take at most the first 127 encoded bytes, without character-boundary rounding.",
       "implementation": "agrees",
-      "vectors": "Existing 130-byte ASCII passwords verify byte truncation; non-ASCII cut points remain outside the implemented subset.",
+      "vectors": "Existing long ASCII password vectors, r6-saslprep-mapping-before-truncation, and invalid UTF-8/control input beyond byte 127 verify full preparation before truncation. Non-ASCII normalized cut points await normalization data.",
       "verdict": "verified-subset"
     },
     {
@@ -1117,6 +1135,30 @@
       "edition": "FIPS 197-upd1, May 2023",
       "local_text": "text/nist-fips197-upd1.txt",
       "method": "Read finite-field definitions, cipher/inverse and expansion; compared every substitution entry and every supported Appendix A word. Numeric Appendix B examples are serialized by columns; prose is not redistributed."
+    },
+    {
+      "reference": "nist-sp800-38a",
+      "edition": "NIST SP 800-38A, December 2001",
+      "local_text": "text/nist-sp800-38a.txt",
+      "method": "Read section 6.2 and both supported four-block encryption/decryption examples; every numeric field was compared independently."
+    },
+    {
+      "reference": "rfc6229",
+      "edition": "RFC 6229, May 2011, Informational",
+      "local_text": "text/rfc6229.txt",
+      "method": "Read sections 1-2; checked every printed sample against the independent Python RC4 implementation, and added all offsets for both key families at the requested lengths."
+    },
+    {
+      "reference": "rfc3454",
+      "edition": "RFC 3454, December 2002",
+      "local_text": "text/rfc3454.txt",
+      "method": "Read preparation order and profile rules; parse numeric appendix ranges with the checked-in generator, then compare every membership across 0..10FFFF against Python stringprep."
+    },
+    {
+      "reference": "rfc4013",
+      "edition": "RFC 4013, February 2005",
+      "local_text": "text/rfc4013.txt",
+      "method": "Read sections 2.1-2.5 and examples in section 3; apply Unicode 3.2 mappings and validation without case folding. Normalization is an explicit unavailable-data boundary."
     }
   ],
   "primitive_audit_steps": [
@@ -1266,23 +1308,93 @@
     },
     {
       "id": "cbc-mode",
-      "locator": "SP 800-38A section 6.2 and Appendix F.2 (unverified locators)",
-      "paraphrase": "CBC chains a preceding ciphertext block or IV with a block-cipher input/output.",
-      "implementation": "Existing chaining implementation is unchanged; the unavailable text prevents primary-source verification of its details and locators.",
-      "vectors": "Four-block CBC-128/256 fixed values attributed to F.2; independent Python encryption and Rust decryption agree.",
-      "verdict": "pending-primary-text"
+      "locator": "SP 800-38A section 6.2; Appendices F.2.1, F.2.2, F.2.5, F.2.6",
+      "paraphrase": "Before encrypting each block XOR its plaintext with the IV or prior ciphertext; decrypt each block then XOR with that same chaining value.",
+      "implementation": "Both equations agree. In-place decryption saves each ciphertext block before overwriting it; the caller supplies the IV and whole blocks, with no implicit padding. Empty input is an API convenience returning empty output; no positive-block standard example is used to claim that extension. IV generation and unpredictability are the caller's responsibility, not provided by this primitive.",
+      "vectors": "crypto/cbc-aes128-f2 and crypto/cbc-aes256-f2: all four encryption/decryption blocks and intermediate values, plus all block-boundary splits.",
+      "verdict": "verified-primary-text"
     },
     {
       "id": "rc4-evidence",
-      "locator": "RFC 6229 section 2 (unverified vector locator); no normative RC4 specification claimed",
-      "paraphrase": "RC4 evidence consists of independent implementations and fixed attributed keystream samples.",
-      "implementation": "KSA/PRGA implementations are independently authored in Rust and Python; neither agreement nor RFC vector attribution is a normative algorithm proof.",
-      "vectors": "Seven RFC-6229-attributed key sizes; offsets 0,16,256 for the 40-bit key; split/streaming tests. The RFC text remains unavailable.",
-      "verdict": "pending-vector-source-verification"
+      "locator": "RFC 6229 sections 1-2; Informational status",
+      "paraphrase": "Compare independent RC4 implementations using two key families and samples at the document's listed keystream offsets.",
+      "implementation": "Rust and independently authored Python KSA/PRGA agree with the printed samples. RFC 6229 does not specify the cipher and is not a normative RC4 algorithm certification.",
+      "vectors": "crypto/rc4-rfc6229-{40,128,256}-key{1,2}: 18 sixteen-byte samples for each of six keys (108 samples); all existing initial-key values also rechecked.",
+      "verdict": "verified-informational-vectors"
     }
   ],
   "timing_limitations": {
     "aes": "Table-based: encryption, decryption and key expansion index forward/inverse S-box tables with secret-dependent values. GF multiplication also contains data-dependent branches; execution time and cache accesses can disclose information. No constant-time guarantee or side-channel resistance is claimed.",
     "context": "The intended use is local document processing. A shared browser/process/hardware environment can still permit timing or cache observations. No algorithm rewrite or performance/security certification is implied by this audit."
+  },
+  "saslprep_audit_steps": [
+    {
+      "id": "mapping",
+      "locator": "RFC 4013 section 2.1; RFC 3454 Appendix B.1 and C.1.2",
+      "paraphrase": "Remove B.1 characters and replace other non-ASCII spaces with U+0020, without case folding.",
+      "implementation": "One range lookup per scalar; unchanged strings are borrowed. Mapping shrinks UTF-8 and uses checked allocation only when necessary.",
+      "vectors": "Every B.1/C.1.2 point in context, overlap and case preservation; four independently generated authenticated-key examples.",
+      "verdict": "verified"
+    },
+    {
+      "id": "normalization",
+      "locator": "RFC 4013 section 2.2; RFC 3454 section 4; ISO 32000-2 7.6.4.3.3(a-b)",
+      "paraphrase": "Normalize the complete mapped string with Unicode 3.2 NFKC before output checks, UTF-8 encoding and byte truncation.",
+      "implementation": "standard::saslprep::normalization::nfkc32(input: Cow<'_, str>) -> Result<Cow<'_, str>> currently accepts ASCII only; every other scalar returns Unsupported(security.saslprep), even when it is already NFKC. No current-Unicode normalization substitutes for Unicode 3.2.",
+      "vectors": "Mapped ASCII and explicit unsupported outcomes are active; ten ucd_3_2_0 oracle examples are prepared outside the manifest.",
+      "verdict": "pending-unicode32-normalization-data"
+    },
+    {
+      "id": "prohibited-output",
+      "locator": "RFC 4013 section 2.3; RFC 3454 section 5 and Appendices C.1.2, C.2.1, C.2.2, C.3-C.9",
+      "paraphrase": "Reject output containing any character selected by the profile's prohibition tables.",
+      "implementation": "Combined generated membership masks include every required C table. Rust str cannot contain surrogate scalars; malformed UTF-8 fails before preparation. Errors use Password and a byte position, never input text.",
+      "vectors": "Every table membership, prohibition range boundaries, ASCII controls including byte 127 and later, and malformed UTF-8. Validator tests are independent stages and need no normalization implementation.",
+      "verdict": "verified-stage"
+    },
+    {
+      "id": "bidirectional",
+      "locator": "RFC 4013 section 2.4; RFC 3454 section 6, Appendices D.1-D.2 and C.8",
+      "paraphrase": "When RandAL occurs, exclude LCat and require RandAL at both ends; prohibit the C.8 display-control set.",
+      "implementation": "Single pass accumulates the two directional classes and endpoint membership; C.8 is included in the prohibited mask. No Unicode version supplied by Rust is consulted.",
+      "vectors": "Pure RTL, RTL with internal digits, mixed RTL/Latin and invalid leading/trailing digits; all D.1/D.2 memberships compared with stringprep.",
+      "verdict": "verified-stage"
+    },
+    {
+      "id": "unassigned",
+      "locator": "RFC 4013 section 2.5; RFC 3454 section 7 and Appendix A.1",
+      "paraphrase": "Stored strings exclude Unicode 3.2 unassigned code points; queries may also reject them.",
+      "implementation": "The output validator always rejects A.1, applying the permitted stricter query policy to authentication as well. Unknown non-ASCII normalization remains unsupported before this stage.",
+      "vectors": "All A.1 memberships, U+0221 and code points assigned only in newer Unicode versions are checked against Python stringprep.",
+      "verdict": "verified-stage"
+    },
+    {
+      "id": "generated-tables",
+      "locator": "RFC 3454 Appendices A.1, B.1, C.1.2, C.2.1-C.9, D.1-D.2",
+      "paraphrase": "Use the appendix sets themselves, with Unicode 3.2 membership, rather than deriving them from prose or current Unicode categories.",
+      "implementation": "The Python generator parses only numeric code/range fields between explicit table markers, checks ordered ranges, compares all code points in all fourteen sets with stringprep, and emits merged Rust numeric ranges with membership bitmasks and the source SHA-256.",
+      "vectors": "crypto/saslprep-table-membership is independently computed from Python predicates and compared against every generated Rust range and lookup gap.",
+      "verdict": "verified"
+    }
+  ],
+  "saslprep_decisions": {
+    "mapping_overlap": "U+200B is in B.1 and C.1.2. B.1 removal takes precedence, matching the independent oracle; this explicit choice is not claimed as a separately ordered rule in RFC 4013.",
+    "unassigned_policy": "Use stored-string A.1 rejection for authentication queries too; RFC 3454 section 7 permits queries to reject unassigned code points.",
+    "normalization_limit": "Mapped ASCII is provably unchanged by NFKC and can proceed. All other mapped Unicode is conservatively unsupported until the approved Unicode 3.2 normalization data exists. Mapping, normalization and validation always precede the 127-byte truncation.",
+    "errors": "Invalid UTF-8, prohibited output, unassigned output and bidi violations use Password, not document Syntax. Positions identify bytes in the relevant password buffer; fixed messages never embed password/key data.",
+    "reproduction": "python3 crates/pagura-crypto/tools/generate_stringprep.py --rfc ~/.cache/pagura-references/text/rfc3454.txt --check",
+    "oracle": "Python standard-library stringprep predicates and unicodedata.ucd_3_2_0 (Unicode 3.2.0). The latter is used only for deferred test expectations, never to generate production normalization tables.",
+    "deferred_vector_ids": [
+      "crypto/saslprep-nfkc-feminine-ordinal",
+      "crypto/saslprep-nfkc-roman-nine",
+      "crypto/saslprep-nfkc-already-normalized",
+      "crypto/saslprep-nfkc-angstrom",
+      "crypto/saslprep-nfkc-canonical-reorder",
+      "crypto/saslprep-nfkc-hangul-composition",
+      "crypto/saslprep-nfkc-unicode32-correction",
+      "crypto/saslprep-nfkc-expansion-before-truncation",
+      "crypto/saslprep-nfkc-utf8-byte-truncation",
+      "crypto/saslprep-nfkc-normalization-before-prohibition"
+    ]
   }
 }

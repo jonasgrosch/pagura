@@ -10,8 +10,9 @@ use crate::{Aes, Rc4};
 
 mod legacy;
 mod modern;
+mod saslprep;
 
-/// Tag for revision 6 passwords outside the implemented printable ASCII subset.
+/// Tag for revision 6 passwords requiring unavailable Unicode 3.2 normalization data.
 pub const SASLPREP: Feature = Feature::new("security.saslprep");
 
 /// Stable feature tags for unsupported security algorithms.
@@ -209,14 +210,18 @@ impl FileKey {
     }
 }
 
-/// Authenticates a prepared `password` (Algorithms 6/7 or 11/12), and derives
+/// Authenticates a `password` (Algorithms 6/7 or 11/12), and derives
 /// the file key. Revision 5 is supported as the Adobe extension algorithm.
 ///
 /// For revisions 2–4 the caller must supply PDFDocEncoding bytes, after host
 /// codepage conversion (7.6.4.3.2(a)); this byte API does not interpret UTF-8 as
-/// legacy text. The bytes are truncated/padded to 32 bytes. Revision 6 supports
-/// printable ASCII only: other input requires SASLprep and returns `Unsupported`
-/// before truncation. UTF-8 truncation is by bytes, to 127 (7.6.4.3.3(a–b)).
+/// legacy text. The bytes are truncated/padded to 32 bytes. Revision 6 accepts
+/// UTF-8, applies SASLprep mapping, normalization, output and bidi checks, then
+/// truncates the prepared UTF-8 to 127 bytes (7.6.4.3.3(a–b)). Only mapped ASCII
+/// can currently pass normalization; other Unicode returns `Unsupported` with
+/// [`SASLPREP`] before truncation, including Unicode already in NFKC. ASCII
+/// controls are rejected as invalid passwords. Stored-string unassigned-code
+/// point restrictions also apply to authentication input (RFC 3454 section 7).
 /// Revision 6 tries the owner entry first as Algorithm 2.A(c) requires; legacy
 /// revisions and the unverified revision 5 extension retain user-first order.
 /// Successful R5/R6 authentication also checks Algorithm 13. A mismatch in
@@ -230,9 +235,9 @@ impl FileKey {
 /// # Errors
 ///
 /// Returns [`pagura_core::ErrorKind::Password`] if neither password
-/// matches, `Unsupported` for revisions outside 2–6 or for passwords that
-/// need SASLprep, `Syntax` for structurally malformed parameters,
-/// and `Limit` if the bounded hashing workspace cannot be allocated.
+/// matches or the input violates SASLprep/UTF-8 rules; `Unsupported` for
+/// revisions outside 2–6 or missing normalization data; `Syntax` for structurally
+/// malformed parameters; and `Limit` if mapping or hashing allocation fails.
 pub fn authenticate(params: &SecurityParams, password: &[u8]) -> Result<FileKey> {
     validate_params(params)?;
     if params.revision >= 5 {
@@ -467,6 +472,8 @@ mod tests {
             "r6-saslprep-ascii-control",
             "r6-saslprep-control-after-truncation",
             "r6-saslprep-unicode",
+            "r6-saslprep-invalid-utf8",
+            "r6-saslprep-invalid-utf8-after-truncation",
         ] {
             let parameters = params(name);
             let password = fixture("crypto", &format!("{name}.password"));
@@ -474,6 +481,8 @@ mod tests {
             let error = authenticate(&parameters, &password).unwrap_err();
             if expected == b"syntax" {
                 assert_eq!(error.kind, ErrorKind::Syntax, "{name}");
+            } else if expected == b"password" {
+                assert_eq!(error.kind, ErrorKind::Password, "{name}");
             } else {
                 assert_eq!(error.kind, ErrorKind::Unsupported(SASLPREP), "{name}");
             }
@@ -512,6 +521,28 @@ mod tests {
             "file key oracle mismatch"
         );
     }
+    #[test]
+    fn saslprep_mapping_authenticates_before_truncating_password_bytes() {
+        for name in [
+            "r6-saslprep-mapping-removal",
+            "r6-saslprep-mapping-space",
+            "r6-saslprep-mapping-empty",
+            "r6-saslprep-mapping-before-truncation",
+        ] {
+            let parameters = params(name);
+            let password = fixture("crypto", &format!("{name}.user"));
+            let prepared = fixture("crypto", &format!("{name}.prepared"));
+            let mapped = saslprep::prepare(std::str::from_utf8(&password).unwrap()).unwrap();
+            assert_eq!(mapped.as_bytes(), prepared, "{name}");
+            let key = authenticate(&parameters, &password).unwrap();
+            assert_eq!(key.authority(), Authority::User, "{name}");
+            assert!(
+                key.key == fixture("crypto", &format!("{name}.key")),
+                "{name}"
+            );
+        }
+    }
+
     #[test]
     fn user_authentication_takes_precedence() {
         for name in ["r3-same-password", "r5-same-password"] {
