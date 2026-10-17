@@ -36,6 +36,7 @@ mod provider;
 mod substitute;
 
 /// Stable diagnostic tag for a host-provided outline substitution.
+pub use program::STREAM_LENGTHS;
 pub use substitute::SUBSTITUTED;
 
 pub use provider::{

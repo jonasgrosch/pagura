@@ -2147,59 +2147,59 @@
     {
       "id": "text/binding-length1",
       "kind": "vector",
-      "description": "PDF binding or ToUnicode consistency violation derived from the ISO rules",
+      "description": "Font stream Length entries disagree with the decoded program (Table 125); a reported repair",
       "requirements": [
         "text-embedded-fonts"
       ],
       "files": {
-        ".error": {
-          "path": "corpus/generated/text/binding-length1.error",
-          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
-        },
         ".pdf": {
           "path": "corpus/generated/text/binding-length1.pdf",
           "sha256": "36e70ac94f92e037ee4e403c8e7169c4e0c7f26d21775c0d70be28c6f4bc03ea"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/binding-length1.repair",
+          "sha256": "60da6034db8a993c2760de7ef1ef5f6c4cf661d5abbca2caf595f7f961833862"
         }
       },
-      "driver": "font-error"
+      "driver": "font-repair"
     },
     {
       "id": "text/binding-cff-length",
       "kind": "vector",
-      "description": "PDF binding or ToUnicode consistency violation derived from the ISO rules",
+      "description": "Font stream Length entries disagree with the decoded program (Table 125); a reported repair",
       "requirements": [
         "text-embedded-fonts"
       ],
       "files": {
-        ".error": {
-          "path": "corpus/generated/text/binding-cff-length.error",
-          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
-        },
         ".pdf": {
           "path": "corpus/generated/text/binding-cff-length.pdf",
           "sha256": "8abc279b652dc81f3ea458e2e79a84c801acc30b8f435e96b599ae1deb3e8eaa"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/binding-cff-length.repair",
+          "sha256": "60da6034db8a993c2760de7ef1ef5f6c4cf661d5abbca2caf595f7f961833862"
         }
       },
-      "driver": "font-error"
+      "driver": "font-repair"
     },
     {
       "id": "text/binding-type1-lengths",
       "kind": "vector",
-      "description": "PDF binding or ToUnicode consistency violation derived from the ISO rules",
+      "description": "Font stream Length entries disagree with the decoded program (Table 125); a reported repair",
       "requirements": [
         "text-embedded-fonts"
       ],
       "files": {
-        ".error": {
-          "path": "corpus/generated/text/binding-type1-lengths.error",
-          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
-        },
         ".pdf": {
           "path": "corpus/generated/text/binding-type1-lengths.pdf",
           "sha256": "140b3e9343d11e986b75ce538f00f8af8acaba4a13d75f50c914cf189762df09"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/binding-type1-lengths.repair",
+          "sha256": "60da6034db8a993c2760de7ef1ef5f6c4cf661d5abbca2caf595f7f961833862"
         }
       },
-      "driver": "font-error"
+      "driver": "font-repair"
     },
     {
       "id": "text/unicode-cid-code-length",

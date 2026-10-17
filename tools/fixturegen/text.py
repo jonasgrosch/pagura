@@ -541,7 +541,14 @@ def embedding_error_cases():
         ("unicode-cid-code-length",cid,{"subtype":b"Type0","encoding":b"/Identity-H","stream_extra":b"/Length1 %d" % len(cid),"unicode_map":b"1 begincodespacerange <00> <ff> endcodespacerange 1 beginbfchar <41> <0041> endbfchar"}),
         ("unicode-simple-source-length",font,dict(base,unicode_map=b"1 begincodespacerange <00> <ff> endcodespacerange 1 beginbfchar <0041> <0041> endbfchar")),
     ]
+    # Length1 to Length3 that disagree with the decoded program (Table 125) are
+    # bookkeeping faults: strict mode rejects them, repair mode loads the
+    # program as decoded and reports font.stream-lengths.
+    lengths = {"binding-length1", "binding-cff-length", "binding-type1-lengths"}
     for name,program,options in cases:
+        if name in lengths:
+            yield Vector(name,{".pdf":embedded_document(program,**options),".repair":b"font.stream-lengths\n"},("text-embedded-fonts",),"Font stream Length entries disagree with the decoded program (Table 125); a reported repair",{"driver":"font-repair"})
+            continue
         yield Vector(name,{".pdf":embedded_document(program,**options),".error":b"syntax\n"},("text-unicode",) if name.startswith("unicode-") else ("text-embedded-fonts",),"PDF binding or ToUnicode consistency violation derived from the ISO rules",{"driver":"font-error"})
 
 

@@ -191,6 +191,43 @@ fn cid_metric_vectors() -> Result<()> {
 }
 
 #[test]
+fn font_stream_length_faults_are_reported_repairs() -> Result<()> {
+    for name in [
+        "binding-length1",
+        "binding-cff-length",
+        "binding-type1-lengths",
+    ] {
+        let bytes = fixture("text", &format!("{name}.pdf"));
+        let strict = Document::open(
+            bytes.clone(),
+            &OpenOptions {
+                recovery: pagura_core::Recovery::Strict,
+                ..OpenOptions::default()
+            },
+        )?;
+        let error = PdfFont::load(&strict, dictionary(&strict)?)
+            .err()
+            .ok_or_else(|| Error::syntax("expected a strict rejection"))?;
+        assert_eq!(error.repair, Some(STREAM_LENGTHS), "{name}: {error}");
+        let tag = fixture("text", &format!("{name}.repair"));
+        assert_eq!(
+            std::str::from_utf8(&tag).map(str::trim),
+            Ok(STREAM_LENGTHS.as_str())
+        );
+        let repaired = Document::open(bytes, &OpenOptions::default())?;
+        PdfFont::load(&repaired, dictionary(&repaired)?)?;
+        assert!(
+            repaired
+                .diagnostics()
+                .iter()
+                .any(|item| item.repair == STREAM_LENGTHS),
+            "{name}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn font_error_vectors() -> Result<()> {
     for name in [
         "nonembedded-type1",
@@ -209,9 +246,6 @@ fn font_error_vectors() -> Result<()> {
         "unicode-block-count",
         "unicode-usecmap-mismatch",
         "binding-wrong-fontfile",
-        "binding-length1",
-        "binding-cff-length",
-        "binding-type1-lengths",
         "unicode-cid-code-length",
         "unicode-simple-source-length",
     ] {
