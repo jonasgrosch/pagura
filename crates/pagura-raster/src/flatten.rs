@@ -1,12 +1,11 @@
 //! Bounded adaptive subdivision in device space.
 
 use crate::{Path, Point, Segment, Transform};
-use pagura_core::{Error, Result};
+use pagura_core::{Error, Limits, Result};
 
 /// Maximum distance of a flattened control point from its chord, in pixels.
 /// The convex-hull property bounds the whole curve by this tolerance.
 pub(crate) const TOLERANCE: f64 = 1.0 / 256.0;
-pub(crate) const MAX_SEGMENTS: usize = 65_536;
 
 #[derive(Debug)]
 pub(crate) struct Polyline {
@@ -30,11 +29,11 @@ pub(crate) fn bounded(point: Point) -> Result<()> {
     }
 }
 
-pub(crate) fn flatten(path: &Path, transform: Transform) -> Result<Vec<Polyline>> {
+pub(crate) fn flatten(path: &Path, transform: Transform, limits: &Limits) -> Result<Vec<Polyline>> {
     if !transform.is_finite() {
         return Err(Error::invalid_argument("path transform is not finite"));
     }
-    if path.segments().len() > MAX_SEGMENTS {
+    if path.segments().len() > limits.path_segments {
         return Err(Error::limit("path segment budget exceeded"));
     }
     let mut result = Vec::new();
@@ -52,14 +51,14 @@ pub(crate) fn flatten(path: &Path, transform: Transform) -> Result<Vec<Polyline>
                 }
                 bounded(point)?;
                 bounded(point * transform)?;
-                append(&mut points, point, &mut count)?;
+                append(&mut points, point, &mut count, limits)?;
                 closed = false;
             }
             Segment::LineTo(point) => {
                 bounded(point)?;
                 bounded(point * transform)?;
                 reopen(&mut points, &mut closed, &mut result);
-                append(&mut points, point, &mut count)?;
+                append(&mut points, point, &mut count, limits)?;
             }
             Segment::CubicTo(first, second, end) => {
                 reopen(&mut points, &mut closed, &mut result);
@@ -77,6 +76,7 @@ pub(crate) fn flatten(path: &Path, transform: Transform) -> Result<Vec<Polyline>
                     0,
                     &mut points,
                     &mut count,
+                    limits,
                 )?;
             }
             Segment::Close => closed = true,
@@ -102,8 +102,8 @@ fn reopen(points: &mut Vec<Point>, closed: &mut bool, result: &mut Vec<Polyline>
     }
 }
 
-fn append(points: &mut Vec<Point>, point: Point, count: &mut usize) -> Result<()> {
-    if *count >= MAX_SEGMENTS {
+fn append(points: &mut Vec<Point>, point: Point, count: &mut usize, limits: &Limits) -> Result<()> {
+    if *count >= limits.path_segments {
         return Err(Error::limit("flattened segment budget exceeded"));
     }
     *count += 1;
@@ -117,12 +117,13 @@ fn curve(
     depth: usize,
     out: &mut Vec<Point>,
     count: &mut usize,
+    limits: &Limits,
 ) -> Result<()> {
     let [a, b, c, d] = points.map(|p| p * transform);
     if distance(b, a, d).max(distance(c, a, d)) <= TOLERANCE {
-        return append(out, points[3], count);
+        return append(out, points[3], count, limits);
     }
-    if depth >= 32 {
+    if depth >= limits.depth {
         return Err(Error::limit("curve subdivision depth exceeded"));
     }
     let [a, b, c, d] = points;
@@ -132,8 +133,8 @@ fn curve(
     let abc = midpoint(ab, bc);
     let bcd = midpoint(bc, cd);
     let mid = midpoint(abc, bcd);
-    curve([a, ab, abc, mid], transform, depth + 1, out, count)?;
-    curve([mid, bcd, cd, d], transform, depth + 1, out, count)
+    curve([a, ab, abc, mid], transform, depth + 1, out, count, limits)?;
+    curve([mid, bcd, cd, d], transform, depth + 1, out, count, limits)
 }
 
 fn midpoint(a: Point, b: Point) -> Point {

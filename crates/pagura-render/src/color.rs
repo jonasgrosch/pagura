@@ -11,6 +11,12 @@ pub(crate) enum Space {
     Gray,
     Rgb,
     Cmyk,
+    Cie(Arc<crate::cie::Cie>),
+    Tint {
+        inputs: usize,
+        base: Arc<Self>,
+        function: Arc<crate::functions::Function>,
+    },
     Indexed {
         base: Arc<Self>,
         high: u8,
@@ -37,6 +43,7 @@ impl Color {
     pub(crate) fn new(space: Space) -> Self {
         let components = match &space {
             Space::Cmyk => vec![0.0, 0.0, 0.0, 1.0],
+            Space::Tint { inputs, .. } => vec![1.0; *inputs],
             _ => vec![0.0; space.components()],
         };
         Self { space, components }
@@ -56,8 +63,19 @@ impl Color {
         Ok(())
     }
 
-    pub(crate) fn to_rgba(&self) -> Rgba8 {
-        self.space.convert(&self.components)
+    pub(crate) fn to_rgba(&self, transfer: Option<&crate::functions::Transfer>) -> Result<Rgba8> {
+        let mut rgb = self.space.convert(&self.components)?;
+        if let Some(transfer) = transfer {
+            for (channel, function) in rgb.iter_mut().zip(transfer.iter()) {
+                *channel = function
+                    .evaluate(&[channel.clamp(0.0, 1.0)])?
+                    .first()
+                    .copied()
+                    .ok_or(Error::syntax("transfer function has no output"))?;
+            }
+        }
+        let [r, g, b] = rgb.map(channel);
+        Ok(Rgba8::opaque(r, g, b))
     }
 }
 
@@ -67,24 +85,28 @@ impl Space {
             Self::Gray | Self::Indexed { .. } => 1,
             Self::Rgb => 3,
             Self::Cmyk => 4,
+            Self::Cie(cie) => cie.components(),
+            Self::Tint { inputs, .. } => *inputs,
         }
     }
 
-    fn convert(&self, c: &[f64]) -> Rgba8 {
+    fn convert(&self, c: &[f64]) -> Result<[f64; 3]> {
         let n = |i: usize| c.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0);
         match self {
-            Self::Gray => {
-                let g = channel(n(0));
-                Rgba8::opaque(g, g, g)
-            }
-            Self::Rgb => Rgba8::opaque(channel(n(0)), channel(n(1)), channel(n(2))),
+            Self::Gray => Ok([n(0); 3]),
+            Self::Rgb => Ok([n(0), n(1), n(2)]),
             Self::Cmyk => {
                 let k = n(3);
-                Rgba8::opaque(
-                    channel(1.0 - (n(0) + k).min(1.0)),
-                    channel(1.0 - (n(1) + k).min(1.0)),
-                    channel(1.0 - (n(2) + k).min(1.0)),
-                )
+                Ok([
+                    1.0 - (n(0) + k).min(1.0),
+                    1.0 - (n(1) + k).min(1.0),
+                    1.0 - (n(2) + k).min(1.0),
+                ])
+            }
+            Self::Cie(cie) => Ok(cie.convert(c)),
+            Self::Tint { base, function, .. } => {
+                let tint: Vec<_> = c.iter().map(|v| v.clamp(0.0, 1.0)).collect();
+                base.convert(&function.evaluate(&tint)?)
             }
             Self::Indexed { base, high, lookup } => {
                 let value = c
@@ -99,12 +121,14 @@ impl Space {
                     reason = "index is clamped to 0..=255"
                 )]
                 let index = value as usize;
-                let components: Vec<_> = lookup
+                let bytes = lookup
                     .get(index * base.components()..(index + 1) * base.components())
-                    .unwrap_or_default()
-                    .iter()
-                    .map(|&b| f64::from(b) / 255.0)
-                    .collect();
+                    .unwrap_or_default();
+                let components: Vec<_> = if let Self::Cie(cie) = base.as_ref() {
+                    cie.decode_lookup(bytes)
+                } else {
+                    bytes.iter().map(|&b| f64::from(b) / 255.0).collect()
+                };
                 base.convert(&components)
             }
         }
@@ -113,6 +137,17 @@ impl Space {
 
 pub(crate) fn named(document: &Document, resources: &Dictionary, name: &[u8]) -> Result<Space> {
     resolve(document, resources, &Value::name(name), 0, true)
+}
+
+pub(crate) fn rgb_blending(
+    document: &Document,
+    resources: &Dictionary,
+    value: &Value,
+) -> Result<bool> {
+    Ok(matches!(
+        resolve(document, resources, value, 0, false)?,
+        Space::Rgb
+    ))
 }
 
 fn resolve(
@@ -176,7 +211,35 @@ fn array_space(
         .and_then(Value::as_name)
         .ok_or(Error::syntax("colour space array has no family"))?;
     match (family.as_bytes(), values) {
+        (b"Separation", [_, name, base, function]) => {
+            let name = document
+                .resolve(name)?
+                .as_name()
+                .ok_or(Error::syntax("Separation requires a colourant name"))?;
+            if matches!(name.as_bytes(), b"None" | b"All") {
+                return Err(Error::unsupported(
+                    features::COLORSPACE_SPECIAL_INK,
+                    "special colourant semantics are not implemented",
+                ));
+            }
+            tint_space(document, resources, base, function, 1, depth)
+        }
+        (b"DeviceN", [_, names, base, function] | [_, names, base, function, _]) => {
+            if let Some(attributes) = values.get(4) {
+                document.resolve_dictionary(attributes)?;
+            }
+            let count = device_n_components(document, names)?;
+            tint_space(document, resources, base, function, count, depth)
+        }
         (b"ICCBased", [_, profile]) => icc_space(document, resources, profile, depth),
+        (b"CalGray" | b"Lab", [_, parameters]) => {
+            let parameters = document.resolve_dictionary(parameters)?;
+            Ok(Space::Cie(Arc::new(crate::cie::Cie::parse(
+                document,
+                family.as_bytes(),
+                parameters,
+            )?)))
+        }
         (b"Indexed", [_, base, high, lookup]) => {
             let base = resolve(document, resources, base, depth + 1, false)?;
             if matches!(base, Space::Indexed { .. }) {
@@ -214,12 +277,63 @@ fn array_space(
                 lookup: lookup.into(),
             })
         }
-        (b"ICCBased" | b"Indexed", _) => Err(Error::syntax("wrong colour space array length")),
+        (b"ICCBased" | b"Indexed" | b"CalGray" | b"Lab" | b"Separation" | b"DeviceN", _) => {
+            Err(Error::syntax("wrong colour space array length"))
+        }
         _ => Err(Error::unsupported(
             unsupported(family.as_bytes()).unwrap_or(features::COLORSPACE_UNKNOWN),
             "colour space family is not implemented",
         )),
     }
+}
+
+fn device_n_components(document: &Document, names: &Value) -> Result<usize> {
+    let names = document
+        .resolve(names)?
+        .as_array()
+        .filter(|n| !n.is_empty())
+        .ok_or(Error::syntax("DeviceN requires colourant names"))?;
+    if names.len() > 32 {
+        return Err(Error::limit("DeviceN component count exceeds PDF limit"));
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    for name in names {
+        let name = document
+            .resolve(name)?
+            .as_name()
+            .ok_or(Error::syntax("DeviceN colourant must be a name"))?;
+        if !seen.insert(name.as_bytes()) {
+            return Err(Error::syntax("duplicate DeviceN colourant"));
+        }
+        if matches!(name.as_bytes(), b"None" | b"All") {
+            return Err(Error::unsupported(
+                features::COLORSPACE_SPECIAL_INK,
+                "special colourant semantics are not implemented",
+            ));
+        }
+    }
+    Ok(names.len())
+}
+
+fn tint_space(
+    document: &Document,
+    resources: &Dictionary,
+    base: &Value,
+    function: &Value,
+    inputs: usize,
+    depth: usize,
+) -> Result<Space> {
+    let base = resolve(document, resources, base, depth + 1, false)?;
+    if matches!(base, Space::Indexed { .. } | Space::Tint { .. }) {
+        return Err(Error::syntax("invalid tint alternate space"));
+    }
+    let function =
+        crate::functions::Function::parse(document, function, inputs, base.components())?;
+    Ok(Space::Tint {
+        inputs,
+        base: Arc::new(base),
+        function: Arc::new(function),
+    })
 }
 
 fn icc_space(
@@ -306,7 +420,7 @@ fn unsupported(name: &[u8]) -> Option<Feature> {
 
 /// Quantizes a colour component in `0..=1` to an 8-bit channel, rounding to
 /// nearest; out-of-range components are clamped first (clause 8.6.4.1).
-fn channel(value: f64) -> u8 {
+pub(crate) fn channel(value: f64) -> u8 {
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,

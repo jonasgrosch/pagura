@@ -1,14 +1,15 @@
 //! Owned pixel surfaces.
 
 use crate::Rgba8;
-use pagura_core::{Error, Result};
+use pagura_core::{Error, Limits, Result};
 
 /// A row-major, top-left-origin surface of premultiplied RGBA8 pixels.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Pixmap {
     width: u32,
     height: u32,
     data: Vec<u8>,
+    limits: Limits,
 }
 
 /// Summarizes instead of dumping pixel data.
@@ -50,7 +51,30 @@ impl Pixmap {
             width,
             height,
             data,
+            limits: Limits {
+                pixels: max_pixels,
+                ..Limits::default()
+            },
         })
+    }
+
+    /// Allocates a surface with explicit raster, geometry and pixel budgets.
+    ///
+    /// # Errors
+    /// As [`Self::new`], using `limits.pixels` as the surface bound.
+    pub fn new_with_limits(
+        width: u32,
+        height: u32,
+        background: Rgba8,
+        limits: Limits,
+    ) -> Result<Self> {
+        let mut surface = Self::new(width, height, background, limits.pixels)?;
+        surface.limits = limits;
+        Ok(surface)
+    }
+
+    pub(crate) fn limits(&self) -> &Limits {
+        &self.limits
     }
 
     /// Width in pixels.
@@ -109,6 +133,13 @@ impl Pixmap {
             .collect()
     }
 }
+
+impl PartialEq for Pixmap {
+    fn eq(&self, other: &Self) -> bool {
+        (self.width, self.height, &self.data) == (other.width, other.height, &other.data)
+    }
+}
+impl Eq for Pixmap {}
 
 /// `round(value / 255)` for `value <= 255 * 255`.
 fn div255(value: u16) -> u16 {

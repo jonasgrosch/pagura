@@ -6,6 +6,7 @@
 //! paint into a [`Pixmap`]. It knows nothing about PDF objects, colour
 //! spaces or content streams.
 
+mod adjust;
 mod bounds;
 mod coverage;
 mod flatten;
@@ -21,8 +22,16 @@ pub use paint::{Paint, Rgba8};
 pub use path::{Path, PathBuilder, Segment};
 pub use pixmap::Pixmap;
 pub use raster::{
-    FillRule, LineCap, LineJoin, Mask, Stroke, fill_path, fill_path_at, stroke_path, stroke_path_at,
+    FillRule, LineCap, LineJoin, Mask, Stroke, fill_path, fill_path_at, stroke_path,
+    stroke_path_adjusted_at, stroke_path_at,
 };
 
 #[cfg(test)]
 mod tests;
+
+/// Stable raster capability tags.
+pub mod features {
+    use pagura_core::Feature;
+    /// Automatic grid fitting for curved or oblique stroke geometry.
+    pub const STROKE_ADJUSTMENT: Feature = Feature::new("raster.stroke-adjustment-geometry");
+}

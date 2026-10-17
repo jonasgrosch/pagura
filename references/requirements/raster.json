@@ -9,15 +9,31 @@
       "clauses": [
         "8.5.3.3"
       ],
-      "status": "implemented, bounded intersection sweep",
+      "status": "signed cell-area and cover sweep; exact crossing-block integration",
       "tests": [
         "raster/triangle",
         "raster/concave",
         "raster/self-intersection",
         "raster/overlap-nonzero",
-        "raster/overlap-evenodd"
+        "raster/overlap-evenodd",
+        "raster/crossing-set-0",
+        "raster/crossing-set-1",
+        "raster/crossing-set-2",
+        "raster/crossing-set-3",
+        "raster/crossing-set-4",
+        "raster/crossing-set-5",
+        "raster/crossing-set-6",
+        "raster/crossing-set-7",
+        "raster/crossing-set-8",
+        "raster/crossing-set-9",
+        "raster/crossing-set-10",
+        "raster/crossing-set-11",
+        "raster/crossing-set-12",
+        "raster/crossing-set-13",
+        "raster/crossing-set-14",
+        "raster/crossing-set-15"
       ],
-      "gaps": "quadratic active-edge intersection discovery; explicit work limit"
+      "gaps": "crossing-block/partial-row fallback remains superlinear in worst case; caller raster_work bounds it"
     },
     {
       "id": "raster-curves",
@@ -58,6 +74,19 @@
         "raster/square-dot"
       ],
       "gaps": "Broader curve-stroke offset, curved-dash and extreme-coordinate independent vectors remain"
+    },
+    {
+      "id": "raster-stroke-adjustment",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "10.6.5"
+      ],
+      "status": "orthogonal grid fitting with user-space dashes and rounded device pen diameters",
+      "tests": [
+        "content/stroke-adjust-horizontal",
+        "content/stroke-adjust-vertical"
+      ],
+      "gaps": "curved/oblique fitting explicitly unsupported"
     }
   ]
 }

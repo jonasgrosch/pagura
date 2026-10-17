@@ -108,3 +108,49 @@ def cases():
     # Closed cubic y=1+3t(1-t), x=1+6t; no circular-arc approximation.
     yield sampled("cubic", "m 1 1\nc 3 2 5 2 7 1\nh\n",
                   lambda x,y: 1 <= x <= 7 and 1 <= y <= 1 + 3*((x-1)/6)*(1-(x-1)/6), "raster-curves")
+
+    yield from crossing_cases()
+
+
+def intersect_convex(subject, clip):
+    """Rational convex intersection independent of the scanline implementation."""
+    subject=[tuple(map(F,p)) for p in subject]
+    clip=[tuple(map(F,p)) for p in clip]
+    orientation=sum(a[0]*b[1]-a[1]*b[0] for a,b in zip(clip,clip[1:]+clip[:1]))
+    for c,d in zip(clip,clip[1:]+clip[:1]):
+        if not subject:
+            return []
+        result=[]
+        def distance(p): return (d[0]-c[0])*(p[1]-c[1])-(d[1]-c[1])*(p[0]-c[0])
+        for a,b in zip(subject,subject[1:]+subject[:1]):
+            da,db=distance(a),distance(b)
+            ain=da*orientation>=0;bin=db*orientation>=0
+            if ain: result.append(a)
+            if ain!=bin:
+                t=da/(da-db)
+                result.append(tuple(x+t*(y-x) for x,y in zip(a,b)))
+        subject=result
+    return subject
+
+
+def crossing_cases():
+    import random
+    rng=random.Random(917431)
+    def path(points):
+        return ('m %g %g\n'%tuple(points[0])+''.join('l %g %g\n'%tuple(p) for p in points[1:])+'h\n')
+    for i in range(16):
+        a=[(F(rng.randrange(-8,41),4),F(rng.randrange(-8,41),4)) for _ in range(3)]
+        b=[(F(rng.randrange(-8,41),4),F(rng.randrange(-8,41),4)) for _ in range(3)]
+        def positive(points):
+            area=sum(p[0]*q[1]-p[1]*q[0] for p,q in zip(points,points[1:]+points[:1]))
+            return list(reversed(points)) if area<0 else points
+        a,b=positive(a),positive(b)
+        intersection=intersect_convex(a,b)
+        mode=i%4
+        text=('evenodd\n' if mode==1 else '')+path(a)+('clip\n' if mode==3 else '')+path(list(reversed(b)) if mode==2 else b)
+        values=[]
+        for y in range(8):
+            for x in range(8):
+                overlap=clipped_area(intersection,x,y) if intersection else F(0)
+                values.append(overlap if mode==3 else clipped_area(a,x,y)+clipped_area(b,x,y)-(2 if mode in (1,2) else 1)*overlap)
+        yield Vector('crossing-set-'+str(i),{'.path':text.encode(),'.pgm':pgm(values)},('raster-exact-area',),'Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles',extra={'tolerance':1})

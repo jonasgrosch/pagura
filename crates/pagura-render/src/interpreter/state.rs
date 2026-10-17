@@ -111,6 +111,28 @@ impl Compiler<'_> {
         let value = resource(self.document, resources, b"ExtGState", name.as_bytes())?;
         let dictionary = self.document.resolve_dictionary(value)?;
         for (key, value) in dictionary.iter() {
+            let replacement = match key.as_bytes() {
+                b"TR" => Some(b"TR2".as_slice()),
+                b"BG" => Some(b"BG2".as_slice()),
+                b"UCR" => Some(b"UCR2".as_slice()),
+                _ => None,
+            };
+            if replacement.is_some_and(|name| dictionary.contains_key(name)) {
+                continue;
+            }
+            if key == b"TR"
+                && self
+                    .document
+                    .resolve(value)?
+                    .as_name()
+                    .is_some_and(|n| n == b"Default")
+            {
+                return Err(Error::syntax("Default transfer is only valid for TR2"));
+            }
+            if key == b"TR" || key == b"TR2" {
+                self.state.transfer = crate::functions::transfer(self.document, value)?;
+                continue;
+            }
             let value = self.document.resolve(value)?;
             let operator: Option<&[u8]> = match key.as_bytes() {
                 b"LW" => Some(b"w".as_slice()),
@@ -210,11 +232,33 @@ impl Compiler<'_> {
                 }
             }
             b"Font" => return Err(unsupported(features::EXTGSTATE_FONT)),
-            b"BG" | b"BG2" => return Err(unsupported(features::EXTGSTATE_BG)),
-            b"UCR" | b"UCR2" => return Err(unsupported(features::EXTGSTATE_UCR)),
+            // 10.4.2: black generation and undercolour removal are used when
+            // converting RGB to CMYK. Our RGB output never makes that conversion.
+            b"BG" | b"BG2" | b"UCR" | b"UCR2" => {
+                let default = matches!(key, b"BG2" | b"UCR2")
+                    && value.as_name().is_some_and(|n| n == b"Default");
+                if !matches!(value, Value::Dictionary(_)) && !default {
+                    return Err(Error::syntax(
+                        "black generation or UCR must be a function or Default",
+                    ));
+                }
+            }
             b"HT" => return Err(unsupported(features::EXTGSTATE_HT)),
-            b"SM" => return Err(unsupported(features::EXTGSTATE_SM)),
-            b"TK" => return Err(unsupported(features::EXTGSTATE_TK)),
+            // Smoothness is a device-dependent approximation hint (8.4.5).
+            // Exact geometry uses no shading approximation and may ignore it.
+            b"SM" => {
+                let smoothness = value
+                    .as_number()
+                    .ok_or(Error::syntax("SM must be numeric"))?;
+                if !(0.0..=1.0).contains(&smoothness) {
+                    return Err(Error::syntax("SM outside unit interval"));
+                }
+            }
+            // Text knockout affects glyph compositing only (11.7.4.3). Text
+            // operators remain explicitly unsupported, so it cannot affect vectors.
+            b"TK" => {
+                value.as_bool().ok_or(Error::syntax("TK must be boolean"))?;
+            }
             _ => return Err(unsupported(features::EXTGSTATE_UNKNOWN)),
         }
         Ok(())

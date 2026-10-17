@@ -6,8 +6,10 @@
 //! expansion. The list renders into device tiles through `pagura-raster`.
 //! [`render_page`] and [`render_tile`] compile and render in one call.
 
+mod cie;
 mod color;
 mod display;
+mod functions;
 mod interpreter;
 mod operators;
 mod optional;

@@ -20,17 +20,6 @@ impl Visibility {
             .get(b"D")
             .ok_or(Error::syntax("OCProperties has no default configuration"))?;
         let configuration = document.resolve_dictionary(configuration)?;
-        if let Some(usage) = configuration.get(b"AS")
-            && !document
-                .resolve(usage)?
-                .as_array()
-                .is_some_and(<[Value]>::is_empty)
-        {
-            return Err(Error::unsupported(
-                features::OPTIONALCONTENT_USAGE,
-                "automatic usage configuration is not implemented",
-            ));
-        }
         let base = match name(document, configuration, b"BaseState")? {
             None | Some(b"ON" | b"Unchanged") => true,
             Some(b"OFF") => false,
@@ -73,7 +62,89 @@ impl Visibility {
             }
             *group = state;
         }
-        Ok(Self { groups })
+        let mut visibility = Self { groups };
+        visibility.apply_usage(document, configuration)?;
+        Ok(visibility)
+    }
+
+    /// View is the engine's initial viewing event. Export/Print applications
+    /// do not override it. Missing OCGs means no affected groups (Table 103).
+    /// Recommendations are ANDed across all matching AS entries (8.11.4.4).
+    fn apply_usage(&mut self, document: &Document, configuration: &Dictionary) -> Result<()> {
+        let Some(applications) = configuration.get(b"AS") else {
+            return Ok(());
+        };
+        let applications = document
+            .resolve(applications)?
+            .as_array()
+            .ok_or(Error::syntax("AS must be an array"))?;
+        let mut recommendations = BTreeMap::new();
+        let mut work = 0_usize;
+        for application in applications {
+            let application = document.resolve_dictionary(application)?;
+            let event = name(document, application, b"Event")?
+                .ok_or(Error::syntax("usage application has no Event"))?;
+            let categories = application
+                .get(b"Category")
+                .map(|v| document.resolve(v))
+                .transpose()?
+                .and_then(Value::as_array)
+                .ok_or(Error::syntax("usage application has no Category array"))?;
+            if !matches!(event, b"View" | b"Print" | b"Export") {
+                return Err(Error::syntax("invalid usage application event"));
+            }
+            for value in categories {
+                document
+                    .resolve(value)?
+                    .as_name()
+                    .ok_or(Error::syntax("usage category must be a name"))?;
+            }
+            if event != b"View" {
+                continue;
+            }
+            for id in list(document, application, b"OCGs")? {
+                if !self.groups.contains_key(&id) {
+                    return Err(Error::syntax("usage application references unknown group"));
+                }
+                let reference = Value::Reference(id);
+                let dictionary = document.resolve_dictionary(&reference)?;
+                let usage = dictionary
+                    .get(b"Usage")
+                    .map(|v| document.resolve_dictionary(v))
+                    .transpose()?;
+                let mut recommendation = None;
+                for category in categories {
+                    work = work
+                        .checked_add(1)
+                        .filter(|&v| v <= document.limits().operations)
+                        .ok_or(Error::limit("optional usage work exceeded"))?;
+                    let category = document
+                        .resolve(category)?
+                        .as_name()
+                        .ok_or(Error::syntax("usage category must be a name"))?;
+                    if let Some(usage) = usage
+                        && let Some(value) = usage.get(category.as_bytes())
+                        && let Some(state) = usage_state(
+                            document,
+                            category.as_bytes(),
+                            document.resolve_dictionary(value)?,
+                        )?
+                    {
+                        recommendation = Some(recommendation.unwrap_or(true) && state);
+                    }
+                }
+                if let Some(state) = recommendation {
+                    *recommendations.entry(id).or_insert(true) &= state;
+                }
+            }
+        }
+        for (id, state) in recommendations {
+            *self
+                .groups
+                .get_mut(&id)
+                .ok_or(Error::syntax("usage application references unknown group"))? = state;
+        }
+        Ok(())
     }
 
     pub(crate) fn visible(&self, document: &Document, value: &Value) -> Result<bool> {
@@ -217,4 +288,56 @@ fn name<'a>(
                 .ok_or(Error::syntax("optional content entry must be a name"))
         })
         .transpose()
+}
+
+fn usage_state(
+    document: &Document,
+    category: &[u8],
+    dictionary: &Dictionary,
+) -> Result<Option<bool>> {
+    let key = match category {
+        b"View" => b"ViewState".as_slice(),
+        b"Print" => b"PrintState",
+        b"Export" => b"ExportState",
+        b"Zoom" => {
+            // Initial View context is 100% magnification. Rendering DPI is output
+            // sampling density, not interactive viewer magnification.
+            let minimum = dictionary
+                .get(b"min")
+                .map(|v| {
+                    document
+                        .resolve(v)?
+                        .as_number()
+                        .ok_or(Error::syntax("invalid usage zoom minimum"))
+                })
+                .transpose()?
+                .unwrap_or(0.0);
+            let maximum = dictionary
+                .get(b"max")
+                .map(|v| {
+                    document
+                        .resolve(v)?
+                        .as_number()
+                        .ok_or(Error::syntax("invalid usage zoom maximum"))
+                })
+                .transpose()?
+                .unwrap_or(f64::INFINITY);
+            if minimum < 0.0 || minimum > maximum {
+                return Err(Error::syntax("invalid usage zoom range"));
+            }
+            return Ok(Some(minimum <= 1.0 && 1.0 < maximum));
+        }
+        _ => {
+            return Err(Error::unsupported(
+                features::OPTIONALCONTENT_USAGE,
+                "usage category requires viewer context not provided by this API",
+            ));
+        }
+    };
+    match name(document, dictionary, key)? {
+        Some(b"ON") => Ok(Some(true)),
+        Some(b"OFF") => Ok(Some(false)),
+        None if category == b"Print" => Ok(None),
+        _ => Err(Error::syntax("missing or invalid usage state")),
+    }
 }

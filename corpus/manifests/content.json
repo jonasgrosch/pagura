@@ -868,22 +868,6 @@
       "api": "compile_page"
     },
     {
-      "id": "content/transfer",
-      "kind": "pdf",
-      "description": "transfer",
-      "expected": "unsupported",
-      "requirements": [
-        "content-explicit-operators"
-      ],
-      "path": "corpus/generated/content/transfer.pdf",
-      "sha256": "e8389748dfddc382ec5f3625aa08cfd8f239686fc4450171d1d6d293ba044ae0",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "feature": "extgstate.TR",
-      "api": "compile_page"
-    },
-    {
       "id": "content/font-state",
       "kind": "pdf",
       "description": "font-state",
@@ -903,48 +887,60 @@
       "id": "content/space-Separation",
       "kind": "pdf",
       "description": "space-Separation",
-      "expected": "unsupported",
+      "expected": "render",
       "requirements": [
-        "content-explicit-operators"
+        "content-vector-pipeline"
       ],
       "path": "corpus/generated/content/space-Separation.pdf",
       "sha256": "dce8daaeed6a64037b4088ea967aa56eddaba60ebe0ff270b684d6e65a4c9846",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "colorspace.Separation",
+      "oracle": "corpus/generated/content/space-Separation.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
       "api": "compile_page"
     },
     {
       "id": "content/space-DeviceN",
       "kind": "pdf",
       "description": "space-DeviceN",
-      "expected": "unsupported",
+      "expected": "render",
       "requirements": [
-        "content-explicit-operators"
+        "content-vector-pipeline"
       ],
       "path": "corpus/generated/content/space-DeviceN.pdf",
       "sha256": "5747052e6add87ca93477a1a77d967cedabbb795516428c913f0cab4ad9d1ed0",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "colorspace.DeviceN",
+      "oracle": "corpus/generated/content/space-DeviceN.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
       "api": "compile_page"
     },
     {
       "id": "content/space-Lab",
       "kind": "pdf",
       "description": "space-Lab",
-      "expected": "unsupported",
+      "expected": "render",
       "requirements": [
-        "content-explicit-operators"
+        "content-vector-pipeline"
       ],
       "path": "corpus/generated/content/space-Lab.pdf",
       "sha256": "a6d425dfa47a1403d1a7db144ea8d6f456b0dfdbe5ea5882ea63a857147bf941",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "colorspace.Lab",
+      "oracle": "corpus/generated/content/space-Lab.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
       "api": "compile_page"
     },
     {
@@ -967,16 +963,20 @@
       "id": "content/space-CalGray",
       "kind": "pdf",
       "description": "space-CalGray",
-      "expected": "unsupported",
+      "expected": "render",
       "requirements": [
-        "content-explicit-operators"
+        "content-vector-pipeline"
       ],
       "path": "corpus/generated/content/space-CalGray.pdf",
       "sha256": "a8ea430eb3c68a4fd24f58ab454de5064d97966c21abd44370125c5b0c18b5b6",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "colorspace.CalGray",
+      "oracle": "corpus/generated/content/space-CalGray.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
       "api": "compile_page"
     },
     {
@@ -1204,6 +1204,22 @@
       "render_error": "Syntax"
     },
     {
+      "id": "content/transfer",
+      "kind": "pdf",
+      "description": "Valid file with malformed page content",
+      "expected": "open",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/transfer.pdf",
+      "sha256": "e8389748dfddc382ec5f3625aa08cfd8f239686fc4450171d1d6d293ba044ae0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
       "id": "content/recursive-form",
       "kind": "pdf",
       "description": "Recursive form must return Cycle",
@@ -1274,6 +1290,885 @@
       "repairs": [],
       "feature": "colorspace.ICCRange",
       "api": "compile_page"
+    },
+    {
+      "id": "content/rgb-page-group",
+      "kind": "pdf",
+      "description": "rgb-page-group",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-opaque-groups"
+      ],
+      "path": "corpus/generated/content/rgb-page-group.pdf",
+      "sha256": "a52da2f3d98aa794691641d59a8db871dcb62a4d377b0f5f7ba4c4a49a3ffb63",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/rgb-page-group.ppm",
+      "oracle_sha256": "f4431bd310d719c32bce6b92ecfb4cb0e3f5c08125b2ae1bfb75f452e1eac821",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/rgb-form-group",
+      "kind": "pdf",
+      "description": "Opaque RGB form group paints directly",
+      "expected": "render",
+      "requirements": [
+        "content-opaque-groups"
+      ],
+      "path": "corpus/generated/content/rgb-form-group.pdf",
+      "sha256": "9b31271455778ddace000a29cc660287629d1bd69091b425bfa2882f6a0d099a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/rgb-form-group.ppm",
+      "oracle_sha256": "8b4138d7d2b9786e9649a6d79502309f9e72bb5de795bf7d24a4dfe45b36070d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/icc-rgb-group",
+      "kind": "pdf",
+      "description": "RGB ICC alternate is the device blend space",
+      "expected": "render",
+      "requirements": [
+        "content-opaque-groups"
+      ],
+      "path": "corpus/generated/content/icc-rgb-group.pdf",
+      "sha256": "5b6c40a69ac89f4457a1187a0b88e22a7b0c244ff383a98e0ff57b1669bc91ff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-rgb-group.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/group-DeviceGray",
+      "kind": "pdf",
+      "description": "group-DeviceGray",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/group-DeviceGray.pdf",
+      "sha256": "c17b5fe35fba311cc713866c1bdf6989a6b06271c409be131bc956e1ba199e8f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.group-colorspace",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/group-DeviceCMYK",
+      "kind": "pdf",
+      "description": "group-DeviceCMYK",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/group-DeviceCMYK.pdf",
+      "sha256": "08a152b72e6b83ce53961cfd592c577ba795b39c22b94447e811b647ff58d52e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.group-colorspace",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/rgb-device-hints",
+      "kind": "pdf",
+      "description": "rgb-device-hints",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/rgb-device-hints.pdf",
+      "sha256": "be4a81d1f20f63422fb29ebe753c205cef025b7ff5024a9c9f7c64b64d1b6c35",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/rgb-device-hints.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/syntax-BG-default",
+      "kind": "pdf",
+      "description": "Invalid parameter shape; Default is permitted only in BG2/UCR2",
+      "expected": "open",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/syntax-BG-default.pdf",
+      "sha256": "d8df6427bcf95d4c8acd54b21e998419dc05868942b1380cad865db9431d0ff2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/syntax-UCR-default",
+      "kind": "pdf",
+      "description": "Invalid parameter shape; Default is permitted only in BG2/UCR2",
+      "expected": "open",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/syntax-UCR-default.pdf",
+      "sha256": "54c06d2e8f751357c9491bf8e4979bdf5b6d06c40c2451734851cea9b02667bb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/syntax-Lab-arity",
+      "kind": "pdf",
+      "description": "Invalid parameter shape; Default is permitted only in BG2/UCR2",
+      "expected": "open",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/syntax-Lab-arity.pdf",
+      "sha256": "9b9fd27df0e3d9e8b4556ed7bdf8af713e700bb70c5a286ff6bfc7eff009adff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/stroke-adjust-horizontal",
+      "kind": "pdf",
+      "description": "stroke-adjust-horizontal",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/stroke-adjust-horizontal.pdf",
+      "sha256": "38a3a156cbd3d9e8dcced2b61787a2d841317a2fbd96941fa55dcc010c5d2419",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/stroke-adjust-horizontal.ppm",
+      "oracle_sha256": "aa090fd56b98403e7da192414ab015b48ac0f39c448bfb3f663365e237a23779",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/stroke-adjust-vertical",
+      "kind": "pdf",
+      "description": "stroke-adjust-vertical",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/stroke-adjust-vertical.pdf",
+      "sha256": "4f0c7c31b8866709e7d2f8b0e298f18d84a7439c8c87367a61e4356cfb4bae67",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/stroke-adjust-vertical.ppm",
+      "oracle_sha256": "53b4336d6d7097601e5e316e72f8968993d77d8f9e552790f49843d78a545190",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/decimal-stroke-half-tie",
+      "kind": "pdf",
+      "description": "Rational stroke edges x=1.26..6.42, y=2.94..3.30; area .30 rounds alpha 76.5 to 77",
+      "expected": "render",
+      "requirements": [
+        "content-fractional"
+      ],
+      "path": "corpus/generated/content/decimal-stroke-half-tie.pdf",
+      "sha256": "671910fa63b4d21778b60a8fd607544612a52606d1d63400023ebe96608fc1bd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/decimal-stroke-half-tie.ppm",
+      "oracle_sha256": "38f7f801e296e4329b01583eece52b21789f352728813cb917259967f216fd30",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/cie-CalGray",
+      "kind": "pdf",
+      "description": "Defining CIE formulas with Bradford adaptation to D65 and sRGB",
+      "expected": "render",
+      "requirements": [
+        "content-cie"
+      ],
+      "path": "corpus/generated/content/cie-CalGray.pdf",
+      "sha256": "daeea1f05ad9d20c0e68bfb139900626d041f00671b06410f09d440485ffcae9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/cie-CalGray.ppm",
+      "oracle_sha256": "23e29ad83d21f15e76b7b8797d07128f4befbf5ee5bfb69e5bcba833fbbadb4c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/cie-CalGray-gamma",
+      "kind": "pdf",
+      "description": "Defining CIE formulas with Bradford adaptation to D65 and sRGB",
+      "expected": "render",
+      "requirements": [
+        "content-cie"
+      ],
+      "path": "corpus/generated/content/cie-CalGray-gamma.pdf",
+      "sha256": "fd83b893e96b8274aa581fe1b8469852371089d61a93d3c9f2da049960b92457",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/cie-CalGray-gamma.ppm",
+      "oracle_sha256": "407680dfb9a9f19057b27ce7d3f7ac62f5df96fea812290125faae4e96ebb0c1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/cie-Lab",
+      "kind": "pdf",
+      "description": "Defining CIE formulas with Bradford adaptation to D65 and sRGB",
+      "expected": "render",
+      "requirements": [
+        "content-cie"
+      ],
+      "path": "corpus/generated/content/cie-Lab.pdf",
+      "sha256": "aad65baa4a548de5d69f7b2345153025d2445e7c729a93ca825b5003da8d0c5f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/cie-Lab.ppm",
+      "oracle_sha256": "e3f5226145529c3d7b2c4085a5f719284fb0679d665aec8dbe9e2c48eb9bfcbe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/cie-indexed-Lab",
+      "kind": "pdf",
+      "description": "cie-indexed-Lab",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-cie"
+      ],
+      "path": "corpus/generated/content/cie-indexed-Lab.pdf",
+      "sha256": "a9fa388b4a31ec7bc5dd342cb87418ae92e0e24ace3e2ba8c06d5cb91cb146f3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/cie-indexed-Lab.ppm",
+      "oracle_sha256": "7044de01f395e05eb93fdf8d5cf381363495d644bffb5068a0d1aa4567e7a0ea",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/cie-blackpoint",
+      "kind": "pdf",
+      "description": "cie-blackpoint",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/cie-blackpoint.pdf",
+      "sha256": "f407bde3e90038e3ef840000c2bb99932fa83e8cc741c5721a94bdb4d9b9c1d6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "colorspace.BlackPoint",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/function-exp-1",
+      "kind": "pdf",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-exp-1.pdf",
+      "sha256": "94a6770bd6b385647889d510133e21fb76fb4b4aee79e5945e71a2cb89f9d181",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/function-exp-1.ppm",
+      "oracle_sha256": "b943b231ed38105d4f0104301e3f831280d9877c926542c3e28c4b3bad5c8de3",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/function-exp-2",
+      "kind": "pdf",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-exp-2.pdf",
+      "sha256": "3cc26b35751de731c86e408a7b6189705980736fba33583c467d1cbb4fdfbdf6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/function-exp-2.ppm",
+      "oracle_sha256": "782729b06de87e1030ca8bbecc97bcbb6bb83ea6c0cce56aa43625d241d41bc2",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/function-stitch",
+      "kind": "pdf",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-stitch.pdf",
+      "sha256": "ba545fbb91d0be03ef146d5ba72d83fe03463043bdd6281204810252be3001df",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/function-stitch.ppm",
+      "oracle_sha256": "f9131e66b69050acf1a9f7a40e964bd5a3adafde51721170a7ea690b00ec05c4",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/function-sampled",
+      "kind": "pdf",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-sampled.pdf",
+      "sha256": "e0a222e0ceed126e9ab9437e4640913b143227d8a1c7b0a748a2bee5b224d456",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/function-sampled.ppm",
+      "oracle_sha256": "129ec5421629970e5c6dd4f552c458988cbbd7f06219e101ff81d85b0e0f3f41",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/function-calculator",
+      "kind": "pdf",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-calculator.pdf",
+      "sha256": "b38191f1afac514c01969fdcd212862869c6b653f0e23ee810636bc0f09eb7e0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/function-calculator.ppm",
+      "oracle_sha256": "32d79c11dbd3b088015773ebb1b848cf97f303ceddd544451a92818e4b39c781",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/function-sampled-1",
+      "kind": "pdf",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-sampled-1.pdf",
+      "sha256": "2a94d32215aca11bc930b95e4d83186e8110996430f5ed50368c6e77b91169dc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/function-sampled-1.ppm",
+      "oracle_sha256": "393ea6db127e4c8fdd30c8d5c750b619498ea7579efb8bf3e91d72b61afee6bc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/function-sampled-2",
+      "kind": "pdf",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-sampled-2.pdf",
+      "sha256": "4b64287ba0ba5bc2da0d2f7a7657ec346b930e9934578d0c8552aa67c3163645",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/function-sampled-2.ppm",
+      "oracle_sha256": "393ea6db127e4c8fdd30c8d5c750b619498ea7579efb8bf3e91d72b61afee6bc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/function-sampled-4",
+      "kind": "pdf",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-sampled-4.pdf",
+      "sha256": "3bc2305917db807bffacfb4897ba9fce932a1cdf6777e7768a8628d8084eedc5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/function-sampled-4.ppm",
+      "oracle_sha256": "393ea6db127e4c8fdd30c8d5c750b619498ea7579efb8bf3e91d72b61afee6bc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/function-sampled-8",
+      "kind": "pdf",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-sampled-8.pdf",
+      "sha256": "7fdba56b0f6fcc30b8bd917ca8b9d8f01058425f7e86535371dc2126dc235ecc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/function-sampled-8.ppm",
+      "oracle_sha256": "393ea6db127e4c8fdd30c8d5c750b619498ea7579efb8bf3e91d72b61afee6bc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/function-sampled-12",
+      "kind": "pdf",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-sampled-12.pdf",
+      "sha256": "63c16046a4c6a35fe448bb2bd40bd760beef6c0476dc99872a7fb7392e6b451c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/function-sampled-12.ppm",
+      "oracle_sha256": "393ea6db127e4c8fdd30c8d5c750b619498ea7579efb8bf3e91d72b61afee6bc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/function-sampled-16",
+      "kind": "pdf",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-sampled-16.pdf",
+      "sha256": "6b67bbeab58aadf9e0ff3629aae07c3c8cf53e1d5c4d229c81cf938c6ebf4899",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/function-sampled-16.ppm",
+      "oracle_sha256": "393ea6db127e4c8fdd30c8d5c750b619498ea7579efb8bf3e91d72b61afee6bc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/function-sampled-24",
+      "kind": "pdf",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-sampled-24.pdf",
+      "sha256": "252c939608445e54f0c90637efc6636a8e9ff956fed54b1147ef61adb435d170",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/function-sampled-24.ppm",
+      "oracle_sha256": "393ea6db127e4c8fdd30c8d5c750b619498ea7579efb8bf3e91d72b61afee6bc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/function-sampled-32",
+      "kind": "pdf",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-sampled-32.pdf",
+      "sha256": "8b5f50a21e92738f73133a2145ccc3f9488c246aa780be4ae91aa8b46a580565",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/function-sampled-32.ppm",
+      "oracle_sha256": "393ea6db127e4c8fdd30c8d5c750b619498ea7579efb8bf3e91d72b61afee6bc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/function-order3-small",
+      "kind": "pdf",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-order3-small.pdf",
+      "sha256": "6f8ff15c5862d7f6758126004360d779eb0e67dfe7aa0ffe9af5d6ad43143fe4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/function-order3-small.ppm",
+      "oracle_sha256": "393ea6db127e4c8fdd30c8d5c750b619498ea7579efb8bf3e91d72b61afee6bc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/function-truncated",
+      "kind": "pdf",
+      "description": "Independent invalid function contract",
+      "expected": "open",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-truncated.pdf",
+      "sha256": "d70095b45ec50619189a4a9f2fe18140e5e093259260e983472bfc3d79761a2c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/function-cycle",
+      "kind": "pdf",
+      "description": "Independent invalid function contract",
+      "expected": "open",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-cycle.pdf",
+      "sha256": "d1b5ba91b793d734de6b2d2359d69cb632048de1ec96c98c489056ff1583545f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Cycle"
+    },
+    {
+      "id": "content/function-dimension",
+      "kind": "pdf",
+      "description": "Independent invalid function contract",
+      "expected": "open",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-dimension.pdf",
+      "sha256": "a3052d6cf76cf318d4063895c0c4bf6f9c3c6656f0f2091d12c0ac8f2ed10f26",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/function-undefined",
+      "kind": "pdf",
+      "description": "Independent invalid function contract",
+      "expected": "open",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-undefined.pdf",
+      "sha256": "89c27aee598705627f86c5699a9efe04ba1cb4035f4a8527eff07765bfbd44af",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/function-host-action",
+      "kind": "pdf",
+      "description": "Independent invalid function contract",
+      "expected": "open",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-host-action.pdf",
+      "sha256": "5d8d7c2935107a72455e5dd2d28e5d7b10ad226a45bf7246f9574e2c52d19900",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/function-order3",
+      "kind": "pdf",
+      "description": "Cubic interpolation is explicitly unsupported",
+      "expected": "unsupported",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/function-order3.pdf",
+      "sha256": "14daf05240105aabcec3a7e93f7eee3c8006a6f64d6806e1b7b0ab5f4c86b83f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "function.cubic-samples"
+    },
+    {
+      "id": "content/transfer-type2",
+      "kind": "pdf",
+      "description": "transfer-type2",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/transfer-type2.pdf",
+      "sha256": "58f03f1f4dd5531293d0eb2e719e6c21e5a663d39dcaa966cd04f4d60b2930a5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/transfer-type2.ppm",
+      "oracle_sha256": "f6eb047e0321f2617331972fe02085a999eee2d9c1927efc871e98bb9cb3b5de",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/transfer-type4",
+      "kind": "pdf",
+      "description": "Calculator transfer after device conversion, before quantization",
+      "expected": "render",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/transfer-type4.pdf",
+      "sha256": "6d49f4feacf3d4eeb03fb2459cee20c5a1ce72ef857675d417a0ea0c6602c4ef",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/transfer-type4.ppm",
+      "oracle_sha256": "f6eb047e0321f2617331972fe02085a999eee2d9c1927efc871e98bb9cb3b5de",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/transfer-precedence",
+      "kind": "pdf",
+      "description": "transfer-precedence",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/transfer-precedence.pdf",
+      "sha256": "f737bedc4be241f72b73c29e59b05b7beb40b0858e0dd2b9fe0464b51fadc0d1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/transfer-precedence.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/transfer-array",
+      "kind": "pdf",
+      "description": "transfer-array",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/transfer-array.pdf",
+      "sha256": "cf42619154e4ae10c49e83dc17ab353d1bd53447ac1a36ecaafc965e5c674b89",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/transfer-array.ppm",
+      "oracle_sha256": "9febe1ae4b7a8a952411b9e9678e0ae26ef0b9741320e4e4810a55e4ea5ae906",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/usage-View",
+      "kind": "pdf",
+      "description": "View usage overrides explicit initial ON/OFF",
+      "expected": "render",
+      "requirements": [
+        "content-usage"
+      ],
+      "path": "corpus/generated/content/usage-View.pdf",
+      "sha256": "41db6ffb51b73f3f278cae47773ab9c876e77ad4231a7d866a13354dd0adad6d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/usage-View.ppm",
+      "oracle_sha256": "c0c28dbd27bf3132dc050e33b716e47530ab87c69a5825cc28aa93dcc58ffe8c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/usage-Print-ignored",
+      "kind": "pdf",
+      "description": "Initial View usage recommendation with AND aggregation",
+      "expected": "render",
+      "requirements": [
+        "content-usage"
+      ],
+      "path": "corpus/generated/content/usage-Print-ignored.pdf",
+      "sha256": "bd6923c464c7f6c002f59e2f1c343adc3b0941cf74b51096ea50084edc0654e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/usage-Print-ignored.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/usage-no-OCGs",
+      "kind": "pdf",
+      "description": "Initial View usage recommendation with AND aggregation",
+      "expected": "render",
+      "requirements": [
+        "content-usage"
+      ],
+      "path": "corpus/generated/content/usage-no-OCGs.pdf",
+      "sha256": "df1a99988e241303c994bf4f9ca42f4821a4d5a56b9ad68444d50dd1651fc0b0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/usage-no-OCGs.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/usage-Zoom-on",
+      "kind": "pdf",
+      "description": "Initial View usage recommendation with AND aggregation",
+      "expected": "render",
+      "requirements": [
+        "content-usage"
+      ],
+      "path": "corpus/generated/content/usage-Zoom-on.pdf",
+      "sha256": "3b5fc1b9f873798edd5b2b93786888481e99d989f9b64d8e7e061b85f50d2da0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/usage-Zoom-on.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/usage-Zoom-off",
+      "kind": "pdf",
+      "description": "Initial View usage recommendation with AND aggregation",
+      "expected": "render",
+      "requirements": [
+        "content-usage"
+      ],
+      "path": "corpus/generated/content/usage-Zoom-off.pdf",
+      "sha256": "3e830fbc27b5e71f12a4b218b03f83151eabfa9ac74aedee6d369dd992955304",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/usage-Zoom-off.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/usage-conjunction",
+      "kind": "pdf",
+      "description": "Initial View usage recommendation with AND aggregation",
+      "expected": "render",
+      "requirements": [
+        "content-usage"
+      ],
+      "path": "corpus/generated/content/usage-conjunction.pdf",
+      "sha256": "3c6d0a89db47e410a82dd734582f0c97b949a171d2d9fe215a12058cd5038424",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/usage-conjunction.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     }
   ]
 }

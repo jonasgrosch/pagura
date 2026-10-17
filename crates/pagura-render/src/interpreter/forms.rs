@@ -50,7 +50,6 @@ impl Compiler<'_> {
         {
             return Err(Error::syntax("invalid FormType"));
         }
-        group(self.document, dictionary)?;
         let bbox = dictionary
             .get(b"BBox")
             .map(|v| self.document.resolve(v))
@@ -76,6 +75,7 @@ impl Compiler<'_> {
             .map(|v| self.document.resolve_dictionary(v))
             .transpose()?
             .unwrap_or(resources);
+        group(self.document, dictionary, resources)?;
         child.sequence(&[object], resources)?;
         self.operations = child.operations;
         if self
@@ -83,7 +83,7 @@ impl Compiler<'_> {
             .commands
             .len()
             .checked_add(child.list.commands.len())
-            .is_none_or(|n| n > self.document.limits().operations)
+            .is_none_or(|n| n > self.document.limits().display_commands)
         {
             return Err(Error::limit("display list budget exceeded"));
         }

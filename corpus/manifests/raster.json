@@ -372,6 +372,310 @@
       },
       "tolerance": 3,
       "sample_rate": 128
+    },
+    {
+      "id": "raster/crossing-set-0",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-0.path",
+          "sha256": "ef466ae6e221950c8cfe63ebb721588106a97ed8758c2dad1e9fbe7436ebe4dc"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-0.pgm",
+          "sha256": "cf24bd3a156b6951e24dbfecc009acb6c19bcc3b1fd51c083bc7796602afbeae"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-1",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-1.path",
+          "sha256": "6bb685f5c06f8d2af2575285fdb1afe78727e00fe49415e6987587a4822e50c5"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-1.pgm",
+          "sha256": "ce192118b6e105bc792840146811b402e5442744799633bdff347c1733f0b94c"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-2",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-2.path",
+          "sha256": "842e893c0caea018c3e5486985d67f2d1458f9ff6aa78c5eb997c6d0668a63e8"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-2.pgm",
+          "sha256": "6f27a2a0f404a0c7f0da42c5b37185d11321a33ba6086df1daf6bd7208520f4f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-3",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-3.path",
+          "sha256": "98352bb3d7003110e66cd48821f85d537a2d9b6a114780b71bfe4a9f7573e517"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-3.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-4",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-4.path",
+          "sha256": "5e763c4ae9b03ffe3943bb8493d22e3d6b40c033fecd80c66f10d4d44239f0e0"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-4.pgm",
+          "sha256": "ec190e935b6665063bd56600414ec09a9553ce3938effc3fedc784ba51478098"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-5",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-5.path",
+          "sha256": "504336a55194260377f5c8398f891ac044e5e2946a5cd2b9078393f8621e8baa"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-5.pgm",
+          "sha256": "92a40855a087f313c057db78497939a48e5765b14cf5c62e7a686ab55b5e2cce"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-6",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-6.path",
+          "sha256": "338a3605a6c47390d4e4359f1378ac3d4016c95c5d50deed7224aa5a399020f5"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-6.pgm",
+          "sha256": "a9229e643b95f77ab1b0dd01c04a066d4c4f5f1e4219780cffe83ac74e162d8d"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-7",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-7.path",
+          "sha256": "76e4cd65321ecb8aab19f94db1d1fe5d9debf3a020ccf401f7df93eb8db0ab86"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-7.pgm",
+          "sha256": "9815308d9a302c52bbf32d55012746d9d81b6b80ddd8e3a90155365474bb391a"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-8",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-8.path",
+          "sha256": "4e0402b633a0f8afe399f61e47512881ee5d26d0a9948b481f5dbfe79c716937"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-8.pgm",
+          "sha256": "e14511c68b24e82936aca9e5ccd5d3d174800b013139f355eb771afc46d88c7b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-9",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-9.path",
+          "sha256": "7de6b50046f1c1015b649243032ea77bbe9a3a6bb5778ab2ae918dd56a5f0bdb"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-9.pgm",
+          "sha256": "bda57601e6cd3db67ebc55d3b830f474cec81465e15e530986ec5d1e7333e8aa"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-10",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-10.path",
+          "sha256": "0a12226a4c468ea63a5fc435a34bccebc58d1c53ccd9763936742a6b8702069f"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-10.pgm",
+          "sha256": "5cb11740eaa84e46fc9f16c648126a7dce64412b3ea6ab7a67b08a46b0b95188"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-11",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-11.path",
+          "sha256": "80b6d2a4f65f120c1ccbf130990b6005ab28cd78b7d6969161c3ecf17f48024d"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-11.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-12",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-12.path",
+          "sha256": "16c70107280c3d54a02de10bee1bbb5c4ce398f4d26384205420d79d5f217472"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-12.pgm",
+          "sha256": "786b178daf57baf07019d5fc2adc19ccc61778dfb4b3250f3925c741f77d5ab9"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-13",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-13.path",
+          "sha256": "7284a244305f30340c1c47395b47d477024bd9aad617c83e675060acf8c7e87a"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-13.pgm",
+          "sha256": "d5a085dc536e96907f6ea1c341e725713ca7f792e7dbd2cc9caa42c9a906d848"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-14",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-14.path",
+          "sha256": "9e9ec589d9712cfc03c82a011da78087dd484e90694bcd763aa621d30fdbb3e2"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-14.pgm",
+          "sha256": "bb8d89381bec61055dbeb0422a4285b98b72f4e6376b0548f84a0e677fbef848"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/crossing-set-15",
+      "kind": "vector",
+      "description": "Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/crossing-set-15.path",
+          "sha256": "e19457f8d84857a460d7264f2f4a9127777914d3b24691fdebbe0a613216b708"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/crossing-set-15.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 1
     }
   ]
 }

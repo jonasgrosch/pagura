@@ -1,4 +1,4 @@
-//! Integration evidence for the additive vector pipeline.
+//! Integration evidence for the vector pipeline.
 
 use crate::{RenderOptions, Tile, compile_page};
 use pagura_core::{ErrorKind, Position, Recovery};
@@ -17,6 +17,45 @@ fn open(name: &str) -> Document {
 }
 
 const RENDER: &[&str] = &[
+    "decimal-stroke-half-tie",
+    "usage-View",
+    "usage-Print-ignored",
+    "usage-no-OCGs",
+    "usage-Zoom-on",
+    "usage-Zoom-off",
+    "usage-conjunction",
+    "stroke-adjust-horizontal",
+    "stroke-adjust-vertical",
+    "function-exp-1",
+    "function-exp-2",
+    "function-stitch",
+    "function-sampled",
+    "function-calculator",
+    "function-sampled-1",
+    "function-sampled-2",
+    "function-sampled-4",
+    "function-sampled-8",
+    "function-sampled-12",
+    "function-sampled-16",
+    "function-sampled-24",
+    "function-sampled-32",
+    "function-order3-small",
+    "transfer-type2",
+    "transfer-type4",
+    "transfer-precedence",
+    "transfer-array",
+    "space-Separation",
+    "space-DeviceN",
+    "cie-CalGray",
+    "cie-CalGray-gamma",
+    "cie-Lab",
+    "cie-indexed-Lab",
+    "space-CalGray",
+    "space-Lab",
+    "rgb-page-group",
+    "rgb-form-group",
+    "icc-rgb-group",
+    "rgb-device-hints",
     "compound-path",
     "nonzero",
     "ctm-during-path",
@@ -75,7 +114,13 @@ fn independent_content_pixels() {
         assert_eq!(actual.len(), expected.len(), "{name}");
         for (i, (&a, &e)) in actual.iter().zip(&expected).enumerate() {
             assert!(
-                a.abs_diff(e) <= u8::from(name.starts_with("fractional")),
+                a.abs_diff(e)
+                    <= u8::from(
+                        name.starts_with("fractional")
+                            || name.starts_with("cie-")
+                            || name.starts_with("function-")
+                            || name == "decimal-stroke-half-tie"
+                    ),
                 "{name} byte {i}: {a} vs {e}"
             );
         }
@@ -127,17 +172,15 @@ fn unsupported_tags_and_stream_positions() {
         ("alpha", "transparency.ca"),
         ("blend", "transparency.BM"),
         ("soft-mask", "transparency.SMask"),
-        ("transfer", "extgstate.TR"),
         ("font-state", "extgstate.Font"),
-        ("space-Separation", "colorspace.Separation"),
-        ("space-DeviceN", "colorspace.DeviceN"),
-        ("space-Lab", "colorspace.Lab"),
         ("space-CalRGB", "colorspace.CalRGB"),
-        ("space-CalGray", "colorspace.CalGray"),
         ("pattern", "pattern.colorspace"),
         ("knockout", "transparency.knockout"),
         ("annotation", "annotation.appearance"),
         ("icc-range", "colorspace.ICCRange"),
+        ("cie-blackpoint", "colorspace.BlackPoint"),
+        ("group-DeviceGray", "transparency.group-colorspace"),
+        ("group-DeviceCMYK", "transparency.group-colorspace"),
     ] {
         let document = open(name);
         let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
@@ -146,7 +189,10 @@ fn unsupported_tags_and_stream_positions() {
             Some(tag),
             "{name}: {error}"
         );
-        if !matches!(name, "knockout" | "annotation") {
+        if !matches!(
+            name,
+            "knockout" | "annotation" | "group-DeviceGray" | "group-DeviceCMYK"
+        ) {
             assert!(
                 matches!(error.position, Position::Stream { .. }),
                 "{name}: {error}"
@@ -189,6 +235,31 @@ fn annex_a_validation_precedes_unsupported_and_unknown_is_syntax() {
 
 #[test]
 fn raster_and_interpreter_limits_and_invalid_arguments() {
+    for limits in [
+        pagura_core::Limits {
+            path_segments: 0,
+            ..pagura_core::Limits::default()
+        },
+        pagura_core::Limits {
+            display_commands: 0,
+            ..pagura_core::Limits::default()
+        },
+    ] {
+        let document = Document::open(
+            pagura_testkit::fixture("content", "compound-path.pdf"),
+            &OpenOptions {
+                limits,
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            compile_page(&document, document.page(0).unwrap())
+                .unwrap_err()
+                .kind,
+            ErrorKind::Limit
+        );
+    }
     let document = Document::open(
         pagura_testkit::fixture("content", "compound-path.pdf"),
         &OpenOptions {
@@ -273,6 +344,10 @@ fn legacy_aligned_oracles_also_match_the_vector_pipeline() {
 #[test]
 fn malformed_content_and_form_cycles_are_precise_errors() {
     for name in [
+        "transfer",
+        "syntax-BG-default",
+        "syntax-UCR-default",
+        "syntax-Lab-arity",
         "syntax-unknown",
         "syntax-arity",
         "syntax-type",
@@ -300,4 +375,45 @@ fn malformed_content_and_form_cycles_are_precise_errors() {
             .kind,
         ErrorKind::Cycle
     );
+}
+
+#[test]
+fn invalid_function_graphs_and_evaluation_errors_preserve_context() {
+    for (name, kind) in [
+        ("function-truncated", ErrorKind::Syntax),
+        ("function-dimension", ErrorKind::Syntax),
+        ("function-host-action", ErrorKind::Syntax),
+        ("function-undefined", ErrorKind::Syntax),
+        ("function-cycle", ErrorKind::Cycle),
+        (
+            "function-order3",
+            ErrorKind::Unsupported(crate::features::FUNCTION_CUBIC),
+        ),
+    ] {
+        let document = open(name);
+        let error = compile_page(&document, document.page(0).unwrap())
+            .and_then(|list| list.render(&RenderOptions::default()))
+            .unwrap_err();
+        assert_eq!(error.kind, kind, "{name}: {error}");
+        assert_eq!(
+            error.object,
+            Some(pagura_core::ObjectId::new(5, 0)),
+            "{name}: {error}"
+        );
+    }
+}
+
+#[test]
+fn decimal_stroke_half_tie_has_independent_half_up_rounding() {
+    let document = open("decimal-stroke-half-tie");
+    let image = compile_page(&document, document.page(0).unwrap())
+        .unwrap()
+        .render(&RenderOptions::default())
+        .unwrap();
+    // A width-six user pen under .06 scaling covers exactly .30 of this row.
+    // round(.30 * 255) = 77, hence black over white is RGB 178.
+    let row = image.row(4).unwrap();
+    for x in 2..6 {
+        assert_eq!(&row[x * 4..x * 4 + 4], &[178, 178, 178, 255]);
+    }
 }

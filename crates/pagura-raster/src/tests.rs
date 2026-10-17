@@ -12,6 +12,7 @@ fn vector(name: &str, tolerance: u8) {
     let mut builder = PathBuilder::new();
     let mut rule = FillRule::NonZero;
     let mut stroke = None;
+    let mut clips = Vec::new();
     for line in text.lines() {
         let words: Vec<_> = line.split_whitespace().collect();
         let n = |i: usize| words[i].parse::<f64>().unwrap();
@@ -35,6 +36,7 @@ fn vector(name: &str, tolerance: u8) {
                     ..Stroke::default()
                 });
             }
+            "clip" => clips.push(builder.finish()),
             "dash" => {
                 let stroke = stroke.as_mut().unwrap();
                 stroke.dash_phase = n(1);
@@ -83,16 +85,46 @@ fn vector(name: &str, tolerance: u8) {
             .map(|p| p[3])
             .collect::<Vec<_>>()
     } else {
-        Mask::from_path(8, 8, &path, Transform::IDENTITY, rule, 64)
-            .unwrap()
-            .coverage()
-            .to_vec()
+        let mut mask = Mask::from_path(8, 8, &path, Transform::IDENTITY, rule, 64).unwrap();
+        for clip in &clips {
+            mask.intersect(&Mask::from_path(8, 8, clip, Transform::IDENTITY, rule, 64).unwrap())
+                .unwrap();
+        }
+        assert_mask_tiles(&path, rule, &clips, &mask, name);
+        mask.coverage().to_vec()
     };
     for (i, (&actual, &expected)) in actual.iter().zip(expected).enumerate() {
         assert!(
             actual.abs_diff(expected) <= tolerance,
             "{name} pixel {i}: {actual} vs {expected}"
         );
+    }
+}
+
+fn assert_mask_tiles(
+    path: &crate::Path,
+    rule: FillRule,
+    clips: &[crate::Path],
+    mask: &Mask,
+    name: &str,
+) {
+    for y in 0..8 {
+        for x in 0..8 {
+            let mut tile =
+                Mask::from_path_at(1, 1, path, Transform::IDENTITY, rule, 1, (x, y)).unwrap();
+            for clip in clips {
+                tile.intersect(
+                    &Mask::from_path_at(1, 1, clip, Transform::IDENTITY, rule, 1, (x, y)).unwrap(),
+                )
+                .unwrap();
+            }
+            assert_eq!(
+                tile.coverage(),
+                &mask.coverage()
+                    [usize::try_from(y * 8 + x).unwrap()..usize::try_from(y * 8 + x + 1).unwrap()],
+                "{name} tile ({x},{y})"
+            );
+        }
     }
 }
 
@@ -226,7 +258,13 @@ fn stroke_transform_hairline_dash_and_miter() {
         dash_array: vec![1.0, 1.0],
         ..Stroke::default()
     };
-    let (outline, _) = crate::stroke::outline(&path, Transform::IDENTITY, &stroke).unwrap();
+    let (outline, _) = crate::stroke::outline(
+        &path,
+        Transform::IDENTITY,
+        &stroke,
+        &pagura_core::Limits::default(),
+    )
+    .unwrap();
     let mask = Mask::from_path(8, 8, &outline, Transform::IDENTITY, FillRule::NonZero, 64).unwrap();
     assert_eq!(
         mask.coverage().iter().map(|&n| u32::from(n)).sum::<u32>(),
@@ -246,6 +284,7 @@ fn stroke_transform_hairline_dash_and_miter() {
                 join,
                 ..Stroke::default()
             },
+            &pagura_core::Limits::default(),
         )
         .unwrap();
         assert!(!outline.is_empty());
@@ -339,4 +378,72 @@ fn mask_intersection_uses_geometry_and_is_atomic() {
         ErrorKind::Limit
     );
     assert_eq!(current, previous);
+}
+
+#[test]
+fn large_compound_triangles_and_caller_budgets() {
+    let mut builder = PathBuilder::new();
+    for y in 0..200 {
+        for x in 0..250 {
+            let (x, y) = (f64::from(x * 2), f64::from(y * 2));
+            builder
+                .move_to(Point::new(x, y))
+                .line_to(Point::new(x + 1.0, y))
+                .unwrap()
+                .line_to(Point::new(x, y + 1.0))
+                .unwrap()
+                .close();
+        }
+    }
+    let path = builder.finish();
+    let mask = Mask::from_path(
+        500,
+        400,
+        &path,
+        Transform::IDENTITY,
+        FillRule::NonZero,
+        200_000,
+    )
+    .unwrap();
+    for (y, row) in mask.coverage().as_chunks::<500>().0.iter().enumerate() {
+        for (x, &value) in row.iter().enumerate() {
+            assert_eq!(value, if x % 2 == 0 && y % 2 == 0 { 128 } else { 0 });
+        }
+    }
+    for limits in [
+        pagura_core::Limits {
+            path_segments: 10,
+            ..pagura_core::Limits::default()
+        },
+        pagura_core::Limits {
+            raster_work: 0,
+            ..pagura_core::Limits::default()
+        },
+        pagura_core::Limits {
+            mask_sources: 0,
+            ..pagura_core::Limits::default()
+        },
+    ] {
+        assert_eq!(
+            Mask::from_path_with_limits(
+                500,
+                400,
+                &path,
+                Transform::IDENTITY,
+                FillRule::NonZero,
+                limits,
+                (0, 0)
+            )
+            .unwrap_err()
+            .kind,
+            ErrorKind::Limit
+        );
+    }
+}
+
+#[test]
+fn independent_crossing_and_clip_sets() {
+    for i in 0..16 {
+        vector(&format!("crossing-set-{i}"), 1);
+    }
 }

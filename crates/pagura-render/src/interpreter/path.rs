@@ -1,8 +1,8 @@
 //! Path construction, painting and deferred clipping (8.5).
 
 use super::{
-    Arc, Clip, Command, Compiler, Error, FillRule, Mark, Point, Result, Value, features, finite,
-    nested, number, point, unsupported,
+    Arc, Clip, Command, Compiler, Error, FillRule, Mark, Point, Result, Value, finite, nested,
+    number, point,
 };
 
 impl Compiler<'_> {
@@ -83,15 +83,12 @@ impl Compiler<'_> {
         };
         let fill = matches!(word, b"f" | b"F" | b"f*" | b"B" | b"B*" | b"b" | b"b*");
         let stroke = matches!(word, b"S" | b"s" | b"B" | b"B*" | b"b" | b"b*");
-        if stroke && self.state.stroke_adjustment {
-            return Err(unsupported(features::GRAPHICS_STROKE_ADJUSTMENT));
-        }
         if self
             .list
             .commands
             .len()
             .checked_add(usize::from(fill) + usize::from(stroke))
-            .is_none_or(|n| n > self.document.limits().operations)
+            .is_none_or(|n| n > self.document.limits().display_commands)
         {
             return Err(Error::limit("display list budget exceeded"));
         }
@@ -101,14 +98,20 @@ impl Compiler<'_> {
                 mark: Mark::Fill(rule),
                 clip: self.state.clip.clone(),
                 color: self.state.fill.clone(),
+                transfer: self.state.transfer.clone(),
             });
         }
         if stroke && self.visible {
             self.list.commands.push(Command {
                 path: Arc::clone(&path),
-                mark: Mark::Stroke(self.state.stroke.clone(), self.state.ctm),
+                mark: Mark::Stroke(
+                    self.state.stroke.clone(),
+                    self.state.ctm,
+                    self.state.stroke_adjustment,
+                ),
                 clip: self.state.clip.clone(),
                 color: self.state.stroke_color.clone(),
+                transfer: self.state.transfer.clone(),
             });
         }
         // 8.5.4: a pending clip takes effect only AFTER the painting operation.

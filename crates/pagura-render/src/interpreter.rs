@@ -37,6 +37,7 @@ struct Graphics {
     intent: Vec<u8>,
     flatness: f64,
     stroke_adjustment: bool,
+    transfer: Option<crate::functions::Transfer>,
 }
 
 impl Default for Graphics {
@@ -51,6 +52,7 @@ impl Default for Graphics {
             intent: b"RelativeColorimetric".to_vec(),
             flatness: 1.0,
             stroke_adjustment: false,
+            transfer: None,
         }
     }
 }
@@ -91,7 +93,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn page(&mut self, page: &Page) -> Result<()> {
-        group(self.document, page.dictionary())?;
+        group(self.document, page.dictionary(), page.resources())?;
         self.state.fill = Color::new(color::named(
             self.document,
             page.resources(),
@@ -192,7 +194,7 @@ impl<'a> Compiler<'a> {
         let result = self.execute(word, &operands, resources, tag);
         self.operands = operands;
         self.operands.clear();
-        if self.path.len() > self.document.limits().value_nodes {
+        if self.path.len() > self.document.limits().path_segments {
             return Err(Error::limit("path segment budget exceeded"));
         }
         result
@@ -392,8 +394,11 @@ fn unsupported(tag: Feature) -> Error {
 /// With alpha=1, Normal blending and no soft mask, the source-over equation
 /// (11.3–11.4) yields the source colour independently of backdrop/isolation.
 /// A non-knockout group can therefore be painted directly once every mark is
-/// validated as opaque. Group colour-space conversions are excluded explicitly.
-fn group(document: &Document, dictionary: &Dictionary) -> Result<()> {
+/// validated as opaque. For a DeviceRGB blend space on an RGB output device
+/// there is no intervening colour conversion; ICCBased with an RGB alternate
+/// has the same fallback representation (8.6.5.5). Gray/CMYK and calibrated
+/// blend spaces require a conversion round trip and are excluded (11.4.7).
+fn group(document: &Document, dictionary: &Dictionary, resources: &Dictionary) -> Result<()> {
     let Some(value) = dictionary.get(b"Group") else {
         return Ok(());
     };
@@ -416,7 +421,9 @@ fn group(document: &Document, dictionary: &Dictionary) -> Result<()> {
             .as_bool()
             .ok_or(Error::syntax("group I must be boolean"))?;
     }
-    if dictionary.contains_key(b"CS") {
+    if let Some(space) = dictionary.get(b"CS")
+        && !color::rgb_blending(document, resources, space)?
+    {
         return Err(unsupported(features::TRANSPARENCY_GROUP_COLORSPACE));
     }
     Ok(())

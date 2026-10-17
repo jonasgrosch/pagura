@@ -2,7 +2,7 @@
 
 use crate::coverage::Shape;
 use crate::{Paint, Path, Pixmap, Transform};
-use pagura_core::{Error, Result};
+use pagura_core::{Error, Limits, Result};
 use std::sync::Arc;
 
 /// Which points a fill covers (ISO 32000-2 clause 8.5.3.3).
@@ -79,6 +79,7 @@ pub struct Mask {
     coverage: Vec<u8>,
     origin: (u32, u32),
     shapes: Vec<Shape>,
+    limits: Limits,
 }
 
 /// Summarizes instead of dumping coverage data.
@@ -125,6 +126,54 @@ impl Mask {
         max_pixels: usize,
         origin: (u32, u32),
     ) -> Result<Self> {
+        Self::from_path_with_limits(
+            width,
+            height,
+            path,
+            transform,
+            rule,
+            Limits {
+                pixels: max_pixels,
+                ..Limits::default()
+            },
+            origin,
+        )
+    }
+
+    /// Rasterizes a path with explicit geometry, work and mask-source budgets.
+    ///
+    /// # Errors
+    /// As [`Self::from_path_at`], with limits from `limits`.
+    pub fn from_path_with_limits(
+        width: u32,
+        height: u32,
+        path: &Path,
+        transform: Transform,
+        rule: FillRule,
+        limits: Limits,
+        origin: (u32, u32),
+    ) -> Result<Self> {
+        if path.segments().len() > limits.path_segments {
+            return Err(Error::limit("path segment budget exceeded"));
+        }
+        let shapes = vec![Shape {
+            path: Arc::new(path.clone()),
+            transform,
+            rule,
+        }];
+        Self::from_shapes(width, height, shapes, limits, origin)
+    }
+
+    fn from_shapes(
+        width: u32,
+        height: u32,
+        shapes: Vec<Shape>,
+        limits: Limits,
+        origin: (u32, u32),
+    ) -> Result<Self> {
+        if shapes.len() > limits.mask_sources {
+            return Err(Error::limit("mask source budget exceeded"));
+        }
         if origin.0.checked_add(width).is_none() || origin.1.checked_add(height).is_none() {
             return Err(Error::limit("tile extent overflows u32"));
         }
@@ -133,28 +182,21 @@ impl Mask {
         }
         let count = usize::try_from(u64::from(width) * u64::from(height))
             .ok()
-            .filter(|&count| count <= max_pixels)
+            .filter(|&count| count <= limits.pixels)
             .ok_or(Error::limit("mask pixel budget exceeded"))?;
         let mut coverage = Vec::new();
         coverage
             .try_reserve_exact(count)
             .map_err(|_| Error::limit("mask allocation failed"))?;
         coverage.resize(count, 0);
-        if path.segments().len() > crate::flatten::MAX_SEGMENTS {
-            return Err(Error::limit("path segment budget exceeded"));
-        }
-        let shapes = vec![Shape {
-            path: Arc::new(path.clone()),
-            transform,
-            rule,
-        }];
-        crate::coverage::coverage(width, height, &shapes, &mut coverage, origin)?;
+        crate::coverage::coverage(width, height, &shapes, &mut coverage, origin, &limits)?;
         Ok(Self {
             width,
             height,
             coverage,
             origin,
             shapes,
+            limits,
         })
     }
 
@@ -189,23 +231,39 @@ impl Mask {
     }
 
     fn restrict(&mut self, other: &Self) -> Result<()> {
+        let needed: Vec<_> = other
+            .shapes
+            .iter()
+            .filter(|shape| !shape.covers(self.origin, (self.width, self.height)))
+            .collect();
+        if needed.is_empty() {
+            return Ok(());
+        }
         let count = self
             .shapes
             .len()
-            .checked_add(other.shapes.len())
-            .filter(|&n| n <= 256)
+            .checked_add(needed.len())
+            .filter(|&n| n <= self.limits.mask_sources)
             .ok_or(Error::limit("mask intersection count budget exceeded"))?;
         let mut shapes = Vec::new();
         shapes
             .try_reserve_exact(count)
             .map_err(|_| Error::limit("mask geometry allocation failed"))?;
-        shapes.extend(self.shapes.iter().chain(&other.shapes).cloned());
+        shapes.extend(self.shapes.iter().cloned());
+        shapes.extend(needed.into_iter().cloned());
         let mut coverage = Vec::new();
         coverage
             .try_reserve_exact(self.coverage.len())
             .map_err(|_| Error::limit("mask allocation failed"))?;
         coverage.resize(self.coverage.len(), 0);
-        crate::coverage::coverage(self.width, self.height, &shapes, &mut coverage, self.origin)?;
+        crate::coverage::coverage(
+            self.width,
+            self.height,
+            &shapes,
+            &mut coverage,
+            self.origin,
+            &self.limits,
+        )?;
         self.coverage = coverage;
         self.shapes = shapes;
         Ok(())
@@ -244,16 +302,33 @@ pub fn fill_path_at(
     origin: (u32, u32),
 ) -> Result<()> {
     check_clip(target, clip)?;
-    let Some((x, y, width, height)) =
-        crate::bounds::region(path, transform, (target.width(), target.height()), origin)?
+    let limits = *target.limits();
+    let Some((x, y, width, height)) = crate::bounds::region(
+        path,
+        transform,
+        (target.width(), target.height()),
+        origin,
+        &limits,
+    )?
     else {
         return Ok(());
     };
-    let pixels = target.data().len() / 4;
-    let mut mask = Mask::from_path_at(width, height, path, transform, rule, pixels, (x, y))?;
+    let mut shapes = vec![Shape {
+        path: Arc::new(path.clone()),
+        transform,
+        rule,
+    }];
     if let Some(clip) = clip {
-        mask.restrict(clip)?;
+        for shape in &clip.shapes {
+            if !shape.covers((x, y), (width, height)) {
+                if shapes.len() >= limits.mask_sources {
+                    return Err(Error::limit("mask source budget exceeded"));
+                }
+                shapes.push(shape.clone());
+            }
+        }
     }
+    let mask = Mask::from_shapes(width, height, shapes, limits, (x, y))?;
     composite(target, &mask, *paint, (x - origin.0, y - origin.1))?;
     Ok(())
 }
@@ -289,7 +364,35 @@ pub fn stroke_path_at(
     origin: (u32, u32),
 ) -> Result<()> {
     check_clip(target, clip)?;
-    let (outline, transform) = crate::stroke::outline(path, transform, stroke)?;
+    let (outline, transform) = crate::stroke::outline(path, transform, stroke, target.limits())?;
+    fill_path_at(
+        target,
+        &outline,
+        transform,
+        FillRule::NonZero,
+        paint,
+        clip,
+        origin,
+    )
+}
+
+/// Applies automatic device grid fitting to an orthogonal stroke.
+/// See ISO 32000-2, 10.7.5; the device's fitting policy is documented in the
+/// implementation. Dashes are measured in original user space.
+///
+/// # Errors
+/// As [`stroke_path_at`]; curved/oblique fitting returns `Unsupported`.
+pub fn stroke_path_adjusted_at(
+    target: &mut Pixmap,
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    paint: &Paint,
+    clip: Option<&Mask>,
+    origin: (u32, u32),
+) -> Result<()> {
+    check_clip(target, clip)?;
+    let (outline, transform) = crate::adjust::outline(path, transform, stroke, target.limits())?;
     fill_path_at(
         target,
         &outline,

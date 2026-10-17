@@ -6,7 +6,7 @@ use pagura_core::{Error, Limits, Rect, Result};
 use pagura_document::{Page, Rotation};
 use pagura_raster::{
     FillRule, Mask, Paint, Path, PathBuilder, Pixmap, Stroke, Transform, fill_path_at,
-    stroke_path_at,
+    stroke_path_adjusted_at, stroke_path_at,
 };
 use std::sync::Arc;
 
@@ -20,7 +20,7 @@ pub(crate) struct Clip {
 #[derive(Debug)]
 pub(crate) enum Mark {
     Fill(FillRule),
-    Stroke(Stroke, Transform),
+    Stroke(Stroke, Transform, bool),
 }
 
 #[derive(Debug)]
@@ -31,6 +31,7 @@ pub(crate) struct Command {
     pub(crate) mark: Mark,
     pub(crate) clip: Option<Arc<Clip>>,
     pub(crate) color: Color,
+    pub(crate) transfer: Option<crate::functions::Transfer>,
 }
 
 /// An immutable interpreted page, retaining source colours and default-user-space
@@ -109,12 +110,8 @@ impl DisplayList {
             return Err(Error::invalid_argument("tile lies outside the page"));
         }
         let device = self.device_transform(options);
-        let mut target = Pixmap::new(
-            tile.width,
-            tile.height,
-            options.background,
-            self.limits.pixels,
-        )?;
+        let mut target =
+            Pixmap::new_with_limits(tile.width, tile.height, options.background, self.limits)?;
         // The crop is a geometric clip, including fractional final rows/columns.
         let mut crop = PathBuilder::new();
         crop.rect(
@@ -123,13 +120,13 @@ impl DisplayList {
             self.crop.width(),
             self.crop.height(),
         );
-        let crop = Mask::from_path_at(
+        let crop = Mask::from_path_with_limits(
             tile.width,
             tile.height,
             &crop.finish(),
             device,
             FillRule::NonZero,
-            self.limits.pixels,
+            self.limits,
             (tile.x, tile.y),
         )?;
         let mut last_clip = None;
@@ -145,20 +142,20 @@ impl DisplayList {
                     clip = node.parent.as_deref();
                 }
                 for node in chain.into_iter().rev() {
-                    let next = Mask::from_path_at(
+                    let next = Mask::from_path_with_limits(
                         tile.width,
                         tile.height,
                         &node.path,
                         device,
                         node.rule,
-                        self.limits.pixels,
+                        self.limits,
                         (tile.x, tile.y),
                     )?;
                     mask.intersect(&next)?;
                 }
                 last_clip = identity;
             }
-            let paint = Paint::Solid(command.color.to_rgba());
+            let paint = Paint::Solid(command.color.to_rgba(command.transfer.as_ref())?);
             match &command.mark {
                 Mark::Fill(rule) => fill_path_at(
                     &mut target,
@@ -169,13 +166,18 @@ impl DisplayList {
                     Some(&mask),
                     (tile.x, tile.y),
                 )?,
-                Mark::Stroke(stroke, ctm) => {
+                Mark::Stroke(stroke, ctm, adjust) => {
                     let inverse = ctm.inverse().ok_or(Error::unsupported(
                         crate::features::SINGULAR_STROKE,
                         "singular stroke transform is not implemented",
                     ))?;
                     let path = command.path.transformed(inverse);
-                    stroke_path_at(
+                    let rasterize = if *adjust {
+                        stroke_path_adjusted_at
+                    } else {
+                        stroke_path_at
+                    };
+                    rasterize(
                         &mut target,
                         &path,
                         ctm.then(device),

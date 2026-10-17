@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "content",
-  "scope": "Tests exercise the additive compile_page API. ISO 32000-2 locators not verified against the unavailable full text.",
+  "scope": "Tests exercise the vector pipeline and the stable render API; behaviour was checked against ISO 32000-1 (Adobe PDF 1.7) and ISO 32000-2.",
   "requirements": [
     {
       "id": "content-vector-pipeline",
@@ -10,13 +10,13 @@
         "8.4",
         "8.5"
       ],
-      "status": "implemented through compile_page",
+      "status": "integrated stable render API",
       "tests": [
         "content/compound-path",
         "content/clip-after-paint",
         "content/stroke-nonuniform"
       ],
-      "gaps": ""
+      "gaps": "text, images, calibrated default RGB and general stroke adjustment remain incomplete"
     },
     {
       "id": "content-lexical-sequence",
@@ -52,14 +52,14 @@
         "8.6.5.5",
         "10.4"
       ],
-      "status": "device spaces, ICC alternate/default, Indexed",
+      "status": "device, ICC fallback, Indexed, CalGray/Lab, tint alternates",
       "tests": [
         "content/cmyk",
         "content/indexed",
         "content/icc-alternate",
         "content/default-space"
       ],
-      "gaps": "no ICC profile transform; calibrated and spot spaces unsupported; nondefault ICC input ranges explicitly unsupported"
+      "gaps": "CalRGB; ICC profile transforms and nondefault input ranges; nonzero CIE black points; special colourants"
     },
     {
       "id": "content-opaque-groups",
@@ -71,9 +71,12 @@
       "status": "opaque Normal non-knockout groups",
       "tests": [
         "content/opaque-page-group",
-        "content/opaque-form-group"
+        "content/opaque-form-group",
+        "content/rgb-page-group",
+        "content/rgb-form-group",
+        "content/icc-rgb-group"
       ],
-      "gaps": "explicit group colour spaces and nontrivial transparency unsupported"
+      "gaps": "Gray/CMYK/calibrated blend spaces and nontrivial transparency unsupported"
     },
     {
       "id": "content-page-transform",
@@ -101,7 +104,8 @@
       "tests": [
         "content/fractional",
         "content/fractional-clip",
-        "content/fractional-clip-intersection"
+        "content/fractional-clip-intersection",
+        "content/decimal-stroke-half-tie"
       ],
       "gaps": ""
     },
@@ -124,7 +128,7 @@
       "clauses": [
         "8.11"
       ],
-      "status": "default configuration and membership expressions",
+      "status": "default configuration, membership expressions and View usage applications",
       "tests": [
         "content/optional-default",
         "content/optional-AnyOn",
@@ -133,7 +137,72 @@
         "content/optional-AllOff",
         "content/optional-expression"
       ],
-      "gaps": "automatic usage applications unsupported"
+      "gaps": "viewer-specific user/language context"
+    },
+    {
+      "id": "content-cie",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "8.6.5.2",
+        "8.6.5.4"
+      ],
+      "status": "CalGray and Lab; Bradford white adaptation to D65, sRGB output",
+      "tests": [
+        "content/cie-CalGray",
+        "content/cie-CalGray-gamma",
+        "content/cie-Lab",
+        "content/cie-indexed-Lab"
+      ],
+      "gaps": "CalRGB is not implemented; a nonzero BlackPoint is unsupported"
+    },
+    {
+      "id": "content-functions",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.10.2",
+        "7.10.3",
+        "7.10.4",
+        "7.10.5",
+        "8.6.6.4",
+        "8.6.6.5"
+      ],
+      "status": "sampled, exponential, stitching, calculator; tint alternates and transfer functions",
+      "tests": [
+        "content/function-exp-1",
+        "content/function-exp-2",
+        "content/function-stitch",
+        "content/function-sampled",
+        "content/function-calculator",
+        "content/transfer-type2",
+        "content/transfer-type4",
+        "content/function-order3-small",
+        "content/function-truncated",
+        "content/function-cycle",
+        "content/function-dimension",
+        "content/function-undefined",
+        "content/function-host-action",
+        "content/function-order3",
+        "content/transfer-array"
+      ],
+      "gaps": "sampled cubic interpolation with size >=4; special None/All colourants; CalRGB alternate pending facade contract migration"
+    },
+    {
+      "id": "content-usage",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "8.11.4.4",
+        "8.11.4.5"
+      ],
+      "status": "View applications; View/Print/Export recommendations, initial Zoom=1; AND across AS entries",
+      "tests": [
+        "content/usage-View",
+        "content/usage-Print-ignored",
+        "content/usage-no-OCGs",
+        "content/usage-Zoom-on",
+        "content/usage-Zoom-off",
+        "content/usage-conjunction"
+      ],
+      "gaps": "user/language/creator-specific categories require explicit viewer context"
     }
   ]
 }

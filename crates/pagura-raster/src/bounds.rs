@@ -1,19 +1,20 @@
 //! Conservative device bounds from the convex hull of path control points.
 
-use crate::flatten::{MAX_SEGMENTS, bounded};
+use crate::flatten::bounded;
 use crate::{Path, Point, Segment, Transform};
-use pagura_core::{Error, Result};
+use pagura_core::{Error, Limits, Result};
 
 pub(crate) fn region(
     path: &Path,
     transform: Transform,
     size: (u32, u32),
     origin: (u32, u32),
+    limits: &Limits,
 ) -> Result<Option<(u32, u32, u32, u32)>> {
     if !transform.is_finite() {
         return Err(Error::invalid_argument("path transform is not finite"));
     }
-    if path.segments().len() > MAX_SEGMENTS {
+    if path.segments().len() > limits.path_segments {
         return Err(Error::limit("path segment budget exceeded"));
     }
     let right = origin

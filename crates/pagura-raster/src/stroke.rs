@@ -4,17 +4,18 @@
 //! Flattening is measured after the CTM; constructing the pen before the CTM
 //! preserves elliptical pens under nonuniform transforms.
 
-use crate::flatten::{MAX_SEGMENTS, TOLERANCE, bounded, flatten};
+use crate::flatten::{TOLERANCE, bounded, flatten};
 use crate::{LineCap, LineJoin, Path, PathBuilder, Point, Stroke, Transform};
-use pagura_core::{Error, Result};
+use pagura_core::{Error, Limits, Result};
 
 pub(crate) fn outline(
     path: &Path,
     transform: Transform,
     stroke: &Stroke,
+    limits: &Limits,
 ) -> Result<(Path, Transform)> {
-    validate(stroke)?;
-    if path.segments().len() > MAX_SEGMENTS {
+    validate(stroke, limits)?;
+    if path.segments().len() > limits.path_segments {
         return Err(Error::limit("path segment budget exceeded"));
     }
     if !transform.is_finite() {
@@ -25,7 +26,7 @@ pub(crate) fn outline(
     } else {
         (path.clone(), transform, stroke.width)
     };
-    let contours = flatten(&path, transform)?;
+    let contours = flatten(&path, transform, limits)?;
     let mut builder = PathBuilder::new();
     let radius = width * 0.5;
     let stretch = transform.a.hypot(transform.b) + transform.c.hypot(transform.d);
@@ -38,15 +39,23 @@ pub(crate) fn outline(
         if contour.points.len() < 2 {
             continue;
         }
-        let runs = dash(contour.points, contour.closed, stroke)?;
+        let runs = dash(contour.points, contour.closed, stroke, limits)?;
         for (points, closed) in runs {
-            draw(&mut builder, &points, closed, radius, tolerance, stroke)?;
+            draw(
+                &mut builder,
+                &points,
+                closed,
+                radius,
+                tolerance,
+                stroke,
+                limits,
+            )?;
         }
     }
     Ok((builder.finish(), transform))
 }
 
-fn validate(stroke: &Stroke) -> Result<()> {
+pub(crate) fn validate(stroke: &Stroke, limits: &Limits) -> Result<()> {
     if !stroke.width.is_finite()
         || stroke.width < 0.0
         || !stroke.miter_limit.is_finite()
@@ -57,7 +66,7 @@ fn validate(stroke: &Stroke) -> Result<()> {
     {
         return Err(Error::invalid_argument("invalid stroke parameters"));
     }
-    if stroke.dash_array.len() > MAX_SEGMENTS {
+    if stroke.dash_array.len() > limits.path_segments {
         return Err(Error::limit("dash array budget exceeded"));
     }
     if !stroke.dash_array.is_empty() && stroke.dash_array.iter().all(|&n| n == 0.0) {
@@ -66,7 +75,12 @@ fn validate(stroke: &Stroke) -> Result<()> {
     Ok(())
 }
 
-fn dash(mut points: Vec<Point>, closed: bool, stroke: &Stroke) -> Result<Vec<(Vec<Point>, bool)>> {
+pub(crate) fn dash(
+    mut points: Vec<Point>,
+    closed: bool,
+    stroke: &Stroke,
+    limits: &Limits,
+) -> Result<Vec<(Vec<Point>, bool)>> {
     if stroke.dash_array.is_empty() {
         return Ok(vec![(points, closed)]);
     }
@@ -113,8 +127,8 @@ fn dash(mut points: Vec<Point>, closed: bool, stroke: &Stroke) -> Result<Vec<(Ve
         }
         let mut offset = 0.0;
         while offset < distance || remaining == 0.0 {
-            crate::coverage::charge(&mut work, 1)?;
-            if result.len() + run.len() > MAX_SEGMENTS {
+            crate::coverage::charge(&mut work, 1, limits.raster_work)?;
+            if result.len() + run.len() > limits.path_segments {
                 return Err(Error::limit("dashed segment budget exceeded"));
             }
             let step = remaining.min(distance - offset);
@@ -177,13 +191,14 @@ fn dash_length(stroke: &Stroke, index: usize) -> f64 {
         .unwrap_or(0.0)
 }
 
-fn draw(
+pub(crate) fn draw(
     out: &mut PathBuilder,
     input: &[Point],
     closed: bool,
     radius: f64,
     tolerance: f64,
     stroke: &Stroke,
+    limits: &Limits,
 ) -> Result<()> {
     let mut points = Vec::new();
     for &point in input {
@@ -203,6 +218,7 @@ fn draw(
                 radius,
                 tolerance,
                 stroke.cap,
+                limits,
             )?;
             cap(
                 out,
@@ -211,6 +227,7 @@ fn draw(
                 radius,
                 tolerance,
                 stroke.cap,
+                limits,
             )?;
         }
         return Ok(());
@@ -231,7 +248,7 @@ fn draw(
         let length = (b.x - a.x).hypot(b.y - a.y);
         let d = Point::new((b.x - a.x) / length, (b.y - a.y) / length);
         let n = Point::new(-d.y * radius, d.x * radius);
-        polygon(out, &[add(a, n), add(b, n), sub(b, n), sub(a, n)])?;
+        polygon(out, &[add(a, n), add(b, n), sub(b, n), sub(a, n)], limits)?;
         directions.push(d);
     }
     for (i, &point) in points.iter().enumerate() {
@@ -242,7 +259,7 @@ fn draw(
         };
         let after = directions.get(i);
         match (before, after) {
-            (Some(&a), Some(&b)) => join(out, point, a, b, radius, tolerance, stroke)?,
+            (Some(&a), Some(&b)) => join(out, point, [a, b], radius, tolerance, stroke, limits)?,
             (None, Some(&d)) => cap(
                 out,
                 first,
@@ -250,8 +267,9 @@ fn draw(
                 radius,
                 tolerance,
                 stroke.cap,
+                limits,
             )?,
-            (Some(&d), None) => cap(out, last, d, radius, tolerance, stroke.cap)?,
+            (Some(&d), None) => cap(out, last, d, radius, tolerance, stroke.cap, limits)?,
             _ => {}
         }
     }
@@ -261,12 +279,13 @@ fn draw(
 fn join(
     out: &mut PathBuilder,
     point: Point,
-    a: Point,
-    b: Point,
+    tangents: [Point; 2],
     radius: f64,
     tolerance: f64,
     stroke: &Stroke,
+    limits: &Limits,
 ) -> Result<()> {
+    let [a, b] = tangents;
     let cross = a.x * b.y - a.y * b.x;
     if cross == 0.0 && (stroke.join != LineJoin::Round || a.x * b.x + a.y * b.y >= 0.0) {
         return Ok(());
@@ -275,7 +294,7 @@ fn join(
     let n1 = Point::new(-a.y * side, a.x * side);
     let n2 = Point::new(-b.y * side, b.x * side);
     if stroke.join == LineJoin::Round {
-        return round_join(out, point, n1, n2, radius, tolerance, cross);
+        return round_join(out, point, [n1, n2], radius, tolerance, cross, limits);
     }
     let p1 = add(point, n1);
     let p2 = add(point, n2);
@@ -284,21 +303,22 @@ fn join(
     if stroke.join == LineJoin::Miter && denominator > 0.0 {
         let m = Point::new((n1.x + n2.x) / denominator, (n1.y + n2.y) / denominator);
         if m.x.hypot(m.y) <= radius * stroke.miter_limit {
-            return polygon(out, &[point, p1, add(point, m), p2]);
+            return polygon(out, &[point, p1, add(point, m), p2], limits);
         }
     }
-    polygon(out, &[point, p1, p2])
+    polygon(out, &[point, p1, p2], limits)
 }
 
 fn round_join(
     out: &mut PathBuilder,
     point: Point,
-    a: Point,
-    b: Point,
+    normals: [Point; 2],
     radius: f64,
     tolerance: f64,
     cross: f64,
+    limits: &Limits,
 ) -> Result<()> {
+    let [a, b] = normals;
     let start = a.y.atan2(a.x);
     let end = b.y.atan2(b.x);
     let angle = if cross > 0.0 {
@@ -308,13 +328,13 @@ fn round_join(
     };
     let step = 2.0 * (1.0 - (tolerance / radius).min(1.0)).acos();
     let count = (angle.abs() / step).ceil().max(1.0);
-    if !count.is_finite() || count > 4096.0 {
+    if !count.is_finite() || count > limits.path_segments as f64 || count > f64::from(u32::MAX) {
         return Err(Error::limit("round join subdivision budget exceeded"));
     }
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
-        reason = "integer count bounded to 1..=4096 above"
+        reason = "integer count bounded by the u32-compatible path budget below"
     )]
     let count = count as u32;
     let mut points = vec![point, add(point, a)];
@@ -326,7 +346,7 @@ fn round_join(
         ));
     }
     points.push(add(point, b));
-    polygon(out, &points)
+    polygon(out, &points, limits)
 }
 
 fn cap(
@@ -336,10 +356,11 @@ fn cap(
     radius: f64,
     tolerance: f64,
     cap: LineCap,
+    limits: &Limits,
 ) -> Result<()> {
     match cap {
         LineCap::Butt => Ok(()),
-        LineCap::Round => circle(out, point, radius, tolerance),
+        LineCap::Round => circle(out, point, radius, tolerance, limits),
         LineCap::ProjectingSquare => {
             let n = Point::new(-direction.y * radius, direction.x * radius);
             let end = add(
@@ -349,24 +370,31 @@ fn cap(
             polygon(
                 out,
                 &[add(point, n), add(end, n), sub(end, n), sub(point, n)],
+                limits,
             )
         }
     }
 }
 
-fn circle(out: &mut PathBuilder, center: Point, radius: f64, tolerance: f64) -> Result<()> {
+fn circle(
+    out: &mut PathBuilder,
+    center: Point,
+    radius: f64,
+    tolerance: f64,
+    limits: &Limits,
+) -> Result<()> {
     if radius == 0.0 {
         return Ok(());
     }
     let angle = 2.0 * (1.0 - (tolerance / radius).min(1.0)).acos();
     let count = (std::f64::consts::TAU / angle).ceil().max(8.0);
-    if !count.is_finite() || count > 4096.0 {
+    if !count.is_finite() || count > limits.path_segments as f64 || count > f64::from(u32::MAX) {
         return Err(Error::limit("round stroke subdivision budget exceeded"));
     }
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
-        reason = "integer count is bounded to 8..=4096 above"
+        reason = "integer count is bounded by the u32-compatible path budget below"
     )]
     let count = count as u32;
     let points: Vec<_> = (0..count)
@@ -378,14 +406,14 @@ fn circle(out: &mut PathBuilder, center: Point, radius: f64, tolerance: f64) -> 
             )
         })
         .collect();
-    polygon(out, &points)
+    polygon(out, &points, limits)
 }
 
-fn polygon(out: &mut PathBuilder, points: &[Point]) -> Result<()> {
+fn polygon(out: &mut PathBuilder, points: &[Point], limits: &Limits) -> Result<()> {
     if out
         .len()
         .checked_add(points.len() + 1)
-        .is_none_or(|n| n > MAX_SEGMENTS)
+        .is_none_or(|n| n > limits.path_segments)
     {
         return Err(Error::limit("stroke outline budget exceeded"));
     }
