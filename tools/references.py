@@ -85,6 +85,14 @@ STANDARDS = [
      "https://adobe-type-tools.github.io/font-tech-notes/pdfs/5177.Type2.pdf", "ref-a27a03167d23", "font"),
     ("adobe-tn5014-cidfont", "Adobe Technical Note #5014: Adobe CMap and CIDFont Files Specification",
      "https://adobe-type-tools.github.io/font-tech-notes/pdfs/5014.CIDFont_Spec.pdf", "ref-66573d1d29aa", "text, font"),
+    ("rfc3454", "RFC 3454: Preparation of Internationalized Strings (stringprep)",
+     "https://www.rfc-editor.org/rfc/rfc3454.txt", None, "crypto"),
+    ("rfc4013", "RFC 4013: SASLprep, the stringprep profile for user names and passwords",
+     "https://www.rfc-editor.org/rfc/rfc4013.txt", None, "crypto"),
+    ("rfc6229", "RFC 6229: Test Vectors for the Stream Cipher RC4",
+     "https://www.rfc-editor.org/rfc/rfc6229.txt", None, "crypto"),
+    ("nist-sp800-38a", "NIST SP 800-38A: Block Cipher Modes of Operation (CBC)",
+     "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf", None, "crypto"),
     ("adobe-glyph-list", "Adobe Glyph List (glyphlist.txt)",
      "https://raw.githubusercontent.com/adobe-type-tools/agl-aglfn/master/glyphlist.txt", "ref-7f1ab0d524b6", "text"),
 ]
@@ -325,6 +333,12 @@ def fetch(idents):
     (CACHE / "text").mkdir(parents=True, exist_ok=True)
     for ident, title, url, index_entry, users in STANDARDS:
         if idents and ident not in idents:
+            continue
+        known = by_id.get(ident)
+        if not idents and known and known.get("kind") == "format-standard" \
+                and cached_path(known["cache_path"]).is_file() \
+                and hashlib.sha256(cached_path(known["cache_path"]).read_bytes()).hexdigest() == known["sha256"]:
+            print(f"{ident}: cached", flush=True)
             continue
         evidence, data = acquire(url)
         expected_pdf = not url.endswith((".txt", "/"))

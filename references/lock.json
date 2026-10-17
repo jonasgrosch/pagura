@@ -1625,6 +1625,66 @@
       "mime": "text/plain",
       "cache_path": ".cache/references/a3b2f61ced9f3644cc0d4ecde5c59df34ca286c689d9484a43a710a81c466789.txt",
       "retrieved_at": "2026-10-17T18:50:10.555050+00:00"
+    },
+    {
+      "id": "rfc3454",
+      "title": "RFC 3454: Preparation of Internationalized Strings (stringprep)",
+      "kind": "format-standard",
+      "used_by": "crypto",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://www.rfc-editor.org/rfc/rfc3454.txt",
+      "resolved_url": "https://www.rfc-editor.org/rfc/rfc3454.txt",
+      "sha256": "eb722fa698fb7e8823b835d9fd263e4cdb8f1c7b0d234edf7f0e3bd2ccbb2c79",
+      "bytes": 138684,
+      "mime": "text/plain",
+      "cache_path": ".cache/references/eb722fa698fb7e8823b835d9fd263e4cdb8f1c7b0d234edf7f0e3bd2ccbb2c79.txt",
+      "retrieved_at": "2026-10-17T20:46:24.180498+00:00"
+    },
+    {
+      "id": "rfc4013",
+      "title": "RFC 4013: SASLprep, the stringprep profile for user names and passwords",
+      "kind": "format-standard",
+      "used_by": "crypto",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://www.rfc-editor.org/rfc/rfc4013.txt",
+      "resolved_url": "https://www.rfc-editor.org/rfc/rfc4013.txt",
+      "sha256": "63daa764693815ae8544728099d17a1c46e96b5818f2a399b3ec475ea153a991",
+      "bytes": 13051,
+      "mime": "text/plain",
+      "cache_path": ".cache/references/63daa764693815ae8544728099d17a1c46e96b5818f2a399b3ec475ea153a991.txt",
+      "retrieved_at": "2026-10-17T20:46:24.416576+00:00"
+    },
+    {
+      "id": "rfc6229",
+      "title": "RFC 6229: Test Vectors for the Stream Cipher RC4",
+      "kind": "format-standard",
+      "used_by": "crypto",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://www.rfc-editor.org/rfc/rfc6229.txt",
+      "resolved_url": "https://www.rfc-editor.org/rfc/rfc6229.txt",
+      "sha256": "8602f8b3199ecf18d8a89a4dba19f9683f947d5c8306c137e16b34fb0da79eb7",
+      "bytes": 28406,
+      "mime": "text/plain",
+      "cache_path": ".cache/references/8602f8b3199ecf18d8a89a4dba19f9683f947d5c8306c137e16b34fb0da79eb7.txt",
+      "retrieved_at": "2026-10-17T20:46:24.643863+00:00"
+    },
+    {
+      "id": "nist-sp800-38a",
+      "title": "NIST SP 800-38A: Block Cipher Modes of Operation (CBC)",
+      "kind": "format-standard",
+      "used_by": "crypto",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf",
+      "resolved_url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf",
+      "sha256": "66821162de1e7130c5fb5eedb22140d8d6d013ec51af4550bb095c2a9481a00e",
+      "bytes": 378266,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/66821162de1e7130c5fb5eedb22140d8d6d013ec51af4550bb095c2a9481a00e.pdf",
+      "retrieved_at": "2026-10-17T20:46:26.215731+00:00"
     }
   ]
 }
