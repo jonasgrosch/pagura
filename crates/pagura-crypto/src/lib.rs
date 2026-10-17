@@ -8,9 +8,11 @@
 //! parameters; the document layer maps the `/Encrypt` dictionary onto them.
 //!
 //! Only decryption and the encryption steps that key derivation needs are
-//! provided. This is not a general-purpose cryptography library and is not
-//! hardened against timing side channels; a local reader of documents the
-//! user already holds does not need that.
+//! provided. This is not a general-purpose cryptography library. AES encryption,
+//! decryption and key expansion use secret-dependent S-box table lookups;
+//! finite-field arithmetic also has data-dependent branches. No constant-time
+//! guarantee is made. Local document processing does not remove the possibility
+//! of timing or cache observations in a shared execution environment.
 
 pub mod aes;
 mod hash;

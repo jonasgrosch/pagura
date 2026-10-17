@@ -107,7 +107,12 @@ def rc4(key, data):
 
 
 def self_check():
-    """Published FIPS 197 Appendix C, SP 800-38A F.2 and RFC 6229 vectors."""
+    """Fixed attributed vectors; source availability is recorded in crypto.json.
+
+    FIPS 197-upd1 Appendix C links to a separate vector document, whereas
+    Appendix A/B examples are present locally and checked in primitive_examples.
+    The CBC/RC4 source texts remain unavailable; these are corroborating tests.
+    """
     plain = bytes.fromhex("00112233445566778899aabbccddeeff")
     for key, expected in [
         (bytes(range(16)), "69c4e0d86a7b0430d8cdb78070b4c55a"),
@@ -268,8 +273,166 @@ def vector(name, p, key, user, owner, method, validation=None):
                   "Independent encryption-side authentication, file-key and object-key oracle", extra=extra)
 
 
+def integer_root(value, degree):
+    """Exact floor root; no floating-point rounding of SHA-2 constants."""
+    low, high = 0, 1 << ((value.bit_length() + degree - 1) // degree)
+    while high - low > 1:
+        middle = (low + high) // 2
+        if middle**degree <= value:
+            low = middle
+        else:
+            high = middle
+    return low
+
+
+def primitive_examples():
+    """Primary-text numeric examples and independent equation-derived oracles."""
+    # RFC 1321 section 3.4; guard against values near a floating-point boundary.
+    from math import sin
+    scaled = [abs(sin(i)) * 2**32 for i in range(1, 65)]
+    assert all(abs(value - round(value)) > 0.00001 for value in scaled)
+    constants = b"".join(int(value).to_bytes(4, "little") for value in scaled)
+    shifts = bytes([7, 12, 17, 22]*4 + [5, 9, 14, 20]*4 + [4, 11, 16, 23]*4 + [6, 10, 15, 21]*4)
+    yield Vector("md5-round-constants", {".constants": constants, ".shifts": shifts},
+                 ("crypto-hash-vectors",), "RFC 1321 section 3.4 sine-derived constants and all rotation counts")
+    primes = []
+    candidate = 2
+    while len(primes) < 80:
+        if all(candidate % prime for prime in primes if prime*prime <= candidate):
+            primes.append(candidate)
+        candidate += 1
+
+    def roots(values, degree, width):
+        mask = (1 << width) - 1
+        return b"".join((integer_root(prime << (width*degree), degree) & mask).to_bytes(width//8, "big")
+                        for prime in values)
+
+    yield Vector("sha2-round-constants", {
+        ".sha256": roots(primes[:64], 3, 32), ".sha512": roots(primes, 3, 64),
+        ".iv256": roots(primes[:8], 2, 32), ".iv384": roots(primes[8:16], 2, 64),
+        ".iv512": roots(primes[:8], 2, 64)}, ("crypto-hash-vectors",),
+        "FIPS 180-4 sections 4.2.2-4.2.3 and 5.3.3-5.3.5 exact fractional-root constants")
+    data = b"abc"
+    yield Vector("hash-padding-abc", {
+        ".input": data, ".md5-padded": data + b"\x80" + bytes(52) + (24).to_bytes(8, "little"),
+        ".sha256-padded": data + b"\x80" + bytes(52) + (24).to_bytes(8, "big"),
+        ".sha512-padded": data + b"\x80" + bytes(108) + (24).to_bytes(16, "big"),
+        ".digests": (" ".join(hash(data).hexdigest() for hash in (md5, sha256, sha384, sha512))+"\n").encode()},
+        ("crypto-hash-vectors",), "FIPS 180-4 sections 5.1.1-5.1.2 printed abc padding examples; RFC 1321 sections 3.1-3.2 padding; hashlib digest oracles")
+    inverse = bytes(SBOX.index(value) for value in range(256))
+    yield Vector("aes-substitution-tables", {".forward": SBOX, ".inverse": inverse},
+                 ("crypto-cipher-vectors",), "FIPS 197-upd1 Tables 4 and 6 complete forward and inverse substitution values")
+    # FIPS 197-upd1 Appendix A.1: every word, including the input key.
+    key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c")
+    expanded = bytes.fromhex(
+        "2b7e151628aed2a6abf7158809cf4f3ca0fafe1788542cb123a339392a6c7605"
+        "f2c295f27a96b9435935807a7359f67f3d80477d4716fe3e1e237e446d7a883b"
+        "ef44a541a8525b7fb671253bdb0bad00d4d1c6f87c839d87caf2b8bc11f915bc"
+        "6d88a37a110b3efddbf98641ca0093fd4e54f70e5f5fc9f384a64fb24ea6dc4f"
+        "ead27321b58dbad2312bf5607f8d292fac7766f319fadc2128d12941575c006e"
+        "d014f9a8c9ee2589e13f0cc8b6630ca6"
+    )
+    assert expanded == b"".join(word.to_bytes(4, "big") for word in AES(key).words)
+    yield Vector("aes128-key-expansion", {".key": key, ".expanded": expanded},
+                 ("crypto-cipher-vectors",), "FIPS 197-upd1 Appendix A.1 complete key schedule")
+    # FIPS 197-upd1 Appendix A.3: every word, including the input key.
+    key = bytes.fromhex("603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4")
+    expanded = bytes.fromhex(
+        "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4"
+        "9ba354118e6925afa51a8b5f2067fcdea8b09c1a93d194cdbe49846eb75d5b9a"
+        "d59aecb85bf3c917fee94248de8ebe96b5a9328a2678a647983122292f6c79b3"
+        "812c81addadf48ba24360af2fab8b46498c5bfc9bebd198e268c3ba709e04214"
+        "68007bacb2df331696e939e46c518d80c814e20476a9fb8a5025c02d59c58239"
+        "de1369676ccc5a71fa2563959674ee155886ca5d2e2f31d77e0af1fa27cf73c3"
+        "749c47ab18501ddae2757e4f7401905acafaaae3e4d59b349adf6acebd10190d"
+        "fe4890d1e6188d0b046df344706c631e"
+    )
+    assert expanded == b"".join(word.to_bytes(4, "big") for word in AES(key).words)
+    yield Vector("aes256-key-expansion", {".key": key, ".expanded": expanded},
+                 ("crypto-cipher-vectors",), "FIPS 197-upd1 Appendix A.3 complete key schedule")
+    # Numeric states printed in Appendix B, serialized by columns (section 3.4).
+    states = (
+        "1 start 193de3bea0f4e22b9ac68d2ae9f84808\n"
+        "1 sub d42711aee0bf98f1b8b45de51e415230\n"
+        "1 shift d4bf5d30e0b452aeb84111f11e2798e5\n"
+        "1 mix 046681e5e0cb199a48f8d37a2806264c\n"
+        "2 start a49c7ff2689f352b6b5bea43026a5049\n"
+        "2 sub 49ded28945db96f17f39871a7702533b\n"
+        "2 shift 49db873b453953897f02d2f177de961a\n"
+        "2 mix 584dcaf11b4b5aacdbe7caa81b6bb0e5\n"
+        "3 start aa8f5f0361dde3ef82d24ad26832469a\n"
+        "3 sub ac73cf7befc111df13b5d6b545235ab8\n"
+        "3 shift acc1d6b8efb55a7b1323cfdf457311b5\n"
+        "3 mix 75ec0993200b633353c0cf7cbb25d0dc\n"
+        "4 start 486c4eee671d9d0d4de3b138d65f58e7\n"
+        "4 sub 52502f2885a45ed7e311c807f6cf6a94\n"
+        "4 shift 52a4c89485116a28e3cf2fd7f6505e07\n"
+        "4 mix 0fd6daa9603138bf6fc0106b5eb31301\n"
+        "5 start e0927fe8c86363c0d9b1355085b8be01\n"
+        "5 sub e14fd29be8fbfbba35c89653976cae7c\n"
+        "5 shift e1fb967ce8c8ae9b356cd2ba974ffb53\n"
+        "5 mix 25d1a9adbd11d168b63a338e4c4cc0b0\n"
+        "6 start f1006f55c1924cef7cc88b325db5d50c\n"
+        "6 sub a163a8fc784f29df10e83d234cd503fe\n"
+        "6 shift a14f3dfe78e803fc10d5a8df4c632923\n"
+        "6 mix 4b868d6d2c4a8980339df4e837d218d8\n"
+        "7 start 260e2e173d41b77de86472a9fdd28b25\n"
+        "7 sub f7ab31f02783a9ff9b4340d354b53d3f\n"
+        "7 shift f783403f27433df09bb531ff54aba9d3\n"
+        "7 mix 1415b5bf461615ec274656d7342ad843\n"
+        "8 start 5a4142b11949dc1fa3e019657a8c040c\n"
+        "8 sub be832cc8d43b86c00ae1d44dda64f2fe\n"
+        "8 shift be3bd4fed4e1f2c80a642cc0da83864d\n"
+        "8 mix 00512fd1b1c889ff54766dcdfa1b99ea\n"
+        "9 start ea835cf00445332d655d98ad8596b0c5\n"
+        "9 sub 87ec4a8cf26ec3d84d4c46959790e7a6\n"
+        "9 shift 876e46a6f24ce78c4d904ad897ecc395\n"
+        "9 mix 473794ed40d4e4a5a3703aa64c9f42bc\n"
+        "10 start eb40f21e592e38848ba113e71bc342d2\n"
+        "10 sub e9098972cb31075f3d327d94af2e2cb5\n"
+        "10 shift e9317db5cb322c723d2e895faf090794\n"
+    ).encode()
+    key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c")
+    plain = bytes.fromhex("3243f6a8885a308d313198a2e0370734")
+    cipher = bytes.fromhex("3925841d02dc09fbdc118597196a0b32")
+    assert AES(key).block(plain) == cipher
+    yield Vector("aes128-cipher-example", {".key": key, ".plain": plain, ".cipher": cipher, ".states": states},
+                 ("crypto-cipher-vectors",), "FIPS 197-upd1 Appendix B cipher output and all 39 intermediate states")
+
+    # Algorithm 2.B retains the full selected digest between iterations. Only
+    # the final result is cut to 32 bytes (FIPS 180-4 section 7, not SHA-512/256).
+    remaining = {32, 48, 64}
+    salt = bytes(range(8))
+    for index in range(64):
+        password = f"primitive-example-{index}".encode()
+        user = bytes(range(48)) if index % 2 else b""
+        digest = sha256(password + salt + user).digest()
+        rounds, last = 0, 0
+        selectors = []
+        while rounds < 64 or last > rounds - 32:
+            encrypted = AES(digest[:16]).cbc((password + digest + user)*64, digest[16:32])
+            selector = int.from_bytes(encrypted[:16], "big") % 3
+            selectors.append(selector)
+            digest = (sha256, sha384, sha512)[selector](encrypted).digest()
+            rounds, last = rounds + 1, encrypted[-1]
+        if len(digest) not in remaining:
+            continue
+        remaining.remove(len(digest))
+        assert set(selectors) == {0, 1, 2} and rounds <= 287
+        assert modern_hash(6, password, salt, user) == digest[:32]
+        yield Vector(f"r6-hash-truncation-{len(digest)}", {
+            ".password": password, ".salt": salt, ".user": user, ".full-hash": digest,
+            ".hash": digest[:32], ".selectors": bytes(selectors)}, ("security-r6",),
+            "ISO 32000-2 Algorithm 2.B full intermediate digest and final leftmost-256-bit truncation",
+            extra={"final_digest_bytes": len(digest), "rounds": rounds})
+        if not remaining:
+            break
+    assert not remaining
+
+
 def cases():
     self_check()
+    yield from primitive_examples()
     data = bytes(range(256)) + bytes(range(5))
     lines = [f"{length} " + " ".join(hash(data[:length]).hexdigest() for hash in (md5, sha256, sha384, sha512))
              for length in range(len(data)+1)]

@@ -1,4 +1,10 @@
-//! AES-128/256 (FIPS 197) and CBC/ECB (SP 800-38A).
+//! AES-128/256 (FIPS 197-upd1) with CBC chaining.
+//!
+//! AES uses forward and inverse S-box tables, including in key expansion.
+//! Their indices depend on secret data; cache access and finite-field arithmetic
+//! can have data-dependent timing. This implementation is not constant-time.
+//! CBC vectors attributed to SP 800-38A are tested; its text is not locally
+//! verified (see the crypto requirements registry).
 use pagura_core::{Error, Position, Result};
 
 const fn multiply(mut a: u8, mut b: u8) -> u8 {
@@ -235,7 +241,7 @@ pub fn unpad_pkcs7(data: &mut Vec<u8>) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn bytes<const N: usize>(hex: &str) -> [u8; N] {
+    pub(super) fn bytes<const N: usize>(hex: &str) -> [u8; N] {
         let mut out = [0; N];
         assert_eq!(hex.len(), N * 2);
         for (slot, chunk) in out.iter_mut().zip(hex.as_bytes().as_chunks::<2>().0) {
@@ -244,7 +250,7 @@ mod tests {
         out
     }
     #[test]
-    fn fips197_appendix_c() {
+    fn legacy_appendix_c_attributed_blocks() {
         let plain = bytes("00112233445566778899aabbccddeeff");
         for (aes, expected) in [
             (
@@ -331,3 +337,6 @@ mod tests {
         assert_eq!(partial, [7; 17]);
     }
 }
+
+#[cfg(test)]
+mod standard_tests;

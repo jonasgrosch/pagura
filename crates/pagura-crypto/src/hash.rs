@@ -605,7 +605,7 @@ pub fn sha384(data: &[u8]) -> [u8; 48] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn hex(bytes: &[u8]) -> String {
+    pub(super) fn hex(bytes: &[u8]) -> String {
         use std::fmt::Write;
         let mut output = String::new();
         for byte in bytes {
@@ -654,7 +654,7 @@ mod tests {
         );
     }
     #[test]
-    fn fips180_examples_and_streaming() {
+    fn hashlib_known_answers_and_streaming() {
         assert_eq!(
             hex(&sha256(b"")),
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -740,3 +740,6 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod standard_tests;

@@ -69,6 +69,8 @@ fn modern_hash(revision: u8, password: &[u8], salt: &[u8], user: &[u8]) -> Resul
         last = encrypted[encrypted.len() - 1];
         round += 1;
     }
+    // Algorithm 2.B keeps the complete selected digest between rounds, then
+    // takes the leftmost 256 bits (FIPS 180-4 section 7, not SHA-512/256).
     key[..32]
         .try_into()
         .map_err(|_| Error::syntax("invalid revision 6 hash"))
@@ -154,6 +156,33 @@ mod tests {
     use super::*;
     use pagura_core::ErrorKind;
     use pagura_testkit::fixture;
+
+    #[test]
+    fn algorithm_2_b_preserves_full_digests_then_truncates_leftmost_bits() {
+        for length in [32, 48, 64] {
+            let name = format!("r6-hash-truncation-{length}");
+            let password = fixture("crypto", &format!("{name}.password"));
+            let salt = fixture("crypto", &format!("{name}.salt"));
+            let user = fixture("crypto", &format!("{name}.user"));
+            let full = fixture("crypto", &format!("{name}.full-hash"));
+            let expected = fixture("crypto", &format!("{name}.hash"));
+            let selectors = fixture("crypto", &format!("{name}.selectors"));
+            assert_eq!(full.len(), length);
+            assert_eq!(expected, full[..32]);
+            assert!((64..=287).contains(&selectors.len()));
+            assert_eq!(
+                length,
+                [32, 48, 64][usize::from(*selectors.last().unwrap())]
+            );
+            for selector in 0..3 {
+                assert!(selectors.contains(&selector));
+            }
+            assert_eq!(
+                modern_hash(6, &password, &salt, &user).unwrap(),
+                expected.as_slice()
+            );
+        }
+    }
 
     #[test]
     fn independent_permissions_oracles_return_authenticated_keys() {
