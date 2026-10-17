@@ -1,0 +1,175 @@
+{
+  "schema": 2,
+  "area": "jpx",
+  "scope": "ISO 32000-2:2020 clause 7.4.9 verified against the locally supplied reference; codec algorithms independently implemented for the stated ISO/IEC 15444-1 subset. Annex locators refer to Part 1.",
+  "requirements": [
+    {
+      "id": "jpx-part1",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ISO/IEC 15444-1, Annex A; B; C; D",
+      "status": "Part 1 MQ code-blocks, tag trees, reset and segmentation symbols; signed 1-16-bit components",
+      "tests": [
+        "jpx/gray",
+        "jpx/zero",
+        "jpx/sixteen-bit",
+        "jpx/signed",
+        "jpx/code-blocks",
+        "jpx/modes-2",
+        "jpx/modes-32",
+        "jpx/modes-34",
+        "jpx/markers",
+        "jpx/packet-markers",
+        "jpx/packet-lengths"
+      ],
+      "gaps": "Bypass, terminate-each-pass, predictable termination, vertical-causal coding, ROI shifts and partial bit-plane quality truncation return Unsupported."
+    },
+    {
+      "id": "jpx-wavelet",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ISO/IEC 15444-1, Annex F",
+      "status": "Reversible 5/3 synthesis with reference-grid parity, symmetric extension and singleton dimensions",
+      "tests": [
+        "jpx/reversible-1",
+        "jpx/reversible-2",
+        "jpx/reversible-3",
+        "jpx/offset",
+        "jpx/odd",
+        "jpx/singleton-1-7-0-0-0",
+        "jpx/singleton-1-7-0-0-1",
+        "jpx/singleton-7-1-0-0-0",
+        "jpx/singleton-7-1-0-0-1",
+        "jpx/singleton-1-7-1-0-0",
+        "jpx/singleton-1-7-1-0-1",
+        "jpx/singleton-7-1-0-1-0",
+        "jpx/singleton-7-1-0-1-1",
+        "jpx/singleton-1-1-1-1-0",
+        "jpx/singleton-1-1-1-1-1"
+      ],
+      "gaps": "Component precision above 16 bits and coefficient precision above 30 bit planes exceed the current representation."
+    },
+    {
+      "id": "jpx-progression",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ISO/IEC 15444-1, Annex B",
+      "status": "All five progression orders with one default precinct per resolution and multiple layers",
+      "tests": [
+        "jpx/rct-progression-0",
+        "jpx/rct-progression-1",
+        "jpx/rct-progression-2",
+        "jpx/rct-progression-3",
+        "jpx/rct-progression-4",
+        "jpx/layers"
+      ],
+      "gaps": "Explicit non-default precinct partitioning, multiple precincts per resolution, POC and PPM/PPT return Unsupported."
+    },
+    {
+      "id": "jpx-rct",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ISO/IEC 15444-1, Annex G",
+      "status": "Inverse reversible component transform and DC level shift",
+      "tests": [
+        "jpx/rct-progression-0",
+        "jpx/rct-progression-1",
+        "jpx/rct-progression-2",
+        "jpx/rct-progression-3",
+        "jpx/rct-progression-4"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "jpx-tiles",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ISO/IEC 15444-1, Annex A; B",
+      "status": "Tile grids and packet-boundary tile-parts, assembled without partial success",
+      "tests": [
+        "jpx/tiles",
+        "jpx/tile-parts",
+        "jpx/final-tile-part",
+        "jpx/tile-coding"
+      ],
+      "gaps": "Coding parameter changes after the first tile-part return Unsupported."
+    },
+    {
+      "id": "jpx-irreversible",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ISO/IEC 15444-1, Annex E; F; G",
+      "status": "9/7 lifting, expounded and derived scalar dequantization, ICT; input sample oracle with tolerance 3",
+      "tests": [
+        "jpx/irreversible",
+        "jpx/derived-quantization"
+      ],
+      "gaps": "Floating-point reconstruction; no bit-exact lossy output claim."
+    },
+    {
+      "id": "jpx-boxes",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ISO/IEC 15444-1, Annex I",
+      "status": "JP2 bounds, ihdr, colr methods 1-3, cdef, res and extended box lengths",
+      "tests": [
+        "jpx/color-1",
+        "jpx/color-2",
+        "jpx/color-3",
+        "jpx/channel-alpha",
+        "jpx/resolution-extended",
+        "jpx/final-box",
+        "jpx/bit-depth-box"
+      ],
+      "gaps": "Multiple colour specifications need negotiation. Premultiplied, partial and per-colour opacity definitions require a richer public image API. ICC profile bytes are preserved, not interpreted."
+    },
+    {
+      "id": "jpx-palette",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ISO/IEC 15444-1, Annex I",
+      "status": "JP2 palette and component mapping, applied before channel definitions",
+      "tests": [
+        "jpx/palette"
+      ],
+      "gaps": "Palette and component precision limited to 16 bits."
+    },
+    {
+      "id": "jpx-hostile",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ISO/IEC 15444-1, Annex A; B; I",
+      "status": "Truncations, tag-tree precision, impossible tile counts and box lengths fail with bounded work",
+      "tests": [
+        "jpx/truncated",
+        "jpx/bad-tag-tree",
+        "jpx/absurd-tiles",
+        "jpx/bad-box-length",
+        "jpx/missing-tile",
+        "jpx/trailing",
+        "jpx/duplicate-coding",
+        "jpx/bad-tile-lengths",
+        "jpx/bad-packet-lengths"
+      ],
+      "gaps": "No recovery or invented pixels; allocation accounting conservatively includes temporary buffers."
+    }
+  ]
+}

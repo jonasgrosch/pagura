@@ -1,0 +1,1104 @@
+{
+  "schema": 2,
+  "area": "jpx",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "jpx/gray",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-part1"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/gray.jpx",
+          "sha256": "6a2b43add119118fa32fcb1a5a70980027954fa24508ddff4b4726cc6f719382"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/gray.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/zero",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-part1"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/zero.jpx",
+          "sha256": "753dea1901edfc00957857c17b1f91310264bf4e93a03d7ade6552f0e7486c1a"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/zero.samples",
+          "sha256": "aaeb5bc5f0cbc4d2d2e30f2631b6e7447642400df071bf5483bd8a7a1a0f7d18"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/reversible-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/reversible-1.jpx",
+          "sha256": "38371decc7ad5a48665acef0a54c19b0dc276622003d3d170fb84e2a442f3c33"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/reversible-1.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/reversible-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/reversible-2.jpx",
+          "sha256": "805e6663776fc7e309e8ce93a7fbb6cb5a9bdb26bfa4f5a9bcb465da7cc0f694"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/reversible-2.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/reversible-3",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/reversible-3.jpx",
+          "sha256": "cefa47294f3b06490ea117edf1a5e9f7dc5e1fb8e00b37d2b3e73e6121895266"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/reversible-3.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/rct-progression-0",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-progression",
+        "jpx-rct"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/rct-progression-0.jpx",
+          "sha256": "d72e03dcbb21b29ed48b89fb7bc186429dafe9090de375d86b7da41a7324b4da"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/rct-progression-0.samples",
+          "sha256": "5f4397da25c808ef7e2e10165abd2e70ccfee320bf3bd2b1c544bbb7cecd2cf4"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/rct-progression-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-progression",
+        "jpx-rct"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/rct-progression-1.jpx",
+          "sha256": "796e8f66ee0cdac0886dd299fe59442c46b99774771f5536fa12c008147c5cf5"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/rct-progression-1.samples",
+          "sha256": "5f4397da25c808ef7e2e10165abd2e70ccfee320bf3bd2b1c544bbb7cecd2cf4"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/rct-progression-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-progression",
+        "jpx-rct"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/rct-progression-2.jpx",
+          "sha256": "7e91bb86867b46c880d1b0f256fdca0e1fddccaa626a010f932487d358678426"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/rct-progression-2.samples",
+          "sha256": "5f4397da25c808ef7e2e10165abd2e70ccfee320bf3bd2b1c544bbb7cecd2cf4"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/rct-progression-3",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-progression",
+        "jpx-rct"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/rct-progression-3.jpx",
+          "sha256": "eb6deedd6246a6b76fd312ea3ea2b43efc01a5561119bccc8f46a0d978b45dd1"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/rct-progression-3.samples",
+          "sha256": "5f4397da25c808ef7e2e10165abd2e70ccfee320bf3bd2b1c544bbb7cecd2cf4"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/rct-progression-4",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-progression",
+        "jpx-rct"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/rct-progression-4.jpx",
+          "sha256": "375bfc5f83feeca4bf93658b1154e3830720d8cead4ae98490d9bf1593bb51c3"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/rct-progression-4.samples",
+          "sha256": "5f4397da25c808ef7e2e10165abd2e70ccfee320bf3bd2b1c544bbb7cecd2cf4"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/tiles",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-tiles"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/tiles.jpx",
+          "sha256": "69228d090105a446745a83d9825ea69937d59cbe552b3da930bf68f73b9e1513"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/tiles.samples",
+          "sha256": "5f4397da25c808ef7e2e10165abd2e70ccfee320bf3bd2b1c544bbb7cecd2cf4"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/tile-parts",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-tiles"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/tile-parts.jpx",
+          "sha256": "bb9ec31c6aae308769a2d3a07f61af21e89531898ccd2a4ecb1bdd78cc6bef94"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/tile-parts.samples",
+          "sha256": "5f4397da25c808ef7e2e10165abd2e70ccfee320bf3bd2b1c544bbb7cecd2cf4"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/layers",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-progression"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/layers.jpx",
+          "sha256": "2894975a32a6dfb0437c678eec17723744622e75344f6c1f9f6bddcca0a925ee"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/layers.samples",
+          "sha256": "5f4397da25c808ef7e2e10165abd2e70ccfee320bf3bd2b1c544bbb7cecd2cf4"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/offset",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/offset.jpx",
+          "sha256": "1c056fce15e7dc53da553e7d64d6c5f68e72b08b274635f205528031b5b268d8"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/offset.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/odd",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/odd.jpx",
+          "sha256": "879b7512d8daa86928b52f47b9725001a866ee24128ae668ed3e324efe46ac88"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/odd.samples",
+          "sha256": "e77be18256ae20b25f630d775ff869c36316933d3036c69a94fb96d74bc18112"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/sixteen-bit",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-part1"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/sixteen-bit.jpx",
+          "sha256": "f495b871d7fc6c8dcd036ee2476524c4c17845d48c3b9a9c2edcc57ca20bc170"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/sixteen-bit.samples",
+          "sha256": "ebf8f64b512533ec856ec21ce2b5a5d1500d79777920fe507c5b49ff99f0c4fb"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/signed",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-part1"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/signed.jpx",
+          "sha256": "2c5307bd518aebe054b0d9b479a12f0fddfeb28bc3c7c6ab044e4397cc32787c"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/signed.samples",
+          "sha256": "ef83451e66fe07f8163a2e82a6d0666261968804fe6bd124934f73bc1042226c"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/modes-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-part1"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/modes-2.jpx",
+          "sha256": "0acb8f304bd206a7e4bacdb152a777b79812a891b1b70f247759b2ab6b040a06"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/modes-2.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/modes-32",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-part1"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/modes-32.jpx",
+          "sha256": "d27d3cf261b62f9134aac21fcb222a0e3f29cba48dba9f141317f4f1a86aed91"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/modes-32.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/modes-34",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-part1"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/modes-34.jpx",
+          "sha256": "754134989475cf87ca6c65b0095931769791510438616552d753be20b8ebd950"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/modes-34.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/packet-markers",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-part1"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/packet-markers.jpx",
+          "sha256": "4555c1f93763259532ec4710839791f84e2a0f0358ac756bf43a4476e8a27b99"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/packet-markers.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/code-blocks",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-part1"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/code-blocks.jpx",
+          "sha256": "b203e49b7c0b3af137a59a42346866f4abe33e03692bcf2bbfb9b93882f67649"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/code-blocks.samples",
+          "sha256": "e77be18256ae20b25f630d775ff869c36316933d3036c69a94fb96d74bc18112"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/markers",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-part1"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/markers.jpx",
+          "sha256": "1f2393678d03b4af23b7c90e22566f239a270593ae8e9896cec218387e5e0c6f"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/markers.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/irreversible",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-irreversible"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/irreversible.jpx",
+          "sha256": "459847c04f3617e4ab83745583a606af9be74c9b949b3560e4bb23e698a8bb1d"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/irreversible.samples",
+          "sha256": "fa579e2b999ee12fa13cad26f9ef715f7a7b864bb2f80ee32cb1047bb53c6672"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/derived-quantization",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-irreversible"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/derived-quantization.jpx",
+          "sha256": "a595d3547b062ce0991001a6b9ce57ffb14f155c633d89293a6dc2d021030b2d"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/derived-quantization.samples",
+          "sha256": "fa579e2b999ee12fa13cad26f9ef715f7a7b864bb2f80ee32cb1047bb53c6672"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/singleton-1-7-0-0-0",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/singleton-1-7-0-0-0.jpx",
+          "sha256": "b8334d81a61092454371c0ef9dbac9f8bcb27b5c970990b6289761e8c4f043ac"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/singleton-1-7-0-0-0.samples",
+          "sha256": "5db4d8ae0e1a6ba3d44dfcc35b77e53bb122dfcb3aea913f99a55e20c2404ca6"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/singleton-1-7-0-0-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/singleton-1-7-0-0-1.jpx",
+          "sha256": "25e8cb077cbc36c242039ceb7083787849c76c647b31ef0d87e8fcd5182e6f8f"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/singleton-1-7-0-0-1.samples",
+          "sha256": "bce3fa45f14d8ab59533b0f971056e477f035da6b42a1e2b1a2834423c4497b3"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/singleton-7-1-0-0-0",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/singleton-7-1-0-0-0.jpx",
+          "sha256": "ba755f287f931efef35097d82b7bdd72e4797aed0f5685896cc1062a2c7731f3"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/singleton-7-1-0-0-0.samples",
+          "sha256": "72d0c199d8c21049523e2b699b72bd3ed6b40326cd3523773afe50b35bb83bc5"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/singleton-7-1-0-0-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/singleton-7-1-0-0-1.jpx",
+          "sha256": "2403d05561b6b6e8205a3ff64d272d0ef89a3d6db13e1252c0ba01a09676725b"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/singleton-7-1-0-0-1.samples",
+          "sha256": "2945d2e26a16cc7010a3a54b794d685dde6c4b749259a34429113ad4b0d0b67e"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/singleton-1-7-1-0-0",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/singleton-1-7-1-0-0.jpx",
+          "sha256": "0c6c8c34acd3162d63d340a610bb32d2b5a52c0dc8c058c7ae29b7eb239ae032"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/singleton-1-7-1-0-0.samples",
+          "sha256": "5db4d8ae0e1a6ba3d44dfcc35b77e53bb122dfcb3aea913f99a55e20c2404ca6"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/singleton-1-7-1-0-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/singleton-1-7-1-0-1.jpx",
+          "sha256": "ba63689721c92f9caf2b776cc29824e994f40e4123a560ca3ec4124b4986340f"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/singleton-1-7-1-0-1.samples",
+          "sha256": "bce3fa45f14d8ab59533b0f971056e477f035da6b42a1e2b1a2834423c4497b3"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/singleton-7-1-0-1-0",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/singleton-7-1-0-1-0.jpx",
+          "sha256": "b25831a8bfa7d9b205d362043edb782a388ca8bbf3e630a69186709bed2511d1"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/singleton-7-1-0-1-0.samples",
+          "sha256": "72d0c199d8c21049523e2b699b72bd3ed6b40326cd3523773afe50b35bb83bc5"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/singleton-7-1-0-1-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/singleton-7-1-0-1-1.jpx",
+          "sha256": "4fc20ae2d36895fc3d5f550a382e01762ec0a86e4dd68d2500756ed396adc65e"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/singleton-7-1-0-1-1.samples",
+          "sha256": "2945d2e26a16cc7010a3a54b794d685dde6c4b749259a34429113ad4b0d0b67e"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/singleton-1-1-1-1-0",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/singleton-1-1-1-1-0.jpx",
+          "sha256": "03cb20c36bfbb023b8fffdc209e939941850e2c24601dc01754549d33c5c8fef"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/singleton-1-1-1-1-0.samples",
+          "sha256": "9a38998994b3cfb2ba5430300f4f179eea817470c6839065fc46365857a81c2c"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/singleton-1-1-1-1-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/singleton-1-1-1-1-1.jpx",
+          "sha256": "4bf231700109e79e0299455cdeb3750ffc469001e001c6775c68edf945f075bc"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/singleton-1-1-1-1-1.samples",
+          "sha256": "6f1678338520c710966525f8b930d54d69c11bae92f4426306134057c942a820"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/packet-lengths",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-part1"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/packet-lengths.jpx",
+          "sha256": "aaba06e817d03957d4c31c49e93d04c945d4a0e042f72f58bb57bebe6447c59b"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/packet-lengths.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/tile-coding",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-tiles"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/tile-coding.jpx",
+          "sha256": "1e2222779ce6438018eb94fb1f15a821a014d25cfc08be32c41d8582fdb0a997"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/tile-coding.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/final-tile-part",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-tiles"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/final-tile-part.jpx",
+          "sha256": "81ee2b951c8f50d678060a1b284ef0598d9d8d5f51a9677a89e88565c50cd0c4"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/final-tile-part.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/final-box",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/final-box.jpx",
+          "sha256": "7ab44cff188e610538441c14aa4ae7a59cfe1c8638e444858dbd3f572ec53c0e"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/final-box.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "gray",
+      "alpha": null
+    },
+    {
+      "id": "jpx/bit-depth-box",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/bit-depth-box.jpx",
+          "sha256": "4cc7fb78272d38b4cd0dd89a0dd63924ff5e96f8fe6914a0483050ddcd8765d8"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/bit-depth-box.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "gray",
+      "alpha": null
+    },
+    {
+      "id": "jpx/color-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/color-1.jpx",
+          "sha256": "8b114eafa1efca08109a30645cb8cc0776f53ae352fc828b859487766a55d84a"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/color-1.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "gray",
+      "alpha": null
+    },
+    {
+      "id": "jpx/color-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/color-2.jpx",
+          "sha256": "a4fbbb654cc238036b094f3f3138418feec6ffa207a7aa449a250752891d9aff"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/color-2.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "icc",
+      "alpha": null
+    },
+    {
+      "id": "jpx/color-3",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/color-3.jpx",
+          "sha256": "a2404a50e97f5dfd6d040a5e2360c28d835ef7f62ba3acbef4fe26a1fb45b14a"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/color-3.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "icc",
+      "alpha": null
+    },
+    {
+      "id": "jpx/resolution-extended",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/resolution-extended.jpx",
+          "sha256": "226ba2718e56bb45bea354bb0c15906dfbbed511c0b3053a7e97ff7a1ae98e97"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/resolution-extended.samples",
+          "sha256": "ceca1feda8cae10ad47804e0e15543c681403880bf2e35b4654b184d7d5ea73f"
+        }
+      },
+      "color": "gray",
+      "alpha": null
+    },
+    {
+      "id": "jpx/palette",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-palette"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/palette.jpx",
+          "sha256": "0c1a6861b15e30c5d99174fe0d511205cc20401347a4907e057d35341e8489f2"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/palette.samples",
+          "sha256": "d2914ae77ef01059384740d21f15441a10c157a1a4d11ccacd959fa0728cf71b"
+        }
+      },
+      "color": "rgb",
+      "alpha": null
+    },
+    {
+      "id": "jpx/channel-alpha",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-boxes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/channel-alpha.jpx",
+          "sha256": "1e0281caccaf36b27399a79636876186f2a2b22dd8b5f9de4e89596009057527"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/channel-alpha.samples",
+          "sha256": "9bccbdd92dd18c2328412a36aaed10f2220f2512ea14c000df1be2722a6c858c"
+        }
+      },
+      "color": "rgb",
+      "alpha": 3
+    },
+    {
+      "id": "jpx/truncated",
+      "kind": "vector",
+      "description": "Malformed JPEG 2000 input",
+      "requirements": [
+        "jpx-hostile"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/truncated.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/truncated.jpx",
+          "sha256": "61af8f3204f36fe8bc8de839f31d028144993c830763320cb3f15e468663d400"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/bad-tag-tree",
+      "kind": "vector",
+      "description": "Malformed JPEG 2000 input",
+      "requirements": [
+        "jpx-hostile"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/bad-tag-tree.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/bad-tag-tree.jpx",
+          "sha256": "e8dce3aa72352ae3cdb4c7e74acab6b0b4727e154622eebabb69d029da055528"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/absurd-tiles",
+      "kind": "vector",
+      "description": "Malformed JPEG 2000 input",
+      "requirements": [
+        "jpx-hostile"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/absurd-tiles.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/absurd-tiles.jpx",
+          "sha256": "499f42d822a5fa25570ecac743051f322169b4c68f1fb9baa9d543b93e5d7097"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/bad-box-length",
+      "kind": "vector",
+      "description": "Malformed JPEG 2000 input",
+      "requirements": [
+        "jpx-hostile"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/bad-box-length.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/bad-box-length.jpx",
+          "sha256": "8cd5a11deb1fc63040b4f6774df01bb808a5338e384c5a484571f82a4bd0ad58"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/missing-tile",
+      "kind": "vector",
+      "description": "Malformed JPEG 2000 input",
+      "requirements": [
+        "jpx-hostile"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/missing-tile.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/missing-tile.jpx",
+          "sha256": "f02285bd867a17c5fb955274ec0416db76481cda0c48d74e226539610da40bc7"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/trailing",
+      "kind": "vector",
+      "description": "Malformed JPEG 2000 input",
+      "requirements": [
+        "jpx-hostile"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/trailing.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/trailing.jpx",
+          "sha256": "9b2b7d3fa7bd5a6fd984d60af8c6413021333895fdfbc1ffea17b4078a69c4eb"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/duplicate-coding",
+      "kind": "vector",
+      "description": "Malformed JPEG 2000 input",
+      "requirements": [
+        "jpx-hostile"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/duplicate-coding.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/duplicate-coding.jpx",
+          "sha256": "eec88d47ea2b108f23962b142a2dd742b10b7d2c765d82037ae2f20bddef25db"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/bad-tile-lengths",
+      "kind": "vector",
+      "description": "Malformed JPEG 2000 input",
+      "requirements": [
+        "jpx-hostile"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/bad-tile-lengths.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/bad-tile-lengths.jpx",
+          "sha256": "1b167dc503e36c63549674945b60ff360a05840354bdd4c52d65c2a732a7cbe6"
+        }
+      },
+      "error": "syntax"
+    },
+    {
+      "id": "jpx/bad-packet-lengths",
+      "kind": "vector",
+      "description": "Malformed JPEG 2000 input",
+      "requirements": [
+        "jpx-hostile"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/bad-packet-lengths.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/bad-packet-lengths.jpx",
+          "sha256": "10a82622727ff7b2eac3439b683dfad457745bf9e71e2d5c973dae2c643d3736"
+        }
+      },
+      "error": "syntax"
+    }
+  ]
+}
