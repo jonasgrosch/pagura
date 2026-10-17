@@ -1,0 +1,7 @@
+count 5
+advance 1 600
+outline 1
+m 0 0
+c 10 0 20 10 30 10
+c 40 10 50 0 60 0
+h

@@ -1,0 +1,33 @@
+count 5
+matrix 0.001 0 0 0.001 0 0
+name A 1
+advance 1 600
+advance 4 600
+code mac 65 1
+outline 1
+m 0 0
+l 100 0
+l 100 200
+l 0 200
+h
+outline 2
+m 0 0
+c 0 200 100 200 300 0
+h
+outline 3
+m 20 30
+l 70 55
+l 70 155
+l 20 130
+h
+outline 4
+m 0 0
+l 100 0
+l 100 200
+l 0 200
+h
+m 100 200
+l 200 200
+l 200 400
+l 100 400
+h

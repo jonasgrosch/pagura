@@ -1,0 +1,15 @@
+count 5
+is-cid 1
+cid 17 1
+advance 1 1400
+advance 2 600
+outline 1
+m 0 0
+l 200 0
+l 200 400
+l 0 400
+h
+outline 2
+m 0 0
+c 0 200 100 200 300 0
+h

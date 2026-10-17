@@ -1,0 +1,91 @@
+{
+  "schema": 2,
+  "area": "font",
+  "scope": "ISO 32000-2 clause 9.9, Table 124; font layouts from the referenced Type 1, CFF/Type 2 and OpenType formats. Analytic expectations from independent Python writers.",
+  "requirements": [
+    {
+      "id": "font-truetype",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.9"
+      ],
+      "status": "TrueType simple and composite outlines, cmap 0/4/6/12, hmtx and post",
+      "tests": [
+        "font/truetype-cmap0",
+        "font/truetype-cmap4",
+        "font/truetype-cmap6",
+        "font/truetype-cmap12",
+        "font/truetype-short-flags",
+        "font/truetype-repeat-flags",
+        "font/truetype-implied-points"
+      ],
+      "gaps": "No hint execution; post versions 1/2/3; other post and cmap formats remain unsupported."
+    },
+    {
+      "id": "font-cff",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.9"
+      ],
+      "status": "CFF/CID CFF INDEX, DICT, charsets, encodings, FDSelect, Type 2 and default-instance CFF2",
+      "tests": [
+        "font/cff",
+        "font/cff-cid",
+        "font/cff2",
+        "font/opentype-cff",
+        "font/cff2-default-blend",
+        "font/cff-hints",
+        "font/cff-global",
+        "font/cff-flex",
+        "font/cff-arithmetic",
+        "font/cff-cid-fd-array"
+      ],
+      "gaps": "Expert predefined charsets/encoding, standard expert SIDs, FDSelect format 4 and Private DICT blends remain unsupported."
+    },
+    {
+      "id": "font-type1",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.9"
+      ],
+      "status": "Type 1 PFA/PFB framing, eexec and charstring ciphers, subroutines, flex and seac",
+      "tests": [
+        "font/type1-pfa",
+        "font/type1-pfb",
+        "font/type1-hex",
+        "font/type1-leniv",
+        "font/type1-hint-replacement",
+        "font/type1-custom-encoding",
+        "font/type1-lexical"
+      ],
+      "gaps": "Static dictionary extraction; computed PostScript dictionaries and custom OtherSubrs are unsupported."
+    },
+    {
+      "id": "font-bounds",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.9"
+      ],
+      "status": "Bounded reads, counts, stacks, subroutine/glyph recursion and interpreter operations",
+      "tests": [
+        "font/truncated-directory",
+        "font/recursive-component",
+        "font/truncated-glyph",
+        "font/oversized-directory",
+        "font/cff-recursive",
+        "font/cff-stack",
+        "font/cff-mask",
+        "font/cff-seac-cycle",
+        "font/cff-index-overflow",
+        "font/type1-recursive",
+        "font/type1-stack",
+        "font/type1-truncated-pfb",
+        "font/invalid-cmap-range",
+        "font/descending-loca",
+        "font/truncated-hmtx",
+        "font/invalid-post"
+      ],
+      "gaps": "Budget violations are syntax errors with standalone-buffer positions; malformed outlines are reported lazily."
+    }
+  ]
+}

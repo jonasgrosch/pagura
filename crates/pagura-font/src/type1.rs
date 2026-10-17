@@ -1,0 +1,363 @@
+//! Static Type 1 font dictionaries, PFA/PFB framing and cipher decoding.
+//!
+//! Follows Adobe Type 1 Font Format, referenced by ISO 32000-2, 9.9.
+//! This is a font reader, without a PostScript execution environment.
+use crate::GlyphId;
+use crate::read::{bad, cap};
+use pagura_core::{Limits, Name, Position, Result};
+use pagura_raster::{Path, Transform};
+use std::collections::BTreeMap;
+
+mod charstring;
+mod tokens;
+use tokens::Tokens;
+
+#[derive(Debug)]
+pub(crate) struct Type1 {
+    glyphs: Vec<Vec<u8>>,
+    subrs: Vec<Vec<u8>>,
+    names: BTreeMap<Name, GlyphId>,
+    encoding: Box<[Option<Name>; 256]>,
+    matrix: Transform,
+}
+
+pub(super) fn decrypt(data: &[u8], seed: u16, discard: usize, at: usize) -> Result<Vec<u8>> {
+    if data.len() < discard {
+        return Err(bad(at, "truncated Type 1 cipher prefix"));
+    }
+    let mut state = seed;
+    let mut result = Vec::with_capacity(data.len() - discard);
+    for (i, &byte) in data.iter().enumerate() {
+        let plain = byte ^ state.to_be_bytes()[0];
+        state = u16::from(byte)
+            .wrapping_add(state)
+            .wrapping_mul(52845)
+            .wrapping_add(22719);
+        if i >= discard {
+            result.push(plain);
+        }
+    }
+    Ok(result)
+}
+
+impl Type1 {
+    pub fn parse(data: &[u8], limits: &Limits) -> Result<Self> {
+        let (flat, binary) = flatten(data, limits)?;
+        let Clear {
+            matrix,
+            encoding,
+            start,
+        } = cleartext(&flat, limits)?;
+        let cipher = flat
+            .get(start..)
+            .ok_or_else(|| bad(start, "missing eexec data"))?;
+        let cipher = if binary {
+            cipher.to_vec()
+        } else {
+            eexec_bytes(cipher, limits)?
+        };
+        let plain = decrypt(&cipher, 55665, 4, start)?;
+        let mut r = Tokens::new(&plain, limits);
+        let mut len_iv = Some(4);
+        let mut subrs = Vec::new();
+        let mut have_subrs = false;
+        let mut names = BTreeMap::new();
+        let mut glyphs = Vec::new();
+        let mut closed = false;
+        while let Some(token) = r.next()? {
+            match token {
+                b"/lenIV" => {
+                    let token = r.required()?;
+                    if token == b"-1" {
+                        len_iv = None;
+                    } else {
+                        len_iv = Some(tokens::integer(token, r.pos)?);
+                    }
+                }
+                b"/Subrs" => {
+                    if have_subrs {
+                        return Err(bad(r.pos, "duplicate Type 1 Subrs array"));
+                    }
+                    have_subrs = true;
+                    subrs = subroutines(&mut r, len_iv, limits)?;
+                }
+                b"/CharStrings" => {
+                    let count = r.integer()?;
+                    cap(count, limits.objects.min(limits.value_nodes), r.pos)?;
+                    while let Some(token) = r.next()? {
+                        if token == b"end" {
+                            break;
+                        }
+                        if let Some(name) = token.strip_prefix(b"/") {
+                            cap(
+                                glyphs.len().saturating_add(subrs.len()).saturating_add(1),
+                                limits.objects.min(limits.value_nodes),
+                                r.pos,
+                            )?;
+                            cap(name.len(), limits.string_bytes, r.pos)?;
+                            let program = r.binary()?;
+                            let glyph = GlyphId(
+                                u32::try_from(glyphs.len())
+                                    .map_err(|_| bad(r.pos, "Type 1 glyph count overflow"))?,
+                            );
+                            if names.insert(Name::new(name), glyph).is_some() {
+                                return Err(bad(r.pos, "duplicate Type 1 glyph name"));
+                            }
+                            glyphs.push(char_bytes(program, len_iv, r.pos)?);
+                            r.required()?;
+                        }
+                    }
+                }
+                b"closefile" => {
+                    closed = true;
+                    break;
+                }
+                _ => {}
+            }
+        }
+        if !closed {
+            return Err(bad(r.pos, "missing Type 1 closefile"));
+        }
+        if glyphs.is_empty() || !names.contains_key(b".notdef".as_slice()) {
+            return Err(bad(start, "Type 1 font has no .notdef charstring"));
+        }
+        // .notdef is glyph zero for the public API, regardless of dictionary order.
+        let notdef = usize::try_from(names[b".notdef".as_slice()].0)
+            .map_err(|_| bad(start, "invalid Type 1 glyph index"))?;
+        if notdef != 0 {
+            glyphs.swap(0, notdef);
+            for glyph in names.values_mut() {
+                if glyph.0 == 0 {
+                    glyph.0 =
+                        u32::try_from(notdef).map_err(|_| bad(start, "glyph index overflow"))?;
+                } else if usize::try_from(glyph.0).ok() == Some(notdef) {
+                    glyph.0 = 0;
+                }
+            }
+        }
+        Ok(Self {
+            glyphs,
+            subrs,
+            names,
+            encoding,
+            matrix,
+        })
+    }
+    pub fn glyph_count(&self) -> u32 {
+        u32::try_from(self.glyphs.len()).unwrap_or(0)
+    }
+    pub fn matrix(&self) -> Transform {
+        self.matrix
+    }
+    pub fn name(&self, name: &[u8]) -> Option<GlyphId> {
+        self.names.get(name).copied()
+    }
+    pub fn encoding(&self) -> &[Option<Name>; 256] {
+        &self.encoding
+    }
+    pub fn outline(&self, glyph: GlyphId, limits: &Limits) -> Result<Path> {
+        Ok(charstring::glyph(self, glyph, limits)?.0)
+    }
+    pub fn advance(&self, glyph: GlyphId, limits: &Limits) -> Option<f64> {
+        charstring::glyph(self, glyph, limits).ok().map(|g| g.1)
+    }
+}
+
+fn char_bytes(bytes: &[u8], len_iv: Option<usize>, at: usize) -> Result<Vec<u8>> {
+    len_iv.map_or_else(|| Ok(bytes.to_vec()), |n| decrypt(bytes, 4330, n, at))
+}
+fn unsupported(at: usize, message: &'static str) -> pagura_core::Error {
+    pagura_core::Error::unsupported(crate::features::TYPE1_POSTSCRIPT, message)
+        .at(Position::Buffer(at))
+}
+fn flatten(data: &[u8], limits: &Limits) -> Result<(Vec<u8>, bool)> {
+    if data.first() != Some(&128) {
+        return Ok((data.to_vec(), false));
+    }
+    let mut pos = 0;
+    let mut result = Vec::new();
+    let mut segments = 0;
+    let mut binary = false;
+    loop {
+        segments += 1;
+        cap(segments, limits.operations, pos)?;
+        if data.get(pos) != Some(&128) {
+            return Err(bad(pos, "invalid PFB segment marker"));
+        }
+        let kind = *data
+            .get(pos + 1)
+            .ok_or_else(|| bad(pos, "truncated PFB header"))?;
+        pos += 2;
+        if kind == 3 {
+            if pos != data.len() {
+                return Err(bad(pos, "trailing PFB data"));
+            }
+            break;
+        }
+        if !matches!(kind, 1 | 2) {
+            return Err(bad(pos, "invalid PFB segment kind"));
+        }
+        binary |= kind == 2;
+        let bytes = data
+            .get(pos..pos.saturating_add(4))
+            .ok_or_else(|| bad(pos, "truncated PFB size"))?;
+        let size = usize::try_from(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
+            .map_err(|_| bad(pos, "PFB size overflow"))?;
+        pos += 4;
+        let end = pos
+            .checked_add(size)
+            .ok_or_else(|| bad(pos, "PFB size overflow"))?;
+        cap(result.len().saturating_add(size), limits.decoded_bytes, pos)?;
+        result.extend_from_slice(
+            data.get(pos..end)
+                .ok_or_else(|| bad(pos, "truncated PFB segment"))?,
+        );
+        pos = end;
+    }
+    Ok((result, binary))
+}
+fn eexec_bytes(data: &[u8], limits: &Limits) -> Result<Vec<u8>> {
+    if !data
+        .iter()
+        .filter(|b| !b.is_ascii_whitespace())
+        .take(4)
+        .all(u8::is_ascii_hexdigit)
+    {
+        return Ok(data.to_vec());
+    }
+    let mut result = Vec::new();
+    let mut high = None;
+    for (i, &byte) in data.iter().enumerate() {
+        if byte.is_ascii_whitespace() {
+            continue;
+        }
+        let digit = match byte {
+            b'0'..=b'9' => byte - b'0',
+            b'A'..=b'F' => byte - b'A' + 10,
+            b'a'..=b'f' => byte - b'a' + 10,
+            _ => break,
+        };
+        if let Some(h) = high.take() {
+            cap(result.len() + 1, limits.decoded_bytes, i)?;
+            result.push(h * 16 + digit);
+        } else {
+            high = Some(digit);
+        }
+    }
+    if high.is_some() {
+        return Err(bad(data.len(), "odd eexec hexadecimal data"));
+    }
+    Ok(result)
+}
+
+struct Clear {
+    matrix: Transform,
+    encoding: Box<[Option<Name>; 256]>,
+    start: usize,
+}
+fn cleartext(flat: &[u8], limits: &Limits) -> Result<Clear> {
+    let mut clear = Tokens::new(flat, limits);
+    let mut matrix = Transform::scale(0.001, 0.001);
+    let mut encoding = Box::new(std::array::from_fn(|_| None));
+    let mut encoded = false;
+    let mut custom_encoding = false;
+    while let Some(token) = clear.next()? {
+        match token {
+            b"/FontMatrix" => matrix = clear.matrix()?,
+            b"/Encoding" => {
+                let next = clear.required()?;
+                if next == b"StandardEncoding" {
+                    for code in 0..=255_u8 {
+                        encoding[usize::from(code)] = crate::cff::strings::standard(code);
+                    }
+                    encoded = true;
+                } else if next == b"256" && clear.required()? == b"array" {
+                    custom_encoding = true;
+                    encoded = true;
+                } else {
+                    return Err(unsupported(
+                        clear.pos,
+                        "Type 1 encoding expression is not implemented",
+                    ));
+                }
+            }
+            b"dup" if custom_encoding => {
+                // Initialisation procedures are skipped as balanced procedures;
+                // explicit code/name entries outside them determine the encoding.
+                let code = clear.integer()?;
+                let name = clear.required()?;
+                let name = name
+                    .strip_prefix(b"/")
+                    .ok_or_else(|| bad(clear.pos, "invalid Type 1 encoding name"))?;
+                let entry = encoding
+                    .get_mut(code)
+                    .ok_or_else(|| bad(clear.pos, "Type 1 encoding code exceeds 255"))?;
+                *entry = Some(Name::new(name));
+                if clear.required()? != b"put" {
+                    return Err(unsupported(
+                        clear.pos,
+                        "Type 1 encoding expression is not implemented",
+                    ));
+                }
+            }
+            b"def" | b"readonly" if custom_encoding => custom_encoding = false,
+            b"eexec" => break,
+            _ => {}
+        }
+    }
+    if !encoded {
+        return Err(bad(clear.pos, "Type 1 font has no encoding"));
+    }
+    let mut start = clear.pos;
+    if flat.get(start) == Some(&b'\r') && flat.get(start + 1) == Some(&b'\n') {
+        start += 2;
+    } else if flat.get(start).is_some_and(u8::is_ascii_whitespace) {
+        start += 1;
+    }
+    Ok(Clear {
+        matrix,
+        encoding,
+        start,
+    })
+}
+
+fn subroutines(r: &mut Tokens<'_>, len_iv: Option<usize>, limits: &Limits) -> Result<Vec<Vec<u8>>> {
+    let count = r.integer()?;
+    cap(
+        count,
+        limits
+            .objects
+            .min(limits.value_nodes)
+            .min(limits.decoded_bytes / size_of::<Vec<u8>>()),
+        r.pos,
+    )?;
+    let mut subrs = vec![Vec::new(); count];
+    if r.required()? != b"array" {
+        return Err(bad(r.pos, "invalid Type 1 Subrs array"));
+    }
+    while r.peek()? == Some(b"dup".as_slice()) {
+        r.required()?;
+        let index = r.integer()?;
+        let program = r.binary()?;
+        let program = char_bytes(program, len_iv, r.pos)?;
+        let slot = subrs
+            .get_mut(index)
+            .ok_or_else(|| bad(r.pos, "Type 1 Subrs index out of range"))?;
+        *slot = program;
+        match r.required()? {
+            b"NP" | b"|-" | b"put" => {}
+            b"noaccess" => {
+                if r.required()? != b"put" {
+                    return Err(bad(r.pos, "invalid Type 1 subroutine terminator"));
+                }
+            }
+            _ => {
+                return Err(unsupported(
+                    r.pos,
+                    "Type 1 subroutine assignment is not implemented",
+                ));
+            }
+        }
+    }
+    Ok(subrs)
+}
