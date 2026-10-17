@@ -1,0 +1,149 @@
+{
+  "schema": 2,
+  "area": "jbig2",
+  "scope": "ISO 32000-2 clause 7.4.7 verified against the local EC3 text. T.88 algorithm locators identify the coding procedures; the full T.88 reference is not in the local standards cache. Independent arithmetic and T.6 encoders produce bitmap vectors; no PDF image integration is assumed.",
+  "requirements": [
+    {
+      "id": "jbig2-embedded-segments",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.4.7",
+        "T.88 7.2",
+        "T.88 Annex D.3"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "gaps": "",
+      "description": "PDF embedded sequential organization; headers, referrals and page associations."
+    },
+    {
+      "id": "jbig2-generic-arithmetic",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.4.7",
+        "T.88 6.2",
+        "T.88 7.4.6",
+        "T.88 Annex E"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "gaps": "Templates 0\u20133, adaptive pixels, TPGDON and MQ. Extended templates and unspecified segment lengths remain unsupported."
+    },
+    {
+      "id": "jbig2-generic-mmr",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.4.7",
+        "T.88 6.2.6"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "gaps": "T.6 pass, horizontal, vertical modes and EOFB. Uncompressed extension remains unsupported."
+    },
+    {
+      "id": "jbig2-page-combination",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.4.7",
+        "T.88 7.4.5",
+        "T.88 7.4.8",
+        "T.88 7.4.9"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "gaps": "A region operator differing from a non-overridable page default is explicitly unsupported pending review against the full T.88 text.",
+      "description": "Default pixels, combination operators, clipping and striped page height."
+    },
+    {
+      "id": "jbig2-hostile-input",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.4.7",
+        "T.88 7.2",
+        "T.88 Annex E"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "gaps": "",
+      "description": "Positioned errors, pre-allocation byte/pixel limits, and cumulative referral, symbol, segment and operation work limits."
+    },
+    {
+      "id": "jbig2-explicit-unsupported",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.4.7",
+        "T.88 6.3",
+        "T.88 6.4",
+        "T.88 6.5",
+        "T.88 6.6",
+        "T.88 6.7"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "gaps": "Huffman symbols/text, refinement and aggregation, retained contexts, other text layouts, pattern/halftone, user Huffman, profile/extension segments, extended templates, unspecified segment lengths and T.6 uncompressed extension remain explicitly unsupported."
+    },
+    {
+      "id": "jbig2-arithmetic-symbols",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.4.7",
+        "T.88 6.5",
+        "T.88 7.4.2",
+        "T.88 Annex A"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "gaps": "Direct arithmetic symbols, imported dictionaries and export runs. Huffman, refinement, aggregation and retained coding contexts remain unsupported."
+    },
+    {
+      "id": "jbig2-arithmetic-text",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.4.7",
+        "T.88 6.4",
+        "T.88 7.4.3",
+        "T.88 Annex A"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "gaps": "Arithmetic integers and identifiers, strips, signed coordinates and offsets, internal combination, default pixels and clipped top-left text. Huffman, refinement, transposition and other reference corners remain unsupported."
+    }
+  ],
+  "differential_observations": {
+    "mmr-repeated": "PDFium agrees with the horizontal-run oracle; Poppler preserves some preceding black runs on the final white row.",
+    "mmr-pass": "PDFium agrees with the two pass operations and final vertical-zero oracle; Poppler preserves one black run.",
+    "page-default-operator": "The initial default-AND interpretation disagreed with PDFium, Poppler and hayro, which rendered the region using its REPLACE operator. Until the exact constraints in T.88 7.4.8 are verified, this combination fails explicitly with jbig2.page-combination. No alternative pixels are accepted as an oracle."
+  }
+}
