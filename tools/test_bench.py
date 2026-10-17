@@ -427,6 +427,7 @@ class IsolationTests(unittest.TestCase):
             self.assertEqual((Path(folder) / "hayro-adapter/Cargo.lock").read_bytes(),
                              (engine_tools.ADAPTERS / "hayro/Cargo.lock").read_bytes())
 
+    @unittest.skipIf(os.name == "nt", "the fake cargo and engine are POSIX #! executables, which Windows cannot run")
     def test_regression_build_pairing_and_cleanup_in_disposable_repository(self):
         # Actual local Git worktree lifecycle, fake offline Cargo/engine: no product
         # metadata mutation and no compiler download or competitor execution.
