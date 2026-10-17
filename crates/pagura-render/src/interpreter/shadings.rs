@@ -14,6 +14,7 @@ impl Compiler<'_> {
         let value = resource(self.document, resources, b"Shading", name.as_bytes())?;
         let context = crate::icc::ColorContext::new(self.document, &self.profiles);
         let shading = Arc::new(crate::shading::Shading::parse(&context, resources, value)?);
+        self.paint_charge(shading.mesh_bytes(), 0)?;
         if !self.visible {
             return Ok(());
         }

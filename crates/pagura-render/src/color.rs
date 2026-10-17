@@ -9,6 +9,10 @@ use std::sync::Arc;
 #[derive(Debug, Clone)]
 pub(crate) enum Space {
     Pattern(Option<Arc<Self>>),
+    Special {
+        inputs: usize,
+        all: bool,
+    },
     Gray,
     Rgb,
     Cmyk,
@@ -46,6 +50,12 @@ impl Default for Color {
     }
 }
 impl Color {
+    pub(crate) fn paints(&self) -> bool {
+        match self {
+            Self::Solid { space, .. } => space.paints(),
+            Self::Pattern { .. } => true,
+        }
+    }
     pub(crate) fn new(space: Space) -> Self {
         if let Space::Pattern(base) = space {
             return Self::Pattern {
@@ -55,7 +65,7 @@ impl Color {
         }
         let components = match &space {
             Space::Cmyk => vec![0.0, 0.0, 0.0, 1.0],
-            Space::Tint { inputs, .. } => vec![1.0; *inputs],
+            Space::Tint { inputs, .. } | Space::Special { inputs, .. } => vec![1.0; *inputs],
             _ => vec![0.0; space.components()],
         };
         Self::Solid { space, components }
@@ -65,7 +75,7 @@ impl Color {
         if matches!(
             self,
             Self::Solid {
-                space: Space::Tint { .. } | Space::Icc { .. },
+                space: Space::Tint { .. } | Space::Special { .. } | Space::Icc { .. },
                 ..
             }
         ) {
@@ -105,12 +115,23 @@ impl Color {
         let name = name
             .as_name()
             .ok_or(Error::syntax("pattern name expected"))?;
-        let pattern =
+        let mut pattern =
             crate::pattern::Pattern::parse(document, resources, name.as_bytes(), initial)?;
-        if base.is_some() || !components.is_empty() {
-            return Err(Error::syntax(
-                "shading pattern cannot have an underlying colour",
-            ));
+        match &mut pattern.kind {
+            crate::pattern::Kind::Tiling(t) if t.uncolored => {
+                let space = base.as_ref().ok_or(Error::syntax(
+                    "uncoloured pattern requires underlying space",
+                ))?;
+                let mut color = Color::new(space.as_ref().clone());
+                color.set(components)?;
+                t.color = Some(color);
+            }
+            _ if base.is_some() || !components.is_empty() => {
+                return Err(Error::syntax(
+                    "coloured pattern cannot have an underlying colour",
+                ));
+            }
+            _ => {}
         }
         *selected = Some(Arc::new(pattern));
         Ok(())
@@ -119,6 +140,9 @@ impl Color {
         let Self::Solid { space, components } = self else {
             return Err(Error::invalid_argument("pattern is not a uniform colour"));
         };
+        if !space.paints() {
+            return Ok(Rgba8::TRANSPARENT);
+        }
         let mut rgb = space.convert(components)?;
         if let Some(transfer) = transfer {
             for (channel, function) in rgb.iter_mut().zip(transfer.iter()) {
@@ -135,6 +159,19 @@ impl Color {
 }
 
 impl Space {
+    /// None contributes neither colour, opacity nor shape (8.6.6.4–8.6.6.5).
+    pub(crate) fn paints(&self) -> bool {
+        match self {
+            Self::Special { all: false, .. } => false,
+            Self::Indexed { base, .. }
+            | Self::Icc {
+                base,
+                profile: None,
+            } => base.paints(),
+            _ => true,
+        }
+    }
+
     pub(crate) fn blending_fallback(self) -> Self {
         if let Self::Icc {
             base,
@@ -153,7 +190,7 @@ impl Space {
             Self::Cmyk => 4,
             Self::Cie(cie) => cie.components(),
             Self::Icc { base, .. } => base.components(),
-            Self::Tint { inputs, .. } => *inputs,
+            Self::Tint { inputs, .. } | Self::Special { inputs, .. } => *inputs,
         }
     }
 
@@ -163,6 +200,7 @@ impl Space {
             Self::Pattern(_) => Err(Error::invalid_argument(
                 "pattern is not a component colour space",
             )),
+            Self::Special { .. } => Ok([1.0 - n(0); 3]),
             Self::Gray => Ok([n(0); 3]),
             Self::Rgb => Ok([n(0), n(1), n(2)]),
             Self::Cmyk => {
@@ -302,6 +340,7 @@ fn array_space(
         (b"DeviceGray" | b"DeviceRGB" | b"DeviceCMYK", [_]) => {
             resolve(document, resources, &values[0], depth, defaults)
         }
+        (b"Pattern", [_]) => Ok(Space::Pattern(None)),
         (b"Pattern", [_, base]) => {
             let base = resolve(document, resources, base, depth + 1, defaults)?;
             if matches!(base, Space::Pattern(_)) {
@@ -316,18 +355,51 @@ fn array_space(
                 .as_name()
                 .ok_or(Error::syntax("Separation requires a colourant name"))?;
             if matches!(name.as_bytes(), b"None" | b"All") {
-                return Err(Error::unsupported(
-                    features::COLORSPACE_SPECIAL_INK,
-                    "special colourant semantics are not implemented",
-                ));
+                return Ok(Space::Special {
+                    inputs: 1,
+                    all: name == b"All",
+                });
             }
             tint_space(document, resources, base, function, 1, (depth, defaults))
         }
         (b"DeviceN", [_, names, base, function] | [_, names, base, function, _]) => {
-            if let Some(attributes) = values.get(4) {
-                document.resolve_dictionary(attributes)?;
-            }
+            let attributes = values
+                .get(4)
+                .map(|v| document.resolve_dictionary(v))
+                .transpose()?;
             let count = device_n_components(document, names)?;
+            if let Some(attributes) = attributes
+                && attributes
+                    .get(b"Subtype")
+                    .map(|v| document.resolve(v))
+                    .transpose()?
+                    .and_then(Value::as_name)
+                    .is_some_and(|n| n == b"NChannel")
+            {
+                for name in document.resolve(names)?.as_array().unwrap_or_default() {
+                    if document
+                        .resolve(name)?
+                        .as_name()
+                        .is_some_and(|n| n == b"None")
+                    {
+                        return Err(Error::syntax("None is forbidden in NChannel"));
+                    }
+                }
+            }
+            if document.resolve(names)?.as_array().is_some_and(|names| {
+                names.iter().all(|n| {
+                    document
+                        .resolve(n)
+                        .ok()
+                        .and_then(Value::as_name)
+                        .is_some_and(|n| n == b"None")
+                })
+            }) {
+                return Ok(Space::Special {
+                    inputs: count,
+                    all: false,
+                });
+            }
             tint_space(
                 document,
                 resources,
@@ -347,44 +419,12 @@ fn array_space(
             )?)))
         }
         (b"Indexed", [_, base, high, lookup]) => {
-            let base = resolve(document, resources, base, depth + 1, defaults)?;
-            if matches!(base, Space::Indexed { .. } | Space::Pattern(_)) {
-                return Err(Error::syntax("Indexed base cannot be Indexed"));
-            }
-            let high = document
-                .resolve(high)?
-                .as_integer()
-                .and_then(|n| u8::try_from(n).ok())
-                .ok_or(Error::syntax("invalid Indexed high value"))?;
-            let lookup = if let Some(id) = lookup.as_reference() {
-                let object = document.object(id)?;
-                if object.is_stream() {
-                    document.stream_data(object)?.into_owned()
-                } else {
-                    document
-                        .resolve(lookup)?
-                        .as_string()
-                        .ok_or(Error::syntax("invalid Indexed lookup"))?
-                        .to_vec()
-                }
-            } else {
-                lookup
-                    .as_string()
-                    .ok_or(Error::syntax("invalid Indexed lookup"))?
-                    .to_vec()
-            };
-            let required = (usize::from(high) + 1) * base.components();
-            if lookup.len() != required {
-                return Err(Error::syntax("Indexed lookup has wrong length"));
-            }
-            Ok(Space::Indexed {
-                base: Arc::new(base),
-                high,
-                lookup: lookup.into(),
-            })
+            indexed_space(document, resources, [base, high, lookup], depth, defaults)
         }
+
         (
-            b"ICCBased" | b"Indexed" | b"CalGray" | b"CalRGB" | b"Lab" | b"Separation" | b"DeviceN",
+            b"Pattern" | b"ICCBased" | b"Indexed" | b"CalGray" | b"CalRGB" | b"Lab" | b"Separation"
+            | b"DeviceN",
             _,
         ) => Err(Error::syntax("wrong colour space array length")),
         _ => Err(Error::unsupported(
@@ -408,7 +448,6 @@ fn device_n_components(document: &ColorContext<'_>, names: &Value) -> Result<usi
         ));
     }
     let mut seen = std::collections::BTreeSet::new();
-    let mut has_none = false;
     for name in names {
         let name = document
             .resolve(name)?
@@ -420,13 +459,6 @@ fn device_n_components(document: &ColorContext<'_>, names: &Value) -> Result<usi
         if name != b"None" && !seen.insert(name.as_bytes()) {
             return Err(Error::syntax("duplicate DeviceN colourant"));
         }
-        has_none |= name == b"None";
-    }
-    if has_none {
-        return Err(Error::unsupported(
-            features::COLORSPACE_SPECIAL_INK,
-            "special colourant semantics are not implemented",
-        ));
     }
     Ok(names.len())
 }
@@ -442,7 +474,7 @@ fn tint_space(
     let base = resolve(document, resources, base, depth + 1, defaults)?;
     if matches!(
         base,
-        Space::Indexed { .. } | Space::Tint { .. } | Space::Pattern(_)
+        Space::Indexed { .. } | Space::Tint { .. } | Space::Special { .. } | Space::Pattern(_)
     ) {
         return Err(Error::syntax("invalid tint alternate space"));
     }
@@ -557,4 +589,48 @@ pub(crate) fn channel(value: f64) -> u8 {
     )]
     let channel = (value.clamp(0.0, 1.0) * 255.0).round() as u8;
     channel
+}
+
+fn indexed_space(
+    document: &ColorContext<'_>,
+    resources: &Dictionary,
+    [base, high, lookup]: [&Value; 3],
+    depth: usize,
+    defaults: bool,
+) -> Result<Space> {
+    let base = resolve(document, resources, base, depth + 1, defaults)?;
+    if matches!(base, Space::Indexed { .. } | Space::Pattern(_)) {
+        return Err(Error::syntax("Indexed base cannot be Indexed"));
+    }
+    let high = document
+        .resolve(high)?
+        .as_integer()
+        .and_then(|n| u8::try_from(n).ok())
+        .ok_or(Error::syntax("invalid Indexed high value"))?;
+    let lookup = if let Some(id) = lookup.as_reference() {
+        let object = document.object(id)?;
+        if object.is_stream() {
+            document.stream_data(object)?.into_owned()
+        } else {
+            document
+                .resolve(lookup)?
+                .as_string()
+                .ok_or(Error::syntax("invalid Indexed lookup"))?
+                .to_vec()
+        }
+    } else {
+        lookup
+            .as_string()
+            .ok_or(Error::syntax("invalid Indexed lookup"))?
+            .to_vec()
+    };
+    let required = (usize::from(high) + 1) * base.components();
+    if lookup.len() != required {
+        return Err(Error::syntax("Indexed lookup has wrong length"));
+    }
+    Ok(Space::Indexed {
+        base: Arc::new(base),
+        high,
+        lookup: lookup.into(),
+    })
 }

@@ -17,6 +17,10 @@ fn open(name: &str) -> Document {
 }
 
 const RENDER: &[&str] = &[
+    "pattern",
+    "shading",
+    "annotation-flags",
+    "DeviceN-duplicate-None",
     "stroke-adjusted-open-oblique",
     "dash-hairline-anisotropic-expanded",
     "dash-width-anisotropic-expanded",
@@ -328,9 +332,6 @@ fn all_supported_fixtures_assemble_as_single_pixel_tiles() {
 #[test]
 fn unsupported_tags_and_stream_positions() {
     for (name, tag) in [
-        ("shading", "shading.mesh"),
-        ("pattern", "pattern.tiling"),
-        ("annotation-flags", "annotation.flags"),
         ("icc-range", "colorspace.ICCRange"),
         ("cie-blackpoint", "colorspace.BlackPoint"),
     ] {
@@ -711,5 +712,144 @@ fn required_path_colour_and_configuration_validation() {
         let error = compile_page(&d, d.page(0).unwrap()).unwrap_err();
         assert_eq!(error.kind, ErrorKind::Syntax, "{name}: {error}");
         assert!(error.object.is_some(), "{name}: {error}");
+    }
+}
+
+#[test]
+fn mesh_pattern_and_adjusted_geometry_match_independent_oracles() {
+    for name in [
+        "adjust-oblique",
+        "adjust-affine-pen",
+        "adjust-arch",
+        "tiling-coloured",
+        "tiling-underlying",
+        "tiling-ignored-colour",
+        "tiling-ignored-inline",
+        "tiling-alpha-once",
+        "tiling-blend",
+        "mesh-triangle",
+        "mesh-lattice",
+        "mesh-patch-6",
+        "mesh-patch-7",
+        "mesh-coons-curved",
+        "mesh-tensor-interior",
+        "mesh-folded",
+        "mesh-patch-reuse-6-1",
+        "mesh-patch-reuse-7-3",
+        "annotation-icon-Note",
+        "annotation-icon-Key",
+        "annotation-link-border",
+        "ink-All",
+        "ink-None-knockout",
+        "ink-All-cmyk",
+        "ink-DeviceN-mixed",
+    ] {
+        let document = open(name);
+        let list = compile_page(&document, document.page(0).unwrap()).unwrap();
+        let pixels = list
+            .render(&RenderOptions::default())
+            .unwrap_or_else(|e| panic!("{name}: {e}"));
+        let actual = pagura_testkit::ppm(
+            pixels.width(),
+            pixels.height(),
+            &pixels.to_rgb_over(Rgba8::WHITE),
+        );
+        let expected = pagura_testkit::fixture("content", &format!("{name}.ppm"));
+        let tolerance = if name == "adjust-arch" || name.starts_with("annotation-icon-") {
+            3
+        } else {
+            1
+        };
+        assert_eq!(actual.len(), expected.len(), "{name}");
+        for (index, (&a, &b)) in actual.iter().zip(&expected).enumerate() {
+            assert!(
+                a.abs_diff(b) <= tolerance,
+                "{name} byte {index}: {a} vs {b}"
+            );
+        }
+    }
+}
+
+#[test]
+fn mesh_patterns_and_view_fitting_preserve_global_tile_coordinates() {
+    for name in [
+        "adjust-arch",
+        "tiling-coloured",
+        "tiling-alpha-once",
+        "tiling-blend",
+        "mesh-folded",
+        "mesh-tensor-interior",
+        "annotation-view-24-72-90",
+    ] {
+        let document = open(name);
+        let list = compile_page(&document, document.page(0).unwrap()).unwrap();
+        let options = RenderOptions {
+            scale: 1.25,
+            background: Rgba8::new(17, 35, 61, 96),
+        };
+        let full = list.render(&options).unwrap();
+        for y in 0..full.height() {
+            for x in 0..full.width() {
+                let piece = list
+                    .render_tile(
+                        &options,
+                        Tile {
+                            x,
+                            y,
+                            width: 1,
+                            height: 1,
+                        },
+                    )
+                    .unwrap();
+                let offset = usize::try_from((y * full.width() + x) * 4).unwrap();
+                assert_eq!(
+                    piece.data(),
+                    &full.data()[offset..offset + 4],
+                    "{name} at {x},{y}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn group_bounds_and_page_chunks_fit_a_small_surface_budget() {
+    let document = Document::open(
+        pagura_testkit::fixture("content", "group-small-clip.pdf"),
+        &OpenOptions {
+            limits: pagura_core::Limits {
+                decoded_bytes: 4 * 1024 * 1024,
+                ..Default::default()
+            },
+            recovery: Recovery::Strict,
+            ..OpenOptions::default()
+        },
+    )
+    .unwrap();
+    let list = compile_page(&document, document.page(0).unwrap()).unwrap();
+    let options = RenderOptions::default();
+    let full = list.render(&options).unwrap();
+    let actual = pagura_testkit::ppm(full.width(), full.height(), &full.to_rgb_over(Rgba8::WHITE));
+    pagura_testkit::assert_bytes_eq(
+        &actual,
+        &pagura_testkit::fixture("content", "group-small-clip.ppm"),
+        "bounded group",
+    );
+    let tile = Tile {
+        x: 253,
+        y: 253,
+        width: 6,
+        height: 6,
+    };
+    let piece = list.render_tile(&options, tile).unwrap();
+    for y in 0..tile.height {
+        for x in 0..tile.width {
+            let offset = usize::try_from(((tile.y + y) * full.width() + tile.x + x) * 4).unwrap();
+            let local = usize::try_from((y * tile.width + x) * 4).unwrap();
+            assert_eq!(
+                &piece.data()[local..local + 4],
+                &full.data()[offset..offset + 4]
+            );
+        }
     }
 }

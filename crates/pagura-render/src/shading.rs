@@ -4,6 +4,8 @@
 //! requests a deterministic 2x2 box filter. Sampling uses global coordinates,
 //! so changing the tile partition never changes the function arguments.
 
+mod mesh;
+
 use crate::color::{self, Space};
 use crate::functions::Function;
 use crate::icc::ColorContext;
@@ -21,6 +23,7 @@ pub(crate) struct Shading {
 }
 #[derive(Debug)]
 enum Geometry {
+    Mesh(Box<mesh::Mesh>),
     Function {
         domain: [f64; 4],
         inverse: Transform,
@@ -42,11 +45,19 @@ enum Geometry {
 }
 #[derive(Debug)]
 enum Functions {
+    Identity,
     Vector(Box<Function>),
     Components(Vec<Function>),
 }
 
 impl Shading {
+    pub(crate) fn mesh_bytes(&self) -> usize {
+        match &self.geometry {
+            Geometry::Mesh(mesh) => mesh.retained_bytes(),
+            _ => 0,
+        }
+    }
+
     pub(crate) fn parse(
         document: &ColorContext<'_>,
         resources: &Dictionary,
@@ -59,13 +70,7 @@ impl Shading {
             .transpose()?
             .and_then(Value::as_integer)
             .ok_or(Error::syntax("shading requires ShadingType"))?;
-        if (4..=7).contains(&kind) {
-            return Err(Error::unsupported(
-                crate::features::SHADING_MESH,
-                "mesh shadings are not implemented",
-            ));
-        }
-        if !(1..=3).contains(&kind) {
+        if !(1..=7).contains(&kind) {
             return Err(Error::syntax("invalid ShadingType"));
         }
         let space = color::blending(
@@ -74,7 +79,10 @@ impl Shading {
             d.get(b"ColorSpace")
                 .ok_or(Error::syntax("shading requires ColorSpace"))?,
         )?;
-        if matches!(space, Space::Indexed { .. } | Space::Pattern(_)) {
+        if matches!(space, Space::Pattern(_))
+            || (kind < 4 && matches!(space, Space::Indexed { .. }))
+            || (matches!(space, Space::Indexed { .. }) && d.contains_key(b"Function"))
+        {
             return Err(Error::syntax("analytic shading cannot use Indexed"));
         }
         let components = space.components();
@@ -126,6 +134,17 @@ impl Shading {
                 Ok(background)
             })
             .transpose()?;
+        if kind >= 4 {
+            let mesh = mesh::Mesh::parse(document, d, value, kind, components)?;
+            return Ok(Self {
+                space,
+                bbox,
+                antialias,
+                background,
+                functions: Functions::Identity,
+                geometry: Geometry::Mesh(Box::new(mesh)),
+            });
+        }
         let (geometry, domain) = geometry(document, d, kind)?;
         let functions = Functions::parse(
             document,
@@ -148,8 +167,29 @@ impl Shading {
         point: Point,
         output: &mut [f64; 32],
         work: &mut usize,
+        raster_work: &mut usize,
     ) -> Result<bool> {
+        if let Geometry::Mesh(mesh) = &self.geometry {
+            if !mesh.sample(point, output, raster_work)? {
+                return Ok(false);
+            }
+            let input = *output;
+            let count = if matches!(mesh.functions, Functions::Identity) {
+                self.space.components()
+            } else {
+                1
+            };
+            mesh.functions.evaluate(
+                &input[..count],
+                &mut output[..self.space.components()],
+                work,
+            )?;
+            return Ok(true);
+        }
         let (input, count) = match self.geometry {
+            Geometry::Mesh(_) => {
+                return Err(Error::invalid_argument("invalid analytic shading geometry"));
+            }
             Geometry::Function { domain, inverse } => {
                 let p = point * inverse;
                 if p.x < domain[0] || p.x > domain[1] || p.y < domain[2] || p.y > domain[3] {
@@ -311,6 +351,10 @@ impl Functions {
     }
     fn evaluate(&self, input: &[f64], output: &mut [f64], work: &mut usize) -> Result<()> {
         match self {
+            Self::Identity => {
+                output.copy_from_slice(input);
+                Ok(())
+            }
             Self::Vector(f) => f.evaluate_into(input, output, work),
             Self::Components(functions) => {
                 for (function, out) in functions.iter().zip(output) {

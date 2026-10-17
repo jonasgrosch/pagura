@@ -88,13 +88,17 @@
       "clauses": [
         "10.7.5"
       ],
-      "status": "orthogonal grid fitting with user-space dashes and rounded device pen diameters",
+      "status": "orthogonal centreline fitting and general affine principal-pen fitting; shared user-space dashes",
       "tests": [
         "content/stroke-adjust-horizontal",
-        "content/stroke-adjust-vertical"
+        "content/stroke-adjust-vertical",
+        "content/adjust-oblique",
+        "content/adjust-cubic-collinear",
+        "content/adjust-affine-pen",
+        "content/adjust-arch"
       ],
-      "gaps": "curved/oblique fitting explicitly unsupported",
-      "rule": "Automatic stroke adjustment fits thickness to device pixels, normally within half a pixel of the requested width, with sub-half-pixel widths rendered as single-pixel lines."
+      "gaps": "numeric range/subdivision/work budgets reject excessive geometry",
+      "rule": "Automatic stroke adjustment fits thickness to device pixels, normally within half a pixel of the requested width, with sub-half-pixel widths rendered as single-pixel lines. Principal-diameter fitting with preserved general centrelines is project device policy; every directional pen diameter changes by at most half a pixel except the mandated minimum one-pixel pen."
     },
     {
       "id": "raster-dashes",

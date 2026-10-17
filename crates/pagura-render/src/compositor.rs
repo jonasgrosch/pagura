@@ -5,14 +5,18 @@
 //! (11.4.4). Knockout replaces prior contributions according to shape, not alpha.
 
 mod images;
+mod patterns;
+mod regions;
 mod sampled;
+mod view;
+use regions::group_region;
 
 use crate::display::{Clip, Command, DisplayList, Mark, PathCommand};
 use crate::transparency::{Composite, Group, MaskMethod, Model, SoftMask};
 use crate::{RenderOptions, Tile};
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::{
-    FillRule, Mask, Path, PathBuilder, Pixmap, Point, Segment, Transform, adjusted_stroke_outline,
+    FillRule, Mask, Path, PathBuilder, Pixmap, Point, Transform, adjusted_stroke_outline,
     stroke_outline,
 };
 use std::sync::Arc;
@@ -139,6 +143,8 @@ impl Backdrop<'_> {
 struct Context {
     limits: Limits,
     device: Transform,
+    page_device: Transform,
+    view_unit: f64,
     crop: Path,
     allocated: usize,
     work: usize,
@@ -154,6 +160,15 @@ struct CachedMask {
     values: Arc<Vec<f64>>,
 }
 impl Context {
+    fn region(&mut self, group: &Group, tile: Tile) -> Result<Option<Tile>> {
+        group_region(
+            group,
+            tile,
+            self.device,
+            &mut self.work,
+            self.limits.raster_work,
+        )
+    }
     fn charge(&mut self, work: usize) -> Result<()> {
         self.work = self
             .work
@@ -206,7 +221,7 @@ impl Context {
         let (path, transform) = if self.soft_source {
             (&viewport, Transform::IDENTITY)
         } else {
-            (&self.crop, self.device)
+            (&self.crop, self.page_device)
         };
         let mut mask = Mask::from_path_with_limits(
             tile.width,
@@ -251,14 +266,27 @@ impl Context {
         if depth >= self.limits.depth {
             return Err(Error::limit("compositing depth exceeded"));
         }
+        self.charge(commands.len())?;
         for command in commands {
             let result = match command {
+                Command::Path(path) if !path.color.paints() => Ok(()),
+                Command::Shading(s) if !s.shading.space.paints() => Ok(()),
+                Command::Image(i)
+                    if i.image
+                        .space
+                        .as_ref()
+                        .map_or_else(|| !i.stencil.paints(), |s| !s.paints()) =>
+                {
+                    Ok(())
+                }
                 Command::Path(path) => self.path(path, target, initial, model, knockout, depth),
                 Command::Image(image) => self.image(image, target, initial, model, knockout, depth),
                 Command::Shading(shading) => {
                     self.shading(shading, target, initial, model, knockout, depth)
                 }
-                Command::Group(group) => self.group(group, target, initial, model, knockout, depth),
+                Command::Group(group) => {
+                    self.view_group(group, target, initial, model, knockout, depth)
+                }
             };
             result.map_err(|e| crate::display::contextual(e, command.position()))?;
         }
@@ -273,27 +301,30 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
-        if matches!(
-            &p.color,
-            crate::color::Color::Pattern { selected: None, .. }
-        ) {
+        if !path_active(p, model)? {
             return Ok(());
-        }
-        if p.transfer.is_some() {
-            return Err(Error::unsupported(
-                crate::features::TRANSPARENCY_TRANSFER,
-                "transfer selection across transparent artwork is not implemented",
-            ));
-        }
-        if model == Model::Cmyk && p.composite.overprint {
-            return Err(Error::unsupported(
-                crate::features::TRANSPARENCY_OVERPRINT,
-                "CMYK group overprint is not implemented",
-            ));
         }
         let Some(mask) = self.path_mask(p, target.tile)? else {
             return Ok(());
         };
+        if let crate::color::Color::Pattern {
+            selected: Some(pattern),
+            ..
+        } = &p.color
+            && let crate::pattern::Kind::Tiling(tiling) = &pattern.kind
+        {
+            return self.tiling(
+                p,
+                pattern.transform,
+                tiling,
+                &mask,
+                target,
+                initial,
+                model,
+                knockout,
+                depth,
+            );
+        }
         let pattern = pattern_source(p);
         self.charge(mask.coverage().len())?;
         let color = if pattern.is_none() {
@@ -391,8 +422,9 @@ impl Context {
             selected: Some(pattern),
             ..
         } = &p.color
-            && pattern.shading.background.is_none()
-            && let Some(bbox) = pattern.shading.bbox
+            && let crate::pattern::Kind::Shading(shading) = &pattern.kind
+            && shading.background.is_none()
+            && let Some(bbox) = shading.bbox
         {
             let mut path = PathBuilder::new();
             path.rect(bbox.x0, bbox.y0, bbox.width(), bbox.height());
@@ -418,7 +450,7 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
-        let Some(tile) = group_region(group, parent.tile, self.device)? else {
+        let Some(tile) = self.region(group, parent.tile)? else {
             return Ok(());
         };
         let model = if group.attributes.isolated {
@@ -624,9 +656,12 @@ impl Context {
                     point.x >= b.x0 && point.x <= b.x1 && point.y >= b.y0 && point.y <= b.y1
                 });
                 let hit = (!command.background || inside)
-                    && command
-                        .shading
-                        .sample(point, &mut values, &mut self.function_work)?;
+                    && command.shading.sample(
+                        point,
+                        &mut values,
+                        &mut self.function_work,
+                        &mut self.work,
+                    )?;
                 if !hit {
                     if command.background {
                         if let Some(background) = command.shading.background {
@@ -688,7 +723,8 @@ impl Context {
             } else {
                 Backdrop::Transparent
             };
-        let mut surface = group_region(&mask.group, tile, self.device)?
+        let mut surface = self
+            .region(&mask.group, tile)?
             .map(|region| self.surface(region, initial))
             .transpose()?;
         if let Some(surface) = &mut surface {
@@ -774,6 +810,8 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
     let mut context = Context {
         limits: list.limits,
         device: list.device_transform(options),
+        page_device: list.device_transform(options),
+        view_unit: list.user_unit,
         crop: crop.finish(),
         allocated: 0,
         work: 0,
@@ -782,31 +820,68 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
         function_work: 0,
         soft_source: false,
     };
-    let mut page = context.surface(tile, Backdrop::Transparent)?;
     let model = list.group.model.unwrap_or(Model::Rgb);
-    context.commands(
-        &list.commands,
-        &mut page,
-        Backdrop::Transparent,
-        model,
-        list.group.knockout,
-        0,
-    )?;
     let mut output =
         Pixmap::new_with_limits(tile.width, tile.height, options.background, list.limits)?;
-    for (target, pixel) in output
-        .data_mut()
-        .as_chunks_mut::<4>()
-        .0
-        .iter_mut()
-        .zip(&page.pixels)
-    {
-        let color = model.rgb(pixel.straight());
-        let alpha = pixel.alpha;
-        for (i, out) in target.iter_mut().enumerate().take(3) {
-            *out = quantize(color[i] * alpha + f64::from(*out) / 255.0 * (1.0 - alpha));
+    // Keep the high-precision page backdrop bounded too. Global device
+    // coordinates preserve exact tile parity; one work budget spans all chunks.
+    let mut y = tile.y;
+    while y < tile.y + tile.height {
+        let height = (tile.y + tile.height - y).min(256);
+        let mut x = tile.x;
+        while x < tile.x + tile.width {
+            let width = (tile.x + tile.width - x).min(256);
+            let region = Tile {
+                x,
+                y,
+                width,
+                height,
+            };
+            context.clip = None;
+            context.discard_mask();
+            let mut page = context.surface(region, Backdrop::Transparent)?;
+            context.commands(
+                &list.commands,
+                &mut page,
+                Backdrop::Transparent,
+                model,
+                list.group.knockout,
+                0,
+            )?;
+            let stride = usize::try_from(tile.width)
+                .map_err(|_| Error::limit("output width exceeds usize"))?;
+            for (row, pixels) in page
+                .pixels
+                .chunks_exact(
+                    usize::try_from(width)
+                        .map_err(|_| Error::limit("chunk width exceeds usize"))?,
+                )
+                .enumerate()
+            {
+                let start = (usize::try_from(y - tile.y)
+                    .map_err(|_| Error::limit("output row exceeds usize"))?
+                    + row)
+                    * stride
+                    + usize::try_from(x - tile.x)
+                        .map_err(|_| Error::limit("output column exceeds usize"))?;
+                for (target, pixel) in output.data_mut()[start * 4..(start + pixels.len()) * 4]
+                    .as_chunks_mut::<4>()
+                    .0
+                    .iter_mut()
+                    .zip(pixels)
+                {
+                    let color = model.rgb(pixel.straight());
+                    let alpha = pixel.alpha;
+                    for (i, out) in target.iter_mut().enumerate().take(3) {
+                        *out = quantize(color[i] * alpha + f64::from(*out) / 255.0 * (1.0 - alpha));
+                    }
+                    target[3] = quantize(alpha + f64::from(target[3]) / 255.0 * (1.0 - alpha));
+                }
+            }
+            context.allocated -= page.bytes();
+            x += width;
         }
-        target[3] = quantize(alpha + f64::from(target[3]) / 255.0 * (1.0 - alpha));
+        y += height;
     }
     Ok(output)
 }
@@ -825,39 +900,6 @@ fn mask_value(mask: &SoftMask, pixel: Pixel, model: Model) -> f64 {
     }
 }
 
-fn group_region(group: &Group, tile: Tile, device: Transform) -> Result<Option<Tile>> {
-    let Some(bounds) = &group.bounds else {
-        return Ok(Some(tile));
-    };
-    let mut min = Point::new(f64::INFINITY, f64::INFINITY);
-    let mut max = Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
-    for segment in bounds.segments() {
-        let p = match segment {
-            Segment::MoveTo(p) | Segment::LineTo(p) => *p,
-            Segment::Close => continue,
-            Segment::CubicTo(_, _, _) => {
-                return Err(Error::invalid_argument("nonlinear group bounds"));
-            }
-        } * device;
-        if !p.x.is_finite() || !p.y.is_finite() {
-            return Err(Error::limit("group bounds overflow"));
-        }
-        min.x = min.x.min(p.x);
-        min.y = min.y.min(p.y);
-        max.x = max.x.max(p.x);
-        max.y = max.y.max(p.y);
-    }
-    let x0 = coordinate(min.x.floor(), tile.x, tile.x + tile.width);
-    let y0 = coordinate(min.y.floor(), tile.y, tile.y + tile.height);
-    let x1 = coordinate(max.x.ceil(), tile.x, tile.x + tile.width);
-    let y1 = coordinate(max.y.ceil(), tile.y, tile.y + tile.height);
-    Ok((x0 < x1 && y0 < y1).then_some(Tile {
-        x: x0,
-        y: y0,
-        width: x1 - x0,
-        height: y1 - y0,
-    }))
-}
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -881,8 +923,11 @@ fn pattern_source(p: &PathCommand) -> Option<crate::display::ShadingCommand> {
         ..
     } = &p.color
     {
+        let crate::pattern::Kind::Shading(shading) = &pattern.kind else {
+            return None;
+        };
         Some(crate::display::ShadingCommand {
-            shading: Arc::clone(&pattern.shading),
+            shading: Arc::clone(shading),
             position: p.position,
             transform: pattern.transform,
             clip: None,
@@ -893,4 +938,26 @@ fn pattern_source(p: &PathCommand) -> Option<crate::display::ShadingCommand> {
     } else {
         None
     }
+}
+
+fn path_active(p: &PathCommand, model: Model) -> Result<bool> {
+    if matches!(
+        &p.color,
+        crate::color::Color::Pattern { selected: None, .. }
+    ) {
+        return Ok(false);
+    }
+    if p.transfer.is_some() {
+        return Err(Error::unsupported(
+            crate::features::TRANSPARENCY_TRANSFER,
+            "transfer selection across transparent artwork is not implemented",
+        ));
+    }
+    if model == Model::Cmyk && p.composite.overprint {
+        return Err(Error::unsupported(
+            crate::features::TRANSPARENCY_OVERPRINT,
+            "CMYK group overprint is not implemented",
+        ));
+    }
+    Ok(true)
 }

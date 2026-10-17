@@ -69,22 +69,46 @@ impl Compiler<'_> {
             {
                 return Ok(());
             }
-            return Err(Error::unsupported(
-                crate::features::ANNOTATION_APPEARANCE,
-                "annotation appearance generation is not implemented",
-            ));
+            return self.generated_annotation(d, subtype.as_bytes(), rect, flags);
         };
         let Some(id) = normal_appearance(self.document, d, ap)? else {
             return Ok(());
         };
-        if flags & (8 | 16) != 0 {
-            return Err(Error::unsupported(
-                crate::features::ANNOTATION_FLAGS,
-                "NoZoom and NoRotate annotation fitting is not implemented",
-            ));
-        }
+        let start = self.list.commands.len();
         self.paint_appearance(id, rect, resources)
-            .map_err(|error| error.in_object(id))
+            .map_err(|error| error.in_object(id))?;
+        let flags = if subtype == b"Text" {
+            flags | 8 | 16
+        } else {
+            flags
+        };
+        self.annotation_view(start, rect, flags);
+        Ok(())
+    }
+
+    pub(super) fn annotation_view(&mut self, start: usize, rect: Rect, flags: i64) {
+        if flags & (8 | 16) == 0 {
+            return;
+        }
+        let commands = self.list.commands.split_off(start);
+        let mut bounds = pagura_raster::PathBuilder::new();
+        bounds.rect(rect.x0, rect.y0, rect.width(), rect.height());
+        self.list
+            .commands
+            .push(crate::display::Command::Group(crate::transparency::Group {
+                position: self.position,
+                bounds: Some(std::sync::Arc::new(bounds.finish())),
+                commands,
+                attributes: crate::transparency::Attributes {
+                    view: Some(crate::transparency::ViewFit {
+                        anchor: Point::new(rect.x0, rect.y1),
+                        no_zoom: flags & 8 != 0,
+                        no_rotate: flags & 16 != 0,
+                    }),
+                    ..Default::default()
+                },
+                composite: crate::transparency::Composite::opaque(),
+            }));
     }
 
     fn paint_appearance(

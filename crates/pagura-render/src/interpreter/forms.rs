@@ -160,6 +160,8 @@ impl Compiler<'_> {
             operations: self.operations,
             marks: self.marks,
             initial_ctm: self.initial_ctm,
+            initial_state: self.initial_state.clone(),
+            stencil_pattern: self.stencil_pattern,
             position: self.position,
             forms: self.forms.clone(),
         }

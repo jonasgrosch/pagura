@@ -397,7 +397,7 @@ pub fn stroke_outline(
 /// Converts an automatically grid-fitted stroke to a fill outline (10.7.5).
 ///
 /// # Errors
-/// As [`stroke_outline`]; oblique/curved grid fitting is explicitly unsupported.
+/// As [`stroke_outline`]; fitted principal pen diameters must fit the numeric budget.
 pub fn adjusted_stroke_outline(
     path: &Path,
     transform: Transform,
@@ -450,12 +450,12 @@ pub fn stroke_path_at(
     )
 }
 
-/// Applies automatic device grid fitting to an orthogonal stroke.
+/// Applies automatic device grid fitting to a stroke.
 /// See ISO 32000-2, 10.7.5; the device's fitting policy is documented in the
 /// implementation. Dashes are measured in original user space.
 ///
 /// # Errors
-/// As [`stroke_path_at`]; curved/oblique fitting returns `Unsupported`.
+/// As [`stroke_path_at`]; fitting preserves curved/oblique centrelines.
 pub fn stroke_path_adjusted_at(
     target: &mut Pixmap,
     path: &Path,

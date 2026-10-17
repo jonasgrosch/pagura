@@ -75,10 +75,10 @@ def cases():
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 64 64] /Resources << /Pattern << /P 5 0 R >> >> /Contents 4 0 R >>",
         stream(b"/Pattern cs /P scn 0 0 64 64 re f\n"),
-        stream(b"0 0 1 1 re f", b"/Type /Pattern /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 2 /YStep 2 /Resources << >>"),
+        stream(b"0 0 1 1 re f", b"/Type /Pattern /PatternType 1 /PaintType 1 /TilingType 1 /Matrix [.3 .3 .3 .4 0 0] /BBox [0 0 1 1] /XStep 2 /YStep 2 /Resources << >>"),
     ])
     yield Case("pattern-unsupported", tiling, UNSUPPORTED, BASE + ("unsupported-is-explicit",),
-               "tiling patterns (8.7.3) are not implemented yet", feature="pattern.tiling", oracle=None)
+               "Table 74 constant-spacing fitting collapses this oblique device lattice; unsupported explicitly", feature="pattern.tiling", oracle=None)
     yield Case("text-undefined-font", single_page([b"BT /F1 12 Tf (hello) Tj ET\n"]), OPEN, BASE,
                "a font name that is not a page resource is malformed content (7.8.3)",
                extra={"render_error": "Syntax"})

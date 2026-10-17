@@ -940,6 +940,1912 @@
       "api": "compile_page"
     },
     {
+      "id": "content/adjust-oblique",
+      "kind": "pdf",
+      "description": "10.7.5: nearest principal pen diameters, unchanged oblique centreline; rational polygon coverage policy",
+      "expected": "render",
+      "requirements": [
+        "raster-stroke-adjustment"
+      ],
+      "path": "corpus/generated/content/adjust-oblique.pdf",
+      "sha256": "c4b239703e1e0bd9a02ee05b88ccc5d89b6ce5b87af838d9cc9b6ccea6bdb614",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/adjust-oblique.ppm",
+      "oracle_sha256": "d00813d1078d1951fe9fae52c547fbef1b259ea7bdeb5a723cb98e992a496f97",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/adjust-cubic-collinear",
+      "kind": "pdf",
+      "description": "10.7.5: nearest principal pen diameters, unchanged oblique centreline; rational polygon coverage policy",
+      "expected": "render",
+      "requirements": [
+        "raster-stroke-adjustment"
+      ],
+      "path": "corpus/generated/content/adjust-cubic-collinear.pdf",
+      "sha256": "1894fca4f3a61831902a90e4b19df6f44173ae942aa35a1091ca26d5b6c62086",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/adjust-cubic-collinear.ppm",
+      "oracle_sha256": "d00813d1078d1951fe9fae52c547fbef1b259ea7bdeb5a723cb98e992a496f97",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/adjust-affine-pen",
+      "kind": "pdf",
+      "description": "10.7.5: nearest principal pen diameters, unchanged oblique centreline; rational polygon coverage policy",
+      "expected": "render",
+      "requirements": [
+        "raster-stroke-adjustment"
+      ],
+      "path": "corpus/generated/content/adjust-affine-pen.pdf",
+      "sha256": "6fd77aa89f0bc94fb303ea37c7d8f1de7c6f4db2a210c0551a5c7080c4648b5f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/adjust-affine-pen.ppm",
+      "oracle_sha256": "d84229c326a2b9de438938b302bafb1585d5e92541c3eb3371ed6138f8b93172",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/adjust-arch",
+      "kind": "pdf",
+      "description": "10.7.5: one-pixel pen around an analytic arch; independent distance sampling policy",
+      "expected": "render",
+      "requirements": [
+        "raster-stroke-adjustment"
+      ],
+      "path": "corpus/generated/content/adjust-arch.pdf",
+      "sha256": "728cc7d46e004ca3756f4c46add170276b140d89bee5582d8a917cc41d92a99f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/adjust-arch.ppm",
+      "oracle_sha256": "e7bfc6d82abee7dd41d8d71c675b4a5923b6484261392f9446f16dcb5171b389",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 3
+    },
+    {
+      "id": "content/ink-All",
+      "kind": "pdf",
+      "description": "ink-All",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-special-inks"
+      ],
+      "path": "corpus/generated/content/ink-All.pdf",
+      "sha256": "14eb6df787327eb7ba62266c0406ffbc067ca0a140fa6a36a6de2563b244c40a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/ink-All.ppm",
+      "oracle_sha256": "17d47e0d59d852f6bfdad88958b2dfb6c07ef57438b697de970878ba4a47a3fd",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/ink-None",
+      "kind": "pdf",
+      "description": "ink-None",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-special-inks"
+      ],
+      "path": "corpus/generated/content/ink-None.pdf",
+      "sha256": "03029ad18587a4c59503d543c3227485f513257017e495d20dbc6613e935af3f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/ink-None.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/ink-None-knockout",
+      "kind": "pdf",
+      "description": "ink-None-knockout",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-special-inks"
+      ],
+      "path": "corpus/generated/content/ink-None-knockout.pdf",
+      "sha256": "fee762cab61301964a0cfd468ea1000b3f919bea2ffc04e45c977c1556632c07",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/ink-None-knockout.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/ink-All-cmyk",
+      "kind": "pdf",
+      "description": "ink-All-cmyk",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-special-inks"
+      ],
+      "path": "corpus/generated/content/ink-All-cmyk.pdf",
+      "sha256": "e6ac03459369b37a5969521600a8d87a927eac5daf0da2ec0b4b3ae90c8d3b05",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/ink-All-cmyk.ppm",
+      "oracle_sha256": "17d47e0d59d852f6bfdad88958b2dfb6c07ef57438b697de970878ba4a47a3fd",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/ink-DeviceN-None",
+      "kind": "pdf",
+      "description": "8.6.6.5: all None paints nothing; mixed alternate receives every input including None",
+      "expected": "render",
+      "requirements": [
+        "content-special-inks"
+      ],
+      "path": "corpus/generated/content/ink-DeviceN-None.pdf",
+      "sha256": "61b6ea768b513f602dae9d87f215a1034d3323a5aedad642b67bb951739d25b8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/ink-DeviceN-None.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/ink-DeviceN-mixed",
+      "kind": "pdf",
+      "description": "8.6.6.5: all None paints nothing; mixed alternate receives every input including None",
+      "expected": "render",
+      "requirements": [
+        "content-special-inks"
+      ],
+      "path": "corpus/generated/content/ink-DeviceN-mixed.pdf",
+      "sha256": "67b7c7eb56bfbcab6b303a1c1cbad7ac0fc3216505951c35192e4378017310c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/ink-DeviceN-mixed.ppm",
+      "oracle_sha256": "b4589db50eb165329664690a8e3bd0adaa1a944a197eab64489d44985b4d992c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/gstate-AA",
+      "kind": "pdf",
+      "description": "gstate-AA",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/content/gstate-AA.pdf",
+      "sha256": "c9ace29dae441f84645c91c7e26415f2cb8b594d9b93cd162e54a4cfaadb07e2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/gstate-AA.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/gstate-Name",
+      "kind": "pdf",
+      "description": "gstate-Name",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/content/gstate-Name.pdf",
+      "sha256": "e10e26c0eb0499ea9d7d63dd08554494b15e0cdd5f41e035c5fe6b7318749976",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/gstate-Name.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/gstate-private",
+      "kind": "pdf",
+      "description": "gstate-private",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/content/gstate-private.pdf",
+      "sha256": "eb57264f88e0945b076267ccfcabb0dd8e7d5ebf52486bb5ebc8d9a88e1f768f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/gstate-private.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/gstate-halftone-origin",
+      "kind": "pdf",
+      "description": "gstate-halftone-origin",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/content/gstate-halftone-origin.pdf",
+      "sha256": "482605bafa985965c70e5b1326b1b6822100e8ff7ab70eb5aa291cb8a3e19a1d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/gstate-halftone-origin.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/gstate-black-compensation-off",
+      "kind": "pdf",
+      "description": "gstate-black-compensation-off",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/content/gstate-black-compensation-off.pdf",
+      "sha256": "0a90b7c3744e067ff13fd9ada2d44c45bcee7e5014e516773b4aca96bba53e46",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/gstate-black-compensation-off.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/ink-NChannel-None",
+      "kind": "pdf",
+      "description": "8.6.6.5 forbids None components in NChannel spaces",
+      "expected": "open",
+      "requirements": [
+        "content-special-inks"
+      ],
+      "path": "corpus/generated/content/ink-NChannel-None.pdf",
+      "sha256": "24130b8c820462a5f0e6e30643fdeab1830c4e74b2df0979a30b4b4f9e3021f7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/gstate-extension-cycle",
+      "kind": "pdf",
+      "description": "7.3.7: ignored extension values are not dereferenced",
+      "expected": "render",
+      "requirements": [
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/content/gstate-extension-cycle.pdf",
+      "sha256": "d51434198e2cd6b875763f1e392cc22da49fd7c26fea79d0a97dda115117caae",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/gstate-extension-cycle.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/gstate-black-compensation-on",
+      "kind": "pdf",
+      "description": "8.6.5.9 and Table 58: defined black point compensation must not be silently ignored",
+      "expected": "unsupported",
+      "requirements": [
+        "content-extgstate-extensions"
+      ],
+      "path": "corpus/generated/content/gstate-black-compensation-on.pdf",
+      "sha256": "8dbec03610296960a70b7cf0830f72eaa4194599b4351a265b7d022263304913",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "extgstate.unknown"
+    },
+    {
+      "id": "content/group-small-clip",
+      "kind": "pdf",
+      "description": "11.4.4, 11.6.6: a large group contributes only inside its hard clip; half-opacity red is (255,128,128)",
+      "expected": "render",
+      "requirements": [
+        "content-group-regions"
+      ],
+      "path": "corpus/generated/content/group-small-clip.pdf",
+      "sha256": "b7ceced29420d374f9f7a2835434d97d643bd06b76f0d313ebb9a47fe3438ffc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/group-small-clip.ppm",
+      "oracle_sha256": "afbddc28ba0fee478be0b1c7627703f357e7451131008484798d6117afdadc41",
+      "dpi": 72,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "id": "content/overprint-cmyk-boundary",
+      "kind": "pdf",
+      "description": "11.7.4 requires colourant-preserving overprint simulation; dense converted vectors cannot supply it",
+      "expected": "unsupported",
+      "requirements": [
+        "content-overprint-boundary"
+      ],
+      "path": "corpus/generated/content/overprint-cmyk-boundary.pdf",
+      "sha256": "746fe0d3dd617a9a873a4f1a3d99031fcd78abbf39b86d7e5794ff5d687a9199",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.overprint"
+    },
+    {
+      "id": "content/annotation-icon-Comment",
+      "kind": "pdf",
+      "description": "12.5.6.4: predefined icon geometry is project policy; polygon offsets and dense independent membership samples supply the oracle",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-generation",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-icon-Comment.pdf",
+      "sha256": "b071a0097f1e454869571750ff71de8d079c0ac20f0a162d29d1008fc8e96cd7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-icon-Comment.ppm",
+      "oracle_sha256": "f1441656225076832240777512523a672071cc620afb2643d53a539559173e1e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 3
+    },
+    {
+      "id": "content/annotation-icon-Key",
+      "kind": "pdf",
+      "description": "12.5.6.4: predefined icon geometry is project policy; polygon offsets and dense independent membership samples supply the oracle",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-generation",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-icon-Key.pdf",
+      "sha256": "e0fdea40bbab3176b22201bf7df4e261a21f297cc8af4b31df141274ca7f4c50",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-icon-Key.ppm",
+      "oracle_sha256": "2ca68f52337672026fb17c4576c990d9a3f2e85d699a7ab3f4493ce4a24677a1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 3
+    },
+    {
+      "id": "content/annotation-icon-Help",
+      "kind": "pdf",
+      "description": "12.5.6.4: predefined icon geometry is project policy; polygon offsets and dense independent membership samples supply the oracle",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-generation",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-icon-Help.pdf",
+      "sha256": "8e7bb370f98702822b65e69e0705b4cb655ff7fca53e7523de2c1f6e5e78c106",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-icon-Help.ppm",
+      "oracle_sha256": "769ae9ef93509f1626798d98fccde2d3a9de1e53a39e4de8f51bef66051eb4bb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 3
+    },
+    {
+      "id": "content/annotation-icon-Paragraph",
+      "kind": "pdf",
+      "description": "12.5.6.4: predefined icon geometry is project policy; polygon offsets and dense independent membership samples supply the oracle",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-generation",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-icon-Paragraph.pdf",
+      "sha256": "f3a9d3fe48103011b55e439f09467665d16af3d381ec4c52f7d5127149baed67",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-icon-Paragraph.ppm",
+      "oracle_sha256": "5e42efc5de53dcffa3f54ccb56980685ff23ca045486dd9d84437559afb55e41",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 3
+    },
+    {
+      "id": "content/annotation-icon-NewParagraph",
+      "kind": "pdf",
+      "description": "12.5.6.4: predefined icon geometry is project policy; polygon offsets and dense independent membership samples supply the oracle",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-generation",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-icon-NewParagraph.pdf",
+      "sha256": "6868d7a460bbab54fe3ed5b92968ae99a2d22a5290fd2c96cc0f38652545b148",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-icon-NewParagraph.ppm",
+      "oracle_sha256": "7d1fe67f46ecfb5d534a7149b2adb4e3ebfada1728107813ce54b9e5125310fc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 3
+    },
+    {
+      "id": "content/annotation-icon-Insert",
+      "kind": "pdf",
+      "description": "12.5.6.4: predefined icon geometry is project policy; polygon offsets and dense independent membership samples supply the oracle",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-generation",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-icon-Insert.pdf",
+      "sha256": "3cfd32029bd8a7aeb24017c944954a18054ca4f38ed4b2f73477c292de27f92b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-icon-Insert.ppm",
+      "oracle_sha256": "55917b59e1075b425d1253a60aa494981c2ae5c5b418d121acf5e0e2a84bfecd",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 3
+    },
+    {
+      "id": "content/annotation-icon-Note",
+      "kind": "pdf",
+      "description": "12.5.6.4: predefined icon geometry is project policy; polygon offsets and dense independent membership samples supply the oracle",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-generation",
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-icon-Note.pdf",
+      "sha256": "b0ed3f8b6c8b41dbe9fc0bf6ef883ff9bf71c5404a51ac474ce49a81519d755d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-icon-Note.ppm",
+      "oracle_sha256": "44f976d5e6b45e4d2c1d18af12ca96ba3890b0a2528ec8cb63322d7573ca8985",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 3
+    },
+    {
+      "id": "content/tiling-coloured",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-coloured.pdf",
+      "sha256": "bfacdd56ede571a73b70485bee057dc5bfe20d2f2cc329a2a04464405b275517",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-coloured.ppm",
+      "oracle_sha256": "25bd4603c2bcab7a64d435485a63b5aa2a3c121618bedde18b56365195d028ec",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/tiling-negative-step",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-negative-step.pdf",
+      "sha256": "d74e12b0f40088ff6a293dd256d3ccd927f823f9df9e8f2fdade647132986ae4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-negative-step.ppm",
+      "oracle_sha256": "25bd4603c2bcab7a64d435485a63b5aa2a3c121618bedde18b56365195d028ec",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/tiling-type-two",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-type-two.pdf",
+      "sha256": "6dd020bf418f68d406f7ca47f50a2a54d8c58897d07dcda291f517d1f45409d0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-type-two.ppm",
+      "oracle_sha256": "25bd4603c2bcab7a64d435485a63b5aa2a3c121618bedde18b56365195d028ec",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/tiling-type-three",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-type-three.pdf",
+      "sha256": "da5d347ddd91617b431d1424278a150f167794831645ef122d0c7bd9c33eb883",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-type-three.ppm",
+      "oracle_sha256": "25bd4603c2bcab7a64d435485a63b5aa2a3c121618bedde18b56365195d028ec",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/tiling-underlying",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-underlying.pdf",
+      "sha256": "82da6a27cc1405d4aee3808b323824519f10b3740d0e266ca182435fccbde279",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-underlying.ppm",
+      "oracle_sha256": "25bd4603c2bcab7a64d435485a63b5aa2a3c121618bedde18b56365195d028ec",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/tiling-ignored-colour",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-ignored-colour.pdf",
+      "sha256": "5631815bef8a7b6f8db1b85387a2dc82b7e96ad38ecae75b1426122189c356d0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-ignored-colour.ppm",
+      "oracle_sha256": "25bd4603c2bcab7a64d435485a63b5aa2a3c121618bedde18b56365195d028ec",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/tiling-ignored-inline",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-ignored-inline.pdf",
+      "sha256": "4e0ea3e044868ae68def388c5c787342a0343854f4c9b4f67e50aec86978f8f1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-ignored-inline.ppm",
+      "oracle_sha256": "25bd4603c2bcab7a64d435485a63b5aa2a3c121618bedde18b56365195d028ec",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/tiling-anchored",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-anchored.pdf",
+      "sha256": "83fae343f5b888f5a5e95ac5066e403cd4ffe9b38bce633d0933cbac306f1aa8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-anchored.ppm",
+      "oracle_sha256": "7818db4406a4cf1ec65cd8d45e3c8ba31d9e77a09794458c0f62868ff647ed41",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/tiling-rotated",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-rotated.pdf",
+      "sha256": "0b39d0ecae164aad559f6c6c060a2bb24f558de7a135cf2d664b63597398b27a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-rotated.ppm",
+      "oracle_sha256": "37a0c45c43d0e5d9064b6d01fb0c1019e3746d71551b73186d82ea45a521bb94",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/tiling-bbox",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-bbox.pdf",
+      "sha256": "d510d0842cb18763121f9db20032ee888d47758697b06f76ca54dbfa14efe2ce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-bbox.ppm",
+      "oracle_sha256": "25bd4603c2bcab7a64d435485a63b5aa2a3c121618bedde18b56365195d028ec",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/tiling-alpha-once",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-alpha-once.pdf",
+      "sha256": "d8e116cd5938da526bef31735999b7f2cf06a7a35d05499da53c15d530443def",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-alpha-once.ppm",
+      "oracle_sha256": "aaebf9912da72d5437a8092449942a968dc2fa16cb1f52987434fae0379b5345",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/tiling-blend",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-blend.pdf",
+      "sha256": "2c8acb82ce6980d54675e2587c9b453fecd636fc783cc90604b3dc0e31a36cd2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-blend.ppm",
+      "oracle_sha256": "b36d55b12c7f4fd8b6b8a9b856a4d794541f8bba412ac52f62163248a5e2156e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/tiling-underlying-reuse",
+      "kind": "pdf",
+      "description": "8.6.6.2, 8.7.2\u20138.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-underlying-reuse.pdf",
+      "sha256": "d0174b7fbc22164de31faa086fcda0d155cdb5a5178e91f643d624e0b77c5f98",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-underlying-reuse.ppm",
+      "oracle_sha256": "d4d40ae5fd06f43ef22e77a5ee166043d0ba4c2d012e86ca29e96fd18450a16a",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/tiling-zero-step",
+      "kind": "pdf",
+      "description": "Table 74 and 8.7.3.3: malformed lattice or colour operands",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-zero-step.pdf",
+      "sha256": "dad34de9279a8ef4f666ca1644e524b6dd5bffe58ebae67ce2d6e8ce3b667329",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/tiling-missing-underlying",
+      "kind": "pdf",
+      "description": "Table 74 and 8.7.3.3: malformed lattice or colour operands",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-missing-underlying.pdf",
+      "sha256": "4e475b160a070ca2d54b601b3611c779f45f8a4b5ac42538d72c19eff108e4e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/tiling-coloured-underlying",
+      "kind": "pdf",
+      "description": "Table 74 and 8.7.3.3: malformed lattice or colour operands",
+      "expected": "open",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-coloured-underlying.pdf",
+      "sha256": "bce8473cc0a3f888ec0c466510e27b62ed64681b6497d7670462238a31f071b8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/annotation-link-border",
+      "kind": "pdf",
+      "description": "12.5.4, 12.5.6.5, 12.5.6.8: border stays inside Rect; absent interior is transparent",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/content/annotation-link-border.pdf",
+      "sha256": "2c7b6d3b6805a4af3e6be0ca57cef55720e74e766a14924d2f33ba12b1b6ced4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-link-border.ppm",
+      "oracle_sha256": "4ea998579bf2a07d342f6b8829e1b5090b07aec0c2e8a1f4233d68ae957f45a8",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/annotation-link-underline",
+      "kind": "pdf",
+      "description": "12.5.4, 12.5.6.5, 12.5.6.8: border stays inside Rect; absent interior is transparent",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/content/annotation-link-underline.pdf",
+      "sha256": "cc48d8cff5f9d3198305ad486683df62f9894f8054ace34715f2285f0886f3e3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-link-underline.ppm",
+      "oracle_sha256": "0083b02e4607bb0a96230a83e057349ec5f6967e806d6a4f4d179f08b53ff554",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/annotation-square-transparent",
+      "kind": "pdf",
+      "description": "12.5.4, 12.5.6.5, 12.5.6.8: border stays inside Rect; absent interior is transparent",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/content/annotation-square-transparent.pdf",
+      "sha256": "59555cba65baf2dbc1a35ba257e61db658121285d7c930f5c87ccdf16d7e0d72",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-square-transparent.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/annotation-square-interior",
+      "kind": "pdf",
+      "description": "12.5.4, 12.5.6.5, 12.5.6.8: border stays inside Rect; absent interior is transparent",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/content/annotation-square-interior.pdf",
+      "sha256": "3723186dcf13c53b04e7822f4aa6f98e60e293a886e7dc95bd3c005f64291d38",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-square-interior.ppm",
+      "oracle_sha256": "3981f0c1256912b98a6ebabb607e0e1cd89506b033011395e402cb021817d385",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/annotation-link-transparent-colour",
+      "kind": "pdf",
+      "description": "12.5.4, 12.5.6.5, 12.5.6.8: border stays inside Rect; absent interior is transparent",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/content/annotation-link-transparent-colour.pdf",
+      "sha256": "91d3965e57167bfb7ff681205479a4549b33ae9313484c2b82b4d3bf777e3442",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-link-transparent-colour.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/annotation-view-8-72-0",
+      "kind": "pdf",
+      "description": "12.5.3: cancel scale/rotation about transformed upper-left anchor; fixed size uses one pixel per default unit at 72 dpi",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-view-8-72-0.pdf",
+      "sha256": "37e650706ae37a06c6fcaa1fe884d17cc714ba900d395228aefcc004b289c4c0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-view-8-72-0.ppm",
+      "oracle_sha256": "98af018413cedddf60951ae646630994a4d47fbad82222bf73b32f8f70abc42b",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-view-8-144-0",
+      "kind": "pdf",
+      "description": "12.5.3: cancel scale/rotation about transformed upper-left anchor; fixed size uses one pixel per default unit at 72 dpi",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-view-8-144-0.pdf",
+      "sha256": "37e650706ae37a06c6fcaa1fe884d17cc714ba900d395228aefcc004b289c4c0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-view-8-144-0.ppm",
+      "oracle_sha256": "e7e22c1d9e4f7d0e2802e9d366612046ebcae272b0a69a7ce971c8d3a817a95b",
+      "dpi": 144,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "content/annotation-view-8-72-90",
+      "kind": "pdf",
+      "description": "12.5.3: cancel scale/rotation about transformed upper-left anchor; fixed size uses one pixel per default unit at 72 dpi",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-view-8-72-90.pdf",
+      "sha256": "f061f803ede8df060292c5d54a3171f9ee67b19b5180df6c7724dddf8599ca9f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-view-8-72-90.ppm",
+      "oracle_sha256": "b71bdc8a779c618ac1b504dd527e89340954acd8cb2c61a7e48a14d5b8e276a4",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-view-8-144-90",
+      "kind": "pdf",
+      "description": "12.5.3: cancel scale/rotation about transformed upper-left anchor; fixed size uses one pixel per default unit at 72 dpi",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-view-8-144-90.pdf",
+      "sha256": "f061f803ede8df060292c5d54a3171f9ee67b19b5180df6c7724dddf8599ca9f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-view-8-144-90.ppm",
+      "oracle_sha256": "53cd376e819fe023407a7d88a51b23d36eb128741b9f6cc2a8d68c958d1a5b12",
+      "dpi": 144,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "content/annotation-view-16-72-0",
+      "kind": "pdf",
+      "description": "12.5.3: cancel scale/rotation about transformed upper-left anchor; fixed size uses one pixel per default unit at 72 dpi",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-view-16-72-0.pdf",
+      "sha256": "b9de270328c1d6321a8262171f331ba1023e268545bb331ba256146c9f6b48c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-view-16-72-0.ppm",
+      "oracle_sha256": "98af018413cedddf60951ae646630994a4d47fbad82222bf73b32f8f70abc42b",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-view-16-144-0",
+      "kind": "pdf",
+      "description": "12.5.3: cancel scale/rotation about transformed upper-left anchor; fixed size uses one pixel per default unit at 72 dpi",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-view-16-144-0.pdf",
+      "sha256": "b9de270328c1d6321a8262171f331ba1023e268545bb331ba256146c9f6b48c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-view-16-144-0.ppm",
+      "oracle_sha256": "817d30b1513173b651912b1cbd3aa3531471229f54c960c0bf37b5b63edca6b9",
+      "dpi": 144,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "content/annotation-view-16-72-90",
+      "kind": "pdf",
+      "description": "12.5.3: cancel scale/rotation about transformed upper-left anchor; fixed size uses one pixel per default unit at 72 dpi",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-view-16-72-90.pdf",
+      "sha256": "4fb57dbc76b788b1a485616c2652cb8d6de3925482d95aa3297a7dcf973f1688",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-view-16-72-90.ppm",
+      "oracle_sha256": "d58670b0516965a4897a9c4ae165dd4386ba0d14316216fa477fc9ee73f2a4fc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-view-16-144-90",
+      "kind": "pdf",
+      "description": "12.5.3: cancel scale/rotation about transformed upper-left anchor; fixed size uses one pixel per default unit at 72 dpi",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-view-16-144-90.pdf",
+      "sha256": "4fb57dbc76b788b1a485616c2652cb8d6de3925482d95aa3297a7dcf973f1688",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-view-16-144-90.ppm",
+      "oracle_sha256": "7f2fa0646d7d97cf79b8de89d88debbf04cdb8effa606ae71fa42a6195be648b",
+      "dpi": 144,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "content/annotation-view-24-72-0",
+      "kind": "pdf",
+      "description": "12.5.3: cancel scale/rotation about transformed upper-left anchor; fixed size uses one pixel per default unit at 72 dpi",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-view-24-72-0.pdf",
+      "sha256": "e527417c514cefd5fe53e2dd1d372ae6f0c6451a71ed4c567a88fb9b10af2411",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-view-24-72-0.ppm",
+      "oracle_sha256": "98af018413cedddf60951ae646630994a4d47fbad82222bf73b32f8f70abc42b",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-view-24-144-0",
+      "kind": "pdf",
+      "description": "12.5.3: cancel scale/rotation about transformed upper-left anchor; fixed size uses one pixel per default unit at 72 dpi",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-view-24-144-0.pdf",
+      "sha256": "e527417c514cefd5fe53e2dd1d372ae6f0c6451a71ed4c567a88fb9b10af2411",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-view-24-144-0.ppm",
+      "oracle_sha256": "e7e22c1d9e4f7d0e2802e9d366612046ebcae272b0a69a7ce971c8d3a817a95b",
+      "dpi": 144,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "content/annotation-view-24-72-90",
+      "kind": "pdf",
+      "description": "12.5.3: cancel scale/rotation about transformed upper-left anchor; fixed size uses one pixel per default unit at 72 dpi",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-view-24-72-90.pdf",
+      "sha256": "480295aa38e6941a3c08fdec1fbb8f4de1c1afde013355677faa71b98a1cd889",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-view-24-72-90.ppm",
+      "oracle_sha256": "d58670b0516965a4897a9c4ae165dd4386ba0d14316216fa477fc9ee73f2a4fc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-view-24-144-90",
+      "kind": "pdf",
+      "description": "12.5.3: cancel scale/rotation about transformed upper-left anchor; fixed size uses one pixel per default unit at 72 dpi",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-view-24-144-90.pdf",
+      "sha256": "480295aa38e6941a3c08fdec1fbb8f4de1c1afde013355677faa71b98a1cd889",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-view-24-144-90.ppm",
+      "oracle_sha256": "d2a30c3a1512dc3579f6453ef2328f41d3f3082192ac81a6ab13d3ef26e72697",
+      "dpi": 144,
+      "width": 16,
+      "height": 16
+    },
+    {
+      "id": "content/annotation-view-user-unit",
+      "kind": "pdf",
+      "description": "12.5.3: NoZoom cancels magnification while preserving physical UserUnit at the upper-left anchor",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-view"
+      ],
+      "path": "corpus/generated/content/annotation-view-user-unit.pdf",
+      "sha256": "5e7ae2e5839ea3717669af43c986034dba5b09d599be8158fe5c2cf2b0118b09",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-view-user-unit.ppm",
+      "oracle_sha256": "b5c81f9d01d6ef29b0d0aee0dd760b1ec70db0e700813c956f1acebd31649304",
+      "dpi": 144,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "content/annotation-opacity-components",
+      "kind": "pdf",
+      "description": "Table 166: CA controls generated strokes; explicit ca independently controls fills; exact-area mask bytes and source-over are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-annotation-generation"
+      ],
+      "path": "corpus/generated/content/annotation-opacity-components.pdf",
+      "sha256": "971b7df67f14eeed3742338c8ef122a87210f27f4aefe30aeda662ac38d96438",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-opacity-components.ppm",
+      "oracle_sha256": "db51c9a7f7733da098db48943c481553aa0a181e1386cc94c8bba20490f832e3",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-triangle",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-triangle.pdf",
+      "sha256": "d3a6974127185e9773b969789d9a59298833988f571d9753052aa66f41082315",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-triangle.ppm",
+      "oracle_sha256": "a88971d8c1fb469471c8f34b8d266c7f91f9c4552f54949ab0cfdeb33343157b",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-reuse-1",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-reuse-1.pdf",
+      "sha256": "3d9c9a4afc4e440afb1ac3526d0dc99931206e3e6b9b1e408d22f6f45666bc02",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-reuse-1.ppm",
+      "oracle_sha256": "c66b471b28f70f2541aadec81c2ad6cdefc22b8fe6cdd31fd2f9e498c5b913fc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-reuse-2",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-reuse-2.pdf",
+      "sha256": "d3fa93e045ddb23480356699106668de85c22c338385f102c78b0d42c8382657",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-reuse-2.ppm",
+      "oracle_sha256": "c66b471b28f70f2541aadec81c2ad6cdefc22b8fe6cdd31fd2f9e498c5b913fc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-lattice",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-lattice.pdf",
+      "sha256": "bce3c9e3832935e24260e34bde1f160e03518a585e023626d38f96dbe549948a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-lattice.ppm",
+      "oracle_sha256": "c66b471b28f70f2541aadec81c2ad6cdefc22b8fe6cdd31fd2f9e498c5b913fc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-coordinate-1",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-coordinate-1.pdf",
+      "sha256": "a0ca819526f899ebbbb2af819dfb9d126bdea9c2ef399b94e26162d5c48e7cb2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-coordinate-1.ppm",
+      "oracle_sha256": "5058c04e9275256d114396064648f08382bf90caa82bb8b416714f2655bff264",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-coordinate-2",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-coordinate-2.pdf",
+      "sha256": "58d3a7675b0872613decd9be0342df5d3186049b2feffdcecb39d8c43fe914b0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-coordinate-2.ppm",
+      "oracle_sha256": "5058c04e9275256d114396064648f08382bf90caa82bb8b416714f2655bff264",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-coordinate-4",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-coordinate-4.pdf",
+      "sha256": "ddcfe8fc6f51b5c1df20a26aba344ffce1e9917ff8973a9122e270f0f64ee6e8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-coordinate-4.ppm",
+      "oracle_sha256": "5058c04e9275256d114396064648f08382bf90caa82bb8b416714f2655bff264",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-coordinate-8",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-coordinate-8.pdf",
+      "sha256": "6a1df3830b5ab7f4ec43026a0bdc0476c9ac94599b1b56f6cec3e7c9f5a298b3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-coordinate-8.ppm",
+      "oracle_sha256": "5058c04e9275256d114396064648f08382bf90caa82bb8b416714f2655bff264",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-coordinate-12",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-coordinate-12.pdf",
+      "sha256": "4a32d5781c617a4972f3091f030162fb9b4451adc201e17bfce36911ff0756fd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-coordinate-12.ppm",
+      "oracle_sha256": "5058c04e9275256d114396064648f08382bf90caa82bb8b416714f2655bff264",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-coordinate-16",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-coordinate-16.pdf",
+      "sha256": "518e6467db857edb77e2cf150bd21064ca55b23cba043616138135abaa1e698e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-coordinate-16.ppm",
+      "oracle_sha256": "5058c04e9275256d114396064648f08382bf90caa82bb8b416714f2655bff264",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-coordinate-24",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-coordinate-24.pdf",
+      "sha256": "86d1274ec5fb027afca7fde3f5755d1431752b5b30924d505c4698d2ba7e3503",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-coordinate-24.ppm",
+      "oracle_sha256": "5058c04e9275256d114396064648f08382bf90caa82bb8b416714f2655bff264",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-coordinate-32",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-coordinate-32.pdf",
+      "sha256": "f2ca61be848784421f836ad14719da4a61b06fa5dd2c2dad4ca5963db1df735f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-coordinate-32.ppm",
+      "oracle_sha256": "5058c04e9275256d114396064648f08382bf90caa82bb8b416714f2655bff264",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-component-2",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-component-2.pdf",
+      "sha256": "2cc3c71ad01f51c6461b9ac92f3cf34db4b7a3273e503b7f0fc7087173087d2d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-component-2.ppm",
+      "oracle_sha256": "5058c04e9275256d114396064648f08382bf90caa82bb8b416714f2655bff264",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-component-4",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-component-4.pdf",
+      "sha256": "5bfc16da3a937f97665d668abaaf4472f38235e7b099271b937d424006f851a8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-component-4.ppm",
+      "oracle_sha256": "5058c04e9275256d114396064648f08382bf90caa82bb8b416714f2655bff264",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-component-8",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-component-8.pdf",
+      "sha256": "da620397adee1577a82c2506bcd91ab296b4b0c2fe8e87a03e4e62374244d0f5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-component-8.ppm",
+      "oracle_sha256": "5058c04e9275256d114396064648f08382bf90caa82bb8b416714f2655bff264",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-component-12",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-component-12.pdf",
+      "sha256": "8139c0f26831159cf8f409eac2999a3c46e7ba5f55b64e6962ee1db500fd317e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-component-12.ppm",
+      "oracle_sha256": "5058c04e9275256d114396064648f08382bf90caa82bb8b416714f2655bff264",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-component-16",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-component-16.pdf",
+      "sha256": "5e4278071c30a45624028d8f15cfed6e4f4c69e3d9115282ec56a844fe0a0807",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-component-16.ppm",
+      "oracle_sha256": "5058c04e9275256d114396064648f08382bf90caa82bb8b416714f2655bff264",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-indexed",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-indexed.pdf",
+      "sha256": "4b8ac49a3b72d054444d5f82769cf3a26b965a75e016cf1e4b0be13c80a4b7dc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-indexed.ppm",
+      "oracle_sha256": "5058c04e9275256d114396064648f08382bf90caa82bb8b416714f2655bff264",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-function",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-function.pdf",
+      "sha256": "69031476d52b04211bb59fcc4d0fbb3d49a86e0c8bb580c1ec3852b90d9069e7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-function.ppm",
+      "oracle_sha256": "bda869ffbbdb75dab90b167c01c93781c9d12c657e9df9a7d195024741bb9e15",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-patch-6",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-patch-6.pdf",
+      "sha256": "c05e65c67879120cfff34a95f99092aa83e718222186498b5786cf275f4880c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-patch-6.ppm",
+      "oracle_sha256": "221dc76a6b4f1f1e61c6c4da2880509ab9d7f6ca2ae1e6c2ed24404c63f15d39",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-patch-7",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-patch-7.pdf",
+      "sha256": "ff2db387d0a3b22f514f87f9cb349ead0ab8173644a0411323af0e1e78dca61d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-patch-7.ppm",
+      "oracle_sha256": "221dc76a6b4f1f1e61c6c4da2880509ab9d7f6ca2ae1e6c2ed24404c63f15d39",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-coons-curved",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-coons-curved.pdf",
+      "sha256": "04635b1fff7d54928f6827774c55a0abf76f8b5ca6f196fbcf3358070bc69758",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-coons-curved.ppm",
+      "oracle_sha256": "a6a25222a8a767ad72d280b302bd6a87570e70c43096799cff7d4a024c7ee1a4",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-tensor-interior",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-tensor-interior.pdf",
+      "sha256": "bf901e1fba5f1068ba7856f9fb57dbbae5e9acc0d69b925639729043c9ba7b39",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-tensor-interior.ppm",
+      "oracle_sha256": "17cae687777e1656130efa0c8ff09032a0026ec407df4b1fef76d7b36b191798",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-folded",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-folded.pdf",
+      "sha256": "b825666f93724c71ae048c4456a1b411f4e706981f7fca99e7794ac5744071ab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-folded.ppm",
+      "oracle_sha256": "be1fe3b79314d1fb01233ca258d50d430305c79efb7b7712ed6d4e3f5a72566d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-patch-reuse-6-1",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-patch-reuse-6-1.pdf",
+      "sha256": "fb162c679ab97a95f960a468efdce1e00b30bb706601a6d3a91732b43198803a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-patch-reuse-6-1.ppm",
+      "oracle_sha256": "f91383d99b688ba3f8bb684b2bd8d0ddc05d279feb3bba35ad53f5ad5ad282e7",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-patch-reuse-6-2",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-patch-reuse-6-2.pdf",
+      "sha256": "e38aa68930476558d1a1f31789c6cab3e44551dd379423e84b4f20c719b4e1d8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-patch-reuse-6-2.ppm",
+      "oracle_sha256": "1262834aef8f519350f05afe55beafd03b9f4a68154eaf5fbd9b5ac172125c94",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-patch-reuse-6-3",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-patch-reuse-6-3.pdf",
+      "sha256": "846e79eb71eb2db5d6f4cb66033f684e50df36ff1066880098e5f9831af4357c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-patch-reuse-6-3.ppm",
+      "oracle_sha256": "281717799245dde552090bd96606ee8ffdb9676c089ef870b101b8d6c705b2e4",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-patch-reuse-7-1",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-patch-reuse-7-1.pdf",
+      "sha256": "484ccd94dd404b51a6257b5021c2b8a3e2e87dd5ca5ec1b8113a272c59a141c4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-patch-reuse-7-1.ppm",
+      "oracle_sha256": "f91383d99b688ba3f8bb684b2bd8d0ddc05d279feb3bba35ad53f5ad5ad282e7",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-patch-reuse-7-2",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-patch-reuse-7-2.pdf",
+      "sha256": "94a23cb3f9d2a1390eddea7e0d5b25ccb3262deae497441199a55a96d9939c9f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-patch-reuse-7-2.ppm",
+      "oracle_sha256": "1262834aef8f519350f05afe55beafd03b9f4a68154eaf5fbd9b5ac172125c94",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-patch-reuse-7-3",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-patch-reuse-7-3.pdf",
+      "sha256": "0274834a86a2e9b91bc6b034d1992c46c1d3b51b248555b5fac8b1265a8d3e65",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-patch-reuse-7-3.ppm",
+      "oracle_sha256": "281717799245dde552090bd96606ee8ffdb9676c089ef870b101b8d6c705b2e4",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-patch-overlap",
+      "kind": "pdf",
+      "description": "8.7.4.5.5\u20138.7.4.5.8: independently encoded mesh and geometric colour formula",
+      "expected": "render",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-patch-overlap.pdf",
+      "sha256": "ecd968206e9f67cedcfc0af5453b94546dac8363218b16e32d095512ffb48277",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/mesh-patch-overlap.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/mesh-orphan-edge",
+      "kind": "pdf",
+      "description": "Tables 81\u201385 require legal bit widths and complete records with a preceding primitive for reuse",
+      "expected": "open",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-orphan-edge.pdf",
+      "sha256": "9d7415133ab8b371b999f5f8bb498b8639ac292d35a7e5205ff4eddfff443727",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/mesh-invalid-flag",
+      "kind": "pdf",
+      "description": "Tables 81\u201385 require legal bit widths and complete records with a preceding primitive for reuse",
+      "expected": "open",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-invalid-flag.pdf",
+      "sha256": "4b726a5e9a59acd9c7a8033381d40b80235c3b92f3a1be4eec18f0d615102943",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/mesh-truncated-vertex",
+      "kind": "pdf",
+      "description": "Tables 81\u201385 require legal bit widths and complete records with a preceding primitive for reuse",
+      "expected": "open",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-truncated-vertex.pdf",
+      "sha256": "e58f099d70aceb51a74cb2ac0bf5f36fb615acd2e94c096f51e55219e5487947",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/mesh-truncated-patch",
+      "kind": "pdf",
+      "description": "Tables 81\u201385 require legal bit widths and complete records with a preceding primitive for reuse",
+      "expected": "open",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-truncated-patch.pdf",
+      "sha256": "182940f609540791f834479795aece07abea3c745db36985b2c5a2238db93ace",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/mesh-incomplete-row",
+      "kind": "pdf",
+      "description": "Tables 81\u201385 require legal bit widths and complete records with a preceding primitive for reuse",
+      "expected": "open",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-incomplete-row.pdf",
+      "sha256": "3fc8f76d6d052471715c45e3082a40c071ba98d0d30307c2b37a93e5f086a187",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/mesh-invalid-bits",
+      "kind": "pdf",
+      "description": "Tables 81\u201385 require legal bit widths and complete records with a preceding primitive for reuse",
+      "expected": "open",
+      "requirements": [
+        "content-mesh"
+      ],
+      "path": "corpus/generated/content/mesh-invalid-bits.pdf",
+      "sha256": "e1eb3b18393d18eede55d2279ddeac04f91b7bc9fcfb5c8f88e96383dd5172de",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
       "id": "content/annotation",
       "kind": "pdf",
       "description": "Normal appearance fitted by transformed BBox envelope after page content",
@@ -1173,17 +3079,21 @@
     {
       "id": "content/annotation-flags",
       "kind": "pdf",
-      "description": "Fixed display-size annotation needs view fitting",
-      "expected": "unsupported",
+      "description": "12.5.3: fixed display-size annotation at default scale",
+      "expected": "render",
       "requirements": [
-        "content-annotations"
+        "content-annotation-view"
       ],
       "path": "corpus/generated/content/annotation-flags.pdf",
       "sha256": "e270f01c1393c7069f7ec4c08627cd8be8cc2e9b2f2149dcc2d73c1e50b7310a",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.flags"
+      "oracle": "corpus/generated/content/annotation-flags.ppm",
+      "oracle_sha256": "b790577476a5d634d0b998334fdfc260275ff1e308f0383b0a6a93661850d614",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/annotation-invalid-state",
@@ -2280,32 +4190,41 @@
     {
       "id": "content/shading",
       "kind": "pdf",
-      "description": "Free-form triangle meshes are explicit unsupported input",
-      "expected": "unsupported",
+      "description": "8.7.4.5.5: Gouraud triangle with decoded vertices (0,0), (8,0), (0,8)",
+      "expected": "render",
       "requirements": [
-        "content-shadings"
+        "content-mesh"
       ],
       "path": "corpus/generated/content/shading.pdf",
       "sha256": "7e2d1c0b09b900dad0e30d6f405f880a10ebe93360f301f7706abe285478e708",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "shading.mesh"
+      "oracle": "corpus/generated/content/shading.ppm",
+      "oracle_sha256": "a88971d8c1fb469471c8f34b8d266c7f91f9c4552f54949ab0cfdeb33343157b",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
     },
     {
       "id": "content/pattern",
       "kind": "pdf",
-      "description": "Tiling patterns are explicit unsupported input",
-      "expected": "unsupported",
+      "description": "8.7.3: black unit cells on a two-unit lattice",
+      "expected": "render",
       "requirements": [
-        "content-shadings"
+        "content-tiling"
       ],
       "path": "corpus/generated/content/pattern.pdf",
       "sha256": "b1892c96e1a0727f54e0efe5045dc91e67900935f1e3a539c95dbdf5d4492f6b",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "pattern.tiling"
+      "oracle": "corpus/generated/content/pattern.ppm",
+      "oracle_sha256": "e7f6d63bd2db66be8f3db2a4b7514650d125e4104b85394a13eaaba8d5938cc6",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/form-empty-group",
@@ -3708,7 +5627,7 @@
       "id": "content/DeviceN-duplicate-None",
       "kind": "pdf",
       "description": "None may repeat but All is forbidden even after a None colourant",
-      "expected": "unsupported",
+      "expected": "render",
       "requirements": [
         "content-colour"
       ],
@@ -3717,7 +5636,11 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "colorspace.special-ink"
+      "oracle": "corpus/generated/content/DeviceN-duplicate-None.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/DeviceN-All-after-None",

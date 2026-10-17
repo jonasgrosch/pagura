@@ -304,6 +304,7 @@ fn opaque_commands(commands: &[Command]) -> bool {
         Command::Path(p) => p.composite.simple() && matches!(p.color, Color::Solid { .. }),
         Command::Group(g) => {
             g.composite.simple()
+                && g.attributes.view.is_none()
                 && !g.attributes.knockout
                 && (!g.attributes.isolated
                     || g.attributes

@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "content",
-  "scope": "Content interpretation, colour, functions, forms, optional content and page transforms checked against the local ISO 32000-2:2020 sponsored EC3 text. Implemented transparency in clause 11, analytic shadings and shading patterns in 8.7, annotation appearances in 12.5 and continuous-tone halftone bypass in 10.6 are covered by independent fixtures. Exact-area bytes, Bradford adaptation, sRGB output and rounding are project policy. ICC tag processing awaits primary ICC-text review.",
+  "scope": "Content interpretation, colour, functions, forms, optional content and page transforms checked against the local ISO 32000-2:2020 sponsored EC3 text. Implemented transparency in clause 11, analytic/mesh shadings, shading and tiling patterns in 8.7, annotation appearances, generated link/square/note shapes and view flags in 12.5 and continuous-tone halftone bypass in 10.6 are covered by independent fixtures. Exact-area bytes, Bradford adaptation, sRGB output and rounding are project policy. ICC tag processing awaits primary ICC-text review.",
   "requirements": [
     {
       "id": "content-vector-pipeline",
@@ -22,9 +22,18 @@
         "content/path-construction-after-clip",
         "content/parameter-width-clipped",
         "content/parameter-miter-clipped",
-        "content/parameter-flatness-high"
+        "content/parameter-flatness-high",
+        "content/ink-All",
+        "content/ink-None",
+        "content/ink-None-knockout",
+        "content/ink-All-cmyk",
+        "content/gstate-AA",
+        "content/gstate-Name",
+        "content/gstate-private",
+        "content/gstate-halftone-origin",
+        "content/gstate-black-compensation-off"
       ],
-      "gaps": "text, images and general stroke adjustment remain incomplete",
+      "gaps": "calibrated group blending and subtractive overprint remain incomplete",
       "rule": "Graphics-state changes, construction, painting and clipping follow Tables 51, 52 and 58 through 60; the current path is separate from saved graphics state."
     },
     {
@@ -38,7 +47,7 @@
       "tests": [
         "content/compound-operands-split"
       ],
-      "gaps": "inline images unsupported",
+      "gaps": "",
       "rule": "Operands immediately precede their operator, contain no indirect references, and may span Contents-array elements between lexical tokens."
     },
     {
@@ -59,7 +68,7 @@
         "content/text",
         "pagura-render/src/tests.rs"
       ],
-      "gaps": "text, images and Type3; mesh shadings and tiling patterns; legacy image.inline tag retained",
+      "gaps": "legacy unsupported tags retained; remaining painting limitations are registered by their implementation areas",
       "rule": "Annex A lists content operators; their defining tables govern operands, while Table 33 permits unknown operators only inside compatibility sections."
     },
     {
@@ -76,7 +85,7 @@
         "10.4.2.2",
         "10.4.2.5"
       ],
-      "status": "device, Indexed, CalGray/CalRGB/Lab, tint alternates and source ICC matrix/TRC",
+      "status": "device, Indexed, CalGray/CalRGB/Lab, tint alternates and source ICC matrix/TRC; All/None colourants",
       "tests": [
         "content/cmyk",
         "content/indexed",
@@ -92,7 +101,7 @@
         "content/DeviceN-forbidden-All",
         "content/DeviceN-duplicate-None"
       ],
-      "gaps": "ICC LUTs, nondefault ICC ranges, special colourants and nonzero calibrated BlackPoint",
+      "gaps": "ICC LUTs, nondefault ICC ranges and nonzero calibrated BlackPoint",
       "rule": "Device conversion, default remapping, Indexed lookup, tint alternates and colour selection follow their source-space rules; ICC profile handling is constrained by Tables 65 and 66."
     },
     {
@@ -164,7 +173,7 @@
         "content/form-resources",
         "content/form-hidden-body"
       ],
-      "gaps": "image XObjects unsupported",
+      "gaps": "image painting limitations are registered by the image painting implementation",
       "rule": "Form invocation saves state, concatenates Matrix, clips to BBox, executes with applicable resources and restores state; Table 93 also specifies optional-content skipping."
     },
     {
@@ -252,7 +261,7 @@
         "content/function-domain-negative",
         "content/function-domain-fractional"
       ],
-      "gaps": "sampled cubic interpolation with size >=4; special None/All colourants; transfer-region selection under transparency",
+      "gaps": "sampled cubic interpolation with size >=4; transfer-region selection under transparency",
       "rule": "Functions clip inputs and outputs to declared bounds and follow their type-specific definitions; transfer functions operate after conversion to the output device space."
     },
     {
@@ -291,7 +300,7 @@
         "content/annotation-state-isolation",
         "content/annotation-link-borderless"
       ],
-      "gaps": "NoZoom/NoRotate; generation of absent appearances"
+      "gaps": "remaining absent-appearance generation is registered in content-annotation-generation; view fitting is registered in content-annotation-view"
     },
     {
       "id": "content-halftone",
@@ -366,7 +375,7 @@
         "content/pattern-anchored",
         "content/pattern-background"
       ],
-      "gaps": "mesh shadings, tiling patterns, pattern ExtGState; degenerate BBox scan conversion"
+      "gaps": "pattern ExtGState; degenerate BBox scan conversion"
     },
     {
       "id": "content-icc-matrix",
@@ -388,6 +397,228 @@
         "pagura-render/src/icc.rs"
       ],
       "gaps": "LUT profiles; calibrated group inverse transforms; nondefault ranges; primary ICC specification not locally available"
+    },
+    {
+      "id": "content-special-inks",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.6.6.4",
+        "8.6.6.5",
+        "11.7.3"
+      ],
+      "rule": "All complements its tint on additive devices and applies the same tint to every group colourant. None contributes no shape, opacity or colour. All-None DeviceN discards output; mixed alternate transforms receive None inputs. All is forbidden in DeviceN.",
+      "status": "special colourants and alternate semantics",
+      "tests": [
+        "content/ink-All",
+        "content/ink-None",
+        "content/ink-None-knockout",
+        "content/ink-All-cmyk",
+        "content/ink-DeviceN-None",
+        "content/ink-DeviceN-mixed",
+        "content/ink-NChannel-None"
+      ],
+      "gaps": "NChannel component-specific colour management remains unsupported"
+    },
+    {
+      "id": "content-tiling",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.6.6.2",
+        "8.6.8",
+        "8.7.2",
+        "8.7.3",
+        "11.6.7"
+      ],
+      "rule": "Pattern spaces may name coloured cells or include an underlying space for uncoloured stencils. Cell resources, BBox, matrix and nonzero lattice steps control placement. Restricted colour setters and non-stencil images are ignored in uncoloured cells. The pattern forms one non-isolated group; outer alpha and blend apply once. Integer lattice fitting, pixel coverage and rounding are project policies.",
+      "status": "bounded cell compilation, visible-instance enumeration and non-isolated composition",
+      "tests": [
+        "content/tiling-coloured",
+        "content/tiling-negative-step",
+        "content/tiling-type-two",
+        "content/tiling-type-three",
+        "content/tiling-underlying",
+        "content/tiling-ignored-colour",
+        "content/tiling-ignored-inline",
+        "content/tiling-anchored",
+        "content/tiling-rotated",
+        "content/tiling-bbox",
+        "content/tiling-alpha-once",
+        "content/tiling-blend",
+        "content/tiling-underlying-reuse",
+        "content/tiling-zero-step",
+        "content/tiling-missing-underlying",
+        "content/tiling-coloured-underlying",
+        "content/pattern"
+      ],
+      "gaps": "singular/collapsed device lattices and Type 1 fitting beyond one pixel remain explicit; pattern-coloured image stencils await the image compositor"
+    },
+    {
+      "id": "content-extgstate-extensions",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.7",
+        "8.4.5",
+        "10.6.1",
+        "8.6.5.9"
+      ],
+      "rule": "Undefined dictionary keys do not change graphics state. Defined entries retain validation and explicit unsupported handling. Continuous-tone RGB has no halftone origin; black point compensation OFF and the processor Default disable compensation.",
+      "status": "unknown extension entries ignored; HTO validated; explicit black-point-compensation boundary",
+      "tests": [
+        "content/gstate-AA",
+        "content/gstate-Name",
+        "content/gstate-private",
+        "content/gstate-halftone-origin",
+        "content/gstate-black-compensation-off",
+        "content/gstate-extension-cycle",
+        "content/gstate-black-compensation-on"
+      ],
+      "gaps": "UseBlackPtComp ON remains unsupported"
+    },
+    {
+      "id": "content-annotation-generation",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.2",
+        "12.5.4",
+        "12.5.6.4",
+        "12.5.6.5",
+        "12.5.6.8"
+      ],
+      "rule": "Visible link and square borders remain inside Rect. BS overrides Border. Zero-width borders and absent interior colours are transparent. Seven note icons have geometric appearances selected by project device policy; exact-area coverage and channel rounding are project policies.",
+      "status": "link/square appearance generation and predefined note icons",
+      "tests": [
+        "content/annotation-icon-Comment",
+        "content/annotation-icon-Key",
+        "content/annotation-icon-Help",
+        "content/annotation-icon-Paragraph",
+        "content/annotation-icon-NewParagraph",
+        "content/annotation-icon-Insert",
+        "content/annotation-icon-Note",
+        "content/annotation-link-border",
+        "content/annotation-link-underline",
+        "content/annotation-square-transparent",
+        "content/annotation-square-interior",
+        "content/annotation-link-transparent-colour",
+        "content/annotation-opacity-components"
+      ],
+      "gaps": "rounded and relief borders, square BE/RD and other annotation appearance generation remain explicit"
+    },
+    {
+      "id": "content-annotation-view",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.3",
+        "12.5.6.4"
+      ],
+      "rule": "NoZoom preserves screen dimensions and NoRotate preserves orientation about the transformed upper-left Rect corner. Text notes use both flags implicitly. Fixed screen size at 72 dpi at unit magnification, preserving UserUnit is project device policy.",
+      "status": "view-aware high-precision annotation groups",
+      "tests": [
+        "content/annotation-icon-Comment",
+        "content/annotation-icon-Key",
+        "content/annotation-icon-Help",
+        "content/annotation-icon-Paragraph",
+        "content/annotation-icon-NewParagraph",
+        "content/annotation-icon-Insert",
+        "content/annotation-icon-Note",
+        "content/annotation-view-8-72-0",
+        "content/annotation-view-8-144-0",
+        "content/annotation-view-8-72-90",
+        "content/annotation-view-8-144-90",
+        "content/annotation-view-16-72-0",
+        "content/annotation-view-16-144-0",
+        "content/annotation-view-16-72-90",
+        "content/annotation-view-16-144-90",
+        "content/annotation-view-24-72-0",
+        "content/annotation-view-24-144-0",
+        "content/annotation-view-24-72-90",
+        "content/annotation-view-24-144-90",
+        "content/annotation-flags",
+        "content/annotation-view-user-unit"
+      ],
+      "gaps": "interactive popup windows are outside the rendering API"
+    },
+    {
+      "id": "content-group-regions",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "11.4.4",
+        "11.6.6",
+        "11.7.2",
+        "8.5.4"
+      ],
+      "rule": "Group compositing preserves high-precision colour, shape and alpha within the intersection of conservative source/BBox bounds, hard clip bounds and the device tile. Fixed-size page backdrop chunks and allocation accounting are project memory policies; they do not change source geometry.",
+      "status": "bounded group regions and chunked page backdrop with a shared work budget",
+      "tests": [
+        "content/group-small-clip"
+      ],
+      "gaps": "soft-mask value arrays span the active device chunk"
+    },
+    {
+      "id": "content-mesh",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.7.4.5.5",
+        "8.7.4.5.6",
+        "8.7.4.5.7",
+        "8.7.4.5.8"
+      ],
+      "rule": "Mesh records decode coordinates and components, honour byte padding and reuse preceding edges. Triangles interpolate barycentrically; patches interpolate corner components bilinearly in their bicubic parameter space. Functions run after interpolation. Later patches take precedence; folds select largest v then u. Pixel-centre sampling, numeric root tolerance and byte rounding are project policies. Patch inversion uses a 2^-24 parameter subdivision floor and a 1e-9 tie tolerance for coincident v roots; these are project numeric policies.",
+      "status": "spatially indexed triangle and bicubic mesh evaluation",
+      "tests": [
+        "content/mesh-triangle",
+        "content/mesh-reuse-1",
+        "content/mesh-reuse-2",
+        "content/mesh-lattice",
+        "content/mesh-coordinate-1",
+        "content/mesh-coordinate-2",
+        "content/mesh-coordinate-4",
+        "content/mesh-coordinate-8",
+        "content/mesh-coordinate-12",
+        "content/mesh-coordinate-16",
+        "content/mesh-coordinate-24",
+        "content/mesh-coordinate-32",
+        "content/mesh-component-2",
+        "content/mesh-component-4",
+        "content/mesh-component-8",
+        "content/mesh-component-12",
+        "content/mesh-component-16",
+        "content/mesh-function",
+        "content/mesh-patch-6",
+        "content/mesh-patch-7",
+        "content/mesh-coons-curved",
+        "content/mesh-tensor-interior",
+        "content/mesh-folded",
+        "content/mesh-patch-reuse-6-1",
+        "content/mesh-patch-reuse-6-2",
+        "content/mesh-patch-reuse-6-3",
+        "content/mesh-patch-reuse-7-1",
+        "content/mesh-patch-reuse-7-2",
+        "content/mesh-patch-reuse-7-3",
+        "content/mesh-patch-overlap",
+        "content/mesh-orphan-edge",
+        "content/mesh-invalid-flag",
+        "content/mesh-truncated-vertex",
+        "content/mesh-truncated-patch",
+        "content/mesh-incomplete-row",
+        "content/mesh-invalid-bits",
+        "content/shading",
+        "content/mesh-indexed"
+      ],
+      "gaps": "numerically unresolved patch inverses fail explicitly under the mesh tag; work and memory are bounded"
+    },
+    {
+      "id": "content-overprint-boundary",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.6.7",
+        "11.7.4"
+      ],
+      "rule": "Subtractive overprint requires per-colourant selection and overprint-mode semantics before compositing; converting a source to RGB or a dense CMYK vector loses this information.",
+      "status": "explicit unsupported for CMYK group overprint",
+      "tests": [
+        "content/overprint-cmyk-boundary"
+      ],
+      "gaps": "CMYK output-intent simulation is deferred: retained colours lack colourant-write masks/OPM and the engine does not process CMYK ICC LUT profiles. Accepting this input as ordinary source-over would erase underlying inks."
     }
   ]
 }

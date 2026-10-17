@@ -1,10 +1,13 @@
 //! Content compilation. The only inputs are immutable document objects.
 
+mod annotation_shapes;
 mod annotations;
 mod forms;
 pub(crate) mod images;
 mod masks;
 mod path;
+mod pattern_inline;
+mod patterns;
 mod shadings;
 mod state;
 mod text;
@@ -85,6 +88,8 @@ struct Compiler<'a> {
     operations: usize,
     marks: usize,
     initial_ctm: Transform,
+    initial_state: Graphics,
+    stencil_pattern: bool,
     position: Position,
     forms: Vec<ObjectId>,
 }
@@ -107,6 +112,8 @@ impl<'a> Compiler<'a> {
             operations: 0,
             marks: 0,
             initial_ctm: Transform::IDENTITY,
+            initial_state: Graphics::default(),
+            stencil_pattern: false,
             position: Position::Unknown,
             forms: Vec::new(),
         })
@@ -128,6 +135,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn sequence(&mut self, streams: &[&IndirectObject], resources: &Dictionary) -> Result<()> {
+        self.initial_state = self.state.clone();
         let mut bytes = Vec::new();
         let mut origins = Vec::new();
         for stream in streams {
@@ -177,7 +185,7 @@ impl<'a> Compiler<'a> {
                     b"true" => self.operand(Value::Boolean(true)),
                     b"false" => self.operand(Value::Boolean(false)),
                     b"null" => self.operand(Value::Null),
-                    b"BI" => self.inline_image(&mut parser, resources),
+                    b"BI" => self.pattern_inline(&mut parser, resources),
                     _ => self.operator(word, resources),
                 })
             };
@@ -220,7 +228,7 @@ impl<'a> Compiler<'a> {
         };
         let operands = std::mem::take(&mut self.operands);
         let result = self.glyph_operator(word).and_then(|ignore| {
-            if ignore {
+            if ignore || self.pattern_ignores(word, &operands, resources)? {
                 Ok(())
             } else {
                 self.execute(word, &operands, resources, tag)
@@ -268,7 +276,10 @@ impl<'a> Compiler<'a> {
                 });
             }
             b"g" | b"G" | b"rg" | b"RG" | b"k" | b"K" | b"CS" | b"cs" | b"SC" | b"SCN" | b"sc"
-            | b"scn" => self.color(word, v, resources)?,
+            | b"scn" => {
+                self.color(word, v, resources)?;
+                self.compile_pattern(word)?;
+            }
             b"gs" => self.paint_gstate(v, resources)?,
             b"Do" => self.xobject(v, resources)?,
             b"BT" | b"ET" | b"Tc" | b"Tw" | b"Tz" | b"TL" | b"Tf" | b"Tr" | b"Ts" | b"Td"

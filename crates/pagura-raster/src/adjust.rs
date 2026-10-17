@@ -1,11 +1,13 @@
-//! Device grid fitting for orthogonal strokes (ISO 32000-2, 10.7.5).
+//! Device grid fitting for strokes (ISO 32000-2, 10.7.5).
 //!
 //! Device choice: pen diameters round to whole pixels, at least one. Centerlines
 //! snap to the corresponding half-width grid; open butt endpoints snap along
 //! the tangent to whole pixels. Dashes are split in original user space first.
 //! The fitted elliptical pen keeps the original nonuniform scale ratio to the
-//! nearest device-pixel widths. Curved/oblique paths need a separate fitter and
-//! remain explicitly unsupported rather than being quantized indiscriminately.
+//! nearest device-pixel widths. General geometry retains its centreline and fits
+//! the principal diameters of the device pen. This device policy bounds the
+//! diameter change in every direction by half a pixel (except the required
+//! minimum one-pixel pen), without introducing corners into flattened curves.
 
 use crate::flatten::{TOLERANCE, flatten};
 use crate::{LineCap, Path, PathBuilder, Point, Stroke, Transform};
@@ -24,8 +26,18 @@ pub(crate) fn outline(
     }
     let axis =
         (transform.b == 0.0 && transform.c == 0.0) || (transform.a == 0.0 && transform.d == 0.0);
-    if !axis || !transform.is_finite() {
-        return Err(unsupported());
+    let orthogonal = contours.iter().all(|c| {
+        c.points
+            .windows(2)
+            .all(|v| v[0].x == v[1].x || v[0].y == v[1].y)
+            && (!c.closed
+                || c.points
+                    .first()
+                    .zip(c.points.last())
+                    .is_none_or(|(a, b)| a.x == b.x || a.y == b.y))
+    });
+    if !axis || !orthogonal {
+        return general(contours, transform, stroke, limits);
     }
     let width = |scale: f64| {
         if stroke.width == 0.0 {
@@ -44,20 +56,6 @@ pub(crate) fn outline(
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
             continue;
-        }
-        if contour
-            .points
-            .windows(2)
-            .any(|v| v[0].x != v[1].x && v[0].y != v[1].y)
-        {
-            return Err(unsupported());
-        }
-        if contour.closed
-            && let (Some(a), Some(b)) = (contour.points.first(), contour.points.last())
-            && a.x != b.x
-            && a.y != b.y
-        {
-            return Err(unsupported());
         }
         for run in crate::stroke::dash(contour.points, contour.closed, stroke, limits)? {
             let mut run = run.transformed(transform);
@@ -101,9 +99,68 @@ fn butt_endpoints(original: &[Point], fitted: &mut [Point]) {
         }
     }
 }
-fn unsupported() -> Error {
-    Error::unsupported(
-        crate::features::STROKE_ADJUSTMENT,
-        "stroke adjustment for oblique or curved geometry is not implemented",
-    )
+/// Fit an affine pen by its principal device diameters. For any unit normal,
+/// the support-function difference is bounded by the largest singular-value
+/// change. Only the pen changes; dashes still measure the original user path.
+fn general(
+    contours: Vec<crate::flatten::Polyline>,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+) -> Result<(Path, Transform)> {
+    let pen = if stroke.width == 0.0 {
+        Transform::IDENTITY
+    } else {
+        fitted_pen(transform, stroke.width)?
+    };
+    let inverse = pen
+        .inverse()
+        .ok_or(Error::limit("adjusted pen inverse overflow"))?;
+    let normalize = transform.then(inverse);
+    let scale = pen.a.hypot(pen.b).max(pen.c.hypot(pen.d));
+    let mut out = PathBuilder::new();
+    for contour in contours {
+        if !contour.strokeable(stroke.cap) {
+            continue;
+        }
+        for run in crate::stroke::dash(contour.points, contour.closed, stroke, limits)? {
+            crate::stroke::draw(
+                &mut out,
+                &run.transformed(normalize),
+                0.5,
+                TOLERANCE / (2.0 * scale),
+                stroke,
+                limits,
+            )?;
+        }
+    }
+    Ok((out.finish(), pen))
+}
+
+fn fitted_pen(t: Transform, width: f64) -> Result<Transform> {
+    let scale = t.a.abs().max(t.b.abs()).max(t.c.abs()).max(t.d.abs());
+    if scale == 0.0 || !scale.is_finite() || !t.is_finite() {
+        return Err(Error::limit("adjusted pen exceeds numeric working range"));
+    }
+    let [a, b, c, d] = [t.a, t.b, t.c, t.d].map(|v| v / scale);
+    let xx = a * a + c * c;
+    let yy = b * b + d * d;
+    let xy = a * b + c * d;
+    let angle = 0.5 * (2.0 * xy).atan2(xx - yy);
+    let (sin, cos) = angle.sin_cos();
+    let major = ((xx + yy + (xx - yy).hypot(2.0 * xy)) * 0.5).sqrt();
+    // The determinant avoids cancellation for a narrow ellipse.
+    let minor = (a * d - b * c).abs() / major;
+    let [major, minor] = [major, minor].map(|v| (v * scale * width).round().max(1.0));
+    if !major.is_finite() || major > 1e12 || !minor.is_finite() {
+        return Err(Error::limit("adjusted pen exceeds numeric working range"));
+    }
+    Ok(Transform::new(
+        cos * major,
+        sin * major,
+        -sin * minor,
+        cos * minor,
+        0.0,
+        0.0,
+    ))
 }

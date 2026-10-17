@@ -32,6 +32,6 @@ mod tests;
 /// Stable raster capability tags.
 pub mod features {
     use pagura_core::Feature;
-    /// Automatic grid fitting for curved or oblique stroke geometry.
+    /// Retained capability tag for device stroke fitting policies.
     pub const STROKE_ADJUSTMENT: Feature = Feature::new("raster.stroke-adjustment-geometry");
 }

@@ -104,6 +104,17 @@ impl Compiler<'_> {
         let value = resource(self.document, resources, b"ExtGState", name.as_bytes())?;
         let dictionary = self.document.resolve_dictionary(value)?;
         for (key, value) in dictionary.iter() {
+            if !defined_entry(key.as_bytes()) {
+                continue;
+            }
+            if self.stencil_pattern
+                && matches!(
+                    key.as_bytes(),
+                    b"TR" | b"TR2" | b"BG" | b"BG2" | b"UCR" | b"UCR2" | b"HT" | b"UseBlackPtComp"
+                )
+            {
+                continue;
+            }
             let replacement = match key.as_bytes() {
                 b"TR" => Some(b"TR2".as_slice()),
                 b"BG" => Some(b"BG2".as_slice()),
@@ -269,13 +280,78 @@ impl Compiler<'_> {
                     .as_number()
                     .ok_or(Error::syntax("SM must be numeric"))?;
             }
-            // Text knockout affects glyph compositing only (11.7.4.3). Text
-            // operators remain explicitly unsupported, so it cannot affect vectors.
+            // Text knockout affects glyph compositing (9.3.8; 11.7.4.3).
+            // The text-state interpreter applies it before this vector-side validation.
             b"TK" => {
                 value.as_bool().ok_or(Error::syntax("TK must be boolean"))?;
             }
-            _ => return Err(unsupported(features::EXTGSTATE_UNKNOWN)),
+            _ => return device_parameter(key, value),
         }
         Ok(())
     }
+}
+
+fn device_parameter(key: &[u8], value: &Value) -> Result<()> {
+    match key {
+        // Table 58 defines all recognized keys. 7.3.7 permits extension
+        // entries such as producer metadata; they do not alter graphics.
+        b"UseBlackPtComp" => {
+            let name = value
+                .as_name()
+                .ok_or(Error::syntax("UseBlackPtComp must be a name"))?;
+            if name == b"ON" {
+                return Err(unsupported(features::EXTGSTATE_UNKNOWN));
+            }
+            if name != b"OFF" && name != b"Default" {
+                return Err(Error::syntax("invalid UseBlackPtComp"));
+            }
+        }
+        // Continuous-tone output has no halftone grid (10.6.1; Table 58).
+        b"HTO"
+            if value
+                .as_array()
+                .is_none_or(|v| v.len() != 2 || v.iter().any(|v| v.as_number().is_none())) =>
+        {
+            return Err(Error::syntax("HTO requires two numbers"));
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+/// Table 58 is exhaustive for standard ExtGState entries. Skip extension values
+/// before resolution: an ignored producer key must not trigger object loading.
+fn defined_entry(key: &[u8]) -> bool {
+    matches!(
+        key,
+        b"Type"
+            | b"LW"
+            | b"LC"
+            | b"LJ"
+            | b"ML"
+            | b"D"
+            | b"RI"
+            | b"OP"
+            | b"op"
+            | b"OPM"
+            | b"Font"
+            | b"BG"
+            | b"BG2"
+            | b"UCR"
+            | b"UCR2"
+            | b"TR"
+            | b"TR2"
+            | b"HT"
+            | b"FL"
+            | b"SM"
+            | b"SA"
+            | b"BM"
+            | b"SMask"
+            | b"CA"
+            | b"ca"
+            | b"AIS"
+            | b"TK"
+            | b"UseBlackPtComp"
+            | b"HTO"
+    )
 }

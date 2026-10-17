@@ -129,6 +129,7 @@ def cases():
             yield unsupported("space-"+family, b"/C cs", "colorspace."+family, resources=b"<< /ColorSpace << /C "+definition+b" >> >>")
 
     yield render("knockout", b"", page_extra=b"/Group << /S /Transparency /K true >>")
+    yield from remaining_vector_cases()
     yield from annotation_cases()
     yield from transparency_cases()
     yield from shading_cases()
@@ -328,7 +329,7 @@ def annotation_cases():
     yield Case('annotation-sheared',pdf(matrix=b'[1 1 -1 1 0 0]'),RENDER,('content-annotations',),'All four transformed corners determine the fitted envelope; exact rational pixel intersections',oracle=b'P6\n8 8\n255\n'+pixels,extra={'tolerance':1})
     yield Case('annotation-state-isolation',pdf(form=b'0 0 2 4 re f',page=b'0 0 1 rg 0 0 8 8 re f 4 0 0 4 2 2 cm'),RENDER,('content-annotations',),'Appearance starts in default graphics state rather than page final colour and CTM',oracle=opaque_rectangles(8,8,[((0,0,8,8),BLUE),((2,1,4,6),BLACK)]))
     yield render('annotation-link-borderless',b'',page_extra=b'/Annots [<< /Subtype /Link /Rect [0 0 8 8] /Border [0 0 0] >>]',requirements=('content-annotations',))
-    yield Case('annotation-flags',pdf(extra=b'/F 8'),UNSUPPORTED,('content-annotations',),'Fixed display-size annotation needs view fitting',feature='annotation.flags')
+    yield Case('annotation-flags',pdf(extra=b'/F 8'),RENDER,('content-annotation-view',),'12.5.3: fixed display-size annotation at default scale',oracle=opaque_rectangles(8,8,[((0,0,8,8),BLUE),((2,1,4,6),RED)]))
     for name,options in [
         ('annotation-invalid-state',{'normal':b'<< /Chosen 5 0 R >>'}),
         ('annotation-singular-matrix',{'matrix':b'[0 0 0 1 0 0]'}),
@@ -488,9 +489,9 @@ def shading_cases():
     yield render('pattern-initial',b'/Pattern cs 0 0 8 8 re f',requirements=('content-shadings',))
     mesh=stream(bytes([0,0,0,255,0,0,0,255,0,0,255,0,0,0,255,0,0,255]),b'/ShadingType 4 /ColorSpace /DeviceRGB /BitsPerFlag 8 /BitsPerCoordinate 8 /BitsPerComponent 8 /Decode [0 8 0 8 0 1 0 1 0 1]')
     pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /Shading << /S 5 0 R >> >> /Contents 4 0 R >>',stream(b'/S sh'),mesh])
-    yield Case('shading',pdf,UNSUPPORTED,('content-shadings',),'Free-form triangle meshes are explicit unsupported input',feature='shading.mesh')
+    yield Case('shading',pdf,RENDER,('content-mesh',),'8.7.4.5.5: Gouraud triangle with decoded vertices (0,0), (8,0), (0,8)',oracle=b'P6\n8 8\n255\n'+bytes(int(max(0,min(1,v))*255+.5) for row in range(8) for x in range(8) for v in ((1-(x+.5)/8-(7.5-row)/8,(x+.5)/8,(7.5-row)/8) if (x+.5)+(7.5-row)<=8 else (1,1,1))),extra={'tolerance':1})
     pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /Pattern << /P 5 0 R >> >> /Contents 4 0 R >>',stream(b'/Pattern cs /P scn 0 0 8 8 re f'),stream(b'0 0 1 1 re f',b'/Type /Pattern /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 2 /YStep 2 /Resources << >>')])
-    yield Case('pattern',pdf,UNSUPPORTED,('content-shadings',),'Tiling patterns are explicit unsupported input',feature='pattern.tiling')
+    yield Case('pattern',pdf,RENDER,('content-tiling',),'8.7.3: black unit cells on a two-unit lattice',oracle=opaque_rectangles(8,8,[((x,y,1,1),BLACK) for y in range(0,8,2) for x in range(0,8,2)]))
 
 
 def mask_geometry_cases():
@@ -744,10 +745,10 @@ def standard_semantics_cases():
         yield render('stitch-endpoint-encode-'+str(boundary),contents,[((i,0,1,8),(int(v*255+.5),)*3) for i,v in enumerate(mapped)],resources=b'<< /ColorSpace << /C [/Separation /Spot /DeviceGray '+function+b'] >> >>',requirements=('content-functions',))
     for intent in ('RelativeColorimetric','AbsoluteColorimetric'):
         yield render('intent-'+intent,('/'+intent+' ri /C cs 1 sc 0 0 8 8 re f').encode(),resources=b'<< /ColorSpace << /C [/CalGray << /WhitePoint [.96422 1 .82521] >>] >> >>',requirements=('content-cie',))
-    for names,kind in [(b'[/None /None]',UNSUPPORTED),(b'[/None /All]',OPEN)]:
-        name='DeviceN-duplicate-None' if kind==UNSUPPORTED else 'DeviceN-All-after-None'
+    for names,kind in [(b'[/None /None]',RENDER),(b'[/None /All]',OPEN)]:
+        name='DeviceN-duplicate-None' if kind==RENDER else 'DeviceN-All-after-None'
         pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/DeviceN '+names+b' /DeviceGray 5 0 R] >> >> /Contents 4 0 R >>',stream(b'/C cs'),stream(b'{ pop pop 0 }',b'/FunctionType 4 /Domain [0 1 0 1] /Range [0 1]')])
-        yield Case(name,pdf,kind,('content-colour',),'None may repeat but All is forbidden even after a None colourant',feature='colorspace.special-ink' if kind==UNSUPPORTED else None,extra={} if kind==UNSUPPORTED else {'render_error':'Syntax'})
+        yield Case(name,pdf,kind,('content-colour',),'None may repeat but All is forbidden even after a None colourant',oracle=opaque_rectangles(8,8,[]) if kind==RENDER else None,extra={} if kind==RENDER else {'render_error':'Syntax'})
     for label,ocmd in [('missing',b'<< /Type /OCMD >>'),('empty',b'<< /Type /OCMD /OCGs [] /P /AllOff >>'),('null',b'<< /Type /OCMD /OCGs [null 99 0 R] >>')]:
         pdf=optional_pdf(b'/OC /Members BDC 0 0 8 8 re f EMC',ocmd=ocmd)
         yield Case('membership-'+label,pdf,RENDER,('content-optional',),'Empty effective OCG lists impose no visibility restriction',oracle=opaque_rectangles(8,8,[((0,0,8,8),BLACK)]))
@@ -759,3 +760,312 @@ def standard_semantics_cases():
     yield render('marked-OC-other',b'/OC << /Other 1 >> BDC 0 0 8 8 re f EMC',[((0,0,8,8),BLACK)],requirements=('content-optional',))
     hidden=document([b'<< /Type /Catalog /Pages 2 0 R /OCProperties << /OCGs [6 0 R] /D << /BaseState /ON /OFF [6 0 R] >> >> >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /XObject << /F 5 0 R >> >> /Contents 4 0 R >>',stream(b'/F Do'),stream(b'BT ET',b'/Type /XObject /Subtype /Form /BBox [0 0 8 8] /Resources << >> /OC 6 0 R'),b'<< /Type /OCG /Name (hidden) >>'])
     yield Case('form-hidden-body',hidden,RENDER,('content-forms',),'An invisible form skips its entire body, including unsupported text operators',oracle=opaque_rectangles(8,8,[]))
+
+
+def remaining_vector_cases():
+    """Independent geometric and compositing expectations from the cited clauses."""
+    from .raster import clipped_area
+    import math
+    def image(sample, width=8, height=8, dpi=72):
+        scale=dpi/72
+        return f'P6\n{width} {height}\n255\n'.encode()+bytes(
+            max(0,min(255,int(v*255+.5)))
+            for row in range(height) for x in range(width)
+            for v in sample((x+.5)/scale,(height-row-.5)/scale))
+    def polygon_image(poly):
+        return b'P6\n8 8\n255\n'+bytes(255-int(clipped_area(poly,x,7-y)*255+F(1,2))
+            for y in range(8) for x in range(8) for _ in range(3))
+    gs=b'<< /ExtGState << /A << /SA true >> >> >>'
+    for name,command,poly in [
+        ('adjust-oblique',b'/A gs 1.4 w 1 1 m 7 5.5 l S',[(F(7,10),F(7,5)),(F(67,10),F(59,10)),(F(73,10),F(51,10)),(F(13,10),F(3,5))]),
+        ('adjust-cubic-collinear',b'/A gs 1.4 w 1 1 m 3 2.5 5 4 7 5.5 c S',[(F(7,10),F(7,5)),(F(67,10),F(59,10)),(F(73,10),F(51,10)),(F(13,10),F(3,5))]),
+        ('adjust-affine-pen',b'1.2 1.6 -.6 .45 4 -1 cm /A gs 1.4 w 1 4 m 3 4 l S',[(F(24,10),F(27,10)),(F(48,10),F(59,10)),(F(56,10),F(53,10)),(F(32,10),F(21,10))]),
+    ]:
+        yield Case(name,single_page([command],media_box=b'[0 0 8 8]',resources=gs),RENDER,('raster-stroke-adjustment',),'10.7.5: nearest principal pen diameters, unchanged oblique centreline; rational polygon coverage policy',oracle=polygon_image(poly),extra={'tolerance':1})
+    # Quadratic arch is elevated to a cubic. Closest distance is solved from the
+    # derivative of its squared distance, independently of outline construction.
+    def arch(x,y):
+        t=max(0,min(1,(x-1)/6))
+        for _ in range(12):
+            yy=2+12*t*(1-t); dy=12-24*t
+            den=36+dy*dy-24*(yy-y)
+            if den<=0:break
+            t=max(0,min(1,t-((1+6*t-x)*6+(yy-y)*dy)/den))
+        return (x-1)*6+(y-2)*12>=0 and (x-7)*6-(y-2)*12<=0 and (1+6*t-x)**2+(2+12*t*(1-t)-y)**2<=.25
+    rate=64
+    pixels=bytes(255-int(255*sum(arch(x+(sx+.5)/rate,7-row+(sy+.5)/rate)
+        for sy in range(rate) for sx in range(rate))/(rate*rate)+.5)
+        for row in range(8) for x in range(8) for _ in range(3))
+    yield Case('adjust-arch',single_page([b'/A gs 1.4 w 1 2 m 3 6 5 6 7 2 c S'],media_box=b'[0 0 8 8]',resources=gs),RENDER,('raster-stroke-adjustment',),'10.7.5: one-pixel pen around an analytic arch; independent distance sampling policy',oracle=b'P6\n8 8\n255\n'+pixels,extra={'tolerance':3})
+    tint=b'<< /FunctionType 2 /Domain [0 1] /C0 [1 0 0] /C1 [1 0 0] /N 1 >>'
+    for name,space,body,geometry in [
+        ('ink-All',b'[/Separation /All /DeviceRGB '+tint+b']',b'/C cs .5 scn 0 0 8 8 re f',[((0,0,8,8),(128,128,128))]),
+        ('ink-None',b'[/Separation /None /DeviceRGB '+tint+b']',b'0 0 1 rg 0 0 8 8 re f /C cs 1 scn 0 0 8 8 re f',[((0,0,8,8),BLUE)]),
+        ('ink-None-knockout',b'[/Separation /None /DeviceRGB '+tint+b']',b'0 0 1 rg 0 0 8 8 re f /C cs 1 scn 0 0 8 8 re f',[((0,0,8,8),BLUE)]),
+        ('ink-All-cmyk',b'[/Separation /All /DeviceRGB '+tint+b']',b'/C cs .25 scn 0 0 8 8 re f',[((0,0,8,8),(128,128,128))]),
+    ]:
+        extra=b'/Group << /S /Transparency /CS /DeviceCMYK /I true >>' if name.endswith('cmyk') else (b'/Group << /S /Transparency /K true >>' if 'knockout' in name else b'')
+        yield render(name,body,geometry,resources=b'<< /ColorSpace << /C '+space+b' >> >>',page_extra=extra,requirements=('content-special-inks',))
+    function=stream(b'{ pop }',b'/FunctionType 4 /Domain [0 1 0 1] /Range [0 1]')
+    for name,names,body,geometry in [
+        ('ink-DeviceN-None',b'[/None /None]',b'0 0 1 rg 0 0 8 8 re f /C cs .3 .9 scn 0 0 8 8 re f',[((0,0,8,8),BLUE)]),
+        ('ink-DeviceN-mixed',b'[/None /Spot]',b'/C cs .25 .9 scn 0 0 8 8 re f',[((0,0,8,8),(64,64,64))]),
+    ]:
+        pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/DeviceN '+names+b' /DeviceGray 5 0 R] >> >> /Contents 4 0 R >>',stream(body),function])
+        yield Case(name,pdf,RENDER,('content-special-inks',),'8.6.6.5: all None paints nothing; mixed alternate receives every input including None',oracle=opaque_rectangles(8,8,geometry))
+    for key in (b'/AAPL:AA false',b'/Name /ProducerState',b'/PrivateKey << /Future 99 >>',b'/HTO [1 2]',b'/UseBlackPtComp /OFF'):
+        name={b'AAPL:AA':'AA',b'Name':'Name',b'PrivateKey':'private',b'HTO':'halftone-origin',b'UseBlackPtComp':'black-compensation-off'}[key.split()[0][1:]]
+        yield render('gstate-'+name,b'/A gs 0 0 8 8 re f',[((0,0,8,8),BLACK)],resources=b'<< /ExtGState << /A << '+key+b' >> >> >>',requirements=('content-extgstate-extensions',))
+    yield Case('ink-NChannel-None',single_page([b'/C cs'],media_box=b'[0 0 8 8]',resources=b'<< /ColorSpace << /C [/DeviceN [/None] /DeviceGray << /FunctionType 2 /Domain [0 1] /N 1 >> << /Subtype /NChannel >>] >> >>'),OPEN,('content-special-inks',),'8.6.6.5 forbids None components in NChannel spaces',extra={'render_error':'Syntax'})
+    extension=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ExtGState << /A << /PrivateKey 5 0 R >> >> >> /Contents 4 0 R >>',stream(b'/A gs 0 0 8 8 re f'),b'5 0 R'])
+    yield Case('gstate-extension-cycle',extension,RENDER,('content-extgstate-extensions',),'7.3.7: ignored extension values are not dereferenced',oracle=opaque_rectangles(8,8,[((0,0,8,8),BLACK)]))
+    yield Case('gstate-black-compensation-on',single_page([b'/A gs'],resources=b'<< /ExtGState << /A << /UseBlackPtComp /ON >> >> >>'),UNSUPPORTED,('content-extgstate-extensions',),'8.6.5.9 and Table 58: defined black point compensation must not be silently ignored',feature='extgstate.unknown')
+    yield from group_region_cases()
+    yield from note_icon_cases()
+    yield from tiling_cases()
+    yield from generated_annotation_cases()
+    yield from mesh_cases()
+
+
+def tiling_cases():
+    def pdf(body=b'/C cs /P scn 0 0 8 8 re f',cell=b'1 0 0 rg 0 0 1 1 re f',paint=1,space=b'[/Pattern]',matrix=b'[1 0 0 1 0 0]',step=b'2 2',bbox=b'[0 0 2 2]',resources=b'<< >>',kind=1):
+        sx,sy=step.split()
+        return document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C '+space+b' >> /Pattern << /P 5 0 R >> /ExtGState << /A << /ca .5 >> >> >> /Contents 4 0 R >>',stream(body),stream(cell,b'/Type /Pattern /PatternType 1 /PaintType '+str(paint).encode()+b' /TilingType '+str(kind).encode()+b' /BBox '+bbox+b' /XStep '+sx+b' /YStep '+sy+b' /Matrix '+matrix+b' /Resources '+resources)])
+    motif=[((x,y,1,1),RED) for y in range(0,8,2) for x in range(0,8,2)]
+    for name,options,geometry in [
+        ('tiling-coloured',{},motif),
+        ('tiling-negative-step',{'step':b'-2 -2'},motif),
+        ('tiling-type-two',{'kind':2},motif),
+        ('tiling-type-three',{'kind':3},motif),
+        ('tiling-underlying',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'0 0 1 1 re f'},motif),
+        ('tiling-ignored-colour',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'0 0 1 rg /DeviceGray cs 0 sc /S sh 0 0 1 1 re f'},motif),
+        ('tiling-ignored-inline',{'paint':2,'body':b'/C cs 1 0 0 /P scn 0 0 8 8 re f','space':b'[/Pattern /DeviceRGB]','cell':b'BI /W 1 /H 1 /CS /RGB /BPC 8 ID \0\0\xff EI 0 0 1 1 re f'},motif),
+        ('tiling-anchored',{'body':b'1 0 0 1 2 0 cm /C cs /P scn 0 0 4 8 re f'},[((x,y,1,1),RED) for y in range(0,8,2) for x in (2,4)]),
+        ('tiling-rotated',{'matrix':b'[0 1 -1 0 8 0]'},[((7-y,x,1,1),RED) for y in range(0,8,2) for x in range(0,8,2)]),
+        ('tiling-bbox',{'bbox':b'[0 0 1 1]','cell':b'1 0 0 rg -1 -1 4 4 re f'},motif),
+        ('tiling-alpha-once',{'body':b'/A gs /C cs /P scn 0 0 8 8 re f','cell':b'/A gs 1 0 0 rg 0 0 1 1 re f','resources':b'<< /ExtGState << /A << /ca .5 >> >> >>'},[((x,y,1,1),(255,191,191)) for y in range(0,8,2) for x in range(0,8,2)]),
+        ('tiling-blend',{'body':b'1 0 0 rg 0 0 8 8 re f /C cs /P scn 0 0 8 8 re f','cell':b'/B gs 0 0 1 rg 0 0 1 1 re f','resources':b'<< /ExtGState << /B << /BM /Multiply >> >> >>'},[((0,0,8,8),RED)]+[((x,y,1,1),BLACK) for y in range(0,8,2) for x in range(0,8,2)]),
+        ('tiling-underlying-reuse',{'paint':2,'space':b'[/Pattern /DeviceRGB]','body':b'/C cs 1 0 0 /P scn 0 0 4 8 re f 0 0 1 /P scn 4 0 4 8 re f','cell':b'0 0 1 1 re f'},[((x,y,1,1),RED if x<4 else BLUE) for y in range(0,8,2) for x in range(0,8,2)]),
+    ]:
+        yield Case(name,pdf(**options),RENDER,('content-tiling',),'8.6.6.2, 8.7.2–8.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite',oracle=opaque_rectangles(8,8,geometry))
+    for name,options in [('tiling-zero-step',{'step':b'0 2'}),('tiling-missing-underlying',{'paint':2}),('tiling-coloured-underlying',{'space':b'[/Pattern /DeviceRGB]','body':b'/C cs 1 0 0 /P scn'})]:
+        yield Case(name,pdf(**options),OPEN,('content-tiling',),'Table 74 and 8.7.3.3: malformed lattice or colour operands',extra={'render_error':'Syntax'})
+
+
+def generated_annotation_cases():
+    for name,annotation,geometry in [
+        ('link-border',b'/Subtype /Link /Rect [1 1 7 7] /Border [0 0 1] /C [1 0 0]',[((1,1,6,6),RED),((2,2,4,4),(255,255,255))]),
+        ('link-underline',b'/Subtype /Link /Rect [1 1 7 7] /BS << /W 1 /S /U >> /Border [5 5 9] /C [0 0 1]',[((1.5,1,5,1),BLUE)]),
+        ('square-transparent',b'/Subtype /Square /Rect [1 1 7 7] /Border [0 0 0]',[]),
+        ('square-interior',b'/Subtype /Square /Rect [1 1 7 7] /Border [0 0 0] /IC [0 0 1]',[((1,1,6,6),BLUE)]),
+        ('link-transparent-colour',b'/Subtype /Link /Rect [1 1 7 7] /C []',[]),
+    ]:
+        # Underline's fractional butt endpoints use independent rational area.
+        if name=='link-underline':
+            oracle=b'P6\n8 8\n255\n'+bytes(v for row in range(8) for x in range(8)
+                for v in ((128,128,255) if row==6 and x in (1,6) else BLUE if row==6 and 2<=x<=5 else (255,255,255)))
+        else:oracle=opaque_rectangles(8,8,geometry)
+        yield Case('annotation-'+name,single_page([b''],media_box=b'[0 0 8 8]',page_extra=b'/Annots [<< '+annotation+b' >>]'),RENDER,('content-annotation-generation',),'12.5.4, 12.5.6.5, 12.5.6.8: border stays inside Rect; absent interior is transparent',oracle=oracle,extra={'tolerance':1})
+    # A rectangular explicit appearance has analytically known view transforms.
+    for flags in (8,16,24):
+        for dpi,rotate in ((72,0),(144,0),(72,90),(144,90)):
+            scale=dpi/72
+            if rotate==0: anchor=(2*scale,7*scale)
+            else:anchor=(7*scale,6*scale)
+            width=4*(1 if flags&8 else scale);height=6*(1 if flags&8 else scale)
+            if rotate and not flags&16: geometry=[((anchor[0]-height,anchor[1]-width,height,width),RED)]
+            else:geometry=[((anchor[0],anchor[1]-height,width,height),RED)]
+            pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',f'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Rotate {rotate} /Resources << >> /Annots [<< /Subtype /Stamp /Rect [2 1 6 7] /F {flags} /AP << /N 5 0 R >> >>] /Contents 4 0 R >>'.encode(),stream(b''),stream(b'1 0 0 rg 0 0 4 6 re f',b'/Type /XObject /Subtype /Form /BBox [0 0 4 6]')])
+            yield Case(f'annotation-view-{flags}-{dpi}-{rotate}',pdf,RENDER,('content-annotation-view',),'12.5.3: cancel scale/rotation about transformed upper-left anchor; fixed size uses one pixel per default unit at 72 dpi',dpi=dpi,oracle=opaque_rectangles(int(8*scale),int(8*scale),[(tuple(map(int,r)),c) for r,c in geometry]))
+
+
+    view_pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /UserUnit 2 /Resources << >> /Annots [<< /Subtype /Stamp /Rect [1 1 3 3] /F 24 /AP << /N 5 0 R >> >>] /Contents 4 0 R >>',stream(b''),stream(b'1 0 0 rg 0 0 2 2 re f',b'/Type /XObject /Subtype /Form /BBox [0 0 2 2]')])
+    yield Case('annotation-view-user-unit',view_pdf,RENDER,('content-annotation-view',),'12.5.3: NoZoom cancels magnification while preserving physical UserUnit at the upper-left anchor',dpi=144,oracle=opaque_rectangles(32,32,[((4,8,4,4),RED)]))
+    opacity_pdf=single_page([b''],media_box=b'[0 0 8 8]',page_extra=b'/Annots [<< /Subtype /Square /Rect [1 1 7 7] /Border [0 0 1] /C [0 0 1] /IC [1 0 0] /CA .5 /ca .25 >>]')
+    pixels=bytearray()
+    for row in range(8):
+        for x in range(8):
+            y=7-row
+            area=max(F(0),min(F(x+1),F(13,2))-max(F(x),F(3,2)))*max(F(0),min(F(y+1),F(13,2))-max(F(y),F(3,2)))
+            fill=F(int(area*255+F(1,2)),255)/4
+            stroke=F(1,2) if 1<=x<7 and 1<=y<7 and not(2<=x<6 and 2<=y<6) else F(0)
+            pixels.extend(int(v*255+F(1,2)) for v in (1-stroke,(1-fill)*(1-stroke),(1-fill)*(1-stroke)+stroke))
+    yield Case('annotation-opacity-components',opacity_pdf,RENDER,('content-annotation-generation',),'Table 166: CA controls generated strokes; explicit ca independently controls fills; exact-area mask bytes and source-over are project policy',oracle=b'P6\n8 8\n255\n'+pixels,extra={'tolerance':1})
+
+
+def mesh_cases():
+    """Bit records and colour formulas constructed from Tables 81–85.
+
+    Triangle oracles use barycentric coordinates. Patch oracles use closed
+    formulas or bracketed scalar inversion, independently of the Rust solver.
+    Pixel-centre sampling and final byte rounding are project policy.
+    """
+    import math
+    def image(sample):
+        pixels=bytearray()
+        for row in range(8):
+            for x in range(8):
+                c=sample((x+.5)/8,(7.5-row)/8)
+                pixels.extend(int(max(0,min(1,v))*255+.5) for v in ((1,1,1) if c is None else c))
+        return b'P6\n8 8\n255\n'+pixels
+    def record(items):
+        bits=''.join(f'{value:0{count}b}' for value,count in items)
+        bits+='1'*(-len(bits)%8)
+        return int(bits,2).to_bytes(len(bits)//8,'big')
+    def pdf(kind,data,n=3,coordinate=8,component=8,flag=8,extra=b'',space=b'/DeviceRGB'):
+        entries=f'/ShadingType {kind} /BitsPerCoordinate {coordinate} /BitsPerComponent {component} '.encode()+b'/ColorSpace '+space+b' /Decode [0 8 0 8 '+b'0 1 '*n+b'] '+extra
+        entries+=b'/VerticesPerRow 2' if kind==5 else f'/BitsPerFlag {flag}'.encode()
+        return document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /Shading << /S 5 0 R >> >> /Contents 4 0 R >>',stream(b'/S sh'),stream(data,entries)])
+    def case(name,kind,data,sample,**options):
+        return Case(name,pdf(kind,data,**options),RENDER,('content-mesh',),'8.7.4.5.5–8.7.4.5.8: independently encoded mesh and geometric colour formula',oracle=image(sample),extra={'tolerance':1})
+    def vertex(x,y,c,flag=0,coordinate=8,component=8,flagbits=8,kind=4):
+        items=[] if kind==5 else [(flag,flagbits)]
+        items += [(x,coordinate),(y,coordinate)]+[(v,component) for v in c]
+        return record(items)
+    data=b''.join(vertex(x,y,c) for x,y,c in [(0,0,(255,0,0)),(255,0,(0,255,0)),(0,255,(0,0,255))])
+    yield case('mesh-triangle',4,data,lambda x,y:(1-x-y,x,y) if x+y<=1 else None)
+    for side in (1,2):
+        vertices=[(0,0,(0,0,0)),(0,255,(0,255,0)),(255,0,(255,0,0))] if side==1 else [(0,255,(0,255,0)),(0,0,(0,0,0)),(255,0,(255,0,0))]
+        data=b''.join(vertex(x,y,c,flag=0 if i==0 else 3) for i,(x,y,c) in enumerate(vertices))+vertex(255,255,(255,255,0),flag=128+side)
+        yield case('mesh-reuse-'+str(side),4,data,lambda x,y:(x,y,0))
+    data=b''.join(vertex(x,y,(x,y,0),kind=5) for x,y in [(0,0),(255,0),(0,255),(255,255)])
+    yield case('mesh-lattice',5,data,lambda x,y:(x,y,0))
+    for coordinate in (1,2,4,8,12,16,24,32):
+        component=1;limit=(1<<coordinate)-1
+        data=b''.join(vertex(x,y,(1,0,0),coordinate=coordinate,component=component,flagbits=2) for x,y in [(0,0),(limit,0),(0,limit)])
+        yield case('mesh-coordinate-'+str(coordinate),4,data,lambda x,y:(1,0,0) if x+y<=1 else None,coordinate=coordinate,component=component,flag=2)
+    for component in (2,4,8,12,16):
+        limit=(1<<component)-1
+        data=b''.join(vertex(x,y,(limit,0,0),component=component,flagbits=4) for x,y in [(0,0),(255,0),(0,255)])
+        yield case('mesh-component-'+str(component),4,data,lambda x,y:(1,0,0) if x+y<=1 else None,component=component,flag=4)
+    indexed=b''.join(vertex(x,y,(255,)) for x,y in [(0,0),(255,0),(0,255)])
+    yield case('mesh-indexed',4,indexed,lambda x,y:(1,0,0) if x+y<=1 else None,n=1,space=b'[/Indexed /DeviceRGB 1 <000000ff0000>]')
+    data=b''.join(vertex(x,y,(x,)) for x,y in [(0,0),(255,0),(0,255)])
+    function=b'/Function << /FunctionType 2 /Domain [0 1] /C0 [1 1 1] /C1 [0 0 0] /N 2 >>'
+    yield case('mesh-function',4,data,lambda x,y:(1-x*x,)*3 if x+y<=1 else None,n=1,extra=function)
+    order=(0,4,8,12,13,14,15,11,7,3,2,1,5,9,10,6)
+    colors=((0,0,0),(0,255,0),(255,255,255),(255,0,0))
+    def patch(grid,colors=colors,flag=0,kind=7):
+        raw=[grid[i] for i in order[:12 if kind==6 else 16]]
+        items=[(flag,8)]+[(v,8) for p in raw[0 if flag==0 else 4:] for v in p]
+        items += [(v,8) for c in colors[0 if flag==0 else 2:] for v in c]
+        return record(items)
+    grid=[(85*i,85*j) for j in range(4) for i in range(4)]
+    for kind in (6,7):
+        yield case('mesh-patch-'+str(kind),kind,patch(grid,kind=kind),lambda u,v:(u,v,u*v))
+    # Coons boundaries: x=255*u, bottom y=51*u*(1-u), top
+    # y=255-51*u*(1-u); blending the two gives v directly.
+    curved=grid.copy()
+    for i in (1,2):curved[i]=(85*i,17);curved[12+i]=(85*i,238)
+    def coons(u,y):
+        h=51*u*(1-u);v=(255*y-h)/(255-2*h)
+        return (u,v,u*v) if 0<=v<=1 else None
+    yield case('mesh-coons-curved',6,patch(curved,kind=6),coons)
+    # One interior control point changes x only. y remains 255*v, so a
+    # monotone scalar bisection gives u without a two-dimensional solver.
+    bulge=grid.copy();bulge[5]=(110,85)
+    def tensor(x,v):
+        lo,hi=0.,1.
+        for _ in range(60):
+            u=(lo+hi)/2
+            xx=u+(25/255)*9*u*(1-u)**2*v*(1-v)**2
+            if xx<x:lo=u
+            else:hi=u
+        u=(lo+hi)/2
+        return (u,v,u*v)
+    yield case('mesh-tensor-interior',7,patch(bulge),tensor)
+    folded=[((0,255,255,0)[i],(0,255,255,0)[j]) for j in range(4) for i in range(4)]
+    def fold(x,y):
+        if x>.75 or y>.75:return None
+        u=(1+math.sqrt(1-4*x/3))/2;v=(1+math.sqrt(1-4*y/3))/2
+        return (u,v,u*v)
+    yield case('mesh-folded',7,patch(folded),fold)
+    for kind in (6,7):
+        for flag in (1,2,3):
+            bottom=96 if flag==3 else 0
+            first=[(32*i,bottom+32*j) for j in range(4) for i in range(4)]
+            a=[first[i] for i in order][3*flag];b=[first[i] for i in order][(3*flag+3)%12]
+            ux,uy=-(b[1]-a[1]),b[0]-a[0]
+            second=[(int(a[0]+i*ux/3+j*(b[0]-a[0])/3),int(a[1]+i*uy/3+j*(b[1]-a[1])/3)) for j in range(4) for i in range(4)]
+            c0=((255,0,0),)*4;c1=((255,0,0),(255,0,0),(0,0,255),(0,0,255))
+            data=patch(first,c0,kind=kind)+patch(second,c1,flag=flag,kind=kind)
+            def sample(x,y,a=a,b=b,ux=ux,uy=uy,bottom=bottom):
+                x*=255;y*=255
+                u=((x-a[0])*ux+(y-a[1])*uy)/(ux*ux+uy*uy)
+                v=((x-a[0])*(b[0]-a[0])+(y-a[1])*(b[1]-a[1]))/((b[0]-a[0])**2+(b[1]-a[1])**2)
+                if 0<=u<=1 and 0<=v<=1:return (1-u,0,u)
+                if 0<=x<=96 and bottom<=y<=bottom+96:return (1,0,0)
+                return None
+            yield case(f'mesh-patch-reuse-{kind}-{flag}',kind,data,sample)
+    later=patch(grid,((0,0,255),)*4)
+    yield case('mesh-patch-overlap',7,patch(grid)+later,lambda u,v:(0,0,1))
+    for name,kind,data,options in [
+        ('mesh-orphan-edge',4,vertex(0,0,(0,0,0),flag=1),{}),
+        ('mesh-invalid-flag',4,vertex(0,0,(0,0,0),flag=3),{}),
+        ('mesh-truncated-vertex',4,b'\0\0',{}),
+        ('mesh-truncated-patch',7,patch(grid)[:-1],{}),
+        ('mesh-incomplete-row',5,vertex(0,0,(0,0,0),kind=5),{}),
+        ('mesh-invalid-bits',4,b'',{'coordinate':3}),
+    ]:
+        yield Case(name,pdf(kind,data,**options),OPEN,('content-mesh',),'Tables 81–85 require legal bit widths and complete records with a preceding primitive for reuse',extra={'render_error':'Syntax'})
+
+
+def group_region_cases():
+    pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 512 512] /Resources << /XObject << /G 5 0 R >> /ExtGState << /A << /ca .5 >> >> >> /Contents 4 0 R >>',stream(b'254 254 4 4 re W n /A gs /G Do'),stream(b'1 0 0 rg 0 0 512 512 re f',b'/Type /XObject /Subtype /Form /BBox [0 0 512 512] /Resources << >> /Group << /S /Transparency /I true >>')])
+    yield Case('group-small-clip',pdf,RENDER,('content-group-regions',),'11.4.4, 11.6.6: a large group contributes only inside its hard clip; half-opacity red is (255,128,128)',oracle=opaque_rectangles(512,512,[((254,254,4,4),(255,128,128))]))
+    yield Case('overprint-cmyk-boundary',single_page([b'/A gs 1 0 0 0 k 0 0 8 8 re f'],media_box=b'[0 0 8 8]',resources=b'<< /ExtGState << /A << /op true /OPM 1 >> >> >>',page_extra=b'/Group << /S /Transparency /CS /DeviceCMYK /I true >>'),UNSUPPORTED,('content-overprint-boundary',),'11.7.4 requires colourant-preserving overprint simulation; dense converted vectors cannot supply it',feature='transparency.overprint')
+
+
+def note_icon_cases():
+    """Geometric icon policy checked with independent polygon membership sampling."""
+    import math
+    symbols={
+        'Comment':[[(4,11),(12,11)],[(4,8),(12,8)],[(4,5),(9,5)],[(4,1),(2,0)]],
+        'Key':[[(3,9),(3,13),(7,13),(7,9),(3,9)],[(7,9),(12,4),(12,2),(14,2)]],
+        'Help':[[(4,11),(5,13),(10,13),(12,11),(11,9),(8,7),(8,5)],[(8,3),(8,2)]],
+        'Paragraph':[[(10,2),(10,13),(5,13),(3,11),(3,9),(5,7),(8,7)],[(8,2),(8,13)]],
+        'NewParagraph':[[(10,4),(10,13),(5,13),(3,11),(3,9),(5,7),(8,7)],[(8,4),(8,13)],[(3,2),(13,2)]],
+        'Insert':[[(3,4),(8,12),(13,4)]],
+        'Note':[[(4,12),(12,12)],[(4,9),(12,9)],[(4,6),(10,6)],[(10,1),(10,4),(15,4)]],
+    }
+    def contains(poly,x,y):
+        inside=False
+        for a,b in zip(poly,poly[1:]+poly[:1]):
+            if (a[1]>y)!=(b[1]>y) and x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]:inside=not inside
+        return inside
+    def stroked(points,closed=False):
+        if closed:points=points+[points[0]]
+        directions=[((b[0]-a[0])/math.dist(a,b),(b[1]-a[1])/math.dist(a,b)) for a,b in zip(points,points[1:])]
+        polygons=[]
+        for a,b,(dx,dy) in zip(points,points[1:],directions):
+            n=(-dy/2,dx/2)
+            polygons.append([(a[0]+n[0],a[1]+n[1]),(b[0]+n[0],b[1]+n[1]),(b[0]-n[0],b[1]-n[1]),(a[0]-n[0],a[1]-n[1])])
+        joins=list(zip(points[1:-1],directions,directions[1:]))
+        if closed:joins.append((points[0],directions[-1],directions[0]))
+        for p,a,b in joins:
+            for sign in (-1,1):
+                n=(-a[1]*sign/2,a[0]*sign/2);m=(-b[1]*sign/2,b[0]*sign/2)
+                det=a[0]*b[1]-a[1]*b[0]
+                if abs(det)<1e-12:continue
+                t=((m[0]-n[0])*b[1]-(m[1]-n[1])*b[0])/det
+                polygons.append([p,(p[0]+n[0],p[1]+n[1]),(p[0]+n[0]+t*a[0],p[1]+n[1]+t*a[1]),(p[0]+m[0],p[1]+m[1])])
+        return polygons
+    rate=32
+    for name,lines in symbols.items():
+        polygons=stroked([(1,1),(15,1),(15,15),(1,15)],True)
+        for line in lines:polygons+=stroked(line)
+        pixels=bytearray()
+        for row in range(8):
+            for column in range(8):
+                foreground=background=0
+                for sy in range(rate):
+                    for sx in range(rate):
+                        x=2*(column+(sx+.5)/rate);y=2*(7-row+(sy+.5)/rate)
+                        foreground+=any(contains(poly,x,y) for poly in polygons)
+                        background+=1<x<15 and 1<y<15
+                # Separate path masks undergo the same documented area/byte
+                # policy before the independently evaluated source-over formula.
+                fg=int(foreground*255/(rate*rate)+.5)/255
+                bg=int(background*255/(rate*rate)+.5)/255
+                pixels.extend((int(255*(1-fg)+.5),int(255*(1-fg)+.5),int(255*(1-bg)*(1-fg)+.5)))
+        yield Case('annotation-icon-'+name,single_page([b''],media_box=b'[0 0 8 8]',page_extra=b'/Annots [<< /Subtype /Text /Rect [0 0 8 8] /Name /'+name.encode()+b' /C [1 1 0] >>]'),RENDER,('content-annotation-generation','content-annotation-view'),'12.5.6.4: predefined icon geometry is project policy; polygon offsets and dense independent membership samples supply the oracle',oracle=b'P6\n8 8\n255\n'+pixels,extra={'tolerance':3})

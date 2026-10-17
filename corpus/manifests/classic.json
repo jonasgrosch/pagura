@@ -266,7 +266,7 @@
     {
       "id": "classic/pattern-unsupported",
       "kind": "pdf",
-      "description": "tiling patterns (8.7.3) are not implemented yet",
+      "description": "Table 74 constant-spacing fitting collapses this oblique device lattice; unsupported explicitly",
       "expected": "unsupported",
       "requirements": [
         "syntax-classic-xref",
@@ -274,7 +274,7 @@
         "unsupported-is-explicit"
       ],
       "path": "corpus/generated/classic/pattern-unsupported.pdf",
-      "sha256": "d5bb305b7d04b6fb4d211c326087fbce27bfd3ff724b3906c340385ce5d3d6ba",
+      "sha256": "89e5df42c4e2be705101073ae3df66463087eae03dd0f35fc54678abac2a43ef",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],

@@ -122,6 +122,10 @@ impl Model {
         conversion: &Conversion,
         work: &mut usize,
     ) -> Result<[f64; 4]> {
+        if let Space::Special { all: true, .. } = space {
+            let value = 1.0 - components.first().copied().unwrap_or(1.0).clamp(0.0, 1.0);
+            return Ok([value; 4]);
+        }
         if let Space::Icc {
             base,
             profile: None,
@@ -209,7 +213,14 @@ fn scalar(function: Option<&Function>, value: f64, work: &mut usize) -> Result<f
 }
 
 #[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct ViewFit {
+    pub(crate) anchor: pagura_raster::Point,
+    pub(crate) no_zoom: bool,
+    pub(crate) no_rotate: bool,
+}
+#[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct Attributes {
+    pub(crate) view: Option<ViewFit>,
     pub(crate) model: Option<Model>,
     pub(crate) isolated: bool,
     pub(crate) knockout: bool,
@@ -256,6 +267,7 @@ impl Attributes {
             )
             .transpose()?;
         Ok(Some(Self {
+            view: None,
             model,
             isolated: boolean(b"I")?,
             knockout: boolean(b"K")?,

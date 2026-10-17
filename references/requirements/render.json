@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "render",
-  "scope": "Page coordinates, graphics state, paths, device colours and Contents arrays checked against the local ISO 32000-2:2020 sponsored EC3 text. The vector API also exercises clause 11 transparency, 8.7 analytic shadings and shading patterns, 12.5 annotation appearances and 10.6 continuous-tone halftone bypass. This is not a conformance certification.",
+  "scope": "Page coordinates, graphics state, paths, device colours and Contents arrays checked against the local ISO 32000-2:2020 sponsored EC3 text. The vector API also exercises clause 11 transparency, 8.7 analytic/mesh shadings and shading/tiling patterns, 12.5 annotation appearances and view flags and 10.6 continuous-tone halftone bypass. This is not a conformance certification.",
   "requirements": [
     {
       "id": "opaque-rectangle-rendering",
@@ -18,7 +18,7 @@
       "tests": [
         "pagura/tests/render.rs"
       ],
-      "gaps": "text and images; calibrated group blending; meshes and tiling patterns",
+      "gaps": "calibrated group blending, subtractive overprint and transfer-region selection",
       "rule": "Page coordinates, initial state, rectangle construction, painting and device colours follow Tables 51, 52, 58 and 59."
     },
     {
