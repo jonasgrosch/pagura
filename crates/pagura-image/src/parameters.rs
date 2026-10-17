@@ -4,6 +4,19 @@ use pagura_core::{Dictionary, Error, Limits, Result, Value};
 use pagura_document::Document;
 
 pub(crate) fn resolved_dictionary(document: &Document, dict: &Dictionary) -> Result<Dictionary> {
+    let filter = dict
+        .get(b"Filter")
+        .map(|v| document.resolve(v))
+        .transpose()?;
+    let last = match filter {
+        Some(Value::Array(values)) => values.last(),
+        value => value,
+    };
+    let jpx = last
+        .map(|v| document.resolve(v))
+        .transpose()?
+        .and_then(Value::as_name)
+        .is_some_and(|name| name == b"JPXDecode");
     dict.iter()
         .map(|(key, value)| {
             let resolved = if matches!(
@@ -13,10 +26,11 @@ pub(crate) fn resolved_dictionary(document: &Document, dict: &Dictionary) -> Res
                     | b"BitsPerComponent"
                     | b"ColorSpace"
                     | b"ImageMask"
-                    | b"Decode"
                     | b"Interpolate"
                     | b"SMaskInData"
-            ) {
+            ) && !(jpx && key.as_bytes() == b"BitsPerComponent")
+                && (jpx || key.as_bytes() != b"SMaskInData")
+            {
                 document.resolve(value)?
             } else {
                 value
@@ -213,6 +227,8 @@ pub(crate) fn finish(
         image.kind = ImageKind::Stencil { inverted };
         return Ok(image);
     }
-    image.mask = crate::mask::read(document, dict, image.components, image.bits_per_component)?;
+    if !matches!(image.mask, crate::MaskKind::Embedded(_)) {
+        image.mask = crate::mask::read(document, dict, &image)?;
+    }
     Ok(image)
 }

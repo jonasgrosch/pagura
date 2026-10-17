@@ -1,5 +1,5 @@
 //! Image codec dispatch and cross-checking of dictionary and stream metadata.
-use crate::{DecodedImage, ImageKind, MaskKind, Samples, ccitt, dct, jbig2, jpx, parameters as p};
+use crate::{DecodedImage, ImageKind, MaskKind, Samples, ccitt, dct, jbig2, parameters as p};
 use pagura_codec::ImageCodec;
 use pagura_core::{Dictionary, Error, Result, Value};
 use pagura_document::Document;
@@ -43,7 +43,11 @@ pub(crate) fn decode(
         components,
         bits_per_component: 1,
         samples: Samples::Bytes(Vec::new()),
-        kind: ImageKind::Color { color_space: space },
+        kind: if stencil {
+            ImageKind::Stencil { inverted: false }
+        } else {
+            ImageKind::Color { color_space: space }
+        },
         decode: None,
         mask: MaskKind::None,
         interpolate: false,
@@ -92,23 +96,14 @@ pub(crate) fn decode(
             }
             image.samples = decode_jbig2(document, dict, data, params, width, height)?;
         }
-        Some(ImageCodec::Jpx) => decode_jpx(data, &mut image, &limits)?,
+        Some(ImageCodec::Jpx) => crate::jpx_image::decode(data, dict, &mut image, &limits)?,
     }
     let mut dictionary = dict.clone();
-    if matches!(codec, Some((ImageCodec::Jpx, _))) {
-        let alpha = p::integer(dict, b"SMaskInData", 0)?;
-        if !(0..=2).contains(&alpha) || (alpha != 0 && dict.contains_key(b"SMask")) {
-            return Err(Error::syntax("invalid SMaskInData or simultaneous SMask"));
-        }
-        if alpha != 0 {
-            return Err(Error::unsupported(
-                crate::features::EMBEDDED_ALPHA,
-                "embedded image alpha requires an alpha sample API",
-            ));
-        }
-        if dict.get(b"ColorSpace").is_none_or(Value::is_null) && !stencil {
-            dictionary.remove(b"Decode");
-        }
+    if matches!(codec, Some((ImageCodec::Jpx, _)))
+        && dict.get(b"ColorSpace").is_none_or(Value::is_null)
+        && !stencil
+    {
+        dictionary.remove(b"Decode");
     }
     p::finish(document, &dictionary, image)
 }
@@ -153,89 +148,12 @@ fn decode_jbig2(
     for byte in &mut inverted {
         *byte = !*byte;
     }
+    let count = p::budget(width, height, 1, 1, &document.limits())?;
+    if count
+        .checked_add(inverted.len())
+        .is_none_or(|v| v > document.limits().decoded_bytes)
+    {
+        return Err(Error::limit("JBIG2 adapter sample budget exceeded"));
+    }
     p::unpack(&inverted, width, height, 1, 1, &document.limits())
-}
-
-fn decode_jpx(data: &[u8], image: &mut DecodedImage, limits: &pagura_core::Limits) -> Result<()> {
-    let decoded = jpx::decode(data, limits)?;
-    if decoded.width != image.width || decoded.height != image.height {
-        return Err(Error::syntax(
-            "JPX dimensions disagree with image dictionary",
-        ));
-    }
-    if decoded
-        .alpha
-        .is_some_and(|index| index >= decoded.components.len())
-    {
-        return Err(Error::syntax("invalid JPX alpha component index"));
-    }
-    // Table 87, SMaskInData=0: opacity is ignored, not painted as colour.
-    let components: Vec<_> = decoded
-        .components
-        .iter()
-        .enumerate()
-        .filter(|(index, _)| Some(*index) != decoded.alpha)
-        .map(|(_, c)| c)
-        .collect();
-    let first = components
-        .first()
-        .ok_or(Error::syntax("JPX has no components"))?;
-    let n = u8::try_from(components.len()).map_err(|_| Error::limit("too many JPX components"))?;
-    if image.components != 0 && image.components != n {
-        return Err(Error::syntax(
-            "JPX component count disagrees with colour space",
-        ));
-    }
-    if !matches!(first.bits, 1 | 2 | 4 | 8 | 16)
-        || components
-            .iter()
-            .any(|c| c.bits != first.bits || c.width != image.width || c.height != image.height)
-    {
-        return Err(Error::unsupported(
-            crate::features::JPX_SAMPLE_LAYOUT,
-            "JPX component precision or subsampling is not representable",
-        ));
-    }
-    if let ImageKind::Color { color_space } = &mut image.kind
-        && color_space.is_none()
-    {
-        *color_space = Some(match decoded.color {
-            jpx::JpxColor::Enumerated(16) if n == 3 => Value::name(b"DeviceRGB"),
-            jpx::JpxColor::Enumerated(17) if n == 1 => Value::name(b"DeviceGray"),
-            _ => {
-                return Err(Error::unsupported(
-                    crate::features::JPX_COLOUR,
-                    "JPX colour information is not representable",
-                ));
-            }
-        });
-    }
-    image.components = n;
-    image.bits_per_component = first.bits;
-    let count = p::budget(image.width, image.height, n, first.bits, limits)?;
-    let pixels = count / usize::from(n);
-    if components.iter().any(|c| c.samples.len() != pixels) {
-        return Err(Error::syntax("invalid JPX sample count"));
-    }
-    if first.bits <= 8 {
-        let mut samples = Vec::with_capacity(count);
-        for i in 0..pixels {
-            for c in &components {
-                samples.push(
-                    u8::try_from(c.samples[i])
-                        .map_err(|_| Error::syntax("JPX sample exceeds precision"))?,
-                );
-            }
-        }
-        image.samples = Samples::Bytes(samples);
-    } else {
-        let mut samples = Vec::with_capacity(count);
-        for i in 0..pixels {
-            for c in &components {
-                samples.push(c.samples[i]);
-            }
-        }
-        image.samples = Samples::Words(samples);
-    }
-    Ok(())
 }

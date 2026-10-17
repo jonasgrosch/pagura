@@ -17,18 +17,27 @@ use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
 use pagura_document::{Document, IndirectObject};
 
 mod dispatch;
+mod filter_rules;
 mod inline;
+mod jpx_image;
 mod mask;
 mod parameters;
 
 /// How an image's samples are interpreted.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ImageKind {
-    /// Colour samples in `color_space` (resolved; `None` only for JPEG 2000
-    /// images that carry their own colour information).
+    /// Colour samples in a resolved PDF `color_space`. Successful decoding
+    /// supplies a colour space here or uses [`Self::EmbeddedColor`].
     Color {
         /// The `/ColorSpace` value, resolved.
         color_space: Option<Value>,
+    },
+    /// Colour interpretation supplied by the JPEG 2000 container rather than
+    /// a PDF colour-space value (7.4.9). Profiles and enumerated spaces are
+    /// retained so painting can apply their original interpretation.
+    EmbeddedColor {
+        /// Colour description from the container.
+        color: jpx::JpxColor,
     },
     /// A 1-bit stencil mask painted with the current fill colour
     /// (`/ImageMask true`); `inverted` follows `/Decode [1 0]`.
@@ -49,18 +58,44 @@ pub enum MaskKind {
     Stencil(ObjectId),
     /// A soft-mask image XObject (`/SMask`).
     Soft(ObjectId),
-    /// Soft-mask data embedded in a JPEG 2000 stream (`/SMaskInData`).
+    /// Legacy marker for soft-mask data embedded in a JPEG 2000 stream.
+    /// Decoding now returns [`Self::Embedded`] with the actual opacity samples.
     InData,
+    /// A decoded opacity channel, separate from ordinary colour samples.
+    Embedded(ImageAlpha),
+}
+
+/// A JPX opacity plane (7.4.9 and Table 87). Its dimensions equal the base
+/// image's dimensions. Samples are raw integers; normalize by their precision
+/// at painting time. The alpha-is-shape graphics state remains a paint concern.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImageAlpha {
+    /// Opacity precision, independent of colour component precision.
+    pub bits_per_component: u8,
+    /// One opacity sample per image pixel, in source row order.
+    pub samples: Samples,
+    /// Whether colour samples are already multiplied by this opacity
+    /// (`SMaskInData=2`); unpremultiplication is deferred to painting.
+    pub premultiplied: bool,
 }
 
 /// Unpacked samples, one value per component. Images of up to 8 bits per
-/// component use one byte per value; 16-bit images use two.
+/// component use one byte per value; 16-bit images use two. Mixed-precision
+/// JPX samples use unsigned 16-bit values plus per-component precisions.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Samples {
-    /// Values of 1, 2, 4 or 8 bits, each in one byte.
+    /// Ordinary 1/2/4/8-bit values, or JPX values of 1–8 bits, in one byte.
     Bytes(Vec<u8>),
-    /// 16-bit values.
+    /// Ordinary 16-bit values, or JPX values of 9–16 bits.
     Words(Vec<u16>),
+    /// Interleaved JPX values whose colour components have different
+    /// precisions (7.4.9, 8.9.5.2). No precision conversion is applied.
+    Mixed {
+        /// One unsigned value per component per pixel.
+        values: Vec<u16>,
+        /// Precision of each ordinary colour component, in interleave order.
+        bits: Vec<u8>,
+    },
 }
 
 impl Samples {
@@ -68,7 +103,7 @@ impl Samples {
     pub fn len(&self) -> usize {
         match self {
             Self::Bytes(values) => values.len(),
-            Self::Words(values) => values.len(),
+            Self::Words(values) | Self::Mixed { values, .. } => values.len(),
         }
     }
 
@@ -81,7 +116,7 @@ impl Samples {
     pub fn get(&self, index: usize) -> Option<u16> {
         match self {
             Self::Bytes(values) => values.get(index).copied().map(u16::from),
-            Self::Words(values) => values.get(index).copied(),
+            Self::Words(values) | Self::Mixed { values, .. } => values.get(index).copied(),
         }
     }
 }
@@ -93,7 +128,9 @@ pub struct DecodedImage {
     pub width: u32,
     /// Height in samples.
     pub height: u32,
-    /// Bits per component of the samples (1, 2, 4, 8 or 16).
+    /// Bits per component (1, 2, 4, 8 or 16 for ordinary PDF samples;
+    /// 1–16 for JPX). Zero denotes mixed JPX precision; use
+    /// [`Self::component_bits`] for the precision of an individual component.
     pub bits_per_component: u8,
     /// Components per sample.
     pub components: u8,
@@ -109,7 +146,37 @@ pub struct DecodedImage {
     pub interpolate: bool,
 }
 
-/// Decodes an image XObject stream.
+impl DecodedImage {
+    /// Device fallback for an embedded colour description that the painter
+    /// cannot support (7.4.9). The original profile or enumerated space remains
+    /// available in [`ImageKind::EmbeddedColor`].
+    pub fn embedded_color_fallback(&self) -> Option<Value> {
+        if !matches!(self.kind, ImageKind::EmbeddedColor { .. }) {
+            return None;
+        }
+        match self.components {
+            1 => Some(Value::name(b"DeviceGray")),
+            3 => Some(Value::name(b"DeviceRGB")),
+            4 => Some(Value::name(b"DeviceCMYK")),
+            _ => None,
+        }
+    }
+
+    /// Precision of the ordinary colour component at `index`, or None when
+    /// that component does not exist. Alpha has its own precision.
+    pub fn component_bits(&self, index: usize) -> Option<u8> {
+        if index >= usize::from(self.components) {
+            return None;
+        }
+        match &self.samples {
+            Samples::Mixed { bits, .. } => bits.get(index).copied(),
+            _ => Some(self.bits_per_component),
+        }
+    }
+}
+
+/// Decodes a base image XObject stream with `/Subtype /Image` (Table 87).
+/// Thumbnail dictionaries without that entry need a separate caller contract.
 ///
 /// # Errors
 ///
@@ -134,7 +201,11 @@ pub fn decode_xobject(document: &Document, image: &IndirectObject) -> Result<Dec
                 return Err(Error::syntax("invalid image XObject type"));
             }
         }
+        if dictionary.get(b"Subtype").is_none_or(Value::is_null) {
+            return Err(Error::syntax("image XObject requires Subtype Image"));
+        }
         let dictionary = parameters::resolved_dictionary(document, dictionary)?;
+        filter_rules::validate(document, &dictionary, false)?;
         let (width, height) = parameters::dimensions(&dictionary)?;
         parameters::budget(width, height, 1, 1, &document.limits())?;
         let stream = document.image_stream(image)?;
@@ -191,3 +262,6 @@ pub fn inline_data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usi
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod pdf_tests;

@@ -1072,6 +1072,978 @@
       }
     },
     {
+      "id": "image/iso-runlength-eight-bit",
+      "kind": "vector",
+      "description": "ISO 32000-2 Table 87/8.9.7 filter and image type consistency",
+      "requirements": [
+        "image-dictionaries"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/iso-runlength-eight-bit.out",
+          "sha256": "14f651836c8c14cc190c78940eb1f78bcecb33d1af9ade6b42ec5da50ddae55d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-runlength-eight-bit.params",
+          "sha256": "8b511d19324e4ec0d06bce33c7f88e391a8e822f305424c749f3414b481f2bc5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/iso-runlength-eight-bit.pdf",
+          "sha256": "75bbb403cd0b8f013d1621e32afc29f9d2359e606dfd606ae71897139be35a8f"
+        }
+      }
+    },
+    {
+      "id": "image/iso-runlength-one-bit-rejected",
+      "kind": "vector",
+      "description": "ISO 32000-2 Table 87/8.9.7 filter and image type consistency",
+      "requirements": [
+        "image-dictionaries"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/iso-runlength-one-bit-rejected.out",
+          "sha256": "14f651836c8c14cc190c78940eb1f78bcecb33d1af9ade6b42ec5da50ddae55d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-runlength-one-bit-rejected.params",
+          "sha256": "c87246c489a6bccc4fb9c543f050a73bf680400209d4add572cfb08a1cbf64b1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/iso-runlength-one-bit-rejected.pdf",
+          "sha256": "100fe29f6193c42ef0aac0372c6de6d731fd18a1a68772ebc1eee81fcde118fd"
+        }
+      }
+    },
+    {
+      "id": "image/iso-xobject-filter-abbreviation",
+      "kind": "vector",
+      "description": "ISO 32000-2 Table 87/8.9.7 filter and image type consistency",
+      "requirements": [
+        "image-dictionaries"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/iso-xobject-filter-abbreviation.out",
+          "sha256": "14f651836c8c14cc190c78940eb1f78bcecb33d1af9ade6b42ec5da50ddae55d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-xobject-filter-abbreviation.params",
+          "sha256": "c87246c489a6bccc4fb9c543f050a73bf680400209d4add572cfb08a1cbf64b1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/iso-xobject-filter-abbreviation.pdf",
+          "sha256": "ff1c647fcdd2341084cfb4596bee1bc4df33eb1087f6a010ecf82f10272e06a1"
+        }
+      }
+    },
+    {
+      "id": "image/iso-xobject-subtype-required",
+      "kind": "vector",
+      "description": "ISO 32000-2 Table 87/8.9.7 filter and image type consistency",
+      "requirements": [
+        "image-dictionaries"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/iso-xobject-subtype-required.out",
+          "sha256": "14f651836c8c14cc190c78940eb1f78bcecb33d1af9ade6b42ec5da50ddae55d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-xobject-subtype-required.params",
+          "sha256": "c87246c489a6bccc4fb9c543f050a73bf680400209d4add572cfb08a1cbf64b1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/iso-xobject-subtype-required.pdf",
+          "sha256": "cc0a94745223c8665a507944e6f1769c68ef9d4eba64a1364d0ba6727657cf33"
+        }
+      }
+    },
+    {
+      "id": "image/iso-inline-direct-lab-rejected",
+      "kind": "vector",
+      "description": "ISO 32000-2 8.9.7 direct/resource colour-space rules",
+      "requirements": [
+        "image-inline"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/iso-inline-direct-lab-rejected.dict",
+          "sha256": "d154655fa69e45097bc006f72e65e708298c4824fda49f22a7cb84c2ab940e43"
+        },
+        ".in": {
+          "path": "corpus/generated/image/iso-inline-direct-lab-rejected.in",
+          "sha256": "709e80c88487a2411e1ee4dfb9f22a861492d20c4765150c0c794abd70f8147c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/iso-inline-direct-lab-rejected.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-inline-direct-lab-rejected.params",
+          "sha256": "412469cf738509ab853e0913ad58e5f1111bd449e963250f96c3589b6e89311a"
+        }
+      }
+    },
+    {
+      "id": "image/iso-inline-resource-lab",
+      "kind": "vector",
+      "description": "ISO 32000-2 8.9.7 direct/resource colour-space rules",
+      "requirements": [
+        "image-inline"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/iso-inline-resource-lab.dict",
+          "sha256": "5e77bd8dcbb2e87c3eff544d33cc5a3471b885cf1dcf7335089d3af5c96ffe5e"
+        },
+        ".in": {
+          "path": "corpus/generated/image/iso-inline-resource-lab.in",
+          "sha256": "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81"
+        },
+        ".out": {
+          "path": "corpus/generated/image/iso-inline-resource-lab.out",
+          "sha256": "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-inline-resource-lab.params",
+          "sha256": "b5419c40424ed18fb5878e5dc39617828f60e6aa8925ec48e4bdc55c5b347d8d"
+        },
+        ".resources": {
+          "path": "corpus/generated/image/iso-inline-resource-lab.resources",
+          "sha256": "683efe463690778db9877e70c5b95e1e25357925cd91f8aed2a881e15afdd6bb"
+        }
+      }
+    },
+    {
+      "id": "image/iso-inline-indexed-stream-lookup-rejected",
+      "kind": "vector",
+      "description": "ISO 32000-2 8.9.7 direct/resource colour-space rules",
+      "requirements": [
+        "image-inline"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/iso-inline-indexed-stream-lookup-rejected.dict",
+          "sha256": "2e0e57bd8484ca56f6dfd2d6ac8da0edafccf74687cfba85a9ed64fd70285e54"
+        },
+        ".in": {
+          "path": "corpus/generated/image/iso-inline-indexed-stream-lookup-rejected.in",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/iso-inline-indexed-stream-lookup-rejected.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-inline-indexed-stream-lookup-rejected.params",
+          "sha256": "412469cf738509ab853e0913ad58e5f1111bd449e963250f96c3589b6e89311a"
+        }
+      }
+    },
+    {
+      "id": "image/iso-inline-runlength-one-bit-rejected",
+      "kind": "vector",
+      "description": "ISO 32000-2 8.9.7 direct/resource colour-space rules",
+      "requirements": [
+        "image-inline"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/iso-inline-runlength-one-bit-rejected.dict",
+          "sha256": "effb3ad882c934a8a2022530e4f7dea6daef129888bb54017f2f15d2c4180d34"
+        },
+        ".in": {
+          "path": "corpus/generated/image/iso-inline-runlength-one-bit-rejected.in",
+          "sha256": "f7ab7be403e0874f4eb3386f9028ac2fa6f8fe67bafec2a232d9a3331babee2a"
+        },
+        ".out": {
+          "path": "corpus/generated/image/iso-inline-runlength-one-bit-rejected.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-inline-runlength-one-bit-rejected.params",
+          "sha256": "412469cf738509ab853e0913ad58e5f1111bd449e963250f96c3589b6e89311a"
+        }
+      }
+    },
+    {
+      "id": "image/iso-inline-ascii-length-whitespace",
+      "kind": "vector",
+      "description": "ISO 32000-2 8.9.7 direct/resource colour-space rules",
+      "requirements": [
+        "image-inline"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/iso-inline-ascii-length-whitespace.dict",
+          "sha256": "97c39ed1636449a02e0bb921640dbb960ec51e60054d81267bf79ec1e95adfe6"
+        },
+        ".in": {
+          "path": "corpus/generated/image/iso-inline-ascii-length-whitespace.in",
+          "sha256": "c907973dddcf3a9a4de19a585578cc5b972044fed884b3c1ab21dc778b1a176f"
+        },
+        ".out": {
+          "path": "corpus/generated/image/iso-inline-ascii-length-whitespace.out",
+          "sha256": "dc0e9c3658a1a3ed1ec94274d8b19925c93e1abb7ddba294923ad9bde30f8cb8"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-inline-ascii-length-whitespace.params",
+          "sha256": "b5419c40424ed18fb5878e5dc39617828f60e6aa8925ec48e4bdc55c5b347d8d"
+        }
+      }
+    },
+    {
+      "id": "image/iso-inline-unknown-entry-ignored",
+      "kind": "vector",
+      "description": "ISO 32000-2 8.9.7 direct/resource colour-space rules",
+      "requirements": [
+        "image-inline"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/iso-inline-unknown-entry-ignored.dict",
+          "sha256": "3259673cd7bb30cbc6bb5db0bc68001e4e83cbd3b9474774dc641917039513f3"
+        },
+        ".in": {
+          "path": "corpus/generated/image/iso-inline-unknown-entry-ignored.in",
+          "sha256": "14f651836c8c14cc190c78940eb1f78bcecb33d1af9ade6b42ec5da50ddae55d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/iso-inline-unknown-entry-ignored.out",
+          "sha256": "14f651836c8c14cc190c78940eb1f78bcecb33d1af9ade6b42ec5da50ddae55d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-inline-unknown-entry-ignored.params",
+          "sha256": "b5419c40424ed18fb5878e5dc39617828f60e6aa8925ec48e4bdc55c5b347d8d"
+        }
+      }
+    },
+    {
+      "id": "image/iso-jpeg-gray-transform-ignored",
+      "kind": "vector",
+      "description": "iso jpeg gray transform ignored",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/iso-jpeg-gray-transform-ignored.in",
+          "sha256": "f1db428e049f91edbe9bec076083085455e5fbc71506708ad56d30dc8c9b3220"
+        },
+        ".out": {
+          "path": "corpus/generated/image/iso-jpeg-gray-transform-ignored.out",
+          "sha256": "1af1edbf31a4f324b111790ebc4e6fe6f9d1f1a3feae6581739cfec8fa5c8a34"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-jpeg-gray-transform-ignored.params",
+          "sha256": "174ad612c6a95cb36ffda03f5d7ba45296fd18b0b75d48b61fb7db2bf461f382"
+        }
+      }
+    },
+    {
+      "id": "image/iso-jpeg-adobe-transform-ignored",
+      "kind": "vector",
+      "description": "iso jpeg adobe transform ignored",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/iso-jpeg-adobe-transform-ignored.in",
+          "sha256": "a9be36b61fccaf8417118fbc1bb28f64e995f9d4b2f3d373e76d2e9397dd4bb3"
+        },
+        ".out": {
+          "path": "corpus/generated/image/iso-jpeg-adobe-transform-ignored.out",
+          "sha256": "a24b33f7131bcb1d6ed17c9690e856503ac81e93423342775abf1f84cd6f92fb"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-jpeg-adobe-transform-ignored.params",
+          "sha256": "174ad612c6a95cb36ffda03f5d7ba45296fd18b0b75d48b61fb7db2bf461f382"
+        }
+      }
+    },
+    {
+      "id": "image/iso-jpeg-invalid-transform",
+      "kind": "vector",
+      "description": "iso jpeg invalid transform",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/iso-jpeg-invalid-transform.in",
+          "sha256": "7ad10cc7a27a46378cfcc7a1b3e4a66da74baaf1a22d23e96d7121bce3597fa4"
+        },
+        ".out": {
+          "path": "corpus/generated/image/iso-jpeg-invalid-transform.out",
+          "sha256": "937c51d2d759f161a002ea41a3ea4f46e25f309ceb03800330c82708c24826df"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-jpeg-invalid-transform.params",
+          "sha256": "dd4e960d996bb3621b01550297890341ca262d713f496778208ac86b306fa4da"
+        }
+      }
+    },
+    {
+      "id": "image/iso-fax-positive-k-equivalence",
+      "kind": "vector",
+      "description": "iso fax positive k equivalence",
+      "requirements": [
+        "image-ccitt"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/iso-fax-positive-k-equivalence.in",
+          "sha256": "d2711b086a386ad7286c92deabb6dd9a9d31dba8b7b7b60badd14874822462c5"
+        },
+        ".out": {
+          "path": "corpus/generated/image/iso-fax-positive-k-equivalence.out",
+          "sha256": "3819fc1f2ec210ac9c6c5f0af83e477f0280ea11863c431eaf472e1b5577f3b5"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-fax-positive-k-equivalence.params",
+          "sha256": "7f018043d4fa4347487c103572ba223225fff44318e88f484781cb40acc7f988"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-container-gray",
+      "kind": "vector",
+      "description": "jpx container gray",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-container-gray.out",
+          "sha256": "df3b1409c534bb064ee8ab236b9f59b2a9cae2c8a95ce6b230a3eafb56ae9a35"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-container-gray.params",
+          "sha256": "2d90ca7cae229402c1fe2bec80d0ef23debde17464f8bf64ecf9533182a6d557"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-container-gray.pdf",
+          "sha256": "b562feb08c2c463b5a68fb0b7a6dd5c231b1125cdc61d99c9b3d6af6a491867a"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-dictionary-depth-ignored",
+      "kind": "vector",
+      "description": "jpx dictionary depth ignored",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-dictionary-depth-ignored.out",
+          "sha256": "df3b1409c534bb064ee8ab236b9f59b2a9cae2c8a95ce6b230a3eafb56ae9a35"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-dictionary-depth-ignored.params",
+          "sha256": "2d90ca7cae229402c1fe2bec80d0ef23debde17464f8bf64ecf9533182a6d557"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-dictionary-depth-ignored.pdf",
+          "sha256": "3977feb661b50f6baf7a4a53fb99a02419e7ac1c39f63da9aaabb1443b7c6482"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-decode-ignored",
+      "kind": "vector",
+      "description": "jpx decode ignored",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-decode-ignored.out",
+          "sha256": "df3b1409c534bb064ee8ab236b9f59b2a9cae2c8a95ce6b230a3eafb56ae9a35"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-decode-ignored.params",
+          "sha256": "2d90ca7cae229402c1fe2bec80d0ef23debde17464f8bf64ecf9533182a6d557"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-decode-ignored.pdf",
+          "sha256": "5dc6ca649ce8bb00779f4a3ca027d186dfa14637a19f165b4dec24fbff2f3579"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-explicit-decode",
+      "kind": "vector",
+      "description": "jpx explicit decode",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-explicit-decode.out",
+          "sha256": "df3b1409c534bb064ee8ab236b9f59b2a9cae2c8a95ce6b230a3eafb56ae9a35"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-explicit-decode.params",
+          "sha256": "00a529e072b6828625357da2efd90444e0bca60df18e33fccb5c1c81f6b86cb2"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-explicit-decode.pdf",
+          "sha256": "704e3bfd2bb4e126b7bda39f3af1aae36c99517d1486ac83a3e4be9e9d76e274"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-colour-components-mismatch",
+      "kind": "vector",
+      "description": "jpx colour components mismatch",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-colour-components-mismatch.out",
+          "sha256": "df3b1409c534bb064ee8ab236b9f59b2a9cae2c8a95ce6b230a3eafb56ae9a35"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-colour-components-mismatch.params",
+          "sha256": "0a180f1214c3eccd1afd4e2a4cb752aadfb8f4db5290f3d330cbdabd3b3b400c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-colour-components-mismatch.pdf",
+          "sha256": "e07e432dadd48a9078aae651ba41f4a9fb8c03478d6d7b75716bbe1d196adf42"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-alpha-missing",
+      "kind": "vector",
+      "description": "jpx alpha missing",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-alpha-missing.out",
+          "sha256": "df3b1409c534bb064ee8ab236b9f59b2a9cae2c8a95ce6b230a3eafb56ae9a35"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-alpha-missing.params",
+          "sha256": "0a180f1214c3eccd1afd4e2a4cb752aadfb8f4db5290f3d330cbdabd3b3b400c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-alpha-missing.pdf",
+          "sha256": "a627e00f471d71eed0458435586609d651edd87e346a31fed4f4e6e5182eace4"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-alpha-invalid-mode",
+      "kind": "vector",
+      "description": "jpx alpha invalid mode",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-alpha-invalid-mode.out",
+          "sha256": "df3b1409c534bb064ee8ab236b9f59b2a9cae2c8a95ce6b230a3eafb56ae9a35"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-alpha-invalid-mode.params",
+          "sha256": "0a180f1214c3eccd1afd4e2a4cb752aadfb8f4db5290f3d330cbdabd3b3b400c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-alpha-invalid-mode.pdf",
+          "sha256": "3fa49dcd99553fc4f8dfa57a6daf36387f983b5d57783377ce92260f481b1975"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-dimensions-mismatch",
+      "kind": "vector",
+      "description": "jpx dimensions mismatch",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-dimensions-mismatch.out",
+          "sha256": "df3b1409c534bb064ee8ab236b9f59b2a9cae2c8a95ce6b230a3eafb56ae9a35"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-dimensions-mismatch.params",
+          "sha256": "0bb8797dc1df8c709ea3b7feb2eceba0baac480b4563f58a863c7d6c1160ff71"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-dimensions-mismatch.pdf",
+          "sha256": "7a4808be8c4e0aa71b052e403de54227455876a781e9bc11b6795fc77fd8c91f"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-raw-codestream-rejected",
+      "kind": "vector",
+      "description": "jpx raw codestream rejected",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-raw-codestream-rejected.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-raw-codestream-rejected.params",
+          "sha256": "24dd07b5b74f9b7a4c28a788c96d8e34782cf759e0d1a4361a11f9a500d5310c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-raw-codestream-rejected.pdf",
+          "sha256": "4f1fe27c8645b831e6d909a3a2a7f522fd893b5c0546328a469094e40e7df184"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-container-icc",
+      "kind": "vector",
+      "description": "jpx container icc",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-container-icc.out",
+          "sha256": "df3b1409c534bb064ee8ab236b9f59b2a9cae2c8a95ce6b230a3eafb56ae9a35"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-container-icc.params",
+          "sha256": "c73217ffc72649cf0245754e289448629d3c6372d23550614866667a58878346"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-container-icc.pdf",
+          "sha256": "633f1a080a9d48beff0dc96a1414fca5b5292bc81fb89d43c6b3c782bfa427c0"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-container-colour-12",
+      "kind": "vector",
+      "description": "jpx container colour 12",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-container-colour-12.out",
+          "sha256": "5a96685aab85e0fc1ad1d866d2aa939f6d77d418e58be927d9d340adceab82ba"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-container-colour-12.params",
+          "sha256": "dfc8e8ae7c4994dd2dc8dcb4b3a1273ef186fea89faaabfc761a09852649819d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-container-colour-12.pdf",
+          "sha256": "c76c1c493838341e1d5d7dea398f6d37ee4e67fbc2180ccc732fa698bb5e29b4"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-container-colour-18",
+      "kind": "vector",
+      "description": "jpx container colour 18",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-container-colour-18.out",
+          "sha256": "5bcb5e7e64918ad18a60bf62ab3d31edadcaf3fc97c303c7aefd62227c381a3b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-container-colour-18.params",
+          "sha256": "b72f5fa2ad488737c0c1329c9fd6846ae6dbfff9e4e2a749dfc1e426d7d273d2"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-container-colour-18.pdf",
+          "sha256": "40a6971f8fb1af31a5db082fd03e3f76d39978bd7b7cd3afbf06f648c2fb7e79"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-container-colour-19",
+      "kind": "vector",
+      "description": "jpx container colour 19",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-container-colour-19.out",
+          "sha256": "5bcb5e7e64918ad18a60bf62ab3d31edadcaf3fc97c303c7aefd62227c381a3b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-container-colour-19.params",
+          "sha256": "8a49941c72eebfbffe32731912d342175538a08d5736fef47232e0d901b5c8c2"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-container-colour-19.pdf",
+          "sha256": "818dae3a4bf0b2dedac0eb1c43714a0795741210e047a4de45c1aff69dee4794"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-dictionary-colour-override",
+      "kind": "vector",
+      "description": "jpx dictionary colour override",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-dictionary-colour-override.out",
+          "sha256": "5bcb5e7e64918ad18a60bf62ab3d31edadcaf3fc97c303c7aefd62227c381a3b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-dictionary-colour-override.params",
+          "sha256": "ea1fa0409c36a2f58f0dd2bc9a31c7df06f08b96bf9416f87b92168dbc10bfb2"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-dictionary-colour-override.pdf",
+          "sha256": "379aa7e126300dd5bc4497ba4b6633bda164baf9f12625ec8be6a3421b73e1b2"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-alpha-mode-0",
+      "kind": "vector",
+      "description": "jpx alpha mode 0",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-alpha-mode-0.out",
+          "sha256": "5bcb5e7e64918ad18a60bf62ab3d31edadcaf3fc97c303c7aefd62227c381a3b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-alpha-mode-0.params",
+          "sha256": "0bcddb7c3474b98e30b33e7617dcef92972d9a329f08bed222b61bba30f89e10"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-alpha-mode-0.pdf",
+          "sha256": "b8a98fe74b057ca3c63371e2b374e1889e8771aa57282aa9b50dfbfdcdb9ba55"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-alpha-mode-1",
+      "kind": "vector",
+      "description": "jpx alpha mode 1",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".alpha": {
+          "path": "corpus/generated/image/jpx-alpha-mode-1.alpha",
+          "sha256": "56078f0dd97d03d8672d8c9294bbb64e2327575ce942e252a0be8e9a34a03bb6"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpx-alpha-mode-1.out",
+          "sha256": "5bcb5e7e64918ad18a60bf62ab3d31edadcaf3fc97c303c7aefd62227c381a3b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-alpha-mode-1.params",
+          "sha256": "90008a3dfc60039ad041db9e983c28413537403dc0616dbd8c62636a223b500f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-alpha-mode-1.pdf",
+          "sha256": "b76fd24c0ceb619d71ba07a42c9abb13acf83ac30db15a6d4c03094341fc956c"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-alpha-overrides-mask",
+      "kind": "vector",
+      "description": "jpx alpha overrides mask",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".alpha": {
+          "path": "corpus/generated/image/jpx-alpha-overrides-mask.alpha",
+          "sha256": "56078f0dd97d03d8672d8c9294bbb64e2327575ce942e252a0be8e9a34a03bb6"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpx-alpha-overrides-mask.out",
+          "sha256": "5bcb5e7e64918ad18a60bf62ab3d31edadcaf3fc97c303c7aefd62227c381a3b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-alpha-overrides-mask.params",
+          "sha256": "90008a3dfc60039ad041db9e983c28413537403dc0616dbd8c62636a223b500f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-alpha-overrides-mask.pdf",
+          "sha256": "66aad2cbaef3224256fab395435dfc317a0e05f709cbe4a9dfc6aac901c517f6"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-alpha-conflicts-smask",
+      "kind": "vector",
+      "description": "jpx alpha conflicts smask",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-alpha-conflicts-smask.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-alpha-conflicts-smask.params",
+          "sha256": "ce8d68a75b1cafbdaf80ee6525e48d42dae6fb60ba00d474efce8027fe6ab664"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-alpha-conflicts-smask.pdf",
+          "sha256": "bfea69b1e8ca0abd1b93c04dc8096f8ecf0725459933833d3c23f444f1378946"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-mixed-precision",
+      "kind": "vector",
+      "description": "jpx mixed precision",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-mixed-precision.out",
+          "sha256": "128c7c4460d1c588f5be3bccc0f6ac3409b9f41586d0dcc522936c959455432a"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-mixed-precision.params",
+          "sha256": "997d31200074243493e5df28de8e8558d5d2116ad09ec14873b27f0a10d45d94"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-mixed-precision.pdf",
+          "sha256": "33477d738b6d34ecfe64df95e59f8cfa2c7dc74400ddc69cf2ae4abd51e65f27"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-sixteen-bit",
+      "kind": "vector",
+      "description": "jpx sixteen bit",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-sixteen-bit.out",
+          "sha256": "61ac247951b19e3d3f74f2de284bf94502dd11e9f46de96d90f42414c35614c7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-sixteen-bit.params",
+          "sha256": "5e5ce3397cc634f1547d69d433d5a0d3cc46d00eb43f437964cc6bf642f51b2c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-sixteen-bit.pdf",
+          "sha256": "3ef420ed5eb6895168487a398b73b06a5311327642684f7f495aa9f09bc38cfb"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-stencil",
+      "kind": "vector",
+      "description": "jpx stencil",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-stencil.out",
+          "sha256": "3d2c067a69af30d9242ea067877647782c8d3c8acef72dc492a61d171934b8ae"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-stencil.params",
+          "sha256": "26a811c60fcfc581bda3ca157a945431af6191c1293896f5f5b725d6f232e18d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-stencil.pdf",
+          "sha256": "c894db55a3571ee9b495b84ca17c2c481bdd3ac09ccf87691056f3b80f3f9b92"
+        }
+      }
+    },
+    {
+      "id": "image/jbig2-default-white",
+      "kind": "vector",
+      "description": "jbig2 default white",
+      "requirements": [
+        "image-jbig2"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jbig2-default-white.out",
+          "sha256": "10c5b47713d8bb0663641fae740e1371e474fc7b0e7100cdfc2263faf61ef207"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jbig2-default-white.params",
+          "sha256": "216a66a5bdbc7c8f9148ad9b8d86f30d0f9475fd785e98ba82b1a74b75921137"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jbig2-default-white.pdf",
+          "sha256": "e41f08110d0abc31f8665489bad1bf3043a409e353cf5be5154f85ebe6d2f1cb"
+        }
+      }
+    },
+    {
+      "id": "image/jbig2-default-black",
+      "kind": "vector",
+      "description": "jbig2 default black",
+      "requirements": [
+        "image-jbig2"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jbig2-default-black.out",
+          "sha256": "80f4e3251a0365af35c83ead044a140faa8b75aa50f63c478527fe7a124c0d59"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jbig2-default-black.params",
+          "sha256": "216a66a5bdbc7c8f9148ad9b8d86f30d0f9475fd785e98ba82b1a74b75921137"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jbig2-default-black.pdf",
+          "sha256": "fab98189bfe4c279a19ab5e03c5184c983516f082c9daec6a2692700854c05e8"
+        }
+      }
+    },
+    {
+      "id": "image/jbig2-globals-direct",
+      "kind": "vector",
+      "description": "jbig2 globals direct",
+      "requirements": [
+        "image-jbig2"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jbig2-globals-direct.out",
+          "sha256": "83cd3deb20d6ffd655d09b38213dbc057d1d6eaf9c79dc125fddfaecd5a69b63"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jbig2-globals-direct.params",
+          "sha256": "216a66a5bdbc7c8f9148ad9b8d86f30d0f9475fd785e98ba82b1a74b75921137"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jbig2-globals-direct.pdf",
+          "sha256": "25024d8a120452050f02e4015b99964422493dcca3a5ad55ff7ffdde9144435e"
+        }
+      }
+    },
+    {
+      "id": "image/jbig2-globals-chain",
+      "kind": "vector",
+      "description": "jbig2 globals chain",
+      "requirements": [
+        "image-jbig2"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jbig2-globals-chain.out",
+          "sha256": "83cd3deb20d6ffd655d09b38213dbc057d1d6eaf9c79dc125fddfaecd5a69b63"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jbig2-globals-chain.params",
+          "sha256": "216a66a5bdbc7c8f9148ad9b8d86f30d0f9475fd785e98ba82b1a74b75921137"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jbig2-globals-chain.pdf",
+          "sha256": "dc4c8ea927821f2897f7c0050f4bd7d2981ffbae01ee5f9a6f5bed17353ad2ad"
+        }
+      }
+    },
+    {
+      "id": "image/inline-forbidden-JBIG2Decode",
+      "kind": "vector",
+      "description": "ISO 32000-2 8.9.7 forbids this inline filter",
+      "requirements": [
+        "image-inline"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-forbidden-JBIG2Decode.dict",
+          "sha256": "8a274bb0992ee3be7978d5bf4a838315539c361ca12f5fed1b48b4113de5dfef"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-forbidden-JBIG2Decode.in",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-forbidden-JBIG2Decode.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-forbidden-JBIG2Decode.params",
+          "sha256": "412469cf738509ab853e0913ad58e5f1111bd449e963250f96c3589b6e89311a"
+        }
+      }
+    },
+    {
+      "id": "image/inline-forbidden-JPXDecode",
+      "kind": "vector",
+      "description": "ISO 32000-2 8.9.7 forbids this inline filter",
+      "requirements": [
+        "image-inline"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-forbidden-JPXDecode.dict",
+          "sha256": "b81af4fe82ab2015dc97c036e1b76ae254c6fb55e923ebd24f79101e6599ef60"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-forbidden-JPXDecode.in",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-forbidden-JPXDecode.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-forbidden-JPXDecode.params",
+          "sha256": "412469cf738509ab853e0913ad58e5f1111bd449e963250f96c3589b6e89311a"
+        }
+      }
+    },
+    {
+      "id": "image/inline-forbidden-Crypt",
+      "kind": "vector",
+      "description": "ISO 32000-2 8.9.7 forbids this inline filter",
+      "requirements": [
+        "image-inline"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-forbidden-Crypt.dict",
+          "sha256": "e0bfea04080a7a619a6a9fb24ae46dd700c6c00f1d2c7efc366af523769a98e4"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-forbidden-Crypt.in",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-forbidden-Crypt.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-forbidden-Crypt.params",
+          "sha256": "412469cf738509ab853e0913ad58e5f1111bd449e963250f96c3589b6e89311a"
+        }
+      }
+    },
+    {
       "id": "image/jpeg-baseline-gray",
       "kind": "vector",
       "description": "jpeg baseline gray",

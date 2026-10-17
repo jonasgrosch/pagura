@@ -73,6 +73,11 @@ pub(super) fn output(
         }
         planes.push(plane);
     }
+    // Table 13 ignores the parameter for one component and whenever an
+    // Adobe marker specifies the transform.
+    if adobe.is_none() && n > 1 && transform.is_some_and(|v| !matches!(v, 0 | 1)) {
+        return Err(Error::syntax("invalid DCT ColorTransform"));
+    }
     let convert = match adobe {
         Some(0) => false,
         Some(1 | 2) => true,

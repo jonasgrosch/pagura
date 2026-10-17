@@ -54,6 +54,8 @@ pub(crate) fn decode(
     data: &[u8],
 ) -> Result<DecodedImage> {
     let mut dict = expanded(dictionary)?;
+    super::filter_rules::inline_space(dict.get(b"ColorSpace"))?;
+    super::filter_rules::validate(document, &dict, true)?;
     if let Some(Value::Name(name)) = dict.get(b"ColorSpace")
         && !matches!(
             name.as_bytes(),
@@ -95,10 +97,28 @@ pub(crate) fn decode(
 pub(crate) fn data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usize> {
     let dict = expanded(dictionary)?;
     if let Some(value) = dict.get(b"Length") {
+        let last_filter = match dict.get(b"Filter") {
+            Some(Value::Array(filters)) => filters.last(),
+            value => value,
+        };
+        let skip = if last_filter.and_then(Value::as_name).is_some_and(|name| {
+            matches!(
+                name.as_bytes(),
+                b"ASCIIHexDecode" | b"AHx" | b"ASCII85Decode" | b"A85"
+            )
+        }) {
+            content
+                .iter()
+                .position(|&byte| !is_whitespace(byte))
+                .unwrap_or(content.len())
+        } else {
+            0
+        };
         let length = value
             .as_integer()
             .and_then(|v| usize::try_from(v).ok())
-            .filter(|&v| v <= content.len())
+            .and_then(|length| length.checked_add(skip))
+            .filter(|&length| length <= content.len())
             .ok_or(Error::syntax("invalid inline image Length"))?;
         return Ok(length);
     }

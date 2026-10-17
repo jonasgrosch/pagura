@@ -6,8 +6,7 @@ use pagura_document::Document;
 pub(crate) fn read(
     document: &Document,
     dict: &Dictionary,
-    components: u8,
-    bits: u8,
+    image: &crate::DecodedImage,
 ) -> Result<MaskKind> {
     if let Some(value) = dict.get(b"SMask").filter(|v| !v.is_null()) {
         let id = value
@@ -68,16 +67,15 @@ pub(crate) fn read(
             .resolve(value)?
             .as_array()
             .ok_or(Error::syntax("invalid image Mask"))?;
-        if ranges.len() != usize::from(components) * 2 {
+        if ranges.len() != usize::from(image.components) * 2 {
             return Err(Error::syntax("invalid colour key length"));
         }
-        let max = if bits == 16 {
-            u16::MAX
-        } else {
-            (1u16 << bits) - 1
-        };
-        let mut keys = Vec::with_capacity(usize::from(components));
-        for pair in ranges.as_chunks::<2>().0 {
+        let mut keys = Vec::with_capacity(usize::from(image.components));
+        for (component, pair) in ranges.as_chunks::<2>().0.iter().enumerate() {
+            let bits = image
+                .component_bits(component)
+                .ok_or(Error::syntax("missing image component precision"))?;
+            let max = u16::MAX >> (16 - bits);
             let sample = |v| {
                 u16::try_from(
                     document

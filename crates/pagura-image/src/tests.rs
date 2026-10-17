@@ -45,12 +45,16 @@ fn independent_vectors() {
         let number =
             |key: &str, default: i64| p.get(key).map_or(default, |v| v.parse::<i64>().unwrap());
         let expected = fixture("image", &format!("{name}.out"));
+        if p["kind"] == "pdf-image" {
+            crate::pdf_tests::vector(&name, &p, &expected);
+            continue;
+        }
         if p["kind"] == "dictionary" {
             dictionary_vector(&name, &p, &expected);
             continue;
         }
         if p["kind"] == "inline" {
-            inline_vector(&name, &expected);
+            inline_vector(&name, &p, &expected);
             continue;
         }
         if p["kind"] == "samples" {
@@ -299,7 +303,7 @@ fn dictionary_vector(name: &str, params: &BTreeMap<String, String>, expected: &[
     }
 }
 
-fn inline_vector(name: &str, expected: &[u8]) {
+fn inline_vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8]) {
     use pagura_core::syntax::{Origin, Parser};
     let bytes = fixture("image", &format!("{name}.dict"));
     let dict = Parser::new(&bytes, Origin::Buffer, Limits::default())
@@ -307,7 +311,23 @@ fn inline_vector(name: &str, expected: &[u8]) {
         .unwrap();
     let dict = dict.as_dictionary().unwrap();
     let data = fixture("image", &format!("{name}.in"));
-    let image = decode_inline(&document(), &Dictionary::new(), dict, &data).unwrap();
+    let resources = if fixture_path("image", &format!("{name}.resources")).exists() {
+        let bytes = fixture("image", &format!("{name}.resources"));
+        Parser::new(&bytes, Origin::Buffer, Limits::default())
+            .parse()
+            .unwrap()
+            .as_dictionary()
+            .unwrap()
+            .clone()
+    } else {
+        Dictionary::new()
+    };
+    let result = decode_inline(&document(), &resources, dict, &data);
+    if params["outcome"] != "valid" {
+        assert_eq!(result.unwrap_err().kind, ErrorKind::Syntax, "{name}");
+        return;
+    }
+    let image = result.unwrap_or_else(|e| panic!("{name}: {e}"));
     assert_eq!(image.samples, Samples::Bytes(expected.to_vec()), "{name}");
     // Later inline images cannot be mistaken for ambiguous data markers.
     let content = [data.as_slice(), b" EI Q BI /L 2 ID xx EI Q"].concat();
@@ -374,7 +394,9 @@ fn sample_vector(name: &str, p: &BTreeMap<String, String>, expected: &[u8]) {
     );
     let bytes = match decoded.samples {
         Samples::Bytes(v) => v,
-        Samples::Words(v) => v.iter().flat_map(|v| v.to_be_bytes()).collect(),
+        Samples::Words(v) | Samples::Mixed { values: v, .. } => {
+            v.iter().flat_map(|v| v.to_be_bytes()).collect()
+        }
     };
     assert_eq!(bytes, expected, "{name}");
 }

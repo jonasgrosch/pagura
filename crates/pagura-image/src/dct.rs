@@ -42,9 +42,6 @@ pub fn decode(data: &[u8], color_transform: Option<i64>, limits: &Limits) -> Res
     if data.len() > limits.stream_bytes {
         return Err(Error::limit("JPEG input budget exceeded").at(Position::Buffer(0)));
     }
-    if color_transform.is_some_and(|v| !matches!(v, 0 | 1)) {
-        return Err(Error::syntax("invalid DCT ColorTransform").at(Position::Buffer(0)));
-    }
     decode_inner(data, color_transform, limits).map_err(|e| e.at(Position::Buffer(0)))
 }
 

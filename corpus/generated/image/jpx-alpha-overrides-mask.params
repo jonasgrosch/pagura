@@ -1,0 +1,9 @@
+kind=pdf-image
+outcome=valid
+width=8
+height=4
+components=3
+bits=8
+space=DeviceRGB
+mask=embedded
+alpha_bits=8

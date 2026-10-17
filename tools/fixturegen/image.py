@@ -435,6 +435,8 @@ def eob_jpeg(run_count=4, restart=0):
 def cases():
     yield from raw_cases()
     yield from dictionary_cases()
+    yield from iso_review_cases()
+    yield from image_codec_cases()
     for name, options in [
         ("jpeg-baseline-gray", {}), ("jpeg-extended", dict(extended=True)),
         ("jpeg-baseline-rgb", dict(n=3)), ("jpeg-rgb-direct", dict(n=3, transform=0)),
@@ -522,3 +524,132 @@ def cases():
     yield vector("fax-rows-overridden", "ccitt", encoded, expected, k=0, width=13, height=1, eob=1, eol=1)
     wire = Wire(); wire.code("00000000"+eol+WHITE[8]+eol*6)
     yield vector("fax-optional-eol-fill", "ccitt", wire.bytes(), b"\xff", k=0, width=8, height=1, eob=1, eol=0)
+
+
+def iso_review_cases():
+    """PDF wrapper expectations derived from the local ISO text, not codecs."""
+    base = [b"<< /Type /Catalog /Pages 2 0 R >>", b"<< /Type /Pages /Kids [] /Count 0 >>"]
+    common = b"/Type /XObject /Subtype /Image /Width 2 /Height 1 /ColorSpace /DeviceGray"
+    for name, dictionary, data, outcome in [
+        ("iso-runlength-eight-bit", common+b" /BitsPerComponent 8 /Filter /RunLengthDecode", b"\x01\x0c\x1a\x80", "valid"),
+        ("iso-runlength-one-bit-rejected", common+b" /BitsPerComponent 1 /Filter /RunLengthDecode", b"\x00\x40\x80", "syntax"),
+        ("iso-xobject-filter-abbreviation", common+b" /BitsPerComponent 8 /Filter /RL", b"\x01\x0c\x1a\x80", "syntax"),
+        ("iso-xobject-subtype-required", common.replace(b"/Subtype /Image", b"")+b" /BitsPerComponent 8", bytes([12,26]), "syntax"),
+    ]:
+        yield Vector(name, {".pdf": document(base+[stream(data,dictionary)]), ".out": bytes([12,26]),
+                     ".params": f"kind=dictionary\noutcome={outcome}\n".encode()},
+                     ("image-dictionaries",), "ISO 32000-2 Table 87/8.9.7 filter and image type consistency")
+    for name, dictionary, data, expected, outcome, resources in [
+        ("iso-inline-direct-lab-rejected", b"<< /W 1 /H 1 /BPC 8 /CS [/Lab << /WhitePoint [1 1 1] >>] >>", b"\0\0\0", b"", "syntax", None),
+        ("iso-inline-resource-lab", b"<< /W 1 /H 1 /BPC 8 /CS /L1 /L 3 >>", bytes([1,2,3]), bytes([1,2,3]), "valid", b"<< /ColorSpace << /L1 [/Lab << /WhitePoint [1 1 1] >>] >> >>"),
+        ("iso-inline-indexed-stream-lookup-rejected", b"<< /W 1 /H 1 /BPC 8 /CS [/I /RGB 0 3 0 R] >>", b"\0", b"", "syntax", None),
+        ("iso-inline-runlength-one-bit-rejected", b"<< /W 2 /H 1 /BPC 1 /CS /G /F /RL >>", b"\0\x40\x80", b"", "syntax", None),
+        ("iso-inline-ascii-length-whitespace", b"<< /W 1 /H 1 /BPC 8 /CS /G /F /AHx /L 3 >>", b" \n0F>", bytes([15]), "valid", None),
+        ("iso-inline-unknown-entry-ignored", b"<< /W 2 /H 1 /BPC 8 /CS /G /Unknown [1 2 3] >>", bytes([12,26]), bytes([12,26]), "valid", None),
+    ]:
+        files = {".dict": dictionary, ".in": data, ".out": expected,
+                 ".params": f"kind=inline\noutcome={outcome}\n".encode()}
+        if resources:
+            files[".resources"] = resources
+        yield Vector(name, files, ("image-inline",), "ISO 32000-2 8.9.7 direct/resource colour-space rules")
+    for name, options, outcome in [
+        ("iso-jpeg-gray-transform-ignored", dict(transform=99), "valid"),
+        ("iso-jpeg-adobe-transform-ignored", dict(n=3, adobe=0, transform=99), "valid"),
+        ("iso-jpeg-invalid-transform", dict(n=3, transform=99), "syntax"),
+    ]:
+        encoded, expected = jpeg(**options)
+        yield vector(name, "dct", encoded, expected, outcome=outcome, tolerance=1, transform=99)
+    rows = [[int((x+y)%3 == 0) for x in range(13)] for y in range(6)]
+    encoded, expected = ccitt(rows, k=3)
+    yield vector("iso-fax-positive-k-equivalence", "ccitt", encoded, expected,
+                 k=1, width=13, height=6, eob=1)
+
+
+def image_pdf_vector(name, encoded, expected, dictionary, *, requirement, width, height, components=1, bits=8, globals=None, alpha=None, outcome="valid", **options):
+    """Complete PDF wrapper with a directly calculated sample oracle."""
+    objects = [b"<< /Type /Catalog /Pages 2 0 R >>", b"<< /Type /Pages /Kids [] /Count 0 >>",
+               stream(encoded, b"/Type /XObject /Subtype /Image /Width %d /Height %d " % (width,height)+dictionary)]
+    if globals is not None:
+        # Globals is an ordinary PDF stream, decoded before the image codec.
+        objects.append(stream(zlib.compress(globals), b"/Filter /FlateDecode"))
+    if b"4 0 R" in dictionary and globals is None:
+        objects.append(b"4 0 R")  # Deliberate ignored-value cycle.
+    params = dict(kind="pdf-image", outcome=outcome, width=width, height=height, components=components, bits=bits, **options)
+    files = {".pdf": document(objects), ".out": " ".join(str(v) for v in expected).encode(),
+             ".params": "".join(f"{k}={v}\n" for k,v in params.items()).encode()}
+    if alpha is not None:
+        files[".alpha"] = " ".join(str(v) for v in alpha).encode()
+    return Vector(name, files, (requirement,), name.replace("-"," "))
+
+
+def image_codec_cases():
+    # Reuse independent Python format encoders, never the product decoders.
+    from .jpx import codestream, jp2, box
+    from . import jbig2
+    width, height = 8, 4
+    gray = [(x*19+y*7)%256 for y in range(height) for x in range(width)]
+    raw = codestream([gray],width,height)
+    wrapped = jp2(raw,width,height,1)
+    for name, dictionary, outcome, space, decode in [
+        ("jpx-container-gray", b"/Filter /JPXDecode", "valid", "DeviceGray", "none"),
+        ("jpx-dictionary-depth-ignored", b"/Filter /JPXDecode /BitsPerComponent 4 0 R", "valid", "DeviceGray", "none"),
+        ("jpx-decode-ignored", b"/Filter /JPXDecode /Decode 4 0 R", "valid", "DeviceGray", "none"),
+        ("jpx-explicit-decode", b"/Filter /JPXDecode /ColorSpace /DeviceGray /BitsPerComponent 1 /Decode [1 0]", "valid", "DeviceGray", "1,0"),
+        ("jpx-colour-components-mismatch", b"/Filter /JPXDecode /ColorSpace /DeviceRGB", "syntax", "", ""),
+        ("jpx-alpha-missing", b"/Filter /JPXDecode /SMaskInData 1", "syntax", "", ""),
+        ("jpx-alpha-invalid-mode", b"/Filter /JPXDecode /SMaskInData 3", "syntax", "", ""),
+        ("jpx-dimensions-mismatch", b"/Filter /JPXDecode", "syntax", "", ""),
+    ]:
+        yield image_pdf_vector(name,wrapped,gray,dictionary,requirement="image-jpx",width=width,height=height+(name == "jpx-dimensions-mismatch"),outcome=outcome,space=space,decode=decode)
+    yield image_pdf_vector("jpx-raw-codestream-rejected",raw,[],b"/Filter /JPXDecode /ColorSpace /DeviceGray",requirement="image-jpx",width=width,height=height,outcome="syntax")
+    icc = jp2(raw,width,height,1,method=2)
+    yield image_pdf_vector("jpx-container-icc",icc,gray,b"/Filter /JPXDecode",requirement="image-jpx",width=width,height=height,space="icc")
+    rgb = [[(i*13+c*31)%256 for i in range(width*height)] for c in range(3)]
+    rgb_bytes = [v for pixel in zip(*rgb) for v in pixel]
+    rgb_stream = jp2(codestream(rgb,width,height),width,height,3)
+    for colour,space,planes in [(12,"DeviceCMYK",rgb+[gray]),(18,"sYCC",rgb),(19,"forbidden",rgb)]:
+        payload = jp2(codestream(planes,width,height),width,height,len(planes))
+        payload = payload.replace(box(b"colr",b"\1\0\0"+struct.pack(">I",16)),box(b"colr",b"\1\0\0"+struct.pack(">I",colour)),1)
+        yield image_pdf_vector(f"jpx-container-colour-{colour}",payload,[v for pixel in zip(*planes) for v in pixel],b"/Filter /JPXDecode",requirement="image-jpx",width=width,height=height,components=len(planes),space=space,outcome="syntax" if colour == 19 else "valid")
+    # Same number of components: the PDF colour space overrides the JP2 colr.
+    yield image_pdf_vector("jpx-dictionary-colour-override",rgb_stream,rgb_bytes,b"/Filter /JPXDecode /ColorSpace [/Lab << /WhitePoint [1 1 1] >>]",requirement="image-jpx",width=width,height=height,components=3,space="Lab")
+    alpha = [(i*7)%256 for i in range(width*height)]
+    definitions = struct.pack(">H",4)+b"".join(struct.pack(">HHH",*v) for v in [(0,0,1),(1,0,2),(2,0,3),(3,1,0)])
+    alpha_stream = jp2(codestream(rgb+[alpha],width,height),width,height,4,extra=box(b"cdef",definitions))
+    for mode in (0,1):
+        yield image_pdf_vector(f"jpx-alpha-mode-{mode}",alpha_stream,rgb_bytes,b"/Filter /JPXDecode /SMaskInData %d" % mode,
+                               requirement="image-jpx",width=width,height=height,components=3,space="DeviceRGB",mask="none" if mode == 0 else "embedded",alpha=alpha if mode else None,alpha_bits=8)
+    yield image_pdf_vector("jpx-alpha-overrides-mask",alpha_stream,rgb_bytes,b"/Filter /JPXDecode /SMaskInData 1 /Mask [0]",requirement="image-jpx",width=width,height=height,components=3,space="DeviceRGB",mask="embedded",alpha=alpha,alpha_bits=8)
+    yield image_pdf_vector("jpx-alpha-conflicts-smask",alpha_stream,[],b"/Filter /JPXDecode /SMaskInData 1 /SMask 4 0 R",requirement="image-jpx",width=width,height=height,components=3,outcome="syntax")
+    # Palette components can have distinct precisions even when the index
+    # codestream has one common precision (7.4.9 and 8.9.5.2).
+    palette = [(0,3,1023),(1,7,513)]
+    pclr = struct.pack(">HB",2,3)+bytes([0,2,9])+b"".join(bytes([a,b])+struct.pack(">H",c) for a,b,c in palette)
+    cmap = b"".join(struct.pack(">HBB",0,1,c) for c in range(3))
+    indices = [i%2 for i in range(width*height)]
+    mixed = jp2(codestream([indices],width,height),width,height,1,extra=box(b"pclr",pclr)+box(b"cmap",cmap))
+    mixed = mixed.replace(box(b"colr", b"\1\0\0"+struct.pack(">I",17)), box(b"colr", b"\1\0\0"+struct.pack(">I",16)), 1)
+    yield image_pdf_vector("jpx-mixed-precision",mixed,[v for i in indices for v in palette[i]],b"/Filter /JPXDecode",requirement="image-jpx",width=width,height=height,components=3,bits=0,component_bits="1,3,10",space="DeviceRGB")
+    words = [(i*3001)%65536 for i in range(width*height)]
+    word_stream = jp2(codestream([words],width,height,bits=16),width,height,1,bits=16)
+    yield image_pdf_vector("jpx-sixteen-bit",word_stream,words,b"/Filter /JPXDecode /BitsPerComponent false",requirement="image-jpx",width=width,height=height,bits=16,space="DeviceGray")
+    # JP2's colr is still part of the file; dictionary ColorSpace overrides it
+    # only for non-stencil images. A stencil needs no colour interpretation.
+    stencil = [i%2 for i in range(width*height)]
+    mask_stream = jp2(codestream([stencil],width,height,bits=1),width,height,1,bits=1)
+    yield image_pdf_vector("jpx-stencil",mask_stream,stencil,b"/Filter /JPXDecode /ImageMask true /Decode [1 0]",requirement="image-jpx",width=width,height=height,bits=1,space="stencil",decode="1,0")
+    for black in (False,True):
+        rows = [[int(black) for _ in range(width)] for _ in range(height)]
+        data = jbig2.segment(1,48,1,jbig2.page_info(width,height,flags=64+4*int(black)))
+        yield image_pdf_vector(f"jbig2-default-{'black' if black else 'white'}",data,[1-v for row in rows for v in row],b"/Filter /JBIG2Decode /BitsPerComponent 1 /ColorSpace /DeviceGray",requirement="image-jbig2",width=width,height=height,bits=1,space="DeviceGray")
+    glyph = [[1,0,1],[0,1,0],[1,0,1]]
+    body,symbols = jbig2.dictionary([glyph],2)
+    globals = jbig2.segment(0,0,0,body)
+    region,rows = jbig2.text_region(symbols,[(1,0,0),(4,1,0)],width,height)
+    data = jbig2.segment(1,48,1,jbig2.page_info(width,height))+jbig2.segment(2,6,1,region,refs=(0,))
+    for filtered in (False,True):
+        encoded = data.hex().encode()+b">" if filtered else data
+        dictionary = (b"/Filter [/ASCIIHexDecode /JBIG2Decode] /DecodeParms [null << /JBIG2Globals 4 0 R >>]" if filtered else b"/Filter /JBIG2Decode /DecodeParms << /JBIG2Globals 4 0 R >>")+b" /BitsPerComponent 1 /ColorSpace /DeviceGray"
+        yield image_pdf_vector(f"jbig2-globals-{'chain' if filtered else 'direct'}",encoded,[1-v for row in rows for v in row],dictionary,requirement="image-jbig2",width=width,height=height,bits=1,space="DeviceGray",globals=globals)
+    for codec in (b"JBIG2Decode",b"JPXDecode",b"Crypt"):
+        yield Vector("inline-forbidden-"+codec.decode(), {".dict": b"<< /W 1 /H 1 /BPC 8 /CS /G /F /"+codec+b" >>", ".in": b"", ".out": b"", ".params": b"kind=inline\noutcome=syntax\n"}, ("image-inline",), "ISO 32000-2 8.9.7 forbids this inline filter")

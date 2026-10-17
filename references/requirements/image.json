@@ -1,77 +1,300 @@
 {
   "schema": 2,
   "area": "image",
-  "scope": "ISO clauses verified against the local ISO 32000-2:2020 EC3 text; independent JPEG and fax format encoders. No conformance claim beyond exercised cases.",
+  "scope": "Verified the PDF image-layer rules cited below against the locally supplied ISO_32000-2_sponsored_EC3.txt (ISO 32000-2:2020 with errata collection 3): 8.9.3-8.9.7, Tables 87, 88, 90-92; 7.4.6/Table 11 and 7.4.8/Table 13. Resource budgets were checked against local ADR 0010, not an ISO conformance requirement. JPEG/fax bitstream algorithms are NOT primary-text verified: ITU-T T.81, ISO/IEC 10918, Adobe Technical Note 5116, ITU-T T.4 and T.6 are unavailable locally. Separate Python encoders establish synthetic expectations but cannot exclude a shared reading error. Also verified the PDF wrappers in 7.4.7/Table 12, 7.4.9/Table 87 and embedded-mask precedence in 11.6.4.3; ISO/IEC 14492:2019 (T.88), ISO/IEC 15444-1/-2 and ICC profile semantics remain pending primary-text review.",
   "requirements": [
     {
       "id": "image-samples",
       "reference": "iso32000-2-full-text",
       "clauses": [
         "8.9.3",
-        "8.9.5"
+        "8.9.4",
+        "8.9.5.2"
       ],
       "status": "partial",
       "tests": [
         "pagura-image tests::independent_vectors"
       ],
-      "gaps": "Broader corpus coverage remains."
+      "gaps": "Broader corpus coverage remains.",
+      "review": [
+        {
+          "locator": "8.9.3",
+          "rule": "Interleaved unsigned samples are MSB first, 16-bit values are big endian, and each row starts at a byte boundary with padding ignored.",
+          "verdict": "agree",
+          "evidence": "Raw/Flate 1/2/4/8/16-bit vectors compute samples directly.",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        },
+        {
+          "locator": "8.9.4",
+          "rule": "Samples run left to right from the top image row.",
+          "verdict": "agree",
+          "evidence": "Decoded samples preserve source row order; painting transforms remain outside this crate.",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        },
+        {
+          "locator": "8.9.5.2",
+          "rule": "JPEG 2000 may provide a different precision for each colour component.",
+          "verdict": "implemented at the PDF adapter boundary",
+          "evidence": "jpx-mixed-precision retains 1/3/10-bit ordinary channels without normalization.",
+          "implementation_agreement": "implemented at the PDF adapter boundary",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        }
+      ],
+      "external_primary_text_review": [],
+      "choices": [],
+      "verdict": "ISO sample packing agrees; JPX mixed precision added."
     },
     {
       "id": "image-dictionaries",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.9.5",
-        "8.9.6"
+        "8.9.5.1; Table 87",
+        "8.9.5.2; Table 88",
+        "8.9.5.3",
+        "8.9.6.2",
+        "8.9.6.3",
+        "8.9.6.4",
+        "8.9.5.1; Table 87 SMask"
       ],
       "status": "partial",
       "tests": [
         "pagura-image tests::independent_vectors"
       ],
-      "gaps": "Mask streams are retained by object identity for painting. Embedded JPX alpha cannot be represented by DecodedImage and remains Unsupported."
+      "gaps": "Decode mapping, default ranges, clipping, masks and embedded colour interpretation are retained for painting, not rendered by this crate.",
+      "review": [
+        {
+          "locator": "8.9.5.1; Table 87",
+          "rule": "Image dictionaries must have consistent dimensions, colour space, precision and filter output; image XObjects require Subtype Image.",
+          "verdict": "fixed",
+          "evidence": "Added iso-runlength-eight-bit, iso-runlength-one-bit-rejected and iso-xobject-subtype-required.",
+          "implementation_agreement": "fixed",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        },
+        {
+          "locator": "8.9.5.2; Table 88",
+          "rule": "Decode maps sample endpoints linearly per component; descending and out-of-colour-range endpoints are allowed, and Indexed defaults to the full sample integer range.",
+          "verdict": "agree at metadata boundary",
+          "evidence": "Explicit arrays are validated and retained; absent arrays stay None so painting must implement Table 88 defaults and output clipping.",
+          "implementation_agreement": "agree at metadata boundary",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        },
+        {
+          "locator": "8.9.5.3",
+          "rule": "Interpolate is a rendering hint that a processor may ignore.",
+          "verdict": "agree",
+          "evidence": "The decoder retains the hint; no resampling claim is made.",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        },
+        {
+          "locator": "8.9.6.2",
+          "rule": "A stencil is one bit with no colour space; Decode 0 1 paints zero and Decode 1 0 paints one.",
+          "verdict": "agree",
+          "evidence": "Stencil kind and inversion metadata preserve the two meanings.",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        },
+        {
+          "locator": "8.9.6.3",
+          "rule": "An explicit stencil mask overlays the base image unit square and may have different dimensions.",
+          "verdict": "agree",
+          "evidence": "Mask identity is retained without an equal-resolution restriction.",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        },
+        {
+          "locator": "8.9.6.4",
+          "rule": "Colour-key ranges contain two integer endpoints per component and compare inclusive raw samples before Decode.",
+          "verdict": "agree at metadata boundary",
+          "evidence": "Range endpoints and component counts are validated; painting is outside this crate.",
+          "implementation_agreement": "agree at metadata boundary",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        },
+        {
+          "locator": "8.9.5.1; Table 87 SMask",
+          "rule": "SMask takes precedence over Mask.",
+          "verdict": "agree",
+          "evidence": "soft-overrides-key retains only the soft-mask identity.",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        }
+      ],
+      "external_primary_text_review": [],
+      "choices": [
+        "Reject reversed colour-key ranges as malformed rather than treating them as an empty mask; the cited text does not separately specify endpoint ordering.",
+        "Preserve Decode metadata without applying the mapping or Table 88 defaults during sample decoding.",
+        "decode_xobject is the base-image entry point and requires Subtype Image; the Table 87 thumbnail exception needs a distinct thumbnail caller contract."
+      ],
+      "verdict": "ISO mismatches fixed at the decoder metadata boundary; painting remains separate."
     },
     {
       "id": "image-inline",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.9.7"
+        "8.9.7; Tables 90-92",
+        "8.9.7; Table 91",
+        "8.9.7",
+        "8.9.7; Table 92"
       ],
       "status": "partial",
       "tests": [
         "pagura-image tests::independent_vectors"
       ],
-      "gaps": "Legacy Flate/LZW boundary search has a sixteen-candidate work cap. Unfiltered resource colour spaces without Length need a resource-aware boundary API. Inline filter repairs require a document diagnostic sink."
+      "gaps": "Legacy Flate/LZW boundary search has a sixteen-candidate work cap. Unfiltered resource colour spaces without Length need a resource-aware boundary API. Inline filter repairs require a document diagnostic sink.",
+      "review": [
+        {
+          "locator": "8.9.7; Tables 90-92",
+          "rule": "Inline images use BI/ID/EI, accept the listed abbreviations, and ignore unlisted entries; those abbreviations are not XObject abbreviations.",
+          "verdict": "fixed",
+          "evidence": "Added iso-xobject-filter-abbreviation and iso-inline-unknown-entry-ignored.",
+          "implementation_agreement": "fixed",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        },
+        {
+          "locator": "8.9.7; Table 91",
+          "rule": "PDF 2.0 Length/L excludes operator-delimiting whitespace; ASCIIHex/ASCII85 boundary sizing skips additional leading whitespace before counting L, while older files may omit L.",
+          "verdict": "fixed for ASCII leading whitespace; remaining lexical BI/ID/EI checks belong to the content parser",
+          "evidence": "iso-inline-ascii-length-whitespace counts three encoded bytes after an extra space and newline.",
+          "implementation_agreement": "fixed for ASCII leading whitespace; remaining lexical BI/ID/EI checks belong to the content parser",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        },
+        {
+          "locator": "8.9.7",
+          "rule": "Direct inline colour spaces are device spaces or limited Indexed with a device base and string lookup; named resource spaces may be any image colour space.",
+          "verdict": "fixed",
+          "evidence": "Added direct Lab rejection, resource Lab success, and non-string Indexed lookup rejection.",
+          "implementation_agreement": "fixed",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        },
+        {
+          "locator": "8.9.7; Table 92",
+          "rule": "JBIG2Decode, JPXDecode and Crypt are forbidden inline image filters.",
+          "verdict": "agree",
+          "evidence": "Inline entry points reject these filters; capability extensions must preserve this restriction.",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        }
+      ],
+      "external_primary_text_review": [],
+      "choices": [
+        "Accept lengthless data as legacy input because the standalone boundary API has no PDF version; cap candidate validation at sixteen attempts and reject conflicting long/abbreviated keys."
+      ],
+      "repair_hook": "When Document::report is available, forward Diagnostics from inline FilterChain decoding and CCITT decode_with_diagnostics; this change retains strict document-image repair behaviour.",
+      "verdict": "ISO mismatches fixed; forbidden filters remain rejected, and legacy sizing remains a documented choice."
     },
     {
       "id": "image-dct",
       "reference": "iso32000-2-full-text",
       "clauses": [
         "7.4.8",
-        "ITU-T T.81 Annex F",
-        "ITU-T T.81 Annex G"
+        "7.4.8; Table 13"
       ],
       "status": "partial",
       "tests": [
         "pagura-image tests::independent_vectors"
       ],
-      "gaps": "12-bit precision, arithmetic/lossless/hierarchical coding unsupported; nearest chroma expansion."
+      "gaps": "12-bit precision, arithmetic/lossless/hierarchical coding unsupported; nearest chroma expansion.",
+      "review": [
+        {
+          "locator": "7.4.8",
+          "rule": "PDF DCT samples have one, three or four byte-sized colour components.",
+          "verdict": "agree",
+          "evidence": "Supported layouts and eight-bit precision are enforced; broader JPEG processes remain explicit capability gaps.",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Agrees for the exercised PDF-level rule at the stated boundary; the named external format rules remain pending."
+        },
+        {
+          "locator": "7.4.8; Table 13",
+          "rule": "APP14 overrides the dictionary transform; otherwise default to a transform for three components only, and ignore the option for a single component.",
+          "verdict": "fixed",
+          "evidence": "Added ignored invalid integer options for grayscale/APP14 and rejection when an invalid option is effective.",
+          "implementation_agreement": "fixed",
+          "expectation_agreement": "Agrees for the exercised PDF-level rule at the stated boundary; the named external format rules remain pending."
+        }
+      ],
+      "external_primary_text_review": [
+        {
+          "standard": "ITU-T T.81 / ISO/IEC 10918",
+          "status": "pending primary-text review",
+          "behaviour": "Huffman tables, scan ordering, restart intervals, progressive refinement, IDCT and colour conversion constants.",
+          "evidence": "Synthetic independently written Python encoder and calculated pixels; no external differential run or externally sourced known-answer data in this change."
+        },
+        {
+          "standard": "Adobe Technical Note 5116",
+          "status": "pending primary-text review",
+          "behaviour": "Exact APP14 marker rules and four-component JPEG conventions.",
+          "evidence": "Synthetic independently written Python encoder and calculated pixels; no external differential run or externally sourced known-answer data in this change."
+        }
+      ],
+      "choices": [
+        "Nearest-neighbour chroma expansion and one-level IDCT oracle tolerance are implementation choices, not ISO-verified JPEG accuracy claims."
+      ],
+      "verdict": "ISO wrapper rules agree after fixes; JPEG/Adobe primary-text review pending."
     },
     {
       "id": "image-ccitt",
       "reference": "iso32000-2-full-text",
       "clauses": [
         "7.4.6",
-        "ITU-T T.4",
-        "ITU-T T.6"
+        "7.4.6; Table 11",
+        "7.4.6; Table 11 DamagedRowsBeforeError"
       ],
       "status": "partial",
       "tests": [
         "pagura-image tests::independent_vectors"
       ],
-      "gaps": "T.6 extension mode unsupported. Damaged-row recovery is available through decode_with_diagnostics; document image decoding remains strict until a document diagnostic sink is public."
+      "gaps": "T.6 extension mode unsupported. Damaged-row recovery is available through decode_with_diagnostics; document image decoding remains strict until a document diagnostic sink is public.",
+      "review": [
+        {
+          "locator": "7.4.6",
+          "rule": "Decoded fax rows are byte padded; encoded rows normally share a bit stream and can request byte alignment.",
+          "verdict": "agree",
+          "evidence": "Exact odd-width, polarity and alignment vectors exercise row formatting.",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Agrees for the exercised PDF-level rule at the stated boundary; the named external format rules remain pending."
+        },
+        {
+          "locator": "7.4.6; Table 11",
+          "rule": "Use only the sign of K, apply parameter defaults, accept optional EOL, and let EndOfBlock override Rows.",
+          "verdict": "agree",
+          "evidence": "Added iso-fax-positive-k-equivalence; existing vectors cover EOL, unknown Rows and EndOfBlock precedence.",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Agrees for the exercised PDF-level rule at the stated boundary; the named external format rules remain pending."
+        },
+        {
+          "locator": "7.4.6; Table 11 DamagedRowsBeforeError",
+          "rule": "For nonnegative K with EOL, tolerated damaged rows copy the preceding good row or become white after damage, with EOL resynchronization.",
+          "verdict": "agree with reported-repair API",
+          "evidence": "fax-damaged-rows checks strict rejection and two reported substitutions.",
+          "implementation_agreement": "agree with reported-repair API",
+          "expectation_agreement": "Agrees for the exercised PDF-level rule at the stated boundary; the named external format rules remain pending."
+        }
+      ],
+      "external_primary_text_review": [
+        {
+          "standard": "ITU-T T.4",
+          "status": "pending primary-text review",
+          "behaviour": "Group 3 code tables, one/two-dimensional run coding and RTC bit patterns.",
+          "evidence": "Synthetic Python fax encoder with directly constructed bitmap expectations; no external differential run or externally sourced known-answer data in this change."
+        },
+        {
+          "standard": "ITU-T T.6",
+          "status": "pending primary-text review",
+          "behaviour": "Group 4 modes, changing elements, EOFB and extension coding.",
+          "evidence": "Synthetic Python fax encoder with directly constructed bitmap expectations; no external differential run or externally sourced known-answer data in this change."
+        }
+      ],
+      "choices": [
+        "Count the damaged-row tolerance across the image; keep the standalone decoder strict and expose substitutions only through decode_with_diagnostics."
+      ],
+      "repair_hook": "When Document::report is available, forward Diagnostics from inline FilterChain decoding and CCITT decode_with_diagnostics; this change retains strict document-image repair behaviour.",
+      "verdict": "ISO parameters and reported substitution agree; fax primary-text review pending."
     },
     {
       "id": "image-limits",
-      "reference": "iso32000-2-full-text",
+      "reference": "docs/adr/0010-images.md",
       "clauses": [
         "ADR 0010"
       ],
@@ -80,7 +303,121 @@
         "pagura-image tests::image_and_codec_budgets_precede_allocations",
         "pagura-image tests::truncated_and_mutated_codecs_never_invent_samples"
       ],
-      "gaps": "Broader corpus coverage remains."
+      "gaps": "Broader corpus coverage remains.",
+      "review": [
+        {
+          "locator": "ADR 0010",
+          "rule": "Check pixel, decoded storage and work budgets before the allocation or work they protect.",
+          "verdict": "agree with project policy",
+          "evidence": "Budget, truncation and mutation tests cover bounded rejection; this is not an ISO requirement.",
+          "implementation_agreement": "agree with project policy",
+          "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
+        }
+      ],
+      "external_primary_text_review": [],
+      "choices": [],
+      "verdict": "Project ADR rule agrees; not an ISO conformance verdict."
+    },
+    {
+      "id": "image-jbig2",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.7; Table 12"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors"
+      ],
+      "review": [
+        {
+          "locator": "7.4.7; Table 12",
+          "rule": "Decode embedded page-1 bitonal data with page-0 segments supplied by the separately decoded JBIG2Globals stream.",
+          "verdict": "agree at PDF wrapper boundary",
+          "evidence": "PDF vectors exercise black/white polarity, Flate globals and a preceding ASCIIHex filter.",
+          "implementation_agreement": "agree at PDF wrapper boundary",
+          "expectation_agreement": "Agrees for the exercised PDF-level rule at the stated boundary; the named external format rules remain pending."
+        }
+      ],
+      "external_primary_text_review": [
+        {
+          "standard": "ISO/IEC 14492:2019 / ITU-T T.88",
+          "status": "pending primary-text review",
+          "behaviour": "Segment, symbol and arithmetic coding procedures, including polarity of the decoded bitmap.",
+          "evidence": "Integrated independent Python JBIG2 encoder, direct bitmap expectations and PDF wrappers; no external differential run in this change."
+        }
+      ],
+      "gaps": "JBIG2 coding modes not supported by the integrated decoder remain explicit feature errors.",
+      "choices": [],
+      "verdict": "PDF wrapper rules exercised; JBIG2 primary-text review pending."
+    },
+    {
+      "id": "image-jpx",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9; Table 87",
+        "8.9.5.2",
+        "11.6.4.3"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors",
+        "pagura-image pdf_tests::alpha_precision_premultiplication_and_live_storage_are_preserved"
+      ],
+      "review": [
+        {
+          "locator": "7.4.9; Table 87",
+          "rule": "Use a full JPEG 2000 container; dictionary dimensions must match, dictionary ColorSpace overrides container colour and BitsPerComponent is ignored.",
+          "verdict": "fixed and exercised",
+          "evidence": "PDF fixtures cover container colour/ICC, overriding colour, ignored precision and dimension mismatch.",
+          "implementation_agreement": "fixed and exercised",
+          "expectation_agreement": "Agrees for the exercised PDF-level rule at the stated boundary; the named external format rules remain pending."
+        },
+        {
+          "locator": "7.4.9; Table 87",
+          "rule": "Without dictionary ColorSpace use the container colour and ignore Decode; JPX components can have independent precision.",
+          "verdict": "fixed and exercised",
+          "evidence": "Mixed 1/3/10-bit palette output, 16-bit output and ignored cyclic Decode/precision references.",
+          "implementation_agreement": "fixed and exercised",
+          "expectation_agreement": "Agrees for the exercised PDF-level rule at the stated boundary; the named external format rules remain pending."
+        },
+        {
+          "locator": "7.4.9; Table 87",
+          "rule": "SMaskInData zero ignores alpha; nonzero requires one all-colour opacity channel and excludes SMask; mode two denotes premultiplied colour.",
+          "verdict": "partial",
+          "evidence": "Straight-alpha PDF vectors and adapter-level premultiplied metadata tests pass; decoder cdef type 2 remains unsupported.",
+          "implementation_agreement": "partial",
+          "expectation_agreement": "Agrees for the exercised PDF-level rule at the stated boundary; the named external format rules remain pending."
+        },
+        {
+          "locator": "11.6.4.3",
+          "rule": "An embedded soft mask overrides an explicit or colour-key Mask.",
+          "verdict": "agree",
+          "evidence": "jpx-alpha-overrides-mask retains alpha without applying the overridden colour key.",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Agrees for the exercised PDF-level rule at the stated boundary; the named external format rules remain pending."
+        },
+        {
+          "locator": "7.4.9",
+          "rule": "Enumerated CMYK is supported, CIEJab is excluded, and unsupported embedded colour descriptions fall back by ordinary channel count.",
+          "verdict": "agree at metadata boundary",
+          "evidence": "jpx-container-colour-12/18/19 exercise CMYK, retained sYCC with device fallback and rejected CIEJab.",
+          "implementation_agreement": "agree at metadata boundary",
+          "expectation_agreement": "Agrees for the exercised PDF-level rule at the stated boundary; the named external format rules remain pending."
+        }
+      ],
+      "external_primary_text_review": [
+        {
+          "standard": "ISO/IEC 15444-1 / ISO/IEC 15444-2 / ICC specifications",
+          "status": "pending primary-text review",
+          "behaviour": "JPEG 2000 bitstream coding, container/palette channel definitions, enumerated colour spaces and profile semantics.",
+          "evidence": "Integrated independently authored Python JPEG 2000 encoder, direct sample expectations and PDF wrappers; no external differential run in this change."
+        }
+      ],
+      "gaps": "Premultiplied cdef type 2, ignored unsupported container colour/opacity, colour precedence and subsampled reference-grid geometry require decoder/API changes; ICC and sYCC interpretation is retained for painting.",
+      "choices": [
+        "Preserve embedded colour profiles and non-device enumerated spaces for painting; mixed sample precision uses a zero common-precision sentinel with per-component accessors."
+      ],
+      "verdict": "PDF wrapper and straight alpha exercised; complete premultiplied/container handling blocked by decoder API gaps."
     }
   ]
 }
