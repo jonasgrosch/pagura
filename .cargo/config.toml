@@ -1,0 +1,9 @@
+[alias]
+check-all = "check --workspace --all-targets --locked"
+test-all = "test --workspace --all-targets --locked"
+lint = "clippy --workspace --all-targets --locked -- -D warnings"
+wasm = "build --locked --release -p pagura-host --target wasm32-wasip1"
+
+# WebAssembly SIMD is enabled for autovectorization only; no intrinsics or unsafe code.
+[target.wasm32-wasip1]
+rustflags = ["-C", "target-feature=+simd128"]

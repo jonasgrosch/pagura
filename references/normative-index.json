@@ -1,0 +1,500 @@
+{
+  "source": "https://pdfa.org/iso-32000-normative-references/",
+  "entries": [
+    {
+      "description": "The following documents are \"normatively referenced\" from ISO 32000-2:2020. That is, some or all of their content constitutes requirements of the updated 2020 dated revision edition of the PDF 2.0 specification over the now withdrawn 2017 edition.",
+      "urls": [
+        "https://www.iso.org/standard/75839.html",
+        "https://www.iso.org/standard/63534.html"
+      ]
+    },
+    {
+      "description": "ISO 3166-1, Codes for the representation of names of countries and their subdivisions \u2013 Part 1: Country codes, https://www.iso.org/iso-3166-country-codes.html",
+      "urls": [
+        "https://www.iso.org/iso-3166-country-codes.html"
+      ]
+    },
+    {
+      "description": "ISO/IEC 8824-1, Information technology \u2013 Abstract Syntax Notation One (ASN.1): Specification of basic notation. https://standards.iso.org/ittf/PubliclyAvailableStandards/index.html",
+      "urls": [
+        "https://standards.iso.org/ittf/PubliclyAvailableStandards/index.html"
+      ]
+    },
+    {
+      "description": "ISO/IEC 10646, Information technology \u2013 Universal Coded Character Set (UCS). https://www.iso.org/standard/76835.html (free)",
+      "urls": [
+        "https://www.iso.org/standard/76835.html"
+      ]
+    },
+    {
+      "description": "ISO/IEC 10918 (all parts), Information Technology \u2013 Digital Compression and Coding of Continuous-Tone Still Images: Requirements and guidelines (informally known as the JPEG standard, for the Joint Photographic Experts Group, the ISO group that developed the standard) https://www.iso.org/search.html?q=10918 (Note: this URL is a search query on ISO)",
+      "urls": [
+        "https://www.iso.org/search.html?q=10918"
+      ]
+    },
+    {
+      "description": "ISO/IEC 14492:2019, Information technology \u2013 Lossy/lossless coding of bi-level images. https://www.iso.org/standard/75396.html",
+      "urls": [
+        "https://www.iso.org/standard/75396.html"
+      ]
+    },
+    {
+      "description": "ISO/IEC 14496-22:2019, Information technology \u2013 Coding of audio-visual objects \u2014 Part 22: Open Font Format. https://www.iso.org/standard/74461.html (free)",
+      "urls": [
+        "https://www.iso.org/standard/74461.html"
+      ]
+    },
+    {
+      "description": "ISO 14739-1, Document management \u2013 3D use of Product Representation Compact (PRC) format \u2014 Part 1: PRC 10001. https://www.iso.org/standard/54948.html (This is an undated reference in PDF 2.0, but the URL here is to the ISO 2014 published edition. ISO TC 171 WG 5 is currently working on a PRC dated revision to fix errata so the URL will be updated when PRC achieves DIS/FDIS status)",
+      "urls": [
+        "https://www.iso.org/standard/54948.html"
+      ]
+    },
+    {
+      "description": "ISO 15076-1:2010, Image technology colour management \u2013 Architecture, profile format and data structure \u2014 Part 1: Based on ICC.1:2010. https://www.iso.org/standard/54754.html",
+      "urls": [
+        "https://www.iso.org/standard/54754.html"
+      ]
+    },
+    {
+      "description": "Specification ICC.1:2001-04 - File Format for Color Profiles [REVISION of ICC.1:1998-09], International Color Consortium, https://www.color.org/specification/ICC.1-2001-04.pdf.",
+      "urls": [
+        "https://www.color.org/specification/ICC.1-2001-04.pdf"
+      ]
+    },
+    {
+      "description": "ISO/IEC 15444-1:2019, Information technology \u2014 JPEG 2000 image coding system: Core coding system. https://www.iso.org/standard/78321.html",
+      "urls": [
+        "https://www.iso.org/standard/78321.html"
+      ]
+    },
+    {
+      "description": "ISO/IEC 15444-2:2004, Information technology \u2014 JPEG 2000 image coding system: Extensions. https://www.iso.org/standard/33160.html",
+      "urls": [
+        "https://www.iso.org/standard/33160.html"
+      ]
+    },
+    {
+      "description": "ISO/IEC 15948:2004 Information technology \u2014 Computer graphics and image processing \u2014 Portable Network Graphics (PNG): Functional specification. https://www.iso.org/standard/29581.html",
+      "urls": [
+        "https://www.iso.org/standard/29581.html"
+      ]
+    },
+    {
+      "description": "ISO 16684-1, Extensible metadata platform (XMP) specification \u2014 Part 1: Data model, serialization and core properties. https://www.iso.org/standard/75163.html",
+      "urls": [
+        "https://www.iso.org/standard/75163.html"
+      ]
+    },
+    {
+      "description": "ISO 17972-4, Graphic technology \u2014 Colour data exchange format (CxF/X) \u2014 Part 4: Spot colour characterisation data (CxF/X-4). https://www.iso.org/standard/71110.html",
+      "urls": [
+        "https://www.iso.org/standard/71110.html"
+      ]
+    },
+    {
+      "description": "ISO 18619, Image technology colour management \u2013 Black point compensation. https://www.iso.org/standard/63033.html",
+      "urls": [
+        "https://www.iso.org/standard/63033.html"
+      ]
+    },
+    {
+      "description": "ISO 19162, Geographic information \u2013 Well known text representation of coordinate reference systems. https://www.iso.org/standard/76496.html",
+      "urls": [
+        "https://www.iso.org/standard/76496.html"
+      ]
+    },
+    {
+      "description": "ISO 19444-1:2019, Document management \u2013 XML Forms Data Format \u2013 Part 1: Use of ISO 32000-2 (XFDF 3.0). https://www.iso.org/standard/74272.html",
+      "urls": [
+        "https://www.iso.org/standard/74272.html"
+      ]
+    },
+    {
+      "description": "ISO/DIS 21757-1, Document management \u2014 ECMAScript for PDF \u2014 Part 1: Use of ISO 32000-2 (PDF 2.0), https://www.iso.org/standard/71559.html",
+      "urls": [
+        "https://www.iso.org/standard/71559.html"
+      ]
+    },
+    {
+      "description": "IEC 61966-2-1 ed1.0 (1999-10), Multimedia systems and equipment \u2014 Colour measurement and management \u2014 Part 2-1: Colour management \u2014 Default RGB colour space \u2014 sRGB (with Amendment 1 IEC 61966-2-1-am1 ed1.0 (2003-01)). https://webstore.iec.ch/publication/6169 with amendment https://webstore.iec.ch/publication/6168",
+      "urls": [
+        "https://webstore.iec.ch/publication/6169",
+        "https://webstore.iec.ch/publication/6168"
+      ]
+    },
+    {
+      "description": "ANSI X9.62-2005, Public Key Cryptography For The Financial Services Industry: The Elliptic Curve Digital Signature Algorithm (ECDSA), American National Standards Institute. https://infostore.saiglobal.com/en-us/Standards/ANSI-X9-62-2005-2085_SAIG_ABA_ABA_5340/ (this is probably not a good URL)",
+      "urls": [
+        "https://infostore.saiglobal.com/en-us/standards/ansi-x9-62-2005-1311435_saig_ansi_ansi_3201024/"
+      ]
+    },
+    {
+      "description": "INCITS 4-1986 (R2017) Information Systems - Coded Character Sets - 7-Bit Standard Code for Information Interchange (7-Bit ASCII), https://webstore.ansi.org/Standards/INCITS/INCITS1986R2017",
+      "urls": [
+        "https://webstore.ansi.org/Standards/INCITS/INCITS1986R2017"
+      ]
+    },
+    {
+      "description": "PostScript Language Third Edition, (February 1999), Adobe Systems Incorporated. https://pdfa.org/norm-refs/PLRM.pdf",
+      "urls": [
+        "https://pdfa.org/norm-refs/PLRM.pdf"
+      ]
+    },
+    {
+      "description": "Adobe Glyph List, Adobe Systems Incorporated. https://github.com/adobe-type-tools/agl-aglfn",
+      "urls": [
+        "https://github.com/adobe-type-tools/agl-aglfn"
+      ]
+    },
+    {
+      "description": "Adobe Glyph List for New Fonts, Adobe Systems Incorporated. https://github.com/adobe-type-tools/agl-aglfn",
+      "urls": [
+        "https://github.com/adobe-type-tools/agl-aglfn"
+      ]
+    },
+    {
+      "description": "Adobe PDF Signature Build Dictionary Specification v.1.4, (29 February 2008), Adobe Systems Incorporated. https://pdfa.org/norm-refs/SigBuildDict.pdf",
+      "urls": [
+        "https://pdfa.org/norm-refs/SigBuildDict.pdf"
+      ]
+    },
+    {
+      "description": "Adobe TIFF Revision 6.0, Final, (June 1992), Adobe Systems Incorporated. https://pdfa.org/norm-refs/TIFF6.pdf",
+      "urls": [
+        "https://pdfa.org/norm-refs/TIFF6.pdf"
+      ]
+    },
+    {
+      "description": "Adobe Type 1 Font Format, Version 1.1, (February 1993), Addison-Wesley, ISBN 0-201-57044-0. https://pdfa.org/norm-refs/Type1Fonts.pdf",
+      "urls": [
+        "https://pdfa.org/norm-refs/Type1Fonts.pdf"
+      ]
+    },
+    {
+      "description": "Adobe XML Architecture, XML Forms Architecture (XFA) Specification, version 3.3, (January 2012), Adobe Systems Incorporated. https://pdfa.org/norm-refs/XFA-3_3.pdf",
+      "urls": [
+        "https://pdfa.org/norm-refs/XFA-3_3.pdf"
+      ]
+    },
+    {
+      "description": "Adobe-Japan1-7 Character Collection for CID-Keyed Fonts, https://github.com/adobe-type-tools/cmap-resources",
+      "urls": [
+        "https://github.com/adobe-type-tools/cmap-resources"
+      ]
+    },
+    {
+      "description": "Adobe-GB1-5 Character Collection for CID-Keyed Fonts, https://github.com/adobe-type-tools/cmap-resources",
+      "urls": [
+        "https://github.com/adobe-type-tools/cmap-resources"
+      ]
+    },
+    {
+      "description": "Adobe-CNS1-7 Character Collection for CID-Keyed Fonts, https://github.com/adobe-type-tools/cmap-resources",
+      "urls": [
+        "https://github.com/adobe-type-tools/cmap-resources"
+      ]
+    },
+    {
+      "description": "Adobe-Korea1-2 Character Collection for CID-Keyed Fonts, https://github.com/adobe-type-tools/cmap-resources",
+      "urls": [
+        "https://github.com/adobe-type-tools/cmap-resources"
+      ]
+    },
+    {
+      "description": "Adobe-Japan2-0 Character Collection for CID-Keyed Fonts, https://github.com/adobe-type-tools/cmap-resources",
+      "urls": [
+        "https://github.com/adobe-type-tools/cmap-resources"
+      ]
+    },
+    {
+      "description": "Adobe-KR-9 Character Collection for CID-Keyed Fonts, https://github.com/adobe-type-tools/cmap-resources",
+      "urls": [
+        "https://github.com/adobe-type-tools/cmap-resources"
+      ]
+    },
+    {
+      "description": "Adobe Technical Note #5014, Adobe CMap and CID Font Files Specification, Version 1.0, (8 October 1996 11 June 1993), Adobe Systems Incorporated. https://pdfa.org/norm-refs/5014.CIDFont_Spec.pdf",
+      "urls": [
+        "https://pdfa.org/norm-refs/5014.CIDFont_Spec.pdf"
+      ]
+    },
+    {
+      "description": "Adobe Technical Note #5015, Type 1 Font Format Supplement, (May 1994), Adobe Systems Incorporated. https://pdfa.org/norm-refs/5015.Type1_Supp.pdf",
+      "urls": [
+        "https://pdfa.org/norm-refs/5015.Type1_Supp.pdf"
+      ]
+    },
+    {
+      "description": "Adobe Technical Note #5116, Supporting the DCT Filters in PostScript Level 2, (November 1992), Adobe Systems Incorporated. https://pdfa.org/norm-refs/5116.DCT_Filter.pdf",
+      "urls": [
+        "https://pdfa.org/norm-refs/5116.DCT_Filter.pdf"
+      ]
+    },
+    {
+      "description": "Adobe Technical Note #5176, The Compact Font Format Specification, version 1.0, (December 2003), Adobe Systems Incorporated. https://pdfa.org/norm-refs/5176.CFF_.pdf",
+      "urls": [
+        "https://pdfa.org/norm-refs/5176.CFF_.pdf"
+      ]
+    },
+    {
+      "description": "Adobe Technical Note #5177, The Type 2 Charstring Format, (March 2000), Adobe Systems Incorporated. https://pdfa.org/norm-refs/5177.type2_.pdf",
+      "urls": [
+        "https://pdfa.org/norm-refs/5177.type2_.pdf"
+      ]
+    },
+    {
+      "description": "Adobe Technical Note #5620, Portable Job Ticket Format, Version 1.1, (April 1999), Adobe Systems Incorporated. https://pdfa.org/norm-refs/5620.PortableJobTicket.pdf",
+      "urls": [
+        "https://pdfa.org/norm-refs/5620.PortableJobTicket.pdf"
+      ]
+    },
+    {
+      "description": "Adobe Technical Note #5660, Open Prepress Interface (OPI) Specification, Version 2.0, (January 2000), Adobe Systems Incorporated. https://pdfa.org/norm-refs/5660_OPI_2_0.pdf",
+      "urls": [
+        "https://pdfa.org/norm-refs/5660_OPI_2_0.pdf"
+      ]
+    },
+    {
+      "description": "Adobe Technical Note #5902: PostScript Name Generation for Variation Fonts, Version 1.0 (September 14 2016), Adobe Systems Incorporated, https://github.com/adobe-type-tools/font-tech-notes/blob/main/pdfs/5902.AdobePSNameGeneration.pdf",
+      "urls": [
+        "https://github.com/adobe-type-tools/font-tech-notes/blob/main/pdfs/5902.AdobePSNameGeneration.pdf"
+      ]
+    },
+    {
+      "description": "FIPS PUB 180-4, Secure Hash Standard (SHS), (August 2015), Federal Information Processing Standards, https://doi.org/10.6028/NIST.FIPS.180-4",
+      "urls": [
+        "https://doi.org/10.6028/NIST.FIPS.180-4"
+      ]
+    },
+    {
+      "description": "FIPS PUB 186-4, Digital Signature Standard, describes DSA signatures, (July 2013), Federal Information Processing Standards, https://doi.org/10.6028/NIST.FIPS.186-4",
+      "urls": [
+        "https://doi.org/10.6028/NIST.FIPS.186-4"
+      ]
+    },
+    {
+      "description": "FIPS PUB 197, Advanced Encryption Standard (AES), (November 2001), Federal Information Processing Standards, https://doi.org/10.6028/NIST.FIPS.197",
+      "urls": [
+        "https://doi.org/10.6028/NIST.FIPS.197"
+      ]
+    },
+    {
+      "description": "RFC 1321, The MD5 Message-Digest Algorithm, (April 1992), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc1321",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc1321"
+      ]
+    },
+    {
+      "description": "RFC 1950, ZLIB Compressed Data Format Specification, Version 3.3, (May 1996), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc1950",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc1950"
+      ]
+    },
+    {
+      "description": "RFC 1951, DEFLATE Compressed Data Format Specification, Version 1.3, (May 1996), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc1951",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc1951"
+      ]
+    },
+    {
+      "description": "RFC 2045, Multipurpose Internet Mail Extensions (MIME) Part One: Format of Internet Message Bodies, (November 1996), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc2045",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc2045"
+      ]
+    },
+    {
+      "description": "RFC 2315, PKCS #7: Cryptographic Message Syntax Version 1.5 (March 1998), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc2315",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc2315"
+      ]
+    },
+    {
+      "description": "RFC 3161, Internet X.509 Public Key Infrastructure Time-Stamp Protocol (TSP), (August 2001), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc3161",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc3161"
+      ]
+    },
+    {
+      "description": "RFC 3454, Preparation of International Strings (\"stringprep\"), December 2002, Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc3454",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc3454"
+      ]
+    },
+    {
+      "description": "RFC 3986, Uniform Resource Identifier (URI): Generic Syntax, (January 2005), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc3986",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc3986"
+      ]
+    },
+    {
+      "description": "RFC 4013, SASLprep: Stringprep Profile for User Names and Passwords, February 2005, Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc4013",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc4013"
+      ]
+    },
+    {
+      "description": "RFC 5035, Enhanced Security Services (ESS) Update: Adding CertID Algorithm Agility, (August 2007), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5035",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc5035"
+      ]
+    },
+    {
+      "description": "RFC 5280, Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile, (May 2008), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5280",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc5280"
+      ]
+    },
+    {
+      "description": "RFC 5480, Elliptic Curve Cryptography Subject Public Key Information, (March 2009), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5480",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc5480"
+      ]
+    },
+    {
+      "description": "BCP 47 (RFC 5646), Tags for Identifying Languages, (September 2009), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5646",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc5646"
+      ]
+    },
+    {
+      "description": "RFC 5652, Cryptographic Message Syntax (CMS), (September 2009), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5652",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc5652"
+      ]
+    },
+    {
+      "description": "RFC 5755, An Internet Attribute Certificate Profile for Authorization, (January 2010), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5755",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc5755"
+      ]
+    },
+    {
+      "description": "RFC 5816, ESSCertIDv2 Update for RFC 3161, (March 2010), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5816",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc5816"
+      ]
+    },
+    {
+      "description": "RFC 6960, X.509 Internet Public Key Infrastructure Online Certificate Status Protocol \u2013 OCSP, (June 2013), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc6960",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc6960"
+      ]
+    },
+    {
+      "description": "RFC 7231, Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content, (June 2014), https://dx.doi.org/10.17487/rfc7231",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc7231"
+      ]
+    },
+    {
+      "description": "RFC 8018, PKCS #5: Password-Based Cryptography Specification Version 2.1, (January 2017), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc8018",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc8018"
+      ]
+    },
+    {
+      "description": "RFC 8118, The application/PDF Media Type, Internet Engineering Task Force, (March 2017), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc8118",
+      "urls": [
+        "https://dx.doi.org/10.17487/rfc8118"
+      ]
+    },
+    {
+      "description": "ETSI EN 319 122-1 V1.1.1 (2016-04) Electronic Signatures and Infrastructures (ESI); CAdES digital signatures; Part 1: Building blocks and CAdES baseline signatures, European Telecommunications Standards Institute. https://www.etsi.org/deliver/etsi_en/319100_319199/31912201/01.01.01_60/en_31912201v010101p.pdf",
+      "urls": [
+        "https://www.etsi.org/deliver/etsi_en/319100_319199/31912201/01.01.01_60/en_31912201v010101p.pdf"
+      ]
+    },
+    {
+      "description": "ETSI EN 319 122-2 V1.1.1 (2016-04) Electronic Signatures and Infrastructures (ESI); CAdES digital signatures; Part 2: Extended CAdES signatures, European Telecommunications Standards Institute. https://www.etsi.org/deliver/etsi_en/319100_319199/31912201/01.01.01_60/en_31912201v010101p.pdf",
+      "urls": [
+        "https://www.etsi.org/deliver/etsi_en/319100_319199/31912201/01.01.01_60/en_31912201v010101p.pdf"
+      ]
+    },
+    {
+      "description": "ETSI EN 319 142-1 V1.1.1 (2016-04) Electronic Signatures and Infrastructures (ESI); PAdES digital signatures; Part 1: Building blocks and PAdES baseline signature, European Telecommunications Standards Institute. https://www.etsi.org/deliver/etsi_en/319100_319199/31914201/01.01.01_60/en_31914201v010101p.pdf",
+      "urls": [
+        "https://www.etsi.org/deliver/etsi_en/319100_319199/31914201/01.01.01_60/en_31914201v010101p.pdf"
+      ]
+    },
+    {
+      "description": "ETSI EN 319 142-2 V1.1.1 (2016-04) Electronic Signatures and Infrastructures (ESI); PAdES digital signatures; Part 2: Additional PAdES signatures profiles, European Telecommunications Standards Institute. https://www.etsi.org/deliver/etsi_en/319100_319199/31912202/01.01.01_60/en_31912202v010101p.pdf",
+      "urls": [
+        "https://www.etsi.org/deliver/etsi_en/319100_319199/31912202/01.01.01_60/en_31912202v010101p.pdf"
+      ]
+    },
+    {
+      "description": "EPSG Geospatial Coordinate System Reference Codes, administered by the International Association of Oil and Gas Producers (OGP), http://www.epsg.org",
+      "urls": [
+        "https://epsg.org/home.html"
+      ]
+    },
+    {
+      "description": "Extensible Markup Language (XML) 1.0, Fifth Edition, November 2008, World Wide Web Consortium (W3C). https://www.w3.org/TR/xml/",
+      "urls": [
+        "https://www.w3.org/TR/xml/"
+      ]
+    },
+    {
+      "description": "Accessible Rich Internet Applications (ARIA) 1.1, World Wide Web Consortium (W3C). https://www.w3.org/TR/wai-aria-1.1/",
+      "urls": [
+        "https://www.w3.org/TR/wai-aria-1.1/"
+      ]
+    },
+    {
+      "description": "MathML Core, W3C Candidate Recommendation, World Wide Web Consortium (W3C), https://www.w3.org/TR/mathml-core/",
+      "urls": [
+        "https://www.w3.org/TR/mathml-core/"
+      ]
+    },
+    {
+      "description": "Japanese Industrial Standard (JIS) X 4051-2004. This JIS standard requires purchase from your local standards supplier such as https://standards.globalspec.com/std/1206038/JIS%20X%204051",
+      "urls": [
+        "https://standards.globalspec.com/std/1206038/JIS%20X%204051"
+      ]
+    },
+    {
+      "description": "PANOSE Classification Metrics Guide, (February 1997), Hewlett-Packard Corporation. https://monotype.github.io/panose/pan1.htm",
+      "urls": [
+        "https://monotype.github.io/panose/pan1.htm"
+      ]
+    },
+    {
+      "description": "Pronunciation Lexicon Specification (PLS) Version 1.0, (October 2008), https://www.w3.org/TR/pronunciation-lexicon/",
+      "urls": [
+        "https://www.w3.org/TR/pronunciation-lexicon/"
+      ]
+    },
+    {
+      "description": "ITU Recommendation T.4: Standardization of Group 3 facsimile terminals for document transmission, International Telecommunication Union (ITU). https://www.itu.int/rec/T-REC-T.4/en",
+      "urls": [
+        "https://www.itu.int/rec/T-REC-T.4/en"
+      ]
+    },
+    {
+      "description": "ITU Recommendation T.6: Facsimile coding schemes and coding control functions for Group 4 facsimile apparatus, International Telecommunication Union (ITU). https://www.itu.int/rec/T-REC-T.6/en",
+      "urls": [
+        "https://www.itu.int/rec/T-REC-T.6/en"
+      ]
+    },
+    {
+      "description": "Standard ECMA-363, Universal 3D File Format, 3rd Edition (U3D), (June 2006), Ecma International. https://www.ecma-international.org/publications/standards/Ecma-363.htm",
+      "urls": [
+        "https://www.ecma-international.org/publications/standards/Ecma-363.htm"
+      ]
+    },
+    {
+      "description": "Synchronized Multimedia Integration Language (SMIL 3.0), (December 2008), World Wide Web Consortium (W3C), http://www.w3.org/TR/SMIL3/",
+      "urls": [
+        "http://www.w3.org/TR/SMIL3/"
+      ]
+    },
+    {
+      "description": "TrueType Reference Manual, Apple Inc. https://developer.apple.com/fonts/TrueType-Reference-Manual/",
+      "urls": [
+        "https://developer.apple.com/fonts/TrueType-Reference-Manual/"
+      ]
+    }
+  ],
+  "note": "Dated references retain their cited editions; newer is not automatically compatible."
+}

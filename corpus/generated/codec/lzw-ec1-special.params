@@ -1,0 +1,5 @@
+filter=LZWDecode
+outcome=valid
+repair=none
+cap=1400
+early=1

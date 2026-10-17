@@ -1,0 +1,35 @@
+{
+  "schema": 2,
+  "area": "render",
+  "scope": "Clause locators refer to Adobe PDF32000_2008 (ISO 32000-1) until ISO 32000-2 full text is acquired and reviewed.",
+  "requirements": [
+    {
+      "id": "opaque-rectangle-rendering",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "8.3",
+        "8.4",
+        "8.5.2",
+        "8.5.3",
+        "8.6.4"
+      ],
+      "status": "restricted subset",
+      "tests": [
+        "pagura/tests/render.rs"
+      ],
+      "gaps": "general paths, antialiasing, strokes, clipping, transparency and colour management"
+    },
+    {
+      "id": "content-stream-array",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.8.2"
+      ],
+      "status": "implemented",
+      "tests": [
+        "classic/content-array-split"
+      ],
+      "gaps": ""
+    }
+  ]
+}

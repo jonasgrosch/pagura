@@ -1,0 +1,906 @@
+{
+ "schema": 2,
+ "id": "pdfbox",
+ "repository": "https://github.com/apache/pdfbox",
+ "revision": "38049056b79bbe0848ff96509d6dd906adee3b20",
+ "purpose": "Apache PDFBox test resources",
+ "patterns": [
+  "*.pdf"
+ ],
+ "use": "input documents only; no expected outputs, never normative",
+ "pdf_files": 175,
+ "bytes": 11309146,
+ "files": [
+  {
+   "path": "LICENSE.txt",
+   "size": 18741,
+   "sha256": "1301d8415a4868d82aeeec594849cf7679f1ead4636a9603dc46875f5713157e"
+  },
+  {
+   "path": "NOTICE.txt",
+   "size": 650,
+   "sha256": "40741b4ab76d77ba4fbc5e8759277169fb0ce281859d273075de6fd3a3588458"
+  },
+  {
+   "path": "README.md",
+   "size": 6605,
+   "sha256": "2e9776d96197d165bc6519a8ae0212c3466e3d371a97639ebfced282fe85fd20"
+  },
+  {
+   "path": "examples/src/main/resources/org/apache/pdfbox/examples/interactive/form/FillFormField.pdf",
+   "size": 7771,
+   "sha256": "1fe658a3068f516d4b47a70d6768141b954a4bcab1387674c54e6dd4f0b98732"
+  },
+  {
+   "path": "examples/src/main/resources/org/apache/pdfbox/examples/rendering/custom-render-demo.pdf",
+   "size": 34062,
+   "sha256": "642d8b759eaff6913a1dc66256f42a0c9c311e01a615abb0c98fda2b3bc7e58f"
+  },
+  {
+   "path": "examples/src/test/resources/org/apache/pdfbox/examples/pdmodel/document.pdf",
+   "size": 1042,
+   "sha256": "a31f3b5fc79e6ae2703f9d2817af088f29aef4937e370b173512d820a9972c35"
+  },
+  {
+   "path": "examples/src/test/resources/org/apache/pdfbox/examples/signature/sign_me.pdf",
+   "size": 18159,
+   "sha256": "fab877985a860606e06e7af7e15ddab4ced89e0c90b705edada964e34dc9b472"
+  },
+  {
+   "path": "examples/src/test/resources/org/apache/pdfbox/examples/signature/sign_me_protected.pdf",
+   "size": 10537,
+   "sha256": "ad92d356cd45e43a764fd3a92496dbf4471e0ef1cca3e5277f9b586b340eecbd"
+  },
+  {
+   "path": "examples/src/test/resources/org/apache/pdfbox/examples/signature/sign_me_tsa.pdf",
+   "size": 18465,
+   "sha256": "012535a2d9684f8636c77b5c3865e7afd7dcd712d698e74e2e7d830a28cbcb1f"
+  },
+  {
+   "path": "examples/src/test/resources/org/apache/pdfbox/examples/signature/sign_me_visible.pdf",
+   "size": 18941,
+   "sha256": "11a64345afb282ede9cfb0a4bcb12b3a9b9d41171cb50b26f7b562a5f7655630"
+  },
+  {
+   "path": "pdfbox-layout-awt/src/test/resources/pdf/GlyphLayoutBidi.pdf",
+   "size": 9899,
+   "sha256": "3139601afdb18c0686607d718469f4a10ed9500380e923aa9fd3aaa7ba0e2af5"
+  },
+  {
+   "path": "pdfbox-layout-awt/src/test/resources/pdf/GlyphLayoutBidi_ActualText.pdf",
+   "size": 10051,
+   "sha256": "879547acfefc3a6819849e9b3de5144c074e1888ae9e3773f8af868f84ea029a"
+  },
+  {
+   "path": "pdfbox-layout-awt/src/test/resources/pdf/GlyphLayoutDIN91379.pdf",
+   "size": 38195,
+   "sha256": "f8b3f55d9a98812f6fa8cf2394354eef1b031be352f06be64c582de512e4be72"
+  },
+  {
+   "path": "pdfbox-layout-awt/src/test/resources/pdf/GlyphLayoutDIN91379Form.pdf",
+   "size": 223365,
+   "sha256": "b8771ccc79090080c569c722ddda48276750bbd786458119e08e131e4ca1958a"
+  },
+  {
+   "path": "pdfbox-layout-awt/src/test/resources/pdf/GlyphLayoutDIN91379Form_ActualText.pdf",
+   "size": 236593,
+   "sha256": "b2ef9c9cb857bfce8f3c68cdaf206f9dbc0b6cb14516d193fd00231d17e73d03"
+  },
+  {
+   "path": "pdfbox-layout-awt/src/test/resources/pdf/GlyphLayoutDIN91379_ActualText.pdf",
+   "size": 41381,
+   "sha256": "d38d72aed76c2d3340a0c2ee69b6774324a735380ca18c174d54c73db3ada3da"
+  },
+  {
+   "path": "pdfbox-layout-awt/src/test/resources/pdf/GlyphLayoutLigaturesAndKerning.pdf",
+   "size": 36551,
+   "sha256": "b00f9d515e0ba59180432fa51be96343085492bc66cbdb5fcdef8782f3a609be"
+  },
+  {
+   "path": "pdfbox-layout-awt/src/test/resources/pdf/GlyphLayoutLigaturesAndKerning_ActualText.pdf",
+   "size": 37024,
+   "sha256": "ffffab6c95b97f472d0ac727baa51d86a53205825c8cee448e61dd6cb93398f9"
+  },
+  {
+   "path": "pdfbox-layout-awt/src/test/resources/pdf/GlyphLayoutSMP.pdf",
+   "size": 35627,
+   "sha256": "9db081b3ddcb692a0267f3cead44fa0b984f1c4b2c0b5e91dfe5bba4336b04d0"
+  },
+  {
+   "path": "pdfbox-layout-awt/src/test/resources/pdf/GlyphLayoutSMP_ActualText.pdf",
+   "size": 36089,
+   "sha256": "6921b844ebb1bbb8eb22fcaab6d456e65af87373af061254f6133e844a996bb9"
+  },
+  {
+   "path": "pdfbox-layout-awt/src/test/resources/pdf/HelloWorld.pdf",
+   "size": 3560,
+   "sha256": "7fdc2c96c17d94cd12ee8372d1693c194cfb7f8e9aead0eed761c2e646234624"
+  },
+  {
+   "path": "pdfbox-layout-awt/src/test/resources/pdf/PdfForm.pdf",
+   "size": 20467,
+   "sha256": "3b7838821b81ee4e25edd3a08fb495d26461daa3d4c47fd9aa40df6953b95cec"
+  },
+  {
+   "path": "pdfbox-layout-fop/src/test/resources/pdf/GlyphLayoutBidi.pdf",
+   "size": 9630,
+   "sha256": "a34ef11a51e6ae7f4ff81c548d0397a46da95717dff2457df5706b29f952327b"
+  },
+  {
+   "path": "pdfbox-layout-fop/src/test/resources/pdf/GlyphLayoutDIN91379.pdf",
+   "size": 37848,
+   "sha256": "789fb92d9635fdac7c7abbaff635c122ef80345bba523f0a3c300d01399f8efb"
+  },
+  {
+   "path": "pdfbox-layout-fop/src/test/resources/pdf/GlyphLayoutDIN91379Form.pdf",
+   "size": 222994,
+   "sha256": "2b234fbb3f03307459c2cbd87c07551c908d8426fdd9f95721a8fee8e94c5dff"
+  },
+  {
+   "path": "pdfbox-layout-fop/src/test/resources/pdf/GlyphLayoutDIN91379_ActualText.pdf",
+   "size": 41057,
+   "sha256": "9ea286f78d7ef2f24ddcedb4c0d881f5335636834af6f161166b30961572e4fb"
+  },
+  {
+   "path": "pdfbox-layout-fop/src/test/resources/pdf/GlyphLayoutLigaturesAndKerning.pdf",
+   "size": 37152,
+   "sha256": "f72d97748c3d5106c68f20ff6d94f20dfcfd0f1efc63a80987ac98a70a79dbd2"
+  },
+  {
+   "path": "pdfbox-layout-fop/src/test/resources/pdf/GlyphLayoutSMP.pdf",
+   "size": 35635,
+   "sha256": "05832bb8297c2e204afe333d22c2f99db3e3ee92feb536ce7b8331fee59cbcd4"
+  },
+  {
+   "path": "pdfbox-layout-fop/src/test/resources/pdf/HelloWorld.pdf",
+   "size": 4582,
+   "sha256": "1c52b44c4ae501cf5f90e3fa324a44c758558d3d48a39cf5a1d55aa7a963d91b"
+  },
+  {
+   "path": "pdfbox-layout-fop/src/test/resources/pdf/PdfForm.pdf",
+   "size": 20467,
+   "sha256": "3b7838821b81ee4e25edd3a08fb495d26461daa3d4c47fd9aa40df6953b95cec"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/FC60_Times.pdf",
+   "size": 25815,
+   "sha256": "1616a1fc70fb70812f9865e4e6648736b218ab0d44775380adaf668e4300cc0d"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/Liste732004001452_001_0.pdf_0_.pdf",
+   "size": 8056,
+   "sha256": "467c9b4bd29e155cd80447c36bfeba95ee39bc105781c28d1e05019026b14064"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-2984-rotations.pdf",
+   "size": 3244,
+   "sha256": "7d8a182b2d8ef95d75bb610159289959bee9c26746413d0c01b10bb65f27cce7"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3025.pdf",
+   "size": 42418,
+   "sha256": "602816bd821db5116ba9fd59d8c81a7d63058f6d21a302e190e19c0eddf76b15"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3038-001033-p2.pdf",
+   "size": 56750,
+   "sha256": "f4489abfd221fea0520e00fa9e769e1844c875f67aa130c0243acf6f1e4379e9"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3042-003177-p2.pdf",
+   "size": 394897,
+   "sha256": "4db9f5e127325b375689ed8336fa71fa61b2d3068a796fbdf1ae78ee396e1576"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3044-010197-p5-ligatures.pdf",
+   "size": 24624,
+   "sha256": "79f6d8bf755e3d39409f50b62b7de3b0e3592ba2b6904fd60e06e340554cc7b5"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3053-reduced.pdf",
+   "size": 50134,
+   "sha256": "de02fe12323bb7b8cdcf375715c91ecd72628483f9bef75aede850efa8ff110e"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3061-092465-reduced.pdf",
+   "size": 23266,
+   "sha256": "7fdd5d70efc39ab4d34a6931b30448a4f716bde5dc9ff22ca95343e7b4479234"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3062-002207-p1.pdf",
+   "size": 52066,
+   "sha256": "be6adc030bef968741ccc825ed59d0aef65462f86f19fd7b535dd89e6137aa97"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3062-005717-p1.pdf",
+   "size": 11976,
+   "sha256": "f0bd011b78841db29376f648e455663600aab1685c196251f293f995162dae08"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3062-N2MOQ7YZICIYGTPLQJAWJ4HLN6CCEMHZ-reduced.pdf",
+   "size": 111124,
+   "sha256": "6e1a635a085fece06f85025e3bb9dfb5aa1b4e1415f3d2d09ad361cbc531b95b"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3067-negativeTf.pdf",
+   "size": 2459,
+   "sha256": "2d4adb040c964c00b2dc3f36f2bb04645b68aa9db9f96783f710364b8d86b191"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3110-poems-beads-cropbox.pdf",
+   "size": 44500,
+   "sha256": "bc24610183079923dcb7a292167b7eed96aecf3c6a8a91bd254a526b553ede50"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3110-poems-beads.pdf",
+   "size": 45598,
+   "sha256": "9d715ce4e964f6ccbf50e1d1c42ca5f01425a079a5c39a9581c876c56afca1b3"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3123-ADSFWTRB3HBZBZKEVESVTBRZC2MNKZF5_reduced.pdf",
+   "size": 13363,
+   "sha256": "8524eeedbd348b98baabaae5d0233c9e91474b3c8cbd19611907041a88c34d56"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3127-RAU4G6QMOVRYBISJU7R6MOVZCRFUO7P4-VFont.pdf",
+   "size": 80944,
+   "sha256": "e915930e95fef0727acc1ea2c674640d39ba2f820f4487e59f0ceb96a986762d"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3195.pdf",
+   "size": 1463,
+   "sha256": "7aaedc9bcf71d8b726c986db3cb4cc22f6d7ec90fe19a61ecbd2574e251feb85"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3498-Y5TLCWTIAE3FYDVJTV2TXRZGXLEDUNSW.pdf",
+   "size": 44136,
+   "sha256": "44c23b08f4da2db659ab4f98ea098f0fc2b9f9bb532624e99d4efebae7ab4685"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-3833-reduced.pdf",
+   "size": 101823,
+   "sha256": "69eeb7845a36925556ec8c67847864752e4421bfcb4d810b415f4f716d0ce0bd"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-4322-Empty-ToUnicode-reduced.pdf",
+   "size": 21387,
+   "sha256": "c3b4a465b7664677f13aa3079ef4e5223eac9a1cf82719a863d07034388d2798"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-4531-bidi-ligature-1.pdf",
+   "size": 5622,
+   "sha256": "05449b36c6b147652ef3c0b5404ae84b9d8c4352a43f96ec27cef8714f99b13f"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-4531-bidi-ligature-2.pdf",
+   "size": 40256,
+   "sha256": "cf4d80ac8466d07678de7651d63fda747a34b600c57fb4a8eb8faf9d612465ae"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-4532-reduced.pdf",
+   "size": 86730,
+   "sha256": "600a823076ccfdf20cc4fbe128797de58728dac80d5b088df5a066106325fa91"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-5002.pdf",
+   "size": 941,
+   "sha256": "401586241a33742d6c562ac18859d4fb3f7d078c828c2eca9db3d3a8dff5fcb1"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-5350-JX57O5E5YG6XM4FZABPULQGTW4OXPCWA-p1-reduced.pdf",
+   "size": 48143,
+   "sha256": "ad13a85449c62b7665d552e3702be867de213efb0defd8742a1d5a3d748fbfc9"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-5747-unicode-surrogate-with-diacritic-reduced.pdf",
+   "size": 2019,
+   "sha256": "4e822ba5255923364baf5fdc14141a6cb6b860a5f4f86261043e7e08c7fce382"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-5838-0024320-reduced.pdf",
+   "size": 80769,
+   "sha256": "2c0d8cccc130e50582bac9dd7786fc068d8e25a271debc341f5e724fc601d042"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-5920-4MQTG6ZXOYSMTQ444KGQOVC6ZFQHWFNY-spaces-reduced.pdf",
+   "size": 5821,
+   "sha256": "5d817c599e1d0e12d2568b75598d34df4a376a694465f14e94bbd73304754d47"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/PDFBOX-5920-Y5U2XZCKG2U6TO3FC36NCGOZECHQA2PY-p39-reduced.pdf",
+   "size": 12597,
+   "sha256": "890533587524ffc1a591214690e725326420e5c4714a81b28f11597ac3d307e1"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/compression/acroform.pdf",
+   "size": 64609,
+   "sha256": "c823ec6e6e852f569c3358c26e823e5fcd55ed1705891ce409d2ec703e8862c9"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/compression/attachment.pdf",
+   "size": 79414,
+   "sha256": "8f22a77cba7532516a486fea9e5e73cb834461d8a9bb1a4dc98185a825ddbe4a"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/compression/unencrypted.pdf",
+   "size": 71020,
+   "sha256": "a0fb09bae86c0e93b80309f4f86b1a9262bd5210eca3c0bdad0ef52094624fa8"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/cweb.pdf",
+   "size": 272008,
+   "sha256": "cdc74cc6db82dae5f68ae30a32ac154a6b35eb698f08749f3c6d5a2c2a0a2680"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/data-000001.pdf",
+   "size": 3072,
+   "sha256": "d86e452e26a91f5dced4b903eefcdaa1bb3c0acc0bb19afcd45e526074e197a7"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/eu-001.pdf",
+   "size": 68143,
+   "sha256": "ef7a64967276181a563e781bab46ea52dd376155ad2287c4e1303781203f91d8"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/hello3.pdf",
+   "size": 30269,
+   "sha256": "2b4aa9b63f3eed9a5e544b10bc677fcf70e1baaa62651e786a9d22d5dec860b2"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/PDFA3A.pdf",
+   "size": 49917,
+   "sha256": "f0d3b0e32007d4b385b8d31bd759ce0b3ec8a465d48dc7471b99faf5d8bd3b57"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/PDFBOX-4417-001031.pdf",
+   "size": 53333,
+   "sha256": "068bd51d5c74ad032d97a0ccf7964a92c48e19c3b51a87929f35c11018322ad6"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/PDFBOX-4417-054080.pdf",
+   "size": 48925,
+   "sha256": "97664b7ee67fbd45e7cb660f5cd5dc9ff033f84ba6352c89499ad2bdb272bcb2"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/PDFBOX-5762-722238.pdf",
+   "size": 35644,
+   "sha256": "3b92a366939b3bcc0193c16e5f4d33c6ad3cb89417129a6d37a7d40e9aa8cb28"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/PDFBOX-5792-240045.pdf",
+   "size": 44295,
+   "sha256": "aa34c5ebc43b47240901f651f20b28601a586e1c560d0297fc2313154ae8a349"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/PDFBOX-5809-509329.pdf",
+   "size": 43516,
+   "sha256": "4416dd00c8ebd9abce47c7465f8efbba4a7b289d2a097f09990b95af0409102f"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/PDFBOX-5811-362972.pdf",
+   "size": 44338,
+   "sha256": "fd7bbd087f837ff27a95ca5677878ba994e977b7fea71cd9b60811c2fd1ed30a"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/PDFBOX-5840-410609.pdf",
+   "size": 33084,
+   "sha256": "bb9a93ebe8e376d060fb58979e44b30c0ccc7745c234002e90bd90fcbdff043f"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/PDFBOX-6018-099267-p9-OrphanPopups.pdf",
+   "size": 2116,
+   "sha256": "23e46a392c57a0a41c5e2e3224c9198a024f53aeba0c71178aeeede297a1f238"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/PDFBox.GlobalResourceMergeTest.Doc01.decoded.pdf",
+   "size": 14336,
+   "sha256": "3556721bc9a72f9d30d0871c6c2ff79939c44da2ee3b3ba1949d4b2ed437b4cf"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/PDFBox.GlobalResourceMergeTest.Doc01.pdf",
+   "size": 9511,
+   "sha256": "d0d18eccaec3ae737cc212f33b145f5f76ba86210dd3c75783b5336079100b7e"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/PDFBox.GlobalResourceMergeTest.Doc02.decoded.pdf",
+   "size": 14336,
+   "sha256": "d6945a63ce32b5022da7605f1e1da1bf4fd6c50132e8100870ecf9c6de1c3842"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/PDFBox.GlobalResourceMergeTest.Doc02.pdf",
+   "size": 9511,
+   "sha256": "7d6338ae0f4a59a020e2135ba6fb5e0474f63e8816f8a2a66068b220f245e5b9"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/jpegrgb.pdf",
+   "size": 41204,
+   "sha256": "e4777c29ec90646d4e3c98f260926050badba2d19dc26f9cff565e47927f2565"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/merge/multitiff.pdf",
+   "size": 2928,
+   "sha256": "c1b465746f17204420348015845c8979c6bdbdaaf07616d122ab6ffec00eaf15"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/openoffice-test-document.pdf",
+   "size": 12418,
+   "sha256": "93256e712348392f3841a51d6e6e16774dcf5e2405073ebc55c64b64ac606446"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/rendering/4PP-Highlighting.pdf",
+   "size": 2497,
+   "sha256": "38c5add7f2ab569d67bce57191686d27ff3cd67f694cebad753121b0d22af7e9"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/rendering/PDFBOX-4372-2DAYCLVOFG3FTVO4RMAJJL3VTPNYDFRO-p4_reduced.pdf",
+   "size": 912,
+   "sha256": "2e899e8b5c11eee4ea5c25b523515c635d11d7e4ef4bfc971224be62be1834c7"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/rendering/source.pdf",
+   "size": 231552,
+   "sha256": "2db2bc95562d7a98c20f3294cca6e87b8c47867c60c2debbcb2081e42e0d62e9"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/rendering/survey.pdf",
+   "size": 127295,
+   "sha256": "2e8b87ea72de7dd54176354706a5d7ff9e64a12624e603ffac64aa55743bf581"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/rendering/test-landscape2.pdf",
+   "size": 10381,
+   "sha256": "1c37c29237d4ba247acbe155f7a1957ffe55b0e2795d25fe0a7c2e4f9158669d"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/rendering/tiger-as-form-xobject.pdf",
+   "size": 50798,
+   "sha256": "ab356726b3d0bc0e48d0312a4369aa45d21e68d8db2ac2f61f71d99d52eec68f"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/rotation.pdf",
+   "size": 6605,
+   "sha256": "5087c2afe763d145537d652bb3bc6c321ace3a267b2679ae2c178add3ba7f1d9"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/sampleForSpec.pdf",
+   "size": 9364,
+   "sha256": "bef74b4a96b426b56a87e7646d6e7b4e03e20793226df95af40d31ec68dfa8ec"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/sample_fonts_solidconvertor.pdf",
+   "size": 57107,
+   "sha256": "7400ec41f4274975fc4ae2d3eea076a2910491a74c97a7c2dfa653a84eac9c0a"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/simple-openoffice.pdf",
+   "size": 15023,
+   "sha256": "85e84837601e3c21899bd4b89237fb83771179c69be4565f3f0d7248bd76c74b"
+  },
+  {
+   "path": "pdfbox/src/test/resources/input/yaddatest.pdf",
+   "size": 4631,
+   "sha256": "fb3c58f73069b6f449c0c2033ff0429f4b2fbae087479eb2d11f9a554a975b34"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/encryption/AES128ExposedMeta.pdf",
+   "size": 18885,
+   "sha256": "998e95a72db2ae5c89dcec07be00530cc4ad75df1ae82e27357f8ce735be690f"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/encryption/AES256ExposedMeta.pdf",
+   "size": 26953,
+   "sha256": "c8dbdfb034d7deb98f2d2b05d63228db1336a26bfe7c74ecd1e60400cae1ee21"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/encryption/AESkeylength128.pdf",
+   "size": 11591,
+   "sha256": "4c9633e68c8a6ece14bc79ae997d44b24868d38d2beea182314807b51d925b7b"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/encryption/AESkeylength256.pdf",
+   "size": 11180,
+   "sha256": "a6701f87b613013d960c740efe52ca7fb2ae61e52a109b0bbaee4affffe26d72"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/encryption/Acroform-PDFBOX-2333.pdf",
+   "size": 982290,
+   "sha256": "88dd0f53b5e9d0596aba4853bce26a11d25790fc7f25a20462c4908e9e68bd99"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/encryption/PasswordSample-128bit.pdf",
+   "size": 8377,
+   "sha256": "1919480aba35617d69a1f9e1dce30bbe6864b3906d5c136fd7a8837826f9f750"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/encryption/PasswordSample-256bit.pdf",
+   "size": 7664,
+   "sha256": "a2f0661092483478686d92891905d9e715c9783b45ecf26376d7119fe5ab4747"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/encryption/PasswordSample-40bit.pdf",
+   "size": 8374,
+   "sha256": "7dac5439bed47d4630866f2acb75fd22386069649c2dcb88236c2ed5f020b05b"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/encryption/preEnc_20141025_105451.pdf",
+   "size": 41305,
+   "sha256": "3d756cc7b12b54955288646d846202c5e09038c8e5a32fc49c65a316a937f209"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/encryption/test.pdf",
+   "size": 12418,
+   "sha256": "93256e712348392f3841a51d6e6e16774dcf5e2405073ebc55c64b64ac606446"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcroFormForMerge-DifferentExportValues.pdf",
+   "size": 18590,
+   "sha256": "9d67be58355ca32c654bed3222ab3536202ac614c1840b7491e4b63f34bd591b"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcroFormForMerge-DifferentFieldType.pdf",
+   "size": 18222,
+   "sha256": "ef4f20b9d117e9325176166191de589f4a093f1f4f70388aff7a4f1bbdd67af1"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcroFormForMerge-DifferentOptions.pdf",
+   "size": 18580,
+   "sha256": "6ec4e615924607cb2d4f3754676503b022e34e8d877693fc0762b9e0934ae1ca"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcroFormForMerge-SameNameNode.pdf",
+   "size": 12559,
+   "sha256": "f9e225d75a84f461f36c1960b09309bfd6af3461916fc59438f4c1fd752a472c"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcroFormForMerge-TextFieldsOnly.pdf",
+   "size": 5705,
+   "sha256": "a2f4284754834436512fb35848f4fc1df55bb5e0ac3ce2e07d54fe8dd1137abc"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcroFormForMerge.pdf",
+   "size": 18543,
+   "sha256": "6955d409cd7a78fd74f00123ff3ef70968977c30e914aaa7a65ddb39a2e32e02"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcrobatMerge-DifferentExportValues-WasMaster.pdf",
+   "size": 36294,
+   "sha256": "f509e1c4b34faceaf74c8211609e55931fbb8433001fb7a6dafe437367eabb75"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcrobatMerge-DifferentExportValues.pdf",
+   "size": 36266,
+   "sha256": "4514fbfca06c1e72cdad411b13e09af97155299fb548fd26d5cd6752f6517cc9"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcrobatMerge-DifferentFieldType-WasMaster.pdf",
+   "size": 35564,
+   "sha256": "90c348cdee4fa8b6d47f7028684110e5a4040090f6413dd7cc34689b3619a48c"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcrobatMerge-DifferentFieldType.pdf",
+   "size": 35897,
+   "sha256": "dbb318fe32d3c76cab2728b6148b3f53f04c38927e7edd876b1d7cd24de081e6"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcrobatMerge-DifferentOptions-WasMaster.pdf",
+   "size": 36252,
+   "sha256": "79982c7d1a393bf0f665c2da7c1eef787fbc754ef50d2ac9a19c98058759e9f0"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcrobatMerge-DifferentOptions.pdf",
+   "size": 36255,
+   "sha256": "fc339f65ba9e05a75c1d92cc2f626242fce305ea5864f5607c2dfb6702e7d306"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcrobatMerge-SameMerged.pdf",
+   "size": 36175,
+   "sha256": "b210e7b515c1c5328a9f9f579bfee3675e376a93312678c2f7fd8fcc589015a8"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcrobatMerge-SameNameNode.pdf",
+   "size": 30122,
+   "sha256": "4f74f5c6bf5316eaf12f19dde07c44e697b09fdb2ab585c5973e9a0a30bcda3e"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/AcrobatMerge-TextFieldsOnly-SameMerged.pdf",
+   "size": 8569,
+   "sha256": "b97a95dfd011bfbcd40c191c3675cc7afbb898a4597e86f0fd0f4f06add27900"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/OverlayTestBaseRot0.pdf",
+   "size": 936,
+   "sha256": "1352e5bc31d2841fb2a2322630dc28c3add136219207e98a3826d11c6e390693"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/Overlayed-with-rot0.pdf",
+   "size": 1650,
+   "sha256": "36eb6e079ed4fc673123792140dd5a432964cc9760ac33f46cd802d8a4df2d2c"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/Overlayed-with-rot180.pdf",
+   "size": 1660,
+   "sha256": "1fab49ace0a7eabfaf04bc73b951b18b38c7d4ac83f2b603f7efc28a48b3412e"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/Overlayed-with-rot270.pdf",
+   "size": 1664,
+   "sha256": "834c08650473596baea6e08a86b134297fbb8f4debc58955a1c9c7f87190b386"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/Overlayed-with-rot90.pdf",
+   "size": 1657,
+   "sha256": "90d5d885c6fe8c8575191f3a00634efe7c5d75af1076af9ea2a0648e2a2759db"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/PDFBOX-6049-ExpectedResult.pdf",
+   "size": 5485,
+   "sha256": "20b0afc02a1bc521b2e01b070de8c22541bf10067abab519044a4b66f7aeaece"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/PDFBOX-6049-Overlay.pdf",
+   "size": 957,
+   "sha256": "bec3c0a89fa8b63ff7632972f07c1b70a9a19ee2a84357f233834733f3e5974e"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/PDFBOX-6049-Source.pdf",
+   "size": 2017,
+   "sha256": "57a3efd42ca8511cf041560f9704d941f6b803f3bc681e6fb0a0a9ba51ea2ef9"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/PDFBoxLegacyMerge-SameMerged.pdf",
+   "size": 46334,
+   "sha256": "6359fc2e8f04070207c30ba997057e051b3a1bf48f5752b17c633222e8f8cdfa"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/rot0.pdf",
+   "size": 888,
+   "sha256": "3f2f178382217411cc2fc5a57a48f847571dc605a5ed1338d4913cc0a3608eb6"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/rot180.pdf",
+   "size": 896,
+   "sha256": "a47ca93eb54266e43453f8a65074cbdffe47dc4ab2cd31cccbaaeaf20b170e9a"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/rot270.pdf",
+   "size": 898,
+   "sha256": "89b65bf93678a5e1919346880419a059f1d00280649982dbc897e4526b4a1190"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/multipdf/rot90.pdf",
+   "size": 892,
+   "sha256": "94f01ab02cbdd4f1d7b3d3d7b4d143a0a1ebafc06bd54bcdd7d2e2891a8bf9c6"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdfparser/MissingCatalog.pdf",
+   "size": 433,
+   "sha256": "3d1f9323973b220031ab84b1451d53171dce7365c65dcbc40b535600de3d7323"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdfparser/PDFBOX-6041-example.pdf",
+   "size": 21420,
+   "sha256": "070d35db701f6ccb5ed5e15de2048fe4ad6f4f97ccc7bdfd8687af362377b6ab"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdfparser/SimpleForm2Fields.pdf",
+   "size": 1123,
+   "sha256": "35e5cc7123f18932773f589dec56bdea2bf3980b6de161af696e6c14bbdb74a2"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdfparser/embedded_zip.pdf",
+   "size": 19068,
+   "sha256": "b69b9b76e2c1cba2a203dfb875a7baa0a5c4a09b22a58cbc374ee3facfec308f"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/PDFBOX-3068.pdf",
+   "size": 801,
+   "sha256": "2072a137de8355c27f8855f44c33ea6a69013bd542d4c94b22eb58830e97cc24"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/PDFBOX-6040-nodeloop.pdf",
+   "size": 398,
+   "sha256": "f27c436f7dc2803f8ecb78a97ff4d1c5f987fd8ebc00b672b0032ded80cb297f"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/badpagelabels.pdf",
+   "size": 994,
+   "sha256": "c47dd35c5fa10c127ac003056be912f434689cd42adc183890f43e8f30aa7e19"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/common/null_PDComplexFileSpecification.pdf",
+   "size": 19088,
+   "sha256": "61a4cb5ab9379544d83afb9bcc677c8d0a8b2677cefc16324d15f58768d729d2"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/common/testPDF_multiFormatEmbFiles.pdf",
+   "size": 2662,
+   "sha256": "5a72046defac7b5718dd499bcce6911c712878e0fcd3263477f8d893aea30d03"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/documentinterchange/logicalstructure/PDFBOX-2725-878725.pdf",
+   "size": 21917,
+   "sha256": "2391439547bd98bad35a7f5574f88bf80b9043ac60abdf825d20b2f069328853"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/documentinterchange/logicalstructure/PDFBOX-6261-085992.pdf",
+   "size": 19363,
+   "sha256": "d924bd1d3887c77102e4f7a22b70d737de8a80d34ccc809a78947c8449f72137"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/font/F001u_3_7j.pdf",
+   "size": 44088,
+   "sha256": "9583121474088ec9c4af2108b5636ecae2ee07cdf7b790e94c08dbd0fa733483"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/font/PDFBOX-6249-cns1-nonembedded-latin.pdf",
+   "size": 1112,
+   "sha256": "ce117f88cc04dee5ae48ecefac717aa31336682d047df6b3804dd224d8e204e1"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/annotation/AnnotationTypes.pdf",
+   "size": 17547,
+   "sha256": "d40141c738526af78389649a1391b7dc46de4cbe1e9ba571afd063a39fe19a07"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/annotation/Annotations.pdf",
+   "size": 222690,
+   "sha256": "44750527e51022ca06c7e9fac0af4cf90f1cb341b6511544409b0a2f5eb2fa12"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/annotation/PDFBOX-5797-SO79271803.pdf",
+   "size": 2067,
+   "sha256": "07a3061d6fb0dedc5adb98799e76d296cb1363adbd2712559557d6dfbee09a06"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/annotation/PDSquareAnnotationTest.pdf",
+   "size": 952,
+   "sha256": "9820b89b730b298f02b9e583f15cc7e46ab1130ab236cb63b69867b03d2b4ffe"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/form/AcroFormsBasicFields.pdf",
+   "size": 170599,
+   "sha256": "73d05cfd3a3c30ee919f0cc112f331ff874f4a4dec8ba9792877c81c312b226d"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/form/AcroFormsRotation.pdf",
+   "size": 42637,
+   "sha256": "43e770cb78cfc976b3b951f7acd068cc8e7dc5260b728d9a22745cc45dd7b01f"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/form/AlignmentTests.pdf",
+   "size": 959227,
+   "sha256": "dff038299eed2f3efb78b68475f23c3781cb9a25be83025292f2506f680756c5"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/form/CombTest.pdf",
+   "size": 7498,
+   "sha256": "69781a604bb5302ab67b21475fde0a9d3b408a146e2bbf34eabde4f14ed1c209"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/form/ControlCharacters.pdf",
+   "size": 43916,
+   "sha256": "539bb9383b16734b6ef9fdd84b2ab9ca7048dc0ca5a5ee786e7e482f5ce64d65"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/form/DifferentDALevels.pdf",
+   "size": 9021,
+   "sha256": "832619c770897373c8537fdd1230143f9669ec0b53c12204b45bc2b3d6babf81"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/form/MultilineFields.pdf",
+   "size": 978227,
+   "sha256": "683af3f0d82eb9ac46e9f9fc72068b720615b944b5355c8cb5d32e879d466e08"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/form/PDFBOX-3656-SF1199AEG (Complete).pdf",
+   "size": 79004,
+   "sha256": "61d5dd9542b40b7dcff2e23f217e12d7c930ca2fb7a62cfdd4177711f5b47567"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/form/PDFBOX-3835-input-acrobat-wrap.pdf",
+   "size": 9924,
+   "sha256": "5f785bd06dd3e1453e7ef52f30f42a4b0faf59f0ea537261c047bf958c2f08eb"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/form/PDFBOX-4958.pdf",
+   "size": 78784,
+   "sha256": "b74f4872f9980a78b7fdd7487f369b4d58478450907a524bc6f33917f1639da1"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/form/PDFBOX-5784.pdf",
+   "size": 1040970,
+   "sha256": "06904a2bd5a2733152f9f5540de3d843f02552f8a611e7862c6b33cb192992db"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/form/PDFBOX3812-acrobat-multiline-auto.pdf",
+   "size": 29737,
+   "sha256": "9163eaa4127d61be26e67e16c38bad7a712d7bfc32404348ed23ba92ccfc0ac5"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/interactive/pagenavigation/transitions_test.pdf",
+   "size": 1795,
+   "sha256": "b8fc9584da2b37e8069902794a92b10c707de3027cf31b66c48af1693f862e2d"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/page_tree_multiple_levels.pdf",
+   "size": 2346,
+   "sha256": "31a348553c6a9f1bc072b7c4191b08b745f1da27cdf9d9b7cf84848c09614ef9"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/test.unc.pdf",
+   "size": 110437,
+   "sha256": "7d452d667b62ee0c1d12e6e5ba71145a87c78f3ea0e755d3d3ad8a9d5c513ccf"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/test_pagelabels.pdf",
+   "size": 289703,
+   "sha256": "2b51d7edd5fef7569b0bb611da78af31ea820bc2a243e05d59c53a3a2e8f31d5"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/pdmodel/with_outline.pdf",
+   "size": 20066,
+   "sha256": "131e3a51c7e3215f4ac8bcabd570dbb308185f74dbd7f8f9920394f600211aea"
+  },
+  {
+   "path": "pdfbox/src/test/resources/org/apache/pdfbox/text/BidiSample.pdf",
+   "size": 21130,
+   "sha256": "dd4947a7b825c2827729065cfff07115f0742d2c7bdcb048628097c62d1acbb3"
+  },
+  {
+   "path": "tools/src/test/resources/input/ImageIOUtil/JBIG2Image.pdf",
+   "size": 8989,
+   "sha256": "1773390e74c6344740fcccfe34dbf5737f73c0640bbc89cd1c161d03335150c4"
+  },
+  {
+   "path": "tools/src/test/resources/input/ImageIOUtil/JPXTestCMYK.pdf",
+   "size": 403469,
+   "sha256": "b37f0229370f5ac04ebfd98b3c678d33f4fa3c87ee914a5a5f1c54bf7ca7994d"
+  },
+  {
+   "path": "tools/src/test/resources/input/ImageIOUtil/JPXTestGrey.pdf",
+   "size": 45755,
+   "sha256": "b1a1791f6292b792344700ee30dd7987084bf9338c28afccede3454df0fd9080"
+  },
+  {
+   "path": "tools/src/test/resources/input/ImageIOUtil/JPXTestRGB.pdf",
+   "size": 457637,
+   "sha256": "bb605c1ce58f85ac1cce9cd2b2293bebb066d6c8e0de1488b63b13116a4fd4db"
+  },
+  {
+   "path": "tools/src/test/resources/input/ImageIOUtil/ccitt4-cib-test.pdf",
+   "size": 9805,
+   "sha256": "e21174353d5a330ed41bcc4e234943a6527c635dec2a4be1a4fe701827bd0b1c"
+  },
+  {
+   "path": "tools/src/test/resources/input/ImageIOUtil/jpeg_demo.pdf",
+   "size": 61981,
+   "sha256": "2a9764e99a4661b3a12a49fb4d328e361cf4e2ed8634dea3d102a5c72f804b11"
+  },
+  {
+   "path": "tools/src/test/resources/input/ImageIOUtil/png_demo.pdf",
+   "size": 13476,
+   "sha256": "db8f4ee634583a1afdf764f935ef4235fc1902b25cd3cd88554ee8b25aa1a2f2"
+  },
+  {
+   "path": "tools/src/test/resources/input/ImageIOUtil/raw_image_demo.pdf",
+   "size": 5796,
+   "sha256": "7dcd741fae28eea6de5b2306fff608e8a3be9da7609b4b884e7de5d1433659b4"
+  },
+  {
+   "path": "tools/src/test/resources/org/apache/pdfbox/AngledExample.pdf",
+   "size": 30109,
+   "sha256": "b364ed2dd543e34179a7cb4fe2670dfbf1b0c6fd97859a65b92ceb1be8cd9376"
+  },
+  {
+   "path": "tools/src/test/resources/org/apache/pdfbox/hello3.pdf",
+   "size": 30269,
+   "sha256": "2b4aa9b63f3eed9a5e544b10bc677fcf70e1baaa62651e786a9d22d5dec860b2"
+  },
+  {
+   "path": "tools/src/test/resources/org/apache/pdfbox/testPDFPackage.pdf",
+   "size": 92359,
+   "sha256": "9676f28b3a11d339309f5d18eb1aaf51458c3cbf422183650d577b74bd8e823c"
+  }
+ ],
+ "skipped": []
+}

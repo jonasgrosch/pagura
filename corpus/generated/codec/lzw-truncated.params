@@ -1,0 +1,4 @@
+filter=LZWDecode
+outcome=valid
+repair=filter.truncated
+cap=4

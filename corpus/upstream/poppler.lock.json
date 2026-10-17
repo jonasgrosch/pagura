@@ -1,0 +1,436 @@
+{
+ "schema": 2,
+ "id": "poppler",
+ "repository": "https://gitlab.freedesktop.org/poppler/test",
+ "revision": "48b6219b84fc0a708040cb279d51095cc4e1c603",
+ "purpose": "Poppler test-data repository",
+ "patterns": [
+  "*.pdf"
+ ],
+ "use": "input documents only; no expected outputs, never normative",
+ "pdf_files": 83,
+ "bytes": 4297440,
+ "files": [
+  {
+   "path": "COPYING",
+   "size": 17992,
+   "sha256": "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670"
+  },
+  {
+   "path": "tests/blend.pdf",
+   "size": 116426,
+   "sha256": "672c376564a1c35afae523786a3e3762fae7f091e9d193b724ba153869a47bf6"
+  },
+  {
+   "path": "tests/cropbox.pdf",
+   "size": 1061,
+   "sha256": "fa29fe02b5bc9b2716c566ce86e91eaa8df3ea673dd6bbd94ff8dd2aec49ca55"
+  },
+  {
+   "path": "tests/degenerate-path.pdf",
+   "size": 753,
+   "sha256": "b5214340f5f703825ab4b68f607e6e758afbc05a35ffc94d6507ac55baebefe2"
+  },
+  {
+   "path": "tests/encoding.pdf",
+   "size": 2794,
+   "sha256": "576e32f6152db219428990d13d1afcff9d4a90a291e253d1ddc6aa147f1a9888"
+  },
+  {
+   "path": "tests/fonts.pdf",
+   "size": 3292,
+   "sha256": "26f9cbc86aa19e761f71948f0c1c18a38769c38ba0113d8da127c56507923527"
+  },
+  {
+   "path": "tests/image.pdf",
+   "size": 113219,
+   "sha256": "afa90417f0209bf783c9343fac4227d9ebc45f5892b8e4af7bd586879650f971"
+  },
+  {
+   "path": "tests/inline-image.pdf",
+   "size": 295664,
+   "sha256": "0e0afb1c845b00647dd56ed72b0d2e8a697e0c0e735dff5a96ce24242efc7b7b"
+  },
+  {
+   "path": "tests/jpeg.pdf",
+   "size": 305934,
+   "sha256": "916a849908d918251bbbd9dbba83a8be6c04ea7f941b9275b6d0cc558a6c65a3"
+  },
+  {
+   "path": "tests/mask-seams.pdf",
+   "size": 2903,
+   "sha256": "e4ed2398cb39bd8e1810728c855ad642a7172c8e103ff03a2196df5971151ed2"
+  },
+  {
+   "path": "tests/mask.pdf",
+   "size": 1733,
+   "sha256": "d3224ea05df76e9ae6d7244722515f9eac86f77f0607085e43b0db5afffbeb41"
+  },
+  {
+   "path": "tests/text.pdf",
+   "size": 113565,
+   "sha256": "9fac4cf9ac688f067ee38ddddcf9f237d4f6adf29601672e4ef1765c63997880"
+  },
+  {
+   "path": "tests/type3.pdf",
+   "size": 1281,
+   "sha256": "4b8213787e624c6ca0ca14a9c16fad390419d124dae725bfc7b73d4bced292ab"
+  },
+  {
+   "path": "tests/zero-width.pdf",
+   "size": 570,
+   "sha256": "76e2cf92aa6b08f696866c8909e4014890e1f9049f464c54cf70933e0aedace6"
+  },
+  {
+   "path": "unittestcases/A6EmbeddedFiles.pdf",
+   "size": 207836,
+   "sha256": "ab1888a44b41a7d7ac71fd79f51afb30bf8110efb5ade0c26e16ccc2e8c2de13"
+  },
+  {
+   "path": "unittestcases/ClarityOCGs.pdf",
+   "size": 667438,
+   "sha256": "5c5dd2aeb30c411da27a0b5a5eab3e573cd14209013f97d928e375f8db62b6eb"
+  },
+  {
+   "path": "unittestcases/FullScreen.pdf",
+   "size": 4903,
+   "sha256": "097a961ecf47720949f649626f691da1e306ef08022c14339d7baf07bb6d66e9"
+  },
+  {
+   "path": "unittestcases/Gday gar\u00e7on - open.pdf",
+   "size": 7304,
+   "sha256": "c3f07964d3d14610f09313ce58d39be4fb9e16016352382f0268e8d0ec9f0c9e"
+  },
+  {
+   "path": "unittestcases/Gday gar\u00e7on - owner.pdf",
+   "size": 7302,
+   "sha256": "2f2f2b926f683e752e6fce7b6f80216b17d53a4de05c92a21b09eedf8c06ee7d"
+  },
+  {
+   "path": "unittestcases/Issue637.pdf",
+   "size": 8389,
+   "sha256": "5a3b3d0ab013deee0a63227b6c4612caa45c0cbcf0e1e94e766338759ff9f010"
+  },
+  {
+   "path": "unittestcases/NestedLayers.pdf",
+   "size": 43905,
+   "sha256": "f21632dcbec947449988ca8bb3d188d99b584afc1126aeed8aac5c44750a1d6a"
+  },
+  {
+   "path": "unittestcases/PasswordEncrypted.pdf",
+   "size": 5134,
+   "sha256": "88c1905662c040028ba83ac27b226321b56ff74ea481e8efec2a3134ef02e732"
+  },
+  {
+   "path": "unittestcases/PasswordEncryptedReconstructed.pdf",
+   "size": 1610,
+   "sha256": "3c2815853e6fe5c34feb76bb14402cbc46bbd484ecd57b672fc03577d0458ee8"
+  },
+  {
+   "path": "unittestcases/UseAttachments.pdf",
+   "size": 6576,
+   "sha256": "ebbb21085dc0e26aa7d8128ec3f213f4dd7dc9ca3b0e6d5a94c0d15c0bc2d4f4"
+  },
+  {
+   "path": "unittestcases/UseNone.pdf",
+   "size": 1055,
+   "sha256": "a652bd58e833533ccc7067168f6960a6f5271f82edaf2f5742ab2190be428fce"
+  },
+  {
+   "path": "unittestcases/UseOC.pdf",
+   "size": 4707,
+   "sha256": "db2bb35cfdcd45ee805893227a15428b6ca918f9a654129ae365d68e20a31b1f"
+  },
+  {
+   "path": "unittestcases/UseThumbs.pdf",
+   "size": 4880,
+   "sha256": "b2e31ef53dacd7f44d03f91c7fd849035a9cbe7a7c24bde06de93734e0eff7d4"
+  },
+  {
+   "path": "unittestcases/WithActualText.pdf",
+   "size": 9920,
+   "sha256": "44fba5399b25815571d6a366fe371dc89ada97fb3e804803f04037fc27f77237"
+  },
+  {
+   "path": "unittestcases/WithAttachments.pdf",
+   "size": 157231,
+   "sha256": "5aca72326a3b90d747f60db2215e5099b4bebe5bb8e63bc3c0af57c794afe7a8"
+  },
+  {
+   "path": "unittestcases/bug7063.pdf",
+   "size": 13389,
+   "sha256": "63676dbd633ab308c7ec91812a1aba30e1a9012151c010404ebf16574d42f86a"
+  },
+  {
+   "path": "unittestcases/checkbox_issue_159.pdf",
+   "size": 41009,
+   "sha256": "14b65c905a0ec3d954ba5b323b73544ea9d76ac13b1f0d2e7206b6025d602d22"
+  },
+  {
+   "path": "unittestcases/deseret.pdf",
+   "size": 11964,
+   "sha256": "15557c958a539f771ea22dd10518edf5c92a417f970c94a6dd5da76fc2ebc1eb"
+  },
+  {
+   "path": "unittestcases/doublepage.pdf",
+   "size": 5910,
+   "sha256": "aa53117a8ec181a7edc8cc2d4559930c091660454af1d2e9e6a080f1a07c95bb"
+  },
+  {
+   "path": "unittestcases/encrypted-256.pdf",
+   "size": 2667,
+   "sha256": "7a635c97843a4d1d074acdc14895ff97a2cb375fa569f8ded1b7a74120e7147a"
+  },
+  {
+   "path": "unittestcases/fakebold.pdf",
+   "size": 7606,
+   "sha256": "09a8eeb541f7910ae515ba11ee33ce7975141e246d3983a8e1f6f79b78d6788b"
+  },
+  {
+   "path": "unittestcases/fieldWithUtf16Names.pdf",
+   "size": 3665,
+   "sha256": "7c7e72a53719e90bdce1fb9759954706c13705c950f8c1eb5732734502b738ff"
+  },
+  {
+   "path": "unittestcases/form_set_icon.pdf",
+   "size": 19178,
+   "sha256": "c2dc89823d49c0b216664c20d3b6edd96d83920ad0d7f3c498b95008d390a9e6"
+  },
+  {
+   "path": "unittestcases/imageretrieve+attachment.pdf",
+   "size": 193942,
+   "sha256": "a8ca52d8b435f33195a37075297b6cf7bf4335729254e46167eee1c3b8a3cfaf"
+  },
+  {
+   "path": "unittestcases/latex-hyperref-checkbox-issue-655.pdf",
+   "size": 27862,
+   "sha256": "ddf9ee0349e3c930824de6f933cf57c2d1be452c98061bccfaae5c4b666abbb0"
+  },
+  {
+   "path": "unittestcases/orientation.pdf",
+   "size": 14675,
+   "sha256": "fab4969565b516fa68f941919a2b00463b7d05f5dbe922c68d305cbb2d8f92fa"
+  },
+  {
+   "path": "unittestcases/pdf-signature-sample-2sigs-randompadded.pdf",
+   "size": 92773,
+   "sha256": "d9d30ab1768d1f98ce690941cb0f58b053fc4338b9a8f5fc7e1d585eb1550b91"
+  },
+  {
+   "path": "unittestcases/pdf-signature-sample-2sigs.pdf",
+   "size": 92773,
+   "sha256": "93a4faabd490affd4d1c24132862e7251edeaa35a037dde3ded9c68884a14c9d"
+  },
+  {
+   "path": "unittestcases/pdf20-utf8-test.pdf",
+   "size": 13830,
+   "sha256": "066cac85038db27cb85b923eb2fbdffb4c76e94bf2f4d21cc952af94b40e71fe"
+  },
+  {
+   "path": "unittestcases/pdf_with_text_form_field.pdf",
+   "size": 1958,
+   "sha256": "26e152300a53efadca55184271fad2775960f32a02de1459f74e3d2618cc77c8"
+  },
+  {
+   "path": "unittestcases/russian.pdf",
+   "size": 11806,
+   "sha256": "cf7f3725933ec39e1ae18b70ac49b022a26bad915b6886959fda45767b6a2a97"
+  },
+  {
+   "path": "unittestcases/searchAcrossLines.pdf",
+   "size": 69565,
+   "sha256": "daa5a5b57116c663c954c7d6a9a76236b239e5ab67d006a7f0263a712e34e71e"
+  },
+  {
+   "path": "unittestcases/searchAcrossLinesDoubleColumn.pdf",
+   "size": 217741,
+   "sha256": "1bc25028df633524702d30e5426cd63b31df3be52899748d1c0c1b2c76a982a8"
+  },
+  {
+   "path": "unittestcases/shapes+attachments.pdf",
+   "size": 432324,
+   "sha256": "3c0da3b09223d506f1ce146871e24cf23c34907990a40c6a90d09988fe0b1ad7"
+  },
+  {
+   "path": "unittestcases/signature/digest_mismatch/detached_hash_mismatch.pdf",
+   "size": 11492,
+   "sha256": "86b68a8b750ec9f0b8f3a12b0fb87d455869b0f7a9e0bc0b1d2cd12ff150fb62"
+  },
+  {
+   "path": "unittestcases/signature/digest_mismatch/etsi_hash_mismatch.pdf",
+   "size": 11689,
+   "sha256": "53d65c1886ec15b82585752500e16c21d815da5cd08fb40e44f6846b23d2556d"
+  },
+  {
+   "path": "unittestcases/signature/digest_mismatch/sha1_function_mismatch.pdf",
+   "size": 12873,
+   "sha256": "a7119285a1fee4980448e634992a6c747d767f935b287cee42440e4153c87ab9"
+  },
+  {
+   "path": "unittestcases/signature/digest_mismatch/sha1_hash_mismatch.pdf",
+   "size": 11620,
+   "sha256": "a716ffd71a844f5e3bb9e12731a569d9ed5dd998e5fbd7113aa4e4fd7afcc371"
+  },
+  {
+   "path": "unittestcases/signature/invalid/detached_rsa_mismatch.pdf",
+   "size": 12106,
+   "sha256": "72ec73b3ca193d81fe227ae1cd0a0d5cb5105d3247e6c3a4ddeb8826b87b4f88"
+  },
+  {
+   "path": "unittestcases/signature/invalid/etsi_esscertid_04.pdf",
+   "size": 12095,
+   "sha256": "348c8df100322ccad490e7692743ab09aa64c7fc03559cab637a4c1f5e81ec35"
+  },
+  {
+   "path": "unittestcases/signature/invalid/etsi_esscertid_05.pdf",
+   "size": 12487,
+   "sha256": "aefc462cf19794ee2dd2125f6ed357f089267379a9979e21a87d38991f0a3ab2"
+  },
+  {
+   "path": "unittestcases/signature/invalid/etsi_esscertid_06.pdf",
+   "size": 12062,
+   "sha256": "c49e7e55150e6ed7cc4be9f4e2b2d3c787ff197a57737e1d973af1a55ed3f932"
+  },
+  {
+   "path": "unittestcases/signature/invalid/etsi_esscertid_07.pdf",
+   "size": 12751,
+   "sha256": "7afe18b2d2ecf0ebee10bcd6dd5cc879efe632d80e784ed6642fb422c5fda005"
+  },
+  {
+   "path": "unittestcases/signature/invalid/etsi_esscertid_08.pdf",
+   "size": 12662,
+   "sha256": "55190dbe1868e9cf83171fd672188859313409de138564d5185fc47639dff955"
+  },
+  {
+   "path": "unittestcases/signature/invalid/etsi_esscertid_09.pdf",
+   "size": 12681,
+   "sha256": "0f916700f3bd089f58da3b97522ec6f36f9aa41e410ded594df17442c35f0055"
+  },
+  {
+   "path": "unittestcases/signature/invalid/etsi_esscertid_10.pdf",
+   "size": 12443,
+   "sha256": "385707a580720a84a8fa89efb307f9a2b09229e5e453c2860b39d62984d3dcb5"
+  },
+  {
+   "path": "unittestcases/signature/invalid/etsi_esscertid_11.pdf",
+   "size": 12238,
+   "sha256": "452405b1672dd4789267689741f5537f7f439d16100339ad034f46f72fece711"
+  },
+  {
+   "path": "unittestcases/signature/invalid/etsi_rsa_mismatch.pdf",
+   "size": 11931,
+   "sha256": "0fadf34ee09422a711e79d78cf672645aa644bc8f93a7201948b0d06c1c66fcc"
+  },
+  {
+   "path": "unittestcases/signature/invalid/mismatch_detached_vs_sha1.pdf",
+   "size": 11728,
+   "sha256": "d53718f1e79a378dfedbeff652b5e08d4fcbf85e07730a2fd533d2b09e6a866b"
+  },
+  {
+   "path": "unittestcases/signature/invalid/mismatch_etsi_vs_sha1.pdf",
+   "size": 12531,
+   "sha256": "97f927cd5061f15525cdc07241f20a66d1c8d6c44c002b11dc051cfc8c065a96"
+  },
+  {
+   "path": "unittestcases/signature/invalid/mismatch_sha1_vs_detached.pdf",
+   "size": 11725,
+   "sha256": "2e26759535d70492b4f2d6f7e43f748c71c7bfec6e417978f1ac6e94b1997c10"
+  },
+  {
+   "path": "unittestcases/signature/invalid/sha1_rsa_mismatch.pdf",
+   "size": 12230,
+   "sha256": "473415655ff90016b1b069098f8588a77cf71a0dd08bee9769966876063376ee"
+  },
+  {
+   "path": "unittestcases/signature/valid/detached.pdf",
+   "size": 11256,
+   "sha256": "a4e564c53c64dc0d9265b39bb64d8fb1abb6c52d589bd8762735dcf97770b062"
+  },
+  {
+   "path": "unittestcases/signature/valid/etsi.pdf",
+   "size": 11443,
+   "sha256": "92f53995a4ba60cf9eb39def005d2ee033cb4c3af1559a3a65ef3f5431d63455"
+  },
+  {
+   "path": "unittestcases/signature/valid/etsi_esscertid_01.pdf",
+   "size": 12174,
+   "sha256": "17ff0b30329a201985d707148659c6819c789f96a816c7b3503d8dfb63c15175"
+  },
+  {
+   "path": "unittestcases/signature/valid/etsi_esscertid_02.pdf",
+   "size": 12781,
+   "sha256": "b8fdcca289944e12c9be38b44ac12371fae124f73985931ea9acbc148f9be990"
+  },
+  {
+   "path": "unittestcases/signature/valid/etsi_esscertid_03.pdf",
+   "size": 13118,
+   "sha256": "0a4b49e05a9369e3f3fadb2975afad215cc9eb140f50c4a84ec6d457114f24fc"
+  },
+  {
+   "path": "unittestcases/signature/valid/sha1.pdf",
+   "size": 11373,
+   "sha256": "cc55a8ccaf8c420d3888f5852f806d5bdf33a8d478eb1692b0159eb0b66fd3e2"
+  },
+  {
+   "path": "unittestcases/signature/valid/sha1_mixed_functions.pdf",
+   "size": 12549,
+   "sha256": "1b371060fa90f3012c16742bf8f9830f499fbcce01dd5169846efe7e5e67b302"
+  },
+  {
+   "path": "unittestcases/simpleSignedFile.pdf",
+   "size": 16284,
+   "sha256": "74de6965baefd65a3e06546cd25e100080e7988321224d9b536af3e04fd8544e"
+  },
+  {
+   "path": "unittestcases/some-text-pgp_signed.pdf",
+   "size": 103534,
+   "sha256": "086c4a90f8a5e15c0ac0e327565eee7c0b771c742d37a14a6e4adc28eaa3adf6"
+  },
+  {
+   "path": "unittestcases/stroke-alpha-pattern.pdf",
+   "size": 1993,
+   "sha256": "bf6a7a2588f101707f203beb71a1999e8747d449d7548bf04ffa5b606b56b000"
+  },
+  {
+   "path": "unittestcases/tooltip.pdf",
+   "size": 62871,
+   "sha256": "ae1ba53635feeda38fa6079854b56287fe768ddb71d2debebdd97785216c91c8"
+  },
+  {
+   "path": "unittestcases/truetype.pdf",
+   "size": 17282,
+   "sha256": "00362f969af8c8130e1294c75336d7153078e70494934a4d86ad623a1d96552b"
+  },
+  {
+   "path": "unittestcases/two-annots-same-font.pdf",
+   "size": 29851,
+   "sha256": "b7a87c964b6effbd9a86cff779f374e22c4825bd7cc4c787729b2ec380cfb865"
+  },
+  {
+   "path": "unittestcases/type3.pdf",
+   "size": 237360,
+   "sha256": "ac9e532f8c5a97c1ae2db9bf65d78ca3c8b3093b2691f3dcf2b3085288ceced7"
+  },
+  {
+   "path": "unittestcases/utf16le-annot.pdf",
+   "size": 57098,
+   "sha256": "a6e1e790badee2c4b2dea61794250167066536c676a754daea5e142b44688f0e"
+  },
+  {
+   "path": "unittestcases/vis_policy_test.pdf",
+   "size": 60190,
+   "sha256": "8a2b6714f8579c664316f22a05f9e359aeab93fe53e9cd72b4608076abba69b2"
+  },
+  {
+   "path": "unittestcases/xr01.pdf",
+   "size": 8312,
+   "sha256": "b0215cb4a47d78b4b94ecef29534b75aac80ace0d693ee10e8a8523a846ec459"
+  },
+  {
+   "path": "unittestcases/xr02.pdf",
+   "size": 8613,
+   "sha256": "30311f8bb7e3a70cdc80306ea2dd8bc3fbdb56187c3aee4275338db1f0c0b5df"
+  }
+ ],
+ "skipped": []
+}

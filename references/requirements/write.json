@@ -1,0 +1,20 @@
+{
+  "schema": 2,
+  "area": "write",
+  "scope": "Clause locators refer to Adobe PDF32000_2008 (ISO 32000-1) until ISO 32000-2 full text is acquired and reviewed.",
+  "requirements": [
+    {
+      "id": "deterministic-writing",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.3",
+        "7.5"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura/tests/write.rs"
+      ],
+      "gaps": "incremental editing, signature preservation, cross-engine corpus"
+    }
+  ]
+}

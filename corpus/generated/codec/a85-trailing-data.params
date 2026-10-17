@@ -1,0 +1,4 @@
+filter=ASCII85Decode
+outcome=valid
+repair=filter.trailing-data
+cap=4

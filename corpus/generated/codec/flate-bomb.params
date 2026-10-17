@@ -1,0 +1,4 @@
+filter=FlateDecode
+outcome=limit
+repair=none
+cap=31

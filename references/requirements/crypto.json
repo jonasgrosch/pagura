@@ -1,0 +1,117 @@
+{
+  "schema": 2,
+  "area": "crypto",
+  "scope": "Independently implemented from remembered published algorithms. No standards cache was available; ISO 32000-2 full-text clause/table locators await verification. Published known-answer vectors are checked independently in Rust and Python. Encrypted PDFs await W2 integration.",
+  "requirements": [
+    {
+      "id": "crypto-hash-vectors",
+      "reference": "published-crypto-standards",
+      "clauses": [
+        "RFC 1321",
+        "FIPS 180-4"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-crypto unit tests",
+        "tools/fixturegen/crypto.py self_check",
+        "corpus/manifests/crypto.json"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "crypto-cipher-vectors",
+      "reference": "published-crypto-standards",
+      "clauses": [
+        "FIPS 197 Appendix C",
+        "SP 800-38A F.2",
+        "RFC 6229"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-crypto unit tests",
+        "tools/fixturegen/crypto.py self_check",
+        "corpus/manifests/crypto.json"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "security-r2",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.6",
+        "Algorithms 1\u20137"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-crypto unit tests",
+        "tools/fixturegen/crypto.py self_check",
+        "corpus/manifests/crypto.json"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "security-r3",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.6",
+        "Algorithms 1\u20137"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-crypto unit tests",
+        "tools/fixturegen/crypto.py self_check",
+        "corpus/manifests/crypto.json"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "security-r4",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.6",
+        "Algorithms 1\u20137"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-crypto unit tests",
+        "tools/fixturegen/crypto.py self_check",
+        "corpus/manifests/crypto.json"
+      ],
+      "gaps": "Document-layer crypt filter selection belongs to W2."
+    },
+    {
+      "id": "security-r5-extension",
+      "reference": "adobe-pdf17-extension-level3",
+      "clauses": [
+        "Adobe Supplement to ISO 32000-1, extension level 3",
+        "Algorithms 2.A, 11\u201313"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-crypto unit tests",
+        "tools/fixturegen/crypto.py self_check",
+        "corpus/manifests/crypto.json",
+        "standard::modern::tests independent Algorithm 13 outcome vectors"
+      ],
+      "gaps": "Extension support is intentional; not a claim that revision 5 is normative PDF 2.0.",
+      "permissions_policy": "Password-authenticated keys report Validated or Inconsistent(PermissionsCheck); the document caller owns strict/reported-repair policy. Structural errors remain Syntax."
+    },
+    {
+      "id": "security-r6",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.6",
+        "Algorithms 2.A, 2.B, 11\u201313"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-crypto unit tests",
+        "tools/fixturegen/crypto.py self_check",
+        "corpus/manifests/crypto.json",
+        "standard::modern::tests independent Algorithm 13 outcome vectors"
+      ],
+      "gaps": "Non-ASCII passwords require SASLprep and return security.saslprep; document integration belongs to W2.",
+      "permissions_policy": "Password-authenticated keys report Validated or Inconsistent(PermissionsCheck); the document caller owns strict/reported-repair policy. Structural errors remain Syntax."
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema": 2,
+  "area": "core",
+  "scope": "Clause locators refer to Adobe PDF32000_2008 (ISO 32000-1) until ISO 32000-2 full text is acquired and reviewed.",
+  "requirements": [
+    {
+      "id": "syntax-classic-xref",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.2",
+        "7.3",
+        "7.5.4",
+        "7.5.5"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-core",
+        "pagura/tests/syntax.rs",
+        "pagura/tests/document.rs"
+      ],
+      "gaps": "xref streams, object streams, incremental revisions"
+    },
+    {
+      "id": "rectangle-normalization",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.9.5"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-core rect",
+        "classic/normalized-media-box"
+      ],
+      "gaps": ""
+    }
+  ]
+}

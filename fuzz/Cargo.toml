@@ -1,0 +1,50 @@
+# Coverage-guided fuzzing with cargo-fuzz (libFuzzer). This is test tooling in
+# its own workspace, like the benchmark adapters: libFuzzer is C++ and its
+# entry points need `no_mangle`, so this crate cannot forbid unsafe code and
+# must never become a product dependency. The product crates under test keep
+# `forbid(unsafe_code)`. Run with the nightly toolchain: see fuzz/README.md.
+[package]
+name = "pagura-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+members = ["."]
+
+[dependencies]
+libfuzzer-sys = "=0.4.13"
+pagura = { path = "../crates/pagura" }
+pagura-codec = { path = "../crates/pagura-codec" }
+pagura-core = { path = "../crates/pagura-core" }
+
+[[bin]]
+name = "syntax"
+path = "fuzz_targets/syntax.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "filters"
+path = "fuzz_targets/filters.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "document"
+path = "fuzz_targets/document.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "render"
+path = "fuzz_targets/render.rs"
+test = false
+doc = false
+bench = false

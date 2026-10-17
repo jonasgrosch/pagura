@@ -1,0 +1,163 @@
+#![forbid(unsafe_code)]
+//! The command-line tool, run as a subprocess.
+
+use pagura_testkit::{assert_bytes_eq, fixture, fixture_path};
+use std::path::PathBuf;
+use std::process::Command;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static NEXT: AtomicUsize = AtomicUsize::new(0);
+
+/// A temporary directory removed on drop.
+struct Scratch(PathBuf);
+
+impl Scratch {
+    fn new() -> std::io::Result<Self> {
+        let id = NEXT.fetch_add(1, Ordering::Relaxed);
+        let path = std::env::temp_dir().join(format!("pagura-cli-{}-{id}", std::process::id()));
+        std::fs::create_dir(&path)?;
+        Ok(Self(path))
+    }
+}
+
+impl Drop for Scratch {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+fn pagura() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_pagura"))
+}
+
+#[test]
+fn renders_exact_pixels_and_roundtrip_preserves_original_bytes() {
+    let scratch = Scratch::new().unwrap();
+    let pdf = fixture_path("classic", "rectangle.pdf");
+    let image = scratch.0.join("render.ppm");
+    let saved = scratch.0.join("saved.pdf");
+    assert!(
+        pagura()
+            .arg("render")
+            .arg(&pdf)
+            .arg(&image)
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert_bytes_eq(
+        &std::fs::read(image).unwrap(),
+        &fixture("classic", "rectangle.ppm"),
+        "CLI render",
+    );
+    assert!(
+        pagura()
+            .arg("roundtrip")
+            .arg(&pdf)
+            .arg(&saved)
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert_eq!(std::fs::read(saved).unwrap(), std::fs::read(pdf).unwrap());
+}
+
+#[test]
+fn inspect_reports_repairs_and_strict_mode_rejects_them() {
+    let pdf = fixture_path("classic", "trailing-bytes.pdf");
+    let output = pagura().arg("inspect").arg(&pdf).output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains("\"repairs\":[\"file.trailing-bytes\"]"),
+        "{stdout}"
+    );
+    let strict = pagura()
+        .args(["inspect", "--strict"])
+        .arg(&pdf)
+        .output()
+        .unwrap();
+    assert!(!strict.status.success());
+}
+
+#[test]
+fn does_not_overwrite_files_or_emit_partial_unsupported_images() {
+    let scratch = Scratch::new().unwrap();
+    let existing = scratch.0.join("existing.ppm");
+    std::fs::write(&existing, b"preserve me").unwrap();
+    let result = pagura()
+        .arg("render")
+        .arg(fixture_path("classic", "rectangle.pdf"))
+        .arg(&existing)
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    assert_eq!(std::fs::read(existing).unwrap(), b"preserve me");
+    let missing = scratch.0.join("unsupported.ppm");
+    let result = pagura()
+        .arg("render")
+        .arg(fixture_path("classic", "text-unsupported.pdf"))
+        .arg(&missing)
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    assert!(String::from_utf8_lossy(&result.stderr).contains("unsupported [operator.BT]"));
+    assert!(!missing.exists());
+}
+
+#[test]
+fn convert_writes_every_page_and_reports_stage_timings() {
+    let scratch = Scratch::new().unwrap();
+    let output = pagura()
+        .args(["convert", "--timings"])
+        .arg(fixture_path("classic", "graphics-state.pdf"))
+        .arg(&scratch.0)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let image = std::fs::read(scratch.0.join("page-0001.ppm")).unwrap();
+    assert_bytes_eq(
+        &image,
+        &fixture("classic", "graphics-state.ppm"),
+        "converted page",
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    for field in [
+        "\"open_ns\":",
+        "\"render_ns\":",
+        "\"emit_ns\":",
+        "\"total_ns\":",
+    ] {
+        assert!(stdout.contains(field), "{field} missing from {stdout}");
+    }
+}
+
+#[test]
+fn convert_page_ranges_are_validated_before_writing() {
+    let scratch = Scratch::new().unwrap();
+    let pdf = fixture_path("classic", "two-pages.pdf");
+    let status = pagura()
+        .arg("convert")
+        .arg(&pdf)
+        .arg(&scratch.0)
+        .args(["72", "1", "1"])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    assert!(!scratch.0.join("page-0001.ppm").exists());
+    assert!(scratch.0.join("page-0002.ppm").exists());
+    let empty = Scratch::new().unwrap();
+    let status = pagura()
+        .arg("convert")
+        .arg(&pdf)
+        .arg(&empty.0)
+        .args(["72", "1", "2"])
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    assert_eq!(std::fs::read_dir(&empty.0).unwrap().count(), 0);
+}

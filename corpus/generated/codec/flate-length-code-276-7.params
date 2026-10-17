@@ -1,0 +1,5 @@
+filter=FlateDecode
+outcome=valid
+repair=none
+cap=67
+raw=1

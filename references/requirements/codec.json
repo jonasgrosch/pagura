@@ -1,0 +1,119 @@
+{
+  "schema": 2,
+  "area": "codec",
+  "scope": "ISO 32000-2 clause locators from format knowledge; local full text unavailable and no network used. RFC 1950/1951 and PNG/TIFF locators also await primary-text review.",
+  "requirements": [
+    {
+      "id": "filter-flate",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.4",
+        "RFC 1950 2.2",
+        "RFC 1951 3.2"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+      ],
+      "gaps": "Primary-text clause verification pending, especially RFC 1951 code 284 extra=31. Valid zlib headers win automatic format detection; explicitly raw containers use decode_raw_deflate for header collisions."
+    },
+    {
+      "id": "filter-lzw",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.4.2"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+      ],
+      "gaps": "Primary-text clause verification pending; no broad conformance claim."
+    },
+    {
+      "id": "filter-ascii85",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.3"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+      ],
+      "gaps": "Primary-text clause verification pending; no broad conformance claim."
+    },
+    {
+      "id": "filter-asciihex",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.2"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+      ],
+      "gaps": "Primary-text clause verification pending; no broad conformance claim."
+    },
+    {
+      "id": "filter-runlength",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.5"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+      ],
+      "gaps": "Primary-text clause verification pending; no broad conformance claim."
+    },
+    {
+      "id": "predictor-png",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.4.4",
+        "PNG 9"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+      ],
+      "gaps": "Positive Colors >255 or Columns >u32::MAX require a coordinated stable API widening; currently Unsupported(predictor.dimensions). Primary-text clause verification pending."
+    },
+    {
+      "id": "predictor-tiff",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.4.4",
+        "TIFF 6.0 Predictor 2"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+      ],
+      "gaps": "Positive Colors >255 or Columns >u32::MAX require a coordinated stable API widening; currently Unsupported(predictor.dimensions). Primary-text clause verification pending."
+    },
+    {
+      "id": "decoder-output-cap",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+      ],
+      "gaps": "Primary-text clause verification pending; no broad conformance claim."
+    },
+    {
+      "id": "filter-repairs",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "ADR 0003"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+      ],
+      "gaps": "Primary-text clause verification pending; no broad conformance claim."
+    }
+  ]
+}

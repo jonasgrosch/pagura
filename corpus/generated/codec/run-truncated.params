@@ -1,0 +1,4 @@
+filter=RunLengthDecode
+outcome=valid
+repair=filter.truncated
+cap=2

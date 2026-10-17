@@ -1,0 +1,4 @@
+filter=ASCII85Decode
+outcome=valid
+repair=filter.truncated
+cap=5

@@ -1,0 +1,4 @@
+filter=ASCIIHexDecode
+outcome=valid
+repair=filter.trailing-data
+cap=1

@@ -1,0 +1,63 @@
+{
+  "schema": 2,
+  "area": "raster",
+  "scope": "Independently derived geometry; ISO 32000-2 locators not verified against the unavailable full text.",
+  "requirements": [
+    {
+      "id": "raster-exact-area",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "8.5.3.3"
+      ],
+      "status": "implemented, bounded intersection sweep",
+      "tests": [
+        "raster/triangle",
+        "raster/concave",
+        "raster/self-intersection",
+        "raster/overlap-nonzero",
+        "raster/overlap-evenodd"
+      ],
+      "gaps": "quadratic active-edge intersection discovery; explicit work limit"
+    },
+    {
+      "id": "raster-curves",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "8.5.2.2"
+      ],
+      "status": "adaptive device-space flattening at 1/256 pixel",
+      "tests": [
+        "raster/cubic"
+      ],
+      "gaps": "subdivision limits reject extreme curves"
+    },
+    {
+      "id": "raster-strokes",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "8.4.3.2",
+        "8.4.3.3",
+        "8.4.3.4",
+        "8.4.3.5",
+        "8.4.3.6"
+      ],
+      "status": "implemented",
+      "tests": [
+        "raster/cap-butt",
+        "raster/cap-round",
+        "raster/cap-square",
+        "raster/round-dot",
+        "pagura-raster/src/tests.rs",
+        "raster/join-miter",
+        "raster/join-bevel",
+        "raster/join-round",
+        "raster/miter-limit",
+        "raster/dash-odd-phase",
+        "raster/closed-dash-seam",
+        "raster/zero-on-dash",
+        "raster/square-dot"
+      ],
+      "gaps": "Broader curve-stroke offset, curved-dash and extreme-coordinate independent vectors remain"
+    }
+  ]
+}

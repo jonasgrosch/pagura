@@ -1,0 +1,8 @@
+filter=FlateDecode
+outcome=valid
+repair=none
+cap=54
+predictor=2
+bits=2
+colors=5
+columns=7

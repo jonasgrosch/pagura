@@ -1,0 +1,377 @@
+{
+  "schema": 2,
+  "area": "raster",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "raster/triangle",
+      "kind": "vector",
+      "description": "Rational polygon/pixel intersection area",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/triangle.path",
+          "sha256": "58835470daa1aee8a00b15a5e632113146f50b4bf210a2882af201c6d0aaa639"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/triangle.pgm",
+          "sha256": "6a0d3937a023b29e6830eec4382d6507757e0ca2d0740767ced8795e28a2b357"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/concave",
+      "kind": "vector",
+      "description": "Rational polygon/pixel intersection area",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/concave.path",
+          "sha256": "d29ea5d0e92254e783f3312c3d3e0defd69594719d52d7e8dabdcf71116a5b42"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/concave.pgm",
+          "sha256": "d814057c9e590b42fb7faf064aa573c248219a491d39273bf6f4ee7e46819082"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/fractional-rectangle",
+      "kind": "vector",
+      "description": "Rational polygon/pixel intersection area",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/fractional-rectangle.path",
+          "sha256": "3c52601dff8e30206e39ea8b68d4e5789645ba33a292492b1fd102781e206642"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/fractional-rectangle.pgm",
+          "sha256": "f9e246575d14dab125de4e632003eae3f6b1adc63441b66eb48cd512305b024a"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/self-intersection",
+      "kind": "vector",
+      "description": "Bow tie split analytically into disjoint triangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/self-intersection.path",
+          "sha256": "a7debbb3667179426fbced2321c3a6c489de19297d092bed5d3a8acf43dc6d2c"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/self-intersection.pgm",
+          "sha256": "b155ebaff72830f2ced7418e4426a4ec6e81b2e7e75ce4593b0a56611375c421"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/overlap-nonzero",
+      "kind": "vector",
+      "description": "Exact set union or symmetric difference of fractional rectangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/overlap-nonzero.path",
+          "sha256": "d56864accfea67b5a2f266a8a3700a2b25df525c8fcdb6e7f8b21969e9720e81"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/overlap-nonzero.pgm",
+          "sha256": "6a6488b7940d16774f54468caef6be2e911a9db683b988c94614a1bdba5f179d"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/overlap-evenodd",
+      "kind": "vector",
+      "description": "Exact set union or symmetric difference of fractional rectangles",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/overlap-evenodd.path",
+          "sha256": "9f0177e103430ffbc36042dbc0abe17f709e10c900116280ae9c9693bcaf65d3"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/overlap-evenodd.pgm",
+          "sha256": "34026a5252fa91310f779827b0e5b287b754866ae33e7fcb7249910f6877e23b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/cap-butt",
+      "kind": "vector",
+      "description": "128x128 midpoint samples of geometric definition",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/cap-butt.path",
+          "sha256": "8c3889f4d7fd23edc5e8a80a5b477e3518ed85cf7a898295e16af376c280ef9a"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/cap-butt.pgm",
+          "sha256": "22cfc8cc12a7cc8d3420aa71a256c0e11761cd789724a97e7f6b90964a776cea"
+        }
+      },
+      "tolerance": 3,
+      "sample_rate": 128
+    },
+    {
+      "id": "raster/cap-round",
+      "kind": "vector",
+      "description": "128x128 midpoint samples of geometric definition",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/cap-round.path",
+          "sha256": "cb2182a1b80db85cc5456ff42e860c9d3483b0d439a6637a08ea27a89e48c46f"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/cap-round.pgm",
+          "sha256": "14e24f2f4a331ed29cdbe57e7b30b587226bf267d423dfe39c0b1fb2bc4a3d43"
+        }
+      },
+      "tolerance": 3,
+      "sample_rate": 128
+    },
+    {
+      "id": "raster/cap-square",
+      "kind": "vector",
+      "description": "128x128 midpoint samples of geometric definition",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/cap-square.path",
+          "sha256": "f201311309352304641f03ecacc207657bee8ca7d946c6276f48e4fb0dd4d4a0"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/cap-square.pgm",
+          "sha256": "50f42500b182e004e58142868f29fc6b56045222840936731e862f4c922c6be3"
+        }
+      },
+      "tolerance": 3,
+      "sample_rate": 128
+    },
+    {
+      "id": "raster/square-dot",
+      "kind": "vector",
+      "description": "Rational polygon/pixel intersection area",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/square-dot.path",
+          "sha256": "b1b2558ad1d30130f3392452ba709371cea775eafb336eb697f28bbb94c623fc"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/square-dot.pgm",
+          "sha256": "397ba07aa8a465109da6effdd0a9ca214f7fa15bed6968c4bbb7e39cea8c822f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/join-miter",
+      "kind": "vector",
+      "description": "Rational polygon/pixel intersection area",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/join-miter.path",
+          "sha256": "d7c870f5038f4700525a9ce45e42f4885e9b9c5d91d6a5e8288dad757219b7dc"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/join-miter.pgm",
+          "sha256": "a6ae4eef19db9b2f7f349c1f3917b3f25fa59db42c4c7ea68b999fdc496bb19f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/join-bevel",
+      "kind": "vector",
+      "description": "Rational polygon/pixel intersection area",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/join-bevel.path",
+          "sha256": "2ad55cc18da97507bc29bb0a7219ad03f5777df255824ca69f5f19608372c912"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/join-bevel.pgm",
+          "sha256": "9c39e763c665b8c243d9651848aaabb458762983b5b13f63e34a3427fccb8f0f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/miter-limit",
+      "kind": "vector",
+      "description": "Rational polygon/pixel intersection area",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/miter-limit.path",
+          "sha256": "6bee29edaf6e57d356d0df72ad3ded2ebce3955d26642dcaf306d911480dafbc"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/miter-limit.pgm",
+          "sha256": "9c39e763c665b8c243d9651848aaabb458762983b5b13f63e34a3427fccb8f0f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/join-round",
+      "kind": "vector",
+      "description": "128x128 midpoint samples of geometric definition",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/join-round.path",
+          "sha256": "8a97e8541b29f201b84ef45ab899754eda201506ec566bec57a22badd6da1791"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/join-round.pgm",
+          "sha256": "04a52c963cf2a180e26e1a4d1b63e63162c335dfb285f42d8935b9b743d6a497"
+        }
+      },
+      "tolerance": 3,
+      "sample_rate": 128
+    },
+    {
+      "id": "raster/dash-odd-phase",
+      "kind": "vector",
+      "description": "128x128 midpoint samples of geometric definition",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/dash-odd-phase.path",
+          "sha256": "19ccfc0e554c62c4dfec57fc8338fe85e10f16c146cb186bf05017b86e21f250"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/dash-odd-phase.pgm",
+          "sha256": "8938b3cd5df6a9267ea5edc68dd0e8f305c9ffe942d2d0432b9a8285cbd18b81"
+        }
+      },
+      "tolerance": 3,
+      "sample_rate": 128
+    },
+    {
+      "id": "raster/closed-dash-seam",
+      "kind": "vector",
+      "description": "An on-dash ending exactly at a closed seam keeps its join",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/closed-dash-seam.path",
+          "sha256": "a04ebb9d047d9bcf7811428824d82f8097352c77ffa8e9799ff54ba2904f4d0e"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/closed-dash-seam.pgm",
+          "sha256": "9fd2af89f5ddce09e795d8ddcc7a1a0f92be1219ed35918085b90fa230ab5918"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/zero-on-dash",
+      "kind": "vector",
+      "description": "128x128 midpoint samples of geometric definition",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/zero-on-dash.path",
+          "sha256": "14cdf12b507e81dec64756e45bbe7eb2c2e8990f4012056398f613f67b9195da"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/zero-on-dash.pgm",
+          "sha256": "7b4120c8b97f963a97eac584cd620c8b4df05c694b420a350b387fd8e1af9e23"
+        }
+      },
+      "tolerance": 3,
+      "sample_rate": 128
+    },
+    {
+      "id": "raster/round-dot",
+      "kind": "vector",
+      "description": "128x128 midpoint samples of geometric definition",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/round-dot.path",
+          "sha256": "b3616b266724d330d0c4c188bed985c395c9dfa9d70f4609a44928a62112ff7a"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/round-dot.pgm",
+          "sha256": "66efd487be8accaea8b8fcc113623f99175f121d9db7a262d1aa0fdd0a6a2ba6"
+        }
+      },
+      "tolerance": 3,
+      "sample_rate": 128
+    },
+    {
+      "id": "raster/cubic",
+      "kind": "vector",
+      "description": "128x128 midpoint samples of geometric definition",
+      "requirements": [
+        "raster-curves"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/cubic.path",
+          "sha256": "0b9990d03bb432cac72795030a635eac808c4be8da6de3fe678b93946fc727fd"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/cubic.pgm",
+          "sha256": "8fe81310d8cf950099d2f0c58e45d72fbf0140999b7e0ab73be2364b8cbec120"
+        }
+      },
+      "tolerance": 3,
+      "sample_rate": 128
+    }
+  ]
+}

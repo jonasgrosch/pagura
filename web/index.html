@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pagura PDF viewer</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header>
+    <strong>Pagura</strong>
+    <label class="button" for="file">Open PDF</label>
+    <input id="file" type="file" accept="application/pdf,.pdf">
+    <span id="filename">Choose a PDF or drop it here</span>
+    <label><input id="strict" type="checkbox"> Strict validation</label>
+  </header>
+  <nav aria-label="Page controls">
+    <button id="previous" disabled aria-label="Previous page">←</button>
+    <label>Page <input id="page" type="number" value="1" min="1" disabled></label>
+    <span id="count">of 0</span>
+    <button id="next" disabled aria-label="Next page">→</button>
+    <label>Zoom <select id="zoom" disabled>
+      <option value="0.5">50%</option><option value="0.75">75%</option>
+      <option value="1" selected>100%</option><option value="1.5">150%</option>
+      <option value="2">200%</option><option value="3">300%</option>
+    </select></label>
+    <span id="status" role="status" aria-live="polite">Starting engine…</span>
+  </nav>
+  <div id="error" role="alert" hidden></div>
+  <main id="viewport" aria-label="PDF page" tabindex="0"><div id="page-surface" hidden></div></main>
+  <aside>
+    <details id="diagnostics"><summary id="diagnostic-count">Repairs: 0</summary><ul id="repair-list"></ul></details>
+    <p>Local preview engine. Unsupported content is reported explicitly. Documents stay in this browser.</p>
+  </aside>
+  <script type="module" src="./viewer.mjs"></script>
+</body>
+</html>

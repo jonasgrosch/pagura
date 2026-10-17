@@ -1,0 +1,165 @@
+{
+  "schema": 2,
+  "area": "document",
+  "scope": "Clause locators refer to Adobe PDF32000_2008 (ISO 32000-1) until ISO 32000-2 full text is acquired and reviewed.",
+  "requirements": [
+    {
+      "id": "page-tree",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.7.3"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura/tests/document.rs"
+      ],
+      "gaps": "broad real-document validation"
+    },
+    {
+      "id": "undefined-reference-null",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.3.10"
+      ],
+      "status": "implemented",
+      "tests": [
+        "classic/undefined-reference-is-null"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "recovery-reported",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "framework; first repairs",
+      "tests": [
+        "pagura-core diagnostic",
+        "classic/trailing-bytes"
+      ],
+      "gaps": "xref reconstruction and the ADR 0003 repair catalogue"
+    },
+    {
+      "id": "xref-streams",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.5.8"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-document unit tests",
+        "corpus/manifests/document.json"
+      ],
+      "gaps": "W1 filtered variants require integration; broad corpus validation"
+    },
+    {
+      "id": "object-streams",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.5.7"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-document unit tests",
+        "corpus/manifests/document.json"
+      ],
+      "gaps": "broad real-document validation"
+    },
+    {
+      "id": "document-revisions",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.5.6",
+        "7.5.8.4"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-document unit tests",
+        "corpus/manifests/document.json"
+      ],
+      "gaps": "broad real-document validation"
+    },
+    {
+      "id": "document-repairs",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.5"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-document reconstruction strict/repair tests",
+        "corpus/manifests/document.json"
+      ],
+      "gaps": "bounded token scan plus ordered indexes; broad real-world corpus and fuzzing validation remain"
+    },
+    {
+      "id": "document-security",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.6"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-document unit tests",
+        "corpus/manifests/document.json"
+      ],
+      "gaps": "end-to-end password authentication and decryption require W3 integration"
+    },
+    {
+      "id": "document-header-recovery",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.5.2"
+      ],
+      "status": "implemented; bounded repairs",
+      "tests": [
+        "document/header-text",
+        "document/header-space",
+        "document/header-tab"
+      ],
+      "gaps": "bounded to supported versions and an EOL within 1024 bytes after the version"
+    },
+    {
+      "id": "security-field-recovery",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.3.4.2",
+        "7.6"
+      ],
+      "status": "implemented; bounded repairs",
+      "tests": [
+        "document/permissions-unsigned",
+        "document/hash-literal-eol",
+        "document/hash-zero-padding"
+      ],
+      "gaps": "raw literal fallback currently requires a file-backed Encrypt object; core token-span API requested"
+    },
+    {
+      "id": "catalog-type-recovery",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.7.2",
+        "7.7.3"
+      ],
+      "status": "implemented; bounded repairs",
+      "tests": [
+        "document/catalog-type-missing",
+        "document/catalog-type-missing-rebuilt"
+      ],
+      "gaps": "requires a direct Pages reference resolving to an explicitly typed Pages node"
+    },
+    {
+      "id": "stream-boundary-recovery",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.3.8.1",
+        "7.5"
+      ],
+      "status": "implemented; bounded repairs",
+      "tests": [
+        "document/stream-bare-cr",
+        "document/rebuild-indirect-stream-boundary"
+      ],
+      "gaps": "ambiguous or absent stream boundaries remain errors; missing page definitions cannot be invented"
+    }
+  ]
+}

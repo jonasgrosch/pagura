@@ -1,0 +1,5 @@
+filter=FlateDecode
+outcome=syntax
+repair=none
+cap=4096
+raw=1

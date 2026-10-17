@@ -1,0 +1,1363 @@
+{
+  "schema": 1,
+  "sources": [
+    {
+      "id": "pdf20-access",
+      "title": "PDF 2.0 / ISO 32000-2:2020, Errata Collection 3",
+      "url": "https://pdfa.org/resource/iso-32000-2/",
+      "kind": "access-page",
+      "redistribution": "not granted by this project; private cache only",
+      "status": "unavailable",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "normative-index",
+      "title": "Complete PDF 2.0 normative reference index",
+      "url": "https://pdfa.org/iso-32000-normative-references/",
+      "kind": "index",
+      "redistribution": "not granted by this project; private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdfa.org/iso-32000-normative-references/",
+      "sha256": "c9e4f5650f4f10136ac54fc8ee64582bdf2901d91ddd444bdaee00c0cb87d2ab",
+      "bytes": 402932,
+      "mime": "text/html",
+      "cache_path": ".cache/references/c9e4f5650f4f10136ac54fc8ee64582bdf2901d91ddd444bdaee00c0cb87d2ab.html",
+      "retrieved_at": "2026-10-17T14:42:27.741385+00:00"
+    },
+    {
+      "id": "legacy-index",
+      "title": "Legacy Adobe specifications and extensions",
+      "url": "https://pdfa.org/resource/pdf-specification-archive/",
+      "kind": "index",
+      "redistribution": "not granted by this project; private cache only",
+      "status": "unavailable",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "pdf-errata",
+      "title": "PDF specification errata; retain approval status",
+      "url": "https://pdf-issues.pdfa.org/",
+      "kind": "errata",
+      "redistribution": "not granted by this project; private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/",
+      "sha256": "fc70dd943cf4ce7db8632e4226df20310a1aa2ff6933bfdfe4a772b560249e5e",
+      "bytes": 34259,
+      "mime": "text/html",
+      "cache_path": ".cache/references/fc70dd943cf4ce7db8632e4226df20310a1aa2ff6933bfdfe4a772b560249e5e.html",
+      "retrieved_at": "2026-10-17T14:42:28.061525+00:00"
+    },
+    {
+      "id": "iso-status",
+      "title": "Current ISO PDF standards and extensions",
+      "url": "https://pdfa.org/iso-status/",
+      "kind": "index",
+      "redistribution": "not granted by this project; private cache only",
+      "status": "unavailable",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "icc-specifications",
+      "title": "ICC specification versions",
+      "url": "https://www.color.org/icc_specs2/",
+      "kind": "index",
+      "redistribution": "not granted by this project; private cache only",
+      "status": "cached",
+      "resolved_url": "https://www.color.org/icc_specs2/",
+      "sha256": "4e51cc8cbfccfc1ad2d6b44ddae4b95c0ef0b29191717d1ed61054eb3b05e7e9",
+      "bytes": 28269,
+      "mime": "text/html",
+      "cache_path": ".cache/references/4e51cc8cbfccfc1ad2d6b44ddae4b95c0ef0b29191717d1ed61054eb3b05e7e9.html",
+      "retrieved_at": "2026-10-17T14:42:28.527428+00:00"
+    },
+    {
+      "id": "icc-v43",
+      "title": "ICC.1:2010 (PDF 2.0 dated reference)",
+      "url": "https://www.color.org/specification/ICC1v43_2010-12.pdf",
+      "kind": "specification",
+      "redistribution": "not granted by this project; private cache only",
+      "status": "cached",
+      "resolved_url": "https://archive.color.org/specification/ICC1v43_2010-12.pdf",
+      "sha256": "cbb26a01abcf55fb6741d710a2e9aee2fd03de1b99af8a1b6baca2299234322d",
+      "bytes": 2335478,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/cbb26a01abcf55fb6741d710a2e9aee2fd03de1b99af8a1b6baca2299234322d.pdf",
+      "retrieved_at": "2026-10-17T14:42:28.836518+00:00"
+    },
+    {
+      "id": "pades-baseline",
+      "title": "ETSI EN 319 142-1 V1.2.1",
+      "url": "https://www.etsi.org/deliver/etsi_en/319100_319199/31914201/01.02.01_60/en_31914201v010201p.pdf",
+      "kind": "specification",
+      "redistribution": "not granted by this project; private cache only",
+      "status": "cached",
+      "resolved_url": "https://www.etsi.org/deliver/etsi_en/319100_319199/31914201/01.02.01_60/en_31914201v010201p.pdf",
+      "sha256": "93e01407673ae22bdd0fadfc3a85df76411f1cfb1a3b53db47326a9d9658efb3",
+      "bytes": 215803,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/93e01407673ae22bdd0fadfc3a85df76411f1cfb1a3b53db47326a9d9658efb3.pdf",
+      "retrieved_at": "2026-10-17T14:42:29.440149+00:00"
+    },
+    {
+      "id": "verapdf-rules",
+      "title": "veraPDF PDF/A and PDF/UA machine validation",
+      "url": "https://docs.verapdf.org/validation/",
+      "kind": "validation",
+      "redistribution": "not granted by this project; private cache only",
+      "status": "cached",
+      "resolved_url": "https://docs.verapdf.org/validation/",
+      "sha256": "053f7cdd982c8afa78f44b0f203bf4d923dce3e4f832c5c7b28abdfc6b8def54",
+      "bytes": 9727,
+      "mime": "text/html",
+      "cache_path": ".cache/references/053f7cdd982c8afa78f44b0f203bf4d923dce3e4f832c5c7b28abdfc6b8def54.html",
+      "retrieved_at": "2026-10-17T14:42:29.701486+00:00"
+    },
+    {
+      "id": "ghent-suite",
+      "title": "Ghent PDF Output Suite 5",
+      "url": "https://gwg.org/resources/ghent-pdf-output-suite/",
+      "kind": "corpus-access",
+      "redistribution": "not granted by this project; private cache only",
+      "status": "cached",
+      "resolved_url": "https://gwg.org/resources/ghent-pdf-output-suite/",
+      "sha256": "52114c9c2cae0690d5c71d379e2621127b51419f82ed9a6270356ae29164603c",
+      "bytes": 245671,
+      "mime": "text/html",
+      "cache_path": ".cache/references/52114c9c2cae0690d5c71d379e2621127b51419f82ed9a6270356ae29164603c.html",
+      "retrieved_at": "2026-10-17T14:42:29.886173+00:00"
+    },
+    {
+      "id": "adobe-automation",
+      "title": "Adobe desktop automation policy",
+      "url": "https://helpx.adobe.com/acrobat/kb/automation-and-document-workflows.html",
+      "kind": "license-policy",
+      "redistribution": "not granted by this project; private cache only",
+      "status": "unavailable",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "ref-16f12bb9b52e",
+      "url": "https://github.com/adobe-type-tools/font-tech-notes/blob/main/pdfs/5902.AdobePSNameGeneration.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://github.com/adobe-type-tools/font-tech-notes/blob/main/pdfs/5902.AdobePSNameGeneration.pdf",
+      "sha256": "ddfc810bfa25936e57e0c3b832805d5ed4c32205ca18fbc8781e90eb0d79a7c8",
+      "bytes": 215166,
+      "mime": "text/html",
+      "cache_path": ".cache/references/ddfc810bfa25936e57e0c3b832805d5ed4c32205ca18fbc8781e90eb0d79a7c8.html",
+      "retrieved_at": "2026-10-17T14:42:30.714238+00:00"
+    },
+    {
+      "id": "ref-c0143558b251",
+      "url": "https://pdf-issues.pdfa.org/15930-9-2020/index.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/15930-9-2020/index.html",
+      "sha256": "7fefc9c7431c184dd08100f8052ab473c769a0584922d2dde5518555f63cab4a",
+      "bytes": 26431,
+      "mime": "text/html",
+      "cache_path": ".cache/references/7fefc9c7431c184dd08100f8052ab473c769a0584922d2dde5518555f63cab4a.html",
+      "retrieved_at": "2026-10-17T14:42:30.262708+00:00"
+    },
+    {
+      "id": "ref-d0cfe2bcc074",
+      "url": "https://pdf-issues.pdfa.org/16612-3-2020/index.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/16612-3-2020/index.html",
+      "sha256": "ec2d456cf94cb887490c69b921090a620369279b943c46bfb54abb446d6ab13d",
+      "bytes": 25870,
+      "mime": "text/html",
+      "cache_path": ".cache/references/ec2d456cf94cb887490c69b921090a620369279b943c46bfb54abb446d6ab13d.html",
+      "retrieved_at": "2026-10-17T14:42:30.246982+00:00"
+    },
+    {
+      "id": "ref-c2b5f7de03e2",
+      "url": "https://pdf-issues.pdfa.org/16684-2-2014/clauseAnnexC.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/16684-2-2014/clauseAnnexC.html",
+      "sha256": "cd615e3012e67c5c5f9b98bf4696b9e5794e9e222e5a70bae04b649aec992386",
+      "bytes": 26690,
+      "mime": "text/html",
+      "cache_path": ".cache/references/cd615e3012e67c5c5f9b98bf4696b9e5794e9e222e5a70bae04b649aec992386.html",
+      "retrieved_at": "2026-10-17T14:42:30.261114+00:00"
+    },
+    {
+      "id": "ref-330312ca06f7",
+      "url": "https://pdf-issues.pdfa.org/16684-2-2014/index.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/16684-2-2014/index.html",
+      "sha256": "338b5009c446742f0d774d721797cbe361c1259fec3809e9345d1722d14e1c3d",
+      "bytes": 25957,
+      "mime": "text/html",
+      "cache_path": ".cache/references/338b5009c446742f0d774d721797cbe361c1259fec3809e9345d1722d14e1c3d.html",
+      "retrieved_at": "2026-10-17T14:42:30.452090+00:00"
+    },
+    {
+      "id": "ref-b738a6e9181c",
+      "url": "https://pdf-issues.pdfa.org/19005-4-2020/clause06.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/19005-4-2020/clause06.html",
+      "sha256": "90935a765e1a2c06404bbfeaef725755f2a0f1c61667f6b93fb939b23127828f",
+      "bytes": 30221,
+      "mime": "text/html",
+      "cache_path": ".cache/references/90935a765e1a2c06404bbfeaef725755f2a0f1c61667f6b93fb939b23127828f.html",
+      "retrieved_at": "2026-10-17T14:42:30.465613+00:00"
+    },
+    {
+      "id": "ref-8a12a4885a72",
+      "url": "https://pdf-issues.pdfa.org/19005-4-2020/index.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/19005-4-2020/index.html",
+      "sha256": "f3263d7ee85257f8c35f27c4ba5e00f203cdbacf6bf49eee4bb2cbe6d2a27569",
+      "bytes": 26496,
+      "mime": "text/html",
+      "cache_path": ".cache/references/f3263d7ee85257f8c35f27c4ba5e00f203cdbacf6bf49eee4bb2cbe6d2a27569.html",
+      "retrieved_at": "2026-10-17T14:42:30.463869+00:00"
+    },
+    {
+      "id": "ref-f109467df6ed",
+      "url": "https://pdf-issues.pdfa.org/21757-1-2020/clause02.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/21757-1-2020/clause02.html",
+      "sha256": "d9ac39cb4171164653bcd91f4b8a0b258baf1a108ed44d0e5b63248d2c02cc4c",
+      "bytes": 26685,
+      "mime": "text/html",
+      "cache_path": ".cache/references/d9ac39cb4171164653bcd91f4b8a0b258baf1a108ed44d0e5b63248d2c02cc4c.html",
+      "retrieved_at": "2026-10-17T14:42:30.655303+00:00"
+    },
+    {
+      "id": "ref-eddd1ba98d46",
+      "url": "https://pdf-issues.pdfa.org/21757-1-2020/clause03.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/21757-1-2020/clause03.html",
+      "sha256": "491bd017f54ea9b4098a604794ec1f7748109cbaac73b597844c00ce5234cbc7",
+      "bytes": 26317,
+      "mime": "text/html",
+      "cache_path": ".cache/references/491bd017f54ea9b4098a604794ec1f7748109cbaac73b597844c00ce5234cbc7.html",
+      "retrieved_at": "2026-10-17T14:42:30.753142+00:00"
+    },
+    {
+      "id": "ref-7be6dfc00bd6",
+      "url": "https://pdf-issues.pdfa.org/21757-1-2020/clause10.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/21757-1-2020/clause10.html",
+      "sha256": "32960c9124abaf0f0b71d38c26eb719182cd9af9ac7e3b7040fb6980ede29643",
+      "bytes": 31666,
+      "mime": "text/html",
+      "cache_path": ".cache/references/32960c9124abaf0f0b71d38c26eb719182cd9af9ac7e3b7040fb6980ede29643.html",
+      "retrieved_at": "2026-10-17T14:42:30.682340+00:00"
+    },
+    {
+      "id": "ref-bd758f0015e5",
+      "url": "https://pdf-issues.pdfa.org/21757-1-2020/index.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/21757-1-2020/index.html",
+      "sha256": "89c37da78c90614db29894692b48276270b87482fcfc07d471c6f644a60f44ac",
+      "bytes": 26916,
+      "mime": "text/html",
+      "cache_path": ".cache/references/89c37da78c90614db29894692b48276270b87482fcfc07d471c6f644a60f44ac.html",
+      "retrieved_at": "2026-10-17T14:42:30.873147+00:00"
+    },
+    {
+      "id": "ref-90d83299f685",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clause00.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clause00.html",
+      "sha256": "17ad55bd569cfe2fa722e5c84db40901b955cd975d9f875ac96d6f0a3cf67763",
+      "bytes": 27307,
+      "mime": "text/html",
+      "cache_path": ".cache/references/17ad55bd569cfe2fa722e5c84db40901b955cd975d9f875ac96d6f0a3cf67763.html",
+      "retrieved_at": "2026-10-17T14:42:30.888379+00:00"
+    },
+    {
+      "id": "ref-05f37af131bb",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clause02.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clause02.html",
+      "sha256": "967f62607ad627075f62de9a2388263b942ee67c74d6a0c7fd77edcc7036ede7",
+      "bytes": 29099,
+      "mime": "text/html",
+      "cache_path": ".cache/references/967f62607ad627075f62de9a2388263b942ee67c74d6a0c7fd77edcc7036ede7.html",
+      "retrieved_at": "2026-10-17T14:42:30.942548+00:00"
+    },
+    {
+      "id": "ref-a239ebe1b418",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clause03.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clause03.html",
+      "sha256": "0f5a7613543f39218b72a1153a25cab8370ad2fc6dee8dfcfeabc18021bd50ee",
+      "bytes": 31550,
+      "mime": "text/html",
+      "cache_path": ".cache/references/0f5a7613543f39218b72a1153a25cab8370ad2fc6dee8dfcfeabc18021bd50ee.html",
+      "retrieved_at": "2026-10-17T14:42:30.945755+00:00"
+    },
+    {
+      "id": "ref-ac083290405c",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clause04.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clause04.html",
+      "sha256": "9c1c6bab1e9f45240f6adff79fae088f2abff44a5af6cffcc07c5587adb6d2f2",
+      "bytes": 27852,
+      "mime": "text/html",
+      "cache_path": ".cache/references/9c1c6bab1e9f45240f6adff79fae088f2abff44a5af6cffcc07c5587adb6d2f2.html",
+      "retrieved_at": "2026-10-17T14:42:31.070529+00:00"
+    },
+    {
+      "id": "ref-f4be1104a141",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clause07.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clause07.html",
+      "sha256": "1aa2698bd6538688377283edecbfb4048b92734eb324200ae0c9981d69497d98",
+      "bytes": 153625,
+      "mime": "text/html",
+      "cache_path": ".cache/references/1aa2698bd6538688377283edecbfb4048b92734eb324200ae0c9981d69497d98.html",
+      "retrieved_at": "2026-10-17T14:42:31.121487+00:00"
+    },
+    {
+      "id": "ref-86b28396ba83",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clause08.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clause08.html",
+      "sha256": "cacb35e47fb228867499fd014257a6e2a043ec293d547610a180e048d3998ac0",
+      "bytes": 79716,
+      "mime": "text/html",
+      "cache_path": ".cache/references/cacb35e47fb228867499fd014257a6e2a043ec293d547610a180e048d3998ac0.html",
+      "retrieved_at": "2026-10-17T14:42:31.172137+00:00"
+    },
+    {
+      "id": "ref-8c0c37d09c6e",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clause09.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clause09.html",
+      "sha256": "1a7998e07027e14120ec343b17fb45af6ef1a679d903b36109972692820966be",
+      "bytes": 66892,
+      "mime": "text/html",
+      "cache_path": ".cache/references/1a7998e07027e14120ec343b17fb45af6ef1a679d903b36109972692820966be.html",
+      "retrieved_at": "2026-10-17T14:42:31.169156+00:00"
+    },
+    {
+      "id": "ref-c2cfdd163eb4",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clause10.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clause10.html",
+      "sha256": "f4fd880a275bc819b88a8e8d5637e29f1ec30c69f315863b16e681984dd24a15",
+      "bytes": 35294,
+      "mime": "text/html",
+      "cache_path": ".cache/references/f4fd880a275bc819b88a8e8d5637e29f1ec30c69f315863b16e681984dd24a15.html",
+      "retrieved_at": "2026-10-17T14:42:31.280220+00:00"
+    },
+    {
+      "id": "ref-823031c6d5d4",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clause11.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clause11.html",
+      "sha256": "27920a454bb56d49b0516c02b1b9e36b1b26dafdc9a0e649417b0bf4bedf1967",
+      "bytes": 31108,
+      "mime": "text/html",
+      "cache_path": ".cache/references/27920a454bb56d49b0516c02b1b9e36b1b26dafdc9a0e649417b0bf4bedf1967.html",
+      "retrieved_at": "2026-10-17T14:42:31.309889+00:00"
+    },
+    {
+      "id": "ref-e94148e56a97",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clause12.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clause12.html",
+      "sha256": "a0c7c07a61dcfc1ea0bae802199cc45945e9177f79248a4667feff4a83332590",
+      "bytes": 136028,
+      "mime": "text/html",
+      "cache_path": ".cache/references/a0c7c07a61dcfc1ea0bae802199cc45945e9177f79248a4667feff4a83332590.html",
+      "retrieved_at": "2026-10-17T14:42:31.444360+00:00"
+    },
+    {
+      "id": "ref-56c78ea83019",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clause13.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clause13.html",
+      "sha256": "767e16fadd7e1a62ceb531198765177e0ff66683ba7e3b341098a2f8178d8bc9",
+      "bytes": 64688,
+      "mime": "text/html",
+      "cache_path": ".cache/references/767e16fadd7e1a62ceb531198765177e0ff66683ba7e3b341098a2f8178d8bc9.html",
+      "retrieved_at": "2026-10-17T14:42:31.393369+00:00"
+    },
+    {
+      "id": "ref-b7e855632066",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clause14.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clause14.html",
+      "sha256": "822590775a78aafec3d07eac509f3bbd4926a89b8c45223b93cbdda7a6b9eb66",
+      "bytes": 147450,
+      "mime": "text/html",
+      "cache_path": ".cache/references/822590775a78aafec3d07eac509f3bbd4926a89b8c45223b93cbdda7a6b9eb66.html",
+      "retrieved_at": "2026-10-17T14:42:31.529103+00:00"
+    },
+    {
+      "id": "ref-25c74e41c22b",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexA.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexA.html",
+      "sha256": "e0b4430fed6ec5746c19b7a950d592c76759e59dfcb7ea3277d86ccccaf5e4e5",
+      "bytes": 27751,
+      "mime": "text/html",
+      "cache_path": ".cache/references/e0b4430fed6ec5746c19b7a950d592c76759e59dfcb7ea3277d86ccccaf5e4e5.html",
+      "retrieved_at": "2026-10-17T14:42:31.490020+00:00"
+    },
+    {
+      "id": "ref-8733b5b1a50a",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexD.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexD.html",
+      "sha256": "63ebdc162e06a5bdd04c0b42aff0c81e368de4e9aa59e1d65ee9fd76fb4ce2f6",
+      "bytes": 28678,
+      "mime": "text/html",
+      "cache_path": ".cache/references/63ebdc162e06a5bdd04c0b42aff0c81e368de4e9aa59e1d65ee9fd76fb4ce2f6.html",
+      "retrieved_at": "2026-10-17T14:42:31.599234+00:00"
+    },
+    {
+      "id": "ref-b9d95e71b8e3",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexE.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexE.html",
+      "sha256": "3eebd234f1cd67e11b0c6e8e50ce47ff92e6dae60fc277f322ec459bb9d481c1",
+      "bytes": 28202,
+      "mime": "text/html",
+      "cache_path": ".cache/references/3eebd234f1cd67e11b0c6e8e50ce47ff92e6dae60fc277f322ec459bb9d481c1.html",
+      "retrieved_at": "2026-10-17T14:42:31.629098+00:00"
+    },
+    {
+      "id": "ref-f84a34d6ab5b",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexF.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexF.html",
+      "sha256": "43a0e8b9cbe575daeb3da36fbe6a577c433515a18c2dcb7167637ae252768bd2",
+      "bytes": 31017,
+      "mime": "text/html",
+      "cache_path": ".cache/references/43a0e8b9cbe575daeb3da36fbe6a577c433515a18c2dcb7167637ae252768bd2.html",
+      "retrieved_at": "2026-10-17T14:42:31.696471+00:00"
+    },
+    {
+      "id": "ref-d07c7a0bf170",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexH.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexH.html",
+      "sha256": "37298318ac99d7053619e4f588f2e3133131d494c1abd3b9ee503bc9713eb19e",
+      "bytes": 37394,
+      "mime": "text/html",
+      "cache_path": ".cache/references/37298318ac99d7053619e4f588f2e3133131d494c1abd3b9ee503bc9713eb19e.html",
+      "retrieved_at": "2026-10-17T14:42:31.730394+00:00"
+    },
+    {
+      "id": "ref-518154a9d868",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexL.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexL.html",
+      "sha256": "51226cab8f64ced6e4e576601ce54511981d7cb2b331f730993606dd17dd58cb",
+      "bytes": 29844,
+      "mime": "text/html",
+      "cache_path": ".cache/references/51226cab8f64ced6e4e576601ce54511981d7cb2b331f730993606dd17dd58cb.html",
+      "retrieved_at": "2026-10-17T14:42:31.788813+00:00"
+    },
+    {
+      "id": "ref-60a468b4ef2e",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexO.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexO.html",
+      "sha256": "36df70652dc511c9b152c03d976f268da96c990ca39dad223fb8ae5d366a9ac9",
+      "bytes": 25979,
+      "mime": "text/html",
+      "cache_path": ".cache/references/36df70652dc511c9b152c03d976f268da96c990ca39dad223fb8ae5d366a9ac9.html",
+      "retrieved_at": "2026-10-17T14:42:31.838449+00:00"
+    },
+    {
+      "id": "ref-fe22f4c1c8b7",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexQ.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseAnnexQ.html",
+      "sha256": "7bfa6876c77535fe8af5ccd8800b9ae82b82010611d58eee9e80045c6e8a7a69",
+      "bytes": 27819,
+      "mime": "text/html",
+      "cache_path": ".cache/references/7bfa6876c77535fe8af5ccd8800b9ae82b82010611d58eee9e80045c6e8a7a69.html",
+      "retrieved_at": "2026-10-17T14:42:31.899211+00:00"
+    },
+    {
+      "id": "ref-e36058763e90",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseBibliography.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/clauseBibliography.html",
+      "sha256": "cf5a29d7ed5ba9c8a5360fb5baf70dc0033370346300650fcf85b536af4058de",
+      "bytes": 25989,
+      "mime": "text/html",
+      "cache_path": ".cache/references/cf5a29d7ed5ba9c8a5360fb5baf70dc0033370346300650fcf85b536af4058de.html",
+      "retrieved_at": "2026-10-17T14:42:31.927635+00:00"
+    },
+    {
+      "id": "ref-0bbc0b4caadb",
+      "url": "https://pdf-issues.pdfa.org/32000-2-2020/index.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32000-2-2020/index.html",
+      "sha256": "49bcc5721b07bdaa4688c76f6700684bebf3989f8628773bc717511bf4069394",
+      "bytes": 43119,
+      "mime": "text/html",
+      "cache_path": ".cache/references/49bcc5721b07bdaa4688c76f6700684bebf3989f8628773bc717511bf4069394.html",
+      "retrieved_at": "2026-10-17T14:42:32.004441+00:00"
+    },
+    {
+      "id": "ref-f7ba9bced6ba",
+      "url": "https://pdf-issues.pdfa.org/32001-2022/clause05.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32001-2022/clause05.html",
+      "sha256": "33f4fe2e98af72d9e44576fdc868932f90987aff3964d686075597b0927b3e2f",
+      "bytes": 28278,
+      "mime": "text/html",
+      "cache_path": ".cache/references/33f4fe2e98af72d9e44576fdc868932f90987aff3964d686075597b0927b3e2f.html",
+      "retrieved_at": "2026-10-17T14:42:32.041960+00:00"
+    },
+    {
+      "id": "ref-0a1ed5514d45",
+      "url": "https://pdf-issues.pdfa.org/32001-2022/index.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32001-2022/index.html",
+      "sha256": "a9f369d240f94de94adc52c30ccccc104e30d4d1217b2ee0a104c45f611f1331",
+      "bytes": 26185,
+      "mime": "text/html",
+      "cache_path": ".cache/references/a9f369d240f94de94adc52c30ccccc104e30d4d1217b2ee0a104c45f611f1331.html",
+      "retrieved_at": "2026-10-17T14:42:32.089378+00:00"
+    },
+    {
+      "id": "ref-d68f5ab6759e",
+      "url": "https://pdf-issues.pdfa.org/32002-2022/clause01.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32002-2022/clause01.html",
+      "sha256": "45b339aae668dc0cfbb9eb2aece74766d1041593973d365fae607a1b0d55377a",
+      "bytes": 26287,
+      "mime": "text/html",
+      "cache_path": ".cache/references/45b339aae668dc0cfbb9eb2aece74766d1041593973d365fae607a1b0d55377a.html",
+      "retrieved_at": "2026-10-17T14:42:32.121680+00:00"
+    },
+    {
+      "id": "ref-942e3857dff9",
+      "url": "https://pdf-issues.pdfa.org/32002-2022/clause05.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32002-2022/clause05.html",
+      "sha256": "c2b4dfd93d27cce4720e3d83b81fdc0576b2c48c4b6c335470a016eb005a75dd",
+      "bytes": 28868,
+      "mime": "text/html",
+      "cache_path": ".cache/references/c2b4dfd93d27cce4720e3d83b81fdc0576b2c48c4b6c335470a016eb005a75dd.html",
+      "retrieved_at": "2026-10-17T14:42:32.203972+00:00"
+    },
+    {
+      "id": "ref-b53599d8b463",
+      "url": "https://pdf-issues.pdfa.org/32002-2022/index.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32002-2022/index.html",
+      "sha256": "0cc5493f03c43114b994628cedee356e3dc152119e2deb42e9ad0d5e6f231f23",
+      "bytes": 26563,
+      "mime": "text/html",
+      "cache_path": ".cache/references/0cc5493f03c43114b994628cedee356e3dc152119e2deb42e9ad0d5e6f231f23.html",
+      "retrieved_at": "2026-10-17T14:42:32.231177+00:00"
+    },
+    {
+      "id": "ref-a54655066f9e",
+      "url": "https://pdf-issues.pdfa.org/32005-2023/clause07.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32005-2023/clause07.html",
+      "sha256": "e3fc02e6219756bb9f1e438a168ccb4b6c732f4e4b647525874066d505061c1e",
+      "bytes": 35796,
+      "mime": "text/html",
+      "cache_path": ".cache/references/e3fc02e6219756bb9f1e438a168ccb4b6c732f4e4b647525874066d505061c1e.html",
+      "retrieved_at": "2026-10-17T14:42:32.288271+00:00"
+    },
+    {
+      "id": "ref-86248b74fd46",
+      "url": "https://pdf-issues.pdfa.org/32005-2023/index.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32005-2023/index.html",
+      "sha256": "b93117397b9d0c2b02884f253445902665ac84c87ee9d594012120e0053356e6",
+      "bytes": 26518,
+      "mime": "text/html",
+      "cache_path": ".cache/references/b93117397b9d0c2b02884f253445902665ac84c87ee9d594012120e0053356e6.html",
+      "retrieved_at": "2026-10-17T14:42:32.317181+00:00"
+    },
+    {
+      "id": "ref-6bcdf365245f",
+      "url": "https://pdf-issues.pdfa.org/32007-2024/index.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/32007-2024/index.html",
+      "sha256": "82bbb7b610a05fe7c9b6ad4b4fcba1ae3e4e3a77c0c330b9c74fea239a5b745d",
+      "bytes": 26189,
+      "mime": "text/html",
+      "cache_path": ".cache/references/82bbb7b610a05fe7c9b6ad4b4fcba1ae3e4e3a77c0c330b9c74fea239a5b745d.html",
+      "retrieved_at": "2026-10-17T14:42:32.410611+00:00"
+    },
+    {
+      "id": "ref-53bf7dd70b39",
+      "url": "https://pdf-issues.pdfa.org/pdf-declarations/clause07.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/pdf-declarations/clause07.html",
+      "sha256": "068fb7473a09d13326f4b2620dc7924dddcac1ab0301566f7e627c0d03b46e0b",
+      "bytes": 26374,
+      "mime": "text/html",
+      "cache_path": ".cache/references/068fb7473a09d13326f4b2620dc7924dddcac1ab0301566f7e627c0d03b46e0b.html",
+      "retrieved_at": "2026-10-17T14:42:32.427842+00:00"
+    },
+    {
+      "id": "ref-88b0dc3102a6",
+      "url": "https://pdf-issues.pdfa.org/pdf-declarations/clause08.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/pdf-declarations/clause08.html",
+      "sha256": "a44e7021393a693239e28ff2328e8eb1d2756d825b839b67500397f8e33c5945",
+      "bytes": 27188,
+      "mime": "text/html",
+      "cache_path": ".cache/references/a44e7021393a693239e28ff2328e8eb1d2756d825b839b67500397f8e33c5945.html",
+      "retrieved_at": "2026-10-17T14:42:32.493374+00:00"
+    },
+    {
+      "id": "ref-10168801234f",
+      "url": "https://pdf-issues.pdfa.org/pdf-declarations/index.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/pdf-declarations/index.html",
+      "sha256": "4e8d92ffad50d98b2cfadcf97fd2ad5e585daab64edd8c2d060cedd1b7925019",
+      "bytes": 26151,
+      "mime": "text/html",
+      "cache_path": ".cache/references/4e8d92ffad50d98b2cfadcf97fd2ad5e585daab64edd8c2d060cedd1b7925019.html",
+      "retrieved_at": "2026-10-17T14:42:32.521267+00:00"
+    },
+    {
+      "id": "ref-6a8c5011307e",
+      "url": "https://pdf-issues.pdfa.org/wtpdf-1/clause06.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/wtpdf-1/clause06.html",
+      "sha256": "59520b06a613f99c33d18433f56727cf492017ca4bc6635ae3a5dd5da8db84e5",
+      "bytes": 27947,
+      "mime": "text/html",
+      "cache_path": ".cache/references/59520b06a613f99c33d18433f56727cf492017ca4bc6635ae3a5dd5da8db84e5.html",
+      "retrieved_at": "2026-10-17T14:42:32.606699+00:00"
+    },
+    {
+      "id": "ref-a7c081616714",
+      "url": "https://pdf-issues.pdfa.org/wtpdf-1/clause08.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/wtpdf-1/clause08.html",
+      "sha256": "9ef145cf23546538dcf9c2c2b46d7c497444968bcad9e21a76a63b290345c7f2",
+      "bytes": 26899,
+      "mime": "text/html",
+      "cache_path": ".cache/references/9ef145cf23546538dcf9c2c2b46d7c497444968bcad9e21a76a63b290345c7f2.html",
+      "retrieved_at": "2026-10-17T14:42:32.614967+00:00"
+    },
+    {
+      "id": "ref-93ff0090f695",
+      "url": "https://pdf-issues.pdfa.org/wtpdf-1/index.html",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdf-issues.pdfa.org/wtpdf-1/index.html",
+      "sha256": "f79f3e339db650d536c102d83538cc68375092a5689052bd9fa14ab9751e2a08",
+      "bytes": 25998,
+      "mime": "text/html",
+      "cache_path": ".cache/references/f79f3e339db650d536c102d83538cc68375092a5689052bd9fa14ab9751e2a08.html",
+      "retrieved_at": "2026-10-17T14:42:32.694030+00:00"
+    },
+    {
+      "id": "ref-66573d1d29aa",
+      "url": "https://pdfa.org/norm-refs/5014.CIDFont_Spec.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "unavailable",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "ref-c57948f56daa",
+      "url": "https://pdfa.org/norm-refs/5015.Type1_Supp.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdfa.org/norm-refs/5015.Type1_Supp.pdf",
+      "sha256": "1f56c69e80c4ee04e02c5b04944fda7f06a84a526947fa7c13a8a8b5932f7227",
+      "bytes": 231862,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/1f56c69e80c4ee04e02c5b04944fda7f06a84a526947fa7c13a8a8b5932f7227.pdf",
+      "retrieved_at": "2026-10-17T14:42:32.738408+00:00"
+    },
+    {
+      "id": "ref-aa499e5efc0d",
+      "url": "https://pdfa.org/norm-refs/5116.DCT_Filter.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdfa.org/norm-refs/5116.DCT_Filter.pdf",
+      "sha256": "0cbdc36b7f7b7a4d33c2aa60e4190136c118cd7d05c15768da5971ec0f74db16",
+      "bytes": 162202,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/0cbdc36b7f7b7a4d33c2aa60e4190136c118cd7d05c15768da5971ec0f74db16.pdf",
+      "retrieved_at": "2026-10-17T14:42:32.774811+00:00"
+    },
+    {
+      "id": "ref-8527494a2d0e",
+      "url": "https://pdfa.org/norm-refs/5176.CFF_.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "unavailable",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "ref-a27a03167d23",
+      "url": "https://pdfa.org/norm-refs/5177.type2_.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "unavailable",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "ref-c92d513c4928",
+      "url": "https://pdfa.org/norm-refs/5620.PortableJobTicket.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "unavailable",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "ref-aa3bf2f9767e",
+      "url": "https://pdfa.org/norm-refs/5660_OPI_2_0.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdfa.org/norm-refs/5660_OPI_2_0.pdf",
+      "sha256": "6c11ee7c1a8caae9dfc7c69d4f788d5438b7949a40271e3e004ac128c50f1bbf",
+      "bytes": 150944,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/6c11ee7c1a8caae9dfc7c69d4f788d5438b7949a40271e3e004ac128c50f1bbf.pdf",
+      "retrieved_at": "2026-10-17T14:42:32.855931+00:00"
+    },
+    {
+      "id": "ref-238425e45d9a",
+      "url": "https://pdfa.org/norm-refs/PLRM.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "unavailable",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "ref-5e937b5c9316",
+      "url": "https://pdfa.org/norm-refs/SigBuildDict.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "unavailable",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "ref-3ad2fe4b0863",
+      "url": "https://pdfa.org/norm-refs/TIFF6.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "unavailable",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "ref-6eed78241b1e",
+      "url": "https://pdfa.org/norm-refs/Type1Fonts.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "unavailable",
+      "error": "HTTPError: HTTP Error 403: Forbidden"
+    },
+    {
+      "id": "ref-e2abd102e7e0",
+      "url": "https://pdfa.org/norm-refs/XFA-3_3.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://pdfa.org/norm-refs/XFA-3_3.pdf",
+      "sha256": "a3344e7ef0b0da445bcce4323e689e646b31b64ecf1c318a8fc98f6b5edca01e",
+      "bytes": 7698028,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/a3344e7ef0b0da445bcce4323e689e646b31b64ecf1c318a8fc98f6b5edca01e.pdf",
+      "retrieved_at": "2026-10-17T14:42:33.186519+00:00"
+    },
+    {
+      "id": "ref-60ce02343132",
+      "url": "https://www.color.org/specification/ICC.1-2001-04.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://archive.color.org/specification/ICC.1-2001-04.pdf",
+      "sha256": "7cd05639d187c697f04e9bb1711a05b37b044ec70f8bc99d13e85ac4c01defc3",
+      "bytes": 1203813,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/7cd05639d187c697f04e9bb1711a05b37b044ec70f8bc99d13e85ac4c01defc3.pdf",
+      "retrieved_at": "2026-10-17T14:42:33.432084+00:00"
+    },
+    {
+      "id": "ref-cf254c7161d0",
+      "url": "https://www.etsi.org/deliver/etsi_en/319100_319199/31912201/01.01.01_60/en_31912201v010101p.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://www.etsi.org/deliver/etsi_en/319100_319199/31912201/01.01.01_60/en_31912201v010101p.pdf",
+      "sha256": "8f38a312992ba461b6ff9d1fa863132a51fd9852bcf3d06f341bf420b9543acd",
+      "bytes": 513271,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/8f38a312992ba461b6ff9d1fa863132a51fd9852bcf3d06f341bf420b9543acd.pdf",
+      "retrieved_at": "2026-10-17T14:42:33.237272+00:00"
+    },
+    {
+      "id": "ref-b8ccf89a29f6",
+      "url": "https://www.etsi.org/deliver/etsi_en/319100_319199/31912202/01.01.01_60/en_31912202v010101p.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://www.etsi.org/deliver/etsi_en/319100_319199/31912202/01.01.01_60/en_31912202v010101p.pdf",
+      "sha256": "f7780f83fb47438ab535a511711adce83c1cda24c7eb7a5c200be64e320ceca3",
+      "bytes": 104903,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/f7780f83fb47438ab535a511711adce83c1cda24c7eb7a5c200be64e320ceca3.pdf",
+      "retrieved_at": "2026-10-17T14:42:33.199922+00:00"
+    },
+    {
+      "id": "ref-e3638974ac85",
+      "url": "https://www.etsi.org/deliver/etsi_en/319100_319199/31914201/01.01.01_60/en_31914201v010101p.pdf",
+      "kind": "official-linked-reference",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://www.etsi.org/deliver/etsi_en/319100_319199/31914201/01.01.01_60/en_31914201v010101p.pdf",
+      "sha256": "cca4394497af876543ad5e38afe2bd64e01cf41fb60ec0ec8e186a137710f6d0",
+      "bytes": 221560,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/cca4394497af876543ad5e38afe2bd64e01cf41fb60ec0ec8e186a137710f6d0.pdf",
+      "retrieved_at": "2026-10-17T14:42:33.430991+00:00"
+    },
+    {
+      "id": "ref-555c66b9c57c",
+      "url": "https://www.iso.org/standard/75839.html",
+      "title": "The following documents are \"normatively referenced\" from ISO 32000-2:2020. That is, some or all of their content constitutes requirements of the updated 2020 dated revision edition of the PDF 2.0 specification over the now withdrawn 2017 edition.",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-fe6d1083f3be",
+      "url": "https://www.iso.org/standard/63534.html",
+      "title": "The following documents are \"normatively referenced\" from ISO 32000-2:2020. That is, some or all of their content constitutes requirements of the updated 2020 dated revision edition of the PDF 2.0 specification over the now withdrawn 2017 edition.",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-aa9a1ec761f1",
+      "url": "https://www.iso.org/iso-3166-country-codes.html",
+      "title": "ISO 3166-1, Codes for the representation of names of countries and their subdivisions \u2013 Part 1: Country codes, https://www.iso.org/iso-3166-country-codes.html",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-1a680e5611a9",
+      "url": "https://standards.iso.org/ittf/PubliclyAvailableStandards/index.html",
+      "title": "ISO/IEC 8824-1, Information technology \u2013 Abstract Syntax Notation One (ASN.1): Specification of basic notation. https://standards.iso.org/ittf/PubliclyAvailableStandards/index.html",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-3d90a6c9da64",
+      "url": "https://www.iso.org/standard/76835.html",
+      "title": "ISO/IEC 10646, Information technology \u2013 Universal Coded Character Set (UCS). https://www.iso.org/standard/76835.html (free)",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-deb54e32ed60",
+      "url": "https://www.iso.org/search.html?q=10918",
+      "title": "ISO/IEC 10918 (all parts), Information Technology \u2013 Digital Compression and Coding of Continuous-Tone Still Images: Requirements and guidelines (informally known as the JPEG standard, for the Joint Photographic Experts Group, the ISO group that developed the standard) https://www.iso.org/search.html?q=10918 (Note: this URL is a search query on ISO)",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-73f2505a8bda",
+      "url": "https://www.iso.org/standard/75396.html",
+      "title": "ISO/IEC 14492:2019, Information technology \u2013 Lossy/lossless coding of bi-level images. https://www.iso.org/standard/75396.html",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-1d2920465fe5",
+      "url": "https://www.iso.org/standard/74461.html",
+      "title": "ISO/IEC 14496-22:2019, Information technology \u2013 Coding of audio-visual objects \u2014 Part 22: Open Font Format. https://www.iso.org/standard/74461.html (free)",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-f335d54a51a2",
+      "url": "https://www.iso.org/standard/54948.html",
+      "title": "ISO 14739-1, Document management \u2013 3D use of Product Representation Compact (PRC) format \u2014 Part 1: PRC 10001. https://www.iso.org/standard/54948.html (This is an undated reference in PDF 2.0, but the URL here is to the ISO 2014 published edition. ISO TC 171 WG 5 is currently working on a PRC dated revision to fix errata so the URL will be updated when PRC achieves DIS/FDIS status)",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-1c7633f25b36",
+      "url": "https://www.iso.org/standard/54754.html",
+      "title": "ISO 15076-1:2010, Image technology colour management \u2013 Architecture, profile format and data structure \u2014 Part 1: Based on ICC.1:2010. https://www.iso.org/standard/54754.html",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-d80f32134dbc",
+      "url": "https://www.iso.org/standard/78321.html",
+      "title": "ISO/IEC 15444-1:2019, Information technology \u2014 JPEG 2000 image coding system: Core coding system. https://www.iso.org/standard/78321.html",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-de4190c9c11c",
+      "url": "https://www.iso.org/standard/33160.html",
+      "title": "ISO/IEC 15444-2:2004, Information technology \u2014 JPEG 2000 image coding system: Extensions. https://www.iso.org/standard/33160.html",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-81f307238208",
+      "url": "https://www.iso.org/standard/29581.html",
+      "title": "ISO/IEC 15948:2004 Information technology \u2014 Computer graphics and image processing \u2014 Portable Network Graphics (PNG): Functional specification. https://www.iso.org/standard/29581.html",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-7a32c11db42b",
+      "url": "https://www.iso.org/standard/75163.html",
+      "title": "ISO 16684-1, Extensible metadata platform (XMP) specification \u2014 Part 1: Data model, serialization and core properties. https://www.iso.org/standard/75163.html",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-f785a0c9e07e",
+      "url": "https://www.iso.org/standard/71110.html",
+      "title": "ISO 17972-4, Graphic technology \u2014 Colour data exchange format (CxF/X) \u2014 Part 4: Spot colour characterisation data (CxF/X-4). https://www.iso.org/standard/71110.html",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-ebc2ee88921b",
+      "url": "https://www.iso.org/standard/63033.html",
+      "title": "ISO 18619, Image technology colour management \u2013 Black point compensation. https://www.iso.org/standard/63033.html",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-b62e2a314282",
+      "url": "https://www.iso.org/standard/76496.html",
+      "title": "ISO 19162, Geographic information \u2013 Well known text representation of coordinate reference systems. https://www.iso.org/standard/76496.html",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-584af4354905",
+      "url": "https://www.iso.org/standard/74272.html",
+      "title": "ISO 19444-1:2019, Document management \u2013 XML Forms Data Format \u2013 Part 1: Use of ISO 32000-2 (XFDF 3.0). https://www.iso.org/standard/74272.html",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-498f489f29e7",
+      "url": "https://www.iso.org/standard/71559.html",
+      "title": "ISO/DIS 21757-1, Document management \u2014 ECMAScript for PDF \u2014 Part 1: Use of ISO 32000-2 (PDF 2.0), https://www.iso.org/standard/71559.html",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-9121a87b762e",
+      "url": "https://webstore.iec.ch/publication/6169",
+      "title": "IEC 61966-2-1 ed1.0 (1999-10), Multimedia systems and equipment \u2014 Colour measurement and management \u2014 Part 2-1: Colour management \u2014 Default RGB colour space \u2014 sRGB (with Amendment 1 IEC 61966-2-1-am1 ed1.0 (2003-01)). https://webstore.iec.ch/publication/6169 with amendment https://webstore.iec.ch/publication/6168",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-ca61a732eb2c",
+      "url": "https://webstore.iec.ch/publication/6168",
+      "title": "IEC 61966-2-1 ed1.0 (1999-10), Multimedia systems and equipment \u2014 Colour measurement and management \u2014 Part 2-1: Colour management \u2014 Default RGB colour space \u2014 sRGB (with Amendment 1 IEC 61966-2-1-am1 ed1.0 (2003-01)). https://webstore.iec.ch/publication/6169 with amendment https://webstore.iec.ch/publication/6168",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-739385994404",
+      "url": "https://infostore.saiglobal.com/en-us/standards/ansi-x9-62-2005-1311435_saig_ansi_ansi_3201024/",
+      "title": "ANSI X9.62-2005, Public Key Cryptography For The Financial Services Industry: The Elliptic Curve Digital Signature Algorithm (ECDSA), American National Standards Institute. https://infostore.saiglobal.com/en-us/Standards/ANSI-X9-62-2005-2085_SAIG_ABA_ABA_5340/ (this is probably not a good URL)",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-ba75286c63d2",
+      "url": "https://webstore.ansi.org/Standards/INCITS/INCITS1986R2017",
+      "title": "INCITS 4-1986 (R2017) Information Systems - Coded Character Sets - 7-Bit Standard Code for Information Interchange (7-Bit ASCII), https://webstore.ansi.org/Standards/INCITS/INCITS1986R2017",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-7f1ab0d524b6",
+      "url": "https://github.com/adobe-type-tools/agl-aglfn",
+      "title": "Adobe Glyph List, Adobe Systems Incorporated. https://github.com/adobe-type-tools/agl-aglfn",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-c66c7518d960",
+      "url": "https://github.com/adobe-type-tools/cmap-resources",
+      "title": "Adobe-Japan1-7 Character Collection for CID-Keyed Fonts, https://github.com/adobe-type-tools/cmap-resources",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-5b9a7774758f",
+      "url": "https://doi.org/10.6028/NIST.FIPS.180-4",
+      "title": "FIPS PUB 180-4, Secure Hash Standard (SHS), (August 2015), Federal Information Processing Standards, https://doi.org/10.6028/NIST.FIPS.180-4",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-ecc2f6615181",
+      "url": "https://doi.org/10.6028/NIST.FIPS.186-4",
+      "title": "FIPS PUB 186-4, Digital Signature Standard, describes DSA signatures, (July 2013), Federal Information Processing Standards, https://doi.org/10.6028/NIST.FIPS.186-4",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-55dc3d1c068a",
+      "url": "https://doi.org/10.6028/NIST.FIPS.197",
+      "title": "FIPS PUB 197, Advanced Encryption Standard (AES), (November 2001), Federal Information Processing Standards, https://doi.org/10.6028/NIST.FIPS.197",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-3dc7af1c3b24",
+      "url": "https://dx.doi.org/10.17487/rfc1321",
+      "title": "RFC 1321, The MD5 Message-Digest Algorithm, (April 1992), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc1321",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-cbcb41294671",
+      "url": "https://dx.doi.org/10.17487/rfc1950",
+      "title": "RFC 1950, ZLIB Compressed Data Format Specification, Version 3.3, (May 1996), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc1950",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-e25089654d67",
+      "url": "https://dx.doi.org/10.17487/rfc1951",
+      "title": "RFC 1951, DEFLATE Compressed Data Format Specification, Version 1.3, (May 1996), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc1951",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-e93526bbd249",
+      "url": "https://dx.doi.org/10.17487/rfc2045",
+      "title": "RFC 2045, Multipurpose Internet Mail Extensions (MIME) Part One: Format of Internet Message Bodies, (November 1996), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc2045",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-817164aa2177",
+      "url": "https://dx.doi.org/10.17487/rfc2315",
+      "title": "RFC 2315, PKCS #7: Cryptographic Message Syntax Version 1.5 (March 1998), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc2315",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-259e141cb609",
+      "url": "https://dx.doi.org/10.17487/rfc3161",
+      "title": "RFC 3161, Internet X.509 Public Key Infrastructure Time-Stamp Protocol (TSP), (August 2001), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc3161",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-69171a11d7f9",
+      "url": "https://dx.doi.org/10.17487/rfc3454",
+      "title": "RFC 3454, Preparation of International Strings (\"stringprep\"), December 2002, Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc3454",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-3ce8139b3925",
+      "url": "https://dx.doi.org/10.17487/rfc3986",
+      "title": "RFC 3986, Uniform Resource Identifier (URI): Generic Syntax, (January 2005), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc3986",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-7ef2f1228974",
+      "url": "https://dx.doi.org/10.17487/rfc4013",
+      "title": "RFC 4013, SASLprep: Stringprep Profile for User Names and Passwords, February 2005, Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc4013",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-49dcb710a4c6",
+      "url": "https://dx.doi.org/10.17487/rfc5035",
+      "title": "RFC 5035, Enhanced Security Services (ESS) Update: Adding CertID Algorithm Agility, (August 2007), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5035",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-e66a47ebb562",
+      "url": "https://dx.doi.org/10.17487/rfc5280",
+      "title": "RFC 5280, Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile, (May 2008), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5280",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-85a233941233",
+      "url": "https://dx.doi.org/10.17487/rfc5480",
+      "title": "RFC 5480, Elliptic Curve Cryptography Subject Public Key Information, (March 2009), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5480",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-03479a1f51ba",
+      "url": "https://dx.doi.org/10.17487/rfc5646",
+      "title": "BCP 47 (RFC 5646), Tags for Identifying Languages, (September 2009), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5646",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-ee1fdabfe968",
+      "url": "https://dx.doi.org/10.17487/rfc5652",
+      "title": "RFC 5652, Cryptographic Message Syntax (CMS), (September 2009), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5652",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-813a4adc10f9",
+      "url": "https://dx.doi.org/10.17487/rfc5755",
+      "title": "RFC 5755, An Internet Attribute Certificate Profile for Authorization, (January 2010), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5755",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-b72bec72fa8b",
+      "url": "https://dx.doi.org/10.17487/rfc5816",
+      "title": "RFC 5816, ESSCertIDv2 Update for RFC 3161, (March 2010), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5816",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-eb50331d2051",
+      "url": "https://dx.doi.org/10.17487/rfc6960",
+      "title": "RFC 6960, X.509 Internet Public Key Infrastructure Online Certificate Status Protocol \u2013 OCSP, (June 2013), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc6960",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-6c9b696dc574",
+      "url": "https://dx.doi.org/10.17487/rfc7231",
+      "title": "RFC 7231, Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content, (June 2014), https://dx.doi.org/10.17487/rfc7231",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-60618765dd3a",
+      "url": "https://dx.doi.org/10.17487/rfc8018",
+      "title": "RFC 8018, PKCS #5: Password-Based Cryptography Specification Version 2.1, (January 2017), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc8018",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-8529eecc7512",
+      "url": "https://dx.doi.org/10.17487/rfc8118",
+      "title": "RFC 8118, The application/PDF Media Type, Internet Engineering Task Force, (March 2017), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc8118",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-0685bfb865e3",
+      "url": "https://epsg.org/home.html",
+      "title": "EPSG Geospatial Coordinate System Reference Codes, administered by the International Association of Oil and Gas Producers (OGP), http://www.epsg.org",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-245675ade775",
+      "url": "https://www.w3.org/TR/xml/",
+      "title": "Extensible Markup Language (XML) 1.0, Fifth Edition, November 2008, World Wide Web Consortium (W3C). https://www.w3.org/TR/xml/",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-f46dfee8f4d3",
+      "url": "https://www.w3.org/TR/wai-aria-1.1/",
+      "title": "Accessible Rich Internet Applications (ARIA) 1.1, World Wide Web Consortium (W3C). https://www.w3.org/TR/wai-aria-1.1/",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-d5ebbe195183",
+      "url": "https://www.w3.org/TR/mathml-core/",
+      "title": "MathML Core, W3C Candidate Recommendation, World Wide Web Consortium (W3C), https://www.w3.org/TR/mathml-core/",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-d309e6f8dcc2",
+      "url": "https://standards.globalspec.com/std/1206038/JIS%20X%204051",
+      "title": "Japanese Industrial Standard (JIS) X 4051-2004. This JIS standard requires purchase from your local standards supplier such as https://standards.globalspec.com/std/1206038/JIS%20X%204051",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-c21cedee36bf",
+      "url": "https://monotype.github.io/panose/pan1.htm",
+      "title": "PANOSE Classification Metrics Guide, (February 1997), Hewlett-Packard Corporation. https://monotype.github.io/panose/pan1.htm",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-2019977044dc",
+      "url": "https://www.w3.org/TR/pronunciation-lexicon/",
+      "title": "Pronunciation Lexicon Specification (PLS) Version 1.0, (October 2008), https://www.w3.org/TR/pronunciation-lexicon/",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-c9db1781d544",
+      "url": "https://www.itu.int/rec/T-REC-T.4/en",
+      "title": "ITU Recommendation T.4: Standardization of Group 3 facsimile terminals for document transmission, International Telecommunication Union (ITU). https://www.itu.int/rec/T-REC-T.4/en",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-334231984265",
+      "url": "https://www.itu.int/rec/T-REC-T.6/en",
+      "title": "ITU Recommendation T.6: Facsimile coding schemes and coding control functions for Group 4 facsimile apparatus, International Telecommunication Union (ITU). https://www.itu.int/rec/T-REC-T.6/en",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-58b29e996236",
+      "url": "https://www.ecma-international.org/publications/standards/Ecma-363.htm",
+      "title": "Standard ECMA-363, Universal 3D File Format, 3rd Edition (U3D), (June 2006), Ecma International. https://www.ecma-international.org/publications/standards/Ecma-363.htm",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-0b757099b2d6",
+      "url": "http://www.w3.org/TR/SMIL3/",
+      "title": "Synchronized Multimedia Integration Language (SMIL 3.0), (December 2008), World Wide Web Consortium (W3C), http://www.w3.org/TR/SMIL3/",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "ref-718e085e048d",
+      "url": "https://developer.apple.com/fonts/TrueType-Reference-Manual/",
+      "title": "TrueType Reference Manual, Apple Inc. https://developer.apple.com/fonts/TrueType-Reference-Manual/",
+      "status": "indexed-only",
+      "reason": "Publisher page/repository; full document access not established."
+    },
+    {
+      "id": "iso32000-2-full-text",
+      "url": "https://www.pdfa-inc.org/cart/?add-to-cart=2009",
+      "status": "locally-supplied",
+      "kind": "normative-core",
+      "title": "ISO 32000-2:2020 + Errata Collection 3 + ISO/TS 32001-32004 bundle",
+      "reason": "Sponsored publisher checkout; no account, terms or personal data submitted.",
+      "sha256": "5382a914b1f1103e53d216b53d4d22778a5cac9d81beccda771b46cb19d7aa4f",
+      "cache_path": ".cache/references/ISO_32000-2_sponsored_EC3.pdf",
+      "bytes": 19205166
+    },
+    {
+      "id": "adobe-pdf17",
+      "title": "Adobe equivalent of ISO 32000-1:2008",
+      "url": "https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf",
+      "kind": "normative-legacy-core",
+      "redistribution": "private cache only",
+      "status": "cached",
+      "resolved_url": "https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf",
+      "sha256": "9de0ca9e8570d6209e8bd48a355be8eb6ec376acfc3fc3ae97cd8730351417ff",
+      "bytes": 22491828,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/9de0ca9e8570d6209e8bd48a355be8eb6ec376acfc3fc3ae97cd8730351417ff.pdf",
+      "retrieved_at": "2026-10-17T15:03:04.751900+00:00"
+    }
+  ]
+}

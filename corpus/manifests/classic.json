@@ -1,0 +1,422 @@
+{
+  "schema": 2,
+  "area": "classic",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "classic/blank",
+      "kind": "pdf",
+      "description": "empty content stream",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/blank.pdf",
+      "sha256": "0a008af87ef7ca5f9df0e8278cf30133b5ef91909a24be0eef8a95d32286c687",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/blank.ppm",
+      "oracle_sha256": "d2f6d1ef302851a667adde508208fded2aea933d1c0b62941b9d0882a3461523",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/rectangle",
+      "kind": "pdf",
+      "description": "one opaque DeviceRGB rectangle",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/rectangle.pdf",
+      "sha256": "e787ff94fad3d42695b926c8b55e341961ea2adc0cb16158804b549b4270a9fe",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/rectangle.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/graphics-state",
+      "kind": "pdf",
+      "description": "q/Q restores colour and translation",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/graphics-state.pdf",
+      "sha256": "21eeb6fd3bfa442640352b9bfa0dc547d79d28876311993a8a69bdd03cb9a324",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/graphics-state.ppm",
+      "oracle_sha256": "00da63bf806096faba1c5b6902c831fe9011e45f4ad552bc57bd17c8b560c413",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/negative-rectangle",
+      "kind": "pdf",
+      "description": "re with negative width and height",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/negative-rectangle.pdf",
+      "sha256": "22cd608dd1b988b0744bb4ff7324bfa97e63ee7ac061c1892807a1e76246e9c5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/negative-rectangle.ppm",
+      "oracle_sha256": "ebc152fb9c7327655bdbd6770dc62177b4853c367ae593f27f72cef3860072a6",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/inherited-box",
+      "kind": "pdf",
+      "description": "MediaBox inherited from the Pages node",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/inherited-box.pdf",
+      "sha256": "bd1297c6aee47f340e3ffe7a534427c937d637f911280e7fda62f0b1e999dd77",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/inherited-box.ppm",
+      "oracle_sha256": "bc6a15ffa35d847e82db3b36d3bae55f08bcacdef0b54b8075a557c9ce11b2e8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/clipped-to-page",
+      "kind": "pdf",
+      "description": "geometry beyond the page is clipped",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/clipped-to-page.pdf",
+      "sha256": "921508e995790fd0d3da683347a89891e4a60fa79f3567780eaf0e7f6d1bc903",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/clipped-to-page.ppm",
+      "oracle_sha256": "e613cab40bbb53cc57a29b4c277a8794a2da78ff3462a6d85dfb7b8aa4307948",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/many-rectangles",
+      "kind": "pdf",
+      "description": "1024 rectangles",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/many-rectangles.pdf",
+      "sha256": "5f40846f800054ff5a7be73c69d76d8c8c085a27c8d81474989612cee11827ae",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/many-rectangles.ppm",
+      "oracle_sha256": "502d3c2ab2ab57e4335f75ba7ef5b4597434e7e7f6af5d9138f15cdec78e2b83",
+      "dpi": 72,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "id": "classic/content-array-split",
+      "kind": "pdf",
+      "description": "Contents array split between tokens and inside an operation",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering",
+        "content-stream-array"
+      ],
+      "path": "corpus/generated/classic/content-array-split.pdf",
+      "sha256": "ac76f1c6162e06d751c413a1c50141096298c9f72b22eba3034c736bbd89d187",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/content-array-split.ppm",
+      "oracle_sha256": "37d829bf7165342c0c266017928b84f9cb250e7be7c5270f0738436238028ef7",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/many-operands",
+      "kind": "pdf",
+      "description": "114,688 numeric operands on one page; budgets are per object",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering",
+        "bounded-resource-use"
+      ],
+      "path": "corpus/generated/classic/many-operands.pdf",
+      "sha256": "be3e7f89248060bd7ed07c885dd4aafd453db0ce99dfaf0881b9f20a93fb50c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/many-operands.ppm",
+      "oracle_sha256": "78250fff9aafca7d0babfdcd43fd5b389e55d55facd4d4d54316f28e270baf82",
+      "dpi": 72,
+      "width": 128,
+      "height": 128
+    },
+    {
+      "id": "classic/normalized-media-box",
+      "kind": "pdf",
+      "description": "MediaBox given as upper-right then lower-left corner",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering",
+        "rectangle-normalization"
+      ],
+      "path": "corpus/generated/classic/normalized-media-box.pdf",
+      "sha256": "72a7c8aad60d75001ae4dd3fe6951bfc5fa0c12b4f017de491d155f24a3c4666",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/normalized-media-box.ppm",
+      "oracle_sha256": "9ddade0ba76d30569a4c54579c22ddf18e7e02821f3deddfb4ddbdd23a625cd5",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/undefined-reference-is-null",
+      "kind": "pdf",
+      "description": "Resources refers to an object that does not exist",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering",
+        "undefined-reference-null"
+      ],
+      "path": "corpus/generated/classic/undefined-reference-is-null.pdf",
+      "sha256": "515d8b6efd5ec86bfa9a6b656ae820765f1be8cfb549936c95b242475723991c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/undefined-reference-is-null.ppm",
+      "oracle_sha256": "bce6e6f5a38a122d828b1d565f926df648060b183a7f078f09e3edf0c01fc60a",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/trailing-bytes",
+      "kind": "pdf",
+      "description": "data after the final %%EOF is a reported repair",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering",
+        "recovery-reported"
+      ],
+      "path": "corpus/generated/classic/trailing-bytes.pdf",
+      "sha256": "407628388c06d09f65bcfec704d22e40e0b468cd04bd48f00931a638f3201dcf",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.trailing-bytes"
+      ],
+      "oracle": "corpus/generated/classic/trailing-bytes.ppm",
+      "oracle_sha256": "e63d8e53faad71c6b272d33d2617352f7192550e7cc8649988d6ce6651709936",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/text-unsupported",
+      "kind": "pdf",
+      "description": "text objects need fonts (M3)",
+      "expected": "unsupported",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "unsupported-is-explicit"
+      ],
+      "path": "corpus/generated/classic/text-unsupported.pdf",
+      "sha256": "cea8e143a0a136af6d9364d1eec5e935ecef9052e8886d02bd460bc3beaec775",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "operator.BT"
+    },
+    {
+      "id": "classic/alpha-unsupported",
+      "kind": "pdf",
+      "description": "constant alpha below 1 needs transparency (M5)",
+      "expected": "unsupported",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "unsupported-is-explicit"
+      ],
+      "path": "corpus/generated/classic/alpha-unsupported.pdf",
+      "sha256": "2aaa3a94957e0aab938ead153e1aef11285071bc843e4ea6127f9619b033faa7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.ca"
+    },
+    {
+      "id": "classic/colorspace-unsupported",
+      "kind": "pdf",
+      "description": "a CalRGB default colour space (8.6.5.6)",
+      "expected": "unsupported",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "unsupported-is-explicit"
+      ],
+      "path": "corpus/generated/classic/colorspace-unsupported.pdf",
+      "sha256": "3d11c5ffff7d5a306139bb9475e2412141ea3c9fd6bfe102ac16bccec10aa0da",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "colorspace.CalRGB"
+    },
+    {
+      "id": "classic/fractional-rectangle",
+      "kind": "pdf",
+      "description": "edges inside pixels: coverage is the product of overlaps",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering",
+        "content-fractional"
+      ],
+      "path": "corpus/generated/classic/fractional-rectangle.pdf",
+      "sha256": "6fa4dd1ba6d90d8eaf4e8d62d07fae39469bf4a3de666a5059cff5b74fc80006",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/fractional-rectangle.ppm",
+      "oracle_sha256": "f93bcc5b0ac5094959c49ad7127b33ca61f3738068262d2c0238e4e510294586",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "classic/rotate-90-blank",
+      "kind": "pdf",
+      "description": "rotation with empty content gives a blank page",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/rotate-90-blank.pdf",
+      "sha256": "7b89ee7245f2ba656288636ecea4c3736f9b61314ebe30a77ea2461a36af762a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/rotate-90-blank.ppm",
+      "oracle_sha256": "d2f6d1ef302851a667adde508208fded2aea933d1c0b62941b9d0882a3461523",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/opaque-page-group-blank",
+      "kind": "pdf",
+      "description": "an opaque page group with empty content renders like no group",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/opaque-page-group-blank.pdf",
+      "sha256": "fb7e0bbd1c4bfb9a3dda4539dcea1771c9f407d5674366328fe459b488a38d97",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/opaque-page-group-blank.ppm",
+      "oracle_sha256": "d2f6d1ef302851a667adde508208fded2aea933d1c0b62941b9d0882a3461523",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/two-pages",
+      "kind": "pdf",
+      "description": "two pages; the oracle is page 1 (page 2 is a blue square at 32 32)",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/two-pages.pdf",
+      "sha256": "9b37096143f8b2c789e59570e6f665581b09752a71cc74b91146876ade642301",
+      "pages": 2,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/two-pages.ppm",
+      "oracle_sha256": "21415da0f7f88ad4afb0feb415b2706cde99d558454f0e678235fbfbdff716fc",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "page_oracles": {
+        "1": "page 2: blue 32x32 square at (32, 32)"
+      }
+    },
+    {
+      "id": "classic/rotate-not-multiple-of-90",
+      "kind": "pdf",
+      "description": "Rotate must be a multiple of 90 (Table 31)",
+      "expected": "invalid",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree"
+      ],
+      "path": "corpus/generated/classic/rotate-not-multiple-of-90.pdf",
+      "sha256": "ed6a2cdd7682faae9592531d946d49510a949fda74222dade67bfb2ef829919d",
+      "pages": null,
+      "strict_valid": true,
+      "repairs": []
+    }
+  ]
+}

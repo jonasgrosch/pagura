@@ -1,0 +1,10 @@
+/target/
+/.cache/
+/work/
+__pycache__/
+*.pyc
+.DS_Store
+/benchmarks/results/local/
+/references/private/
+/corpus/private/
+/web/pkg/

@@ -1,0 +1,4 @@
+filter=LZWDecode
+outcome=valid
+repair=filter.trailing-data
+cap=5

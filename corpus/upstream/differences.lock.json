@@ -1,0 +1,211 @@
+{
+ "schema": 2,
+ "id": "differences",
+ "repository": "https://github.com/pdf-association/pdf-differences",
+ "revision": "907fe96e52b73e491489eee545c47b119bf9989b",
+ "purpose": "PDF Association cases where viewers disagree",
+ "patterns": [
+  "*.pdf"
+ ],
+ "use": "input documents only; no expected outputs, never normative",
+ "pdf_files": 37,
+ "bytes": 1237756,
+ "files": [
+  {
+   "path": "Atomic-Fill+Stroke/FillStrokeOrdering.pdf",
+   "size": 1937,
+   "sha256": "e41acc3e1b39916011e52e55b6c81aba95415815deed8510bc2aa142ec97ad34"
+  },
+  {
+   "path": "Atomic-Fill+Stroke/SelfIntersecting-Opaque.pdf",
+   "size": 1437,
+   "sha256": "8e9bf836d70f16dde06d4ca077ec6b70431a3f991ee4d2cc11af062e2110e695"
+  },
+  {
+   "path": "Atomic-Fill+Stroke/SelfIntersecting-Transparency.pdf",
+   "size": 1857,
+   "sha256": "21e0bd7d487e94611c93f84839dd8eac0a15d9b1bf6f7dca5b4430b9806f534c"
+  },
+  {
+   "path": "ColorBurn-ColorDodge/ColorBurn.pdf",
+   "size": 3357,
+   "sha256": "ef2416ff47d4ac4a5cee17335bccbcd7732ee7bbfde619971b48b56af7240fb6"
+  },
+  {
+   "path": "ColorBurn-ColorDodge/ColorDodge.pdf",
+   "size": 3345,
+   "sha256": "eb904775daf6b67bbebecd3b311e825292fb384f347040576da29b399df32085"
+  },
+  {
+   "path": "Dashing-Degenerate/DegenerateDashing.pdf",
+   "size": 4192,
+   "sha256": "bd39ed997708358cc997776b3ed167c0a3cdf215a95e2c6bc6a77c51701e33f4"
+  },
+  {
+   "path": "Dashing-EndBeforeBend/Dashing-EndBeforeBend.pdf",
+   "size": 2666,
+   "sha256": "c59152a0483ce8578b49d501e68bddb5615e874bad95e70f6a6fb3015f93b298"
+  },
+  {
+   "path": "Dashing-EndBeforeBend/Dashing-EndBeforeBend2.pdf",
+   "size": 1168,
+   "sha256": "92e8a49204dbb9321f831246337dee660d610edac60b5da0fd7367d047733a5c"
+  },
+  {
+   "path": "DefaultColorSpaces/DefaultRGBColourSpaces-inherit.pdf",
+   "size": 5645,
+   "sha256": "a6cd5a5fc4aebae91a56ea509a84c8fb7985e143c68824db7ffabd7505896efe"
+  },
+  {
+   "path": "DefaultColorSpaces/DefaultRGBColourSpaces.pdf",
+   "size": 5645,
+   "sha256": "bff699dbaaf438cabebb60d6bfadb8a7367713bc0ab44e482e5cbcef956f630e"
+  },
+  {
+   "path": "IndexedColor/IndexedCS_negative_and_high.pdf",
+   "size": 1798,
+   "sha256": "818053a2bf343f31f4ad0b48eb2837eb3b43a4543c9feb6269a9f653fbcee59e"
+  },
+  {
+   "path": "Inline-Image-Abbreviations/InlineAbbreviations.pdf",
+   "size": 15125,
+   "sha256": "5716b3f45f5353b9d674bfb3d0c829341c6d061256ad7e5e66721a40425ab1f5"
+  },
+  {
+   "path": "LICENSE",
+   "size": 11357,
+   "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+   "path": "LargeMitreLimit/LargeMitreLimit-Beziers.pdf",
+   "size": 4039,
+   "sha256": "aa409792549d998466cfcd6e1fd3f6e3467863839dba1c8d5679b68d8947aae9"
+  },
+  {
+   "path": "LargeMitreLimit/LargeMitreLimit.pdf",
+   "size": 3515,
+   "sha256": "8887f5725c1aed9bf0ab3a9d248672a8c658f2dc81150cfb6f5bd8581a65bea2"
+  },
+  {
+   "path": "LineCap-Degenerate/LineCap-Degenerate.pdf",
+   "size": 1583,
+   "sha256": "2b8821f9f280b577428f413da1b71f17b440f0e45e58fd30813d9c7045102f2e"
+  },
+  {
+   "path": "Negative-DashPhase/CutHereExample.pdf",
+   "size": 1150,
+   "sha256": "f6178abd6ffbe1299c00064ea2673511c9f7fc936975317a42d201dff0b5c415"
+  },
+  {
+   "path": "Negative-DashPhase/Negative-DashPhase.pdf",
+   "size": 3702,
+   "sha256": "9fdc7fd3a19521e3eb9342937a9be99e74478179b5bb96994a8f1d219dc984b0"
+  },
+  {
+   "path": "NegativeFontSize/NegativeFontSize.pdf",
+   "size": 3180,
+   "sha256": "7886e7942de1c5a215caf3f98507c66a4fe32a7e8c2ff862bc9431958a31b0d8"
+  },
+  {
+   "path": "OverlappingGlyphClipping/OverlappingGlyphClipping.pdf",
+   "size": 2794,
+   "sha256": "957a4064877a35f906a505ae0bdeacbfc295df85583e6aad3d381797add01108"
+  },
+  {
+   "path": "PDF-version/PDF-versions1.pdf",
+   "size": 997,
+   "sha256": "94b949fc0fcd6e81f19a262f5d49be684e6db135ee4bac7b67f22625edac31b7"
+  },
+  {
+   "path": "PDF-version/PDF-versions2.pdf",
+   "size": 1022,
+   "sha256": "e03ffc599c0b47c66b98650742eec25f5f36ee37bc53ac9c08fb5e15f5d3d65e"
+  },
+  {
+   "path": "PDF-version/PDF-versions3.pdf",
+   "size": 1212,
+   "sha256": "690ec13b9c407aa351eb863ffe712bf42432ecb47e0e9b27f322e65ae3d4e287"
+  },
+  {
+   "path": "PageLabels-UX/PageLabelsTest.pdf",
+   "size": 8611,
+   "sha256": "69c5c7fa14acf38866171d2bc0baa1138d523904f7e6b452dcdfb90d0595fb5b"
+  },
+  {
+   "path": "README.md",
+   "size": 2637,
+   "sha256": "90160a1ba8429b7646b4c0e73df8010ef677521c549444f3062a4555c2598df5"
+  },
+  {
+   "path": "TextClipModeChanges/TextClippingModeChanges.pdf",
+   "size": 2473,
+   "sha256": "d7b844c98a1e5510c9f000035da60eb01ef21fea06937f5ead19e20867263712"
+  },
+  {
+   "path": "Type3WordSpacing/Type3Test.pdf",
+   "size": 2693,
+   "sha256": "8ac40dc49d40af8b5a50b442ced56b8db962c961a779a0284cd3a6207adc0bb7"
+  },
+  {
+   "path": "UnknownFilter/382252277877c00a92f3bb54daef1413bafe5557e2f5f7c32c23e800cd9bdcd4.pdf",
+   "size": 496944,
+   "sha256": "382252277877c00a92f3bb54daef1413bafe5557e2f5f7c32c23e800cd9bdcd4"
+  },
+  {
+   "path": "UnknownFilter/4387ba480c6f935b8e97749d40b3c001ad584b7bda66ca2c040be67337669497.pdf",
+   "size": 506671,
+   "sha256": "4387ba480c6f935b8e97749d40b3c001ad584b7bda66ca2c040be67337669497"
+  },
+  {
+   "path": "UnknownFilter/UnknownFilter-Font.pdf",
+   "size": 11433,
+   "sha256": "b5272e7e9bc0c02ad08ce995a6e8826102d818e67b684f4167b8efb17a0baba4"
+  },
+  {
+   "path": "UnknownFilter/UnknownFilter-FormXObject.pdf",
+   "size": 12215,
+   "sha256": "839d651384db9cce2104a9b997212e9adf52985d4528f88e06eb632fd4845c27"
+  },
+  {
+   "path": "UnknownFilter/UnknownFilter-ICC.pdf",
+   "size": 26848,
+   "sha256": "cddc37a4673008c770b6be70d539c20a13349750612ca7ecf28e0bba37431977"
+  },
+  {
+   "path": "UnknownFilter/UnknownFilter-ImageXObject.pdf",
+   "size": 11433,
+   "sha256": "74b36790035e244f8ef02c4ec3efd541222d73cca847814c51fce747cef10701"
+  },
+  {
+   "path": "UnknownFilter/UnknownFilter-Linearized.pdf",
+   "size": 14446,
+   "sha256": "10272c70b1c60e7f67bf717d39570964216b2aca2c71a34826378f7f8e043529"
+  },
+  {
+   "path": "UnknownFilter/UnknownFilter-OutlineObjStm.pdf",
+   "size": 13140,
+   "sha256": "585100f65ef5577707317974cee18891e92e35b22873709d13b7148a7b20defe"
+  },
+  {
+   "path": "UnknownFilter/UnknownFilter-PageContentStream.pdf",
+   "size": 11433,
+   "sha256": "e2dd6a46f0f41256b8796770bbbd523179cbbd77aacc6abb045c4151108afcad"
+  },
+  {
+   "path": "UnknownFilter/UnknownFilter-objstm.pdf",
+   "size": 14446,
+   "sha256": "f98b7501731e5fb8ee1b08a832e5cfa19f503c496faea646a26566c4d415f9c5"
+  },
+  {
+   "path": "UnknownFilter/UnknownFilter-xrefstm.pdf",
+   "size": 14446,
+   "sha256": "2c153eb1a00e2583d03e939b116b623fe78b70be18e4308347cfcf5f2c4c3c81"
+  },
+  {
+   "path": "VerticalText/VerticalText.pdf",
+   "size": 5164,
+   "sha256": "64df210d4b119e2af344911a6711764a3569c970265b8b61a2fa08b6c1fe073c"
+  }
+ ],
+ "skipped": []
+}

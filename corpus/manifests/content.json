@@ -1,0 +1,1279 @@
+{
+  "schema": 2,
+  "area": "content",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "content/compound-path",
+      "kind": "pdf",
+      "description": "compound-path",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/compound-path.pdf",
+      "sha256": "abb055646ba42a86de499e9e24d2d4492b2afbcf075c35af4d72c7bccef574fa",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/compound-path.ppm",
+      "oracle_sha256": "b25c653225488b1d13acf79e5f4b87e164bcb6fbf0d0a4a19c98aac75d60ef6e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/nonzero",
+      "kind": "pdf",
+      "description": "nonzero",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/nonzero.pdf",
+      "sha256": "376eaf7666154d14c09803c093d1da5d8f2ce7f7c4542dfc460e0009731eae5e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/nonzero.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/ctm-during-path",
+      "kind": "pdf",
+      "description": "ctm-during-path",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/ctm-during-path.pdf",
+      "sha256": "1db09f48d5a8dd225ebf9d7c413e9f98700c16904401191eecd8ffe1e8dfd8f4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/ctm-during-path.ppm",
+      "oracle_sha256": "26e05920e6bbdeb401387cbda8007fdace761fc2e4ca9e590ac633f7e0c83cd8",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/clip-after-paint",
+      "kind": "pdf",
+      "description": "clip-after-paint",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/clip-after-paint.pdf",
+      "sha256": "31b7642d069c32f8560e31864aa4c38a6d624cc6251c85ef6588fab2cc4c8c56",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/clip-after-paint.ppm",
+      "oracle_sha256": "f4431bd310d719c32bce6b92ecfb4cb0e3f5c08125b2ae1bfb75f452e1eac821",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/clip-q-Q",
+      "kind": "pdf",
+      "description": "clip-q-Q",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/clip-q-Q.pdf",
+      "sha256": "1552ff37fddad2c14c5a4df503acf434d99fa151d2ec97da056b12620f238590",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/clip-q-Q.ppm",
+      "oracle_sha256": "bdeabc404e899127e60b620b1705e3848abbbf50308e938bf4207b9abbb5f140",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/clip-is-not-restored-path",
+      "kind": "pdf",
+      "description": "clip-is-not-restored-path",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/clip-is-not-restored-path.pdf",
+      "sha256": "cfc80dffbc9451ec4c39c14b61f12da19c7fb0cc78795ea9731e89443185f3ad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/clip-is-not-restored-path.ppm",
+      "oracle_sha256": "26e05920e6bbdeb401387cbda8007fdace761fc2e4ca9e590ac633f7e0c83cd8",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/stroke-square",
+      "kind": "pdf",
+      "description": "stroke-square",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/stroke-square.pdf",
+      "sha256": "b85eb504291695ef34c90812fbd8d4325cb1c179919b1ebdb7140b37bb5ae3a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/stroke-square.ppm",
+      "oracle_sha256": "4a357f125b6de358f2f1d42314051f821a10810b55f32c08eef5ff7315aed555",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/stroke-dash",
+      "kind": "pdf",
+      "description": "stroke-dash",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/stroke-dash.pdf",
+      "sha256": "874e37c0fb5f54b9ba4d6c7497ed8a082f925a24dfbb3a617c921823b65378b1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/stroke-dash.ppm",
+      "oracle_sha256": "fa6f37bb1314baf3e15388bdfce1b1b69d2ea1794d84f58f607aa3dc8d1ae286",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/stroke-nonuniform",
+      "kind": "pdf",
+      "description": "stroke-nonuniform",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/stroke-nonuniform.pdf",
+      "sha256": "5f2d2f9089fe52d3e0eabae0066410e2f5fff2b12dab1bd5680592c389b83147",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/stroke-nonuniform.ppm",
+      "oracle_sha256": "c37cd9c0569c9cae531cb803ca01aaab456d4204302e012b3a3cf19ac70edb48",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/fill-stroke-close",
+      "kind": "pdf",
+      "description": "fill-stroke-close",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/fill-stroke-close.pdf",
+      "sha256": "cb18f2463618cd08504e5385584f13c0ffe23c764d948d7a91d1632ffa22a6f6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/fill-stroke-close.ppm",
+      "oracle_sha256": "be68ab0071e1fa262cdaeb20fdd6abeb1efc46d79abe66c51798794fc62c960a",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/cmyk",
+      "kind": "pdf",
+      "description": "cmyk",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-colour"
+      ],
+      "path": "corpus/generated/content/cmyk.pdf",
+      "sha256": "e47b4bfab2cd54ad2ea056e442f19e21deee270e78e760379b9cb4cb9075ce40",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/cmyk.ppm",
+      "oracle_sha256": "e376451f16b2dc6099753655e691fd388d433c709dc5067bdccae7a771cf3a38",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/indexed",
+      "kind": "pdf",
+      "description": "indexed",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-colour"
+      ],
+      "path": "corpus/generated/content/indexed.pdf",
+      "sha256": "14e7ab2530fdbe99f4d3da579972c7d10dc3300b1ffe5ccd27600d57dc766e57",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/indexed.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/icc-alternate",
+      "kind": "pdf",
+      "description": "ICC stream Alternate/N fallback; profile bytes are not interpreted",
+      "expected": "render",
+      "requirements": [
+        "content-colour"
+      ],
+      "path": "corpus/generated/content/icc-alternate.pdf",
+      "sha256": "a7af6b8547c00033cee477d6b77745e7989a8d1297451bc467f8652d6fa3fb2f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-alternate.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/icc-default",
+      "kind": "pdf",
+      "description": "ICC stream Alternate/N fallback; profile bytes are not interpreted",
+      "expected": "render",
+      "requirements": [
+        "content-colour"
+      ],
+      "path": "corpus/generated/content/icc-default.pdf",
+      "sha256": "2f3fe42656000fa3975e296fa395c3f5b67939c05bf7b0042f559818b803d2f9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-default.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/default-space",
+      "kind": "pdf",
+      "description": "ICC stream Alternate/N fallback; profile bytes are not interpreted",
+      "expected": "render",
+      "requirements": [
+        "content-colour"
+      ],
+      "path": "corpus/generated/content/default-space.pdf",
+      "sha256": "0b0d091a9d8da797f540f8ff6366664425dde06a8d5bc201ffd4cca30b27a0ea",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/default-space.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/compound-operands-split",
+      "kind": "pdf",
+      "description": "compound-operands-split",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-lexical-sequence"
+      ],
+      "path": "corpus/generated/content/compound-operands-split.pdf",
+      "sha256": "ece8086b7a548f3f93ba608c08db3b8bd1d63bd3a5bcd91a9afeff0e37b7f07a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/compound-operands-split.ppm",
+      "oracle_sha256": "26e05920e6bbdeb401387cbda8007fdace761fc2e4ca9e590ac633f7e0c83cd8",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/compatibility",
+      "kind": "pdf",
+      "description": "compatibility",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/compatibility.pdf",
+      "sha256": "0b91179b99323fa4cfe3598cf08517738a374b2f5996fc095bff8438ff31d643",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/compatibility.ppm",
+      "oracle_sha256": "26e05920e6bbdeb401387cbda8007fdace761fc2e4ca9e590ac633f7e0c83cd8",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/extgstate",
+      "kind": "pdf",
+      "description": "extgstate",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/extgstate.pdf",
+      "sha256": "4718f476c21e6d7aa216b5ab75ed03addc470767b75255227855922428d4f163",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/extgstate.ppm",
+      "oracle_sha256": "c37cd9c0569c9cae531cb803ca01aaab456d4204302e012b3a3cf19ac70edb48",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/opaque-page-group",
+      "kind": "pdf",
+      "description": "opaque-page-group",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-opaque-groups"
+      ],
+      "path": "corpus/generated/content/opaque-page-group.pdf",
+      "sha256": "a5a7ff9e18f7c519b5bdb5490fb4cb12217a0bc34eaeadebc06b577110980980",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/opaque-page-group.ppm",
+      "oracle_sha256": "f4431bd310d719c32bce6b92ecfb4cb0e3f5c08125b2ae1bfb75f452e1eac821",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/rotate-90",
+      "kind": "pdf",
+      "description": "rotate-90",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-page-transform"
+      ],
+      "path": "corpus/generated/content/rotate-90.pdf",
+      "sha256": "fef342d81de4d6ea9ddf8a382dc450525c3540800de4929dd8e37719b2dc00c7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/rotate-90.ppm",
+      "oracle_sha256": "69d571bcbafc06b9c177a9d6eb9e296fab3a7855fcd288561e6239688cb5fdcc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/rotate-180",
+      "kind": "pdf",
+      "description": "rotate-180",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-page-transform"
+      ],
+      "path": "corpus/generated/content/rotate-180.pdf",
+      "sha256": "c5228dcce2ac51886bd4c66da6b35d32c11eb262c55c79e94ede9425e33cb630",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/rotate-180.ppm",
+      "oracle_sha256": "23c5d79e3d5ef8de828c0fa4381fb5e348bdc0c9a7745a862fd6f78d93e262b1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/rotate-270",
+      "kind": "pdf",
+      "description": "rotate-270",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-page-transform"
+      ],
+      "path": "corpus/generated/content/rotate-270.pdf",
+      "sha256": "eb178d8a32b11965742e4157d7f1849cf7c724d65284353809da47246c1e7d90",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/rotate-270.ppm",
+      "oracle_sha256": "a01a2d326bd5ce936b2f4b6c6ca7d1854b1286bdff9333952c5e584ce08e398d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/crop",
+      "kind": "pdf",
+      "description": "crop",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-page-transform"
+      ],
+      "path": "corpus/generated/content/crop.pdf",
+      "sha256": "005e4668457bfb54fd471c5b64504ba64ff4084c17931683842b7f415b81637f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/crop.ppm",
+      "oracle_sha256": "952278788e98320d6e6d1805d766cede184bf20c0bf53fee241778b48d4d17ff",
+      "dpi": 72,
+      "width": 4,
+      "height": 4,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/user-unit",
+      "kind": "pdf",
+      "description": "user-unit",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-page-transform"
+      ],
+      "path": "corpus/generated/content/user-unit.pdf",
+      "sha256": "a7c292acd697a8af8ed473c78ec67a8ce944484fd48e3034f5a6b1e56b6d1388",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/user-unit.ppm",
+      "oracle_sha256": "88ed2376454af96e75b0f71423ccea0b16eeb51ba9b66cc672c4c36ea8b5b4f7",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/fractional",
+      "kind": "pdf",
+      "description": "Exact products of fractional pixel overlaps",
+      "expected": "render",
+      "requirements": [
+        "content-fractional"
+      ],
+      "path": "corpus/generated/content/fractional.pdf",
+      "sha256": "b2eaf4a3893bbc45a05ae1b003376e6103ba32135f3cbcc0a8813014d181f0cc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/fractional.ppm",
+      "oracle_sha256": "37a60abc0b349719653a78bf47263ac6e10b45ac81148ffd2f6ec32b6f45bcad",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "content/fractional-clip",
+      "kind": "pdf",
+      "description": "Clip geometry is intersected before area integration",
+      "expected": "render",
+      "requirements": [
+        "content-fractional"
+      ],
+      "path": "corpus/generated/content/fractional-clip.pdf",
+      "sha256": "b10ca87749a596facd0b3bb7e3f6c1796409f4061ef4f9ae474f898ac50ab620",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/fractional-clip.ppm",
+      "oracle_sha256": "37a60abc0b349719653a78bf47263ac6e10b45ac81148ffd2f6ec32b6f45bcad",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "content/fractional-clip-intersection",
+      "kind": "pdf",
+      "description": "Clip geometry is intersected before area integration",
+      "expected": "render",
+      "requirements": [
+        "content-fractional"
+      ],
+      "path": "corpus/generated/content/fractional-clip-intersection.pdf",
+      "sha256": "4d0efc26a7d5642ac87b913b34134082d4091807307c0f3fb2300c9ada4ae520",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/fractional-clip-intersection.ppm",
+      "oracle_sha256": "5e1e607b5ffafae33e751de8e64c6e288959a87a7badbc40e228c6e6fd78773c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "tolerance": 1
+    },
+    {
+      "id": "content/form",
+      "kind": "pdf",
+      "description": "form",
+      "expected": "render",
+      "requirements": [
+        "content-forms",
+        "content-opaque-groups"
+      ],
+      "path": "corpus/generated/content/form.pdf",
+      "sha256": "3e3dd0f08e3a2bf281e6ee6bb0e5e0457ec7ba5a7cfd454b3c02753712d7075b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/form.ppm",
+      "oracle_sha256": "8b4138d7d2b9786e9649a6d79502309f9e72bb5de795bf7d24a4dfe45b36070d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/opaque-form-group",
+      "kind": "pdf",
+      "description": "opaque-form-group",
+      "expected": "render",
+      "requirements": [
+        "content-forms",
+        "content-opaque-groups"
+      ],
+      "path": "corpus/generated/content/opaque-form-group.pdf",
+      "sha256": "9e98861d2513532143f6b0004d411641fca92097e4c044430d46aa1279c18a3d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/opaque-form-group.ppm",
+      "oracle_sha256": "8b4138d7d2b9786e9649a6d79502309f9e72bb5de795bf7d24a4dfe45b36070d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/form-resources",
+      "kind": "pdf",
+      "description": "Form resources are local",
+      "expected": "render",
+      "requirements": [
+        "content-forms"
+      ],
+      "path": "corpus/generated/content/form-resources.pdf",
+      "sha256": "4f44abddd7a4fc6c5a42d883270c839264d08a0d0e626ee9a1469af263293a15",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/form-resources.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/optional-default",
+      "kind": "pdf",
+      "description": "Hidden painting still changes graphics state",
+      "expected": "render",
+      "requirements": [
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/optional-default.pdf",
+      "sha256": "3c7e50cf7ba867ad1e41880ab52239721f4af44d3c2ef03d2711eddcee507b0e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/optional-default.ppm",
+      "oracle_sha256": "f4431bd310d719c32bce6b92ecfb4cb0e3f5c08125b2ae1bfb75f452e1eac821",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/optional-AnyOn",
+      "kind": "pdf",
+      "description": "Membership policy",
+      "expected": "render",
+      "requirements": [
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/optional-AnyOn.pdf",
+      "sha256": "5cc3726deae5a8e86d7e93d12f3b0c63910877b8edf2a81b6990c08b70488560",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/optional-AnyOn.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/optional-AllOn",
+      "kind": "pdf",
+      "description": "Membership policy",
+      "expected": "render",
+      "requirements": [
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/optional-AllOn.pdf",
+      "sha256": "41cbeca9f52951fd4b86f7be08bb59a76ff714ce5d2564e0691b7ab42a2ca1c4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/optional-AllOn.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/optional-AnyOff",
+      "kind": "pdf",
+      "description": "Membership policy",
+      "expected": "render",
+      "requirements": [
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/optional-AnyOff.pdf",
+      "sha256": "b47fb35e4ffe549239f9b376fe925cb0b957579809f40c5ad25e2aa7dfd557ec",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/optional-AnyOff.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/optional-AllOff",
+      "kind": "pdf",
+      "description": "Membership policy",
+      "expected": "render",
+      "requirements": [
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/optional-AllOff.pdf",
+      "sha256": "2c2dda878770de46eafac004a13ce2d58682edf9633002080c6dfcb1e8a6aec8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/optional-AllOff.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/optional-expression",
+      "kind": "pdf",
+      "description": "Boolean visibility expression",
+      "expected": "render",
+      "requirements": [
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/optional-expression.pdf",
+      "sha256": "7be3c5755d4a7545e2afeca06ea9ea7998e92989424e0c3a2179003e43d87729",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/optional-expression.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/text",
+      "kind": "pdf",
+      "description": "text",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/text.pdf",
+      "sha256": "a4ade4eea2e7cffb8411001594189111cce1b02a7b1bb2f1ae13be8f0cd632bc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "operator.Tj",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/inline-image",
+      "kind": "pdf",
+      "description": "inline-image",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/inline-image.pdf",
+      "sha256": "e18096b6cad83a8fb5ea41b8f2714cada70ba6e02ea8b43fc8fe8d720199aba3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "image.inline",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/shading",
+      "kind": "pdf",
+      "description": "shading",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/shading.pdf",
+      "sha256": "f964cb8a2a4b94fefea3f54b3f5494561ce1da88074c72a6028258bc513c6dfb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "shading.paint",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/text-state",
+      "kind": "pdf",
+      "description": "text-state",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/text-state.pdf",
+      "sha256": "2cd72b2077622f0e316693788f321afb17685dda36abd7da34845c7188ca545e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "operator.Tf",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/type3",
+      "kind": "pdf",
+      "description": "type3",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/type3.pdf",
+      "sha256": "fddd6546351cd877eb1887e4f8c0eb8d628cbc2866fb69cd3fe683165da6577a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "operator.d0",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/alpha",
+      "kind": "pdf",
+      "description": "alpha",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/alpha.pdf",
+      "sha256": "e72322e81fb39b7a5d1ba4037d5c33a20c9ccdfec86034f9c9f05f3c5dcb9e8c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.ca",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/blend",
+      "kind": "pdf",
+      "description": "blend",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/blend.pdf",
+      "sha256": "483b6b58569e0cef4e7bfa26b3fd3e1724ac85fed0ff6f931c26e35b390ea59e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.BM",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/soft-mask",
+      "kind": "pdf",
+      "description": "soft-mask",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/soft-mask.pdf",
+      "sha256": "f773087f7b8ccc2a68ad8c26ffee19bc8c005d3d90b711ced13b9df1f3a15c4e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.SMask",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/transfer",
+      "kind": "pdf",
+      "description": "transfer",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/transfer.pdf",
+      "sha256": "e8389748dfddc382ec5f3625aa08cfd8f239686fc4450171d1d6d293ba044ae0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "extgstate.TR",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/font-state",
+      "kind": "pdf",
+      "description": "font-state",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/font-state.pdf",
+      "sha256": "019c95666d0be46ecc46aee2c79459ee9d7041e0543b61f166879bfe43d1a284",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "extgstate.Font",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/space-Separation",
+      "kind": "pdf",
+      "description": "space-Separation",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/space-Separation.pdf",
+      "sha256": "dce8daaeed6a64037b4088ea967aa56eddaba60ebe0ff270b684d6e65a4c9846",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "colorspace.Separation",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/space-DeviceN",
+      "kind": "pdf",
+      "description": "space-DeviceN",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/space-DeviceN.pdf",
+      "sha256": "5747052e6add87ca93477a1a77d967cedabbb795516428c913f0cab4ad9d1ed0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "colorspace.DeviceN",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/space-Lab",
+      "kind": "pdf",
+      "description": "space-Lab",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/space-Lab.pdf",
+      "sha256": "a6d425dfa47a1403d1a7db144ea8d6f456b0dfdbe5ea5882ea63a857147bf941",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "colorspace.Lab",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/space-CalRGB",
+      "kind": "pdf",
+      "description": "space-CalRGB",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/space-CalRGB.pdf",
+      "sha256": "3e074f5ab9119715510e8a69c1bbb4d903ac364daba22f957ac55057da26e7af",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "colorspace.CalRGB",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/space-CalGray",
+      "kind": "pdf",
+      "description": "space-CalGray",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/space-CalGray.pdf",
+      "sha256": "a8ea430eb3c68a4fd24f58ab454de5064d97966c21abd44370125c5b0c18b5b6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "colorspace.CalGray",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/pattern",
+      "kind": "pdf",
+      "description": "pattern",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/pattern.pdf",
+      "sha256": "7a0c87ca14a4c6cf384626dc4fdfbd49d2728ef71e13ea550846d476dd930025",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "pattern.colorspace",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/knockout",
+      "kind": "pdf",
+      "description": "knockout",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/knockout.pdf",
+      "sha256": "a9bf153b7c1682aee4dd0fa04f12efc8db127cd286b0cb6d7b7ad0cb1130cf11",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.knockout",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/annotation",
+      "kind": "pdf",
+      "description": "annotation",
+      "expected": "unsupported",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/annotation.pdf",
+      "sha256": "9d8bd1b8f97c6a92d6023b72c82d999b6247c9168197db7a1b9e58d140efd028",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance",
+      "api": "compile_page"
+    },
+    {
+      "id": "content/syntax-unknown",
+      "kind": "pdf",
+      "description": "Valid file with malformed page content",
+      "expected": "open",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/syntax-unknown.pdf",
+      "sha256": "7e6f111dfd92ea9ba082f664793862d248658d0699c623ea27e8eae0fd94407d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/syntax-arity",
+      "kind": "pdf",
+      "description": "Valid file with malformed page content",
+      "expected": "open",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/syntax-arity.pdf",
+      "sha256": "f241394174756b497b87e1c3eb2348f372bf465f7312a0769d1c0a7d7973ec7e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/syntax-type",
+      "kind": "pdf",
+      "description": "Valid file with malformed page content",
+      "expected": "open",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/syntax-type.pdf",
+      "sha256": "b24a4d24d60d101cbb492f14f504ab5a34e0fdfbd0d6020d07ecbbfb2213b2e2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/syntax-Q",
+      "kind": "pdf",
+      "description": "Valid file with malformed page content",
+      "expected": "open",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/syntax-Q.pdf",
+      "sha256": "8e9074ae7fab1dffeffb3c6e82a75c2cb1a28bcd8e8d2f9700b2e7d929e4ebc8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/syntax-q-unclosed",
+      "kind": "pdf",
+      "description": "Valid file with malformed page content",
+      "expected": "open",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/syntax-q-unclosed.pdf",
+      "sha256": "543decf318baafb58ec559ac2a55f1c219065e867cb8f39a441c450546f3130a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/syntax-l",
+      "kind": "pdf",
+      "description": "Valid file with malformed page content",
+      "expected": "open",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/syntax-l.pdf",
+      "sha256": "c149d8ce6f83deed2bff640b56a05a2e4753f6f86d4c933bc69fe51e5a028b15",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/syntax-TJ",
+      "kind": "pdf",
+      "description": "Valid file with malformed page content",
+      "expected": "open",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/syntax-TJ.pdf",
+      "sha256": "ace30a31bf9936a587113c9dcfdbf654d67c58f1791ce3ab275169a82cea6ca7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/syntax-pending-clip",
+      "kind": "pdf",
+      "description": "Valid file with malformed page content",
+      "expected": "open",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/syntax-pending-clip.pdf",
+      "sha256": "98ecdafe87fdd5050d5828f92b9208aff795fa7faecf8893d96adc379e3ad450",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/syntax-reference",
+      "kind": "pdf",
+      "description": "Valid file with malformed page content",
+      "expected": "open",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/syntax-reference.pdf",
+      "sha256": "20543f6aa901d710dde62dca41c53e2b31cb237a4b2d954075eb8cad7cbc713b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/syntax-negative-width",
+      "kind": "pdf",
+      "description": "Valid file with malformed page content",
+      "expected": "open",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/syntax-negative-width.pdf",
+      "sha256": "c466b51298f04fc86dd5fd293713a88a47cec80c5bf7822eddc9cbf2189afee5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/syntax-zero-dash",
+      "kind": "pdf",
+      "description": "Valid file with malformed page content",
+      "expected": "open",
+      "requirements": [
+        "content-explicit-operators"
+      ],
+      "path": "corpus/generated/content/syntax-zero-dash.pdf",
+      "sha256": "a5d5398379016cce4970d1503630d804eaaa4ae9eef2bc317da9b5374fe2078d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/recursive-form",
+      "kind": "pdf",
+      "description": "Recursive form must return Cycle",
+      "expected": "open",
+      "requirements": [
+        "content-forms"
+      ],
+      "path": "corpus/generated/content/recursive-form.pdf",
+      "sha256": "20409b85ef8c851806b9bdfb5dd1ba36ceb7ab59db0a10c56f2dd47cb58b1322",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "api": "compile_page",
+      "render_error": "Cycle"
+    },
+    {
+      "id": "content/annotation-no-normal",
+      "kind": "pdf",
+      "description": "annotation-no-normal",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/annotation-no-normal.pdf",
+      "sha256": "c27a3fc89e2e8ced1cabebbba7877d137923d4c12d389be3b4970bacd0da63c2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-no-normal.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/annotation-hidden",
+      "kind": "pdf",
+      "description": "annotation-hidden",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline"
+      ],
+      "path": "corpus/generated/content/annotation-hidden.pdf",
+      "sha256": "ee22b792776725f05efa13dda12b14c088c755add742a418d3ed8647daa66ba7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-hidden.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/icc-range",
+      "kind": "pdf",
+      "description": "Nondefault ICC input ranges require unsupported colour handling",
+      "expected": "unsupported",
+      "requirements": [
+        "content-colour"
+      ],
+      "path": "corpus/generated/content/icc-range.pdf",
+      "sha256": "c2767b7899586909786b714921e09d580adff238de3c66afb4549b91f09319d8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "colorspace.ICCRange",
+      "api": "compile_page"
+    }
+  ]
+}

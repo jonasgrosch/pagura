@@ -1,0 +1,4 @@
+filter=RunLengthDecode
+outcome=valid
+repair=filter.trailing-data
+cap=1

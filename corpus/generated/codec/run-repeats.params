@@ -1,0 +1,4 @@
+filter=RunLengthDecode
+outcome=valid
+repair=none
+cap=130

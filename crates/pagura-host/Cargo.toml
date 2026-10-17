@@ -1,0 +1,17 @@
+[package]
+name = "pagura-host"
+description = "Pagura session protocol over stdio, native and wasm32-wasip1"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pagura.workspace = true
+
+[dev-dependencies]
+pagura-testkit.workspace = true

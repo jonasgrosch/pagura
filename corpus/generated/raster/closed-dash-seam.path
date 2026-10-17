@@ -1,0 +1,7 @@
+stroke 2 butt miter 10
+dash 0 16 8
+m 2 2
+l 6 2
+l 6 6
+l 2 6
+h

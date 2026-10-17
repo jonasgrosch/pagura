@@ -1,0 +1,1274 @@
+{
+  "schema": 2,
+  "area": "document",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "document/xref-stream",
+      "kind": "pdf",
+      "description": "Unfiltered type 0 and 1 cross-reference stream",
+      "expected": "render",
+      "requirements": [
+        "xref-streams"
+      ],
+      "path": "corpus/generated/document/xref-stream.pdf",
+      "sha256": "e2f94dd37f1bdc908ac8fd3c1c7760efc579b8cc3597ebd304293db4ed0f5a2a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/xref-stream.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/xref-index",
+      "kind": "pdf",
+      "description": "Several Index subsections cover disjoint object ranges",
+      "expected": "render",
+      "requirements": [
+        "xref-streams"
+      ],
+      "path": "corpus/generated/document/xref-index.pdf",
+      "sha256": "2cd79ff81287f113f8ceabe8b85ce345150f4b20f8024873d694cbcb88d5f110",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/xref-index.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/xref-default-fields",
+      "kind": "pdf",
+      "description": "Zero-width type and generation fields default to 1 and 0",
+      "expected": "render",
+      "requirements": [
+        "xref-streams"
+      ],
+      "path": "corpus/generated/document/xref-default-fields.pdf",
+      "sha256": "677c7f9d27ea017dcecc2cade96eb973ecb507112bf97fd54a4b89a339830475",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/xref-default-fields.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/xref-unknown-type",
+      "kind": "pdf",
+      "description": "Unknown entry types represent null references",
+      "expected": "render",
+      "requirements": [
+        "xref-streams"
+      ],
+      "path": "corpus/generated/document/xref-unknown-type.pdf",
+      "sha256": "ca3d2cf128ac505e0b799009ad7ae6b1c8c6ecab06dc7f30b0bbd3cd1adff70c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/xref-unknown-type.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/xref-flate",
+      "kind": "pdf",
+      "description": "Flate cross-reference stream, optionally using independent PNG Up prediction",
+      "expected": "render",
+      "requirements": [
+        "xref-streams"
+      ],
+      "path": "corpus/generated/document/xref-flate.pdf",
+      "sha256": "4e891fa96890e3861f32a946593c773e40c3f0963032ad0040dcfc58de116206",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/xref-flate.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/xref-flate-predictor",
+      "kind": "pdf",
+      "description": "Flate cross-reference stream, optionally using independent PNG Up prediction",
+      "expected": "render",
+      "requirements": [
+        "xref-streams"
+      ],
+      "path": "corpus/generated/document/xref-flate-predictor.pdf",
+      "sha256": "9b50c0884a618ebb1bf93b980a6b259fc492af808b3f366f60fa8c2d5b68c63e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/xref-flate-predictor.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/object-stream",
+      "kind": "pdf",
+      "description": "Catalog, Pages and Page in one object stream; Extends describes a collection",
+      "expected": "render",
+      "requirements": [
+        "object-streams"
+      ],
+      "path": "corpus/generated/document/object-stream.pdf",
+      "sha256": "4de18981dade9e6c68eac14ad25b572dc90494ffd2556bb69cf96851f1835502",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/object-stream.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/object-stream-flate",
+      "kind": "pdf",
+      "description": "Flate object stream",
+      "expected": "render",
+      "requirements": [
+        "object-streams"
+      ],
+      "path": "corpus/generated/document/object-stream-flate.pdf",
+      "sha256": "a58a94f3d2f07cb006d005227a3207f4eb0dad34cfd22681b81dfc88a7ec1f7d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/object-stream-flate.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/compressed-reference-chain",
+      "kind": "pdf",
+      "description": "References between compressed objects resolve within the same decoded stream",
+      "expected": "render",
+      "requirements": [
+        "object-streams"
+      ],
+      "path": "corpus/generated/document/compressed-reference-chain.pdf",
+      "sha256": "269e98b96848c1f2e447cd24d91dd371912cb676005fa21eff75c1565bd6bbf8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/compressed-reference-chain.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/hybrid-precedence",
+      "kind": "pdf",
+      "description": "Supplemental compressed entries override free table entries",
+      "expected": "render",
+      "requirements": [
+        "document-revisions"
+      ],
+      "path": "corpus/generated/document/hybrid-precedence.pdf",
+      "sha256": "770c450fa8fb85f3fc8f902fd22de9c4a855392c84b4b1aeef0c26f9baa52fd0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/hybrid-precedence.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/revision-redefine",
+      "kind": "pdf",
+      "description": "Newest entry wins and missing Root inherits from the older trailer",
+      "expected": "render",
+      "requirements": [
+        "document-revisions"
+      ],
+      "path": "corpus/generated/document/revision-redefine.pdf",
+      "sha256": "d0051d789b8ac01e6a8d77545f53763083211c2978e12ff62565eb4151694c69",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/revision-redefine.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/revision-free",
+      "kind": "pdf",
+      "description": "Free entry deletes the old page; revised page tree has zero leaves",
+      "expected": "open",
+      "requirements": [
+        "document-revisions"
+      ],
+      "path": "corpus/generated/document/revision-free.pdf",
+      "sha256": "1d64afc915d93bfb7ce0ed6ab87c36aa8a0879169fb085aba55ddec6d349f830",
+      "pages": 0,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
+      "id": "document/prev-cycle",
+      "kind": "pdf",
+      "description": "Strict Prev cycle error; repair reconstructs complete objects",
+      "expected": "render",
+      "requirements": [
+        "document-revisions"
+      ],
+      "path": "corpus/generated/document/prev-cycle.pdf",
+      "sha256": "eb5b1bd98a2e82f2694aca03004d080922643eab9a362c469a074753b300986f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/prev-cycle.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/stream-prev-cycle",
+      "kind": "pdf",
+      "description": "Strict stream Prev cycle error; repair reconstructs complete objects",
+      "expected": "render",
+      "requirements": [
+        "document-revisions"
+      ],
+      "path": "corpus/generated/document/stream-prev-cycle.pdf",
+      "sha256": "7ce8726986a011d0801db8cc92e282965186ef2bb5b809e3d0863983faeacd9d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/stream-prev-cycle.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/nearby-offset",
+      "kind": "pdf",
+      "description": "Nearby exact matching Catalog header repairs its wrong offset",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/nearby-offset.pdf",
+      "sha256": "b9e33b70c561042acbc522bc00c3ac6df0eb998b49eb95eb691e6586a8838219",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.offset-corrected"
+      ],
+      "oracle": "corpus/generated/document/nearby-offset.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/header-offset",
+      "kind": "pdf",
+      "description": "Prepended junk shifts recorded offsets",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/header-offset.pdf",
+      "sha256": "e5be4c3fa6176aa7d7d23d2be5e7b7b9d7f8d0cfa7380bc20548861e326fce99",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.header-offset"
+      ],
+      "oracle": "corpus/generated/document/header-offset.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/header-physical-offsets",
+      "kind": "pdf",
+      "description": "Leading junk already included in recorded offsets",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/header-physical-offsets.pdf",
+      "sha256": "76fe03d07578133775403bc7636636fd73f68a72d5c448b3d3539726fb850fa1",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.header-offset"
+      ],
+      "oracle": "corpus/generated/document/header-physical-offsets.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-trailer",
+      "kind": "pdf",
+      "description": "Reconstruction from complete objects with a retained trailer or Catalog",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-trailer.pdf",
+      "sha256": "442e1d935a210218654624132b9ecf42eb17c05878d5631ff512ad997510adcb",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-trailer.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-catalog",
+      "kind": "pdf",
+      "description": "Reconstruction from complete objects with a retained trailer or Catalog",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-catalog.pdf",
+      "sha256": "a278febe29171109d58e1a7c18f42f94b205b555ef4d9257daca40b8f5976863",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "trailer.reconstructed"
+      ],
+      "oracle": "corpus/generated/document/rebuild-catalog.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-object-stream",
+      "kind": "pdf",
+      "description": "Reconstruction discovers compressed objects",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-object-stream.pdf",
+      "sha256": "3b89b7371eef966b4ba11c9116315056c029aa36c5d49de5eabedda3bbbf6114",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-object-stream.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/short-length",
+      "kind": "pdf",
+      "description": "Underreported stream length has a unique endstream terminator",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/short-length.pdf",
+      "sha256": "578774c7d8594de844ca3ed29a7567514f35c973af401ebdaed9c49fa3fb469d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/document/short-length.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/trailing-junk",
+      "kind": "pdf",
+      "description": "Data after final EOF is reported",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/trailing-junk.pdf",
+      "sha256": "f0f48c2d508f3bd8430f5174a6cf59119400f380a64056bc76699faeb80abcf0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.trailing-bytes"
+      ],
+      "oracle": "corpus/generated/document/trailing-junk.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/truncated",
+      "kind": "pdf",
+      "description": "Missing EOF triggers reconstruction without losing complete objects",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/truncated.pdf",
+      "sha256": "01061877bfdf35b7c8f59a72b585495b49b4082e53e573bba3697869e0bfbcac",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/truncated.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/xref-truncated-fields",
+      "kind": "pdf",
+      "description": "Malformed W fields trigger reconstruction from complete objects",
+      "expected": "render",
+      "requirements": [
+        "xref-streams"
+      ],
+      "path": "corpus/generated/document/xref-truncated-fields.pdf",
+      "sha256": "dac7b0914a90c792c7e4ac77cf35dfca2495866aea60a94ac94541e43cc2fd8c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/xref-truncated-fields.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-r2",
+      "kind": "pdf",
+      "description": "Independently derived Standard-handler RC4 file with empty user password and encrypted Marker string",
+      "expected": "render",
+      "requirements": [
+        "document-security"
+      ],
+      "path": "corpus/generated/document/security-r2.pdf",
+      "sha256": "3f9f95fea37fc25474cf89d21b1bd2e0b44e62e6610d324afed7b7f5e12041a0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-r2.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner",
+      "marker": "independent"
+    },
+    {
+      "id": "document/security-r3",
+      "kind": "pdf",
+      "description": "Independently derived Standard-handler RC4 file with empty user password and encrypted Marker string",
+      "expected": "render",
+      "requirements": [
+        "document-security"
+      ],
+      "path": "corpus/generated/document/security-r3.pdf",
+      "sha256": "a2d410ec19a3911dc3462f5a812a6a3d4fceb85ad0a8875e91b03eac9d0e2bd2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-r3.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner",
+      "marker": "independent"
+    },
+    {
+      "id": "document/security-r4",
+      "kind": "pdf",
+      "description": "Independently derived Standard-handler RC4 file with empty user password and encrypted Marker string",
+      "expected": "render",
+      "requirements": [
+        "document-security"
+      ],
+      "path": "corpus/generated/document/security-r4.pdf",
+      "sha256": "96fa85354913cb90ba81109374b27047050cd27172bac04a20f081bc7bea30e4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-r4.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner",
+      "marker": "independent"
+    },
+    {
+      "id": "document/security-crypt-identity",
+      "kind": "pdf",
+      "description": "Explicit Crypt Identity overrides encrypted default streams; strings still use RC4",
+      "expected": "render",
+      "requirements": [
+        "document-security"
+      ],
+      "path": "corpus/generated/document/security-crypt-identity.pdf",
+      "sha256": "63f6d9d1c5f1bacb762c2e69dfb5c441cee2fda8413f6990772e43c57f31847d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-crypt-identity.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner",
+      "marker": "independent"
+    },
+    {
+      "id": "document/rebuild-missing-startxref",
+      "kind": "pdf",
+      "description": "Primary structural failure falls back to reported reconstruction",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-missing-startxref.pdf",
+      "sha256": "47bedda4914292b3bb5b0337a163cded30a8868629f89ac294bb2fef8c4b7bb5",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-missing-startxref.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-startxref-outside",
+      "kind": "pdf",
+      "description": "Primary structural failure falls back to reported reconstruction",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-startxref-outside.pdf",
+      "sha256": "9f28b29d654d5ec10cb04c706439bcdc9b924d827c6863d6538da88abbf77591",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-startxref-outside.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-startxref-object",
+      "kind": "pdf",
+      "description": "Primary structural failure falls back to reported reconstruction",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-startxref-object.pdf",
+      "sha256": "cc0a866876e9ba9627ba27d91057c67ef513ca008214882c6c014c8b1b77ac85",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-startxref-object.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-startxref-junk",
+      "kind": "pdf",
+      "description": "Primary structural failure falls back to reported reconstruction",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-startxref-junk.pdf",
+      "sha256": "eca9f4c413435b758f43e0a6605078d4945a0ae3b7b483b27662a1ffba4e6157",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-startxref-junk.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-malformed-table",
+      "kind": "pdf",
+      "description": "Primary structural failure falls back to reported reconstruction",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-malformed-table.pdf",
+      "sha256": "b5e5ccf487d82b0b5d0929bd8af29e30eea2dca054d8524c006f7c6d03832a57",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-malformed-table.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-stream-length",
+      "kind": "pdf",
+      "description": "Primary structural failure falls back to reported reconstruction",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-stream-length.pdf",
+      "sha256": "5ca062d15eb751cbbfb91b3d1252e1ccd28ab3b3c2b124f833160e92cc6b1331",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-stream-length.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-prev-missing",
+      "kind": "pdf",
+      "description": "Primary structural failure falls back to reported reconstruction",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-prev-missing.pdf",
+      "sha256": "fb1a1041a2e75994091a9dc8ca77bbed886dc487903de0481e891e230e30be4d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-prev-missing.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-prev-malformed",
+      "kind": "pdf",
+      "description": "Primary structural failure falls back to reported reconstruction",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-prev-malformed.pdf",
+      "sha256": "683d882d04feda449a61e1985afad460897a24dd69886608cd9bf5931e972ad0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-prev-malformed.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-truncated-startxref",
+      "kind": "pdf",
+      "description": "Primary structural failure falls back to reported reconstruction",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-truncated-startxref.pdf",
+      "sha256": "077998ccb7492a81f3cf01a2263947ccc87ada7ea3c8bfbba31358e9fa77bcc2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-truncated-startxref.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-truncated-trailer",
+      "kind": "pdf",
+      "description": "An incomplete trailer uses the scanned Catalog as a last resort",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-truncated-trailer.pdf",
+      "sha256": "7957050d5b9d8919c88bbb99210203c2bfe587ff39e5a8b6cd5150fa4e7eb8ad",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "trailer.reconstructed"
+      ],
+      "oracle": "corpus/generated/document/rebuild-truncated-trailer.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-compressed-catalog",
+      "kind": "pdf",
+      "description": "A compressed Catalog is found after rebuilding an absent trailer",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-compressed-catalog.pdf",
+      "sha256": "0c563d1bd7041ea55b6ad35ea00f7aeeee27a492714ddf57cf3ee9e20e38a1d0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "trailer.reconstructed"
+      ],
+      "oracle": "corpus/generated/document/rebuild-compressed-catalog.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-identities",
+      "kind": "pdf",
+      "description": "A parseable trailer preserves Root, Info and both ID strings",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-identities.pdf",
+      "sha256": "6c75029c1a3c2d583608153f649eb5a395e6f022ab0d410b9bf807b0a0c48425",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-identities.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-last-trailer",
+      "kind": "pdf",
+      "description": "Last parseable trailer fields win and omitted Root inherits",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-last-trailer.pdf",
+      "sha256": "51b19d48de0aa947602aa3ffba4f5b97dc90b52dc0ec5a1e4a2ad4a4ccf9c616",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-last-trailer.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-opaque-payloads",
+      "kind": "pdf",
+      "description": "Object headers and trailers inside strings or stream payloads remain opaque",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-opaque-payloads.pdf",
+      "sha256": "f41b957eaf6547bab581875bc6e6aeaafbf6d8ba694bb33246f3d1ed59a0b5d4",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-opaque-payloads.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-malformed-last-trailer",
+      "kind": "pdf",
+      "description": "An unparsable final trailer does not replace the last parseable identity fields",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-malformed-last-trailer.pdf",
+      "sha256": "08fd307ea4b57e63da0e7a61db92c4b695a763d342bc421252aacb3832916ad2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-malformed-last-trailer.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-catalog-offset",
+      "kind": "pdf",
+      "description": "A parseable xref with an unusable Catalog offset reconstructs during opening",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-catalog-offset.pdf",
+      "sha256": "8a66a571bb9dec78c75da34cb0eb3d9c58b98b1546317754cd72dccf2dd04d19",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-catalog-offset.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-unusable-root",
+      "kind": "pdf",
+      "description": "An undefined Root uses the scanned Catalog while preserving other trailer fields",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-unusable-root.pdf",
+      "sha256": "ecfaa5dd6859c9d07c9e7432cebaa4ec7de861051e5f2662180dfc579b000464",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "trailer.reconstructed"
+      ],
+      "oracle": "corpus/generated/document/rebuild-unusable-root.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-no-catalog",
+      "kind": "pdf",
+      "description": "Structural reconstruction cannot invent a missing complete Catalog",
+      "expected": "invalid",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-no-catalog.pdf",
+      "sha256": "944458f005e7976cb24255ae3d918e4dbe66de21752ccc2ced234e297e33a15a",
+      "pages": null,
+      "strict_valid": false,
+      "repairs": []
+    },
+    {
+      "id": "document/rebuild-incomplete-object",
+      "kind": "pdf",
+      "description": "Structural reconstruction cannot invent a missing complete Catalog",
+      "expected": "invalid",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-incomplete-object.pdf",
+      "sha256": "f2969bf4ec5d44915c37553b766d7e65e9ac72a591b31f3f941021fa6f0ac2df",
+      "pages": null,
+      "strict_valid": false,
+      "repairs": []
+    },
+    {
+      "id": "document/rebuild-corrupt-flate-stream",
+      "kind": "pdf",
+      "description": "A decoder syntax error triggers reconstruction from the parseable xref dictionary",
+      "expected": "render",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/rebuild-corrupt-flate-stream.pdf",
+      "sha256": "7846a1dcbc986c475ac6e990bc88ca1c3c2383fbc0ef0bded9788b007110ea7d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/rebuild-corrupt-flate-stream.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-rebuilt",
+      "kind": "pdf",
+      "description": "Recovered Encrypt and ID authenticate before any object-stream decoding",
+      "expected": "render",
+      "requirements": [
+        "document-security"
+      ],
+      "path": "corpus/generated/document/security-rebuilt.pdf",
+      "sha256": "cdcca62ad28bdd1253eefc50a1b3ce0a0357ed8538af84a232c5ca6c856a36c4",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/security-rebuilt.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner",
+      "marker": "independent"
+    },
+    {
+      "id": "document/security-rebuilt-object-stream",
+      "kind": "pdf",
+      "description": "Recovered Encrypt and ID authenticate before any object-stream decoding",
+      "expected": "render",
+      "requirements": [
+        "document-security"
+      ],
+      "path": "corpus/generated/document/security-rebuilt-object-stream.pdf",
+      "sha256": "5b0e853075349d27059c9828dacf3d3fdef611b8aa0e99468ec61d5073940c0b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt"
+      ],
+      "oracle": "corpus/generated/document/security-rebuilt-object-stream.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner",
+      "marker": "independent"
+    },
+    {
+      "id": "document/header-text",
+      "kind": "pdf",
+      "description": "Trailing header-line text/space is a reported repair; physical offsets are unchanged",
+      "expected": "render",
+      "requirements": [
+        "document-repairs",
+        "document-header-recovery"
+      ],
+      "path": "corpus/generated/document/header-text.pdf",
+      "sha256": "c3fc75aaa80189850b66442c6b45bcc7479c7c9a76d6cbd22bf261261a6dceb7",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.header-format"
+      ],
+      "oracle": "corpus/generated/document/header-text.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/header-space",
+      "kind": "pdf",
+      "description": "Trailing header-line text/space is a reported repair; physical offsets are unchanged",
+      "expected": "render",
+      "requirements": [
+        "document-repairs",
+        "document-header-recovery"
+      ],
+      "path": "corpus/generated/document/header-space.pdf",
+      "sha256": "088258f34c1d8a38efe99daf91e2855cdb68af8ff065d670849d3388d5be107d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.header-format"
+      ],
+      "oracle": "corpus/generated/document/header-space.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/header-tab",
+      "kind": "pdf",
+      "description": "Trailing header-line text/space is a reported repair; physical offsets are unchanged",
+      "expected": "render",
+      "requirements": [
+        "document-repairs",
+        "document-header-recovery"
+      ],
+      "path": "corpus/generated/document/header-tab.pdf",
+      "sha256": "18b1b449514b01c7caaeffa7c58550a5a14f1636fa9b5c5bf341c19263d2f13a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.header-format"
+      ],
+      "oracle": "corpus/generated/document/header-tab.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/catalog-type-missing",
+      "kind": "pdf",
+      "description": "Only a missing Type with a reference to a typed Pages node identifies a Catalog",
+      "expected": "render",
+      "requirements": [
+        "document-repairs",
+        "catalog-type-recovery"
+      ],
+      "path": "corpus/generated/document/catalog-type-missing.pdf",
+      "sha256": "4bcc68f76f6c5dbc7e72eaff4eca4cf23fd14552897e18af77e470b38f45e2df",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "catalog.type-missing"
+      ],
+      "oracle": "corpus/generated/document/catalog-type-missing.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/catalog-type-missing-rebuilt",
+      "kind": "pdf",
+      "description": "Reconstruction recognizes a Catalog through the typed Pages target",
+      "expected": "render",
+      "requirements": [
+        "document-repairs",
+        "catalog-type-recovery"
+      ],
+      "path": "corpus/generated/document/catalog-type-missing-rebuilt.pdf",
+      "sha256": "f4e9aa51551f72422dc61f3f088acecb5da713a40ab939860eb479bebdcc4731",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "trailer.reconstructed",
+        "catalog.type-missing"
+      ],
+      "oracle": "corpus/generated/document/catalog-type-missing-rebuilt.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/stream-bare-cr",
+      "kind": "pdf",
+      "description": "Bare CR separates the stream keyword and payload; LF/CRLF remain the strict forms",
+      "expected": "render",
+      "requirements": [
+        "document-repairs",
+        "stream-boundary-recovery"
+      ],
+      "path": "corpus/generated/document/stream-bare-cr.pdf",
+      "sha256": "d7d88121915dee99a5a51ded69b9ad846f524628a0d8dadcba49bd71af5b2a69",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "stream.eol"
+      ],
+      "oracle": "corpus/generated/document/stream-bare-cr.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/rebuild-indirect-stream-boundary",
+      "kind": "pdf",
+      "description": "Damaged xref reconstruction must not swallow following objects when an indirect-length stream lacks a pre-endstream EOL",
+      "expected": "render",
+      "requirements": [
+        "document-repairs",
+        "stream-boundary-recovery"
+      ],
+      "path": "corpus/generated/document/rebuild-indirect-stream-boundary.pdf",
+      "sha256": "b6483b087c4cea2385359b27db30597444811c74c0cb6c006fd27fa988c1560e",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "xref.rebuilt",
+        "xref.stream-boundary"
+      ],
+      "oracle": "corpus/generated/document/rebuild-indirect-stream-boundary.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/permissions-unsigned",
+      "kind": "pdf",
+      "description": "Unsigned 32-bit spelling preserves the signed permission bits during key derivation",
+      "expected": "render",
+      "requirements": [
+        "document-repairs",
+        "security-field-recovery"
+      ],
+      "path": "corpus/generated/document/permissions-unsigned.pdf",
+      "sha256": "d02db139e15c5a224edbe872d38f03bc79cc2e972975e5431ffdd18231070617",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.permissions-unsigned"
+      ],
+      "oracle": "corpus/generated/document/permissions-unsigned.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/hash-zero-padding",
+      "kind": "pdf",
+      "description": "Only excess zero bytes beyond a fixed-length modern hash are discarded; authentication still must pass",
+      "expected": "render",
+      "requirements": [
+        "document-repairs",
+        "security-field-recovery"
+      ],
+      "path": "corpus/generated/document/hash-zero-padding.pdf",
+      "sha256": "b755b77b42448f12226c15b338bff43c05d646ce2c0bd299b3bc3d3816574564",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.hash-padding"
+      ],
+      "oracle": "corpus/generated/document/hash-zero-padding.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/hash-literal-eol",
+      "kind": "pdf",
+      "description": "Binary literal O/U fields recover their original CRLF bytes only after a length mismatch",
+      "expected": "render",
+      "requirements": [
+        "document-repairs",
+        "security-field-recovery"
+      ],
+      "path": "corpus/generated/document/hash-literal-eol.pdf",
+      "sha256": "2821d1aede980d7e34699885a39bc5b335a7c7a327ec0554d566d23c57f8c97a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "security.literal-hash"
+      ],
+      "oracle": "corpus/generated/document/hash-literal-eol.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/catalog-type-wrong",
+      "kind": "pdf",
+      "description": "Missing-Type recovery cannot excuse an explicitly wrong Type or a non-Pages target",
+      "expected": "invalid",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/catalog-type-wrong.pdf",
+      "sha256": "a6ef3fe8cf40657c5c089751183dbebb1084c92b98ca243d85240157c47e0ca9",
+      "pages": null,
+      "strict_valid": false,
+      "repairs": []
+    },
+    {
+      "id": "document/catalog-pages-wrong-type",
+      "kind": "pdf",
+      "description": "Missing-Type recovery cannot excuse an explicitly wrong Type or a non-Pages target",
+      "expected": "invalid",
+      "requirements": [
+        "document-repairs"
+      ],
+      "path": "corpus/generated/document/catalog-pages-wrong-type.pdf",
+      "sha256": "4ff5c22300b89800f67d5f93e7ac6b7fafa09ffff890ef16d9b7cafb9fd32ee7",
+      "pages": null,
+      "strict_valid": false,
+      "repairs": []
+    }
+  ]
+}

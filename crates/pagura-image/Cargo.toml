@@ -1,0 +1,19 @@
+[package]
+name = "pagura-image"
+description = "PDF images and image codecs: DCT, CCITT, JBIG2 and JPEG 2000"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pagura-core.workspace = true
+pagura-document.workspace = true
+pagura-codec.workspace = true
+
+[dev-dependencies]
+pagura-testkit.workspace = true

@@ -1,0 +1,4 @@
+filter=FlateDecode
+outcome=valid
+repair=filter.raw-deflate
+cap=0

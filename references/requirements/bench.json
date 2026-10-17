@@ -1,0 +1,73 @@
+{
+  "schema": 2,
+  "area": "bench",
+  "scope": "Project evidence requirements from ADRs 0002, 0006 and 0007; not PDF conformance clauses.",
+  "requirements": [
+    {
+      "id": "bench-stage-timers",
+      "reference": "ADR 0007",
+      "clauses": [],
+      "status": "implemented; validated against installed competitors",
+      "tests": [
+        "tools/test_bench.py:ConversionTests",
+        "tools/test_bench.py:DocumentTests",
+        "tools/test_bench.py:FormatAndStageTests",
+        "tools/test_bench.py:PythonAdapterBoundaryTests"
+      ],
+      "gaps": "requires the competitor installations"
+    },
+    {
+      "id": "bench-output-normalization",
+      "reference": "ADR 0002 and ADR 0007",
+      "clauses": [],
+      "status": "implemented for RGB8 PPM, RGB/RGBA8 PAM and packed RGBA8",
+      "tests": [
+        "tools/test_bench.py:ImageTests",
+        "tools/test_bench.py:FormatAndStageTests"
+      ],
+      "gaps": "higher precision and colour-managed comparison policy"
+    },
+    {
+      "id": "bench-corpus-verification",
+      "reference": "ADR 0007",
+      "clauses": [],
+      "status": "implemented; independent oracles and unverified cells separated",
+      "tests": [
+        "tools/test_bench.py:ConversionTests",
+        "tools/test_bench.py:DocumentTests"
+      ],
+      "gaps": "reviewed real-document oracles supplied separately"
+    },
+    {
+      "id": "bench-regression-isolation",
+      "reference": "ADR 0006 and ADR 0007",
+      "clauses": [],
+      "status": "implemented; fake offline Cargo and actual disposable Git worktrees tested",
+      "tests": [
+        "tools/test_bench.py:IsolationTests"
+      ],
+      "gaps": "real historical-revision run after integration"
+    },
+    {
+      "id": "bench-release-boundary",
+      "reference": "ADR 0002",
+      "clauses": [],
+      "status": "existing release gate preserved; new exploratory tracks explicitly ineligible",
+      "tests": [
+        "tools/test_bench.py:GateTests",
+        "tools/test_bench.py:ConversionTests"
+      ],
+      "gaps": "cross-platform/resolution/concurrency aggregation and full release matrix"
+    },
+    {
+      "id": "bench-document-conversion",
+      "reference": "ADR 0007",
+      "clauses": [],
+      "status": "one process and open per document/DPI; page mode explicit",
+      "tests": [
+        "tools/test_bench.py:DocumentTests"
+      ],
+      "gaps": "requires the competitor installations"
+    }
+  ]
+}

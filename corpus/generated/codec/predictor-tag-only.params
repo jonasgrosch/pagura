@@ -1,0 +1,6 @@
+filter=FlateDecode
+outcome=syntax
+repair=none
+cap=4096
+predictor=15
+columns=2

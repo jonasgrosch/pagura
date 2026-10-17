@@ -1,0 +1,19 @@
+[package]
+name = "pagura-document"
+description = "Immutable PDF documents: revisions, objects, streams and pages"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pagura-core.workspace = true
+pagura-codec.workspace = true
+pagura-crypto.workspace = true
+
+[dev-dependencies]
+pagura-testkit.workspace = true

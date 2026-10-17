@@ -1,0 +1,3651 @@
+{
+ "schema": 2,
+ "id": "qpdf",
+ "repository": "https://github.com/qpdf/qpdf",
+ "revision": "4eba95899886e851cc41d76886483b347612f2a8",
+ "purpose": "qpdf test suite inputs",
+ "patterns": [
+  "*.pdf"
+ ],
+ "use": "input documents only; no expected outputs, never normative",
+ "pdf_files": 717,
+ "bytes": 38825215,
+ "files": [
+  {
+   "path": "LICENSE.txt",
+   "size": 11358,
+   "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  {
+   "path": "NOTICE.md",
+   "size": 2729,
+   "sha256": "b207f65a9e5491195ded63b2941199b19a4d30148871f2742c88eae7bfc513a6"
+  },
+  {
+   "path": "README-appimage.md",
+   "size": 911,
+   "sha256": "b59b769b4c054c4e9f2d20a0a33a700d0575e769c6e23688e10152ad13a54336"
+  },
+  {
+   "path": "README-developer.md",
+   "size": 39693,
+   "sha256": "ddfb48c45d3ef9e7a63b5e563ef313fc9699b8a737f7129f6ec65d83447cf652"
+  },
+  {
+   "path": "README-doc.txt",
+   "size": 981,
+   "sha256": "3a09b5c27a06a34f271a029656f8701a44bb05ceb19078ea5d9c1d53a49faa00"
+  },
+  {
+   "path": "README-hardening.md",
+   "size": 2759,
+   "sha256": "f42d6a1d13d7f09ab75971e8890a75d2cddb67dbae5b207ad9dab4257592307d"
+  },
+  {
+   "path": "README-maintainer.md",
+   "size": 12050,
+   "sha256": "fbea85ecc509026b8a6646403b31c58d883b71db29cd386de88f11108ee75910"
+  },
+  {
+   "path": "README-what-to-download.md",
+   "size": 5239,
+   "sha256": "a3751c771073fe27903f66d47558ad09324b26f0492f5d0bc5fdead4576331b8"
+  },
+  {
+   "path": "README-windows.md",
+   "size": 7997,
+   "sha256": "c2b23c5dffb5dc9c20753b84b2875f709dfcec3e0742930c656494315af88ad4"
+  },
+  {
+   "path": "README.md",
+   "size": 15679,
+   "sha256": "837ca7da5f3f857acb55a03786bdcb20762747eeb943df60c986587b759e10c6"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/diff-data-enc.pdf",
+   "size": 1519,
+   "sha256": "287224ca68b74751cfbaa15aa43aa012d97d85d308f33dc7472e7992e05462b0"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/diff-data-size-unc.pdf",
+   "size": 843,
+   "sha256": "734e3608b7502140bcec8afb0cb98c8be481db96d9410df31a2431b1b08ea255"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/diff-data-size.pdf",
+   "size": 847,
+   "sha256": "50f5486eaee508039db6acdd5bd3a4c49a826095f192d263c8cd6fc886ad8cf1"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/diff-data-unc.pdf",
+   "size": 844,
+   "sha256": "e7eff767616d7dd20050ba036ed2e8d737531be6a7dd0a23946af05f63d5c162"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/diff-data.pdf",
+   "size": 849,
+   "sha256": "0c10edbe650d4573b89da3c2ec7e46dacae4356a0a6c26bffcf133aa00db5bc0"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/diff-id.pdf",
+   "size": 844,
+   "sha256": "5d3cd57a49f0680548c14c55fe03f539db6cd194f83241582de0acab9d8730f2"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/diff-non-stream.pdf",
+   "size": 844,
+   "sha256": "ae7c46565076a1dbe9abf409f82e6c46f43670fd404cbaa2a52318e8429a09c2"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/diff-num-objects.pdf",
+   "size": 882,
+   "sha256": "da6ed864dd7c6b9eb57dc6368fe7c8b1aeaaf63a1c16ce7b886bde4c6fd6706e"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/diff-object-type.pdf",
+   "size": 765,
+   "sha256": "fcb21f9b62288fc3a0d8886866988f40757ac3753cdcf186d813529c7518d2a6"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/diff-stream-dict.pdf",
+   "size": 844,
+   "sha256": "b0fae89ea4caffdde135e412cd7a253fea8f4916e163c4e222c8a2c86d5b709c"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/enc1.pdf",
+   "size": 1503,
+   "sha256": "ca2b06f4f7a78da93e8572438c8d5da03d470d32b8a7085b22634a8f9ca3b2a6"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/enc2.pdf",
+   "size": 1519,
+   "sha256": "a2e9678dc1b2a192741f7c9da2c567bba61418a637a25bb88456d709138ac338"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/ostream1.pdf",
+   "size": 833,
+   "sha256": "dc58232f88627f5a5507cd062477aa2d54e756703403e96a112057505ec19914"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/ostream2.pdf",
+   "size": 843,
+   "sha256": "60ce71946fbc95381ba2a2e4ee5a4d5a4a25e65d11b301856e8c421614fe4b01"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/start.pdf",
+   "size": 877,
+   "sha256": "7b3657dbc80f97b2ae097fd12b9b66df5ab56f56f5a10e173f7fa22f29bfd5a6"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/zlib-9.pdf",
+   "size": 844,
+   "sha256": "a0a28a72e1ea8c6e0fafb3843ec388413632910c78ae52cb2b3a6aaa640eb6c5"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/zlib-new-id.pdf",
+   "size": 844,
+   "sha256": "924e9ba6ba0461685e92a63233b4abd241f669fca0971aaecfd95640ee5f14f5"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/zlib-new-id1.pdf",
+   "size": 844,
+   "sha256": "69a48de1b91a78bb24370801f7e03f7c05910b557e59ea36cde878e43a9b4cd8"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/zlib-new-id2.pdf",
+   "size": 844,
+   "sha256": "a080eb00128888adc89250fa4538bd8e3ab5b914ff2534f2a264c4872f1ef02b"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/zlib-ng.pdf",
+   "size": 848,
+   "sha256": "d23b94009accaeb7a9b70de5ff8de1414d9ec7a7b621c4e29c816f15210c43d1"
+  },
+  {
+   "path": "compare-for-test/qtest/compare/zlib.pdf",
+   "size": 844,
+   "sha256": "3f2c12e21cdb138c6ceb092302524e0112d95dc49ba0f5c1226b39fcccc9ac45"
+  },
+  {
+   "path": "examples/qtest/attach-file/input.pdf",
+   "size": 763,
+   "sha256": "c16e6eaf7d26ae388cac9a262224981394dc590f940bd2e3bb926eba2f2132a2"
+  },
+  {
+   "path": "examples/qtest/attach-file/output.pdf",
+   "size": 5285,
+   "sha256": "2458898baae81c250cee68b21f87d8878604df1091f3a803c55fff13a2b8c9e2"
+  },
+  {
+   "path": "examples/qtest/bookmarks/1.pdf",
+   "size": 15816,
+   "sha256": "9221a22336f6a1c1449454d7a8c699776440d576333814ab43e3e3a712f52cc5"
+  },
+  {
+   "path": "examples/qtest/bookmarks/2.pdf",
+   "size": 763,
+   "sha256": "c16e6eaf7d26ae388cac9a262224981394dc590f940bd2e3bb926eba2f2132a2"
+  },
+  {
+   "path": "examples/qtest/bookmarks/3.pdf",
+   "size": 13,
+   "sha256": "675a23a0c456ba3a7f593ac567deb7891f4bab407da795c43683a8daeef0ac58"
+  },
+  {
+   "path": "examples/qtest/bookmarks/4.pdf",
+   "size": 11561,
+   "sha256": "509ed440828062f66d42dcc15fcbe85e46045d8462b32e69d0b5444203821f07"
+  },
+  {
+   "path": "examples/qtest/bookmarks/5.pdf",
+   "size": 17153,
+   "sha256": "c6c072ad2af08b224c7608304f3053571dd26b28a4c3639d281e709036cf1be0"
+  },
+  {
+   "path": "examples/qtest/bookmarks/issue-179.pdf",
+   "size": 1824,
+   "sha256": "07fdcd53dde2cea3b11f65e8cf907cece6d8bf6917f9061d9a8de3bba5e0001a"
+  },
+  {
+   "path": "examples/qtest/c-objects/1-out.pdf",
+   "size": 12315,
+   "sha256": "4336d281897dea817f5b816df9424de934f99c3d70cc293934a48b9c399d96e4"
+  },
+  {
+   "path": "examples/qtest/c-objects/1.pdf",
+   "size": 15791,
+   "sha256": "76f4fde5210b90dd193508f72751f61ca5ded0b44a6c884d5a46e9aff5ec4929"
+  },
+  {
+   "path": "examples/qtest/c-objects/2-out.pdf",
+   "size": 799,
+   "sha256": "2a4332afb390ad341227ea3d4e28ada3bd1585765b5d0d7fd693e46eaa28977c"
+  },
+  {
+   "path": "examples/qtest/c-objects/2.pdf",
+   "size": 987,
+   "sha256": "850a8266633cbc4c7509c53d9abcf4758991b6feac38d98b25b0b2e92322d1a5"
+  },
+  {
+   "path": "examples/qtest/count-strings/in.pdf",
+   "size": 1348,
+   "sha256": "6707c963e8cc71a3f56c367f70e2e1309d5dbed8c9ac11153f848abde90618cf"
+  },
+  {
+   "path": "examples/qtest/custom-filter/generalized.pdf",
+   "size": 2091,
+   "sha256": "53bbd3f96719eaba14bf6af254109ff8137b15c29bd0ee367d663ac83d7d63f8"
+  },
+  {
+   "path": "examples/qtest/custom-filter/input.pdf",
+   "size": 2167,
+   "sha256": "f57c074e70f0b900f5a1347880fe19ea6c1ad68be137b24ccb8f91c6123bea8c"
+  },
+  {
+   "path": "examples/qtest/custom-filter/specialized.pdf",
+   "size": 1750,
+   "sha256": "531793370925393333d8b00ff101608f0023e5805b43e0e5f3396f63c0081462"
+  },
+  {
+   "path": "examples/qtest/double-page-size/in.pdf",
+   "size": 1055,
+   "sha256": "39724581413b2a31bb59224e05659565f7e93dd47b613373b933a82d1cbcde82"
+  },
+  {
+   "path": "examples/qtest/double-page-size/out.pdf",
+   "size": 1251,
+   "sha256": "7baf794cfa3e72a858068121c0b5967ead6427cd760794d6c979168fa40ce252"
+  },
+  {
+   "path": "examples/qtest/extend-c-api/bad.pdf",
+   "size": 20,
+   "sha256": "aa25ee2c3e0c91d0fcc67a356cee7fa0b6750085a92b788b7d4747c6b086f3f2"
+  },
+  {
+   "path": "examples/qtest/extend-c-api/good.pdf",
+   "size": 742,
+   "sha256": "09c271480e00b1dcc35cdcc15d6eb0bac13a98fe84f62ea7a59b0fc433907ec8"
+  },
+  {
+   "path": "examples/qtest/filter-tokens/in.pdf",
+   "size": 11779,
+   "sha256": "ab536edf48ee84304d066de8d88c8de7371317ffc495a2c34329586706008755"
+  },
+  {
+   "path": "examples/qtest/filter-tokens/out.pdf",
+   "size": 11579,
+   "sha256": "c2afcf36b70498b2d1d6e3a17ebf10d34099026d36fcb256c9e5687450d405b6"
+  },
+  {
+   "path": "examples/qtest/invert-images/in.pdf",
+   "size": 4328,
+   "sha256": "b675d08c56f6f884833b49f3c6066e9a2bdeb2ce49c6b72b8f14858532f952d4"
+  },
+  {
+   "path": "examples/qtest/invert-images/out.pdf",
+   "size": 4328,
+   "sha256": "701067e3f0b9f894159f21729ccbe00889ea297b1328fd2d4f1b7e1732109c9c"
+  },
+  {
+   "path": "examples/qtest/linearize/input.pdf",
+   "size": 763,
+   "sha256": "c16e6eaf7d26ae388cac9a262224981394dc590f940bd2e3bb926eba2f2132a2"
+  },
+  {
+   "path": "examples/qtest/mod-info/files/empty-info.pdf",
+   "size": 5802,
+   "sha256": "ac6c941b7c7c34eef061ef7ac5b967b43b6b1c34959bafec840ce96cf6b5856b"
+  },
+  {
+   "path": "examples/qtest/mod-info/files/no-info.pdf",
+   "size": 5790,
+   "sha256": "0aa08a17c8747cd60705ad36026623725f6f26c197b4ddec030aabbf3e2aaacf"
+  },
+  {
+   "path": "examples/qtest/mod-info/files/source1.pdf",
+   "size": 5932,
+   "sha256": "94c45353fe255a60bc54293888470a7a793f5740c0defea5b90e88f3dc43b7fc"
+  },
+  {
+   "path": "examples/qtest/mod-info/files/source2.pdf",
+   "size": 157418,
+   "sha256": "6f7855a995ddc405691f9e357e1a0c1770b14e0dee5d8e27f6289808e04c742a"
+  },
+  {
+   "path": "examples/qtest/name-number-tree/out.pdf",
+   "size": 1856,
+   "sha256": "8c15570b9b25ef3f3c22b9af003d8bcec5ab9aae3af45a67a4b16924bd0e6e73"
+  },
+  {
+   "path": "examples/qtest/npages/minimal.pdf",
+   "size": 763,
+   "sha256": "c16e6eaf7d26ae388cac9a262224981394dc590f940bd2e3bb926eba2f2132a2"
+  },
+  {
+   "path": "examples/qtest/overlay-page/annotations-out.pdf",
+   "size": 25868,
+   "sha256": "a3d0f4f7766e25265762016d51865397e2caf2d383c80da9c3b027e5a056a329"
+  },
+  {
+   "path": "examples/qtest/overlay-page/annotations.pdf",
+   "size": 9648,
+   "sha256": "1604e4175ecbb2183023a54f18b67f1d07c0d9a2ef5bdbac8b0e88b3e54777ab"
+  },
+  {
+   "path": "examples/qtest/overlay-page/in.pdf",
+   "size": 1840,
+   "sha256": "d66c4f6540f0932c827708df02f0a32f9f4deb33de5aec3eb74f30b48d898ed6"
+  },
+  {
+   "path": "examples/qtest/overlay-page/out.pdf",
+   "size": 3345,
+   "sha256": "831bb415af3ca65222514c01b6b9f347c551ae58eb2cfdd08b1b369ad86f8804"
+  },
+  {
+   "path": "examples/qtest/overlay-page/stamp.pdf",
+   "size": 799,
+   "sha256": "fce62551622d45e23f8064204c8a5a66e2cd719b4a818ee9626b847523eeca09"
+  },
+  {
+   "path": "examples/qtest/parse-content/input.pdf",
+   "size": 799,
+   "sha256": "b3ff016f66465caaca7e7a9685d3edd4f044d2d770569175827978bec9782fdd"
+  },
+  {
+   "path": "examples/qtest/pdf-split-pages/exp1.pdf",
+   "size": 774,
+   "sha256": "104f6f9023e65bd62af28f6a474ec55db237169efddab3b69489f5775d6d063b"
+  },
+  {
+   "path": "examples/qtest/pdf-split-pages/exp2.pdf",
+   "size": 774,
+   "sha256": "e3499f3d0b5d4bc21fb43673b33099e429cb4bc5876a48445442e88b48a52841"
+  },
+  {
+   "path": "examples/qtest/pdf-split-pages/in.pdf",
+   "size": 1287,
+   "sha256": "22505f44677cfc9d579b2132ba06c46428e67aac5cff4325c3951fb2a3fa4227"
+  },
+  {
+   "path": "examples/qtest/qpdf-job/in.pdf",
+   "size": 751,
+   "sha256": "7eaac358120f00c7ca9fc12d4ef1116abc7915e03209a07da387db5275caab43"
+  },
+  {
+   "path": "examples/qtest/qpdf-job/out.pdf",
+   "size": 1278,
+   "sha256": "7d79ca8e37edf22855ad3fc0b9ae13d40882f4ece838480d51c191889a8e57f6"
+  },
+  {
+   "path": "examples/qtest/qpdfjob-attachment/attach.pdf",
+   "size": 1290,
+   "sha256": "939e6d126aa798847fd14762274fdb56a03600b2889ad1556d8cd66d399afa3b"
+  },
+  {
+   "path": "examples/qtest/qpdfjob-c/in.pdf",
+   "size": 751,
+   "sha256": "7eaac358120f00c7ca9fc12d4ef1116abc7915e03209a07da387db5275caab43"
+  },
+  {
+   "path": "examples/qtest/qpdfjob-c/out.pdf",
+   "size": 1300,
+   "sha256": "f17946ed882edb4c3a271a783fcf451be4df7808a8f34e6f0b275b69a19a1506"
+  },
+  {
+   "path": "examples/qtest/qpdfjob-remove-annotations/annotations-out.pdf",
+   "size": 5284,
+   "sha256": "c28219e5d57c2dee1ba7beb37d58b038725f54aaf26588829e222860d88b7340"
+  },
+  {
+   "path": "examples/qtest/qpdfjob-remove-annotations/annotations.pdf",
+   "size": 9648,
+   "sha256": "1604e4175ecbb2183023a54f18b67f1d07c0d9a2ef5bdbac8b0e88b3e54777ab"
+  },
+  {
+   "path": "examples/qtest/set-form-values/form-in.pdf",
+   "size": 54848,
+   "sha256": "599304a4c47fa25155fc732cb9bffe2882ea39894e14f812905c4ec2f5826c14"
+  },
+  {
+   "path": "examples/qtest/set-form-values/form-out.pdf",
+   "size": 32259,
+   "sha256": "ba0ac8db2b09ca67d5e7ecbae3be3db576ad79fe1847462a7fe134e0c9407d44"
+  },
+  {
+   "path": "libtests/qtest/global/minimal.pdf",
+   "size": 763,
+   "sha256": "c16e6eaf7d26ae388cac9a262224981394dc590f940bd2e3bb926eba2f2132a2"
+  },
+  {
+   "path": "libtests/qtest/logger/2pages.pdf",
+   "size": 1287,
+   "sha256": "281271e3e63434070f95db7cc1394cd65385fdea678d940a414c92f3bc29367f"
+  },
+  {
+   "path": "libtests/qtest/logger/attach.pdf",
+   "size": 1290,
+   "sha256": "939e6d126aa798847fd14762274fdb56a03600b2889ad1556d8cd66d399afa3b"
+  },
+  {
+   "path": "libtests/qtest/logger/normal.pdf",
+   "size": 763,
+   "sha256": "c16e6eaf7d26ae388cac9a262224981394dc590f940bd2e3bb926eba2f2132a2"
+  },
+  {
+   "path": "libtests/qtest/logger/warning.pdf",
+   "size": 764,
+   "sha256": "e916cf6eecf06586f6dd0ddb567cc384e7de9e4a9023816493b275b1fc44a41b"
+  },
+  {
+   "path": "libtests/qtest/objects/minimal.pdf",
+   "size": 763,
+   "sha256": "c16e6eaf7d26ae388cac9a262224981394dc590f940bd2e3bb926eba2f2132a2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/11-pages-with-labels.pdf",
+   "size": 4215,
+   "sha256": "3eae6c878c9ad7fdbab6b9748ff208f0ca47508aa7f578b44a7909b2431ec77b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/11-pages.pdf",
+   "size": 4128,
+   "sha256": "d07b6afc97c1e8699f0640a951a5dc3c2426d7bea7cddf39b4ebb0f1bab1a2a0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/20-pages.pdf",
+   "size": 7343,
+   "sha256": "4ea66d0e98525a5df9a766313e058bc3bfa2d28fe30a740d4cd8fe76d3dca391"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/V4-aes-clearmeta.pdf",
+   "size": 16910,
+   "sha256": "43610228275fe86819c9fc4f7106c25c60ea433a0ea7c9ddb58671c7a4c14ece"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/V4-aes.pdf",
+   "size": 16474,
+   "sha256": "1d8a812844b8d8c7ba085a627eb3b7ab52aa651c6143ca07315084220a113240"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/V4-clearmeta.pdf",
+   "size": 15240,
+   "sha256": "4618527e80203fc96f4c8e4e2f53cd87362f59e5720fabb2a6ff8ed05d585cbe"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/V4.pdf",
+   "size": 14781,
+   "sha256": "d82598d67a99b412c19f3a841a23b69bb74c4e4db716ed21f4f61b90ee7d05e7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/add-attachments-1.pdf",
+   "size": 2602,
+   "sha256": "2332893b6b30c04d37c976d7d79b80a7fc7c925aae094a93e9bde2f751d8efbd"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/add-attachments-2.pdf",
+   "size": 2577,
+   "sha256": "9c9790f91a3e0242b068978dcd0e4669e962bcec74356d075234b3f07625c6c8"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/add-contents.pdf",
+   "size": 1003,
+   "sha256": "3731d78017a65fd17653bc20f71f2a2fed85cde7f9d9ca226310b30b3e9332be"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/annotation-no-resources-out.pdf",
+   "size": 4016,
+   "sha256": "096ebb946b69f58d16f8a07bc0531ddcf83d7f62fa22f30fd6ad1bf2342994c6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/annotation-no-resources.pdf",
+   "size": 4523,
+   "sha256": "b83b28b6ef3a9012faf236604f5ce28876d80f44f1cbad43516599c68e8b479d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/annotations-foreign-file.out.pdf",
+   "size": 19587,
+   "sha256": "42e27356f4fb59148b658398786e76e99d82557f449f40314af2d741eb596fa8"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/annotations-no-acroform-with-p.out.pdf",
+   "size": 16662,
+   "sha256": "789a534efe91538e9892e612ec41a0130fa0ab42fa9f30f16f3fa9d7a784366b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/annotations-no-acroform-with-p.pdf",
+   "size": 9571,
+   "sha256": "f174acb6b2c18ab660726245e13aab8250d2c7a59f2e9895c1df48c87cbd1a7b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/annotations-no-acroform.pdf",
+   "size": 9559,
+   "sha256": "81802644c8ea1535d00edca9719a476498ee8d5d82988edb10a4e63b386f2d76"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/annotations-rotated-180.pdf",
+   "size": 10537,
+   "sha256": "82986d9c7c0d33c41d41d70ecc997d3a6db69197451f5d9204572fabd2592e7d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/annotations-rotated-270.pdf",
+   "size": 10490,
+   "sha256": "133ecacdfd420655307f214e28c1f2d282344cc2237bd9fed168714378d9dd5d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/annotations-rotated-90.pdf",
+   "size": 10494,
+   "sha256": "4bc230d002b425902dff67b9da45b74f5acc2694c215939a5bac8fdd0aaac4e8"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/annotations-same-file.out.pdf",
+   "size": 16640,
+   "sha256": "52230082bd4e3bbb16d09c630f19b0bd8d8d34925ca7ebf28c524e484531bffb"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/appearances-1-rotated.pdf",
+   "size": 48127,
+   "sha256": "ab4ded6dcda969fda0822492bae177fc138e5c2e50f5e4794022ff0111a3b8c7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/appearances-1.pdf",
+   "size": 69324,
+   "sha256": "3e913342b2956b0af6fd45ed3e3c13e9950a2df66fbc661129a8e98ae233462d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/appearances-11.pdf",
+   "size": 69335,
+   "sha256": "873384e6c87c526cbe8e34c4a69e41ef80534362c2d303b5b7ddc53069b2f81f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/appearances-12.pdf",
+   "size": 69334,
+   "sha256": "2034d5bf4174020dbd39174b68e41dbbd69bae440e1baa7fbaa8e6612f71a47d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/appearances-2.pdf",
+   "size": 69324,
+   "sha256": "3f62e87b187207403ee8eb8af46fe328536cb6815bd598ca191c0094e352579d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/appearances-a-more.pdf",
+   "size": 62660,
+   "sha256": "942092fc062061d4bb0b216c46cdc5f90492c231d77f98021509319d3d35fff6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/appearances-a-more2.pdf",
+   "size": 62658,
+   "sha256": "c185e401fee8a4963c098fbb0daaf836befa2dcaa9df453403d7292d3517cf76"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/appearances-a-more3.pdf",
+   "size": 63009,
+   "sha256": "085551260ab48fa3f7c324c6dcf6759c5aa92278aeb1754f5a341746c7804c12"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/appearances-a.pdf",
+   "size": 63066,
+   "sha256": "3be84bfe736c587bd8813a4133264a04b87472b7b84e41cf754595030b8fbfc8"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/appearances-b.pdf",
+   "size": 69352,
+   "sha256": "7eb163881a7a5a4e73002d7bac12fb71463420c8223e4bda5b2cc2e6280e4f3e"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/appearances-quack.pdf",
+   "size": 69330,
+   "sha256": "9aaf3e13d6172173dc2a2f4602ca9efece0ec16371b1c48e21965f988fa65f4f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/append-page-content-damaged.pdf",
+   "size": 17369,
+   "sha256": "53ee40fa62175f0f7bf721497832ebaadf39b2551559ec28abdace73196f4e28"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/append-page-content.pdf",
+   "size": 17370,
+   "sha256": "2a70474d0185222b0cb22089de654f8f2a4d207b7f61b646a030b1e563da837b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/append-xref-loop-fixed.pdf",
+   "size": 10282,
+   "sha256": "a01a08c89f0bbb10dc8f8a0caa07018d62b7efe2cec9793cf3f051ecdbf306b6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/append-xref-loop.pdf",
+   "size": 17370,
+   "sha256": "7c67daccc433f574fbaf815d0d376cc79f40f95082ef1b231af436e9f7d27091"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/attachment-fields.pdf",
+   "size": 2242,
+   "sha256": "7dff78a9b17d4a9381c42090bca248a31054b15e12a993f3e2d58ad75426ee71"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad-content.pdf",
+   "size": 135172,
+   "sha256": "e1a6ebaadd386a0b1e638e3b50c8557da74ebeb1ebb31292fb6b221892a979e0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad-data-out.pdf",
+   "size": 797,
+   "sha256": "ad361343262a06bfc3cb55e0d89bc27354a4784832967036c4f155373b362edc"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad-data.pdf",
+   "size": 799,
+   "sha256": "919998d65cecd40f1c33cf56853a517acc0e18f438fcc098f4c17a086c875057"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad-direct-root.pdf",
+   "size": 284,
+   "sha256": "0d7549c02c38717627deb10d1155c1b513d35036208e77d687597c77d04dc3b4"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad-encryption-length.pdf",
+   "size": 1041,
+   "sha256": "cdf252a288f2b54189a0be156180972c563a48aa747e1eaa6abac150c5e40576"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad-jpeg-out.pdf",
+   "size": 4681,
+   "sha256": "19147522f96c1f3d641ca2ba63491154a5382389baddfa766be02409a39cb940"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad-jpeg.pdf",
+   "size": 4681,
+   "sha256": "f00365bfcc1248322705dcd024e09c71d8eeaba4f0bc718bb810c692a29fbf9d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad-token-startxref.pdf",
+   "size": 774,
+   "sha256": "edcc721a4374c25404985537cdd7618b77ac2ac02a1bad850f4fb59c489a0834"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad-xref-entry.pdf",
+   "size": 1113,
+   "sha256": "1d3b6ed9362c92c3f24f6ee7650e1768387204b1bbb66327a4eba226ce801bb4"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad-xref.pdf",
+   "size": 819,
+   "sha256": "5895dfedf978f600b12e29643617dbb111869b60526d957878e349571e1467d1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad1.pdf",
+   "size": 5,
+   "sha256": "fe19778cf1ce280658154f2b9c01ffbccd825a23460141dcf3794e7a2c0eb629"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad10.pdf",
+   "size": 765,
+   "sha256": "3e32c1a662d80691c7cfc811267682fb75aa48e0dad4d831bfa73c2a6005389e"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad11.pdf",
+   "size": 970,
+   "sha256": "345bdd78fa02d953f58636b211b633da0f0b1dee9124b14a5dbd9b07026ce0d6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad12.pdf",
+   "size": 1190,
+   "sha256": "dc072e2970eacdf1def9f4ea959e4916937b737963a70a3291e8424db2c906ca"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad13.pdf",
+   "size": 778,
+   "sha256": "e253933b4b45cfcb4a49e5ededf19191572047bb0800e32cdc022e298c75ce92"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad14.pdf",
+   "size": 778,
+   "sha256": "7a1766a1d39d4d7908a4b72347f07b161c5c785061a53f4f844e9d0b7d6be2a9"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad15.pdf",
+   "size": 778,
+   "sha256": "a334a1f128a61441242a9050711b8f50f9b995f60f5dce59c0e00e58f4a292dd"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad16.pdf",
+   "size": 779,
+   "sha256": "9b3ab83d40a637c9533ab3922dda690278ea67841ac8cbf8c5b120bd9cc2e345"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad17.pdf",
+   "size": 790,
+   "sha256": "f3ce96f1cac31ce1e8195a3b37f46409eb26ea2b22edf733fbca9c5561bbbcb0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad18.pdf",
+   "size": 778,
+   "sha256": "7ecd13b266de37e9a4d38da4452ba5e35965e967b41456f260a2438934956f58"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad19.pdf",
+   "size": 778,
+   "sha256": "21d97e4ae385dc5e5419e938a9ed88bc69f35552542b2ae60fbe12bd6a3496bc"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad2.pdf",
+   "size": 747,
+   "sha256": "d6da0e060cc07e888e20f0640953e0f96435cf9345f21bb96e21715dd96880bc"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad20.pdf",
+   "size": 783,
+   "sha256": "2c63ba87b393b09ffbc36d6c1bae2c405e4368207fed8cda9f39278f041545dc"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad21.pdf",
+   "size": 779,
+   "sha256": "7eb4ffa6c5bf389c447ffce410daa6e40674d3ce29bf6a4354a147fd706c6d7a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad22.pdf",
+   "size": 778,
+   "sha256": "48eb1f6ee565a3bcb67f18dc30ef27e378dda82d817b36faf39bfc1cdbb95107"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad23.pdf",
+   "size": 778,
+   "sha256": "5836711ed0641a4cb4475b8e82fd45b50435c8e569c7ae2ddac9aa640f540459"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad24.pdf",
+   "size": 778,
+   "sha256": "07d22200bcdf4f0a54a865409a888adcb09e02be54e956c89116d19dcafbf574"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad25.pdf",
+   "size": 778,
+   "sha256": "6f583c4a78ae48abd51759ee9993509796fa10705a9c6e3fea0425b1f5ef2121"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad26.pdf",
+   "size": 778,
+   "sha256": "611b90a4a359e75cf8556dfcb0d138e8b2c9c4d9ce1bca10eb3e63920d5a36e0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad27.pdf",
+   "size": 778,
+   "sha256": "478916fab51c507800e691f3cb5be436f1f5d3c95f0916849476dc603f40cab5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad28.pdf",
+   "size": 778,
+   "sha256": "edc6d9783cbc05f7241fa8975318b35240b9e3324a11daa23817fdd4d9396731"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad29.pdf",
+   "size": 781,
+   "sha256": "969a0c15d0181006abb6400e2491827a0f48e5c93edeeefd5dbfbfb8b9f3b593"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad3.pdf",
+   "size": 751,
+   "sha256": "8d8567a3445617d76b04b7185e6c7da7e8bdaa4ee0b1b9f7f1b31d469ae7a863"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad30.pdf",
+   "size": 1013,
+   "sha256": "d6cc82422c29685928bcefbdbf7eccb102f566aec0d68b402ea8b138cbbd2ed3"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad31.pdf",
+   "size": 1025,
+   "sha256": "41467040c9711aa68e7a81d7c2af27d28ca9bc2c3df5dec87af44d0693d3f0b7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad32.pdf",
+   "size": 778,
+   "sha256": "4240b8c949d4bbbe02e3f6028e6ea6a8d8cbda284ba3b62ce1cccb212c67aafb"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad33.pdf",
+   "size": 1014,
+   "sha256": "6bbf8b30856f5fcdb5dd3720f6993b2b7e52100b8f0f8567479b28df7a801a2f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad34.pdf",
+   "size": 793,
+   "sha256": "b94a2a3b0560a430add0edae572cb8b4119b1c277b1ce4283bfa8895065be18b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad35.pdf",
+   "size": 807,
+   "sha256": "d149d9b30e913b9c44c76110daf4c73a2fae212c61a42e8a1e0a95ce58cd71f6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad36.pdf",
+   "size": 800,
+   "sha256": "e8f74ff024c048ef8855a285aea9ea059de0b9e28095d22bffb85ccf8d1ab13c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad37.pdf",
+   "size": 781,
+   "sha256": "06b545477c92a9c5b3e0189e67122c5d2b54e18cf01f1dd315f88a58d90d9ac4"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad38.pdf",
+   "size": 786,
+   "sha256": "9f3fbce93bf684e97f9d703d061ccc60094c330a7562af564573bfdb5386fa9e"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad39.pdf",
+   "size": 778,
+   "sha256": "e5e7642519a31569871eff94d60a86d51a7ee4e74570ddb6c441ee6480dd86b6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad4.pdf",
+   "size": 750,
+   "sha256": "d7d2d764156c7c9a08ff6a579ce644402bf6d835ba559c53b5860e218b5044b7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad40.pdf",
+   "size": 788,
+   "sha256": "6fd5c3e66fc2fabc8e9c108d7d89dc5da9540b51ff517cd9c8c7f1007a3f09ae"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad5.pdf",
+   "size": 749,
+   "sha256": "6b11bb1c7b4f3520017a544c6425d87311fbb18a275a574554757a0f50b17ff6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad6.pdf",
+   "size": 1190,
+   "sha256": "b98292ddbeeed6446ba7c550aed127f8b5b7c7fb57f14def00294b520c995583"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad7.pdf",
+   "size": 751,
+   "sha256": "e16ac6bb069896626cece58254d378b959ef43593dbf89d2e12fa68f0a7e59a3"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad8.pdf",
+   "size": 968,
+   "sha256": "e01ceb22d5c64daa206c5bdf00e3b525111aaa708255dfcde9618964f1cae33b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/bad9.pdf",
+   "size": 763,
+   "sha256": "6b2681adfc269c78c7bbb32500957102117b441179cb8efc0ebe38850aa6ff74"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/badlin1.pdf",
+   "size": 13103,
+   "sha256": "236e5197c21f3dd1b032951d205156988b788e4ce1e36d16cd17a1c5781a0799"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/big-ostream.pdf",
+   "size": 49639,
+   "sha256": "9d7a10b81b11891004e1114f0bba0e8a94ab8dc57b0da2089233d7eba780adc2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/boxes-flattened.pdf",
+   "size": 8891,
+   "sha256": "71a08e9c4cbe4fed8bea0586a40bc8aca691c111f9235b1823cecd40ec99ae59"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/boxes.pdf",
+   "size": 6955,
+   "sha256": "6b9daa0f7d9a31279a8606ad0617064a750cf45e8a19b3c7f3634596368d9cb0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/boxes2.pdf",
+   "size": 5203,
+   "sha256": "de7ea8d200c62a11e60e505a360345a0c2fd147a1d337eeaed0997323df67d2f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/broken-decode-parms-no-filter.pdf",
+   "size": 1138,
+   "sha256": "9b32ce06447e70cb0bd93ff0b4514460627d181e883e7d95168e12e788e36f0f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/broken-lzw.pdf",
+   "size": 1119,
+   "sha256": "cf51252799ff8a7d083760559dc003031f790a4f2caf6f064e8c00b3484e3466"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/button-set-broken-out.pdf",
+   "size": 71730,
+   "sha256": "ca11263c97aca17d4dfb63964a45c91c9f746e4298358ab43e2d0349f7e56eeb"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/button-set-broken.pdf",
+   "size": 66904,
+   "sha256": "488dccf17eb7e99243f7d1c1c5469fee56bcbed206d35ab0a423b3f1687c44fe"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/button-set-out.pdf",
+   "size": 71732,
+   "sha256": "7f5200ad0063c9fccaec16208d647b98e36a00bd031457c8b99dceb7b1817351"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/button-set.pdf",
+   "size": 66904,
+   "sha256": "693b57f6d13ed03ea23906c4b4ddb494ca22739998258fc49f93d7d7113a8ec5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-check-clear-in.pdf",
+   "size": 763,
+   "sha256": "c16e6eaf7d26ae388cac9a262224981394dc590f940bd2e3bb926eba2f2132a2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-check-warn-in.pdf",
+   "size": 764,
+   "sha256": "e916cf6eecf06586f6dd0ddb567cc384e7de9e4a9023816493b275b1fc44a41b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-decrypt-R5-with-user.pdf",
+   "size": 9731,
+   "sha256": "b338cd6995a9994b1ca07f7bcc4a5e3c4538a6d174daabbd3db30c01eb2c11e6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-decrypt-R6-with-owner.pdf",
+   "size": 9731,
+   "sha256": "db81c94f5a8f6c147ae6bfef134a5c483a2ef7cfc33dea8559dbe8ed5825a8df"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-decrypt-with-owner.pdf",
+   "size": 9668,
+   "sha256": "1d0491096f792e30f4591756109674efc00910fc11b0f50574c39c524bbf5bfe"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-decrypt-with-user.pdf",
+   "size": 9668,
+   "sha256": "1d0491096f792e30f4591756109674efc00910fc11b0f50574c39c524bbf5bfe"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-empty.pdf",
+   "size": 315,
+   "sha256": "059c3cc82cbc7706c6aeeb54da4d3c28e33ce8f284135aa5b0dcfcf835e412d9"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-foreign.pdf",
+   "size": 6091,
+   "sha256": "b976c006a6ac27df1f26285bfaf3c08869014ae90cf893b6e8086a35af76006f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-ignore-xref-streams.pdf",
+   "size": 9976,
+   "sha256": "cd5097b5a100247b008d751e90fa3a5c33766d25c1740fd35c40791e7e6f5315"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-indirect-objects-out.pdf",
+   "size": 975,
+   "sha256": "12ed4e119c56e9c6665ec2535025c1b511b95a35080a504122a1f876c0b5ecb7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-info-out.pdf",
+   "size": 878,
+   "sha256": "dd29bec45f1ab690d128f75428f305eb45aebd4dc5058af9b2c91a28af6b5c59"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-info2-in.pdf",
+   "size": 926,
+   "sha256": "91be43281f3f5b2303c4a2c00586a373dc3c2977b9c744d421ffd253686c0c7f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-linearized.pdf",
+   "size": 11325,
+   "sha256": "135cee6bd018c06d40c8c46c4a0230b2799adb90f502e214a347b3855039a24e"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-new-stream.pdf",
+   "size": 1116,
+   "sha256": "a45cfa90f90f5be10297043123046e5f79e1a6162e9cb80f410e36df51b42fd6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-no-options.pdf",
+   "size": 9668,
+   "sha256": "bbc2321a7c43c7ccd8acc9f5b408d28b7cfdfe630f891e0c1539783e19a404a0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-no-original-object-ids.pdf",
+   "size": 15280,
+   "sha256": "2646682d0d0dbe706cd46c591687b4deefcfe9ef6ec0aab092fe9c74aa200e63"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-normalized-content.pdf",
+   "size": 8917,
+   "sha256": "67f8f9ed4df384189f4607636f2d2dbaea59a45bd24ceb91d50ec39e3197852d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-object-handle-creation-out.pdf",
+   "size": 1186,
+   "sha256": "c680603f50601d9f937f67b61d3d2411c3e632a930b2a7af07eefab12bdd1a65"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-object-handles-out.pdf",
+   "size": 921,
+   "sha256": "37739c5adffa6aee39c58aa74249a2730bd951f855de866ea5e2bad7c68fa64a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-object-streams.pdf",
+   "size": 5195,
+   "sha256": "0588a730f7b499b2245e826fcba3df9131f698062e774ae2a4fce2db1d67cf0a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-pages.pdf",
+   "size": 6377,
+   "sha256": "bd2fd01a2b8429e3429578cad919ba665d1a6998dd06a773cab4286e90559217"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-qdf.pdf",
+   "size": 17383,
+   "sha256": "378a7a39719b559aa378f7876bae8cb70f0c97529a53139a145febd261a374be"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-r2.pdf",
+   "size": 9893,
+   "sha256": "1e6d29187458deb467928b8188115e69eaee4cb19f85078437d197c3ab8da5fd"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-r3.pdf",
+   "size": 9897,
+   "sha256": "ab1a8d49b40f825a60ab272437ab9cad5a7d6ba7e882d9b82f3961e61d5348f3"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-r4.pdf",
+   "size": 10892,
+   "sha256": "e2fed5c4fd32106eb46b70aec896471d4acda0799c7d9a5d5e590e2411021cf6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-r5-in.pdf",
+   "size": 11206,
+   "sha256": "19b6a33008141e1e898e1fac6e86524de0e8cd0c4643fdb01a1eb781e5cd8187"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-r6-in.pdf",
+   "size": 11206,
+   "sha256": "b616425b595e376dbbfc19dbb89a66678afd4eb74f85575f667778afa1add892"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/c-uncompressed-streams.pdf",
+   "size": 10527,
+   "sha256": "9e68ec529fcce94d6e2a81b462bd366795c56d4510125d0eb0f6c04a1f2132f6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/catalgg.pdf",
+   "size": 763,
+   "sha256": "144ec4c25a05ffb46d57abcc7990447b4fbc069b6a37e209a4a0089e2006254a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/coalesce-out.pdf",
+   "size": 2951,
+   "sha256": "ac512a571d630b760b72b25dc3e6a64c888414aa3d5648b62c667734c7bdb753"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/coalesce.pdf",
+   "size": 3769,
+   "sha256": "5fc12a29d9a755527333946900027008c954b8877da7c19cc32c0ce625f95386"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/collate-even.pdf",
+   "size": 7763,
+   "sha256": "125a206c03dbe16442715a6d2f4dcf5c81e20dfce37a188a3891e316130abbc5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/collate-odd.pdf",
+   "size": 7764,
+   "sha256": "4d3f6176531e9dfac6c4f02aa65e2ffb19e5cb28a46ec814fa9c8a46f1023139"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/comment-annotation-direct-out.pdf",
+   "size": 3183,
+   "sha256": "42b268c68762cc9655a9d281d73a33b18318769ca5f54614b4cc441f59a23ce3"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/comment-annotation-direct.pdf",
+   "size": 2803,
+   "sha256": "f3e6b7eaf6a63a84daf1c75a117dc2f7e8c1ffcd9e62509068e23de70549dcf4"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/comment-annotation-out.pdf",
+   "size": 3224,
+   "sha256": "c9f09160bf624365c879703013369ae2b860cecdb53d221b92d6bdbf0bc77160"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/comment-annotation.pdf",
+   "size": 2842,
+   "sha256": "4f89157ac66611d20d91e50fe67e0befcef825fdca4bdaac1ec94bb4c3e0c99c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/compress-objstm-xref-qdf.pdf",
+   "size": 1249,
+   "sha256": "1f8814f312aabfd08caad2a1b5e3ca24bc3e0e883257e63432b9d9c2eb1ce38f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/compress-objstm-xref.pdf",
+   "size": 743,
+   "sha256": "7aa4aea24328616ce247cc4132efa3b8f53d2844179d17b51383f8771d2de358"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/compressed-metadata-out-normal.pdf",
+   "size": 14895,
+   "sha256": "52032ffd84844e043b6fbd337049953624778c6e492ce94cbc7825bb5a63c78b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/compressed-metadata.pdf",
+   "size": 14459,
+   "sha256": "c34d1faeb50ca57d87ce390f24a6043f3f36ad410a7489de07cdd36f0a706182"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/content-stream-errors.pdf",
+   "size": 2889,
+   "sha256": "19bd84be7fb78a9b30836c3eb3714aa695b84f050cb2a7e6b766d2a46dfd57f5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/copied-positive-P.pdf",
+   "size": 1480,
+   "sha256": "60a42ebfdb6fbef88ce660642585c65e4fbbe2c8c1063cbad62f322ff78b9afe"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/copy-attachments-2.pdf",
+   "size": 4133,
+   "sha256": "cc580681c32c13ef8c7f710e8e5ea70a973dc1f22d99b04286bf08ebc906af87"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/copy-foreign-objects-in.pdf",
+   "size": 4410,
+   "sha256": "9f22565ddeb538808ca7e6584a51af374a1f56fdb72c1aac21b71d08d24a1a66"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/copy-foreign-objects-out1.pdf",
+   "size": 1480,
+   "sha256": "dec6bee238a8cee3e049638fe7f078ea63022cc977ce2f2696e6faa4947cea4f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/copy-foreign-objects-out2.pdf",
+   "size": 1938,
+   "sha256": "04ba102c82bddd222bcfb97f87570477caf0e14f5597df72338348221f21cecd"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/copy-foreign-objects-out3.pdf",
+   "size": 2586,
+   "sha256": "c88a2593126d202dd62096249ed32474503a7872e7b3c8893b495475cb2c04d8"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/custom-pipeline.pdf",
+   "size": 799,
+   "sha256": "9a8fca44be30892d864bd1a88002b760de878930821dba1925929f58b446259d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/damaged-inline-image-out.pdf",
+   "size": 5558,
+   "sha256": "f3c4f8f03e530e200eb9ae00f0793b8fe670d1494e8a5e675234416deec127f7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/damaged-inline-image.pdf",
+   "size": 5558,
+   "sha256": "18dae3c4253d30e262da786e7d238305dc2046f1c94d2b566d5589336106084c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/damaged-stream.pdf",
+   "size": 77635,
+   "sha256": "91e119f2db2e9f738f696ddacea90498d460b0afda0fcdf71bb6281fc5085819"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/dangling-bad-xref-dangling-out.pdf",
+   "size": 977,
+   "sha256": "00b4d15ce9f468ed1e8d45907da517087706dc7d0ce9837af87ca4b68fd55479"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/dangling-bad-xref.pdf",
+   "size": 1097,
+   "sha256": "a6cb86b3a588674544eebdd78523e21c870055267c0a54da39275211b1a0ad2e"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/dangling-refs-dangling-out.pdf",
+   "size": 931,
+   "sha256": "2684ab211ccef83a56e5281f1b6059a38c9c936b2bdf0f4b472b57dbe9750fce"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/dangling-refs.pdf",
+   "size": 1067,
+   "sha256": "5c172db0a2d772a127d5a8b7e5b5db279c0d67d3e8d4c2e9dec874c978e983db"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/decrypted-crypt-filter.pdf",
+   "size": 14383,
+   "sha256": "2526dd1e46392e1f0a03a278650eeb3d4172220180d63fdf93f1e44faf8420eb"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/decrypted-positive-P.pdf",
+   "size": 865,
+   "sha256": "6b2f054d08198137d7448d9da8efd207a7017fdf09dd4cfcd1a6e31d223a48ef"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/deep-duplicate-pages.pdf",
+   "size": 1287,
+   "sha256": "12cea246a886b193d7620c7ad4e63e8868c53d1d14a84fa24feb96cf2a3a651f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/deep-pages.pdf",
+   "size": 10399,
+   "sha256": "1ee732a4e68421d5ae49aae1579304d7d9722b7a94fd1290ec3c55b42bf50ec7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/default-da-q-out.pdf",
+   "size": 19840,
+   "sha256": "cd77380828f0c0a8e44ad94629f3376f3b97c6cf61964b61cb8083cd7f8cd7df"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/default-da-q.pdf",
+   "size": 9664,
+   "sha256": "e09aa90698fd1cedfc692f31adcec1af51403628fcded585ab5c8c3acaf1b153"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/delete-and-reuse.pdf",
+   "size": 17153,
+   "sha256": "c6c072ad2af08b224c7608304f3053571dd26b28a4c3639d281e709036cf1be0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/deterministic-id-in.pdf",
+   "size": 177835,
+   "sha256": "336eaa8e96c36348358c17faf294469035767f3c8294f3020ac090ed9a1eec97"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/digitally-signed.pdf",
+   "size": 68846,
+   "sha256": "05e969415b03d9782b0b132f147b86cb42eafddf6176aaf2710334a9cc643c3c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/direct-dr-out.pdf",
+   "size": 9687,
+   "sha256": "79bbebc4d7920447ebbcb0220fd846fbbb28ef4a744cd7b47d7f42eae4c33100"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/direct-dr.pdf",
+   "size": 9978,
+   "sha256": "0e5d57c7baba3f65b1bb933b974aff89a46859bbc44412c8a6f7de75163b5ffc"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/direct-outlines.pdf",
+   "size": 15994,
+   "sha256": "afd980c57c22d242db3126f24b85a7699d4674c2502a46fc0e2219fb1b0bbefe"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/direct-pages-fixed.pdf",
+   "size": 968,
+   "sha256": "ae3284b38bcbaad012024364f3e49ff7cea77029896a707ac820e8b5ab8eeb3f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/direct-pages.pdf",
+   "size": 1343,
+   "sha256": "a8226ca83ca35fd5d6b4f0e151b1170b099ac74d9943b395180975c8d2bd1881"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/dr-with-indirect-item-out.pdf",
+   "size": 809,
+   "sha256": "24035fea2b344d413974c59fd9a4e51f500b9d438febe8b3edf133baaa4dd5f4"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/dr-with-indirect-item.pdf",
+   "size": 795,
+   "sha256": "128536a043959408dcdbea480ac65f0caa454728530c64d9638ee430849f3fa1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/duplicate-page-inherited-1-fixed.pdf",
+   "size": 1530,
+   "sha256": "215ade4ec930f57106703a6bc7e37b73dcc93e54c61cfba925ae5ba5b6d391a2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/duplicate-page-inherited-2-fixed.pdf",
+   "size": 1651,
+   "sha256": "6fdfd5735999c87340ba8e803bb3e991b59e35251fab6c6e39271625c444cbdc"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/duplicate-page-inherited.pdf",
+   "size": 795,
+   "sha256": "5ef7073b12f8efe60f132d11a51996a51eb671348298e0364a23264cec2ff0da"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/duplicate-pages.pdf",
+   "size": 3778,
+   "sha256": "c7152ce677a542c38aeaad08fa8ce4b0a098ed15de17eace49bf1ff612b7dee5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/empty-decode-parms-out.pdf",
+   "size": 2770,
+   "sha256": "e44c45ff762a9525c1e68d19a00dd11fc00109ddba3d4302d6277946474e4fa6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/empty-decode-parms.pdf",
+   "size": 2787,
+   "sha256": "d391a03eeaf34fa0c65e5ffc15a51fec112f83137350dffe7c0c7304ea5cd436"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/empty-object.pdf",
+   "size": 810,
+   "sha256": "a16dca402d09920c87d878a442ffd41863c0628fdb8d5650891163f468226ff2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/empty-stream-compressed.pdf",
+   "size": 986,
+   "sha256": "48eb0b28e4e2266564fbe58f3a2413bc6cc440815fca118a942f5210a80c572b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/empty-stream-uncompressed.pdf",
+   "size": 965,
+   "sha256": "9b744434fbf990875a1f48e2555b86bd66f46c77e7b89706bcbc4c9c885f7812"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/empty.pdf",
+   "size": 315,
+   "sha256": "b61f62584fed965e7b7e8cfe79b1aa914106fb3714c8e3928a8f57c1e7e0d19a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-R2,V1,O=master.pdf",
+   "size": 17146,
+   "sha256": "4560d44658aca5b2b610f2c6631eb9db590fa43324c02890003dee6a8dec3b29"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-R2,V1,U=view,O=master.pdf",
+   "size": 17134,
+   "sha256": "cbd0396c5af37a326cc829b3a031223accf5ea093119eaaa78bf4a386108ed14"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-R2,V1,U=view,O=view.pdf",
+   "size": 17137,
+   "sha256": "20de346659f289187e413fabdc3056fd7fb1e2d0862b8dbb19ba4dc10c411f8e"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-R2,V1.pdf",
+   "size": 17143,
+   "sha256": "d657555453a8933cbfc3fc00d15853ec4d6b03f83eb1941d78a50c424bc9f55e"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-R3,V2,O=master.pdf",
+   "size": 17144,
+   "sha256": "d0e64612cf946dd19e7421fa3ee17b466b54c8f164b1f95986f14d8ee8e02ba9"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-R3,V2,U=view,O=master.pdf",
+   "size": 17139,
+   "sha256": "5c0683d687e2e020fe172b1dcb7c29fe94f67bc40f038fee2391de610053fc16"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-R3,V2,U=view,O=view.pdf",
+   "size": 17142,
+   "sha256": "b2c0328654260a8b892c1f7c7c69c2af3e41850af880aa189cdc60625e5e5091"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-R3,V2.pdf",
+   "size": 17140,
+   "sha256": "9d9932f50508e9769ce5769451be9efb1dc56544d0f95dd4ed53c0fc1960ccab"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-XI-R6,V5,O=master.pdf",
+   "size": 10933,
+   "sha256": "63c99503fc9c6b44c47df124ce040d005e26d2c5d8d0999ad59c48b31a426863"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-XI-R6,V5,U=attachment,encrypted-attachments.pdf",
+   "size": 17868,
+   "sha256": "814df59a61f34da60df347ab1a268b6375d2b0de9058d33200d00b4b34e59a66"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-XI-R6,V5,U=view,O=master.pdf",
+   "size": 15670,
+   "sha256": "96b9262bfacf1358c7a68ab46c11563677e858888950237fdac8f3a227210edf"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-XI-R6,V5,U=view,attachments,cleartext-metadata.pdf",
+   "size": 22400,
+   "sha256": "d0d7d6d37a4c1e551dabb45532b3b077d973cf8f84ac04d865fd9a5e5fca1d68"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-XI-R6,V5,U=wwwww,O=wwwww.pdf",
+   "size": 13642,
+   "sha256": "94ce7ecade61858c0c0cf8b20b92fdf639550a50aa5a1b6bde767d713544e376"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-XI-attachments-base.pdf",
+   "size": 20751,
+   "sha256": "ed3695b5527855451f60f40caf6365a88f18860ae0cddc57a7de5b2e78c6d420"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-XI-base.pdf",
+   "size": 14041,
+   "sha256": "dc7bad1ce643583997845061b81f9609176875dd9872cbbe5ffea9399f60a420"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-XI-long-password.pdf",
+   "size": 10915,
+   "sha256": "ec991b965a89d0bac064641a0f5c3fe354ada22a4dc3da853d7a9ffaf13b6ddc"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-base.pdf",
+   "size": 16937,
+   "sha256": "71755cf8e3442fa8785420ff748480c6afb74e1810b9ad79636380364c0e1063"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/enc-long-password.pdf",
+   "size": 17144,
+   "sha256": "2d9b4e2d030f48b463cc7c1acb399db0d6a5869250b0933ddf675bb2cea84c48"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/encrypted-40-bit-R3.pdf",
+   "size": 1041,
+   "sha256": "221b17165d2c807500165c7890f6f8f355b6cf62ecdb430d9bae71cec17b8369"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/encrypted-positive-P.pdf",
+   "size": 1488,
+   "sha256": "e717ab57a216202dc669f9cbdc335fb863b105c400a4b946594a456f4aaf3380"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/encrypted-with-images.pdf",
+   "size": 50219,
+   "sha256": "9f6c9ad93a462ad8a9c3c28debd5cf6ab80c60e7a8fe3b12e802b8e53aa0b1d4"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/endobj-at-eol-fixed.pdf",
+   "size": 799,
+   "sha256": "7c34baaec7ccf3076f1669926d56f46c15c3bea018d1f4e03672cb406b9cde7f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/endobj-at-eol.pdf",
+   "size": 798,
+   "sha256": "52f4946a573552caacd6fb427b4eff84a50255446898ae33453783018d2e6654"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/eof-in-inline-image.pdf",
+   "size": 870,
+   "sha256": "eb2e11fd06a6e0c2285f72591e86ad0f3141d0f8691711c16cac2ee928eb533f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/eof-reading-token.pdf",
+   "size": 1632,
+   "sha256": "28b2ed525f04505adea602d81e1302b6aead1527acf97a1a7d26236360c0d88a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/eof-terminates-literal.pdf",
+   "size": 1632,
+   "sha256": "4cac96c3fd575e87158a6c5fe99a94243e60a55d767c7f3bdefa5660843ff0e7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/erase-nntree-out.pdf",
+   "size": 2377,
+   "sha256": "f48a69ae607214a8a77c0112b76e46530d8d1ac7728d3124d73dbae2220fc023"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/erase-nntree.pdf",
+   "size": 2429,
+   "sha256": "f43ce6ccba1cd33cbf8ab23fc753266bc17292ae5f459325e57a56defdccec86"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/extensions-adbe-force-1.8.5.pdf",
+   "size": 865,
+   "sha256": "86d96ff1005727c2ec4cbc431b440592986f687ee6b98d7b4592029b054aafcd"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/extensions-adbe-other-force-1.8.5.pdf",
+   "size": 923,
+   "sha256": "74a54740145096b9a4c1303dbcbff51fcd3b5666db3244860afe39f2359cac38"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/extensions-adbe-other.pdf",
+   "size": 1129,
+   "sha256": "5538544c3b8c6594ac2e2fa9d93f441fa2a955a8a968db6695c5147e40a71a8f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/extensions-adbe.pdf",
+   "size": 1139,
+   "sha256": "15d9a3e95dc95b49a7d7598f9eaccb2cdb44b2a1cba5dc382eb1a72a0814ed14"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/extensions-none-force-1.8.5.pdf",
+   "size": 865,
+   "sha256": "e1530273905b45e604e193127b5e8ce7fb82d0b5430264b8691640e9690bd3d2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/extensions-other-force-1.8.5.pdf",
+   "size": 923,
+   "sha256": "6a0c0b8a15638b5a8e32f3ac20ccd5b34e876c9676268e8616cb5d2f37fe84bd"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/extensions-other.pdf",
+   "size": 1035,
+   "sha256": "232453e026f4fcbdf4624d830b7f60efbd3d067a0b91286bac91fec1bbb3aaaf"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/extra-header-lin-newline.pdf",
+   "size": 1312,
+   "sha256": "64cbcabf5c3d59eeab3266f1e3ca1512de0724c3e006c066042525cd648bf3a8"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/extra-header-lin-no-newline.pdf",
+   "size": 1312,
+   "sha256": "75286e2a6418f58f615b7207420964649650c6446b34282b06f873717beacd21"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/extra-header-newline.pdf",
+   "size": 823,
+   "sha256": "3e27769867f8007243dca109471f52f9c25e6ad6cb7d2c42cf764baddfe7e253"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/extra-header-no-newline.pdf",
+   "size": 823,
+   "sha256": "08b2977df8c1d0cf82d39a6148f6a6fd73f485e39fe6d94ba93d4cd01f22d883"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/extract-duplicate-page.pdf",
+   "size": 1370,
+   "sha256": "7407b6e706dd85f03e96d535f2c60404df34fcce598e2294d4fe073ab75f35a5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fax-decode-parms.pdf",
+   "size": 1565966,
+   "sha256": "6cf3a42a79698eb9a6649d51a78647dccb05dd88dbc0b384b843618963f8755e"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/field-parse-errors-out.pdf",
+   "size": 3647,
+   "sha256": "4448713655399ae4245102f35e2b2a81f2584c49fac0af0c6e981ea7662918ce"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/field-parse-errors.pdf",
+   "size": 3190,
+   "sha256": "9151208837f6d53eeb5ba915dc181cd65373ecf0dd37a2200e498291a35b0916"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/field-resource-conflict.pdf",
+   "size": 3348,
+   "sha256": "8af095f3564a497b6ffeb541234e1cbba19a56c9c31a3d88f659197a0073fb68"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/field-types.pdf",
+   "size": 66773,
+   "sha256": "94e367a11f60bae31a430d7426d2c9ebd27363191622ed863ff88f3b151191f1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fields-pages-out.pdf",
+   "size": 43173,
+   "sha256": "7fe97c31f592642903c857c7ca738cde84afbb982dc615b159f18b02738e177b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fields-split-1.pdf",
+   "size": 7221,
+   "sha256": "1058358a1d0d21b5cbf3ce2fdeb01b0f787aeaa2a199d65e1c0d94d3d7146956"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fields-split-2.pdf",
+   "size": 36507,
+   "sha256": "d470f8f503cb39b79bf68bf493b2be273ace1027329f181ead21bef5d29aeb22"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fields-two-pages.pdf",
+   "size": 42592,
+   "sha256": "359810e6da7852e9bee7532b47293a44ae4f6a8a8f1a83140b334c77452c11c2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/filter-abbreviation.pdf",
+   "size": 743,
+   "sha256": "21176912692cca1f393d97bfff02bd25fe79876810f96af1052f187de50ea9e1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/filter-on-write-out.pdf",
+   "size": 732,
+   "sha256": "a1645a9b198d9bdf79f9d67ef116e8d7cf1521c069c5f89f15488ca631752b8b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/filter-on-write.pdf",
+   "size": 698,
+   "sha256": "bc6b5d3cf43ec529a9194ed2a80f0254acd9ca1a45fcbe9b1fb45ccc8a39432c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-bad-fields-array.pdf",
+   "size": 54870,
+   "sha256": "189bdff03274c0d66628138f32d83b1e08c2808fe0f157d37eb8b9b3c3aaa687"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-document-defaults.pdf",
+   "size": 54998,
+   "sha256": "f782b216741f82c0d67cc927a27180a521f521e9b5dda553fa230d13ac845b5d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-empty-from-odt.pdf",
+   "size": 54848,
+   "sha256": "599304a4c47fa25155fc732cb9bffe2882ea39894e14f812905c4ec2f5826c14"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-errors.pdf",
+   "size": 54962,
+   "sha256": "1215418133f277c1f1805f727a8e89f97e3fbeeb0c8d1a9bb11ddbdfb443e6d1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-fields-and-annotations-shared.pdf",
+   "size": 11607,
+   "sha256": "10ff29590d32e1b81c9ac07ccfcc7535314932edf80238817f7ae68e682a28f0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-fields-and-annotations.pdf",
+   "size": 9648,
+   "sha256": "2288db9af745217c054f167cd5c416eb80e3dba98097da104d6b77c2a150912a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-filled-by-acrobat-out.pdf",
+   "size": 245545,
+   "sha256": "63a27736851cde0b3318c21cb0ea36523d2c3cc828204a7e46d1e82eeabdeb86"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-filled-by-acrobat.pdf",
+   "size": 61841,
+   "sha256": "465e30fe69d3b53d883ea1f01ea56a225ff0498f231ecda6f6fc986b9c5676ff"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-filled-with-atril.pdf",
+   "size": 56705,
+   "sha256": "25a5d4761723754c37d39f0a46f123b0603408a866e7a45e48856eb5a0c09b12"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-mod1.pdf",
+   "size": 54994,
+   "sha256": "49a7e0ba65976e6b7aaa6664f176d179724c79127c00a71c04f01e634e18ada1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-no-need-appearances-filled.pdf",
+   "size": 12630,
+   "sha256": "2d6be2a040b87cf7a6d1b9cbe73b464839b0cc9cc2666faede01c65e5af86a86"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-no-need-appearances.pdf",
+   "size": 12572,
+   "sha256": "72a909d80238419f3509af4d0765b2ac882c1f15d7b27fe8ad1d959c0baa5bb0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-xobjects-no-resources-out.pdf",
+   "size": 2664,
+   "sha256": "8dd2d936243cc309cbe8cde8c3a9c51e725a7fef0c40c851d38e4579b47fdea1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-xobjects-no-resources.pdf",
+   "size": 4782,
+   "sha256": "b82d2a47971d4ef38291be643571c1dd44038db0829ee475069959e975f24df1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-xobjects-out.pdf",
+   "size": 24276,
+   "sha256": "596fe70aaac7f86bd2cea929a5a785a7680e704aa8a0fdfe90a2f9445a02a811"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-xobjects-some-resources1-out.pdf",
+   "size": 2775,
+   "sha256": "f02fa7f2f698864f82075da78010405ef01f7585cacc56962921c0b82dd1a4e3"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-xobjects-some-resources1.pdf",
+   "size": 4862,
+   "sha256": "360d6901240cf766731c8c24faed8c5d159f83d9949c71500595f7f0c4b6ba67"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-xobjects-some-resources2-out.pdf",
+   "size": 2819,
+   "sha256": "aa6fa4bbbb51990d03d229d0707594d8a5086036ca198166602885f91f18e065"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/form-xobjects-some-resources2.pdf",
+   "size": 4924,
+   "sha256": "07aaa5182e329ff94d8d9afc22590ebb836708121902ad4bec3de200b406c3fb"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/from-scratch-0.pdf",
+   "size": 772,
+   "sha256": "dd04073c9ac2f5381babdf2c028b8433b998331b97b6323b25bb9d2b33ce4a60"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fuzz-16214.pdf",
+   "size": 12142,
+   "sha256": "211e2e1c1b7757864b49d7f08e48fe6700a664b97472f85590fd4be51dcc2ffa"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fx-overlay-56.pdf",
+   "size": 23995,
+   "sha256": "2cf3356e8c2b0249259853dd6011b5fb91afd3722379d778b3c2aee46129e80d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fx-overlay-57.pdf",
+   "size": 24839,
+   "sha256": "587f00be58a306eb4f7a9480e642fb55d85e12b13203dcefbf71dbc7fd0a434b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fx-overlay-58.pdf",
+   "size": 24197,
+   "sha256": "27c6671ee2fa6576f9363027bf1751e71ce24203ec4823eca4d13069c83020d0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fx-overlay-59.pdf",
+   "size": 24893,
+   "sha256": "7ffd18dc1fca097d1e45e0418d34fe897bca417697a1e624b8d101808d260e19"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fx-overlay-64.pdf",
+   "size": 4156,
+   "sha256": "9d4bfd040a6156dfded09965bb20dc2d7f4d863a0d5d8ddfcc68b6775b63be71"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fx-overlay-65.pdf",
+   "size": 4154,
+   "sha256": "7597d60eb7e60cbc750ef35fc11ba8300901c8b74942675e67ca027c7f8a26f6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fx-overlay-66.pdf",
+   "size": 4152,
+   "sha256": "70d3e1d402b368d41d584d0a118519f6987cd35ce93e8b5b312e4f89fda9e236"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fx-overlay-67.pdf",
+   "size": 4150,
+   "sha256": "ea94edc63c81f99427ae7485ba9fce71595d6f2eccc0c0561d8c4d1a6d9229f2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fxo-bigsmall.pdf",
+   "size": 1956,
+   "sha256": "a55834f573f4bc614bd13284908254f1b135e26285b6611e52194b8448d1e7f6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fxo-blue.pdf",
+   "size": 8823,
+   "sha256": "cb64c7ae1daa92584ccfacc195b7b1f07012673eb95cafa93dbf98febb2751e5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fxo-green.pdf",
+   "size": 4543,
+   "sha256": "76cd80a4fb863424555f5b7fbc9e7f0a52f7a0081b7590952b32036bdbbba508"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fxo-red-rotate.pdf",
+   "size": 8815,
+   "sha256": "53014b9630893f1a5f4b0655e5520ceb91f6fc03d631268b97fc11e42f1b2733"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fxo-red.pdf",
+   "size": 8815,
+   "sha256": "1c9786018a8627ff2d74220fd7f3ad2c601e36dbf8e8c93c3d2abdd411e79038"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/fxo-smallbig.pdf",
+   "size": 1960,
+   "sha256": "8db63082fc807d1db72e0d2c90d905307eb2cdfd56207e369d2391cdc6d9d1a5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/gen1-no-dangling.pdf",
+   "size": 1758,
+   "sha256": "eb40e12cc16977a4f6cf740750ef85252fded0295f18f088eb853ad5362f0197"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/gen1.pdf",
+   "size": 1758,
+   "sha256": "54d268b7c57ae0b64177d3d856d96304b5fac1348430740e1a10316a4a36b01f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/global.pdf",
+   "size": 828,
+   "sha256": "19c9f6cfb38a0626457d39ebb0ebe7aafd9f06403823b575d3c61ced567e7a79"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/global_damaged.pdf",
+   "size": 827,
+   "sha256": "132ca5c178aca2e580475dfaf38e46b04c8ffc2a471fa505205ce43ba4847989"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good1.pdf",
+   "size": 813,
+   "sha256": "29be5baa5a7a95e02a2cc34a714836ce4d6e8ada1e9a390ee585ff005cb8a7ed"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good10.pdf",
+   "size": 802,
+   "sha256": "e2f1621f34c323127852ca6698ec0497d9909701bf6bd7716060e3648ab22373"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good11.pdf",
+   "size": 806,
+   "sha256": "2c2ef89214da4ea75d6a9cf3ce8e1189068f9adcf6a11886b5595c09374ce117"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good12.pdf",
+   "size": 1012,
+   "sha256": "4df6eb12fddc6b88b20b5dbb9a56ebcf498dd46007538de2b54b83860a69a69f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good13.pdf",
+   "size": 1348,
+   "sha256": "a34fff0f3b3f3e6e7440a6c9eddf680205ff15cc5bbc2ec68cb93b437b1a0d26"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good14.pdf",
+   "size": 2075,
+   "sha256": "cdb3e5a31cbc0c95591d35202b901ecae77f2979f55fe019c897a234e9446435"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good15.pdf",
+   "size": 779,
+   "sha256": "f8cce8d66856156b7574dabb1d61ce353af8c36077e87b6e9059e7ae4a283523"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good16.pdf",
+   "size": 792,
+   "sha256": "7e895514a76bff9c9bb699a14275735c9f5c61415fda7acc1e3e80d3003bc730"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good17-not-qdf.pdf",
+   "size": 9893,
+   "sha256": "fcf5e1f6942e6db36ef866196914320167078f546f068a0c9e5dd7216b303021"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good17-not-recompressed.pdf",
+   "size": 10621,
+   "sha256": "614d0e7d2720b60148411ac5f5b8ea1f42f19e73541003f168e4fcf9468307ce"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good17.pdf",
+   "size": 17031,
+   "sha256": "7383ca2c3a1da7c0691e0b8a63ebee3c91b62041ee5a3433a69e721b6c48f190"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good18.pdf",
+   "size": 16642,
+   "sha256": "e6ea41e27e7ebbb0d89472e698d0cb16beefff768a584ea144ae650f8c4bbaa7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good19.pdf",
+   "size": 1032,
+   "sha256": "4321af1c6cc90f383935fe5a92bf12a8359a3b9d0858cc0909ce2b90979bca4d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good2.pdf",
+   "size": 777,
+   "sha256": "2b874e4b77a651a9dcc0e905bcef211a8f8b31aa057559dbd90b4ed0b84eebd7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good20.pdf",
+   "size": 10276,
+   "sha256": "2eb4ad5a0f817088fbcca7471c31aa4ea596082c7edd6d65a41d15546e8cb39c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good21.pdf",
+   "size": 1097,
+   "sha256": "80844485851cdceeb6f54057b1bf913ae1d0c02a9d55dbccef3d8f9ba891a086"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good3.pdf",
+   "size": 778,
+   "sha256": "bff81dba2b425a657fb866feab904f87cffa8f27a1662d7edf5b3fe30dbfd067"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good4.pdf",
+   "size": 819,
+   "sha256": "54516557585201a9d53b0c46565f7f9becd47a758ba52c2739bb76b33fdbcce0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good5.pdf",
+   "size": 819,
+   "sha256": "8b29907fd2edff4cb9a53aa92f19979ba626e84c698012aa39d00dc1555f39fc"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good6.pdf",
+   "size": 778,
+   "sha256": "672e34b4e503a6b9f55eb4e3b160b3c596dc3f3da24c7d409e2835e4099b1c06"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good7.pdf",
+   "size": 779,
+   "sha256": "2a23696911e790f5c1363bc42807b9e99214122fb309bb160983edea0e342450"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good8.pdf",
+   "size": 937,
+   "sha256": "ba1409f9fc9a0c37a22207d22561f4d6c7fc7218fbc1212fec395811098a6e9b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/good9.pdf",
+   "size": 828,
+   "sha256": "6a1be4f68f212e7aa3473a5c77f49e8ee6ecc480a7629802a413952bfd2f5d85"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/hybrid-xref.pdf",
+   "size": 16902,
+   "sha256": "df1ae8b9cb2378aaeda6fdc11146dd37328737fd050941390d2c6bd188eea0e4"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/i3.pdf",
+   "size": 6731,
+   "sha256": "7425bb5d9b2f0e17ef096197ad5b4475f5c23be9cf3363cafdbec7b051d8ac5d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/image-streams-small.pdf",
+   "size": 21748,
+   "sha256": "37e3ffe9bfc79b79a954758a885a0dc0e91e5d95674a8b8e77c4e729dd6603c6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/image-streams.pdf",
+   "size": 2970696,
+   "sha256": "d84a925580d8d336619d819edc5cdbf0fedcc9a87f64d145bca38411df0c69f1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/incremental-1.pdf",
+   "size": 1423,
+   "sha256": "5f9c43d3f201d8e9ea77aa162bf4eb527c563f9db3626a736455e003cf5baaf3"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/incremental-2.pdf",
+   "size": 1279,
+   "sha256": "4549c92369c3184a382f84eeb4500a4459fbd71409a1aa37e2eb91456dc449e3"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/incremental-3.pdf",
+   "size": 944,
+   "sha256": "f40a2393e3272a2e037af195570f2339561e1285038cdb501d6881b75c6c7291"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/indirect-decode-parms-out.pdf",
+   "size": 1067,
+   "sha256": "8966ddef6b374a2a43215d008dfc1e246c60bd3e84d0d353ca953f2d698fb4e2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/indirect-decode-parms.pdf",
+   "size": 1292,
+   "sha256": "d18cb132436df868b0c4d6c0ab679045aa9efa180cff0bd2d915937b38299d81"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/indirect-filter-out-0.pdf",
+   "size": 2948,
+   "sha256": "cfbde14d45fed63fe2c21de749a090ef26c8ce0202d129098d26f425e04244db"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/indirect-filter-out-1.pdf",
+   "size": 2948,
+   "sha256": "1a1b512c3c13f08aada3a443a5a1ada0de342d2a70abe0735f7146a72564f73d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/indirect-filter.pdf",
+   "size": 5404,
+   "sha256": "9ca1cae6c28e5170e9b8ec73af2542cf15ce93c7420852de8efcd80f053601c0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/indirect-r-arg.pdf",
+   "size": 1128,
+   "sha256": "cdec84dcce8e1a002a09f04a8d601848668121d22bf906bb58fd702332cdc763"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/inherited-flattened.pdf",
+   "size": 1054,
+   "sha256": "7738db0c7ffc2c3e25f475236ea515aae26f50b0e7426aa47f0b073705eae3b1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/inherited-rotate.pdf",
+   "size": 978,
+   "sha256": "69cc42c34812790a88d8275d45ac9b0a72b9e5ad62aa70427d25caeee4a9f46a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/inline-image-colorspace-lookup-out.pdf",
+   "size": 1348,
+   "sha256": "f99cfcfd05b91dde8aa86d1ab02031a01892c4833e6b4bb50972f2ae2d50c727"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/inline-image-colorspace-lookup.pdf",
+   "size": 1176,
+   "sha256": "fe533848681512e8b843b1d07e6a77a0107d64a3584a0b1101cf18fcc28f3337"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/inline-images-ii-all.pdf",
+   "size": 8832900,
+   "sha256": "db9ea8fe6343237cbab9a1c752f653540bc471e6cfe139e76ba90a13f9c1c66f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/inline-images-ii-some.pdf",
+   "size": 7966862,
+   "sha256": "596b0dc6f9c0aa280cc7f10606ec6101a159f4748d893e999ef85f292d9e3b64"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/inline-images.pdf",
+   "size": 300684,
+   "sha256": "8ae2fc89f4edd5579c2b05a2b9678388b29515143252ac40f6ec97eb7d97e1df"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/inspect.pdf",
+   "size": 1012,
+   "sha256": "df847d362af29eaf7238bb2e9022e38087ec401b00e7aa7bdc13605a2c6fd6fa"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/invalid-id-xref.pdf",
+   "size": 969,
+   "sha256": "3ba3e9d562acd30caa668bab1e6bd80d2477baf128cafaeb0196a03519700954"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-100.pdf",
+   "size": 1145,
+   "sha256": "b5d0dd490741bc00001803c9bd895b723af1e0aaef6bf3209bcdb2468950c54c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-101.pdf",
+   "size": 4613,
+   "sha256": "9e64650d42ce928dfa6f410cdefd4daa02bf6b74445336ac72716fd37a773cb5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-106.pdf",
+   "size": 3800,
+   "sha256": "527771a9a9986fb7868c814bc104c533b5b5327417b5a28a5421a7c0e98fe2bf"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-117.pdf",
+   "size": 2817,
+   "sha256": "58076f67fcb822bb58ba1c49de041a94b644351d6110d4dd9e3e5f84e28dcc79"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-119.pdf",
+   "size": 912,
+   "sha256": "2aaaafc96eec03f003d42235f7b33407e90b26dff019121f375b00fcb7234423"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-120.pdf",
+   "size": 785,
+   "sha256": "15763573f21d527ce4f486cdc1c243942608d5d7e03b2d878b3ae4a15e5620d9"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-141a.pdf",
+   "size": 82,
+   "sha256": "f8f3e84b5d972d1c2e60f990d3b1750f44e7d89349ab4425bcf405556c0cd7ac"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-141b.pdf",
+   "size": 92,
+   "sha256": "d6a1f1c25ef065bb3a097202631ad25639d1451f03e912446e70a560ce07f41c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-143.pdf",
+   "size": 710,
+   "sha256": "4bb02358331734103f4386101c4c0c33fe0ef66b68394dfa1f0fc2124693da32"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-146.pdf",
+   "size": 20732,
+   "sha256": "11353d015b66d5b86aace9feef7a1462c3bd4fc975e6d9521ed0cd941ea075ab"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-147.pdf",
+   "size": 91,
+   "sha256": "f0193ccdceca0c7239b7e537878992233e26f1fd843b4a749bfd9334f96cb98f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-148.pdf",
+   "size": 87,
+   "sha256": "6d080d53f34b9f9b1f9d1c3bd11fc66a5fa89697749163b32591ea967bce1d49"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-149.pdf",
+   "size": 1685,
+   "sha256": "3b88182ee79ac2e47b568629ad80190ca48e64b58965e6de0b9a3d1f166482d2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-150.pdf",
+   "size": 137,
+   "sha256": "bbec108a39dec9dff29d71d4cb8cef976c08b0b18eea22dda7c732e399a375f3"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-1503.pdf",
+   "size": 4088,
+   "sha256": "89b23e4bd530ea18de1a63bf56372702ae4916fe13cddfe60ba76f887402d891"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-1688a.pdf",
+   "size": 531,
+   "sha256": "6d51ac66dcde023b1637f264453378106ea3ee807602432a925b9fd8bd402a61"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-1688b.pdf",
+   "size": 531,
+   "sha256": "d3e86c2c163cf12c4426b7c28bba9c8d9b20923f129c10ec5a8cbfd7b0af97e5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-202.pdf",
+   "size": 328700,
+   "sha256": "ee681dd26247e94f7632c18143c6d832ad9e75f4021d01c59a516b4e2087255b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-263.pdf",
+   "size": 277,
+   "sha256": "eb7b86a9d99f9d4c9466fa577b5f2e1555c33215eb8a6a0b73e0393510bf44ea"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-335a.pdf",
+   "size": 24974,
+   "sha256": "a15d3d21cf8db90de2123d7a7a998c1ee7a9a939e80c6251d1b8db69cab68e61"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-335b.pdf",
+   "size": 23,
+   "sha256": "d83d74e13a5c58cd20bdf17532d37b5169ae85242a715ea68b61402e4b58603f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-449.pdf",
+   "size": 1202,
+   "sha256": "91f9ab67a63773f799bb0a585ef882858940953b4c0de4bb748bb135c44d7936"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-99.pdf",
+   "size": 4798,
+   "sha256": "7613e0aa073286e5803b98239615552757ef45383f689a85c94ff9dab79faceb"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/issue-99b.pdf",
+   "size": 763,
+   "sha256": "1447d572b23a80a7f7a55eb7da9205b6710ca9e30b1aaf780cad88fec341761d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/job-json-add-attachments.pdf",
+   "size": 1715,
+   "sha256": "a25767dd019c060edf0923ce607014ffab28b757697f03aba0461f09b63331bc"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/job-json-choice-match.pdf",
+   "size": 743,
+   "sha256": "f95a5c811ebaae5c8456f9433fdaacd213a97a06b591fcd640eb94c477a929a7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/job-json-copy-attachments.pdf",
+   "size": 2527,
+   "sha256": "af058e7a9f2137a82c32fad1a58dba651bf82a1e38d881e55778c9d93b4ac940"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/job-json-empty-input.pdf",
+   "size": 2546,
+   "sha256": "01d1bfb5898b79306825b32cbee1e3873f64fcacc509d70864544eab7870c127"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/job-json-encrypt-128.pdf",
+   "size": 7439,
+   "sha256": "131f947e425e445ff8aa30d39141933566cd3f2adb465b2c00d839ebb5a946e6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/job-json-encrypt-40.pdf",
+   "size": 1040,
+   "sha256": "afac9a7728e9d248b5e326b7041d0f7bb2fcfa1c94c8314e834fcc39ae5d20c6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/job-json-input-file-password.pdf",
+   "size": 6530,
+   "sha256": "fa40b52b9cc6de0b7344bffb4a2728210e2bbaaa738e45c1869240d37d2ce03c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/job-json-misc-options.pdf",
+   "size": 1288,
+   "sha256": "75b49e60adac5dd53c07e01c20f488e86c81a12f402c3b1d5b2a5d3e1a7ca883"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/job-json-replace-input.pdf",
+   "size": 743,
+   "sha256": "7aa4aea24328616ce247cc4132efa3b8f53d2844179d17b51383f8771d2de358"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/job-json-underlay-overlay-password.pdf",
+   "size": 1939,
+   "sha256": "491b9fed88c968855933fbaea998760b6422051315bbf57ce3bb186c79ff1042"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/job-json-underlay-overlay.pdf",
+   "size": 16314,
+   "sha256": "6dacc2f7b4cdb11cebd144f97817781f5c46ac1a257773037e3d31bc65462dd6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/jpeg-qstream.pdf",
+   "size": 1156,
+   "sha256": "fa6ca002dea3e7104f86952b087cca743dfc0c20a7f5fd8f17a02394c3696888"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/json-changed-form-fields-and-annotations.pdf",
+   "size": 10679,
+   "sha256": "9d93066b2f49e4e0de08c28cdad5f73e350806171931a29c1630a5fe50ee0200"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/json-changed-good13.pdf",
+   "size": 1840,
+   "sha256": "dd8aa83317a4ac68628cb6f29625b15203a79d9cfa9b1057bd898048beb3e567"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/json-changed-need-appearances.pdf",
+   "size": 73092,
+   "sha256": "7aa80542d83a73e493be35d49deb382945aa7682954ffb5456af9d7422c62dcf"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/kept-no-fields.pdf",
+   "size": 1269,
+   "sha256": "21f32ad0588d656a41a228af8e78f0162a66c5a82b74f537a2fd576f2c468a62"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/kept-some-fields.pdf",
+   "size": 7787,
+   "sha256": "f014f2495e53cc63016f80ce411ca0d3e09d6a357e532632a6626ce327ee493d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/labels-split-01-06.pdf",
+   "size": 3714,
+   "sha256": "bf4daeb3720ed7b046afe03d68129c74deaec3e3caf5e0ffb37a4b831a1fd42a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/labels-split-07-11.pdf",
+   "size": 3209,
+   "sha256": "8f75a82e79933a33bc806e0bbe634b2a3f31dcadfbc6f2ea285f6083d3b4c350"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/large-inline-image-ii-all.pdf",
+   "size": 2442597,
+   "sha256": "2b517b44e3f0bf86a3eae25a17d60e3d99d675c5edb7cafd9bd4e9b70db21714"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/large-inline-image-ii-some.pdf",
+   "size": 2442329,
+   "sha256": "a00fe5ecdf028de7a6494c075cd732e3c30e67601648695974bc7eb7aca1c933"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/large-inline-image.pdf",
+   "size": 1744913,
+   "sha256": "7da28b9cb83805404c4c5e8a99184b062175f017a2fb40a2bae08aa3f9763d95"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/leading-junk.pdf",
+   "size": 13670,
+   "sha256": "76d5295c334fbf4b9540e474c8c4d899f29a3301b1b6308a28d065b38d6869a6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/lin-delete-and-reuse.pdf",
+   "size": 13382,
+   "sha256": "3b25f254badba0b073fb5df9918226e4c356a2e6f2c079807fae2529cd73218f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/lin-special.pdf",
+   "size": 4490,
+   "sha256": "ab608a23b94ffa330ce9b5f7a080abd0e347f83e6ae3491455e4414ff02bb57c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/lin0.pdf",
+   "size": 763,
+   "sha256": "c16e6eaf7d26ae388cac9a262224981394dc590f940bd2e3bb926eba2f2132a2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/lin1.pdf",
+   "size": 13103,
+   "sha256": "5bddf40fd6be12cadf33aca857a7dad2c58b9c3e4d3da0dc1676f44d71515543"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/lin2.pdf",
+   "size": 13103,
+   "sha256": "6280532d918027d9aacbaa4691110ef105933dce36dc636521c815f29ff13c27"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/lin3.pdf",
+   "size": 16937,
+   "sha256": "3f49933629692cfb6a2f3492739117e27ffab961dd32f9b2f34c4454c68f1e41"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/lin4.pdf",
+   "size": 13055,
+   "sha256": "573af46ffd2e0257b8d8b52f4b5d41a44fc0ebe53ab0e6edc5c07b8b24827673"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/lin5.pdf",
+   "size": 27464,
+   "sha256": "4b716274089f173a1e2d826523e6e616182a1cafb267eff1e2bffa193440054b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/lin6.pdf",
+   "size": 24824,
+   "sha256": "e05350b709350d5950d1a0da2de593d7cc8677358b229bf72b4c2bec28927d43"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/lin7.pdf",
+   "size": 27408,
+   "sha256": "a5c6bba43a0a1bfcc5eef7cc9a2a0eb6a16130e6f93bb4849ee69a3933285dfc"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/lin8.pdf",
+   "size": 24875,
+   "sha256": "c0cd3d8053b2ec760cbc3b781773bfeb2abd2bc9e44592d06e660e2fdb8b216f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/lin9.pdf",
+   "size": 3316,
+   "sha256": "fe7ccf236f9710b581d227508dcdb41c023b795532d5715be4fbae14f033341f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/linearization-bounds-1.pdf",
+   "size": 12302,
+   "sha256": "02d4f2979c40e2bb1ab0dede28e7c7f8812d894f9a1ae04d68ddef2613910e68"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/linearization-bounds-2.pdf",
+   "size": 12302,
+   "sha256": "d8c4ddb8a337d50a1faaa77de4d1b8b8e82f52b53354cc8a08f40008a6da2085"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/linearization-large-vector-alloc.pdf",
+   "size": 12302,
+   "sha256": "6e87636d5eb58895caaf9f48c83e19e07b34abe99e571e54b407cee0c716511e"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/linearize-duplicate-page.pdf",
+   "size": 1843,
+   "sha256": "03ff9acff4ca3381823dfab46741bcdc507829fc101b80291f5cd3e430463463"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/linearized-and-warnings.pdf",
+   "size": 1310,
+   "sha256": "b508fc8ccd59c943c43a326a03d27b77f81e9922ea4239924ec1b35b0f06e293"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/link-annots.pdf",
+   "size": 7237,
+   "sha256": "748632d3943742e1a0f585ab4da1e4b0ccc6893c9db396352e0dbce5221a19f4"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/long-id-linearized.pdf",
+   "size": 1316,
+   "sha256": "9dd18498b7d8e757ac53b06c8f3bb43d729b2833dc7ae56e9ff708074c884409"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/long-id.pdf",
+   "size": 869,
+   "sha256": "62575a07e68db045dc53324d47b5cd7b4ff1117a6ece674e9bab74d436c71304"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/manual-appearances-out.pdf",
+   "size": 23437,
+   "sha256": "216b2012e0a1b6afb6bae35bad15f2723392e27352e96c5b0bc90be49d0e7b8d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/manual-appearances-print-out.pdf",
+   "size": 22967,
+   "sha256": "ae8c1b21dad26e86586c98f49e013309bc7ae088e101c6659dce0ebf40fd0737"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/manual-appearances-screen-out.pdf",
+   "size": 23019,
+   "sha256": "8e3a8288a2042795bc8ba621b2f3ed500485591c1c0d5bb58384f4f11601abec"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/manual-appearances.pdf",
+   "size": 30522,
+   "sha256": "d1dae35a0e90d3f0fb71a88d7c33b94cb1ca5cacd0c009d89bd8e21ca03a37cf"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/manual-qpdf-json.pdf",
+   "size": 2060,
+   "sha256": "deaa2e1b2024a06fe05dfac3ed5c096540ea63db8a224566fe88f80b61889301"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/many-nulls.pdf",
+   "size": 3579,
+   "sha256": "fbe24f64015f11af99dba35bd15b55096610d2e7ee80646dd6adec4844a0cf8f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/merge-dict.pdf",
+   "size": 1615,
+   "sha256": "e886847c1988c3a2f8ec65ea5dc60bc545627351b1c20c4e765f8b4b4fb792f2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/merge-dot-implicit-ranges.pdf",
+   "size": 968,
+   "sha256": "6ea74a64adc7569e58dbf2299efdd25c47149f9df65f462ee2bd8c1e005a1973"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/merge-implicit-ranges.pdf",
+   "size": 17418,
+   "sha256": "a0a47d34fe90cdae65c522574c1890d65b199304a50968dc36cf443679a556d5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/merge-multiple-labels.pdf",
+   "size": 3452,
+   "sha256": "64cf44c5eb4c1cec8cf8599185a1b6d3b3421952b84faa06a8362a89a89f0548"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/merge-three-files-1.pdf",
+   "size": 8699,
+   "sha256": "7646bc961e09ccfaf7e2b3810e128ba036da54dfc931031155e79a86d907a366"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/merge-three-files-2.pdf",
+   "size": 6196,
+   "sha256": "a968c0313c19006d08ef2d75de80f93b05df9a3dcd6d28077a66f2c1220d0186"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/metadata-crypt-filter.pdf",
+   "size": 15229,
+   "sha256": "58b8a55ced536b05700d2aac856011e269d38ae0aef2d21e7fa2aa6d5bdcf07b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/minimal-1.pdf",
+   "size": 750,
+   "sha256": "e3381fe11c0aab3077cc3a521ae2367a955e6e03359d45349d557cd50b57dc95"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/minimal-9.pdf",
+   "size": 743,
+   "sha256": "f89696d104751c536d43e994af8574f5adfb7e7299e15c1f31f0fefdb4660d65"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/minimal-dangling-out.pdf",
+   "size": 853,
+   "sha256": "dc245358ba98aa557b9ca9be44e1936f967e6cea525624bd012dab3055181d0e"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/minimal-linearize-pass1.pdf",
+   "size": 1249,
+   "sha256": "effb01e981e54ec89ca95537922c1566ad1b94bf21a18db33f16a85e27f1df96"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/minimal-linearized.pdf",
+   "size": 1288,
+   "sha256": "75b49e60adac5dd53c07e01c20f488e86c81a12f402c3b1d5b2a5d3e1a7ca883"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/minimal-nulls.pdf",
+   "size": 3526,
+   "sha256": "532f56be4e27219d900360d52c0fdf3c2b7d454ba7057d026476ce265fcb5ccc"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/minimal-out.pdf",
+   "size": 799,
+   "sha256": "00670d81c04f29231705d29f39377a166d344f83e01622d58b11443f03601c91"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/minimal-rotated.pdf",
+   "size": 811,
+   "sha256": "3db6303879174aa7aad038d10c0060388c9c24b1529edf97ab8e43dfb88f46db"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/minimal-signed-restricted.pdf",
+   "size": 135790,
+   "sha256": "60027d4631455ef6e4c6dd55360d6db91257031145105262d27db69d3f1ef086"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/minimal-signed-restrictions-removed.pdf",
+   "size": 233729,
+   "sha256": "ab4b24a51666086320f42cb814bcd2cc196ab54bf12b8cc22aa7c0e9c0755b01"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/minimal.pdf",
+   "size": 763,
+   "sha256": "c16e6eaf7d26ae388cac9a262224981394dc590f940bd2e3bb926eba2f2132a2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/more-choices.pdf",
+   "size": 68826,
+   "sha256": "b440a63e0e64528c21984583dbc05e2a94fd6825fb1680dd9a158dfbd52649f1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/name-pound-images.pdf",
+   "size": 82024,
+   "sha256": "3b04f40397cf52a2d31de91f25f66febe20aaf944a146246123e978ad801e4ba"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/name-tree.pdf",
+   "size": 4059,
+   "sha256": "b85e9442f89c69f9a9a561b588e3f08c4b0b17b43ba48acfef556aaae41f3374"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/need-appearances-more-out.pdf",
+   "size": 68648,
+   "sha256": "f0c9ea1ee07670a858dcd06ede6dab89d2c50825fdf5824b1cc322e05aa59acc"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/need-appearances-more.pdf",
+   "size": 68641,
+   "sha256": "1b078595b9de41855ff1e69659efec806c52d7b81ae83886920f6a94379a5460"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/need-appearances-more2.pdf",
+   "size": 68654,
+   "sha256": "a4f2d86d17011f458d81c8ed53a3a2bbf19fc4423a1a4a234a75a7e636cf9e01"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/need-appearances-more3.pdf",
+   "size": 68633,
+   "sha256": "a23127533f0e28d0b334ecd284179881f14456ab1cd024398c9be58d6ba3debd"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/need-appearances-out.pdf",
+   "size": 69139,
+   "sha256": "a98d25f62b5e57e1f06702b9020e801e719550a33dd8d46082ccd8a7f9567532"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/need-appearances-utf8.pdf",
+   "size": 68690,
+   "sha256": "aa4de49125baf4256a1fcb24dd0bdead029e7ff0363b086aef6774e76aae8b9f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/need-appearances.pdf",
+   "size": 68690,
+   "sha256": "5d9bddb63bcb8efea456b28f49aaaa626fc022c13a274115ff0c382fe80c3a62"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/need-appearances2.pdf",
+   "size": 68690,
+   "sha256": "cb07a89505456bcb7a5fbe58912c26d74cf2fdc8a5e7f2264c8f33a5fb6547a7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/nested-form-xobjects-inline-images-ii-all.pdf",
+   "size": 5639,
+   "sha256": "2186a4fb0db2a3339b20faa99d8f93b7f6bbcdea8536ea2118d79282d4b80ded"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/nested-form-xobjects-inline-images-ii-some.pdf",
+   "size": 4232,
+   "sha256": "a80b374092cac5f131384678b63af6e82a81dbaff800b2c61fbc17ecb5825d95"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/nested-form-xobjects-inline-images.pdf",
+   "size": 2841,
+   "sha256": "8a8c86f4d0cae7a43bd8d7280283b4671b392d6dd0d43486fd2c2b0de815725f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/nested-form-xobjects.pdf",
+   "size": 5487,
+   "sha256": "4ff6786aec0e72f714ef3f3f84075ee94cad81b78efa4b310f7df9cb1096d78b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/nested-images.pdf",
+   "size": 5744,
+   "sha256": "331d7b2d3b71d75d8137e58a605e26022f50a52181ff88c2687a14da70ec2054"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/new-streams.pdf",
+   "size": 984,
+   "sha256": "34f788c145b3e66fb7483de188b02dc19f2cfbd32f8fc9e8dd1bd39a4eef2355"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/newline-before-endstream-nl-objstm.pdf",
+   "size": 1730,
+   "sha256": "e7d9d66532658a5b82c69caac746d7f645ae6c5bbf783351d81daccd2a801a17"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/newline-before-endstream-nl-qdf.pdf",
+   "size": 2853,
+   "sha256": "c55cce78140ffd48ea12bb87b0a52fdf26d912d4507a6fd30dabd6d81ed89234"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/newline-before-endstream-nl.pdf",
+   "size": 1930,
+   "sha256": "eb50b00a2bf194a6058f7ae9770f2ebb50245869cb877a17b6f8fe34071f3e96"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/newline-before-endstream-qdf.pdf",
+   "size": 2831,
+   "sha256": "2150d422b11e7d5e8e954860f8c067a192a5a2e41adee36a996f6091f7d3c547"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/no-contents-coalesce-contents.pdf",
+   "size": 431,
+   "sha256": "a7cf26c3c3e8d0977112d4821b73b32392ecdf1d646c4c6dd1204eca5f9b4ca2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/no-contents-none.pdf",
+   "size": 431,
+   "sha256": "a7cf26c3c3e8d0977112d4821b73b32392ecdf1d646c4c6dd1204eca5f9b4ca2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/no-contents-qdf.pdf",
+   "size": 585,
+   "sha256": "62566f730e558e607c7c7198380da9b21cf728d497acc166a9a459614f9f8d7f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/no-contents.pdf",
+   "size": 431,
+   "sha256": "3f5e938c8ec11b5679e22d7bfebc590fe3927bac3ae40ce8ff26b0e552818d5a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/no-pages-types-fixed.pdf",
+   "size": 811,
+   "sha256": "10a6be306afa20c02136a0b01cb4ee05c9c94e6137618ec857ea040fe877a763"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/no-pages-types.pdf",
+   "size": 763,
+   "sha256": "e4c6eca13562fab2c4512c084dd40a9de92921f6970b9e9252428867e43fa32f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/no-space-compressed-object.pdf",
+   "size": 1391,
+   "sha256": "48cf5f81ee02f5e76c0f4764264c0edc351ec90599a5568b740229d1da4cf711"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/no-space-in-xref.pdf",
+   "size": 759,
+   "sha256": "f50bbc2e46cec7a5b21fc072fc3efc2ad024ef68b602035357695e089437d33b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/nontrivial-crypt-filter-decrypted.pdf",
+   "size": 9234,
+   "sha256": "147af0a76220416b756ad2b73cd474c73e8e0510465aeface23670c2f71ea339"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/nontrivial-crypt-filter.pdf",
+   "size": 8985,
+   "sha256": "f47549959cf98041234d18c749dd57cc4e86c2e702f3bbc8eb92355108384305"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/number-tree.pdf",
+   "size": 3237,
+   "sha256": "5bd9a679bf86685cc32fea7d70d7dc659adb9bd477d485ac5e4960a2b75e9274"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/numeric-and-string-1.pdf",
+   "size": 18204,
+   "sha256": "3fce16d0382f1ee44613b726706cc4976fa587129906664c8892a40066a89720"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/numeric-and-string-2.pdf",
+   "size": 16022,
+   "sha256": "e2b54693b6b3e7a86d2001f1d150450951f1264ceb2b9ddf449db46c5e16b011"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/numeric-and-string-3.pdf",
+   "size": 1499,
+   "sha256": "4ec8db3b95cbf3d8e14caff47e004edd89f7ef98162357f5ce23641f2a2481cb"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/obj0.pdf",
+   "size": 859,
+   "sha256": "9408227f3c62f25bb6811fcb4a2ea1d46d11c664143ca74b21c25bd2061b1a42"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/object-stream-self-ref.out.pdf",
+   "size": 1249,
+   "sha256": "1f8814f312aabfd08caad2a1b5e3ca24bc3e0e883257e63432b9d9c2eb1ce38f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/object-stream-self-ref.pdf",
+   "size": 792,
+   "sha256": "c88761ef6acf40775ec1a4785eedc02fb3ae3a6413084eec148f3cf0b4bda447"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/object-stream.pdf",
+   "size": 792,
+   "sha256": "7e895514a76bff9c9bb699a14275735c9f5c61415fda7acc1e3e80d3003bc730"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/object-types-os.pdf",
+   "size": 865,
+   "sha256": "5fb2e3b062f9ee16685c5af6f309c581cf082c1388bcbef5221ca0e310632bef"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/object-types.pdf",
+   "size": 1127,
+   "sha256": "cf6523ce12809ff8b46d7f5fb71bd0e904b11eb7fe026655a1c187f576ea9d3b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/other-file-first.pdf",
+   "size": 82147,
+   "sha256": "e30f19f6496d40d0f654ffa1545ccbb70b0781bae404ba6dea2dd93aac9bd166"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/outlines-split-01-10.pdf",
+   "size": 8784,
+   "sha256": "6d233d20f826ca687bc2dfd81e7781eec66a893524ffc0a437d895325e717e2f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/outlines-split-11-20.pdf",
+   "size": 8803,
+   "sha256": "43d1f94aa3ad85c51a65ace6136437eb504688d2ca8f07182bf5c7972a55e341"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/outlines-split-21-30.pdf",
+   "size": 8792,
+   "sha256": "08536fcaf14f29c2b3ea92708909c50d7ec72653ee3a8c9ae6ad5ac0198ef4ba"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/outlines-with-actions.pdf",
+   "size": 16218,
+   "sha256": "a52a99fd3b4425001b04ed427f96e27e520f8dce25e3b7f51e4a964a6731b232"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/outlines-with-loop.pdf",
+   "size": 16217,
+   "sha256": "c9e8c7c53465471808f073b3837cda8a009cc2826c70b410ccc942f4c338cf60"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/outlines-with-old-root-dests-dict.pdf",
+   "size": 16175,
+   "sha256": "25dd11f10722a5222f99ff795cbd293aa451c66275b239c4fa24b2afaac59322"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/outlines-with-old-root-dests.pdf",
+   "size": 16158,
+   "sha256": "8648932e9d1645ce14e58f35c2a6d203020c5e9f89759bad450066caf2ff6dab"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/overlay-copy-annotations-p1.pdf",
+   "size": 10995,
+   "sha256": "909e0c3304b660c423e5be04a679765b8e7094a0a84db92e41ae0f1e0f4422f6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/overlay-copy-annotations-p2.pdf",
+   "size": 11687,
+   "sha256": "7fdc8529a8751c108a7458bea24627252eed56123c41ec2333815e9793a97fc6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/overlay-copy-annotations-p5.pdf",
+   "size": 12143,
+   "sha256": "5436f7e7401b0efc7bc0fd2e377ff8c64d5619d45cf35db0b7164e321cbe2f7d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/overlay-copy-annotations-p6.pdf",
+   "size": 12004,
+   "sha256": "a49354a4e88ca0b376e279419c9f7b5d4a12870486a302a146c965189ab2bffb"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/overlay-copy-annotations.pdf",
+   "size": 140474,
+   "sha256": "bbaef4be610a92c49017ddb5554107e09e80b81cfdda1dcb2fa161fb62a326ae"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/overlay-no-resources.pdf",
+   "size": 1196,
+   "sha256": "524c83c9a66bf499e46a098422ea0ad892ee591f480fc161c99feecb6c38082d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/override-compressed-object.pdf",
+   "size": 1817,
+   "sha256": "bcb8ebd65256c5ee7dca24c41a3c76b85dfd668478d3b7cd6108e00496dbe5ef"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/p1-a-p2-a.pdf",
+   "size": 1358,
+   "sha256": "66e284ea07af9fd26d110f718607dc1a924c0faa8478db36ac7552bef02f56e6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/p1-a-p2-b.pdf",
+   "size": 1358,
+   "sha256": "007ebbb9e1432b017afc38ac2c72a2bcc33eedee102b24de160d53a41b48079c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/p1-a.pdf",
+   "size": 946,
+   "sha256": "cd3707d5ae9ff31b5055793c9d8ce14d67cc063d4462645774385e31c2096f4f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/p1-b.pdf",
+   "size": 946,
+   "sha256": "13d6be7d482d1369020ed92b6c617cdf5bfab0a3376af0401d2ffe7e67786fcf"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page-inherit-mediabox-out.pdf",
+   "size": 1449,
+   "sha256": "f5da0ffe97b904a9cdfd7d169e131278dd9955d6c922745f2ef60667f796cceb"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page-inherit-mediabox.pdf",
+   "size": 2026,
+   "sha256": "4f1756c94f951b3b835e52b9c0f80133c1e0644f3b1199b870c0e4c159e8baed"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page-labels-and-outlines.pdf",
+   "size": 15986,
+   "sha256": "08b0f999c02abb75cae0854eb042f4ed75ad0b65017a0a584276b90d5e8194b7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page-labels-no-zero.pdf",
+   "size": 13683,
+   "sha256": "4d9a388d280712d4417f37c126ac6d5213cd01e7b835ac0789f8ed31448ea6b9"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page-labels-num-tree-damaged.pdf",
+   "size": 14092,
+   "sha256": "627289eb59d519c9774df220dc011f674c6cf7a57472d161b87f6d27bc9ded55"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page-labels-num-tree.pdf",
+   "size": 14092,
+   "sha256": "dc5691f0f558cd25b37d0df057a2ef6956d3d00a16f159993002179fefabe14f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page-missing-mediabox-out.pdf",
+   "size": 1406,
+   "sha256": "7c2e7a8caa843781ed2cd5518c379582716695d23297a0ec27e21481d53f5744"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page-no-content.pdf",
+   "size": 1362,
+   "sha256": "3d9f7d6f1ed4bc07f62dabdb3412f74f1529d24730f98a8b1a57c1e1944f18c2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page-outlines.pdf",
+   "size": 16010,
+   "sha256": "5c73344f16d245e12327cb2bcf6ddd29d34cf972410f506f17e4013508f60aa1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page-with-no-resources.pdf",
+   "size": 418,
+   "sha256": "cc6b72d3232f27a5704d8c4d07ebe78b3e55afe6be11af4214b633eb2a2b5581"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page_api_1-out.pdf",
+   "size": 4399,
+   "sha256": "9a9111959a3072ddc70a87aa464349ef0827c7159f08b57d85c5a52904e79fd4"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page_api_1-out2.pdf",
+   "size": 3825,
+   "sha256": "ac64fd29f334eb3cdf1cadc0d12bb74cea456f40c289c51418f9d5354b9c3ff8"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page_api_1-out3.pdf",
+   "size": 3530,
+   "sha256": "917190e8807cea55c149729ab680f95908b5a7fa15cfd838117125a70e21b3b5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page_api_1.pdf",
+   "size": 5068,
+   "sha256": "d914dd8e4ca6ecc3784e52f8c9bc12e6c5108a6dc6e24437195a96428ccac1a2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/page_api_2.pdf",
+   "size": 1490,
+   "sha256": "170dc821a5b5ba2744a3de2a8763a0c6d0680790eb093fbf565c63162475e908"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/pages-copy-encryption.pdf",
+   "size": 1319,
+   "sha256": "4f8ea3362e58f0239f312dbbd272a52e7297832a324b6ced7417272b7423cc10"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/pages-is-page-out.pdf",
+   "size": 1288,
+   "sha256": "75b49e60adac5dd53c07e01c20f488e86c81a12f402c3b1d5b2a5d3e1a7ca883"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/pages-is-page.pdf",
+   "size": 763,
+   "sha256": "62b235f4c71fc6d41638e7d74b3c5400734881e4a848e4cebca925e253eb27be"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/pages-loop.pdf",
+   "size": 1123,
+   "sha256": "4b7edc99b4b06ae39a91dd4cac43d1435b94df0673a45349a37f388313232a4b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/pclm-in.pdf",
+   "size": 825620,
+   "sha256": "47de13da41d9e9eba335dc6c0e81015b60ad4adef3921ea62c01d95ad102cde0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/pclm-out.pdf",
+   "size": 860952,
+   "sha256": "1c9d4bbc10f94ed2aa494f21ca15958d6e4adef34a526f4605867edfe6ecf845"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/png-filters-1-column.pdf",
+   "size": 16827,
+   "sha256": "f1eb744655653d4a00c72117bdb969cead4aeb28d824ce46294309af1da90e92"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/png-filters-decoded.pdf",
+   "size": 33789,
+   "sha256": "2c562d27d4e3b4b239c4b64c1a2a3dedb6d32fad669e1b7091a3aa8aeb5c7c1b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/png-filters-no-columns-decoded.pdf",
+   "size": 26498,
+   "sha256": "6aaa59eea6183f65907fb5ca4005b293d10d973b08d87ff38b833191b024f3d0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/png-filters-no-columns.pdf",
+   "size": 16827,
+   "sha256": "ed519f44adb42f5f0e129d3dcc22069040bc10a55fc9ef6ce02e5b320dc7a2e4"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/png-filters.pdf",
+   "size": 16827,
+   "sha256": "96f0e165db3cb2ff3a4911e3a0c8e31dd2757f01049f2dd24aba13bfd23fa37a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/pound-in-name.pdf",
+   "size": 944,
+   "sha256": "e83c22921e1f4e484052a0574e272fc2f709dbf19dcac0f230649c98c9239c8c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/qpdf-ctest-42-43.pdf",
+   "size": 799,
+   "sha256": "9a8fca44be30892d864bd1a88002b760de878930821dba1925929f58b446259d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/qpdf-ctest-44-45.pdf",
+   "size": 798,
+   "sha256": "d9e7d661a19523b201330a5d3b91ce5c38e92a664bb355078725324d25644f12"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/qpdfjob-ctest-wide.pdf",
+   "size": 799,
+   "sha256": "9a8fca44be30892d864bd1a88002b760de878930821dba1925929f58b446259d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/qpdfjob-ctest1.pdf",
+   "size": 799,
+   "sha256": "00670d81c04f29231705d29f39377a166d344f83e01622d58b11443f03601c91"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/qpdfjob-ctest2.pdf",
+   "size": 3379,
+   "sha256": "2b8c40b12eef0f3cdb9b3c1b8a924942cd9d78bec2536fd1df370d40baa588fd"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/qpdfjob-ctest3.pdf",
+   "size": 16504,
+   "sha256": "03bdf2bb8c70da9cb47147425548cb7dd0ed060ec7bcfdab4fde5343bf6e2b82"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/qpdfjob-ctest4.pdf",
+   "size": 799,
+   "sha256": "00670d81c04f29231705d29f39377a166d344f83e01622d58b11443f03601c91"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/qstream.pdf",
+   "size": 881,
+   "sha256": "63bf73189797c293af685c77ee36baab9cbd664b3c8a8e30297a99fc8be30d68"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/really-shared-images-pages-out.pdf",
+   "size": 10915,
+   "sha256": "50298cb2e9a70c983ede82ee07e503829911fb3d0e6e85124e783104379f56a8"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/recover-xref-stream-recovered.pdf",
+   "size": 968,
+   "sha256": "2ad98295a599e7fc8d41baaec44ead95b479f433a3e16929002f6ad1734a5a06"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/recover-xref-stream.pdf",
+   "size": 3817,
+   "sha256": "9a78166f8d25c467ac45a39113728043c2a1595e74a39bb697d29565a0e5b2ac"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/remove-acroform-out.pdf",
+   "size": 55799,
+   "sha256": "bfc37baf720154b148166e97334bc4eb73e32b6ba6d7a344f862eccdcdbea3ed"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/remove-info-no-moddate.pdf",
+   "size": 13365,
+   "sha256": "f7215d808c20a12f3d24530805f794f48dd81111e4804a226e5f681757f610cb"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/remove-info.pdf",
+   "size": 13455,
+   "sha256": "67c6fa10f792ee3ec63138b128f97619fa5a76f242120eed535df7ecacd0102a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/remove-labels.pdf",
+   "size": 3349,
+   "sha256": "3d470bb0c3f0afcdbeea6cc6324c33169a3dd3c9005840ccd3f9afdcc89467d6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/remove-metadata-no-moddate.pdf",
+   "size": 13495,
+   "sha256": "5d16e9f5a26db8043f9e86bed7f8192e28ea164bdb209c1c06da32731b35c12c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/remove-metadata.pdf",
+   "size": 13495,
+   "sha256": "7189c20048f3144c5b31617c0f0d5bc4b623bee1d721ad1c8b551e4fdb187683"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/remove-multiple-attachments.pdf",
+   "size": 1341,
+   "sha256": "23c3cbe8773201edee5a79f878ff5df9a5d27343644df14a4f0149db671b6dd9"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/remove-structure.out.pdf",
+   "size": 1113,
+   "sha256": "1d770c5a50414aad38047c615c706c5f1c2ca0187fc635b3df2ffbf82d622155"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/remove-structure.pdf",
+   "size": 1336,
+   "sha256": "0c5bc68ca380c30503608d915a74da7400c867be91862fa2f27536ec133664ea"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/replace-input.pdf",
+   "size": 743,
+   "sha256": "f95a5c811ebaae5c8456f9433fdaacd213a97a06b591fcd640eb94c477a929a7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/replace-with-stream-updated.pdf",
+   "size": 1940,
+   "sha256": "59b6e6a9ad5304283f682c450f458b80390b29a3dc724258166bc3a23d03d4d5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/replaced-stream-data-flate.pdf",
+   "size": 1422,
+   "sha256": "73d1f7032edfdb9fef9fdad9e42d2a3ca19ac7612f91ff7253b9d01536a7ff64"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/replaced-stream-data.pdf",
+   "size": 878,
+   "sha256": "3d1119724c55a42d62b8614ce211c05138cf42ae8a91c42323b25c05ad73592b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/reserved-objects.pdf",
+   "size": 894,
+   "sha256": "c0815f2a297a45d722ef520e3775b5e111bdd968957aa713aabcc92425143b50"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/resolved-appearance-conflicts-generate.pdf",
+   "size": 6900,
+   "sha256": "37a15cc223f6b060e494b97d944e5ffd97a4eeb0e7fac12c245bd454763afb4a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/resolved-appearance-conflicts.pdf",
+   "size": 8336,
+   "sha256": "eba1177cff528d9ef3f040f9c2a73d88a697161c09151ff7ead7319924bc723d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/resolved-field-conflicts.pdf",
+   "size": 35422,
+   "sha256": "4abf5dd9c40fb000da5786aa58d81e9af067817d8e9bf95506a570f4033b4608"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/resource-from-dr-out.pdf",
+   "size": 69498,
+   "sha256": "bf0344ffd0f239230cee781a34258a878f32b7f3f8129476131480b3db287941"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/resource-from-dr.pdf",
+   "size": 68902,
+   "sha256": "a277b1b65e9bf69b2afb9a6bb79eb867383f77dd0eaff63d9da5c0652f1c8d97"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/reuse-xref-stream.pdf",
+   "size": 1447,
+   "sha256": "0f1648b829578cf04c0d8af2244379156d066c479e2ff3f0fd70e71777af0fe3"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/rotated-shared-annotations-1.pdf",
+   "size": 18816,
+   "sha256": "600c0ac18588034e0af3d6f0fc28c75da064414e6e33fd0c9da979665c86548d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/rotated-shared-annotations-2.pdf",
+   "size": 26657,
+   "sha256": "5fb0937663894589d4ed2dc5d3f2e64d971b836802f7f46f22a30be723b7f388"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/rotated.pdf",
+   "size": 7319,
+   "sha256": "698f6e15b2ac77e17a9677977ac1b4d657d1c7c29fde69cd46f4702ecf19c911"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/sample-form-out.pdf",
+   "size": 58121,
+   "sha256": "c4d29833f8b2525d423dfff212c323b2b40fd8b4aedf2420c5077b2581d2c795"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/sample-form.pdf",
+   "size": 64743,
+   "sha256": "e2d5981965ef1af6fb6a9daf86024ae9f3b4a9b4b12c22c42d395c37b347ed1a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shallow_array-out.pdf",
+   "size": 823,
+   "sha256": "0f8f65df75744d6c5329074ab51b70e87297421af9934e5135d48d55525bcf3f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shallow_array.pdf",
+   "size": 788,
+   "sha256": "0f5a13df2ca4f794bf3c2d78d57ebe0f154a4675c7fc8dd30b28747108bf7bb0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-font-xobject-split-1.pdf",
+   "size": 3777,
+   "sha256": "13ae59f6fdbda50a661103110f5902abdb74c8d5caa44016660d8124f8ea0846"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-font-xobject-split-2.pdf",
+   "size": 3777,
+   "sha256": "45b8f15c6678a656ceec8b56a8db76ceb546e240cfc17357610fcacfebcfec62"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-font-xobject-split-3.pdf",
+   "size": 3777,
+   "sha256": "50cfd9f1afefe0522bfecc60ca79be83c12383cfe6c8033101d9e8d29cfa6b9a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-font-xobject-split-4.pdf",
+   "size": 3777,
+   "sha256": "633f23c567e2d5ee061cb612311182924b1fd09cce2c0aec035026143732c231"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-font-xobject.pdf",
+   "size": 13381,
+   "sha256": "ad4059b0b095997566a4455b6ada6978a3418c8930bb72bde7d4ffdc0a5d9f91"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-form-images-merged.pdf",
+   "size": 22650,
+   "sha256": "7a9c2393daf15be85e4f1b06ea1c93d77b6fe17cfb958dd37e3458a52bbbc601"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-form-images-xobject.pdf",
+   "size": 10043,
+   "sha256": "887d712cd48c714e5738ddfef21d71400f6dbf797aad0b4a74dc0ac93e41dbad"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-form-images.pdf",
+   "size": 25623,
+   "sha256": "42c4999f2aa81df1fb97ab308ddf12bd35039f1944db5e1b2dfca4d036f5d3f7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-form-split-1.pdf",
+   "size": 4840,
+   "sha256": "8a18d6afeeca9a79716ad01896aff8a65adec7a7ef9c67a3e1760000e98d7e00"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-form-split-2.pdf",
+   "size": 5060,
+   "sha256": "2dbc60a7b114cac52ff067a307f236a2d5aadf3f183a981069cf14e6cc4bd725"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-form-split-3.pdf",
+   "size": 4669,
+   "sha256": "6445829731d05278ede0ba8262e2e5a2fda072b7594ec3f8b0dfa2f2b9403a88"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-form-split-4.pdf",
+   "size": 4483,
+   "sha256": "10dbe3182b5c5c81659785ef70efe6e33694dc0c546c76bb7dfa9e521bafd16a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-form-split-5.pdf",
+   "size": 4633,
+   "sha256": "d6599e5a1a93ae528ff7abb3549696c6067594d108ba6182381944a0152a6a84"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-form-split-6.pdf",
+   "size": 4438,
+   "sha256": "3902b66deb6d15ffc3bd7b2f543cdf4415aa100c0616e33937e813db8ae62090"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-form-xobject-split-1.pdf",
+   "size": 4840,
+   "sha256": "8a18d6afeeca9a79716ad01896aff8a65adec7a7ef9c67a3e1760000e98d7e00"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-form-xobject-split-2.pdf",
+   "size": 5060,
+   "sha256": "2dbc60a7b114cac52ff067a307f236a2d5aadf3f183a981069cf14e6cc4bd725"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-images-errors-1-3-out.pdf",
+   "size": 29609,
+   "sha256": "db6d14e9b864f74df787a9743287a5ae9d777e696cc511acfabcd20826a57408"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-images-errors-1-out.pdf",
+   "size": 3970,
+   "sha256": "c9cf785e622c9a5dc36463cc9d47acfede1f1d976da306755d70f69f3b9ec840"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-images-errors-2-out.pdf",
+   "size": 29190,
+   "sha256": "01b562f0e7d62d52f4f4227a427af2eddf14ed65f17d5a1bc13fdb7ecc1e2a9a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-images-errors.pdf",
+   "size": 32044,
+   "sha256": "5083a28f9a71cbc45350d1a1666403c0d56c9aacaebda3885caf0dd012cc3e79"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-images-pages-out.pdf",
+   "size": 14196,
+   "sha256": "d95eb09fb72caa9f554165e1c9e47d5b87e843e587a2a669db5420b29fbcbc4e"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-images.pdf",
+   "size": 32021,
+   "sha256": "0626ae028f41391b85b6d2e938e5409d28c99c88a597c1daf50fed40377a9edb"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-split-01-04.pdf",
+   "size": 13930,
+   "sha256": "21570dde78619f0a0e11674be51353ff66325545feca8a1cf6c1c7fc989df35d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-split-05-08.pdf",
+   "size": 13930,
+   "sha256": "2d74e72f4c15c75e337a79a89e929cfa2cc9a4c561b71ed6b2e8e803a07faaf7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-split-09-10.pdf",
+   "size": 7289,
+   "sha256": "88e7bc503cd91f51dfec8c28397335f946eed03af8d39394fab1ace377a6218c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/shared-unnamed-field.pdf",
+   "size": 2496,
+   "sha256": "361cb5b241267b81021345c3567390dd0c9af0aa7e8e3a43c7feef036e544257"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/short-O-U.pdf",
+   "size": 1133,
+   "sha256": "93c7d3b73e6e31fba34a4f419f1feac50ad5ff135440cf60947c70e42531cb6d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/short-id-linearized.pdf",
+   "size": 1272,
+   "sha256": "d1b2b5834fd8ba103820bd146e61ecb44f5db0c33880f7976e452d34f3eef380"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/short-id.pdf",
+   "size": 825,
+   "sha256": "ddeaf523debdaa14b7f6771f1750fc76a9e05cfafa3dd3c8f87aa9ecbf705cab"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/small-images.pdf",
+   "size": 41882,
+   "sha256": "13438f18852f3f500cc770870ad00c2ee922fbeebd4ec5808c7344b46db41b69"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-content-stream-errors.pdf",
+   "size": 1146,
+   "sha256": "931aea5043c45cf08bf8d3ca409506dc867c46dc9727e0e12c8389feb8c9e5f0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-content-stream.pdf",
+   "size": 907,
+   "sha256": "0b4c41ab4069699c23b122b1f2e428ccb2da71130b4b316f1c5f13c25548054f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-01.Pdf",
+   "size": 755,
+   "sha256": "bff372eb991e4577d63bacebee8d928ca40efc2fe7f5c51376ced206cb68f0e9"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-02.Pdf",
+   "size": 755,
+   "sha256": "a4626b8e8bb5c7695a5d2e6ac0f7ddf1e0bac6c4bd011e03b7185a2ac0b3b7f0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-03.Pdf",
+   "size": 755,
+   "sha256": "bdd9d3e800e8258fda9151ebe7647b881e46ac3f7845ea347662c773870f4b98"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-04.Pdf",
+   "size": 755,
+   "sha256": "bf733f4d1ab9dbc412dc6266835b88427424174ce485aa7ecacee2a7f3e8b21f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-05.Pdf",
+   "size": 755,
+   "sha256": "9dcab51cdca56b9722ca5889909b97751fc66959f97ec6edf2598122d3e07cb5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-06.Pdf",
+   "size": 755,
+   "sha256": "fe812db7d7278a52afbb7fc82fc2c8769886871ebaf9dee44fb32b3056f759d6"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-07.Pdf",
+   "size": 755,
+   "sha256": "4fd9d455746daf566ff6ab681ea3780a50023937678e78ad0a70c4434e1a34a4"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-08.Pdf",
+   "size": 755,
+   "sha256": "3c0387751c472e6ce5e5b73cd7d2fd4952be173aa80a52cf23cc912eb93b0a03"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-09.Pdf",
+   "size": 755,
+   "sha256": "b599ac17205191edd9af77c9a2f1f80f07228c36c6e4cf3459d31b21e29bad02"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-1.pdf",
+   "size": 899,
+   "sha256": "c426b47ba328ca06969e12d5d98c9431a2048df53f9415751a74a47b1eedd46b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-10.Pdf",
+   "size": 756,
+   "sha256": "480e11225ddc3e2c89de9b464bbf591c4678d8532ec07ba67127f090d56330c1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-11.Pdf",
+   "size": 756,
+   "sha256": "0807eedfc6799ce00c3cff9cf3531bb39c19a294fabc7100436dcb0746d56f92"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-group-01-05.pdf",
+   "size": 2050,
+   "sha256": "e24a2d891300d3cfcf2cba05459c6a16df6daffa56773e2fbccdd6b8ad525e9c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-group-06-10.pdf",
+   "size": 2051,
+   "sha256": "cd66d72e8ec65ba61d8d5a963c0baba7c74224ff2e96f6ca7b9c3c02cdb0075a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-exp-group-11-11.pdf",
+   "size": 756,
+   "sha256": "0807eedfc6799ce00c3cff9cf3531bb39c19a294fabc7100436dcb0746d56f92"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-nntree-out.pdf",
+   "size": 4119,
+   "sha256": "c6de74fcd1104897265f3ad7f29e876b5a36d3237536d3f577ff437dc22f6983"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-nntree.pdf",
+   "size": 2203,
+   "sha256": "51eb17361b34ef96973f658632e9415893b4502b175e675cf6ac080f07084e9b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-tokens-split-1-2.pdf",
+   "size": 2809,
+   "sha256": "ff7acf2aea12ac5a99de56e171b13ce760483d8cabfbe54d38c7d16806ba5b11"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/split-tokens.pdf",
+   "size": 2452,
+   "sha256": "c8c8da6e4ae7abf2985a0147c360a6cda890ea0cbd97199dedbe3ae566142fac"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/stream-data.pdf",
+   "size": 1125,
+   "sha256": "640f049f9d4993007f92d6012d4a248008f1d4678d39d7cb03c33d18abdd7f6f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/stream-line-enders.pdf",
+   "size": 1096,
+   "sha256": "14c62cf7f0afec8ecf81db1b0d18cfea55c40ea3a81c7c1be77dc0083c6b9bee"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/streams-with-newlines.pdf",
+   "size": 1928,
+   "sha256": "e2331eb610a1b83f7e331d324b540d9b9f26dd58a390b905662678d0abdbb60b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/terminate-parsing.pdf",
+   "size": 1539,
+   "sha256": "784a5a82869f7d5e96c508e4c34ba0da4b2738aa1945d4764e92bc27f98a677e"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test102.pdf",
+   "size": 1113,
+   "sha256": "f8998b4b6ecf9b43300856f783cfa85a0b3fa5dc349a50df324249eda80c6176"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test14-in.pdf",
+   "size": 2553,
+   "sha256": "f3be9155b96a56312bc57550f59a6394d87ec05522905da76e56ea16ad8c8336"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test14-out.pdf",
+   "size": 1949,
+   "sha256": "d92bfce48fc45c875b5c0310d71035eebba47dd3d254e2e481efd48fea82da8c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test4-1.pdf",
+   "size": 1278,
+   "sha256": "c18b16a23cd2c13f68d5c15a6472467e594db78b4a2093d3746c540018e1d666"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test4-2.pdf",
+   "size": 1030,
+   "sha256": "0f982aa63c8621358e91db9a29c336bb35649debd01a2bb56947fdbf69d33b1b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test4-3.pdf",
+   "size": 1091,
+   "sha256": "4d57cfc307452aad71018293a4de156665962b27fbd47bf7e4e3c780cd08a265"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test4-4.pdf",
+   "size": 1201,
+   "sha256": "c50b23a215ae9f495ba28929b7dfa2ca33b880d086a02d8fe123e6611b75088c"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test4-5.pdf",
+   "size": 1462,
+   "sha256": "67abc63041deb16d1423d5a4ff17fed7658f7924cd58064ca4a21ab5a3a20f1f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test76.pdf",
+   "size": 2822,
+   "sha256": "e5cee15ab5d223f39a137b91bbde88228d9e6e7ef37899357e4a57693316ec57"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test77.pdf",
+   "size": 2331,
+   "sha256": "1cf511fba24356b0fefd1421239d05c6b43e43f62fdb6246369a53b4b3c5a9ab"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test78.pdf",
+   "size": 1492,
+   "sha256": "9cedf59af17b30ffd04d8061c38e6bb5bebf60b0565bfb26339938390d514cdc"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test79.pdf",
+   "size": 2370,
+   "sha256": "aa0a481eb910dec161a6eb59accaca4e68e9df6b4adf861aba316e86cc79b4d8"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test80a1.pdf",
+   "size": 93459,
+   "sha256": "a163d0be31ce5e5330c8bf87f597b1b9fc891224f4b33ead50722ed38734fec8"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test80a2.pdf",
+   "size": 97185,
+   "sha256": "b9871e292734988e01818cb5d262b4eda12360c38f7040fd38909078bfb0b9eb"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test80b1.pdf",
+   "size": 75787,
+   "sha256": "f1db47d7a98015150c940f11c9aaa0551d9958dfa4ff258bfc7a050ae8bf2c4f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test80b2.pdf",
+   "size": 75622,
+   "sha256": "572783bb0f5c84574411fd64202edd29e4fc815a966d3abe3c13486dccf1b2aa"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/test84.pdf",
+   "size": 1113,
+   "sha256": "28e83df40a2a95207e9f209986c30142f3fab88998a96646818c94a03490f46a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/three-files-2,3,4-collate-out.pdf",
+   "size": 11232,
+   "sha256": "2f242d797ab73f19de7564cf3e245298cb98d3b7ffa72842db350e5546bebc82"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/three-files-2-collate-out.pdf",
+   "size": 11124,
+   "sha256": "627c82e11f566de04100b970cbe42029b32c3a0a697261821a1231fd3afbc09d"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/three-files-collate-out.pdf",
+   "size": 11178,
+   "sha256": "f9315a907def43ecc1387dcab4d686e624d9bf0ca6ade32c1b0e4b3d0598a982"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/tiff-predictor.pdf",
+   "size": 1331,
+   "sha256": "7c7dadd5bd9266754d8b6820859185428ea8ee2f78c8699aedc5ff09e67c9e19"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/to-rotate.pdf",
+   "size": 9763,
+   "sha256": "8608046963fae7a8447ee0d8f0b1a7c3f2834ec02878a3acf763903d5f34d712"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/token-filters-out.pdf",
+   "size": 3505,
+   "sha256": "2e58ce9d8e27e2ee52434f4828c969ef44a22b864914eb8436bb590c7624b227"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/tokenize-content-streams.pdf",
+   "size": 1575,
+   "sha256": "5d7c5309b69c5fb90b8f3f4bf4cd77fed7ffdecdc93da81ec61889352cb98537"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/tokens.pdf",
+   "size": 9558,
+   "sha256": "b5de3f55ac8d49c2c95013008f4ec8416f4a81ecc1995371653dab4db9dd80d9"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/unfilterable-with-crypt.pdf",
+   "size": 17868,
+   "sha256": "8c3bb2177b76d8340797e9d16469d083dfdacc45492a81241de6a9bb6df894c7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/unfilterable.pdf",
+   "size": 799,
+   "sha256": "efb2faa91f859ec6372ce45797de1896c1aa5ca7fad3d5b23f6f4a3520c02219"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/unique-resources.pdf",
+   "size": 2371,
+   "sha256": "7a331d2bfb63242ac8d8e332d4ae4c0325e479e70569a505cf00cbb43718163a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/unreferenced-dropped.pdf",
+   "size": 799,
+   "sha256": "a4c11309b36f49af5a5ddd71e77ee7bcf32e506fd76f8827af932d7accb4b726"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/unreferenced-indirect-scalar.pdf",
+   "size": 1216,
+   "sha256": "4ab8a46420e15ff750f0ca903d3be34ba044491c2676693d2684408bdc35204b"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/unreferenced-objects.pdf",
+   "size": 1043,
+   "sha256": "e1b376ca06512b40f48fd178cc8cb729adcaf9e9d5541045127f11083c0c87b0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/unreferenced-preserved.pdf",
+   "size": 927,
+   "sha256": "3def5b9910569c996ec0723f7cdad43553ee1f42dd370c9e99b4163841b263d0"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/unrotated.pdf",
+   "size": 9947,
+   "sha256": "e7f5113fc3cb141f4c72647ce8322976f90e44bbdbdc236ba67d51c473a83a5a"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/unsupported-optimization.pdf",
+   "size": 1621,
+   "sha256": "0b7b3dcfa4871df936e5797ddb5ff9da04dfe3c3431d7d398a9a6bab63052cb3"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/uo-1.pdf",
+   "size": 26679,
+   "sha256": "54e8269f2ba33693286adbbe5bbbdd80c34983fa6a039a43141157b7b728a6fa"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/uo-2.pdf",
+   "size": 24189,
+   "sha256": "29c99d6068fed8927a716e435c9d7ca569fa7613d8f484984b59ea6dc22c87e1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/uo-3.pdf",
+   "size": 24189,
+   "sha256": "29c99d6068fed8927a716e435c9d7ca569fa7613d8f484984b59ea6dc22c87e1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/uo-4.pdf",
+   "size": 15285,
+   "sha256": "7cdf44a80d554d324ba6738dc91c8263116d95296914094f2877afd827c2d58f"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/uo-5.pdf",
+   "size": 12810,
+   "sha256": "e3e0c421557ac730190b355e352e62c3b60c477cb49674472688f19283fa7338"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/uo-6.pdf",
+   "size": 3523,
+   "sha256": "68542e7a74f08c6b5b37e9e56610c43bc2fff0b6188475398383d0506f5e5406"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/uo-7.pdf",
+   "size": 20600,
+   "sha256": "4b5a75e37a451705209f3223bf4bebd72d933a4409c4c9c304b40d0a3b3932d7"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/uo-8.pdf",
+   "size": 12273,
+   "sha256": "aa5cfe80d3a147e46f1693678fb8d551b3193d495d2a8bf6cf5223d90ee715c5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/update-stream-data-updated.pdf",
+   "size": 1843,
+   "sha256": "9308952fd8121bc6cddae12d13f52f9492975be535093947fa287d32db36fec8"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/update-stream-dict-only-updated.pdf",
+   "size": 1862,
+   "sha256": "62bbe52a89d38193cef270a280086d0e4d289d0c6a9f9641f22827999021a1a1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/utf16le.pdf",
+   "size": 3805,
+   "sha256": "d7fa801d2bda9fe3b8c26003842ed8de4da21cbd3a768e8112002b4fe4fd0415"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/various-updates-updated.pdf",
+   "size": 1425,
+   "sha256": "a1511a9e8ccab89659f11182ce181d8e6e86c4ef80eba3d5a152aff8b1912018"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/warn-replace.pdf",
+   "size": 16504,
+   "sha256": "a889268348a8fb2c07ede57ec27e74253f2bc9dd0e0bf0a7ec659710a19d85c1"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/weird-tokens.pdf",
+   "size": 9429,
+   "sha256": "1d345d372935656c07f38a6342855f15d6134997d52caeb41bccf6e01a498765"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/xref-compressed-in-compressed.pdf",
+   "size": 11325,
+   "sha256": "c99080e8d936eeb40a08d7e596f4c10b959a245fe3cb5ddb971eb7f145baa4c2"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/xref-errors.pdf",
+   "size": 764,
+   "sha256": "d535a7206627eb9e951b3d747e62c4c61338b3ca1a8c284028972b7a2e574e57"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/xref-range.pdf",
+   "size": 722,
+   "sha256": "2a17e8c9dceb4e204173c6233ab39b506af651f69b8be2f58ed60e79516b42eb"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/xref-with-short-size.pdf",
+   "size": 16527,
+   "sha256": "1b705deb63e4578ae90356463762739cfd2ddbc4ac515800ac7f12c1213710f5"
+  },
+  {
+   "path": "qpdf/qtest/qpdf/zero-offset.pdf",
+   "size": 828,
+   "sha256": "f53f673a3eef48ef3cbf04e368c3712c14fa001a2c125c8fa94520ff21fe34b1"
+  },
+  {
+   "path": "qpdf/qtest/storage/field-types.pdf",
+   "size": 43917,
+   "sha256": "3df1298316fc7c85b1ee8b383ad307225dc4f50b08d520ab52c8b09b287b35c4"
+  },
+  {
+   "path": "qpdf/qtest/storage/form.pdf",
+   "size": 31890,
+   "sha256": "0d2d376aa561887c691b964b3657ca9cfdbfa56f651cf6f7f4b1cbfd5bc39d8f"
+  }
+ ],
+ "skipped": []
+}

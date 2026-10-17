@@ -1,0 +1,20 @@
+[package]
+name = "pagura-text"
+description = "PDF fonts and text: font dictionaries, encodings, CMaps and widths"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pagura-core.workspace = true
+pagura-document.workspace = true
+pagura-font.workspace = true
+pagura-raster.workspace = true
+
+[dev-dependencies]
+pagura-testkit.workspace = true

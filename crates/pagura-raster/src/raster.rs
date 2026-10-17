@@ -1,0 +1,342 @@
+//! Filling, stroking and clipping with exact polygon area coverage.
+
+use crate::coverage::Shape;
+use crate::{Paint, Path, Pixmap, Transform};
+use pagura_core::{Error, Result};
+use std::sync::Arc;
+
+/// Which points a fill covers (ISO 32000-2 clause 8.5.3.3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum FillRule {
+    /// Nonzero winding number rule.
+    #[default]
+    NonZero,
+    /// Even-odd rule.
+    EvenOdd,
+}
+
+/// Line cap style (clause 8.4.3.3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum LineCap {
+    /// 0: square end at the endpoint.
+    #[default]
+    Butt,
+    /// 1: semicircular end.
+    Round,
+    /// 2: square end projecting half the line width.
+    ProjectingSquare,
+}
+
+/// Line join style (clause 8.4.3.4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum LineJoin {
+    /// 0: mitered, subject to the miter limit.
+    #[default]
+    Miter,
+    /// 1: circular arc.
+    Round,
+    /// 2: bevelled.
+    Bevel,
+}
+
+/// Stroke parameters in the path's own (user) space; the stroker applies
+/// the transform, so non-uniform scaling distorts the pen as PDF requires.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Stroke {
+    /// Line width; 0 means the thinnest line the device can render.
+    pub width: f64,
+    /// Cap style.
+    pub cap: LineCap,
+    /// Join style.
+    pub join: LineJoin,
+    /// Miter limit, at least 1.
+    pub miter_limit: f64,
+    /// Dash lengths; empty means solid.
+    pub dash_array: Vec<f64>,
+    /// Dash phase.
+    pub dash_phase: f64,
+}
+
+impl Default for Stroke {
+    /// PDF's initial graphics state values (Table 51).
+    fn default() -> Self {
+        Self {
+            width: 1.0,
+            cap: LineCap::Butt,
+            join: LineJoin::Miter,
+            miter_limit: 10.0,
+            dash_array: Vec::new(),
+            dash_phase: 0.0,
+        }
+    }
+}
+
+/// A coverage mask, used for clipping: 255 keeps a pixel, 0 removes it.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Mask {
+    width: u32,
+    height: u32,
+    coverage: Vec<u8>,
+    origin: (u32, u32),
+    shapes: Vec<Shape>,
+}
+
+/// Summarizes instead of dumping coverage data.
+impl std::fmt::Debug for Mask {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Mask")
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Mask {
+    /// Rasterizes the area `path` covers under `rule` into a mask of the
+    /// given size.
+    ///
+    /// # Errors
+    ///
+    /// Returns a limit error if the mask exceeds `max_pixels` and an
+    /// invalid-argument error for non-finite geometry.
+    pub fn from_path(
+        width: u32,
+        height: u32,
+        path: &Path,
+        transform: Transform,
+        rule: FillRule,
+        max_pixels: usize,
+    ) -> Result<Self> {
+        Self::from_path_at(width, height, path, transform, rule, max_pixels, (0, 0))
+    }
+
+    /// Rasterizes a tile whose integer origin is in global device coordinates.
+    /// Geometry and flattening stay in global space, making tile areas identical
+    /// to the corresponding full-surface pixels, including rounding decisions.
+    ///
+    /// # Errors
+    /// As [`Self::from_path`]. Returns `Limit` if the tile extent overflows u32.
+    pub fn from_path_at(
+        width: u32,
+        height: u32,
+        path: &Path,
+        transform: Transform,
+        rule: FillRule,
+        max_pixels: usize,
+        origin: (u32, u32),
+    ) -> Result<Self> {
+        if origin.0.checked_add(width).is_none() || origin.1.checked_add(height).is_none() {
+            return Err(Error::limit("tile extent overflows u32"));
+        }
+        if width == 0 || height == 0 {
+            return Err(Error::invalid_argument("mask dimensions must be positive"));
+        }
+        let count = usize::try_from(u64::from(width) * u64::from(height))
+            .ok()
+            .filter(|&count| count <= max_pixels)
+            .ok_or(Error::limit("mask pixel budget exceeded"))?;
+        let mut coverage = Vec::new();
+        coverage
+            .try_reserve_exact(count)
+            .map_err(|_| Error::limit("mask allocation failed"))?;
+        coverage.resize(count, 0);
+        if path.segments().len() > crate::flatten::MAX_SEGMENTS {
+            return Err(Error::limit("path segment budget exceeded"));
+        }
+        let shapes = vec![Shape {
+            path: Arc::new(path.clone()),
+            transform,
+            rule,
+        }];
+        crate::coverage::coverage(width, height, &shapes, &mut coverage, origin)?;
+        Ok(Self {
+            width,
+            height,
+            coverage,
+            origin,
+            shapes,
+        })
+    }
+
+    /// Width in pixels.
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    /// Height in pixels.
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    /// Per-pixel coverage, row-major.
+    pub fn coverage(&self) -> &[u8] {
+        &self.coverage
+    }
+
+    /// Restricts this mask to the area also covered by `other`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an invalid-argument error if sizes or global origins differ,
+    /// or a limit error for excessive combined geometry or intersection work.
+    /// Geometry is intersected before integration; fractional coverage is not
+    /// multiplied. The mask is unchanged if intersection fails.
+    pub fn intersect(&mut self, other: &Self) -> Result<()> {
+        if (self.width, self.height, self.origin) != (other.width, other.height, other.origin) {
+            return Err(Error::invalid_argument("mask sizes differ"));
+        }
+        self.restrict(other)
+    }
+
+    fn restrict(&mut self, other: &Self) -> Result<()> {
+        let count = self
+            .shapes
+            .len()
+            .checked_add(other.shapes.len())
+            .filter(|&n| n <= 256)
+            .ok_or(Error::limit("mask intersection count budget exceeded"))?;
+        let mut shapes = Vec::new();
+        shapes
+            .try_reserve_exact(count)
+            .map_err(|_| Error::limit("mask geometry allocation failed"))?;
+        shapes.extend(self.shapes.iter().chain(&other.shapes).cloned());
+        let mut coverage = Vec::new();
+        coverage
+            .try_reserve_exact(self.coverage.len())
+            .map_err(|_| Error::limit("mask allocation failed"))?;
+        coverage.resize(self.coverage.len(), 0);
+        crate::coverage::coverage(self.width, self.height, &shapes, &mut coverage, self.origin)?;
+        self.coverage = coverage;
+        self.shapes = shapes;
+        Ok(())
+    }
+}
+
+/// Fills the area of `path` (mapped by `transform`) with `paint`,
+/// antialiased by exact area coverage, optionally restricted by `clip`.
+///
+/// # Errors
+///
+/// Returns an invalid-argument error for non-finite geometry or a clip of
+/// a different size, and a limit error if the path exceeds internal budgets.
+pub fn fill_path(
+    target: &mut Pixmap,
+    path: &Path,
+    transform: Transform,
+    rule: FillRule,
+    paint: &Paint,
+    clip: Option<&Mask>,
+) -> Result<()> {
+    fill_path_at(target, path, transform, rule, paint, clip, (0, 0))
+}
+
+/// Fills a tile using geometry in global device coordinates.
+///
+/// # Errors
+/// As [`fill_path`]; also rejects overflowing tile extents.
+pub fn fill_path_at(
+    target: &mut Pixmap,
+    path: &Path,
+    transform: Transform,
+    rule: FillRule,
+    paint: &Paint,
+    clip: Option<&Mask>,
+    origin: (u32, u32),
+) -> Result<()> {
+    check_clip(target, clip)?;
+    let Some((x, y, width, height)) =
+        crate::bounds::region(path, transform, (target.width(), target.height()), origin)?
+    else {
+        return Ok(());
+    };
+    let pixels = target.data().len() / 4;
+    let mut mask = Mask::from_path_at(width, height, path, transform, rule, pixels, (x, y))?;
+    if let Some(clip) = clip {
+        mask.restrict(clip)?;
+    }
+    composite(target, &mask, *paint, (x - origin.0, y - origin.1))?;
+    Ok(())
+}
+
+/// Strokes `path` with `stroke` (in the path's space, then mapped by
+/// `transform`) and composites `paint`, optionally restricted by `clip`.
+///
+/// # Errors
+///
+/// See [`fill_path`].
+pub fn stroke_path(
+    target: &mut Pixmap,
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    paint: &Paint,
+    clip: Option<&Mask>,
+) -> Result<()> {
+    stroke_path_at(target, path, transform, stroke, paint, clip, (0, 0))
+}
+
+/// Strokes a tile using geometry in global device coordinates.
+///
+/// # Errors
+/// As [`stroke_path`]; also rejects overflowing tile extents.
+pub fn stroke_path_at(
+    target: &mut Pixmap,
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    paint: &Paint,
+    clip: Option<&Mask>,
+    origin: (u32, u32),
+) -> Result<()> {
+    check_clip(target, clip)?;
+    let (outline, transform) = crate::stroke::outline(path, transform, stroke)?;
+    fill_path_at(
+        target,
+        &outline,
+        transform,
+        FillRule::NonZero,
+        paint,
+        clip,
+        origin,
+    )
+}
+
+fn check_clip(target: &Pixmap, clip: Option<&Mask>) -> Result<()> {
+    if clip.is_some_and(|mask| (mask.width, mask.height) != (target.width(), target.height())) {
+        return Err(Error::invalid_argument("clip size differs from surface"));
+    }
+    Ok(())
+}
+
+fn composite(target: &mut Pixmap, mask: &Mask, paint: Paint, offset: (u32, u32)) -> Result<()> {
+    let Paint::Solid(color) = paint;
+    let stride =
+        usize::try_from(target.width()).map_err(|_| Error::limit("surface width exceeds usize"))?;
+    let width =
+        usize::try_from(mask.width).map_err(|_| Error::limit("mask width exceeds usize"))?;
+    let x = usize::try_from(offset.0).map_err(|_| Error::limit("column exceeds usize"))?;
+    let y = usize::try_from(offset.1).map_err(|_| Error::limit("row exceeds usize"))?;
+    let rows = target.data_mut().chunks_exact_mut(stride * 4).skip(y);
+    for (row, coverage) in rows.zip(mask.coverage.chunks_exact(width)) {
+        let row = row
+            .get_mut(x * 4..(x + width) * 4)
+            .ok_or(Error::invalid_argument("mask extends beyond target"))?;
+        for (pixel, &coverage) in row.as_chunks_mut::<4>().0.iter_mut().zip(coverage) {
+            if coverage == 0 {
+                continue;
+            }
+            let alpha = multiply(color.a, coverage);
+            let inverse = 255 - alpha;
+            for (channel, source) in pixel.iter_mut().zip([color.r, color.g, color.b, 255]) {
+                let value =
+                    u16::from(multiply(source, alpha)) + u16::from(multiply(*channel, inverse));
+                *channel = u8::try_from(value).unwrap_or(255);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn multiply(a: u8, b: u8) -> u8 {
+    u8::try_from((u16::from(a) * u16::from(b) + 127) / 255).unwrap_or(255)
+}

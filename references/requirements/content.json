@@ -1,0 +1,139 @@
+{
+  "schema": 2,
+  "area": "content",
+  "scope": "Tests exercise the additive compile_page API. ISO 32000-2 locators not verified against the unavailable full text.",
+  "requirements": [
+    {
+      "id": "content-vector-pipeline",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "8.4",
+        "8.5"
+      ],
+      "status": "implemented through compile_page",
+      "tests": [
+        "content/compound-path",
+        "content/clip-after-paint",
+        "content/stroke-nonuniform"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "content-lexical-sequence",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "7.8.2"
+      ],
+      "status": "implemented",
+      "tests": [
+        "content/compound-operands-split"
+      ],
+      "gaps": "inline images unsupported"
+    },
+    {
+      "id": "content-explicit-operators",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "Annex A"
+      ],
+      "status": "recognized and validated",
+      "tests": [
+        "content/compatibility",
+        "content/text",
+        "pagura-render/src/tests.rs"
+      ],
+      "gaps": "text, images, Type3 and shadings unsupported"
+    },
+    {
+      "id": "content-colour",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "8.6",
+        "8.6.5.5",
+        "10.4"
+      ],
+      "status": "device spaces, ICC alternate/default, Indexed",
+      "tests": [
+        "content/cmyk",
+        "content/indexed",
+        "content/icc-alternate",
+        "content/default-space"
+      ],
+      "gaps": "no ICC profile transform; calibrated and spot spaces unsupported; nondefault ICC input ranges explicitly unsupported"
+    },
+    {
+      "id": "content-opaque-groups",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "11.3",
+        "11.4"
+      ],
+      "status": "opaque Normal non-knockout groups",
+      "tests": [
+        "content/opaque-page-group",
+        "content/opaque-form-group"
+      ],
+      "gaps": "explicit group colour spaces and nontrivial transparency unsupported"
+    },
+    {
+      "id": "content-page-transform",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "8.3.2"
+      ],
+      "status": "implemented",
+      "tests": [
+        "content/rotate-90",
+        "content/rotate-180",
+        "content/rotate-270",
+        "content/crop",
+        "content/user-unit"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "content-fractional",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "8.5.3"
+      ],
+      "status": "exact rectangle pixel overlaps",
+      "tests": [
+        "content/fractional",
+        "content/fractional-clip",
+        "content/fractional-clip-intersection"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "content-forms",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "8.10"
+      ],
+      "status": "implemented",
+      "tests": [
+        "content/form",
+        "content/form-resources"
+      ],
+      "gaps": "image XObjects unsupported"
+    },
+    {
+      "id": "content-optional",
+      "reference": "adobe-pdf17",
+      "clauses": [
+        "8.11"
+      ],
+      "status": "default configuration and membership expressions",
+      "tests": [
+        "content/optional-default",
+        "content/optional-AnyOn",
+        "content/optional-AllOn",
+        "content/optional-AnyOff",
+        "content/optional-AllOff",
+        "content/optional-expression"
+      ],
+      "gaps": "automatic usage applications unsupported"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+filter=LZWDecode
+outcome=valid
+repair=none
+cap=18
+early=1
+predictor=2
+bits=1
+colors=3
+columns=7

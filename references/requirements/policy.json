@@ -1,0 +1,29 @@
+{
+  "schema": 2,
+  "area": "policy",
+  "scope": "Clause locators refer to Adobe PDF32000_2008 (ISO 32000-1) until ISO 32000-2 full text is acquired and reviewed.",
+  "requirements": [
+    {
+      "id": "unsupported-is-explicit",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "implemented for declared unsupported fixture set",
+      "tests": [
+        "pagura/tests/render.rs",
+        "tools/conformance.py"
+      ],
+      "gaps": "exhaustive feature coverage"
+    },
+    {
+      "id": "bounded-resource-use",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "bootstrap budgets",
+      "tests": [
+        "pagura-core syntax",
+        "classic/many-operands"
+      ],
+      "gaps": "sustained fuzzing and process-level sandbox/cancellation"
+    }
+  ]
+}

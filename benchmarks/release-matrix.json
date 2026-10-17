@@ -1,0 +1,174 @@
+{
+  "schema": 1,
+  "note": "An unbound workload or unimplemented operation blocks release; do not silently shrink this matrix.",
+  "operations": [
+    {
+      "id": "render-e2e",
+      "implemented": true,
+      "engines": [
+        "pdfium",
+        "mupdf",
+        "pdfjs",
+        "poppler",
+        "hayro",
+        "quartz",
+        "adobe"
+      ]
+    },
+    {
+      "id": "open-cold",
+      "implemented": false,
+      "engines": [
+        "pdfium",
+        "mupdf",
+        "pdfjs",
+        "poppler",
+        "hayro",
+        "quartz",
+        "adobe"
+      ]
+    },
+    {
+      "id": "render-cold",
+      "implemented": false,
+      "engines": [
+        "pdfium",
+        "mupdf",
+        "pdfjs",
+        "poppler",
+        "hayro",
+        "quartz",
+        "adobe"
+      ]
+    },
+    {
+      "id": "render-warm",
+      "implemented": false,
+      "engines": [
+        "pdfium",
+        "mupdf",
+        "pdfjs",
+        "poppler",
+        "hayro",
+        "quartz",
+        "adobe"
+      ]
+    },
+    {
+      "id": "tile-zoom",
+      "implemented": false,
+      "engines": [
+        "pdfium",
+        "mupdf",
+        "pdfjs",
+        "poppler",
+        "hayro",
+        "quartz",
+        "adobe"
+      ]
+    },
+    {
+      "id": "text-search",
+      "implemented": false,
+      "engines": [
+        "pdfium",
+        "mupdf",
+        "pdfjs",
+        "poppler",
+        "quartz",
+        "adobe"
+      ]
+    },
+    {
+      "id": "save-noop",
+      "implemented": false,
+      "engines": [
+        "pdfium",
+        "mupdf",
+        "adobe"
+      ]
+    },
+    {
+      "id": "edit-save",
+      "implemented": false,
+      "engines": [
+        "pdfium",
+        "mupdf",
+        "adobe"
+      ]
+    }
+  ],
+  "workloads": [
+    {
+      "id": "opaque-geometry",
+      "cases": [
+        "classic/blank",
+        "classic/rectangle",
+        "classic/graphics-state",
+        "classic/negative-rectangle",
+        "classic/inherited-box",
+        "classic/clipped-to-page",
+        "classic/many-rectangles"
+      ]
+    },
+    {
+      "id": "latin-and-cjk-fonts",
+      "cases": []
+    },
+    {
+      "id": "images-and-codecs",
+      "cases": []
+    },
+    {
+      "id": "paths-strokes-clipping-shading",
+      "cases": []
+    },
+    {
+      "id": "transparency-blend-knockout",
+      "cases": []
+    },
+    {
+      "id": "icc-cmyk-spot-overprint",
+      "cases": []
+    },
+    {
+      "id": "annotations-acroforms",
+      "cases": []
+    },
+    {
+      "id": "xref-object-streams-incremental",
+      "cases": []
+    },
+    {
+      "id": "large-scanned-and-vector-documents",
+      "cases": []
+    },
+    {
+      "id": "encrypted-and-signed-documents",
+      "cases": []
+    },
+    {
+      "id": "malformed-bounded-recovery",
+      "cases": []
+    },
+    {
+      "id": "tagged-accessible-documents",
+      "cases": []
+    }
+  ],
+  "hardware_profiles": [
+    "macos-arm64",
+    "linux-x86_64",
+    "windows-x86_64"
+  ],
+  "scale_profiles": [
+    "72dpi",
+    "144dpi",
+    "300dpi"
+  ],
+  "concurrency_profiles": [
+    1,
+    4
+  ],
+  "baseline_eligibility": "Rendering engines need not edit. Editing compares declared capable baselines. Changes need a reviewed ADR."
+}

@@ -1,0 +1,5 @@
+filter=FlateDecode
+outcome=valid
+repair=filter.trailing-data
+cap=5
+raw=0

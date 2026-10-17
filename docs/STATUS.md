@@ -1,0 +1,60 @@
+# Capability and evidence status
+
+Pagura is in **milestones M1–M2** (`docs/ROADMAP.md`). It opens real-world files reliably and renders vector pages, but
+text, images and transparency are not implemented, so most real pages still
+fail explicitly. No claim of conformance or speed superiority is made.
+
+| Area | Implemented | Remaining |
+|---|---|---|
+| Core | Order-preserving dictionaries, inline names, finite reals, generation-aware references; per-object value budgets; structured errors with `Feature` tags, positions, objects and the repair a strict rejection refused; reported repairs (`Recovery::Strict`/`Repair`) | Broader syntax recovery |
+| Document | Classic and stream cross-references, object streams, `/Prev` revisions with cycle detection, hybrid files, lazily parsed `OnceLock`-cached objects, references to undefined objects as null, typed cached page tree, the ADR 0003 repair catalogue including full reconstruction | Linearization hints; the remaining failures of other projects' bug-reproduction suites |
+| Filters | ASCIIHex, ASCII85, RunLength, LZW, Flate (zlib and reported raw DEFLATE), PNG/TIFF predictors at 1–16 bits; caps enforced while decoding | Image codecs (M4) |
+| Security | MD5, SHA-2, RC4, AES; standard handler R2–R4, R5 (Adobe extension), R6; crypt filters; `/Perms` checks reported | SASLprep for non-ASCII R6 passwords; public-key handlers |
+| Rendering | Display list; exact-area antialiasing; strokes with caps, joins, dashes; geometric clipping; Device/Default/Indexed/ICC-via-alternate colour; form XObjects; opaque transparency groups; optional content; crop, rotation, UserUnit; tiles | Linear rasterizer, RGB blending groups, CIE spaces, functions, Separation/DeviceN (W4 round 2); text (M3); images (M4); transparency, shadings, patterns (M5) |
+| Writing | Deterministic new documents, insertion-ordered dictionaries, budgets | Incremental saves, signatures, redaction (M7) |
+| WebAssembly | `pagura-host` WASI command (protocol v1, `crates/pagura-host/PROTOCOL.md`); dependency-free browser shim and viewer; native/WASI byte parity; verified in a real browser (cross-origin isolated, exact pixels at DPR 2, multi-page navigation, explicit unsupported banner) | Threads, cancellation, password prompt |
+| Safety | Workspace-only product dependencies; every product target forbids unsafe; clippy pedantic, `missing_docs`, no `unwrap`/`expect`/`panic`; cargo-fuzz targets in `fuzz/` | Process sandbox, long fuzz campaigns |
+| Benchmarks | Stage-timed conversion track (open/render/emit, document mode), regression track, raw-format normalization, competitors out of tree (PDFium, MuPDF, pdf.js, hayro, CoreGraphics, Poppler) | Controlled runners; release gate |
+
+## Evidence (scoreboards in `docs/scoreboard/`)
+
+| Corpus | PDFs | Open | Strictly | Crashes / timeouts |
+|---|---:|---:|---:|---:|
+| realworld (SafeDocs Common Crawl zip 0000) | 998 | 99.9% | 921 | 0 / 0 |
+| adversarial (SafeDocs UNSAFE, mutated) | 1,416 | 99.8% | 1,191 | 0 / 0 |
+| veraPDF | 2,906 | 99.8% | 2,888 | 0 / 0 |
+| pdf.js test PDFs | 996 | 97.9% | 738 | 0 / 0 |
+| qpdf test PDFs | 701 | 94.0% | 588 | 0 / 0 |
+| PDFium test PDFs | 336 | 87.5% | 220 | 0 / 0 |
+| PDFBox test PDFs | 174 | 94.8% | 156 | 0 / 0 |
+| Poppler test PDFs | 83 | 95.2% | 74 | 0 / 0 |
+| PDF Differences | 37 | 75.7% | 27 | 0 / 0 |
+| PDF 2.0 examples | 7 | 100.0% | 6 | 0 / 0 |
+
+Generated fixtures: 205 PDF cases with independent expectations pass
+(`tools/conformance.py`), plus 337 codec, 97 crypto and 19 raster vectors in
+crate tests.
+
+Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
+
+- `syntax.duplicate-key`: the last value of a repeated key wins.
+- `filter.truncated`, `filter.checksum-mismatch`, `filter.trailing-data`,
+  `filter.raw-deflate`: damaged filter data yields the bytes decoded so far.
+- `xref.rebuilt`, `xref.offset-corrected`, `xref.stream-boundary`,
+  `stream.length-corrected`, `stream.eol`, `trailer.reconstructed`,
+  `file.header-offset`, `file.header-format`, `catalog.type-missing`:
+  structure recovered by scanning; the last complete physical definition of
+  an object wins.
+- `security.permissions-unsigned`, `security.literal-hash`,
+  `security.hash-padding`: malformed encryption entries recovered; normal
+  authentication is still required.
+
+ICC profiles are not applied: `ICCBased` spaces use their alternate or the
+`/N` default, as clause 8.6.5.5 permits.
+
+`python3 tools/check.py` runs every product check offline; `python3
+tools/policy.py --local-assets` verifies private caches and pinned corpora.
+Release gate output is expected to be BLOCKED with exit code 2. The ISO
+32000-2:2020 text (sponsored, with errata collection 3) is registered as a
+locally supplied, single-user reference (`references/lock.json`); it is never
+committed or redistributed.

@@ -1,0 +1,5 @@
+filter=FlateDecode
+outcome=valid
+repair=filter.truncated
+cap=2
+raw=1

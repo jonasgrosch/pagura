@@ -1,0 +1,61 @@
+{
+ "schema": 2,
+ "id": "pdf20",
+ "repository": "https://github.com/pdf-association/pdf20examples",
+ "revision": "c20f2c17bfcc4baab7cfe62e70fae64caf14d5fa",
+ "purpose": "PDF Association PDF 2.0 example files",
+ "patterns": [
+  "*.pdf"
+ ],
+ "use": "input documents only; no expected outputs, never normative",
+ "pdf_files": 7,
+ "bytes": 58836,
+ "files": [
+  {
+   "path": "LICENSE.md",
+   "size": 859,
+   "sha256": "74028ea690c541604cb43dbadf78154fa85d3c1f54e972f322abec0192aa3e08"
+  },
+  {
+   "path": "PDF 2.0 UTF-8 string and annotation.pdf",
+   "size": 4504,
+   "sha256": "f3a018213564a420db81062a0e584fbcc5f705e353ed477da43bab6222f137b6"
+  },
+  {
+   "path": "PDF 2.0 image with BPC.pdf",
+   "size": 8989,
+   "sha256": "fc517dd0d4c72d1b11e3449acc3e816d2719dc14e69a7e14b84da02808103370"
+  },
+  {
+   "path": "PDF 2.0 via incremental save.pdf",
+   "size": 5607,
+   "sha256": "9b25d59d07034634a990e79db6ef82b9f86769d9b94d8d8635f20d06aaec9d18"
+  },
+  {
+   "path": "PDF 2.0 with offset start.pdf",
+   "size": 5264,
+   "sha256": "a5b92313770f16ba1db649ccdc97d42f7744659c691897538734eebdc1bc9e9a"
+  },
+  {
+   "path": "PDF 2.0 with page level output intent.pdf",
+   "size": 10538,
+   "sha256": "7c13afe3078a4c202184edce3169f7bc842c8fd3db9da7140af6bc0b3b2fa44a"
+  },
+  {
+   "path": "README.md",
+   "size": 3938,
+   "sha256": "c4c1094bd6d1e75cb37306fed81650abf4f40017d58bc9e7a9c151a98c87c173"
+  },
+  {
+   "path": "Simple PDF 2.0 file.pdf",
+   "size": 5211,
+   "sha256": "296d2a0b2ce19b606f29265694f194a754fbc61783982b5b8d730e8637482236"
+  },
+  {
+   "path": "pdf20-utf8-test.pdf",
+   "size": 13926,
+   "sha256": "a7ca717ef062df0a65e58487d26358c81424b76084a2000ca1c74b9e5776b7a1"
+  }
+ ],
+ "skipped": []
+}

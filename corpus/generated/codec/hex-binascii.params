@@ -1,0 +1,4 @@
+filter=ASCIIHexDecode
+outcome=valid
+repair=none
+cap=12288
