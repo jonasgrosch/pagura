@@ -1020,6 +1020,20 @@
       "marker": "independent"
     },
     {
+      "id": "document/pages-shared-resources",
+      "kind": "pdf",
+      "description": "Inherited indirect, inherited direct and repeated page resources (7.7.3.4, Table 31)",
+      "expected": "open",
+      "requirements": [
+        "page-tree"
+      ],
+      "path": "corpus/generated/document/pages-shared-resources.pdf",
+      "sha256": "cf55b8ebf93ad3a45212b17f29ee3147dcfb7d47cf7918a47b40010092ea4027",
+      "pages": 4,
+      "strict_valid": true,
+      "repairs": []
+    },
+    {
       "id": "document/header-text",
       "kind": "pdf",
       "description": "Trailing header-line text/space is a reported repair; physical offsets are unchanged",

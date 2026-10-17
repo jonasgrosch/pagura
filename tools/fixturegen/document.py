@@ -369,6 +369,20 @@ def cases():
                        requirement="document-security", strict_valid=False, repairs=("xref.rebuilt",),
                        extra={"owner_password": "owner", "marker": "independent"})
 
+    shared = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 4 /MediaBox [0 0 64 64] /Resources 7 0 R >>",
+        b"<< /Type /Page /Parent 2 0 R /Contents 6 0 R >>",
+        b"<< /Type /Page /Parent 2 0 R /Contents 6 0 R >>",
+        b"<< /Type /Pages /Parent 2 0 R /Kids [8 0 R 9 0 R] /Count 2 /Resources << /ProcSet [/PDF] >> >>",
+        stream(CONTENT),
+        b"<< /ProcSet [/PDF] /ExtGState << >> >>",
+        b"<< /Type /Page /Parent 5 0 R /Contents 6 0 R >>",
+        b"<< /Type /Page /Parent 5 0 R /Contents 6 0 R /Resources 7 0 R >>",
+    ]
+    yield Case("pages-shared-resources", document(shared), OPEN, ("page-tree",),
+               "Inherited indirect, inherited direct and repeated page resources (7.7.3.4, Table 31)", pages=4)
+
     yield from field_recovery_cases()
     yield from structural_recovery_cases()
 
