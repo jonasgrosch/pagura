@@ -23,7 +23,7 @@
         "pagura-core syntax",
         "classic/many-operands"
       ],
-      "gaps": "sustained fuzzing and process-level sandbox/cancellation"
+      "gaps": "long fuzz campaigns (a bounded smoke run and replayed findings exist) and process-level sandbox/cancellation"
     }
   ]
 }

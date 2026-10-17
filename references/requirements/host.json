@@ -28,7 +28,7 @@
         "tools/host_test.mjs malformed native/WASI parity",
         "pagura-host session::tests::bad_render_arguments_are_operational_and_never_return_pixels"
       ],
-      "gaps": "No coverage-guided or sustained fuzzing, transport deadlines, cancellation, or OS memory-limit evidence."
+      "gaps": "The host fuzz target has bounded smoke runs only; no long campaigns, transport deadlines, engine-side cancellation, or OS memory-limit evidence."
     },
     {
       "id": "host-session-order",

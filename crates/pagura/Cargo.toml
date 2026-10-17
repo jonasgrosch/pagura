@@ -23,7 +23,7 @@ pagura-write.workspace = true
 # crates through the same code as the fuzz targets.
 pagura-codec.workspace = true
 pagura-font.workspace = true
-pagura-host = { path = "../pagura-host" }
+pagura-host.workspace = true
 pagura-image.workspace = true
 pagura-testkit.workspace = true
 pagura-text.workspace = true

@@ -30,8 +30,10 @@ pagura = { path = "crates/pagura" }
 pagura-codec = { path = "crates/pagura-codec" }
 pagura-core = { path = "crates/pagura-core" }
 pagura-crypto = { path = "crates/pagura-crypto" }
+pagura-data = { path = "crates/pagura-data" }
 pagura-document = { path = "crates/pagura-document" }
 pagura-font = { path = "crates/pagura-font" }
+pagura-host = { path = "crates/pagura-host" }
 pagura-image = { path = "crates/pagura-image" }
 pagura-raster = { path = "crates/pagura-raster" }
 pagura-render = { path = "crates/pagura-render" }
