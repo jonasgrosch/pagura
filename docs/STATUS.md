@@ -43,6 +43,12 @@ crate tests.
 
 Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 
+- `font.sfnt-version`, `font.table-alignment`, `font.table-bounds`, `font.cmap-
+  truncated`, `font.cmap-data`, `font.cmap-alignment`, `font.component-flags`,
+  `font.charstring-operator`, `font.glyph-data`: diagnostic-aware font APIs
+  infer usable containers, retain intact tables/mappings, ignore reserved
+  component bits, end unknown charstrings and replace unusable glyphs with empty
+  paths; page callers still need to forward these diagnostics.
 - `syntax.duplicate-key`: the last value of a repeated key wins.
 - `filter.truncated`, `filter.checksum-mismatch`, `filter.trailing-data`,
   `filter.raw-deflate`: damaged filter data yields the bytes decoded so far.

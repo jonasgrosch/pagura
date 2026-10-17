@@ -521,6 +521,7 @@ def cases():
     yield vector("cff2-font-dict-matrix",truetype(cff=cff_font(conforming=True,cff2=True,variant="fd-matrix"),cff2=True),
                  "unsupported font.format\n","font-cff","opentype")
     yield from specification_cases()
+    yield from recovery_cases()
 
     yield vector("cff-nonfinite",cff_font(conforming=True,hostile="nonfinite"),"outline-error 1\n","font-bounds","cff")
 
@@ -805,3 +806,134 @@ def specification_cases():
              "outline 1\nm 0 0\nl 12 0\nh\nm 12 0\nl 24 0\nh\n")
     yield t1("setcurrentpoint",tmove+line+operands(3,4,2,99)+b"\x0c\x10\x0c\x11\x0c\x11\x0c\x21"+line+end,
              "outline 1\nm 0 0\nl 12 0\nl 15 4\nh\n")
+
+
+def recovery_vector(name, data, expected, tag, glyph=None, fmt="truetype"):
+    """ADR 0003 policy oracles: strict tag and exact recovered glyph/mapping."""
+    phase = "parse" if glyph is None else f"outline {glyph}"
+    tags = [tag]
+    if name in ("loca-truncated", "glyf-truncated"):
+        tags.append("font.glyph-data")
+    return Vector("repair-"+name,
+                  {".font": data, ".expect": expected.encode(),
+                   ".strict": f"{phase} {tag}\n".encode(),
+                   ".repairs": ("\n".join(tags)+"\n").encode()},
+                  ("font-recovery",), "Reported font recovery with exact retained geometry",
+                  extra={"format": fmt, "repairs": tags})
+
+
+def font_tables(data):
+    """Decode only this writer's sfnt directory for independent mutations."""
+    result = {}
+    for at in range(12, 12+16*int.from_bytes(data[4:6], "big"), 16):
+        start, length = struct.unpack(">II", data[at+8:at+16])
+        result[data[at:at+4]] = data[start:start+length]
+    return result
+
+
+def recovery_cases():
+    base = truetype()
+    tables = font_tables(base)
+    result = "count 5\nadvance 1 600\noutline 1\n"+RECT
+    yield vector("sfnt-legacy-true", b"true"+base[4:], result, "font-truetype")
+    yield recovery_vector("sfnt-version", b"????"+base[4:], result, "font.sfnt-version")
+    data = bytearray(base)
+    # Shift the whole table body by one byte; offsets are still exact.
+    end = 12+16*len(tables)
+    data[end:end] = b"\x00"
+    for at in range(12, end, 16):
+        start = int.from_bytes(data[at+8:at+12], "big")
+        data[at+8:at+12] = u32(start+1)
+    yield recovery_vector("table-alignment", bytes(data), result, "font.table-alignment")
+    # An optional final table overstates its extent, with all required data intact.
+    data = bytearray(sfnt({**tables, b"zzzz": b"\x00\x00\x00\x00"}))
+    at = 12+16*len(tables)
+    data[at+12:at+16] = u32(100)
+    yield recovery_vector("table-bounds", bytes(data), result, "font.table-bounds")
+    # A required table may also overstate its extent if all consumed fields exist.
+    reduced = {k:v for k,v in tables.items() if k < b"maxp"}
+    reduced[b"maxp"] = tables[b"maxp"]
+    data = bytearray(sfnt(reduced))
+    at = 12+16*(len(reduced)-1)
+    data[at+12:at+16] = u32(100)
+    yield recovery_vector("required-table-bounds", bytes(data), result, "font.table-bounds")
+    yield recovery_vector("metrics-bearings", truetype(table_overrides={b"hmtx":tables[b"hmtx"][:8]}),
+                          result+"advance 4 600\n", "font.table-bounds")
+    # loca retains complete entries; unavailable glyphs cannot consume neighbours.
+    loca = tables[b"loca"][:-4]
+    yield recovery_vector("loca-truncated", truetype(table_overrides={b"loca":loca}),
+                          result+"outline 4\n", "font.table-bounds")
+    # A complete earlier glyph remains available when glyf loses its tail.
+    glyf = tables[b"glyf"][:-8]
+    yield recovery_vector("glyf-truncated", truetype(table_overrides={b"glyf":glyf}),
+                          result+"outline 4\n", "font.table-bounds")
+    yield recovery_vector("glyph-truncated", truetype(glyph_override=b"\x00"),
+                          "outline 1\noutline 2\n"+QUAD, "font.glyph-data", 1)
+    # Put the component in glyph 3 instead to avoid a recursive reference.
+    glyf = bytearray(tables[b"glyf"])
+    start = int.from_bytes(tables[b"loca"][12:16], "big")
+    glyf[start+10:start+12] = u16(0x93)  # 0x83 matrix + reserved bit
+    yield recovery_vector("component-matrix", truetype(table_overrides={b"glyf":bytes(glyf)}),
+                          result+"outline 3\nm 20 30\nl 70 55\nl 70 155\nl 20 130\nh\n",
+                          "font.component-flags", 3)
+    # Format 6: one intact mapping, one absent mapping, original declared count.
+    sub = u16(6)+u16(14)+u16(0)+u16(65)+u16(2)+u16(1)
+    cm = u16(0)+u16(1)+u16(3)+u16(0)+u32(12)+sub
+    yield recovery_vector("cmap-truncated", truetype(table_overrides={b"cmap":cm}),
+                          "code symbol 65 1\nabsent symbol 66\n"+result, "font.cmap-truncated")
+    # Format 12: retain one complete group, not a fabricated missing second group.
+    cm = bytearray(cmap(12)); cm[16:20] = u32(40); cm[24:28] = u32(2)
+    yield recovery_vector("cmap-groups", truetype(table_overrides={b"cmap":bytes(cm)}),
+                          "code full 128512 1\ncode full 128513 2\nabsent full 128514\n"+result,
+                          "font.cmap-truncated")
+    cm = bytearray(cmap(4)); cm[42:44] = u16(65535)
+    yield recovery_vector("cmap-sentinel", truetype(table_overrides={b"cmap":bytes(cm)}),
+                          "code unicode 65 1\ncode unicode 65535 0\n"+result, "font.cmap-alignment")
+    # Odd idRangeOffset is measured in bytes, so insert a pad before its glyphs.
+    cm = bytearray(cmap(4)); cm[14:16] = u16(37); cm[40:42] = u16(5); cm[44:44] = b"\x00"
+    yield recovery_vector("cmap-byte-alignment", truetype(table_overrides={b"cmap":bytes(cm)}),
+                          "code unicode 65 1\ncode unicode 66 0\n"+result, "font.cmap-alignment")
+    # Bad segment order is unusable, but a second subtable still maps correctly.
+    good = cmap(6)[12:]; bad = bytearray(cmap(4)[12:]); bad[20:22] = u16(67)
+    cm = u16(0)+u16(2)+u16(3)+u16(1)+u32(20)+u16(3)+u16(0)+u32(20+len(bad))+bad+good
+    yield recovery_vector("cmap-subtable", truetype(table_overrides={b"cmap":bytes(cm)}),
+                          "absent unicode 65\ncode symbol 65 1\n"+result, "font.cmap-data")
+    # Both formats leave undefined escapes without execution semantics: stop here, keep prefix,
+    # and never execute the syntactically valid suffix after the unknown opcode.
+    move = operands(0,0)+b"\x15"; line = operands(12,0)+b"\x05"
+    prefix = move+line; reserved = b"\x0c\xff"; suffix = operands(80,0)+b"\x05\x0e"
+    expected = "outline 1\nm 0 0\nl 12 0\nh\noutline 0\n"
+    yield recovery_vector("cff-escape", reviewed_cff(prefix+reserved+suffix), expected,
+                          "font.charstring-operator", 1, "cff")
+    yield recovery_vector("cff-subr-escape", reviewed_cff(move+number(-107)+b"\x0a"+suffix,
+                          subrs=[line+reserved+b"\x0b"]), expected, "font.charstring-operator", 1, "cff")
+    width = operands(0,600)+b"\x0d"
+    for name, program, subrs in [("type1-escape", width+prefix+reserved+suffix, None),
+                                 ("type1-subr-escape", width+move+operands(0)+b"\x0a"+suffix,
+                                  [line+reserved+b"\x0b"])]:
+        yield recovery_vector(name, type1_font(conforming=True, program=program, custom_subrs=subrs),
+                              expected, "font.charstring-operator", 1, "type1")
+
+    data = bytearray(truetype())
+    for at in range(12, 12+16*len(tables), 16):
+        if data[at:at+4] == b"post":
+            data[at+8:at+12] = u32((len(data)+3)//4*4)
+    yield recovery_vector("optional-table-missing", bytes(data), result, "font.table-bounds")
+    # Completely unusable optional cmap header cannot invalidate glyph geometry.
+    yield recovery_vector("cmap-header", truetype(table_overrides={b"cmap":b"\xff\xff"}),
+                          "has unicode 0\n"+result, "font.cmap-data")
+
+    yield recovery_vector("glyph-missing", base, "outline 999\n"+result, "font.glyph-data", 999)
+
+    # Every supported array/group layout keeps its intact prefix independently.
+    for fmt, original, shortened, mappings in [
+        (0, cmap(0), 12+6+66, "code mac 65 1\nabsent mac 66\n"),
+        (2, extended_cmap(2), 12+538, "code symbol 65 1\ncode symbol 33088 2\nabsent symbol 33089\n"),
+        (4, cmap(4), 12+34, "code unicode 65 1\nabsent unicode 66\ncode unicode 65535 0\n"),
+        (10, extended_cmap(10), 12+24, "code full 128512 1\ncode full 128513 0\nabsent full 128514\n"),
+        (13, extended_cmap(13), 12+28, "code platform0 65 1\ncode platform0 67 1\nabsent platform0 128512\n"),
+    ]:
+        yield recovery_vector(f"cmap{fmt}-prefix", truetype(table_overrides={b"cmap":original[:shortened]}),
+                              mappings+result, "font.cmap-truncated")
+    yield recovery_vector("cff-global-escape", reviewed_cff(move+number(-107)+b"\x1d"+suffix,
+                          global_subrs=[line+reserved+b"\x0b"]), expected, "font.charstring-operator", 1, "cff")

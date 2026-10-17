@@ -35,7 +35,7 @@ pub(super) fn parse(mut r: Read<'_>, limits: &Limits) -> Result<Vec<Vec<f64>>> {
     )?;
     let work = axes
         .checked_mul(region_count)
-        .ok_or_else(|| bad(regions.at(), "variation region count overflow"))?;
+        .ok_or_else(|| crate::read::limit(regions.at(), "variation region count overflow"))?;
     cap(
         work,
         limits.operations.min(limits.value_nodes),
@@ -90,11 +90,11 @@ pub(super) fn parse(mut r: Read<'_>, limits: &Limits) -> Result<Vec<Vec<f64>>> {
         let row = words
             .checked_mul(if long { 4 } else { 2 })
             .and_then(|bytes| bytes.checked_add((regions - words) * if long { 2 } else { 1 }))
-            .ok_or_else(|| bad(item.at(), "variation delta size overflow"))?;
+            .ok_or_else(|| crate::read::limit(item.at(), "variation delta size overflow"))?;
         item.skip(
             items
                 .checked_mul(row)
-                .ok_or_else(|| bad(item.at(), "variation delta size overflow"))?,
+                .ok_or_else(|| crate::read::limit(item.at(), "variation delta size overflow"))?,
         )?;
         result.push(coefficients);
     }

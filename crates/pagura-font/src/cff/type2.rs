@@ -2,11 +2,14 @@
 use super::{Cff, Private, dict, strings};
 use crate::GlyphId;
 use crate::read::{Read, bad, cap};
-use pagura_core::{Limits, Result};
+use crate::{recovery::repair, tags};
+use pagura_core::{Diagnostics, Limits, Position, Result};
 use pagura_raster::{Path, PathBuilder, Point, Segment, Transform};
 
 struct Work<'a> {
     limits: &'a Limits,
+    diagnostics: &'a mut Diagnostics,
+    stopped: bool,
     operations: usize,
     segments: usize,
 }
@@ -61,9 +64,12 @@ pub(super) fn glyph(
     data: &[u8],
     glyph: GlyphId,
     limits: &Limits,
+    diagnostics: &mut Diagnostics,
 ) -> Result<(Path, f64)> {
     let mut work = Work {
         limits,
+        diagnostics,
+        stopped: false,
         operations: 0,
         segments: 0,
     };
@@ -77,7 +83,8 @@ fn load(
     work: &mut Work<'_>,
 ) -> Result<(Path, f64)> {
     cap(depth, work.limits.depth.min(64), 0)?;
-    let index = usize::try_from(glyph.0).map_err(|_| bad(0, "glyph index overflow"))?;
+    let index =
+        usize::try_from(glyph.0).map_err(|_| crate::read::limit(0, "glyph index overflow"))?;
     let range = font
         .glyphs
         .get(index)
@@ -132,7 +139,10 @@ fn load(
     let path = state.path.finish().transformed(private.matrix);
     let width = state.width.unwrap_or(private.default_width) * private.matrix.a;
     if !width.is_finite() {
-        return Err(bad(range.start, "nonfinite charstring width"));
+        return Err(crate::read::limit(
+            range.start,
+            "nonfinite charstring width",
+        ));
     }
     Ok((path, width))
 }
@@ -204,7 +214,7 @@ impl State {
         self.point.x += dx;
         self.point.y += dy;
         if !self.point.is_finite() {
-            return Err(bad(at, "nonfinite charstring coordinate"));
+            return Err(crate::read::limit(at, "nonfinite charstring coordinate"));
         }
         Ok(self.point)
     }
@@ -308,7 +318,7 @@ fn run(
                     work,
                 )? == Flow::End
                 {
-                    if r.pos != r.data.len() {
+                    if !work.stopped && r.pos != r.data.len() {
                         return Err(bad(r.at(), "data after charstring end"));
                     }
                     return Ok(Flow::End);
@@ -320,7 +330,11 @@ fn run(
                 }
                 return Ok(Flow::Return);
             }
-            12 => escape(r.u8()?, state, work, at)?,
+            12 => {
+                if escape(r.u8()?, state, work, at)? {
+                    return Ok(Flow::End);
+                }
+            }
             14 if !font.cff2 => {
                 return finish(private, state, &r, at);
             }
@@ -342,16 +356,20 @@ fn run(
         // Finite operands are an invariant: arithmetic writes only the top
         // operand, and blend validates every value it writes in place.
         if state.stack.last().is_some_and(|n| !n.is_finite()) {
-            return Err(bad(at, "nonfinite charstring operand"));
+            return Err(crate::read::limit(at, "nonfinite charstring operand"));
         }
     }
-    if font.cff2 {
+    end_of_program(font.cff2, depth, state, r.at())
+}
+
+fn end_of_program(cff2: bool, depth: usize, state: &State, at: usize) -> Result<Flow> {
+    if cff2 {
         if depth == 0 && !state.stack.is_empty() {
-            return Err(bad(r.at(), "unconsumed CFF2 operands"));
+            return Err(bad(at, "unconsumed CFF2 operands"));
         }
         Ok(if depth == 0 { Flow::End } else { Flow::Return })
     } else {
-        Err(bad(r.at(), "unterminated charstring"))
+        Err(bad(at, "unterminated charstring"))
     }
 }
 
@@ -363,7 +381,7 @@ fn blend(font: &Cff, state: &mut State, at: usize) -> Result<()> {
         .ok_or_else(|| bad(at, "missing CFF2 variation data"))?;
     let size = count
         .checked_mul(coefficients.len() + 1)
-        .ok_or_else(|| bad(at, "CFF2 blend count overflow"))?;
+        .ok_or_else(|| crate::read::limit(at, "CFF2 blend count overflow"))?;
     if count == 0 || size > state.stack.len() {
         return Err(bad(at, "invalid CFF2 blend operands"));
     }
@@ -374,7 +392,7 @@ fn blend(font: &Cff, state: &mut State, at: usize) -> Result<()> {
             value += coefficient * state.stack[start + count + i * coefficients.len() + j];
         }
         if !value.is_finite() {
-            return Err(bad(at, "nonfinite charstring blend result"));
+            return Err(crate::read::limit(at, "nonfinite charstring blend result"));
         }
         state.stack[start + i] = value;
     }
@@ -460,7 +478,7 @@ fn draw(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
     Ok(())
 }
 
-fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
+fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<bool> {
     match op {
         0 => {} // TN 5177 Appendix C: deprecated dotsection is a no-op.
         3 | 4 | 10 | 11 | 12 | 15 | 24 => {
@@ -525,20 +543,7 @@ fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
             let a = s.pop(at)?;
             s.stack.extend([b, a]);
         }
-        29 => {
-            let index = s.pop(at)?.max(0.0);
-            let index = dict::integer(index, at)?;
-            if index >= s.stack.len() {
-                return Err(bad(at, "charstring index outside stack"));
-            }
-            let value = *s
-                .stack
-                .iter()
-                .rev()
-                .nth(index)
-                .ok_or_else(|| bad(at, "charstring stack underflow"))?;
-            s.stack.push(value);
-        }
+        29 => index(s, at)?,
         30 => {
             let shift = s.pop(at)?;
             let count = dict::integer(s.pop(at)?, at)?;
@@ -546,16 +551,26 @@ fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
                 return Err(bad(at, "invalid charstring roll"));
             }
             if count == 0 {
-                return Ok(());
+                return Ok(false);
             }
             let rotation = dict::integer(shift.rem_euclid(count as f64), at)?;
             let start = s.stack.len() - count;
             s.stack[start..].rotate_right(rotation);
         }
         34..=37 => flex(op, s, w, at)?,
-        _ => return Err(bad(at, "invalid escaped charstring operator")),
+        _ => {
+            repair(
+                w.diagnostics,
+                tags::CHARSTRING_OPERATOR,
+                "unknown escaped Type 2 operator ends glyph",
+                Position::Buffer(at),
+            )?;
+            s.stack.clear();
+            w.stopped = true;
+            return Ok(true);
+        }
     }
-    Ok(())
+    Ok(false)
 }
 fn flex(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
     let a = std::mem::take(&mut s.stack);
@@ -680,4 +695,13 @@ fn finish(private: &Private, state: &mut State, r: &Read<'_>, at: usize) -> Resu
         return Err(bad(r.at(), "data after charstring endchar"));
     }
     Ok(Flow::End)
+}
+
+fn index(s: &mut State, at: usize) -> Result<()> {
+    let index = dict::integer(s.pop(at)?.max(0.0), at)?;
+    if index >= s.stack.len() {
+        return Err(bad(at, "charstring index outside stack"));
+    }
+    s.stack.push(s.stack[s.stack.len() - index - 1]);
+    Ok(())
 }

@@ -57,7 +57,7 @@ pub(super) fn integer(n: f64, at: usize) -> Result<usize> {
     if !n.is_finite() || n < 0.0 || n > f64::from(u32::MAX) || n.fract() != 0.0 {
         return Err(bad(at, "invalid CFF integer"));
     }
-    usize::try_from(n as u32).map_err(|_| bad(at, "CFF integer overflow"))
+    usize::try_from(n as u32).map_err(|_| crate::read::limit(at, "CFF integer overflow"))
 }
 
 pub(super) fn number(r: &mut Read<'_>, byte: u8, real: bool) -> Result<f64> {
@@ -190,7 +190,7 @@ fn blend(stack: &mut Vec<f64>, vsindex: usize, variations: &[Vec<f64>], at: usiz
         .ok_or_else(|| bad(at, "missing CFF2 DICT variation data"))?;
     let size = count
         .checked_mul(coefficients.len() + 1)
-        .ok_or_else(|| bad(at, "CFF2 DICT blend size overflow"))?;
+        .ok_or_else(|| crate::read::limit(at, "CFF2 DICT blend size overflow"))?;
     if count == 0 || size > stack.len() {
         return Err(bad(at, "CFF2 DICT blend stack underflow"));
     }
@@ -201,7 +201,7 @@ fn blend(stack: &mut Vec<f64>, vsindex: usize, variations: &[Vec<f64>], at: usiz
             value += coefficient * stack[first + count + i * coefficients.len() + j];
         }
         if !value.is_finite() {
-            return Err(bad(at, "nonfinite CFF2 DICT blend result"));
+            return Err(crate::read::limit(at, "nonfinite CFF2 DICT blend result"));
         }
         stack[first + i] = value;
     }

@@ -4,7 +4,7 @@
 //! This is a font reader, without a PostScript execution environment.
 use crate::GlyphId;
 use crate::read::{bad, cap};
-use pagura_core::{Limits, Name, Position, Result};
+use pagura_core::{Diagnostics, Limits, Name, Position, Recovery, Result};
 use pagura_raster::{Path, Transform};
 use std::collections::BTreeMap;
 
@@ -120,8 +120,8 @@ impl Type1 {
             glyphs.swap(0, notdef);
             for glyph in names.values_mut() {
                 if glyph.0 == 0 {
-                    glyph.0 =
-                        u32::try_from(notdef).map_err(|_| bad(start, "glyph index overflow"))?;
+                    glyph.0 = u32::try_from(notdef)
+                        .map_err(|_| crate::read::limit(start, "glyph index overflow"))?;
                 } else if usize::try_from(glyph.0).ok() == Some(notdef) {
                     glyph.0 = 0;
                 }
@@ -147,11 +147,18 @@ impl Type1 {
     pub fn encoding(&self) -> &[Option<Name>; 256] {
         &self.encoding
     }
-    pub fn outline(&self, glyph: GlyphId, limits: &Limits) -> Result<Path> {
-        Ok(charstring::glyph(self, glyph, limits)?.0)
+    pub fn outline(
+        &self,
+        glyph: GlyphId,
+        limits: &Limits,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Path> {
+        Ok(charstring::glyph(self, glyph, limits, diagnostics)?.0)
     }
     pub fn advance(&self, glyph: GlyphId, limits: &Limits) -> Option<f64> {
-        charstring::glyph(self, glyph, limits).ok().map(|g| g.1)
+        charstring::glyph(self, glyph, limits, &mut Diagnostics::new(Recovery::Strict))
+            .ok()
+            .map(|g| g.1)
     }
 }
 
@@ -194,11 +201,11 @@ fn flatten(data: &[u8], limits: &Limits) -> Result<(Vec<u8>, bool)> {
             .get(pos..pos.saturating_add(4))
             .ok_or_else(|| bad(pos, "truncated PFB size"))?;
         let size = usize::try_from(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
-            .map_err(|_| bad(pos, "PFB size overflow"))?;
+            .map_err(|_| crate::read::limit(pos, "PFB size overflow"))?;
         pos += 4;
         let end = pos
             .checked_add(size)
-            .ok_or_else(|| bad(pos, "PFB size overflow"))?;
+            .ok_or_else(|| crate::read::limit(pos, "PFB size overflow"))?;
         cap(result.len().saturating_add(size), limits.decoded_bytes, pos)?;
         result.extend_from_slice(
             data.get(pos..end)
@@ -411,7 +418,7 @@ fn charstrings(
             let program = r.binary()?;
             let glyph = GlyphId(
                 u32::try_from(glyphs.len())
-                    .map_err(|_| bad(r.pos, "Type 1 glyph count overflow"))?,
+                    .map_err(|_| crate::read::limit(r.pos, "Type 1 glyph count overflow"))?,
             );
             if names.insert(Name::new(name), glyph).is_some() {
                 return Err(bad(r.pos, "duplicate Type 1 glyph name"));

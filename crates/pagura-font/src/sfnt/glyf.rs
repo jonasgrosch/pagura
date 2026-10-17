@@ -2,7 +2,8 @@
 use super::Sfnt;
 use crate::GlyphId;
 use crate::read::{Read, bad, cap};
-use pagura_core::{Limits, Result};
+use crate::{recovery::repair, tags};
+use pagura_core::{Diagnostics, Limits, Position, Result};
 use pagura_raster::{Path, PathBuilder, Point, Segment, Transform};
 
 #[derive(Clone, Copy)]
@@ -17,6 +18,7 @@ struct Shape {
 }
 struct Work<'a> {
     limits: &'a Limits,
+    diagnostics: &'a mut Diagnostics,
     operations: usize,
     points: usize,
     segments: usize,
@@ -44,9 +46,16 @@ impl Work<'_> {
     }
 }
 
-pub(super) fn outline(font: &Sfnt, data: &[u8], glyph: GlyphId, limits: &Limits) -> Result<Path> {
+pub(super) fn outline(
+    font: &Sfnt,
+    data: &[u8],
+    glyph: GlyphId,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<Path> {
     let mut work = Work {
         limits,
+        diagnostics,
         operations: 0,
         points: 0,
         segments: 0,
@@ -63,20 +72,28 @@ fn load(
 ) -> Result<Shape> {
     cap(depth, work.limits.depth.min(64), font.glyf.start)?;
     work.charge(1, 0, 0, font.glyf.start)?;
-    let index = usize::try_from(glyph.0).map_err(|_| bad(0, "glyph index overflow"))?;
-    let start = *font
+    let index =
+        usize::try_from(glyph.0).map_err(|_| crate::read::limit(0, "glyph index overflow"))?;
+    let start = font
         .locations
         .get(index)
-        .ok_or_else(|| bad(0, "glyph index outside font"))?;
-    let end = *font
+        .copied()
+        .flatten()
+        .ok_or_else(|| bad(font.glyf.start, "missing glyph location"))?;
+    let end = font
         .locations
         .get(index + 1)
-        .ok_or_else(|| bad(0, "glyph index outside font"))?;
+        .copied()
+        .flatten()
+        .ok_or_else(|| bad(font.glyf.start, "missing glyph location"))?;
     if start == end {
         return Ok(Shape {
             path: Path::default(),
             points: Vec::new(),
         });
+    }
+    if start > font.glyf.len() || end > font.glyf.len() {
+        return Err(bad(font.glyf.end, "truncated glyph"));
     }
     let base = font.glyf.start + start;
     let mut r = Read::new(
@@ -133,7 +150,7 @@ fn simple(r: &mut Read<'_>, contours: usize, work: &mut Work<'_>) -> Result<Shap
     for &flag in &flags {
         x = x
             .checked_add(delta(r, flag, 2, 16)?)
-            .ok_or_else(|| bad(r.at(), "glyph coordinate overflow"))?;
+            .ok_or_else(|| crate::read::limit(r.at(), "glyph coordinate overflow"))?;
         vertices.push(Vertex {
             point: Point::new(f64::from(x), 0.0),
             on: flag & 1 != 0,
@@ -143,7 +160,7 @@ fn simple(r: &mut Read<'_>, contours: usize, work: &mut Work<'_>) -> Result<Shap
     for (vertex, &flag) in vertices.iter_mut().zip(&flags) {
         y = y
             .checked_add(delta(r, flag, 4, 32)?)
-            .ok_or_else(|| bad(r.at(), "glyph coordinate overflow"))?;
+            .ok_or_else(|| crate::read::limit(r.at(), "glyph coordinate overflow"))?;
         vertex.point.y = f64::from(y);
     }
     let mut builder = PathBuilder::new();
@@ -241,7 +258,7 @@ fn composite(
             a,
             b,
             mut transform,
-        } = component(r)?;
+        } = component(r, work.diagnostics)?;
         let xy = flags & 2 != 0;
         let shape = load(font, data, glyph, depth + 1, work)?;
         let offset = if xy {
@@ -284,7 +301,7 @@ fn composite(
         for &p in &shape.points {
             let p = transform.apply(p);
             if !p.is_finite() {
-                return Err(bad(r.at(), "nonfinite component point"));
+                return Err(crate::read::limit(r.at(), "nonfinite component point"));
             }
             points.push(p);
         }
@@ -330,10 +347,19 @@ struct Component {
     b: i32,
     transform: Transform,
 }
-fn component(r: &mut Read<'_>) -> Result<Component> {
-    let flags = r.u16()?;
-    if flags & !0x1fef != 0 || flags & 0x1800 == 0x1800 {
-        return Err(bad(r.at(), "invalid component flags"));
+fn component(r: &mut Read<'_>, diagnostics: &mut Diagnostics) -> Result<Component> {
+    let raw = r.u16()?;
+    if raw & !0x1fef != 0 {
+        repair(
+            diagnostics,
+            tags::COMPONENT_FLAGS,
+            "reserved composite glyph flags ignored",
+            Position::Buffer(r.at() - 2),
+        )?;
+    }
+    let flags = raw & 0x1fef;
+    if flags & 0x1800 == 0x1800 {
+        return Err(bad(r.at(), "conflicting component offset flags"));
     }
     let glyph = GlyphId(u32::from(r.u16()?));
     let words = flags & 1 != 0;

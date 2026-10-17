@@ -1,0 +1,11 @@
+code full 128512 1
+code full 128513 2
+absent full 128514
+count 5
+advance 1 600
+outline 1
+m 0 0
+l 100 0
+l 100 200
+l 0 200
+h

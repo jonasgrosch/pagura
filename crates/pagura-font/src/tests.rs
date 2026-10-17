@@ -1,6 +1,8 @@
 //! Independent generated-vector and API invariant tests.
 use crate::{CmapSubtable, FontFormat, FontProgram, GlyphId};
-use pagura_core::{ErrorKind, Limits, Position};
+use pagura_core::{Diagnostics, ErrorKind, Limits, Position, Recovery};
+
+mod recovery;
 use pagura_raster::{PathBuilder, Point, Segment};
 
 fn font(name: &str, format: FontFormat) -> FontProgram {
@@ -18,6 +20,22 @@ fn vector(name: &str, format: FontFormat) {
     let Some(font) = expected_parse(bytes, format, &expected, name) else {
         return;
     };
+    check_vector(
+        &font,
+        &expected,
+        name,
+        format,
+        &mut Diagnostics::new(Recovery::Strict),
+    );
+}
+
+fn check_vector(
+    font: &FontProgram,
+    expected: &str,
+    name: &str,
+    format: FontFormat,
+    diagnostics: &mut Diagnostics,
+) {
     assert_eq!(font.format(), format);
     let mut glyph = None;
     let mut builder = PathBuilder::new();
@@ -27,7 +45,7 @@ fn vector(name: &str, format: FontFormat) {
         let u = |i: usize| words[i].parse::<u32>().unwrap();
         match words[0] {
             "count" => assert_eq!(font.glyph_count(), u(1), "{name}"),
-            "matrix" => check_matrix(&font, &[n(1), n(2), n(3), n(4), n(5), n(6)]),
+            "matrix" => check_matrix(font, &[n(1), n(2), n(3), n(4), n(5), n(6)]),
             "name" => assert_eq!(
                 font.glyph_for_name(words[1].as_bytes()),
                 Some(GlyphId(u(2))),
@@ -61,7 +79,7 @@ fn vector(name: &str, format: FontFormat) {
                 );
             }
             "budget" => budget(
-                &font,
+                font,
                 GlyphId(u(1)),
                 usize::try_from(u(2)).unwrap(),
                 usize::try_from(u(3)).unwrap(),
@@ -81,10 +99,10 @@ fn vector(name: &str, format: FontFormat) {
                 assert!(matches!(error.position, Position::Buffer(_)));
             }
             "outline" => {
-                check_outline(&font, name, glyph.take(), &mut builder);
+                check_outline(font, name, glyph.take(), &mut builder, diagnostics);
                 glyph = Some(GlyphId(u(1)));
             }
-            "outline-error" => outline_error(&font, GlyphId(u(1)), name),
+            "outline-error" => outline_error(font, GlyphId(u(1)), name),
             "m" => {
                 builder.move_to(Point::new(n(1), n(2)));
             }
@@ -106,7 +124,7 @@ fn vector(name: &str, format: FontFormat) {
             _ => panic!("invalid font expectation"),
         }
     }
-    check_outline(&font, name, glyph, &mut builder);
+    check_outline(font, name, glyph, &mut builder, diagnostics);
     assert!(font.outline(GlyphId(u32::MAX)).is_err());
     assert_eq!(font.advance(GlyphId(u32::MAX)), None);
     assert_eq!(font.glyph_for_name(b"no such glyph"), None);
@@ -498,10 +516,11 @@ fn check_outline(
     name: &str,
     glyph: Option<GlyphId>,
     builder: &mut PathBuilder,
+    diagnostics: &mut Diagnostics,
 ) {
     if let Some(glyph) = glyph {
         let actual = font
-            .outline(glyph)
+            .outline_with_diagnostics(glyph, diagnostics)
             .unwrap_or_else(|e| panic!("{name} {glyph:?}: {e}"));
         let expected = builder.finish();
         assert_eq!(

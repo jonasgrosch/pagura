@@ -1,7 +1,7 @@
 //! CFF containers, DICTs and INDEXes (Adobe Technical Note 5176).
 use crate::GlyphId;
 use crate::read::{Read, bad, cap};
-use pagura_core::{Limits, Name, Result};
+use pagura_core::{Diagnostics, Limits, Name, Recovery, Result};
 use pagura_raster::{Path, Transform};
 use std::collections::BTreeMap;
 use std::ops::Range;
@@ -135,8 +135,10 @@ impl Cff {
         let mut names = BTreeMap::new();
         let mut cids = cid.then(BTreeMap::new);
         for (i, sid) in charset.iter().copied().enumerate() {
-            let glyph =
-                GlyphId(u32::try_from(i).map_err(|_| bad(range.start, "glyph count overflow"))?);
+            let glyph = GlyphId(
+                u32::try_from(i)
+                    .map_err(|_| crate::read::limit(range.start, "glyph count overflow"))?,
+            );
             if let Some(cids) = &mut cids {
                 if f64::from(sid) >= top.number(0x0c22, 8720.0)? {
                     return Err(bad(range.start, "CID outside CFF CIDCount"));
@@ -201,8 +203,14 @@ impl Cff {
     pub fn encoding(&self) -> Option<&[Option<Name>; 256]> {
         self.encoding.as_deref()
     }
-    pub fn outline(&self, data: &[u8], glyph: GlyphId, limits: &Limits) -> Result<Path> {
-        Ok(self.glyph(data, glyph, limits)?.0)
+    pub fn outline(
+        &self,
+        data: &[u8],
+        glyph: GlyphId,
+        limits: &Limits,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Path> {
+        Ok(type2::glyph(self, data, glyph, limits, diagnostics)?.0)
     }
     pub fn advance(&self, data: &[u8], glyph: GlyphId, limits: &Limits) -> Option<f64> {
         if self.cff2 {
@@ -212,7 +220,13 @@ impl Cff {
         }
     }
     fn glyph(&self, data: &[u8], glyph: GlyphId, limits: &Limits) -> Result<(Path, f64)> {
-        type2::glyph(self, data, glyph, limits)
+        type2::glyph(
+            self,
+            data,
+            glyph,
+            limits,
+            &mut Diagnostics::new(Recovery::Strict),
+        )
     }
 }
 
@@ -250,7 +264,7 @@ fn private_dict(
             &mut table.tail(
                 offset
                     .checked_add(private.offset(19, None)?)
-                    .ok_or_else(|| bad(at, "private offset overflow"))?,
+                    .ok_or_else(|| crate::read::limit(at, "private offset overflow"))?,
             )?,
             limits,
             context.cff2,
@@ -277,7 +291,9 @@ fn charset(table: Read<'_>, offset: usize, glyphs: usize, limits: &Limits) -> Re
             return Err(bad(table.base, "ISOAdobe charset glyph count exceeded"));
         }
         return (0..glyphs)
-            .map(|i| u16::try_from(i).map_err(|_| bad(table.base, "charset overflow")))
+            .map(|i| {
+                u16::try_from(i).map_err(|_| crate::read::limit(table.base, "charset overflow"))
+            })
             .collect();
     }
     if offset <= 2 {

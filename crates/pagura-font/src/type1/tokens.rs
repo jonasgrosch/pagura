@@ -124,7 +124,7 @@ impl<'a> Tokens<'a> {
         let end = self
             .pos
             .checked_add(size)
-            .ok_or_else(|| bad(self.pos, "Type 1 binary size overflow"))?;
+            .ok_or_else(|| crate::read::limit(self.pos, "Type 1 binary size overflow"))?;
         let bytes = self
             .data
             .get(self.pos..end)

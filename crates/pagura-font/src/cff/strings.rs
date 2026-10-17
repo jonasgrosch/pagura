@@ -108,7 +108,7 @@ pub(super) fn encoding(
         };
         let end = first
             .checked_add(left)
-            .ok_or_else(|| bad(r.at(), "CFF encoding code overflow"))?;
+            .ok_or_else(|| crate::read::limit(r.at(), "CFF encoding code overflow"))?;
         for code in first..=end {
             let sid = *charset
                 .get(gid)

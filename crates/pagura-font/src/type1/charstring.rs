@@ -2,11 +2,14 @@
 use super::{Type1, unsupported};
 use crate::GlyphId;
 use crate::read::{Read, bad, cap};
-use pagura_core::{Limits, Result};
+use crate::{recovery::repair, tags};
+use pagura_core::{Diagnostics, Limits, Position, Result};
 use pagura_raster::{Path, PathBuilder, Point, Segment, Transform};
 
 struct Work<'a> {
     limits: &'a Limits,
+    diagnostics: &'a mut Diagnostics,
+    stopped: bool,
     operations: usize,
     segments: usize,
 }
@@ -39,13 +42,20 @@ enum Flow {
     End,
 }
 
-pub(super) fn glyph(font: &Type1, glyph: GlyphId, limits: &Limits) -> Result<(Path, f64)> {
+pub(super) fn glyph(
+    font: &Type1,
+    glyph: GlyphId,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<(Path, f64)> {
     let (path, width, _) = load(
         font,
         glyph,
         0,
         &mut Work {
             limits,
+            diagnostics,
+            stopped: false,
             operations: 0,
             segments: 0,
         },
@@ -59,7 +69,8 @@ fn load(
     work: &mut Work<'_>,
 ) -> Result<(Path, f64, Point)> {
     cap(depth, work.limits.depth.min(64), 0)?;
-    let index = usize::try_from(glyph.0).map_err(|_| bad(0, "glyph index overflow"))?;
+    let index =
+        usize::try_from(glyph.0).map_err(|_| crate::read::limit(0, "glyph index overflow"))?;
     let bytes = font
         .glyphs
         .get(index)
@@ -140,7 +151,7 @@ fn integer(n: f64, at: usize) -> Result<usize> {
     if !n.is_finite() || n < 0.0 || n > f64::from(u32::MAX) || n.fract() != 0.0 {
         return Err(bad(at, "invalid charstring integer"));
     }
-    usize::try_from(n as u32).map_err(|_| bad(at, "charstring integer overflow"))
+    usize::try_from(n as u32).map_err(|_| crate::read::limit(at, "charstring integer overflow"))
 }
 impl State {
     fn pop(&mut self, at: usize) -> Result<f64> {
@@ -167,7 +178,7 @@ impl State {
         self.point.x += dx;
         self.point.y += dy;
         if !self.point.is_finite() {
-            return Err(bad(at, "nonfinite Type 1 coordinate"));
+            return Err(crate::read::limit(at, "nonfinite Type 1 coordinate"));
         }
         Ok(self.point)
     }
@@ -273,7 +284,7 @@ fn run(
                     .get(index)
                     .ok_or_else(|| bad(at, "Type 1 subroutine index out of range"))?;
                 if run(font, Read::new(bytes, 0), depth + 1, s, w)? == Flow::End {
-                    if r.pos != r.data.len() {
+                    if !w.stopped && r.pos != r.data.len() {
                         return Err(bad(r.at(), "data after Type 1 character end"));
                     }
                     return Ok(Flow::End);
@@ -287,7 +298,7 @@ fn run(
             }
             12 => {
                 if escape(r.u8()?, s, w, at)? {
-                    if r.pos != r.data.len() {
+                    if !w.stopped && r.pos != r.data.len() {
                         return Err(bad(r.at(), "data after Type 1 seac"));
                     }
                     return Ok(Flow::End);
@@ -305,7 +316,7 @@ fn run(
             }
             14 => {
                 s.count(0, at)?;
-                if r.pos != r.data.len() {
+                if !w.stopped && r.pos != r.data.len() {
                     return Err(bad(r.at(), "data after Type 1 endchar"));
                 }
                 return Ok(Flow::End);
@@ -316,7 +327,7 @@ fn run(
         // Finite operands are an invariant: arithmetic writes only the top
         // operand, and blend validates every value it writes in place.
         if s.stack.last().is_some_and(|n| !n.is_finite()) {
-            return Err(bad(at, "nonfinite Type 1 operand"));
+            return Err(crate::read::limit(at, "nonfinite Type 1 operand"));
         }
     }
     Err(bad(r.at(), "unterminated Type 1 charstring"))
@@ -384,7 +395,17 @@ fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<bool> {
             s.point = Point::new(s.stack[0], s.stack[1]);
             s.stack.clear();
         }
-        _ => return Err(bad(at, "invalid escaped Type 1 operator")),
+        _ => {
+            repair(
+                w.diagnostics,
+                tags::CHARSTRING_OPERATOR,
+                "unknown escaped Type 1 operator ends glyph",
+                Position::Buffer(at),
+            )?;
+            s.stack.clear();
+            w.stopped = true;
+            return Ok(true);
+        }
     }
     Ok(false)
 }

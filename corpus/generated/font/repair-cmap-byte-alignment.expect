@@ -1,0 +1,10 @@
+code unicode 65 1
+code unicode 66 0
+count 5
+advance 1 600
+outline 1
+m 0 0
+l 100 0
+l 100 200
+l 0 200
+h

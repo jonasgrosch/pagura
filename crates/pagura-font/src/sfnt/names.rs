@@ -27,7 +27,10 @@ pub(super) fn parse(
             for (i, name) in standard.into_iter().take(count).enumerate() {
                 names.insert(
                     name,
-                    GlyphId(u32::try_from(i).map_err(|_| bad(r.at(), "glyph index overflow"))?),
+                    GlyphId(
+                        u32::try_from(i)
+                            .map_err(|_| crate::read::limit(r.at(), "glyph index overflow"))?,
+                    ),
                 );
             }
         }
@@ -65,7 +68,8 @@ pub(super) fn parse(
                 }
                 .ok_or_else(|| bad(r.at(), "invalid post glyph name"))?;
                 names.entry(name.clone()).or_insert(GlyphId(
-                    u32::try_from(i).map_err(|_| bad(r.at(), "glyph index overflow"))?,
+                    u32::try_from(i)
+                        .map_err(|_| crate::read::limit(r.at(), "glyph index overflow"))?,
                 ));
             }
         }

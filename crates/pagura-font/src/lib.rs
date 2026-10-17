@@ -8,13 +8,15 @@
 //! to glyphs through PDF encodings and CMaps is `pagura-text`'s job.
 //! Hinting is not applied; outlines are returned in glyph space.
 
-use pagura_core::{Limits, Name, Result};
+use pagura_core::{Diagnostics, Limits, Name, Recovery, Result};
 use pagura_raster::{Path, Transform};
 use std::sync::Arc;
 
 mod cff;
 mod read;
+mod recovery;
 mod sfnt;
+pub mod tags;
 mod type1;
 
 #[cfg(test)]
@@ -90,11 +92,47 @@ impl FontProgram {
     /// font budgets, and `Unsupported` for unimplemented formats or features.
     /// Glyph programs are validated on demand by [`Self::outline`].
     pub fn parse(data: impl Into<Arc<[u8]>>, format: FontFormat, limits: &Limits) -> Result<Self> {
-        let data = data.into();
+        Self::parse_with_diagnostics(
+            data,
+            format,
+            limits,
+            &mut Diagnostics::new(Recovery::Strict),
+        )
+        .map_err(recovery::legacy_error)
+    }
+
+    /// Parses a font with explicit, reported recovery (ISO 32000-2 9.9).
+    ///
+    /// Forward the diagnostics to the owning document after this call, including
+    /// on error. Original program bytes are retained unchanged. Diagnostics are
+    /// coalesced by repair kind per call; the first buffer position is retained.
+    ///
+    /// # Errors
+    ///
+    /// Strict mode rejects each repair with its stable tag. Required tables,
+    /// undecodable containers and exhausted resource budgets remain errors.
+    pub fn parse_with_diagnostics(
+        data: impl Into<Arc<[u8]>>,
+        format: FontFormat,
+        limits: &Limits,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Self> {
+        let mut local = Diagnostics::new(diagnostics.mode());
+        let result = Self::parse_inner(data.into(), format, limits, &mut local);
+        diagnostics.extend(local.take());
+        result
+    }
+
+    fn parse_inner(
+        data: Arc<[u8]>,
+        format: FontFormat,
+        limits: &Limits,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Self> {
         read::input(&data, limits)?;
         let parsed = match format {
             FontFormat::TrueType | FontFormat::OpenType => {
-                Program::Sfnt(sfnt::Sfnt::parse(&data, limits)?)
+                Program::Sfnt(sfnt::Sfnt::parse(&data, limits, diagnostics)?)
             }
             FontFormat::Cff => Program::Cff(cff::Cff::parse(&data, 0..data.len(), limits)?),
             FontFormat::Type1 => Program::Type1(type1::Type1::parse(&data, limits)?),
@@ -153,10 +191,45 @@ impl FontProgram {
     /// Returns positioned syntax errors for malformed glyph data or exceeded
     /// font budgets, including stack and subroutine-depth violations.
     pub fn outline(&self, glyph: GlyphId) -> Result<Path> {
+        self.outline_with_diagnostics(glyph, &mut Diagnostics::new(Recovery::Strict))
+            .map_err(recovery::legacy_error)
+    }
+
+    /// Outlines one glyph with explicit recovery and diagnostics.
+    ///
+    /// In repair mode an unusable glyph returns an empty path with
+    /// [`tags::GLYPH_DATA`]; an unknown charstring operator ends only that glyph.
+    /// Other glyphs and PDF advances are unaffected. Forward diagnostics to
+    /// `Document::report` even on error; this crate has no document dependency.
+    ///
+    /// # Errors
+    ///
+    /// Strict mode returns tagged repair rejections. Exhausted budgets,
+    /// overflowing sizes and nonfinite geometry remain errors
+    /// in both modes. A caller must never suppress those failures.
+    pub fn outline_with_diagnostics(
+        &self,
+        glyph: GlyphId,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Path> {
+        let mut local = Diagnostics::new(diagnostics.mode());
+        let result = self.outline_inner(glyph, &mut local);
+        let result = match result {
+            Err(error) if recovery::glyph_error(&error) => {
+                recovery::repair(&mut local, tags::GLYPH_DATA, error.message, error.position)
+                    .map(|()| Path::default())
+            }
+            other => other,
+        };
+        diagnostics.extend(local.take());
+        result
+    }
+
+    fn outline_inner(&self, glyph: GlyphId, diagnostics: &mut Diagnostics) -> Result<Path> {
         let path = match self.parsed.as_ref() {
-            Program::Sfnt(p) => p.outline(&self.data, glyph, &self.limits),
-            Program::Cff(p) => p.outline(&self.data, glyph, &self.limits),
-            Program::Type1(p) => p.outline(glyph, &self.limits),
+            Program::Sfnt(p) => p.outline(&self.data, glyph, &self.limits, diagnostics),
+            Program::Cff(p) => p.outline(&self.data, glyph, &self.limits, diagnostics),
+            Program::Type1(p) => p.outline(glyph, &self.limits, diagnostics),
         }?;
         read::finite_path(&path)?;
         Ok(path)

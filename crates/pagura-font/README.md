@@ -68,8 +68,8 @@ ceiling; Type 1 RD strings and tokens have that ceiling as well (chapter 10).
 Type 2 has 96 total stems and 32 transient slots. CFF1 INDEX's 16-bit count
 bounds subroutine arrays to 65,535 entries, within Appendix B's 65,536
 interpreter limit. Project byte, value, operation and segment budgets can
-further restrict these limits; they never raise a format ceiling. Geometry must remain finite. Cycles terminate with syntax
-errors. Unsupported capabilities use stable `font.*` tags.
+further restrict these limits; they never raise a format ceiling. Geometry must remain finite. Cycles terminate at bounded recursion
+limits. Unsupported capabilities use stable `font.*` tags.
 
 TrueType component offsets use unscaled translation when neither offset flag
 is present; explicit scaled/unscaled flags take precedence. Quadratics are
@@ -148,3 +148,44 @@ width-detection entry points, local/global bias transitions at 1,240 and
 OtherSubr argument order and lifetime, and nibble real padding. The branching
 subroutine vector uses ten nested calls so exhaustion exercises the shared
 operation budget rather than violating the format nesting limit first.
+
+`parse_with_diagnostics` and `outline_with_diagnostics` accept a core
+`Diagnostics` sink. Its mode governs every repair; strict rejection includes
+exactly the repair tag refused. The existing `parse` and `outline` APIs remain
+strict. The diagnostic-aware APIs return `ErrorKind::Limit` for exhausted
+budgets, overflowing sizes and nonfinite geometry, so these cannot be mistaken
+for recoverable glyph syntax. The original APIs retain their positioned syntax
+error contract for these failures.
+
+In repair mode readable sfnt tables may be unaligned, or their extents may be
+clamped to the available buffer. Required headers, glyph count and advances
+must still be usable. Missing unused horizontal side bearings are ignored;
+missing advances reject. Complete loca entries and cmap mappings survive
+truncation. Missing glyphs yield empty paths, never bytes from another glyph.
+An unusable cmap subtable is omitted while other subtables remain available.
+Legacy `true` signatures are accepted directly; unknown signatures require an
+unambiguous complete table set and `font.sfnt-version`. Reserved component bits
+are ignored; conflicting transforms make that glyph unusable.
+
+ISO 9.9.1/Table 124 supplies the embedding conformance requirement and 9.6.5.4
+constrains cmap selection. The TrueType/OpenType internal layouts above still
+await primary-text review. Local corpus inspection supports these recovery
+choices without establishing format conformance. Type 1 6.3/Appendix 2 and
+TN 5177 3.3/Appendix A leave unknown escaped operators without defined
+semantics. The documented repair choice ends the current glyph and all its
+subroutine callers, closes the completed prefix and ignores the suffix.
+
+For rendering, a successfully recovered unusable glyph is an empty path with
+`font.glyph-data`; paint nothing for it and continue PDF text positioning and
+other glyphs. Failed composite dependencies discard the entire requested
+glyph. Budget failures still propagate. Diagnostics retain the first position
+of each repair kind per parse or outline operation, with at most nine entries
+per operation. Type 1 decrypted charstring positions refer to that decrypted
+buffer. Bytes shared by the font remain unchanged.
+
+The caller must create the sink using `Document::recovery()`, call the
+corresponding diagnostic-aware method, attach the font stream object to parse
+diagnostics when known, and forward `diagnostics.take()` through
+`Document::report` even when the operation fails. The font crate has no document
+dependency. The current text loader and renderer still use the strict methods;
+these repairs require that caller wiring before they affect page rendering.

@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "font",
-  "scope": "Reviewed the supported font-program behavior against the local Adobe Type 1 Font Format (chapters 2, 3, 5-8 and 10), TN 5176 CFF (sections 2-19, appendices A-C/F/H), TN 5177 Type 2 (sections 2-4, appendices A-C), and TN 5014 CIDFont (sections 2.3/2.4, 3.2 and 4.1/4.2). The itemized verdicts below distinguish corrected behavior, agreement, unhinted outline policy and incomplete structural validation; this is not full PostScript or font conformance certification. The previous PDF-side review remains ISO 32000-2:2020 sponsored EC3, 9.6.3, 9.6.5.1/2/4, 9.7.4.1/2/3, 9.9.1/2 and Tables 124/125. Only unavailable primary texts remain pending: OpenType/ISO 14496-22 and TrueType Reference Manual (including CFF2), TN 5015 Type 1 supplements including lenIV -1, and TN 5040 PFB packaging. Project budgets are separate from format limits.",
+  "scope": "Reviewed the supported font-program behavior against the local Adobe Type 1 Font Format (chapters 2, 3, 5-8 and 10), TN 5176 CFF (sections 2-19, appendices A-C/F/H), TN 5177 Type 2 (sections 2-4, appendices A-C), and TN 5014 CIDFont (sections 2.3/2.4, 3.2 and 4.1/4.2). The itemized verdicts below distinguish corrected behavior, agreement, unhinted outline policy and incomplete structural validation; this is not full PostScript or font conformance certification. The previous PDF-side review remains ISO 32000-2:2020 sponsored EC3, 9.6.3, 9.6.5.1/2/4, 9.7.4.1/2/3, 9.9.1/2 and Tables 124/125. Only unavailable primary texts remain pending: OpenType/ISO 14496-22 and TrueType Reference Manual (including CFF2), TN 5015 Type 1 supplements including lenIV -1, and TN 5040 PFB packaging. Project budgets are separate from format limits. Reported recovery is checked as ADR 0003 project policy against ISO 9.9.1/Table 124 and PDF cmap selection in 9.6.5.4; unknown charstring escape policy is checked against Type 1 6.3/Appendix 2 and TN 5177 3.3/Appendix A. The sfnt alignment, extent, loca, component-flag and cmap layout details still await the unavailable TrueType/OpenType primary texts; corpus inspection is secondary evidence, not primary-format verification.",
   "requirements": [
     {
       "id": "font-truetype",
@@ -32,7 +32,8 @@
         "font/truetype-cmap2",
         "font/truetype-cmap10",
         "font/truetype-cmap13",
-        "font/truetype-cmap14"
+        "font/truetype-cmap14",
+        "font/sfnt-legacy-true"
       ],
       "gaps": "Other cmap/post formats and collections are unsupported. Format 14 UVS does not change single-code PDF glyph selection and is intentionally not used. Instruction dependencies require TrueType primary review.",
       "tables": [
@@ -1459,20 +1460,20 @@
         "font/cff-branching-subrs",
         "font/cff-nonfinite"
       ],
-      "gaps": "Budget violations are syntax errors with standalone-buffer positions; malformed outlines are reported lazily.",
+      "gaps": "Legacy strict APIs retain positioned syntax errors for budgets. Explicit diagnostic APIs return Limit for exhaustion, overflow and nonfinite geometry; none may be suppressed as a glyph repair.",
       "tables": [],
       "verification": {
         "primary_text": "CONTRIBUTING.md and ADR 0009 project policy",
         "rule": "Bound every font parse and outline by explicit budgets; reject exhaustion with a buffer position.",
         "verdict": "project policy tested; removed the unsupported claim that ISO 9.9 specifies these budgets",
-        "implementation": "Caps bytes, values, glyphs, operations, segments and recursion; positions syntax failures in the relevant font buffer.",
+        "implementation": "Caps bytes, values, glyphs, operations, segments and recursion; positions syntax failures in the relevant font buffer. Diagnostic-aware APIs keep Limit errors distinct from recoverable glyph syntax.",
         "expectations": "Hostile vectors and mutation tests assert project budgets and failure positions, independently of any ISO numeric limit.",
-        "outside": "No shared API change required; dedicated font fuzz target remains future work.",
+        "outside": "No shared API change required. The integrated strict font fuzz target remains usable; diagnostic-aware mutation coverage is local to this crate.",
         "pending": [
           "OpenType CFF2: stack, subroutine and charstring limits"
         ],
         "external_status": "Type 1/TN 5176/TN 5177 limits reviewed; CFF2 pending primary-text review",
-        "evidence": "Project-policy fixtures measure exact operation/segment budgets for 64/128/256-line glyphs with and without subroutines; branching recursion and mutation tests exercise shared exhaustion. No claim that ISO 9.9 specifies numeric budgets. Appendix B limits now have exact boundary vectors; Type 1 and CFF1 stack/depth limits have separate boundaries. Appendix B limits now have exact boundary vectors; Type 1 and CFF1 stack/depth limits have separate boundaries. Appendix B limits now have exact boundary vectors; Type 1 and CFF1 stack/depth limits have separate boundaries. Appendix B limits now have exact boundary vectors; Type 1 and CFF1 stack/depth limits have separate boundaries."
+        "evidence": "Project-policy fixtures measure exact operation/segment budgets for 64/128/256-line glyphs with and without subroutines; branching recursion and mutation tests exercise shared exhaustion. No claim that ISO 9.9 specifies numeric budgets. Appendix B limits now have exact boundary vectors; Type 1 and CFF1 stack/depth limits have separate boundaries."
       },
       "format_verification": [
         {
@@ -1542,6 +1543,175 @@
             "font/cff-linear-subr-256",
             "font/cff-branching-subrs"
           ]
+        }
+      ]
+    },
+    {
+      "id": "font-recovery",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.6.5.4",
+        "9.9.1"
+      ],
+      "tables": [
+        "124"
+      ],
+      "status": "Explicit strict/repair font APIs; bounded per-operation diagnostics and glyph-local fallback. Page callers still require wiring.",
+      "tests": [
+        "font/sfnt-legacy-true",
+        "font/repair-sfnt-version",
+        "font/repair-table-alignment",
+        "font/repair-table-bounds",
+        "font/repair-required-table-bounds",
+        "font/repair-metrics-bearings",
+        "font/repair-loca-truncated",
+        "font/repair-glyf-truncated",
+        "font/repair-glyph-truncated",
+        "font/repair-component-matrix",
+        "font/repair-cmap-truncated",
+        "font/repair-cmap-groups",
+        "font/repair-cmap-sentinel",
+        "font/repair-cmap-byte-alignment",
+        "font/repair-cmap-subtable",
+        "font/repair-cff-escape",
+        "font/repair-cff-subr-escape",
+        "font/repair-type1-escape",
+        "font/repair-type1-subr-escape",
+        "font/repair-optional-table-missing",
+        "font/repair-cmap-header",
+        "font/repair-glyph-missing",
+        "font/repair-cmap0-prefix",
+        "font/repair-cmap2-prefix",
+        "font/repair-cmap4-prefix",
+        "font/repair-cmap10-prefix",
+        "font/repair-cmap13-prefix",
+        "font/repair-cff-global-escape"
+      ],
+      "gaps": "pagura-text and pagura-render must use diagnostic-aware methods with Document::recovery and forward diagnostics through Document::report; their paths are outside this component. TrueType/OpenType primary layout verification remains pending.",
+      "verification": {
+        "primary_text": "ISO 32000-2:2020 sponsored EC3; Adobe Type 1 Font Format; Adobe TN 5177; ADR 0003",
+        "rule": "Embedded programs normally conform to their named formats; reader-tolerated departures must be tagged repairs.",
+        "verdict": "agrees with explicit recovery policy; format-specific TrueType details pending primary-text review",
+        "implementation": "Old parse/outline remain strict. New parse_with_diagnostics/outline_with_diagnostics admit repairs, preserve original bytes and bound distinct diagnostics per operation. Unsafe resource failures propagate.",
+        "expectations": "Independent Python mutations specify the strict tag and exact retained paths, mappings and metrics. Crate tests also assert hard errors under repair and mutation bounds.",
+        "pending": [
+          "TrueType Reference Manual: sfnt signature and table alignment/extents, loca/hmtx layouts, reserved composite flags, cmap subtable layout",
+          "OpenType / ISO 14496-22: corresponding sfnt and cmap rules, CFF2"
+        ],
+        "external_status": "Corpus font dictionaries and programs inspected in memory, never copied into fixtures; this evidence does not verify unavailable primary texts.",
+        "evidence": "SafeDocs PDF 0000002 uses true; 0000018 has readable unaligned offsets; 0000028 has an odd format-4 sentinel; 0000047 has an overdeclared cmap length; 0000055 uses composite reserved bit 0x10; 0000325 has advances with missing unused side bearings. Inspection of the unsupported-version files in the available reports found 267 true-tagged and 33 0x00010000-tagged sfnt programs, with no additional sfnt flavor; other embedded programs were CFF or Type 1."
+      },
+      "repairs": [
+        {
+          "tag": "font.sfnt-version",
+          "locator": "9.9.1 / Table 124",
+          "rule": "Infer an unknown sfnt signature only from a complete, unambiguous set of required outline tables; recognize legacy true directly.",
+          "verdict": "documented recovery choice, strict tag and repaired result tested",
+          "vectors": [
+            "font/repair-sfnt-version",
+            "font/sfnt-legacy-true"
+          ],
+          "primary_review": "PDF embedding/selection requirement reviewed; TrueType/OpenType internal layout primary text pending."
+        },
+        {
+          "tag": "font.table-alignment",
+          "locator": "9.9.1 / Table 124",
+          "rule": "Read intact tables at their declared byte offsets despite missing four-byte alignment.",
+          "verdict": "documented recovery choice, strict tag and repaired result tested",
+          "vectors": [
+            "font/repair-table-alignment"
+          ],
+          "primary_review": "PDF embedding/selection requirement reviewed; TrueType/OpenType internal layout primary text pending."
+        },
+        {
+          "tag": "font.table-bounds",
+          "locator": "9.9.1 / Table 124",
+          "rule": "Clamp extents to present bytes; retain complete loca entries and horizontal advances. Missing unused bearings are ignored; absent required metadata or advances reject.",
+          "verdict": "documented recovery choice, strict tag and repaired result tested",
+          "vectors": [
+            "font/repair-table-bounds",
+            "font/repair-required-table-bounds",
+            "font/repair-metrics-bearings",
+            "font/repair-loca-truncated",
+            "font/repair-glyf-truncated",
+            "font/repair-optional-table-missing"
+          ],
+          "primary_review": "PDF embedding/selection requirement reviewed; TrueType/OpenType internal layout primary text pending."
+        },
+        {
+          "tag": "font.cmap-truncated",
+          "locator": "9.6.5.4; 9.9.1 / Table 124",
+          "rule": "Preserve complete mappings in a truncated subtable; unavailable entries produce no mapping.",
+          "verdict": "documented recovery choice, strict tag and repaired result tested",
+          "vectors": [
+            "font/repair-cmap-truncated",
+            "font/repair-cmap-groups",
+            "font/repair-cmap0-prefix",
+            "font/repair-cmap2-prefix",
+            "font/repair-cmap4-prefix",
+            "font/repair-cmap10-prefix",
+            "font/repair-cmap13-prefix"
+          ],
+          "primary_review": "PDF embedding/selection requirement reviewed; TrueType/OpenType internal layout primary text pending."
+        },
+        {
+          "tag": "font.cmap-data",
+          "locator": "9.6.5.4; 9.9.1 / Table 124",
+          "rule": "Omit an unusable cmap header or subtable and retain other available mappings.",
+          "verdict": "documented recovery choice, strict tag and repaired result tested",
+          "vectors": [
+            "font/repair-cmap-subtable",
+            "font/repair-cmap-header"
+          ],
+          "primary_review": "PDF embedding/selection requirement reviewed; TrueType/OpenType internal layout primary text pending."
+        },
+        {
+          "tag": "font.cmap-alignment",
+          "locator": "9.6.5.4; 9.9.1 / Table 124",
+          "rule": "Read odd format-4 glyph offsets in bytes; map an ffff-offset sentinel to missing glyph zero.",
+          "verdict": "documented recovery choice, strict tag and repaired result tested",
+          "vectors": [
+            "font/repair-cmap-sentinel",
+            "font/repair-cmap-byte-alignment"
+          ],
+          "primary_review": "PDF embedding/selection requirement reviewed; TrueType/OpenType internal layout primary text pending."
+        },
+        {
+          "tag": "font.component-flags",
+          "locator": "9.9.1 / Table 124",
+          "rule": "Ignore reserved composite flags while preserving the remaining transform and attachment fields; conflicting transforms do not yield a partial glyph.",
+          "verdict": "documented recovery choice, strict tag and repaired result tested",
+          "vectors": [
+            "font/repair-component-matrix"
+          ],
+          "primary_review": "PDF embedding/selection requirement reviewed; TrueType/OpenType internal layout primary text pending."
+        },
+        {
+          "tag": "font.charstring-operator",
+          "locator": "Type 1 6.3 / Appendix 2; TN 5177 3.3 / Appendix A; ISO 9.9.1 / Table 124",
+          "rule": "The available texts define no execution semantics for an unknown escape. Project choice: end the glyph and its callers immediately, close its completed prefix and discard remaining bytes.",
+          "verdict": "documented recovery choice, strict tag and repaired result tested",
+          "vectors": [
+            "font/repair-cff-escape",
+            "font/repair-cff-subr-escape",
+            "font/repair-type1-escape",
+            "font/repair-type1-subr-escape",
+            "font/repair-cff-global-escape"
+          ],
+          "primary_review": "Type 1/TN 5177 escape classification reviewed; stopping policy is a project choice."
+        },
+        {
+          "tag": "font.glyph-data",
+          "locator": "9.9.1 / Table 124",
+          "rule": "Replace an unusable individual glyph with an empty outline; never suppress resource exhaustion, overflow or nonfinite geometry.",
+          "verdict": "documented recovery choice, strict tag and repaired result tested",
+          "vectors": [
+            "font/repair-glyph-truncated",
+            "font/repair-loca-truncated",
+            "font/repair-glyf-truncated",
+            "font/repair-glyph-missing"
+          ],
+          "primary_review": "PDF embedding/selection requirement reviewed; TrueType/OpenType internal layout primary text pending."
         }
       ]
     }

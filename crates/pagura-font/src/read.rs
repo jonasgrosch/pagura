@@ -5,9 +5,13 @@ pub(crate) fn bad(at: usize, message: &'static str) -> Error {
     Error::syntax(message).at(Position::Buffer(at))
 }
 
-pub(crate) fn cap(count: usize, limit: usize, at: usize) -> Result<()> {
-    if count > limit {
-        Err(bad(at, "font resource budget exceeded"))
+pub(crate) fn limit(at: usize, message: &'static str) -> Error {
+    Error::limit(message).at(Position::Buffer(at))
+}
+
+pub(crate) fn cap(count: usize, ceiling: usize, at: usize) -> Result<()> {
+    if count > ceiling {
+        Err(limit(at, "font resource budget exceeded"))
     } else {
         Ok(())
     }
@@ -30,7 +34,7 @@ impl<'a> Read<'a> {
         let end = self
             .pos
             .checked_add(len)
-            .ok_or_else(|| bad(self.at(), "font offset overflow"))?;
+            .ok_or_else(|| limit(self.at(), "font offset overflow"))?;
         let bytes = self
             .data
             .get(self.pos..end)
@@ -58,7 +62,7 @@ impl<'a> Read<'a> {
         Ok(i32::from_be_bytes([b[0], b[1], b[2], b[3]]))
     }
     pub fn offset(&mut self) -> Result<usize> {
-        usize::try_from(self.u32()?).map_err(|_| bad(self.at(), "font offset overflow"))
+        usize::try_from(self.u32()?).map_err(|_| limit(self.at(), "font offset overflow"))
     }
     pub fn skip(&mut self, len: usize) -> Result<()> {
         self.take(len)?;
@@ -87,7 +91,7 @@ pub(crate) fn finite_path(path: &pagura_raster::Path) -> Result<()> {
             Segment::Close => true,
         };
         if !finite {
-            return Err(bad(0, "nonfinite glyph outline"));
+            return Err(limit(0, "nonfinite glyph outline"));
         }
     }
     Ok(())
