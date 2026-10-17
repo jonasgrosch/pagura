@@ -1,16 +1,24 @@
 //! Order-preserving PDF dictionaries (ISO 32000-2 clause 7.3.7).
 
 use crate::{Name, Value};
+use std::collections::BTreeMap;
 use std::fmt;
+
+/// Up to this many entries, lookup scans the contiguous entries. Beyond it a
+/// key index keeps lookup and insertion logarithmic, so a dictionary with many
+/// distinct keys cannot make parsing or building it quadratic.
+const LINEAR_SCAN: usize = 16;
 
 /// A PDF dictionary that preserves source key order.
 ///
 /// Source order matters for faithful rewriting and for diagnostics; it has no
-/// semantic meaning, so equality ignores it. Dictionaries are small in
-/// practice, and lookup is a linear scan over contiguous entries.
+/// semantic meaning, so equality ignores it. Small dictionaries, the common
+/// case, are a linear scan over contiguous entries; larger ones keep an index.
 #[derive(Clone, Default)]
 pub struct Dictionary {
     entries: Vec<(Name, Value)>,
+    /// Entry positions by key, present once `entries` outgrows [`LINEAR_SCAN`].
+    index: Option<BTreeMap<Name, usize>>,
 }
 
 impl Dictionary {
@@ -23,6 +31,14 @@ impl Dictionary {
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             entries: Vec::with_capacity(capacity),
+            index: None,
+        }
+    }
+
+    fn position(&self, key: &[u8]) -> Option<usize> {
+        match &self.index {
+            Some(index) => index.get(key).copied(),
+            None => self.entries.iter().position(|(name, _)| name == key),
         }
     }
 
@@ -38,21 +54,19 @@ impl Dictionary {
 
     /// The value stored under `key`, if any.
     pub fn get(&self, key: &[u8]) -> Option<&Value> {
-        self.entries
-            .iter()
-            .find_map(|(name, value)| (name.as_bytes() == key).then_some(value))
+        let position = self.position(key)?;
+        self.entries.get(position).map(|(_, value)| value)
     }
 
     /// Mutable access to the value stored under `key`, if any.
     pub fn get_mut(&mut self, key: &[u8]) -> Option<&mut Value> {
-        self.entries
-            .iter_mut()
-            .find_map(|(name, value)| (name.as_bytes() == key).then_some(value))
+        let position = self.position(key)?;
+        self.entries.get_mut(position).map(|(_, value)| value)
     }
 
     /// Whether an entry for `key` exists.
     pub fn contains_key(&self, key: &[u8]) -> bool {
-        self.get(key).is_some()
+        self.position(key).is_some()
     }
 
     /// The name stored under `key`, if the entry exists and is a name.
@@ -68,17 +82,35 @@ impl Dictionary {
     /// Inserts or replaces an entry. A replaced entry keeps its position.
     pub fn insert(&mut self, key: Name, value: Value) -> Option<Value> {
         if let Some(existing) = self.get_mut(key.as_bytes()) {
-            Some(std::mem::replace(existing, value))
-        } else {
-            self.entries.push((key, value));
-            None
+            return Some(std::mem::replace(existing, value));
         }
+        if let Some(index) = &mut self.index {
+            index.insert(key.clone(), self.entries.len());
+        }
+        self.entries.push((key, value));
+        if self.index.is_none() && self.entries.len() > LINEAR_SCAN {
+            self.index = Some(
+                self.entries
+                    .iter()
+                    .enumerate()
+                    .map(|(position, (name, _))| (name.clone(), position))
+                    .collect(),
+            );
+        }
+        None
     }
 
     /// Removes the entry for `key`, preserving the order of the others.
     pub fn remove(&mut self, key: &[u8]) -> Option<Value> {
-        let index = self.entries.iter().position(|(name, _)| name == key)?;
-        Some(self.entries.remove(index).1)
+        let position = self.position(key)?;
+        let (_, value) = self.entries.remove(position);
+        if let Some(index) = &mut self.index {
+            index.remove(key);
+            for later in index.values_mut().filter(|later| **later > position) {
+                *later -= 1;
+            }
+        }
+        Some(value)
     }
 
     /// Entries in source order.
@@ -187,6 +219,47 @@ mod tests {
         assert_eq!(visited, [b"B".to_vec(), b"A".to_vec()]);
         assert_eq!(dictionary.get(b"B"), Some(&Value::String(b"B".to_vec())));
         assert_eq!(dictionary.get(b"A"), Some(&Value::String(b"A".to_vec())));
+    }
+
+    #[test]
+    fn indexed_dictionaries_match_a_linear_model_across_the_threshold() {
+        let mut dictionary = Dictionary::new();
+        let mut model: Vec<(Vec<u8>, i64)> = Vec::new();
+        // A deterministic mix of new keys, replacements and removals, so the
+        // index is built, updated and shifted while order must be preserved.
+        let mut state = 7_u32;
+        for step in 0..2_000_i64 {
+            state = state.wrapping_mul(1_103_515_245).wrapping_add(12_345);
+            let key = format!("K{}", (state >> 16) % 97).into_bytes();
+            if state.is_multiple_of(5) {
+                let expected = model
+                    .iter()
+                    .position(|(name, _)| *name == key)
+                    .map(|position| model.remove(position).1);
+                assert_eq!(dictionary.remove(&key), expected.map(Value::Integer));
+            } else {
+                let expected =
+                    if let Some((_, value)) = model.iter_mut().find(|(name, _)| *name == key) {
+                        Some(std::mem::replace(value, step))
+                    } else {
+                        model.push((key.clone(), step));
+                        None
+                    };
+                assert_eq!(
+                    dictionary.insert(Name::new(&key), Value::Integer(step)),
+                    expected.map(Value::Integer)
+                );
+            }
+            assert_eq!(dictionary.len(), model.len());
+        }
+        assert!(dictionary.index.is_some());
+        let keys: Vec<_> = dictionary.keys().map(Name::as_bytes).collect();
+        let expected: Vec<_> = model.iter().map(|(name, _)| name.as_slice()).collect();
+        assert_eq!(keys, expected);
+        for (name, value) in &model {
+            assert_eq!(dictionary.get(name), Some(&Value::Integer(*value)));
+        }
+        assert_eq!(dictionary.get(b"absent"), None);
     }
 
     #[test]

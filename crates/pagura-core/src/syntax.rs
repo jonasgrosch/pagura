@@ -12,10 +12,6 @@ use crate::{
 /// the last value wins. Readers disagree here, so the repair is always reported.
 pub const DUPLICATE_KEY: Repair = Repair::new("syntax.duplicate-key");
 
-/// Dictionaries larger than this check duplicate keys through an index
-/// instead of a linear scan, keeping parsing linear in the input size.
-const LINEAR_KEY_CHECK: usize = 16;
-
 /// PDF white-space characters (clause 7.2.3, Table 1).
 pub const fn is_whitespace(byte: u8) -> bool {
     matches!(byte, 0 | 9 | 10 | 12 | 13 | 32)
@@ -410,7 +406,6 @@ impl<'a> Parser<'a> {
     fn dictionary(&mut self, depth: usize) -> Result<Dictionary> {
         self.position += 2;
         let mut dictionary = Dictionary::new();
-        let mut index = std::collections::BTreeSet::new();
         loop {
             self.skip_whitespace();
             if self.data[self.position..].starts_with(b">>") {
@@ -427,21 +422,12 @@ impl<'a> Parser<'a> {
             self.nodes += 1;
             let key = self.name()?;
             let value = self.value(depth + 1)?;
-            let duplicate = if dictionary.len() < LINEAR_KEY_CHECK {
-                dictionary.contains_key(key.as_bytes())
-            } else {
-                if index.is_empty() {
-                    index.extend(dictionary.keys().cloned());
-                }
-                !index.insert(key.clone())
-            };
-            if duplicate {
+            if dictionary.insert(key, value).is_some() {
                 self.diagnostics.repair(
                     Diagnostic::new(DUPLICATE_KEY, "dictionary repeats a key; last value kept")
                         .at(key_position),
                 )?;
             }
-            dictionary.insert(key, value);
         }
     }
 
