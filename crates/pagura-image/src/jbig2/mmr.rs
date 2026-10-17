@@ -280,10 +280,7 @@ impl Bits<'_> {
                 (7, 2) => return Ok(Mode::Vertical(-3)),
                 (7, 3) => return Ok(Mode::Vertical(3)),
                 (7, 1) => {
-                    return Err(Error::unsupported(
-                        super::tags::MMR_EXTENSION,
-                        "T.6 extension mode is not implemented",
-                    ));
+                    return Err(Error::syntax("T.88 forbids T.6 extension codes"));
                 }
                 _ => {}
             }
@@ -291,24 +288,22 @@ impl Bits<'_> {
         Err(Error::syntax("invalid JBIG2 MMR mode"))
     }
 
-    fn finish(&mut self) -> Result<()> {
-        for _ in 0..2 {
-            for _ in 0..11 {
-                if self.next()? != 0 {
-                    return Err(Error::syntax("missing JBIG2 MMR EOFB"));
+    fn finish(&mut self, required: bool) -> Result<()> {
+        let remaining = (self.data.len() - self.byte) * 8 - usize::from(self.bit);
+        if required || remaining > 7 {
+            for _ in 0..2 {
+                for _ in 0..11 {
+                    if self.next()? != 0 {
+                        return Err(Error::syntax("invalid JBIG2 MMR EOFB"));
+                    }
                 }
-            }
-            if self.next()? != 1 {
-                return Err(Error::syntax("missing JBIG2 MMR EOFB"));
+                if self.next()? != 1 {
+                    return Err(Error::syntax("invalid JBIG2 MMR EOFB"));
+                }
             }
         }
         while self.bit != 0 {
-            if self.next()? != 0 {
-                return Err(Error::syntax("nonzero JBIG2 MMR padding"));
-            }
-        }
-        if self.byte != self.data.len() {
-            return Err(Error::syntax("trailing JBIG2 MMR data"));
+            self.next()?;
         }
         Ok(())
     }
@@ -320,24 +315,37 @@ enum Mode {
     Vertical(i32),
 }
 
+#[derive(Default)]
+struct ReferenceCursor {
+    position: u32,
+    pair: Option<(u32, u32)>,
+}
+
 fn reference(
     bitmap: &Bitmap,
     y: u32,
     start: u32,
     black: bool,
     first: bool,
-    cursor: &mut u32,
+    cursor: &mut ReferenceCursor,
 ) -> (u32, u32) {
     let mut b1 = bitmap.width;
-    while *cursor < bitmap.width {
-        let x = *cursor;
+    while cursor.position < bitmap.width {
+        let x = cursor.position;
         let before = bitmap.pixel(i64::from(x) - 1, i64::from(y) - 1);
         let after = bitmap.pixel(i64::from(x), i64::from(y) - 1);
         if (x > start || (first && x == 0)) && before != after && after != u8::from(black) {
             b1 = x;
             break;
         }
-        *cursor += 1;
+        cursor.position += 1;
+    }
+    // Horizontal codes before b1 may reuse this pair many times. Cache b2
+    // so a long reference run is scanned once, rather than once per code.
+    if let Some(pair) = cursor.pair
+        && pair.0 == b1
+    {
+        return pair;
     }
     let mut b2 = b1;
     if b2 < bitmap.width {
@@ -349,6 +357,7 @@ fn reference(
             b2 += 1;
         }
     }
+    cursor.pair = Some((b1, b2));
     (b1, b2)
 }
 
@@ -367,6 +376,22 @@ pub(super) fn decode(
     limits: &Limits,
     base: usize,
 ) -> Result<Bitmap> {
+    let (bitmap, consumed) = decode_prefix(data, width, height, limits, base, false)?;
+    if consumed != data.len() {
+        return Err(Error::syntax("trailing JBIG2 MMR data"));
+    }
+    Ok(bitmap)
+}
+
+/// A gray-scale bitplane has an obligatory EOFB and consumes whole bytes (6.2.6).
+pub(super) fn decode_prefix(
+    data: &[u8],
+    width: u32,
+    height: u32,
+    limits: &Limits,
+    base: usize,
+    required: bool,
+) -> Result<(Bitmap, usize)> {
     let mut bits = Bits {
         data,
         byte: 0,
@@ -378,7 +403,7 @@ pub(super) fn decode(
         let mut x = 0;
         let mut black = false;
         let mut first = true;
-        let mut cursor = 0;
+        let mut cursor = ReferenceCursor::default();
         while x < width {
             let (b1, b2) = reference(&bitmap, y, x, black, first, &mut cursor);
             let end = match bits.mode()? {
@@ -413,6 +438,6 @@ pub(super) fn decode(
             x = end;
         }
     }
-    bits.finish()?;
-    Ok(bitmap)
+    bits.finish(required)?;
+    Ok((bitmap, bits.byte))
 }

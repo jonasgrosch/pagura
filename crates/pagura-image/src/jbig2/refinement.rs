@@ -1,5 +1,4 @@
-//! Refinement bitmap coding. T.88 primary-text review is pending; geometric
-//! vectors independently encoded in Python are compared exactly with PDFium.
+//! Refinement bitmap coding, T.88 (02/2000), 6.3 and 7.4.7.
 use super::{
     Bitmap,
     arithmetic::{Context, Decoder},
@@ -79,6 +78,42 @@ impl Model {
         limits: &Limits,
         work: &mut Work,
     ) -> Result<Bitmap> {
+        self.decode_reference(decoder, Reference::whole(reference), request, limits, work)
+    }
+
+    /// A page reference is restricted to the region rectangle (7.4.7.4).
+    pub(super) fn decode_page(
+        &mut self,
+        decoder: &mut Decoder<'_>,
+        page: &Bitmap,
+        origin: (u32, u32),
+        request: Request,
+        limits: &Limits,
+        work: &mut Work,
+    ) -> Result<Bitmap> {
+        self.decode_reference(
+            decoder,
+            Reference {
+                bitmap: page,
+                x: i64::from(origin.0),
+                y: i64::from(origin.1),
+                width: request.width,
+                height: request.height,
+            },
+            request,
+            limits,
+            work,
+        )
+    }
+
+    fn decode_reference(
+        &mut self,
+        decoder: &mut Decoder<'_>,
+        reference: Reference<'_>,
+        request: Request,
+        limits: &Limits,
+        work: &mut Work,
+    ) -> Result<Bitmap> {
         let Request {
             width,
             height,
@@ -105,7 +140,7 @@ impl Model {
                 let rx = i64::from(x) - dx;
                 let ry = i64::from(y) - dy;
                 let implicit = if typical != 0 {
-                    uniform(reference, rx, ry)
+                    uniform(&reference, rx, ry)
                 } else {
                     None
                 };
@@ -113,7 +148,7 @@ impl Model {
                     value
                 } else {
                     let index =
-                        self.context(&bitmap, reference, i64::from(x), i64::from(y), rx, ry);
+                        self.context(&bitmap, &reference, i64::from(x), i64::from(y), rx, ry);
                     decoder.bit(&mut self.contexts[index])?
                 };
                 bitmap.set(x, y, value);
@@ -125,7 +160,7 @@ impl Model {
     fn context(
         &self,
         bitmap: &Bitmap,
-        reference: &Bitmap,
+        reference: &Reference<'_>,
         x: i64,
         y: i64,
         rx: i64,
@@ -163,6 +198,34 @@ impl Model {
     }
 }
 
+/// A clipped, borrowed reference avoids copying an entire page rectangle.
+#[derive(Clone, Copy)]
+struct Reference<'a> {
+    bitmap: &'a Bitmap,
+    x: i64,
+    y: i64,
+    width: u32,
+    height: u32,
+}
+impl<'a> Reference<'a> {
+    fn whole(bitmap: &'a Bitmap) -> Self {
+        Self {
+            bitmap,
+            x: 0,
+            y: 0,
+            width: bitmap.width,
+            height: bitmap.height,
+        }
+    }
+    fn pixel(&self, x: i64, y: i64) -> u8 {
+        if x < 0 || y < 0 || x >= i64::from(self.width) || y >= i64::from(self.height) {
+            0
+        } else {
+            self.bitmap.pixel(self.x + x, self.y + y)
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub(super) struct Request {
     pub(super) width: u32,
@@ -172,7 +235,7 @@ pub(super) struct Request {
     pub(super) prediction: bool,
 }
 
-fn uniform(reference: &Bitmap, x: i64, y: i64) -> Option<u8> {
+fn uniform(reference: &Reference<'_>, x: i64, y: i64) -> Option<u8> {
     let value = reference.pixel(x, y);
     for dy in -1..=1 {
         for dx in -1..=1 {

@@ -6,6 +6,7 @@ use pagura_testkit::{fixture, fixture_path};
 #[test]
 fn independent_bitmaps_and_hostile_vectors() {
     let mut count = 0;
+    let mut failures = Vec::new();
     for entry in std::fs::read_dir(fixture_path("jbig2", "")).unwrap() {
         let path = entry.unwrap().path();
         if path.extension().is_none_or(|s| s != "params") {
@@ -24,16 +25,21 @@ fn independent_bitmaps_and_hostile_vectors() {
         let result = decode(&data, Some(&globals), &limits);
         match params["outcome"] {
             "valid" => {
-                let bitmap = result.unwrap_or_else(|e| panic!("{name}: {e}"));
-                assert_eq!(
-                    bitmap,
-                    Bitmap {
-                        width: params["width"].parse().unwrap(),
-                        height: params["height"].parse().unwrap(),
-                        data: fixture("jbig2", &format!("{name}.out"))
-                    },
-                    "{name}"
-                );
+                let bitmap = match result {
+                    Ok(bitmap) => bitmap,
+                    Err(error) => {
+                        failures.push(format!("{name}: {error}"));
+                        continue;
+                    }
+                };
+                let expected = Bitmap {
+                    width: params["width"].parse().unwrap(),
+                    height: params["height"].parse().unwrap(),
+                    data: fixture("jbig2", &format!("{name}.out")),
+                };
+                if bitmap != expected {
+                    failures.push(format!("{name}: bitmap mismatch"));
+                }
                 let capped = Limits {
                     pixels: (bitmap.width * bitmap.height) as usize - 1,
                     ..limits
@@ -55,7 +61,10 @@ fn independent_bitmaps_and_hostile_vectors() {
             }
             outcome => {
                 let error = result.expect_err(name);
-                assert_eq!(error.kind.name(), outcome, "{name}: {error}");
+                if error.kind.name() != outcome {
+                    failures.push(format!("{name}: expected {outcome}, got {error}"));
+                    continue;
+                }
                 if let Some(feature) = params.get("feature") {
                     assert_eq!(error.feature().unwrap().as_str(), *feature, "{name}");
                 }
@@ -66,6 +75,7 @@ fn independent_bitmaps_and_hostile_vectors() {
             }
         }
     }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
     assert!(count >= 30);
 }
 
@@ -131,7 +141,7 @@ fn truncations_and_mutations_remain_bounded() {
         decoded_bytes: 160_000,
         objects: 64,
         value_nodes: 64,
-        operations: 256,
+        operations: 4096,
         raster_work: 200_000,
         stream_bytes: 4096,
         file_bytes: 8192,
@@ -146,6 +156,14 @@ fn truncations_and_mutations_remain_bounded() {
         "symbol-multiple-aggregation-t0",
         "symbol-mixed-aggregation-state-t1",
         "retained-refinement-contexts-t0",
+        "huffman-user-width-table",
+        "huffman-symbol-aggregation-t0",
+        "huffman-retained-refinement-t1",
+        "huffman-layout-1-3",
+        "halftone-arithmetic-t0-skip1-r128-op4",
+        "halftone-mmr-t0-skip0-r0-op2",
+        "unknown-length-arithmetic",
+        "unknown-length-mmr",
     ] {
         let data = fixture("jbig2", &format!("{name}.jb2"));
         let globals = fixture("jbig2", &format!("{name}.globals"));
@@ -190,6 +208,10 @@ fn refinement_errors_reach_the_expected_coding_field() {
             "missing JBIG2 retained symbol contexts",
         ),
         (
+            "retained-context-adaptive-mismatch",
+            "incompatible JBIG2 retained bitmap parameters",
+        ),
+        (
             "retained-contexts-incompatible",
             "incompatible JBIG2 retained generic contexts",
         ),
@@ -213,4 +235,17 @@ fn refinement_errors_reach_the_expected_coding_field() {
         assert_eq!(error.message, message, "{name}");
         assert!(matches!(error.position, Position::Buffer(_)), "{name}");
     }
+}
+
+#[test]
+fn huffman_table_setup_is_charged_before_construction() {
+    let data = fixture("jbig2", "huffman-symbols-raw-4-2.jb2");
+    let globals = fixture("jbig2", "huffman-symbols-raw-4-2.globals");
+    let limits = Limits {
+        operations: super::huffman::STANDARD_ROWS,
+        ..Limits::default()
+    };
+    let error = decode(&data, Some(&globals), &limits).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
+    assert_eq!(error.message, "JBIG2 cumulative operations exceed budget");
 }

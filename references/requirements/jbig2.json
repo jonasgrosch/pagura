@@ -1,39 +1,69 @@
 {
   "schema": 2,
   "area": "jbig2",
-  "scope": "Verified only the PDF JBIG2 mapping against the locally supplied ISO 32000-2:2020 sponsored EC3 text, clause 7.4.7 and Table 12: bitonal data, page 1, embedded sequential organization, forbidden file/EOP/EOF structures and separate page-0 globals, including single-image use. The referenced optional marker encoding and all coding algorithms remain pending primary-text review of ISO/IEC 14492:2019 / ITU-T T.88 (2018); T.4/T.6 run coding is also pending. Exact PDFium comparisons are differential evidence, not standards verification. Resource budgets, stable unsupported tags and conservative handling of ambiguous page operators are documented project choices.",
+  "scope": "Verified each listed requirement against the supplied ISO 32000-2:2020 sponsored EC3 7.4.7/Table 12 and the locally supplied ITU-T T.88 (02/2000) base text: segment grammar/types, generic/refinement, arithmetic coding/integers, symbols/text, retention, Huffman Tables B.1\u2013B.15 and user tables, patterns, halftones, gray planes, page flags/operators and stripes. MMR modes and run words were cross-checked against local T.6 (11/1988) and T.4 (07/2003). This is clause-level implementation review with generated and known-answer tests, not complete PDF or T.88 conformance certification. Later amendments and the 2018/2019 revisions were not reviewed; only their extended-template/colour behaviour remains pending primary-text review. Profile metadata is parsed but profile feature-set compliance is not separately validated. Two explicit compatibility cases are marked strict_valid=false: PDF-global retention across separate streams and standalone arithmetic text stopping at its declared instance count. Their acceptance is not evidence that those encodings conform to T.88.",
   "requirements": [
     {
       "id": "jbig2-embedded-segments",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7",
-        "Table 12"
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 7.2.1\u20137.2.7",
+        "T.88 (02/2000) 7.3\u20137.3.2",
+        "T.88 (02/2000) D.1",
+        "T.88 (02/2000) D.3",
+        "ISO 32000-2:2020 Table 12"
       ],
-      "status": "implemented",
+      "status": "partial",
+      "description": "PDF carries page-1 segments sequentially and page-0 globals separately, without file headers, optional markers, EOP or EOF; references obey number widths, retention and segment-type restrictions.",
+      "gaps": "Retention is validated within a stream; PDF globals remain available at the page-stream boundary even when their retain flag was zero. This compatibility exception is not a verified T.88 retention rule.",
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
-      "gaps": "",
-      "description": "PDF embedded sequential organization; headers, referrals and page associations.",
       "primary_text_review": {
-        "rule": "Use PDF page 1 in embedded sequential organization, omit file/EOP/EOF structures, and put page-0 globals in a separate stream even for one image.",
-        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
-        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
-        "verdict": "verified PDF mapping; pending primary-text review for segment grammar"
+        "rule": "PDF carries page-1 segments sequentially and page-0 globals separately, without file headers, optional markers, EOP or EOF; references obey number widths, retention and segment-type restrictions.",
+        "implementation_agreement": "agrees for header grammar and PDF mapping; the separate-stream global-retention exception is explicitly recorded as a compatibility choice",
+        "generated_expectations_agreement": "Conforming vectors agree with the listed rules; the explicitly marked strict_valid=false compatibility vector expects accepted pixels and is not a conformance claim.",
+        "verdict": "verified grammar and PDF mapping, with a documented cross-stream retention validation gap"
       },
-      "external_dependencies": [
-        {
-          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
-          "review": "pending primary-text review",
-          "behavior": "Segment-header fields, referral widths/order, retention flags, and the numeric optional embedded-marker encoding."
-        }
+      "vector_ids": [
+        "jbig2/pdf-globals-cross-stream-lifetime",
+        "jbig2/pdf-marker-ffaa-forbidden",
+        "jbig2/pdf-marker-ffab-forbidden",
+        "jbig2/deferred-non-extension-reference",
+        "jbig2/deferred-attached-extension",
+        "jbig2/unknown-length-mmr",
+        "jbig2/unknown-length-arithmetic",
+        "jbig2/header-number-maximum",
+        "jbig2/retention-reference-after-release",
+        "jbig2/pdf-sequential-nonmonotonic",
+        "jbig2/pdf-file-header-forbidden",
+        "jbig2/pdf-globals-single-image",
+        "jbig2/pdf-global-in-page-stream",
+        "jbig2/pdf-page-in-globals",
+        "jbig2/pdf-page-two-in-globals",
+        "jbig2/pdf-global-missing",
+        "jbig2/header-number-255",
+        "jbig2/header-number-256",
+        "jbig2/header-number-257",
+        "jbig2/header-number-65536",
+        "jbig2/header-number-65537",
+        "jbig2/symbol-reference-width-256",
+        "jbig2/symbol-reference-width-257",
+        "jbig2/symbol-reference-width-65536",
+        "jbig2/symbol-reference-width-65537",
+        "jbig2/symbol-reference-width-70002",
+        "jbig2/extended-referrals-valid"
       ],
       "differential_evidence": {
         "engine": "PDFium 156.0.8076.0",
         "bitmap_vectors": [
+          "jbig2/pdf-globals-cross-stream-lifetime",
+          "jbig2/deferred-attached-extension",
+          "jbig2/unknown-length-mmr",
+          "jbig2/header-number-maximum",
           "jbig2/pdf-sequential-nonmonotonic",
           "jbig2/pdf-globals-single-image",
           "jbig2/header-number-255",
@@ -48,34 +78,118 @@
           "jbig2/symbol-reference-width-70002",
           "jbig2/extended-referrals-valid"
         ],
-        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+        "discrepancy_vectors": [
+          "jbig2/unknown-length-arithmetic"
+        ],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [
+            "jbig2/pdf-globals-cross-stream-lifetime",
+            "jbig2/unknown-length-mmr",
+            "jbig2/unknown-length-arithmetic",
+            "jbig2/pdf-sequential-nonmonotonic",
+            "jbig2/pdf-globals-single-image",
+            "jbig2/header-number-255",
+            "jbig2/header-number-256",
+            "jbig2/header-number-257",
+            "jbig2/header-number-65536",
+            "jbig2/header-number-65537",
+            "jbig2/symbol-reference-width-256",
+            "jbig2/symbol-reference-width-257",
+            "jbig2/symbol-reference-width-65536",
+            "jbig2/symbol-reference-width-65537",
+            "jbig2/symbol-reference-width-70002"
+          ],
+          "discrepancy_vectors": [
+            "jbig2/deferred-attached-extension",
+            "jbig2/header-number-maximum",
+            "jbig2/extended-referrals-valid"
+          ]
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
       }
     },
     {
       "id": "jbig2-generic-arithmetic",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7"
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 6.2.5.2\u20136.2.5.7",
+        "T.88 (02/2000) 7.4.6",
+        "T.88 (02/2000) 7.2.7",
+        "T.88 (02/2000) Annex E"
       ],
       "status": "partial",
+      "description": "Arithmetic generic regions use causal adaptive templates 0\u20133, optional typical-row prediction, and explicit actual row counts for unknown-length segments.",
+      "gaps": "Extended adaptive templates from later amendments are unsupported and pending review of those amendments.",
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
-      "gaps": "Templates 0\u20133, adaptive pixels, TPGDON and MQ. Extended templates and unspecified segment lengths remain unsupported.",
       "primary_text_review": {
-        "rule": "The PDF filter decodes one bitonal page; arithmetic templates and MQ coding are delegated to ISO/IEC 14492.",
-        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
-        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
-        "verdict": "verified PDF mapping only; pending primary-text review for arithmetic coding"
+        "rule": "Arithmetic generic regions use causal adaptive templates 0\u20133, optional typical-row prediction, and explicit actual row counts for unknown-length segments.",
+        "implementation_agreement": "agrees within the stated scope",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses; Extended adaptive templates from later amendments are unsupported and pending review of those amendments."
       },
-      "external_dependencies": [
-        {
-          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
-          "review": "pending primary-text review",
-          "behavior": "Generic templates 0\u20133, adaptive pixels, TPGDON, MQ probability states/byte stuffing and termination."
-        }
+      "vector_ids": [
+        "jbig2/arithmetic-t0-white",
+        "jbig2/arithmetic-t0-black",
+        "jbig2/arithmetic-t0-checker",
+        "jbig2/arithmetic-t0-geometry",
+        "jbig2/arithmetic-t0-repeated",
+        "jbig2/arithmetic-t0-noise",
+        "jbig2/arithmetic-t0-typical-white",
+        "jbig2/arithmetic-t0-typical-black",
+        "jbig2/arithmetic-t0-typical-checker",
+        "jbig2/arithmetic-t0-typical-geometry",
+        "jbig2/arithmetic-t0-typical-repeated",
+        "jbig2/arithmetic-t0-typical-noise",
+        "jbig2/arithmetic-t0-adaptive",
+        "jbig2/arithmetic-t1-white",
+        "jbig2/arithmetic-t1-black",
+        "jbig2/arithmetic-t1-checker",
+        "jbig2/arithmetic-t1-geometry",
+        "jbig2/arithmetic-t1-repeated",
+        "jbig2/arithmetic-t1-noise",
+        "jbig2/arithmetic-t1-typical-white",
+        "jbig2/arithmetic-t1-typical-black",
+        "jbig2/arithmetic-t1-typical-checker",
+        "jbig2/arithmetic-t1-typical-geometry",
+        "jbig2/arithmetic-t1-typical-repeated",
+        "jbig2/arithmetic-t1-typical-noise",
+        "jbig2/arithmetic-t1-adaptive",
+        "jbig2/arithmetic-t2-white",
+        "jbig2/arithmetic-t2-black",
+        "jbig2/arithmetic-t2-checker",
+        "jbig2/arithmetic-t2-geometry",
+        "jbig2/arithmetic-t2-repeated",
+        "jbig2/arithmetic-t2-noise",
+        "jbig2/arithmetic-t2-typical-white",
+        "jbig2/arithmetic-t2-typical-black",
+        "jbig2/arithmetic-t2-typical-checker",
+        "jbig2/arithmetic-t2-typical-geometry",
+        "jbig2/arithmetic-t2-typical-repeated",
+        "jbig2/arithmetic-t2-typical-noise",
+        "jbig2/arithmetic-t2-adaptive",
+        "jbig2/arithmetic-t3-white",
+        "jbig2/arithmetic-t3-black",
+        "jbig2/arithmetic-t3-checker",
+        "jbig2/arithmetic-t3-geometry",
+        "jbig2/arithmetic-t3-repeated",
+        "jbig2/arithmetic-t3-noise",
+        "jbig2/arithmetic-t3-typical-white",
+        "jbig2/arithmetic-t3-typical-black",
+        "jbig2/arithmetic-t3-typical-checker",
+        "jbig2/arithmetic-t3-typical-geometry",
+        "jbig2/arithmetic-t3-typical-repeated",
+        "jbig2/arithmetic-t3-typical-noise",
+        "jbig2/arithmetic-t3-adaptive",
+        "jbig2/arithmetic-long-tail-0",
+        "jbig2/arithmetic-long-tail-1",
+        "jbig2/arithmetic-long-tail-2",
+        "jbig2/arithmetic-long-tail-3"
       ],
       "differential_evidence": {
         "engine": "PDFium 156.0.8076.0",
@@ -137,43 +251,122 @@
           "jbig2/arithmetic-long-tail-2",
           "jbig2/arithmetic-long-tail-3"
         ],
-        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [
+            "jbig2/arithmetic-t0-white",
+            "jbig2/arithmetic-t0-black",
+            "jbig2/arithmetic-t0-checker",
+            "jbig2/arithmetic-t0-geometry",
+            "jbig2/arithmetic-t0-repeated",
+            "jbig2/arithmetic-t0-noise",
+            "jbig2/arithmetic-t0-typical-white",
+            "jbig2/arithmetic-t0-typical-black",
+            "jbig2/arithmetic-t0-typical-checker",
+            "jbig2/arithmetic-t0-typical-geometry",
+            "jbig2/arithmetic-t0-typical-repeated",
+            "jbig2/arithmetic-t0-typical-noise",
+            "jbig2/arithmetic-t0-adaptive",
+            "jbig2/arithmetic-t1-white",
+            "jbig2/arithmetic-t1-black",
+            "jbig2/arithmetic-t1-checker",
+            "jbig2/arithmetic-t1-geometry",
+            "jbig2/arithmetic-t1-repeated",
+            "jbig2/arithmetic-t1-noise",
+            "jbig2/arithmetic-t1-typical-white",
+            "jbig2/arithmetic-t1-typical-black",
+            "jbig2/arithmetic-t1-typical-checker",
+            "jbig2/arithmetic-t1-typical-geometry",
+            "jbig2/arithmetic-t1-typical-repeated",
+            "jbig2/arithmetic-t1-typical-noise",
+            "jbig2/arithmetic-t1-adaptive",
+            "jbig2/arithmetic-t2-white",
+            "jbig2/arithmetic-t2-black",
+            "jbig2/arithmetic-t2-checker",
+            "jbig2/arithmetic-t2-geometry",
+            "jbig2/arithmetic-t2-repeated",
+            "jbig2/arithmetic-t2-noise",
+            "jbig2/arithmetic-t2-typical-white",
+            "jbig2/arithmetic-t2-typical-black",
+            "jbig2/arithmetic-t2-typical-checker",
+            "jbig2/arithmetic-t2-typical-geometry",
+            "jbig2/arithmetic-t2-typical-repeated",
+            "jbig2/arithmetic-t2-typical-noise",
+            "jbig2/arithmetic-t2-adaptive",
+            "jbig2/arithmetic-t3-white",
+            "jbig2/arithmetic-t3-black",
+            "jbig2/arithmetic-t3-checker",
+            "jbig2/arithmetic-t3-geometry",
+            "jbig2/arithmetic-t3-repeated",
+            "jbig2/arithmetic-t3-noise",
+            "jbig2/arithmetic-t3-typical-white",
+            "jbig2/arithmetic-t3-typical-black",
+            "jbig2/arithmetic-t3-typical-checker",
+            "jbig2/arithmetic-t3-typical-geometry",
+            "jbig2/arithmetic-t3-typical-repeated",
+            "jbig2/arithmetic-t3-typical-noise",
+            "jbig2/arithmetic-t3-adaptive",
+            "jbig2/arithmetic-long-tail-0",
+            "jbig2/arithmetic-long-tail-1",
+            "jbig2/arithmetic-long-tail-2",
+            "jbig2/arithmetic-long-tail-3"
+          ],
+          "discrepancy_vectors": []
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
       }
     },
     {
       "id": "jbig2-generic-mmr",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7"
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 6.2.6",
+        "T.6 (11/1988) 2.2.1\u20132.2.5, 2.4.1, Tables 1\u20133",
+        "T.4 (07/2003) 4.1.1, Tables 2, 3a, 3b"
       ],
-      "status": "partial",
+      "status": "implemented",
+      "description": "MMR maps black to one, starts on a white reference row, byte-aligns invocations, permits omitted EOFB with known byte length, requires EOFB for gray planes or unknown lengths, and forbids T.6 extension coding.",
+      "gaps": "",
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
-      "gaps": "T.6 pass, horizontal, vertical modes and EOFB. Uncompressed extension remains unsupported.",
       "primary_text_review": {
-        "rule": "The PDF filter decodes one bitonal page; MMR coding is delegated to ISO/IEC 14492.",
-        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
-        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
-        "verdict": "verified PDF mapping only; pending primary-text review for T.88/T.4/T.6 coding"
+        "rule": "MMR maps black to one, starts on a white reference row, byte-aligns invocations, permits omitted EOFB with known byte length, requires EOFB for gray planes or unknown lengths, and forbids T.6 extension coding.",
+        "implementation_agreement": "agrees within the stated scope",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses"
       },
-      "external_dependencies": [
-        {
-          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
-          "review": "pending primary-text review",
-          "behavior": "MMR pass/horizontal/vertical modes, T.4 run tables, EOFB and padding."
-        },
-        {
-          "standard": "ITU-T T.4 / ITU-T T.6",
-          "review": "pending primary-text review",
-          "behavior": "Every white/black terminating and makeup run code, two-dimensional modes, EOFB and padding."
-        }
+      "vector_ids": [
+        "jbig2/mmr-sparse-reference-dense-row",
+        "jbig2/mmr-no-eofb-padding-0",
+        "jbig2/mmr-no-eofb-padding-1",
+        "jbig2/mmr-white",
+        "jbig2/mmr-black",
+        "jbig2/mmr-checker",
+        "jbig2/mmr-geometry",
+        "jbig2/mmr-repeated",
+        "jbig2/mmr-noise",
+        "jbig2/mmr-terminating",
+        "jbig2/mmr-makeup",
+        "jbig2/mmr-vertical-0",
+        "jbig2/mmr-vertical-1",
+        "jbig2/mmr-vertical-2",
+        "jbig2/mmr-vertical-3",
+        "jbig2/mmr-vertical-4",
+        "jbig2/mmr-vertical-5",
+        "jbig2/mmr-vertical-6",
+        "jbig2/mmr-pass"
       ],
       "differential_evidence": {
         "engine": "PDFium 156.0.8076.0",
         "bitmap_vectors": [
+          "jbig2/mmr-sparse-reference-dense-row",
+          "jbig2/mmr-no-eofb-padding-0",
+          "jbig2/mmr-no-eofb-padding-1",
           "jbig2/mmr-white",
           "jbig2/mmr-black",
           "jbig2/mmr-checker",
@@ -191,39 +384,74 @@
           "jbig2/mmr-vertical-6",
           "jbig2/mmr-pass"
         ],
-        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [
+            "jbig2/mmr-sparse-reference-dense-row",
+            "jbig2/mmr-no-eofb-padding-0",
+            "jbig2/mmr-no-eofb-padding-1",
+            "jbig2/mmr-white",
+            "jbig2/mmr-black",
+            "jbig2/mmr-checker",
+            "jbig2/mmr-geometry",
+            "jbig2/mmr-repeated",
+            "jbig2/mmr-noise",
+            "jbig2/mmr-terminating",
+            "jbig2/mmr-makeup",
+            "jbig2/mmr-vertical-0",
+            "jbig2/mmr-vertical-1",
+            "jbig2/mmr-vertical-2",
+            "jbig2/mmr-vertical-3",
+            "jbig2/mmr-vertical-4",
+            "jbig2/mmr-vertical-5",
+            "jbig2/mmr-vertical-6",
+            "jbig2/mmr-pass"
+          ],
+          "discrepancy_vectors": []
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
       }
     },
     {
       "id": "jbig2-page-combination",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7"
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 7.4.1",
+        "T.88 (02/2000) 7.4.7.5",
+        "T.88 (02/2000) 7.4.8\u20137.4.10",
+        "T.88 (02/2000) 8.2"
       ],
-      "status": "partial",
+      "status": "implemented",
+      "description": "The page declares initial pixels, direct-region operators and auxiliary/refinement capabilities; refinement against the page uses REPLACE, and stripes constrain both preceding and subsequent drawing.",
+      "gaps": "",
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
-      "gaps": "A region operator differing from a non-overridable page default is explicitly unsupported pending review against the full T.88 text.",
-      "description": "Default pixels, combination operators, clipping and striped page height.",
       "primary_text_review": {
-        "rule": "PDF represents only page 1; page initialization, stripes and region-combination semantics are delegated to ISO/IEC 14492.",
-        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
-        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
-        "verdict": "verified PDF mapping only; pending primary-text review for page composition"
+        "rule": "The page declares initial pixels, direct-region operators and auxiliary/refinement capabilities; refinement against the page uses REPLACE, and stripes constrain both preceding and subsequent drawing.",
+        "implementation_agreement": "agrees within the stated scope; PDF forbids the EOP segment; stream exhaustion closes the page and applies its final-stripe checks",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses"
       },
-      "external_dependencies": [
-        {
-          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
-          "review": "pending primary-text review",
-          "behavior": "Default pixels/operators, region coordinates, clipping, unknown heights and end-of-stripe fields."
-        }
+      "vector_ids": [
+        "jbig2/stripe-zero-maximum-first-row",
+        "jbig2/combine-clipped-0",
+        "jbig2/combine-clipped-1",
+        "jbig2/combine-clipped-2",
+        "jbig2/combine-clipped-3",
+        "jbig2/combine-clipped-4",
+        "jbig2/striped-unknown-height",
+        "jbig2/intermediate-default-black",
+        "jbig2/page-default-operator"
       ],
       "differential_evidence": {
         "engine": "PDFium 156.0.8076.0",
         "bitmap_vectors": [
+          "jbig2/stripe-zero-maximum-first-row",
           "jbig2/combine-clipped-0",
           "jbig2/combine-clipped-1",
           "jbig2/combine-clipped-2",
@@ -232,100 +460,208 @@
           "jbig2/striped-unknown-height",
           "jbig2/intermediate-default-black"
         ],
-        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [
+            "jbig2/combine-clipped-0",
+            "jbig2/combine-clipped-1",
+            "jbig2/combine-clipped-2",
+            "jbig2/combine-clipped-3",
+            "jbig2/combine-clipped-4",
+            "jbig2/striped-unknown-height",
+            "jbig2/intermediate-default-black"
+          ],
+          "discrepancy_vectors": [
+            "jbig2/stripe-zero-maximum-first-row"
+          ]
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
       }
     },
     {
       "id": "jbig2-hostile-input",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7"
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 7.2",
+        "T.88 (02/2000) 7.3.1",
+        "T.88 (02/2000) 6.2.6",
+        "T.88 (02/2000) Annex B",
+        "T.88 (02/2000) Annex E",
+        "T.88 (02/2000) 7.4.1\u20137.4.8",
+        "T.88 (02/2000) 7.4.10"
       ],
       "status": "implemented",
+      "description": "Malformed syntax is rejected with positions and every traversal, coding buffer and drawing operation is bounded.",
+      "gaps": "",
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
-      "gaps": "",
-      "description": "Positioned errors, pre-allocation byte/pixel limits, and cumulative referral, symbol, segment and operation work limits.",
       "primary_text_review": {
-        "rule": "Clause 7.4.7 defines the PDF representation but does not specify resource-budget values or error categories.",
-        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
-        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
-        "verdict": "documented project choice for bounds/errors; pending primary-text review for format rejection rules"
+        "rule": "Malformed syntax is rejected with positions and every traversal, coding buffer and drawing operation is bounded.",
+        "implementation_agreement": "agrees within the stated scope; Budget amounts and error categories are project policy under ADRs 0003/0010; metadata is bounded by object/referral counts and bitmap/context storage by decoded_bytes",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses"
       },
-      "external_dependencies": [
-        {
-          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
-          "review": "pending primary-text review",
-          "behavior": "Malformed segment fields, arithmetic termination/stuffing, cycles and corrupt bitmap grammar."
-        }
+      "vector_ids": [
+        "jbig2/retention-unused-short-bit",
+        "jbig2/refinement-page-without-replace",
+        "jbig2/refinement-reference-size-mismatch",
+        "jbig2/refinement-reference-operator-mismatch",
+        "jbig2/refinement-reference-used-twice",
+        "jbig2/page-disallows-refinement",
+        "jbig2/page-fixed-operator-intermediate-mismatch",
+        "jbig2/page-disallows-auxiliary",
+        "jbig2/stripe-drawing-below-end",
+        "jbig2/stripe-drawing-above-previous-end",
+        "jbig2/huffman-table-reserved-flags",
+        "jbig2/huffman-table-invalid-bounds",
+        "jbig2/huffman-table-prefix-overflow",
+        "jbig2/halftone-referral-missing",
+        "jbig2/extension-invalid-necessary-bit",
+        "jbig2/refinement-adaptive-noncausal",
+        "jbig2/refinement-reserved-flags",
+        "jbig2/refinement-two-references",
+        "jbig2/refinement-wrong-reference",
+        "jbig2/refinement-arithmetic-truncated",
+        "jbig2/text-refinement-zero-width",
+        "jbig2/text-refinement-pixel-limit",
+        "jbig2/text-refinement-invalid-indicator",
+        "jbig2/retained-contexts-missing",
+        "jbig2/retained-contexts-incompatible",
+        "jbig2/retained-refinement-contexts-missing",
+        "jbig2/missing-page",
+        "jbig2/truncated-header",
+        "jbig2/truncated-body",
+        "jbig2/arithmetic-truncated",
+        "jbig2/bad-adaptive",
+        "jbig2/page-two",
+        "jbig2/page-zero",
+        "jbig2/duplicate-page",
+        "jbig2/duplicate-number",
+        "jbig2/zero-width",
+        "jbig2/reserved-page-flag",
+        "jbig2/end-page-forbidden",
+        "jbig2/end-file-forbidden",
+        "jbig2/forward-referral",
+        "jbig2/missing-referral",
+        "jbig2/unexpected-referral",
+        "jbig2/extended-referrals",
+        "jbig2/noncanonical-referrals",
+        "jbig2/reserved-referrals",
+        "jbig2/bad-stripe",
+        "jbig2/unfinished-stripe",
+        "jbig2/mmr-truncated",
+        "jbig2/mmr-nonprogressing",
+        "jbig2/palette-forbidden",
+        "jbig2/cyclic-referral",
+        "jbig2/huge-dimensions",
+        "jbig2/truncated-symbol-dictionary",
+        "jbig2/truncated-text-region",
+        "jbig2/truncated-pattern-dictionary",
+        "jbig2/truncated-halftone-region",
+        "jbig2/refinement-truncated",
+        "jbig2/truncated-huffman-table",
+        "jbig2/truncated-segment-type",
+        "jbig2/unknown-length-truncated",
+        "jbig2/symbol-refinement-truncated",
+        "jbig2/symbol-context-truncated",
+        "jbig2/text-refinement-truncated",
+        "jbig2/text-layout-truncated",
+        "jbig2/symbol-out-of-band-height",
+        "jbig2/symbol-count-overflow",
+        "jbig2/text-unused-identifier",
+        "jbig2/text-wrong-referral-type",
+        "jbig2/arithmetic-invalid-stuffing"
       ],
       "differential_evidence": {
         "engine": "PDFium 156.0.8076.0",
         "bitmap_vectors": [],
-        "meaning": "No positive coding certification: malformed and unsupported expectations follow the documented strict/bounded policy and crate tests."
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [],
+          "discrepancy_vectors": []
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
       }
     },
     {
       "id": "jbig2-explicit-unsupported",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7"
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 7.3",
+        "T.88 (02/2000) 7.4.14",
+        "T.88 (02/2000) 7.4.15",
+        "ISO 32000-2:2020 7.4.7 colour restrictions"
       ],
       "status": "partial",
+      "description": "Reserved segment types, forbidden PDF structures and T.6 extensions are syntax errors; unknown necessary extensions and later extended templates return explicit unsupported tags.",
+      "gaps": "Necessary extension payloads and later extended adaptive templates are unsupported.",
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
-      "gaps": "Huffman symbols/text, other text layouts, pattern/halftone, user Huffman, profile/extension segments, extended templates, unspecified segment lengths and T.6 uncompressed extension remain explicitly unsupported.",
       "primary_text_review": {
-        "rule": "PDF forbids palette segments and colour-extension flags; explicit tags for other unimplemented coding procedures are a project choice.",
-        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
-        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
-        "verdict": "verified PDF palette/colour restriction; documented tag policy; pending primary-text review for coding modes"
+        "rule": "Reserved segment types, forbidden PDF structures and T.6 extensions are syntax errors; unknown necessary extensions and later extended templates return explicit unsupported tags.",
+        "implementation_agreement": "agrees within the stated scope",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses; Necessary extension payloads and later extended adaptive templates are unsupported."
       },
-      "external_dependencies": [
-        {
-          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
-          "review": "pending primary-text review",
-          "behavior": "Segment identifiers/flags and the coding modes named by unsupported tags."
-        }
+      "vector_ids": [
+        "jbig2/pdf-region-colour-extension-forbidden",
+        "jbig2/reserved-generic-type-32",
+        "jbig2/unsupported-extension",
+        "jbig2/unsupported-extended-template",
+        "jbig2/unsupported-mmr-extension"
       ],
       "differential_evidence": {
         "engine": "PDFium 156.0.8076.0",
         "bitmap_vectors": [],
-        "meaning": "No positive coding certification: malformed and unsupported expectations follow the documented strict/bounded policy and crate tests."
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [],
+          "discrepancy_vectors": []
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
       }
     },
     {
       "id": "jbig2-arithmetic-symbols",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7",
-        "Table 12"
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 6.5.5\u20136.5.10",
+        "T.88 (02/2000) 7.4.2",
+        "T.88 (02/2000) A.2",
+        "T.88 (02/2000) A.3"
       ],
-      "status": "partial",
+      "status": "implemented",
+      "description": "Symbol dictionaries decode height classes, width deltas, generic bitmaps and alternating export runs, preserving import and export order.",
+      "gaps": "",
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
-      "gaps": "Huffman symbol dictionaries remain unsupported. Arithmetic direct symbols, refinement/aggregation and compatible retained bitmap contexts have exact differential coverage; all T.88 semantics are pending primary-text review.",
       "primary_text_review": {
-        "rule": "PDF allows shared page-0 data through JBIG2Globals; symbol dictionary algorithms are delegated to ISO/IEC 14492.",
-        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
-        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
-        "verdict": "verified PDF globals mapping only; pending primary-text review for dictionary coding"
+        "rule": "Symbol dictionaries decode height classes, width deltas, generic bitmaps and alternating export runs, preserving import and export order.",
+        "implementation_agreement": "agrees within the stated scope",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses"
       },
-      "external_dependencies": [
-        {
-          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
-          "review": "pending primary-text review",
-          "behavior": "Height classes, width differences, imported/exported symbols, arithmetic integers, refinement/aggregation and retained contexts."
-        }
+      "vector_ids": [
+        "jbig2/symbols-t0-text",
+        "jbig2/symbols-t1-text",
+        "jbig2/symbols-t2-text",
+        "jbig2/symbols-t3-text",
+        "jbig2/symbol-import-and-export"
       ],
       "differential_evidence": {
         "engine": "PDFium 156.0.8076.0",
@@ -336,38 +672,120 @@
           "jbig2/symbols-t3-text",
           "jbig2/symbol-import-and-export"
         ],
-        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [
+            "jbig2/symbols-t0-text",
+            "jbig2/symbols-t1-text",
+            "jbig2/symbols-t2-text",
+            "jbig2/symbols-t3-text",
+            "jbig2/symbol-import-and-export"
+          ],
+          "discrepancy_vectors": []
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
       }
     },
     {
       "id": "jbig2-arithmetic-text",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7"
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 6.4.5\u20136.4.11",
+        "T.88 (02/2000) 7.4.3",
+        "T.88 (02/2000) A.2",
+        "T.88 (02/2000) A.3"
       ],
       "status": "partial",
+      "description": "Text decodes strips, identifiers and refinements with signed placement, four reference corners, transposition and a final OOB for each strip.",
+      "gaps": "Standalone arithmetic text stops at the declared instance count without validating the final OOB; aggregate text consumes it because the coder continues into dictionary fields.",
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
-      "gaps": "Huffman, transposition and reference corners other than top-left remain unsupported. Text refinement has exact differential coverage; T.88 semantics are pending primary-text review.",
       "primary_text_review": {
-        "rule": "The PDF filter decodes bitonal page-1 image data; text regions remain image coding rather than PDF font/text operators.",
-        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
-        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
-        "verdict": "verified PDF bitonal/page mapping only; pending primary-text review for text-region coding"
+        "rule": "Text decodes strips, identifiers and refinements with signed placement, four reference corners, transposition and a final OOB for each strip.",
+        "implementation_agreement": "agrees on returned pixels and on aggregate stream continuation; standalone final-OOB syntax validation remains a compatibility limitation",
+        "generated_expectations_agreement": "Conforming vectors agree with the listed rules; the explicitly marked strict_valid=false compatibility vector expects accepted pixels and is not a conformance claim.",
+        "verdict": "verified bitmap procedure, with a documented standalone terminal-OOB validation gap"
       },
-      "external_dependencies": [
-        {
-          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
-          "review": "pending primary-text review",
-          "behavior": "Arithmetic integers/identifiers, strips, reference corners, signed positioning, refinement and symbol placement."
-        }
+      "vector_ids": [
+        "jbig2/arithmetic-empty-text-default0",
+        "jbig2/arithmetic-empty-text-default1",
+        "jbig2/arithmetic-text-terminal-count",
+        "jbig2/arithmetic-layout-0-0",
+        "jbig2/arithmetic-layout-0-1",
+        "jbig2/arithmetic-layout-0-2",
+        "jbig2/arithmetic-layout-0-3",
+        "jbig2/arithmetic-layout-1-0",
+        "jbig2/arithmetic-layout-1-1",
+        "jbig2/arithmetic-layout-1-2",
+        "jbig2/arithmetic-layout-1-3",
+        "jbig2/text-strips-1-offset-0",
+        "jbig2/text-strips-1-offset-15",
+        "jbig2/text-strips-1-offset-16",
+        "jbig2/text-strips-1-offset-31",
+        "jbig2/text-strips-2-offset-0",
+        "jbig2/text-strips-2-offset-15",
+        "jbig2/text-strips-2-offset-16",
+        "jbig2/text-strips-2-offset-31",
+        "jbig2/text-strips-4-offset-0",
+        "jbig2/text-strips-4-offset-15",
+        "jbig2/text-strips-4-offset-16",
+        "jbig2/text-strips-4-offset-31",
+        "jbig2/text-strips-8-offset-0",
+        "jbig2/text-strips-8-offset-15",
+        "jbig2/text-strips-8-offset-16",
+        "jbig2/text-strips-8-offset-31",
+        "jbig2/integer-coordinate-0-negative",
+        "jbig2/integer-coordinate-0-positive",
+        "jbig2/integer-coordinate-3-negative",
+        "jbig2/integer-coordinate-3-positive",
+        "jbig2/integer-coordinate-4-negative",
+        "jbig2/integer-coordinate-4-positive",
+        "jbig2/integer-coordinate-19-negative",
+        "jbig2/integer-coordinate-19-positive",
+        "jbig2/integer-coordinate-20-negative",
+        "jbig2/integer-coordinate-20-positive",
+        "jbig2/integer-coordinate-83-negative",
+        "jbig2/integer-coordinate-83-positive",
+        "jbig2/integer-coordinate-84-negative",
+        "jbig2/integer-coordinate-84-positive",
+        "jbig2/integer-coordinate-339-negative",
+        "jbig2/integer-coordinate-339-positive",
+        "jbig2/integer-coordinate-340-negative",
+        "jbig2/integer-coordinate-340-positive",
+        "jbig2/integer-coordinate-4435-negative",
+        "jbig2/integer-coordinate-4435-positive",
+        "jbig2/integer-coordinate-4436-negative",
+        "jbig2/integer-coordinate-4436-positive",
+        "jbig2/integer-coordinate-65535-negative",
+        "jbig2/integer-coordinate-65535-positive",
+        "jbig2/integer-coordinate-4294967295-negative",
+        "jbig2/integer-coordinate-4294967295-positive",
+        "jbig2/integer-coordinate-4294971730-negative",
+        "jbig2/integer-coordinate-4294971730-positive",
+        "jbig2/text-combination-0",
+        "jbig2/text-combination-1",
+        "jbig2/text-combination-2",
+        "jbig2/text-combination-3"
       ],
       "differential_evidence": {
         "engine": "PDFium 156.0.8076.0",
         "bitmap_vectors": [
+          "jbig2/arithmetic-empty-text-default0",
+          "jbig2/arithmetic-empty-text-default1",
+          "jbig2/arithmetic-text-terminal-count",
+          "jbig2/arithmetic-layout-0-0",
+          "jbig2/arithmetic-layout-0-1",
+          "jbig2/arithmetic-layout-0-2",
+          "jbig2/arithmetic-layout-0-3",
+          "jbig2/arithmetic-layout-1-0",
+          "jbig2/arithmetic-layout-1-1",
+          "jbig2/arithmetic-layout-1-2",
+          "jbig2/arithmetic-layout-1-3",
           "jbig2/text-strips-1-offset-0",
           "jbig2/text-strips-1-offset-15",
           "jbig2/text-strips-1-offset-16",
@@ -417,34 +835,127 @@
           "jbig2/text-combination-2",
           "jbig2/text-combination-3"
         ],
-        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [
+            "jbig2/arithmetic-empty-text-default0",
+            "jbig2/arithmetic-empty-text-default1",
+            "jbig2/arithmetic-text-terminal-count",
+            "jbig2/arithmetic-layout-0-0",
+            "jbig2/arithmetic-layout-0-1",
+            "jbig2/arithmetic-layout-0-2",
+            "jbig2/arithmetic-layout-0-3",
+            "jbig2/arithmetic-layout-1-0",
+            "jbig2/arithmetic-layout-1-1",
+            "jbig2/arithmetic-layout-1-2",
+            "jbig2/arithmetic-layout-1-3",
+            "jbig2/text-strips-1-offset-0",
+            "jbig2/text-strips-1-offset-15",
+            "jbig2/text-strips-1-offset-16",
+            "jbig2/text-strips-1-offset-31",
+            "jbig2/text-strips-2-offset-0",
+            "jbig2/text-strips-2-offset-15",
+            "jbig2/text-strips-2-offset-16",
+            "jbig2/text-strips-2-offset-31",
+            "jbig2/text-strips-4-offset-0",
+            "jbig2/text-strips-4-offset-15",
+            "jbig2/text-strips-4-offset-16",
+            "jbig2/text-strips-4-offset-31",
+            "jbig2/text-strips-8-offset-0",
+            "jbig2/text-strips-8-offset-15",
+            "jbig2/text-strips-8-offset-16",
+            "jbig2/text-strips-8-offset-31",
+            "jbig2/integer-coordinate-0-negative",
+            "jbig2/integer-coordinate-0-positive",
+            "jbig2/integer-coordinate-3-negative",
+            "jbig2/integer-coordinate-3-positive",
+            "jbig2/integer-coordinate-4-negative",
+            "jbig2/integer-coordinate-4-positive",
+            "jbig2/integer-coordinate-19-negative",
+            "jbig2/integer-coordinate-19-positive",
+            "jbig2/integer-coordinate-20-negative",
+            "jbig2/integer-coordinate-20-positive",
+            "jbig2/integer-coordinate-83-negative",
+            "jbig2/integer-coordinate-83-positive",
+            "jbig2/integer-coordinate-84-negative",
+            "jbig2/integer-coordinate-84-positive",
+            "jbig2/integer-coordinate-339-negative",
+            "jbig2/integer-coordinate-339-positive",
+            "jbig2/integer-coordinate-340-negative",
+            "jbig2/integer-coordinate-340-positive",
+            "jbig2/integer-coordinate-4435-negative",
+            "jbig2/integer-coordinate-4435-positive",
+            "jbig2/integer-coordinate-4436-negative",
+            "jbig2/integer-coordinate-4436-positive",
+            "jbig2/integer-coordinate-65535-negative",
+            "jbig2/integer-coordinate-65535-positive",
+            "jbig2/integer-coordinate-4294967295-positive",
+            "jbig2/integer-coordinate-4294971730-negative",
+            "jbig2/integer-coordinate-4294971730-positive",
+            "jbig2/text-combination-0",
+            "jbig2/text-combination-1",
+            "jbig2/text-combination-2",
+            "jbig2/text-combination-3"
+          ],
+          "discrepancy_vectors": [
+            "jbig2/integer-coordinate-4294967295-negative"
+          ]
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
       }
     },
     {
       "id": "jbig2-refinement",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7"
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 6.3.5.3\u20136.3.5.6",
+        "T.88 (02/2000) 7.3.1",
+        "T.88 (02/2000) 7.4.7",
+        "T.88 (02/2000) 7.4.8.5",
+        "T.88 (02/2000) 6.3.5.2 and 7.4.7.4"
       ],
-      "status": "partial",
+      "status": "implemented",
+      "description": "Refinement uses either template, offsets and typical prediction; explicit references match size/location/operator, while page references are clipped rectangles with zero outside samples and REPLACE composition.",
+      "gaps": "",
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
-      "gaps": "Pending primary-text review of external coding semantics; exact differential evidence covers the implemented arithmetic paths.",
       "primary_text_review": {
-        "rule": "PDF represents bitonal page 1; refinement coding is delegated to ISO/IEC 14492.",
-        "implementation_agreement": "agrees for the PDF mapping",
-        "generated_expectations_agreement": "agrees for the PDF mapping; refinement pixels need differential evidence",
-        "verdict": "verified PDF mapping only; pending primary-text review for refinement coding"
+        "rule": "Refinement uses either template, offsets and typical prediction; explicit references match size/location/operator, while page references are clipped rectangles with zero outside samples and REPLACE composition.",
+        "implementation_agreement": "agrees within the stated scope",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses"
       },
-      "external_dependencies": [
-        {
-          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
-          "review": "pending primary-text review",
-          "behavior": "Refinement templates, adaptive pixels, prediction, reference alignment and segment referrals."
-        }
+      "vector_ids": [
+        "jbig2/refinement-page-crop-t0-prediction0",
+        "jbig2/refinement-page-crop-t0-prediction1",
+        "jbig2/refinement-page-crop-t1-prediction0",
+        "jbig2/refinement-page-crop-t1-prediction1",
+        "jbig2/refinement-reference-location-mismatch",
+        "jbig2/refinement-intermediate-missing-reference",
+        "jbig2/refinement-t0-prediction-0",
+        "jbig2/refinement-page-t0-prediction-0",
+        "jbig2/refinement-t0-prediction-1",
+        "jbig2/refinement-page-t0-prediction-1",
+        "jbig2/refinement-t1-prediction-0",
+        "jbig2/refinement-page-t1-prediction-0",
+        "jbig2/refinement-t1-prediction-1",
+        "jbig2/refinement-page-t1-prediction-1",
+        "jbig2/refinement-intermediate-chain-adaptive",
+        "jbig2/text-refinement-t0-offset-1-2",
+        "jbig2/text-refinement-t0-offset-0-3",
+        "jbig2/text-refinement-t0-offset-3-0",
+        "jbig2/text-refinement-t1-offset-1-2",
+        "jbig2/text-refinement-t1-offset-0-3",
+        "jbig2/text-refinement-t1-offset-3-0",
+        "jbig2/refinement-prediction-uniform-0-t0",
+        "jbig2/refinement-prediction-uniform-1-t0",
+        "jbig2/refinement-prediction-uniform-0-t1",
+        "jbig2/refinement-prediction-uniform-1-t1"
       ],
       "differential_evidence": {
         "engine": "PDFium 156.0.8076.0",
@@ -469,37 +980,79 @@
           "jbig2/refinement-prediction-uniform-0-t1",
           "jbig2/refinement-prediction-uniform-1-t1"
         ],
-        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
-      },
-      "description": "Both refinement templates, adaptive pixels, typical prediction, explicit intermediate references, page references and text-region refinement."
+        "discrepancy_vectors": [
+          "jbig2/refinement-page-crop-t0-prediction0",
+          "jbig2/refinement-page-crop-t0-prediction1",
+          "jbig2/refinement-page-crop-t1-prediction0",
+          "jbig2/refinement-page-crop-t1-prediction1"
+        ],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [
+            "jbig2/text-refinement-t0-offset-1-2",
+            "jbig2/text-refinement-t0-offset-0-3",
+            "jbig2/text-refinement-t0-offset-3-0",
+            "jbig2/text-refinement-t1-offset-1-2",
+            "jbig2/text-refinement-t1-offset-0-3",
+            "jbig2/text-refinement-t1-offset-3-0",
+            "jbig2/refinement-prediction-uniform-1-t0",
+            "jbig2/refinement-prediction-uniform-1-t1"
+          ],
+          "discrepancy_vectors": [
+            "jbig2/refinement-page-crop-t0-prediction0",
+            "jbig2/refinement-page-crop-t0-prediction1",
+            "jbig2/refinement-page-crop-t1-prediction0",
+            "jbig2/refinement-page-crop-t1-prediction1",
+            "jbig2/refinement-t0-prediction-0",
+            "jbig2/refinement-page-t0-prediction-0",
+            "jbig2/refinement-t0-prediction-1",
+            "jbig2/refinement-page-t0-prediction-1",
+            "jbig2/refinement-t1-prediction-0",
+            "jbig2/refinement-page-t1-prediction-0",
+            "jbig2/refinement-t1-prediction-1",
+            "jbig2/refinement-page-t1-prediction-1",
+            "jbig2/refinement-intermediate-chain-adaptive",
+            "jbig2/refinement-prediction-uniform-0-t0",
+            "jbig2/refinement-prediction-uniform-0-t1"
+          ]
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
+      }
     },
     {
       "id": "jbig2-symbol-aggregation",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7",
-        "Table 12"
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 6.5.8.2",
+        "T.88 (02/2000) Tables 17, 18",
+        "T.88 (02/2000) 6.4.5\u20136.4.11"
       ],
-      "status": "partial",
-      "description": "Single referenced-symbol refinement and multiple-symbol arithmetic aggregation.",
-      "gaps": "Pending primary-text review of external coding semantics; exact differential evidence covers the implemented arithmetic paths.",
+      "status": "implemented",
+      "description": "A one-instance aggregate decodes direct refinement offsets; a multiple-instance aggregate invokes text with the prescribed parameters and completes its final strip.",
+      "gaps": "",
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
       "primary_text_review": {
-        "rule": "PDF permits shared page-0 globals; dictionary coding is delegated to ISO/IEC 14492.",
-        "implementation_agreement": "agrees for supported PDF globals mapping",
-        "generated_expectations_agreement": "agrees for PDF globals mapping; coding pixels require differential evidence",
-        "verdict": "verified PDF globals mapping only; pending primary-text review for dictionary coding"
+        "rule": "A one-instance aggregate decodes direct refinement offsets; a multiple-instance aggregate invokes text with the prescribed parameters and completes its final strip.",
+        "implementation_agreement": "agrees within the stated scope",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses"
       },
-      "external_dependencies": [
-        {
-          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
-          "review": "pending primary-text review",
-          "behavior": "Single referenced-symbol refinement and multiple-symbol arithmetic aggregation."
-        }
+      "vector_ids": [
+        "jbig2/symbol-single-refinement-t0-offset-2-1",
+        "jbig2/symbol-single-refinement-t0-offset-0-2",
+        "jbig2/symbol-single-refinement-t0-offset-4-0",
+        "jbig2/symbol-multiple-aggregation-t0",
+        "jbig2/symbol-single-refinement-t1-offset-2-1",
+        "jbig2/symbol-single-refinement-t1-offset-0-2",
+        "jbig2/symbol-single-refinement-t1-offset-4-0",
+        "jbig2/symbol-multiple-aggregation-t1",
+        "jbig2/symbol-mixed-aggregation-state-t0",
+        "jbig2/symbol-mixed-aggregation-state-t1"
       ],
       "differential_evidence": {
         "engine": "PDFium 156.0.8076.0",
@@ -515,40 +1068,70 @@
           "jbig2/symbol-mixed-aggregation-state-t0",
           "jbig2/symbol-mixed-aggregation-state-t1"
         ],
-        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [
+            "jbig2/symbol-single-refinement-t0-offset-2-1",
+            "jbig2/symbol-single-refinement-t0-offset-0-2",
+            "jbig2/symbol-single-refinement-t0-offset-4-0",
+            "jbig2/symbol-single-refinement-t1-offset-2-1",
+            "jbig2/symbol-single-refinement-t1-offset-0-2",
+            "jbig2/symbol-single-refinement-t1-offset-4-0",
+            "jbig2/symbol-multiple-aggregation-t1",
+            "jbig2/symbol-mixed-aggregation-state-t0",
+            "jbig2/symbol-mixed-aggregation-state-t1"
+          ],
+          "discrepancy_vectors": [
+            "jbig2/symbol-multiple-aggregation-t0"
+          ]
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
       }
     },
     {
       "id": "jbig2-retained-contexts",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7",
-        "Table 12"
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 7.4.2.2 steps 3\u20137",
+        "T.88 (02/2000) E.3.7",
+        "T.88 (02/2000) E.3.8"
       ],
-      "status": "partial",
-      "description": "Reuse and retention of generic and refinement bitmap probability states across dictionaries; integer states reset.",
-      "gaps": "Pending primary-text review of external coding semantics; exact differential evidence covers the implemented arithmetic paths.",
+      "status": "implemented",
+      "description": "Reuse selects the last referred dictionary and requires identical bitmap coding modes, templates and adaptive positions; only GB/GR probability states persist and integer states reset.",
+      "gaps": "",
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
       "primary_text_review": {
-        "rule": "PDF permits shared page-0 globals; dictionary coding is delegated to ISO/IEC 14492.",
-        "implementation_agreement": "agrees for supported PDF globals mapping",
-        "generated_expectations_agreement": "agrees for PDF globals mapping; coding pixels require differential evidence",
-        "verdict": "verified PDF globals mapping only; pending primary-text review for dictionary coding"
+        "rule": "Reuse selects the last referred dictionary and requires identical bitmap coding modes, templates and adaptive positions; only GB/GR probability states persist and integer states reset.",
+        "implementation_agreement": "agrees within the stated scope",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses"
       },
-      "external_dependencies": [
-        {
-          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
-          "review": "pending primary-text review",
-          "behavior": "Reuse and retention of generic and refinement bitmap probability states across dictionaries; integer states reset."
-        }
+      "vector_ids": [
+        "jbig2/retained-context-adaptive-mismatch",
+        "jbig2/huffman-retained-refinement-t0",
+        "jbig2/huffman-retained-table-last-t0",
+        "jbig2/huffman-retained-refinement-t1",
+        "jbig2/huffman-retained-table-last-t1",
+        "jbig2/retained-generic-contexts-t0",
+        "jbig2/retained-generic-contexts-t1",
+        "jbig2/retained-generic-contexts-t2",
+        "jbig2/retained-generic-contexts-t3",
+        "jbig2/retained-refinement-contexts-t0",
+        "jbig2/retained-refinement-contexts-t1"
       ],
       "differential_evidence": {
         "engine": "PDFium 156.0.8076.0",
         "bitmap_vectors": [
+          "jbig2/huffman-retained-refinement-t0",
+          "jbig2/huffman-retained-table-last-t0",
+          "jbig2/huffman-retained-refinement-t1",
+          "jbig2/huffman-retained-table-last-t1",
           "jbig2/retained-generic-contexts-t0",
           "jbig2/retained-generic-contexts-t1",
           "jbig2/retained-generic-contexts-t2",
@@ -556,47 +1139,2149 @@
           "jbig2/retained-refinement-contexts-t0",
           "jbig2/retained-refinement-contexts-t1"
         ],
-        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [],
+          "discrepancy_vectors": [
+            "jbig2/huffman-retained-refinement-t0",
+            "jbig2/huffman-retained-table-last-t0",
+            "jbig2/huffman-retained-refinement-t1",
+            "jbig2/huffman-retained-table-last-t1",
+            "jbig2/retained-generic-contexts-t0",
+            "jbig2/retained-generic-contexts-t1",
+            "jbig2/retained-generic-contexts-t2",
+            "jbig2/retained-generic-contexts-t3",
+            "jbig2/retained-refinement-contexts-t0",
+            "jbig2/retained-refinement-contexts-t1"
+          ]
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
+      }
+    },
+    {
+      "id": "jbig2-arithmetic-coder",
+      "reference": "iso32000-2",
+      "clauses": [
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) Table E.1",
+        "T.88 (02/2000) E.3.1\u2013E.3.8",
+        "T.88 (02/2000) A.2",
+        "T.88 (02/2000) A.3",
+        "T.88 (02/2000) H.2"
+      ],
+      "status": "implemented",
+      "description": "The MQ decoder uses all 47 published probability states, conditional exchange, byte stuffing and marker tails; arithmetic integers use separate context trees and negative zero as OOB.",
+      "gaps": "",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "primary_text_review": {
+        "rule": "The MQ decoder uses all 47 published probability states, conditional exchange, byte stuffing and marker tails; arithmetic integers use separate context trees and negative zero as OOB.",
+        "implementation_agreement": "agrees within the stated scope",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses"
+      },
+      "vector_ids": [
+        "jbig2/arithmetic-h2-known-answer"
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [],
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [],
+          "discrepancy_vectors": []
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
+      }
+    },
+    {
+      "id": "jbig2-huffman-tables",
+      "reference": "iso32000-2",
+      "clauses": [
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) B.2\u2013B.5",
+        "T.88 (02/2000) Tables B.1\u2013B.15",
+        "T.88 (02/2000) 7.4.13"
+      ],
+      "status": "implemented",
+      "description": "Canonical codes follow prefix lengths in row order; normal and escape rows decode signed values or OOB, and type-53 segments transmit bounded user tables.",
+      "gaps": "",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "primary_text_review": {
+        "rule": "Canonical codes follow prefix lengths in row order; normal and escape rows decode signed values or OOB, and type-53 segments transmit bounded user tables.",
+        "implementation_agreement": "agrees within the stated scope; Table B.7 prints an overlapping endpoint for the -64 row; its RANGELEN=5 and published encoding cover -64 through -33, followed by the -32 row",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses"
+      },
+      "vector_ids": [
+        "jbig2/huffman-user-table-oversubscribed",
+        "jbig2/huffman-table-01",
+        "jbig2/huffman-table-02",
+        "jbig2/huffman-table-03",
+        "jbig2/huffman-table-04",
+        "jbig2/huffman-table-05",
+        "jbig2/huffman-table-06",
+        "jbig2/huffman-table-07",
+        "jbig2/huffman-table-08",
+        "jbig2/huffman-table-09",
+        "jbig2/huffman-table-10",
+        "jbig2/huffman-table-11",
+        "jbig2/huffman-table-12",
+        "jbig2/huffman-table-13",
+        "jbig2/huffman-table-14",
+        "jbig2/huffman-table-15",
+        "jbig2/huffman-user-width-table"
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/huffman-user-width-table"
+        ],
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [
+            "jbig2/huffman-user-width-table"
+          ],
+          "discrepancy_vectors": []
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
+      }
+    },
+    {
+      "id": "jbig2-huffman-symbols",
+      "reference": "iso32000-2",
+      "clauses": [
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 6.5.5\u20136.5.10",
+        "T.88 (02/2000) 7.4.2",
+        "T.88 (02/2000) Tables 17\u201319"
+      ],
+      "status": "implemented",
+      "description": "Huffman dictionaries select standard or user tables, split raw/MMR collective height-class bitmaps, decode refinement/aggregation payloads and export symbol runs.",
+      "gaps": "",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "primary_text_review": {
+        "rule": "Huffman dictionaries select standard or user tables, split raw/MMR collective height-class bitmaps, decode refinement/aggregation payloads and export symbol runs.",
+        "implementation_agreement": "agrees within the stated scope",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses"
+      },
+      "vector_ids": [
+        "jbig2/huffman-symbol-aggregation-t0",
+        "jbig2/huffman-symbol-aggregation-t1",
+        "jbig2/huffman-symbols-raw-4-2",
+        "jbig2/huffman-symbols-raw-4-3",
+        "jbig2/huffman-symbols-raw-5-2",
+        "jbig2/huffman-symbols-raw-5-3",
+        "jbig2/huffman-symbols-mmr-4-2",
+        "jbig2/huffman-symbols-mmr-4-3",
+        "jbig2/huffman-symbols-mmr-5-2",
+        "jbig2/huffman-symbols-mmr-5-3",
+        "jbig2/huffman-symbols-mmr-eofb-4-2",
+        "jbig2/huffman-symbols-mmr-eofb-4-3",
+        "jbig2/huffman-symbols-mmr-eofb-5-2",
+        "jbig2/huffman-symbols-mmr-eofb-5-3"
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/huffman-symbol-aggregation-t0",
+          "jbig2/huffman-symbol-aggregation-t1",
+          "jbig2/huffman-symbols-raw-4-2",
+          "jbig2/huffman-symbols-raw-4-3",
+          "jbig2/huffman-symbols-raw-5-2",
+          "jbig2/huffman-symbols-raw-5-3",
+          "jbig2/huffman-symbols-mmr-4-2",
+          "jbig2/huffman-symbols-mmr-4-3",
+          "jbig2/huffman-symbols-mmr-5-2",
+          "jbig2/huffman-symbols-mmr-5-3"
+        ],
+        "discrepancy_vectors": [
+          "jbig2/huffman-symbols-mmr-eofb-4-2",
+          "jbig2/huffman-symbols-mmr-eofb-4-3",
+          "jbig2/huffman-symbols-mmr-eofb-5-2",
+          "jbig2/huffman-symbols-mmr-eofb-5-3"
+        ],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [
+            "jbig2/huffman-symbols-raw-4-2",
+            "jbig2/huffman-symbols-raw-4-3",
+            "jbig2/huffman-symbols-raw-5-2",
+            "jbig2/huffman-symbols-raw-5-3",
+            "jbig2/huffman-symbols-mmr-4-2",
+            "jbig2/huffman-symbols-mmr-4-3",
+            "jbig2/huffman-symbols-mmr-5-2",
+            "jbig2/huffman-symbols-mmr-5-3",
+            "jbig2/huffman-symbols-mmr-eofb-4-2",
+            "jbig2/huffman-symbols-mmr-eofb-4-3",
+            "jbig2/huffman-symbols-mmr-eofb-5-2",
+            "jbig2/huffman-symbols-mmr-eofb-5-3"
+          ],
+          "discrepancy_vectors": [
+            "jbig2/huffman-symbol-aggregation-t0",
+            "jbig2/huffman-symbol-aggregation-t1"
+          ]
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
+      }
+    },
+    {
+      "id": "jbig2-huffman-text",
+      "reference": "iso32000-2",
+      "clauses": [
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 6.4.5\u20136.4.11",
+        "T.88 (02/2000) 7.4.3.1.2\u20137.4.3.1.7",
+        "T.88 (02/2000) Table 29"
+      ],
+      "status": "implemented",
+      "description": "Huffman text decodes canonical run-coded identifier lengths, selected numeric tables, aligned arithmetic refinements, strips and all reference-corner/transposition layouts.",
+      "gaps": "",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "primary_text_review": {
+        "rule": "Huffman text decodes canonical run-coded identifier lengths, selected numeric tables, aligned arithmetic refinements, strips and all reference-corner/transposition layouts.",
+        "implementation_agreement": "agrees within the stated scope",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses"
+      },
+      "vector_ids": [
+        "jbig2/huffman-empty-text-default0",
+        "jbig2/huffman-empty-text-default1",
+        "jbig2/huffman-user-text-first-position",
+        "jbig2/huffman-text-refinement-t0-table14",
+        "jbig2/huffman-text-refinement-t0-table15",
+        "jbig2/huffman-text-refinement-t1-table14",
+        "jbig2/huffman-text-refinement-t1-table15",
+        "jbig2/huffman-text-6-8-11",
+        "jbig2/huffman-text-6-8-12",
+        "jbig2/huffman-text-6-8-13",
+        "jbig2/huffman-text-6-9-11",
+        "jbig2/huffman-text-6-9-12",
+        "jbig2/huffman-text-6-9-13",
+        "jbig2/huffman-text-6-10-11",
+        "jbig2/huffman-text-6-10-12",
+        "jbig2/huffman-text-6-10-13",
+        "jbig2/huffman-text-7-8-11",
+        "jbig2/huffman-text-7-8-12",
+        "jbig2/huffman-text-7-8-13",
+        "jbig2/huffman-text-7-9-11",
+        "jbig2/huffman-text-7-9-12",
+        "jbig2/huffman-text-7-9-13",
+        "jbig2/huffman-text-7-10-11",
+        "jbig2/huffman-text-7-10-12",
+        "jbig2/huffman-text-7-10-13",
+        "jbig2/huffman-layout-0-0",
+        "jbig2/huffman-layout-0-1",
+        "jbig2/huffman-layout-0-2",
+        "jbig2/huffman-layout-0-3",
+        "jbig2/huffman-layout-1-0",
+        "jbig2/huffman-layout-1-1",
+        "jbig2/huffman-layout-1-2",
+        "jbig2/huffman-layout-1-3"
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/huffman-empty-text-default0",
+          "jbig2/huffman-empty-text-default1",
+          "jbig2/huffman-user-text-first-position",
+          "jbig2/huffman-text-refinement-t0-table14",
+          "jbig2/huffman-text-refinement-t0-table15",
+          "jbig2/huffman-text-refinement-t1-table14",
+          "jbig2/huffman-text-refinement-t1-table15",
+          "jbig2/huffman-text-6-8-11",
+          "jbig2/huffman-text-6-8-12",
+          "jbig2/huffman-text-6-8-13",
+          "jbig2/huffman-text-6-9-11",
+          "jbig2/huffman-text-6-9-12",
+          "jbig2/huffman-text-6-9-13",
+          "jbig2/huffman-text-6-10-11",
+          "jbig2/huffman-text-6-10-12",
+          "jbig2/huffman-text-6-10-13",
+          "jbig2/huffman-text-7-8-11",
+          "jbig2/huffman-text-7-8-12",
+          "jbig2/huffman-text-7-8-13",
+          "jbig2/huffman-text-7-9-11",
+          "jbig2/huffman-text-7-9-12",
+          "jbig2/huffman-text-7-9-13",
+          "jbig2/huffman-text-7-10-11",
+          "jbig2/huffman-text-7-10-12",
+          "jbig2/huffman-text-7-10-13",
+          "jbig2/huffman-layout-0-0",
+          "jbig2/huffman-layout-0-1",
+          "jbig2/huffman-layout-0-2",
+          "jbig2/huffman-layout-0-3",
+          "jbig2/huffman-layout-1-0",
+          "jbig2/huffman-layout-1-1",
+          "jbig2/huffman-layout-1-2",
+          "jbig2/huffman-layout-1-3"
+        ],
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [
+            "jbig2/huffman-empty-text-default0",
+            "jbig2/huffman-empty-text-default1",
+            "jbig2/huffman-user-text-first-position",
+            "jbig2/huffman-text-6-8-11",
+            "jbig2/huffman-text-6-8-12",
+            "jbig2/huffman-text-6-8-13",
+            "jbig2/huffman-text-6-9-11",
+            "jbig2/huffman-text-6-9-12",
+            "jbig2/huffman-text-6-9-13",
+            "jbig2/huffman-text-6-10-11",
+            "jbig2/huffman-text-6-10-12",
+            "jbig2/huffman-text-6-10-13",
+            "jbig2/huffman-text-7-8-11",
+            "jbig2/huffman-text-7-8-12",
+            "jbig2/huffman-text-7-8-13",
+            "jbig2/huffman-text-7-9-11",
+            "jbig2/huffman-text-7-9-12",
+            "jbig2/huffman-text-7-9-13",
+            "jbig2/huffman-text-7-10-11",
+            "jbig2/huffman-text-7-10-12",
+            "jbig2/huffman-text-7-10-13",
+            "jbig2/huffman-layout-0-0",
+            "jbig2/huffman-layout-0-1",
+            "jbig2/huffman-layout-0-2",
+            "jbig2/huffman-layout-0-3",
+            "jbig2/huffman-layout-1-0",
+            "jbig2/huffman-layout-1-1",
+            "jbig2/huffman-layout-1-2",
+            "jbig2/huffman-layout-1-3"
+          ],
+          "discrepancy_vectors": [
+            "jbig2/huffman-text-refinement-t0-table14",
+            "jbig2/huffman-text-refinement-t0-table15",
+            "jbig2/huffman-text-refinement-t1-table14",
+            "jbig2/huffman-text-refinement-t1-table15"
+          ]
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
+      }
+    },
+    {
+      "id": "jbig2-pattern-dictionaries",
+      "reference": "iso32000-2",
+      "clauses": [
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 6.7.5",
+        "T.88 (02/2000) Table 27",
+        "T.88 (02/2000) 7.4.4"
+      ],
+      "status": "implemented",
+      "description": "Patterns are fixed-size slices of an arithmetic/MMR collective bitmap whose first adaptive pixel is one pattern width to the left.",
+      "gaps": "",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "primary_text_review": {
+        "rule": "Patterns are fixed-size slices of an arithmetic/MMR collective bitmap whose first adaptive pixel is one pattern width to the left.",
+        "implementation_agreement": "agrees within the stated scope",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses"
+      },
+      "vector_ids": [
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op0",
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op1",
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op2",
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op3",
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op4",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op0",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op1",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op2",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op3",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op4",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op0",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op1",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op2",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op3",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op4",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op0",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op1",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op2",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op3",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op4",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op0",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op1",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op2",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op3",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op4",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op0",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op1",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op2",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op3",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op4",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op0",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op1",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op2",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op3",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op4",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op0",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op1",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op2",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op3",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op4",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op0",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op1",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op2",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op3",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op4",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op0",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op1",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op2",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op3",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op4",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op0",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op1",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op2",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op3",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op4",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op0",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op1",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op2",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op3",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op4",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op0",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op1",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op2",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op3",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op4",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op0",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op1",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op2",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op3",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op4",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op0",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op1",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op2",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op3",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op4",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op0",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op1",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op2",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op3",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op4",
+        "jbig2/halftone-mmr-t0-skip0-r0-op0",
+        "jbig2/halftone-mmr-t0-skip0-r0-op1",
+        "jbig2/halftone-mmr-t0-skip0-r0-op2",
+        "jbig2/halftone-mmr-t0-skip0-r0-op3",
+        "jbig2/halftone-mmr-t0-skip0-r0-op4",
+        "jbig2/halftone-mmr-t0-skip0-r128-op0",
+        "jbig2/halftone-mmr-t0-skip0-r128-op1",
+        "jbig2/halftone-mmr-t0-skip0-r128-op2",
+        "jbig2/halftone-mmr-t0-skip0-r128-op3",
+        "jbig2/halftone-mmr-t0-skip0-r128-op4",
+        "jbig2/halftone-one-pattern-type22",
+        "jbig2/halftone-one-pattern-type23",
+        "jbig2/halftone-intermediate-refinement"
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op0",
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op1",
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op2",
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op3",
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op4",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op0",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op1",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op2",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op3",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op4",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op0",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op1",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op2",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op3",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op4",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op0",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op1",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op2",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op3",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op4",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op0",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op1",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op2",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op3",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op4",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op0",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op1",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op2",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op3",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op4",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op0",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op1",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op2",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op3",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op4",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op0",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op1",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op2",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op3",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op4",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op0",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op1",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op2",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op3",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op4",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op0",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op1",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op2",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op3",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op4",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op0",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op1",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op2",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op3",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op4",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op0",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op1",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op2",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op3",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op4",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op0",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op1",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op2",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op3",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op4",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op0",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op1",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op2",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op3",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op4",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op0",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op1",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op2",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op3",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op4",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op0",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op1",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op2",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op3",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op4",
+          "jbig2/halftone-mmr-t0-skip0-r0-op0",
+          "jbig2/halftone-mmr-t0-skip0-r0-op1",
+          "jbig2/halftone-mmr-t0-skip0-r0-op2",
+          "jbig2/halftone-mmr-t0-skip0-r0-op3",
+          "jbig2/halftone-mmr-t0-skip0-r0-op4",
+          "jbig2/halftone-mmr-t0-skip0-r128-op0",
+          "jbig2/halftone-mmr-t0-skip0-r128-op1",
+          "jbig2/halftone-mmr-t0-skip0-r128-op2",
+          "jbig2/halftone-mmr-t0-skip0-r128-op3",
+          "jbig2/halftone-mmr-t0-skip0-r128-op4",
+          "jbig2/halftone-one-pattern-type22",
+          "jbig2/halftone-one-pattern-type23",
+          "jbig2/halftone-intermediate-refinement"
+        ],
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [],
+          "discrepancy_vectors": [
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op0",
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op1",
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op2",
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op3",
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op4",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op0",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op1",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op2",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op3",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op4",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op0",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op1",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op2",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op3",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op4",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op0",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op1",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op2",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op3",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op4",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op0",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op1",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op2",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op3",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op4",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op0",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op1",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op2",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op3",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op4",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op0",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op1",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op2",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op3",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op4",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op0",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op1",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op2",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op3",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op4",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op0",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op1",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op2",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op3",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op4",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op0",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op1",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op2",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op3",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op4",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op0",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op1",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op2",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op3",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op4",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op0",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op1",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op2",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op3",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op4",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op0",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op1",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op2",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op3",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op4",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op0",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op1",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op2",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op3",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op4",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op0",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op1",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op2",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op3",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op4",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op0",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op1",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op2",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op3",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op4",
+            "jbig2/halftone-mmr-t0-skip0-r0-op0",
+            "jbig2/halftone-mmr-t0-skip0-r0-op1",
+            "jbig2/halftone-mmr-t0-skip0-r0-op2",
+            "jbig2/halftone-mmr-t0-skip0-r0-op3",
+            "jbig2/halftone-mmr-t0-skip0-r0-op4",
+            "jbig2/halftone-mmr-t0-skip0-r128-op0",
+            "jbig2/halftone-mmr-t0-skip0-r128-op1",
+            "jbig2/halftone-mmr-t0-skip0-r128-op2",
+            "jbig2/halftone-mmr-t0-skip0-r128-op3",
+            "jbig2/halftone-mmr-t0-skip0-r128-op4",
+            "jbig2/halftone-one-pattern-type22",
+            "jbig2/halftone-one-pattern-type23",
+            "jbig2/halftone-intermediate-refinement"
+          ]
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
+      }
+    },
+    {
+      "id": "jbig2-halftone",
+      "reference": "iso32000-2",
+      "clauses": [
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 6.6.5\u20136.6.5.2",
+        "T.88 (02/2000) 7.4.5",
+        "T.88 (02/2000) Table 33"
+      ],
+      "status": "implemented",
+      "description": "Halftones place referenced patterns on a signed fixed-point grid, apply skip masks for invisible instances and compose in grid order using the declared pixel/operator.",
+      "gaps": "",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "primary_text_review": {
+        "rule": "Halftones place referenced patterns on a signed fixed-point grid, apply skip masks for invisible instances and compose in grid order using the declared pixel/operator.",
+        "implementation_agreement": "agrees within the stated scope",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses"
+      },
+      "vector_ids": [
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op0",
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op1",
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op2",
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op3",
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op4",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op0",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op1",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op2",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op3",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op4",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op0",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op1",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op2",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op3",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op4",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op0",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op1",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op2",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op3",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op4",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op0",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op1",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op2",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op3",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op4",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op0",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op1",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op2",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op3",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op4",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op0",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op1",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op2",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op3",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op4",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op0",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op1",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op2",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op3",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op4",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op0",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op1",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op2",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op3",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op4",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op0",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op1",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op2",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op3",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op4",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op0",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op1",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op2",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op3",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op4",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op0",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op1",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op2",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op3",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op4",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op0",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op1",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op2",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op3",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op4",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op0",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op1",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op2",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op3",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op4",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op0",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op1",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op2",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op3",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op4",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op0",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op1",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op2",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op3",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op4",
+        "jbig2/halftone-mmr-t0-skip0-r0-op0",
+        "jbig2/halftone-mmr-t0-skip0-r0-op1",
+        "jbig2/halftone-mmr-t0-skip0-r0-op2",
+        "jbig2/halftone-mmr-t0-skip0-r0-op3",
+        "jbig2/halftone-mmr-t0-skip0-r0-op4",
+        "jbig2/halftone-mmr-t0-skip0-r128-op0",
+        "jbig2/halftone-mmr-t0-skip0-r128-op1",
+        "jbig2/halftone-mmr-t0-skip0-r128-op2",
+        "jbig2/halftone-mmr-t0-skip0-r128-op3",
+        "jbig2/halftone-mmr-t0-skip0-r128-op4",
+        "jbig2/halftone-one-pattern-type22",
+        "jbig2/halftone-one-pattern-type23",
+        "jbig2/halftone-intermediate-refinement"
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op0",
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op1",
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op2",
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op3",
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op4",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op0",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op1",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op2",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op3",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op4",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op0",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op1",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op2",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op3",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op4",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op0",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op1",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op2",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op3",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op4",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op0",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op1",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op2",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op3",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op4",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op0",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op1",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op2",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op3",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op4",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op0",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op1",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op2",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op3",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op4",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op0",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op1",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op2",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op3",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op4",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op0",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op1",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op2",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op3",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op4",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op0",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op1",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op2",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op3",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op4",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op0",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op1",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op2",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op3",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op4",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op0",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op1",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op2",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op3",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op4",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op0",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op1",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op2",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op3",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op4",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op0",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op1",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op2",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op3",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op4",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op0",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op1",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op2",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op3",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op4",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op0",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op1",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op2",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op3",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op4",
+          "jbig2/halftone-mmr-t0-skip0-r0-op0",
+          "jbig2/halftone-mmr-t0-skip0-r0-op1",
+          "jbig2/halftone-mmr-t0-skip0-r0-op2",
+          "jbig2/halftone-mmr-t0-skip0-r0-op3",
+          "jbig2/halftone-mmr-t0-skip0-r0-op4",
+          "jbig2/halftone-mmr-t0-skip0-r128-op0",
+          "jbig2/halftone-mmr-t0-skip0-r128-op1",
+          "jbig2/halftone-mmr-t0-skip0-r128-op2",
+          "jbig2/halftone-mmr-t0-skip0-r128-op3",
+          "jbig2/halftone-mmr-t0-skip0-r128-op4",
+          "jbig2/halftone-one-pattern-type22",
+          "jbig2/halftone-one-pattern-type23",
+          "jbig2/halftone-intermediate-refinement"
+        ],
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [],
+          "discrepancy_vectors": [
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op0",
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op1",
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op2",
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op3",
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op4",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op0",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op1",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op2",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op3",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op4",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op0",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op1",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op2",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op3",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op4",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op0",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op1",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op2",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op3",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op4",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op0",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op1",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op2",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op3",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op4",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op0",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op1",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op2",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op3",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op4",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op0",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op1",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op2",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op3",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op4",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op0",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op1",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op2",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op3",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op4",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op0",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op1",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op2",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op3",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op4",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op0",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op1",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op2",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op3",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op4",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op0",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op1",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op2",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op3",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op4",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op0",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op1",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op2",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op3",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op4",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op0",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op1",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op2",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op3",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op4",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op0",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op1",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op2",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op3",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op4",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op0",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op1",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op2",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op3",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op4",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op0",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op1",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op2",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op3",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op4",
+            "jbig2/halftone-mmr-t0-skip0-r0-op0",
+            "jbig2/halftone-mmr-t0-skip0-r0-op1",
+            "jbig2/halftone-mmr-t0-skip0-r0-op2",
+            "jbig2/halftone-mmr-t0-skip0-r0-op3",
+            "jbig2/halftone-mmr-t0-skip0-r0-op4",
+            "jbig2/halftone-mmr-t0-skip0-r128-op0",
+            "jbig2/halftone-mmr-t0-skip0-r128-op1",
+            "jbig2/halftone-mmr-t0-skip0-r128-op2",
+            "jbig2/halftone-mmr-t0-skip0-r128-op3",
+            "jbig2/halftone-mmr-t0-skip0-r128-op4",
+            "jbig2/halftone-one-pattern-type22",
+            "jbig2/halftone-one-pattern-type23",
+            "jbig2/halftone-intermediate-refinement"
+          ]
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
+      }
+    },
+    {
+      "id": "jbig2-gray-scale",
+      "reference": "iso32000-2",
+      "clauses": [
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) C.2\u2013C.5",
+        "T.88 (02/2000) Table C.4",
+        "T.88 (02/2000) 6.2.6",
+        "T.88 (02/2000) 7.4.5.2"
+      ],
+      "status": "implemented",
+      "description": "Gray planes decode from most to least significant with prescribed generic templates and shared statistics, then XOR with the reconstructed higher plane before forming indices.",
+      "gaps": "",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "primary_text_review": {
+        "rule": "Gray planes decode from most to least significant with prescribed generic templates and shared statistics, then XOR with the reconstructed higher plane before forming indices.",
+        "implementation_agreement": "agrees within the stated scope",
+        "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
+        "verdict": "verified against the listed base-text clauses"
+      },
+      "vector_ids": [
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op0",
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op1",
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op2",
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op3",
+        "jbig2/halftone-arithmetic-t0-skip0-r0-op4",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op0",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op1",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op2",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op3",
+        "jbig2/halftone-arithmetic-t0-skip0-r128-op4",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op0",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op1",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op2",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op3",
+        "jbig2/halftone-arithmetic-t0-skip1-r0-op4",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op0",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op1",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op2",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op3",
+        "jbig2/halftone-arithmetic-t0-skip1-r128-op4",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op0",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op1",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op2",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op3",
+        "jbig2/halftone-arithmetic-t1-skip0-r0-op4",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op0",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op1",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op2",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op3",
+        "jbig2/halftone-arithmetic-t1-skip0-r128-op4",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op0",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op1",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op2",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op3",
+        "jbig2/halftone-arithmetic-t1-skip1-r0-op4",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op0",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op1",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op2",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op3",
+        "jbig2/halftone-arithmetic-t1-skip1-r128-op4",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op0",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op1",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op2",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op3",
+        "jbig2/halftone-arithmetic-t2-skip0-r0-op4",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op0",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op1",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op2",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op3",
+        "jbig2/halftone-arithmetic-t2-skip0-r128-op4",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op0",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op1",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op2",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op3",
+        "jbig2/halftone-arithmetic-t2-skip1-r0-op4",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op0",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op1",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op2",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op3",
+        "jbig2/halftone-arithmetic-t2-skip1-r128-op4",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op0",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op1",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op2",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op3",
+        "jbig2/halftone-arithmetic-t3-skip0-r0-op4",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op0",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op1",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op2",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op3",
+        "jbig2/halftone-arithmetic-t3-skip0-r128-op4",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op0",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op1",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op2",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op3",
+        "jbig2/halftone-arithmetic-t3-skip1-r0-op4",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op0",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op1",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op2",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op3",
+        "jbig2/halftone-arithmetic-t3-skip1-r128-op4",
+        "jbig2/halftone-mmr-t0-skip0-r0-op0",
+        "jbig2/halftone-mmr-t0-skip0-r0-op1",
+        "jbig2/halftone-mmr-t0-skip0-r0-op2",
+        "jbig2/halftone-mmr-t0-skip0-r0-op3",
+        "jbig2/halftone-mmr-t0-skip0-r0-op4",
+        "jbig2/halftone-mmr-t0-skip0-r128-op0",
+        "jbig2/halftone-mmr-t0-skip0-r128-op1",
+        "jbig2/halftone-mmr-t0-skip0-r128-op2",
+        "jbig2/halftone-mmr-t0-skip0-r128-op3",
+        "jbig2/halftone-mmr-t0-skip0-r128-op4",
+        "jbig2/halftone-one-pattern-type22",
+        "jbig2/halftone-one-pattern-type23",
+        "jbig2/halftone-intermediate-refinement"
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op0",
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op1",
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op2",
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op3",
+          "jbig2/halftone-arithmetic-t0-skip0-r0-op4",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op0",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op1",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op2",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op3",
+          "jbig2/halftone-arithmetic-t0-skip0-r128-op4",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op0",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op1",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op2",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op3",
+          "jbig2/halftone-arithmetic-t0-skip1-r0-op4",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op0",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op1",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op2",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op3",
+          "jbig2/halftone-arithmetic-t0-skip1-r128-op4",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op0",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op1",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op2",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op3",
+          "jbig2/halftone-arithmetic-t1-skip0-r0-op4",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op0",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op1",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op2",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op3",
+          "jbig2/halftone-arithmetic-t1-skip0-r128-op4",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op0",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op1",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op2",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op3",
+          "jbig2/halftone-arithmetic-t1-skip1-r0-op4",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op0",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op1",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op2",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op3",
+          "jbig2/halftone-arithmetic-t1-skip1-r128-op4",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op0",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op1",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op2",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op3",
+          "jbig2/halftone-arithmetic-t2-skip0-r0-op4",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op0",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op1",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op2",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op3",
+          "jbig2/halftone-arithmetic-t2-skip0-r128-op4",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op0",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op1",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op2",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op3",
+          "jbig2/halftone-arithmetic-t2-skip1-r0-op4",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op0",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op1",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op2",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op3",
+          "jbig2/halftone-arithmetic-t2-skip1-r128-op4",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op0",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op1",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op2",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op3",
+          "jbig2/halftone-arithmetic-t3-skip0-r0-op4",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op0",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op1",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op2",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op3",
+          "jbig2/halftone-arithmetic-t3-skip0-r128-op4",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op0",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op1",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op2",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op3",
+          "jbig2/halftone-arithmetic-t3-skip1-r0-op4",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op0",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op1",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op2",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op3",
+          "jbig2/halftone-arithmetic-t3-skip1-r128-op4",
+          "jbig2/halftone-mmr-t0-skip0-r0-op0",
+          "jbig2/halftone-mmr-t0-skip0-r0-op1",
+          "jbig2/halftone-mmr-t0-skip0-r0-op2",
+          "jbig2/halftone-mmr-t0-skip0-r0-op3",
+          "jbig2/halftone-mmr-t0-skip0-r0-op4",
+          "jbig2/halftone-mmr-t0-skip0-r128-op0",
+          "jbig2/halftone-mmr-t0-skip0-r128-op1",
+          "jbig2/halftone-mmr-t0-skip0-r128-op2",
+          "jbig2/halftone-mmr-t0-skip0-r128-op3",
+          "jbig2/halftone-mmr-t0-skip0-r128-op4",
+          "jbig2/halftone-one-pattern-type22",
+          "jbig2/halftone-one-pattern-type23",
+          "jbig2/halftone-intermediate-refinement"
+        ],
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [],
+          "discrepancy_vectors": [
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op0",
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op1",
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op2",
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op3",
+            "jbig2/halftone-arithmetic-t0-skip0-r0-op4",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op0",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op1",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op2",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op3",
+            "jbig2/halftone-arithmetic-t0-skip0-r128-op4",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op0",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op1",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op2",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op3",
+            "jbig2/halftone-arithmetic-t0-skip1-r0-op4",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op0",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op1",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op2",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op3",
+            "jbig2/halftone-arithmetic-t0-skip1-r128-op4",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op0",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op1",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op2",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op3",
+            "jbig2/halftone-arithmetic-t1-skip0-r0-op4",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op0",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op1",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op2",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op3",
+            "jbig2/halftone-arithmetic-t1-skip0-r128-op4",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op0",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op1",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op2",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op3",
+            "jbig2/halftone-arithmetic-t1-skip1-r0-op4",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op0",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op1",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op2",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op3",
+            "jbig2/halftone-arithmetic-t1-skip1-r128-op4",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op0",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op1",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op2",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op3",
+            "jbig2/halftone-arithmetic-t2-skip0-r0-op4",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op0",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op1",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op2",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op3",
+            "jbig2/halftone-arithmetic-t2-skip0-r128-op4",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op0",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op1",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op2",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op3",
+            "jbig2/halftone-arithmetic-t2-skip1-r0-op4",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op0",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op1",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op2",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op3",
+            "jbig2/halftone-arithmetic-t2-skip1-r128-op4",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op0",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op1",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op2",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op3",
+            "jbig2/halftone-arithmetic-t3-skip0-r0-op4",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op0",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op1",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op2",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op3",
+            "jbig2/halftone-arithmetic-t3-skip0-r128-op4",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op0",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op1",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op2",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op3",
+            "jbig2/halftone-arithmetic-t3-skip1-r0-op4",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op0",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op1",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op2",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op3",
+            "jbig2/halftone-arithmetic-t3-skip1-r128-op4",
+            "jbig2/halftone-mmr-t0-skip0-r0-op0",
+            "jbig2/halftone-mmr-t0-skip0-r0-op1",
+            "jbig2/halftone-mmr-t0-skip0-r0-op2",
+            "jbig2/halftone-mmr-t0-skip0-r0-op3",
+            "jbig2/halftone-mmr-t0-skip0-r0-op4",
+            "jbig2/halftone-mmr-t0-skip0-r128-op0",
+            "jbig2/halftone-mmr-t0-skip0-r128-op1",
+            "jbig2/halftone-mmr-t0-skip0-r128-op2",
+            "jbig2/halftone-mmr-t0-skip0-r128-op3",
+            "jbig2/halftone-mmr-t0-skip0-r128-op4",
+            "jbig2/halftone-one-pattern-type22",
+            "jbig2/halftone-one-pattern-type23",
+            "jbig2/halftone-intermediate-refinement"
+          ]
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
+      }
+    },
+    {
+      "id": "jbig2-profiles",
+      "reference": "iso32000-2",
+      "clauses": [
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 7.4.12"
+      ],
+      "status": "partial",
+      "description": "Profile metadata lists bounded profile identifiers, begins globally and preserves global restrictions in the page list.",
+      "gaps": "Annex F feature-set compliance is not separately validated.",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "primary_text_review": {
+        "rule": "A global profiles segment comes first; page profiles include every globally declared identifier.",
+        "implementation_agreement": "agrees for metadata syntax, ordering and identifier inclusion; feature-set compliance remains unimplemented",
+        "generated_expectations_agreement": "agrees for the metadata syntax and ordering exercised",
+        "verdict": "verified metadata grammar; partial implementation of profile compliance"
+      },
+      "vector_ids": [
+        "jbig2/profiles-and-optional-comment",
+        "jbig2/profiles-first-must-be-global"
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/profiles-and-optional-comment"
+        ],
+        "discrepancy_vectors": [],
+        "additional_engine": {
+          "engine": "MuPDF 1.28.2",
+          "bitmap_vectors": [
+            "jbig2/profiles-and-optional-comment"
+          ],
+          "discrepancy_vectors": []
+        },
+        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
       }
     }
   ],
-  "differential_observations": {
-    "mmr-repeated": "PDFium agrees with the horizontal-run oracle; Poppler preserves some preceding black runs on the final white row.",
-    "mmr-pass": "PDFium agrees with the two pass operations and final vertical-zero oracle; Poppler preserves one black run.",
-    "page-default-operator": "The initial default-AND interpretation disagreed with PDFium, Poppler and hayro, which rendered the region using its REPLACE operator. This combination remains explicitly unsupported with jbig2.page-combination pending review against the unavailable T.88 primary text. No alternative pixels are accepted as an oracle.",
-    "intermediate-generic-type": "A new refinement reference vector exposed the former type-32 misreading shared by Rust and Python. Type 36 now represents intermediate generic bitmaps and type 32 is explicitly unsupported. PDFium agrees on the corrected reference/chain vectors; the T.88 type table remains pending primary-text review.",
-    "aggregation-strip-boundary": "Multiple-symbol aggregates require completing the final coded strip before decoding the next dictionary field. PDFium agrees on both templates and on mixed single/multiple aggregation with shared integer/refinement state. High-level aggregation parameter conventions were also studied in hayro; no implementation code or tables were copied."
-  },
-  "primary_source": {
-    "title": "ISO 32000-2:2020 sponsored EC3",
-    "local_text_sha256": "38f6e31c6d2ccfec0e66c7de704da42f01dd41ea1b0a1ea180d780a4c471ec04",
-    "verified_locators": [
-      "7.4.7",
-      "Table 12"
-    ],
-    "unavailable_standards": [
-      "ITU-T T.88 (2018)",
-      "ISO/IEC 14492:2019",
-      "ITU-T T.4",
-      "ITU-T T.6"
-    ]
-  },
+  "primary_sources": [
+    {
+      "title": "ISO 32000-2:2020 sponsored EC3",
+      "text_sha256": "38f6e31c6d2ccfec0e66c7de704da42f01dd41ea1b0a1ea180d780a4c471ec04",
+      "locators": [
+        "7.4.7",
+        "Table 12"
+      ]
+    },
+    {
+      "title": "ITU-T T.88 (02/2000), base edition",
+      "text_sha256": "1d579a3fdaed03cc588e116eb673683e2ff4fe3d14318d3242412a5b717864e9",
+      "locators": [
+        "6.2\u20136.7",
+        "7.2\u20137.4.15",
+        "8.2",
+        "Annexes A\u2013C, D, E",
+        "H.2"
+      ]
+    },
+    {
+      "title": "ITU-T T.6 (11/1988)",
+      "text_sha256": "ce107ab4f36fb3b7a1f17f2e076472370144973b0e0e2202183ca994735d17e8",
+      "locators": [
+        "2.2",
+        "2.4.1",
+        "Tables 1\u20133"
+      ]
+    },
+    {
+      "title": "ITU-T T.4 (07/2003)",
+      "text_sha256": "3abe7b9dd5582d75c9bc841f6e7d68d11dbc9a9218156086403802b9bfaf3093",
+      "locators": [
+        "4.1.1",
+        "Tables 2, 3a, 3b"
+      ]
+    }
+  ],
   "documented_choices": [
-    "Limits and error categories follow ADRs 0003/0010; 7.4.7 does not prescribe numeric budgets.",
-    "Dictionary storage and retained bitmap contexts remain live until decoding completes; budget accounting is conservative and does not implement early frees.",
-    "A region operator conflicting with a fixed page default is unsupported pending the external primary text.",
-    "The decoder consumes segment headers directly and never consumes an optional standalone embedded marker; the marker byte values await external primary-text review."
+    "No engine source or code tables were copied. Huffman numeric parameters and published codewords come from Annex B; arithmetic and fax parameters were checked against their local primary tables.",
+    "The H.2 published numeric arithmetic test independently constrains both the Python encoder and Rust decoder; it is additional evidence alongside geometric bitmaps.",
+    "Bitmap storage is retained until decode completion; logical availability nevertheless follows retention flags, including deferred attached extensions.",
+    "The base text does not explicitly settle zero-sized page/region/symbol/refinement dimensions. This decoder requires nonzero dimensions for those bitmaps; pattern dimensions are explicitly nonzero in 7.4.4.1.2\u20137.4.4.1.3. Empty text instance lists and one-pattern halftones are supported.",
+    "Byte-alignment bits that the text directs the decoder to skip are not interpreted, including MMR trailing alignment bits. Raw collective symbol row padding is checked for zero.",
+    "The first stripe uses the literal end-row distance from row zero in 7.4.8.6; a zero maximum permits a first end row of zero. Later stripes must advance and respect the declared maximum.",
+    "Profile segments are bounded metadata with ordering and global/page list constraints; the decoder does not validate every Annex F feature-set restriction.",
+    "Unknown non-necessary extension payloads are skipped as permitted by 7.4.14; unknown necessary extensions never produce partial successful pages.",
+    "High-level aggregation parameter conventions were studied in hayro in the preceding implementation; this review derives them directly from T.88 Tables 17\u201318. No external implementation fragments were copied.",
+    "Retention is enforced within each input stream. At the PDF globals/page boundary all decoded global resources remain available to preserve the established image-adapter contract. This does not establish that a zero-retain global encoding meets T.88 7.2.4; its explicit compatibility vector has strict_valid=false.",
+    "Standalone arithmetic text returns after its declared instance count. A final strip OOB is generated for all conforming vectors and consumed for aggregates, but is not validated in standalone arithmetic text. The compatibility vector omitting it has strict_valid=false.",
+    "Public fixture helper defaults preserve existing consumers in the image area. New JBIG2 vectors use explicit retained headers and complete strips; no image fixtures or manifests outside this area were changed.",
+    "Huffman segment setup conservatively charges all 184 standard-table rows before constructing any tables, including aggregation tables, so empty segments cannot bypass the operation budget.",
+    "Page-reference refinement uses a borrowed clipped view under 7.4.7.4; adjacent page samples are outside the reference bitmap and therefore zero under 6.3.5.2. This base-edition interpretation disagrees with the recorded competitor results. No claim is made about later amendments.",
+    "MMR caches each reference transition pair; b1 and b2 scans advance across each reference row at most linearly. A sparse-reference/dense-row vector exercises repeated horizontal codes before a long reference run."
+  ],
+  "external_dependencies": [
+    {
+      "standard": "Later T.88 amendments; T.88 (2018) / ISO/IEC 14492:2019",
+      "review": "pending primary-text review",
+      "behavior": "Extended adaptive templates and later colour-extension encodings. PDF excludes colour; extended templates return jbig2.extended-template.",
+      "evidence": "No positive extended-template claim; only explicit unsupported/rejection vectors. The base coding procedures are reviewed separately against T.88 (02/2000)."
+    }
   ],
   "differential_summary": {
-    "engine": "PDFium 156.0.8076.0",
+    "engine": "PDFium",
+    "version": "156.0.8076.0",
     "method": "Extracted decoded image bitmap without page resampling; compared all significant packed samples to the generator bitmap.",
-    "successful_vectors": 180,
-    "mismatches": 0,
-    "interpretation": "Differential evidence only. Agreement with the generator does not verify ISO/IEC 14492 or T.88."
+    "successful_vectors": 341,
+    "bitmap_mismatches": 5,
+    "engine_decode_failures": 4,
+    "discrepancies": [
+      {
+        "id": "jbig2/refinement-page-crop-t0-prediction0",
+        "result": "bitmap mismatch",
+        "primary_rule": "T.88 (02/2000) 7.4.7.4 and 6.3.5.2: restrict the page reference to the region rectangle and use zero outside it."
+      },
+      {
+        "id": "jbig2/refinement-page-crop-t0-prediction1",
+        "result": "bitmap mismatch",
+        "primary_rule": "T.88 (02/2000) 7.4.7.4 and 6.3.5.2: restrict the page reference to the region rectangle and use zero outside it."
+      },
+      {
+        "id": "jbig2/refinement-page-crop-t1-prediction0",
+        "result": "bitmap mismatch",
+        "primary_rule": "T.88 (02/2000) 7.4.7.4 and 6.3.5.2: restrict the page reference to the region rectangle and use zero outside it."
+      },
+      {
+        "id": "jbig2/refinement-page-crop-t1-prediction1",
+        "result": "bitmap mismatch",
+        "primary_rule": "T.88 (02/2000) 7.4.7.4 and 6.3.5.2: restrict the page reference to the region rectangle and use zero outside it."
+      },
+      {
+        "id": "jbig2/unknown-length-arithmetic",
+        "result": "bitmap mismatch",
+        "primary_rule": "T.88 (02/2000) 7.4.6.4: the explicit actual row count bounds the decoded bitmap."
+      },
+      {
+        "id": "jbig2/huffman-symbols-mmr-eofb-4-2",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 6.2.6 and 6.5.9: EOFB may be present in a known-length collective MMR bitmap."
+      },
+      {
+        "id": "jbig2/huffman-symbols-mmr-eofb-4-3",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 6.2.6 and 6.5.9: EOFB may be present in a known-length collective MMR bitmap."
+      },
+      {
+        "id": "jbig2/huffman-symbols-mmr-eofb-5-2",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 6.2.6 and 6.5.9: EOFB may be present in a known-length collective MMR bitmap."
+      },
+      {
+        "id": "jbig2/huffman-symbols-mmr-eofb-5-3",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 6.2.6 and 6.5.9: EOFB may be present in a known-length collective MMR bitmap."
+      }
+    ],
+    "interpretation": "Primary-derived expectations are preserved. Decoder warnings or returned fallback pixels are not accepted as proof of correctness."
   },
-  "table_gate": {
-    "huffman": "Unsupported: no T.88 Huffman table has complete entry-by-entry independent bitmap evidence; no remembered table entries were enabled.",
-    "patterns_and_halftones": "Remain explicitly unsupported; no positive coding evidence was added for these modes.",
-    "existing_mmr": "PDFium exact bitmap evidence exercises every white/black terminating and makeup entry through mmr-terminating/mmr-makeup, plus pass and all vertical offsets; T.4/T.6 primary-text review is still pending."
+  "numeric_table_review": {
+    "arithmetic_states": 47,
+    "fax_terminating_words": 128,
+    "fax_makeup_words": 67,
+    "huffman_rows": 184,
+    "huffman_tables": 15,
+    "huffman_unit_tests": "One test per published table walks every row using independently stored published prefix words and numeric endpoints, including escape extremes and OOB."
+  },
+  "remaining": [
+    "Later amended extended templates and unknown necessary extensions are unsupported.",
+    "Profile feature-set conformance is not separately checked.",
+    "The strict nonzero bitmap policy is recorded above.",
+    "No performance claim or full corpus conformance claim is made.",
+    "Cross-stream global retention and standalone arithmetic terminal-OOB syntax are compatibility exceptions, not primary-text conformance claims.",
+    "Strict integration fixtures require tools/fixturegen/image.py to retain its global dictionary and encode complete arithmetic strips, followed by regeneration of the two image globals PDFs and corpus/manifests/image.json.",
+    "MuPDF has additional bitmap/decode discrepancies, including halftone default pixels, refinement, retained contexts, extended referrals and large coordinates; every affected vector ID is recorded in the additional differential summary."
+  ],
+  "additional_differential_summaries": [
+    {
+      "engine": "MuPDF",
+      "version": "1.28.2",
+      "method": "Extracted image pixmap directly; compared all significant packed samples to the generator bitmap.",
+      "successful_vectors": 220,
+      "bitmap_mismatches": 116,
+      "engine_decode_failures": 14,
+      "discrepancies": [
+        {
+          "id": "jbig2/refinement-page-crop-t0-prediction0",
+          "result": "bitmap mismatch",
+          "primary_rule": "T.88 (02/2000) 7.4.7.4 and 6.3.5.2: restrict the page reference to the region rectangle and use zero outside it."
+        },
+        {
+          "id": "jbig2/refinement-page-crop-t0-prediction1",
+          "result": "bitmap mismatch",
+          "primary_rule": "T.88 (02/2000) 7.4.7.4 and 6.3.5.2: restrict the page reference to the region rectangle and use zero outside it."
+        },
+        {
+          "id": "jbig2/refinement-page-crop-t1-prediction0",
+          "result": "bitmap mismatch",
+          "primary_rule": "T.88 (02/2000) 7.4.7.4 and 6.3.5.2: restrict the page reference to the region rectangle and use zero outside it."
+        },
+        {
+          "id": "jbig2/refinement-page-crop-t1-prediction1",
+          "result": "bitmap mismatch",
+          "primary_rule": "T.88 (02/2000) 7.4.7.4 and 6.3.5.2: restrict the page reference to the region rectangle and use zero outside it."
+        },
+        {
+          "id": "jbig2/stripe-zero-maximum-first-row",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/deferred-attached-extension",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/huffman-text-refinement-t0-table14",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/huffman-text-refinement-t0-table15",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/huffman-symbol-aggregation-t0",
+          "result": "engine could not decode",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/huffman-retained-refinement-t0",
+          "result": "engine could not decode",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/huffman-retained-table-last-t0",
+          "result": "engine could not decode",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/huffman-text-refinement-t1-table14",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/huffman-text-refinement-t1-table15",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/huffman-symbol-aggregation-t1",
+          "result": "engine could not decode",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/huffman-retained-refinement-t1",
+          "result": "engine could not decode",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/huffman-retained-table-last-t1",
+          "result": "engine could not decode",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip0-r0-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip0-r0-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip0-r0-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip0-r0-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip0-r0-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip0-r128-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip0-r128-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip0-r128-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip0-r128-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip0-r128-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip1-r0-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip1-r0-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip1-r0-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip1-r0-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip1-r0-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip1-r128-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip1-r128-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip1-r128-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip1-r128-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t0-skip1-r128-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip0-r0-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip0-r0-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip0-r0-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip0-r0-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip0-r0-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip0-r128-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip0-r128-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip0-r128-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip0-r128-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip0-r128-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip1-r0-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip1-r0-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip1-r0-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip1-r0-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip1-r0-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip1-r128-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip1-r128-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip1-r128-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip1-r128-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t1-skip1-r128-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip0-r0-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip0-r0-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip0-r0-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip0-r0-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip0-r0-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip0-r128-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip0-r128-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip0-r128-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip0-r128-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip0-r128-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip1-r0-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip1-r0-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip1-r0-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip1-r0-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip1-r0-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip1-r128-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip1-r128-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip1-r128-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip1-r128-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t2-skip1-r128-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip0-r0-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip0-r0-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip0-r0-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip0-r0-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip0-r0-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip0-r128-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip0-r128-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip0-r128-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip0-r128-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip0-r128-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip1-r0-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip1-r0-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip1-r0-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip1-r0-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip1-r0-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip1-r128-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip1-r128-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip1-r128-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip1-r128-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-arithmetic-t3-skip1-r128-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-mmr-t0-skip0-r0-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-mmr-t0-skip0-r0-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-mmr-t0-skip0-r0-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-mmr-t0-skip0-r0-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-mmr-t0-skip0-r0-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-mmr-t0-skip0-r128-op0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-mmr-t0-skip0-r128-op1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-mmr-t0-skip0-r128-op2",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-mmr-t0-skip0-r128-op3",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-mmr-t0-skip0-r128-op4",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-one-pattern-type22",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-one-pattern-type23",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/halftone-intermediate-refinement",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/header-number-maximum",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/refinement-t0-prediction-0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/refinement-page-t0-prediction-0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/refinement-t0-prediction-1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/refinement-page-t0-prediction-1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/refinement-t1-prediction-0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/refinement-page-t1-prediction-0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/refinement-t1-prediction-1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/refinement-page-t1-prediction-1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/refinement-intermediate-chain-adaptive",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/symbol-multiple-aggregation-t0",
+          "result": "engine could not decode",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/retained-generic-contexts-t0",
+          "result": "engine could not decode",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/retained-generic-contexts-t1",
+          "result": "engine could not decode",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/retained-generic-contexts-t2",
+          "result": "engine could not decode",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/retained-generic-contexts-t3",
+          "result": "engine could not decode",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/retained-refinement-contexts-t0",
+          "result": "engine could not decode",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/retained-refinement-contexts-t1",
+          "result": "engine could not decode",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/refinement-prediction-uniform-0-t0",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/refinement-prediction-uniform-0-t1",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/integer-coordinate-4294967295-negative",
+          "result": "bitmap mismatch",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        },
+        {
+          "id": "jbig2/extended-referrals-valid",
+          "result": "engine could not decode",
+          "primary_rule": "Expected pixels remain those derived from the primary clauses listed for this vector; competitor disagreement remains unresolved."
+        }
+      ],
+      "interpretation": "Primary-derived expectations are preserved. Decoder warnings or returned fallback pixels are not accepted as proof of correctness."
+    }
+  ],
+  "vector_summary": {
+    "vectors": 455,
+    "positive_bitmaps": 350,
+    "explicit_compatibility_vectors": [
+      "jbig2/pdf-globals-cross-stream-lifetime",
+      "jbig2/arithmetic-text-terminal-count"
+    ],
+    "known_answer_vectors": 16
   }
 }

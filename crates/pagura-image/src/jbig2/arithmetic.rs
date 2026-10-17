@@ -161,3 +161,25 @@ impl<'a> Decoder<'a> {
         Ok(bit)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Context, Decoder};
+    use pagura_testkit::fixture;
+    #[test]
+    fn h2_published_known_answer() {
+        let data = fixture("jbig2", "arithmetic-h2-known-answer.mq");
+        let expected = fixture("jbig2", "arithmetic-h2-known-answer.decisions");
+        let mut decoder = Decoder::new(&data, 0).unwrap();
+        let mut context = Context::default();
+        let mut actual = Vec::new();
+        for _ in &expected {
+            let mut byte = 0;
+            for _ in 0..8 {
+                byte = (byte << 1) | decoder.bit(&mut context).unwrap();
+            }
+            actual.push(byte);
+        }
+        assert_eq!(actual, expected);
+    }
+}

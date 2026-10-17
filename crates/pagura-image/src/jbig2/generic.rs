@@ -71,6 +71,7 @@ pub(super) fn decode(
     width: u32,
     height: u32,
     limits: &Limits,
+    unknown: bool,
 ) -> Result<Bitmap> {
     let flags = reader.byte()?;
     if flags & 0xe0 != 0 {
@@ -85,8 +86,18 @@ pub(super) fn decode(
             pagura_core::Position::Buffer(p) => p,
             _ => 0,
         };
-        return super::mmr::decode(reader.rest(), width, height, limits, base)
-            .map_err(|error| error.at(position));
+        let data = reader.rest();
+        return if unknown {
+            let (bitmap, consumed) =
+                super::mmr::decode_prefix(data, width, height, limits, base, true)?;
+            if consumed != data.len() {
+                return Err(Error::syntax("trailing JBIG2 unknown-length MMR data"));
+            }
+            Ok(bitmap)
+        } else {
+            super::mmr::decode(data, width, height, limits, base)
+                .map_err(|error| error.at(position))
+        };
     }
     let template = (flags >> 1) & 3;
     if flags & 0x10 != 0 {
@@ -156,6 +167,30 @@ impl Template {
         })
     }
 
+    /// Prescribed adaptive pixels for patterns (Table 27) and gray planes (C.4).
+    pub(super) fn prescribed(kind: u8, first: Option<i32>) -> Self {
+        let source: &[(i32, i32)] = match kind {
+            0 => &TEMPLATE_0,
+            1 => &TEMPLATE_1,
+            2 => &TEMPLATE_2,
+            _ => &TEMPLATE_3,
+        };
+        let mut positions = [(0, 0); 16];
+        positions[..source.len()].copy_from_slice(source);
+        if let Some(x) = first {
+            positions[match kind {
+                1 => 3,
+                2 => 2,
+                _ => 4,
+            }] = (x, 0);
+        }
+        Self {
+            positions,
+            kind,
+            count: source.len(),
+        }
+    }
+
     pub(super) fn context_count(&self) -> usize {
         1usize << self.count
     }
@@ -173,6 +208,27 @@ pub(super) fn decode_arithmetic(
     contexts: &mut [Context],
     limits: &Limits,
 ) -> Result<Bitmap> {
+    decode_skipping(
+        (width, height),
+        positions,
+        prediction,
+        decoder,
+        contexts,
+        None,
+        limits,
+    )
+}
+
+pub(super) fn decode_skipping(
+    size: (u32, u32),
+    positions: &Template,
+    prediction: bool,
+    decoder: &mut Decoder<'_>,
+    contexts: &mut [Context],
+    skip: Option<&Bitmap>,
+    limits: &Limits,
+) -> Result<Bitmap> {
+    let (width, height) = size;
     let mut bitmap = Bitmap::new(width, height, false, limits)?;
     let mut typical = 0;
     let typical_context = [0x9b25, 0x0795, 0xe5, 0x0195][usize::from(positions.kind)];
@@ -189,6 +245,9 @@ pub(super) fn decode_arithmetic(
             continue;
         }
         for x in 0..width {
+            if skip.is_some_and(|s| s.pixel(i64::from(x), i64::from(y)) != 0) {
+                continue;
+            }
             let mut context = 0;
             for (bit, &(dx, dy)) in positions.positions[..positions.count].iter().enumerate() {
                 context |= usize::from(

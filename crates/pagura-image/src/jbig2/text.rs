@@ -1,5 +1,4 @@
-//! Arithmetic text and symbol-aggregation placement. T.88 primary-text
-//! review is pending; independently encoded bitmaps are checked with PDFium.
+//! Arithmetic text and aggregation, T.88 (02/2000), 6.4 and 7.4.3.
 use super::{
     Bitmap,
     arithmetic::{Context, Decoder},
@@ -157,12 +156,20 @@ impl State {
                 let refined = self.refined(decoder, symbol, &glyph_limits, work)?;
                 let glyph = refined.as_ref().unwrap_or(symbol);
                 work.pixels(u64::from(glyph.width) * u64::from(glyph.height), limits)?;
-                bitmap.combine_signed(glyph, s, t, config.operator);
+                let (x, y) = config.origin(s, t, glyph)?;
+                bitmap.combine_signed(glyph, x, y, config.operator);
                 count += 1;
                 if count == instances && !config.complete_last_strip {
                     break;
                 }
-                s = add(s, i64::from(glyph.width) - 1)?;
+                s = add(
+                    s,
+                    i64::from(if config.transposed {
+                        glyph.height
+                    } else {
+                        glyph.width
+                    }) - 1,
+                )?;
                 let Some(delta) = self.delta_s.decode(decoder)? else {
                     break;
                 };
@@ -268,10 +275,12 @@ fn dimension(base: u32, delta: i64) -> Result<u32> {
 }
 
 pub(super) struct Config {
-    strips: i64,
-    operator: u8,
-    offset: i64,
-    default_black: bool,
+    pub(super) strips: i64,
+    pub(super) operator: u8,
+    pub(super) offset: i64,
+    pub(super) default_black: bool,
+    corner: u8,
+    transposed: bool,
     complete_last_strip: bool,
 }
 
@@ -282,8 +291,56 @@ impl Config {
             operator: 0,
             offset: 0,
             default_black: false,
+            corner: 1,
+            transposed: false,
             complete_last_strip: true,
         }
+    }
+    pub(super) fn from_flags(flags: u16) -> Self {
+        let raw = i64::from((flags >> 10) & 31);
+        Self {
+            strips: 1i64 << ((flags >> 2) & 3),
+            operator: ((flags >> 7) & 3) as u8,
+            offset: if raw >= 16 { raw - 32 } else { raw },
+            default_black: flags & 512 != 0,
+            corner: ((flags >> 4) & 3) as u8,
+            transposed: flags & 64 != 0,
+            complete_last_strip: false,
+        }
+    }
+    pub(super) fn origin(&self, s: i64, t: i64, glyph: &Bitmap) -> Result<(i64, i64)> {
+        if self.transposed {
+            Ok((
+                add(
+                    t,
+                    if self.corner >= 2 {
+                        1 - i64::from(glyph.width)
+                    } else {
+                        0
+                    },
+                )?,
+                s,
+            ))
+        } else {
+            Ok((
+                s,
+                add(
+                    t,
+                    if self.corner & 1 == 0 {
+                        1 - i64::from(glyph.height)
+                    } else {
+                        0
+                    },
+                )?,
+            ))
+        }
+    }
+    pub(super) fn advance(&self, glyph: &Bitmap) -> i64 {
+        i64::from(if self.transposed {
+            glyph.height
+        } else {
+            glyph.width
+        }) - 1
     }
     fn read(reader: &mut Reader<'_>) -> Result<(Self, Option<Parameters>)> {
         let flags = reader.u16()?;
@@ -293,11 +350,8 @@ impl Config {
                 "JBIG2 Huffman text regions are not implemented",
             ));
         }
-        if flags & 0x70 != 0x10 {
-            return Err(Error::unsupported(
-                tags::TEXT_LAYOUT,
-                "JBIG2 text reference corner or transposition is not implemented",
-            ));
+        if flags & 2 == 0 && flags & 0x8000 != 0 {
+            return Err(Error::syntax("unused JBIG2 refinement template flag"));
         }
         let parameters = if flags & 2 != 0 {
             Some(Parameters::read(reader, u8::from(flags & 0x8000 != 0))?)
@@ -314,6 +368,8 @@ impl Config {
                 operator,
                 offset: if raw >= 16 { raw - 32 } else { raw },
                 default_black: flags & 512 != 0,
+                corner: ((flags >> 4) & 3) as u8,
+                transposed: flags & 64 != 0,
                 complete_last_strip: false,
             },
             parameters,
@@ -321,7 +377,7 @@ impl Config {
     }
 }
 
-fn add(left: i64, right: i64) -> Result<i64> {
+pub(super) fn add(left: i64, right: i64) -> Result<i64> {
     left.checked_add(right)
         .ok_or_else(|| Error::limit("JBIG2 text coordinate overflow"))
 }

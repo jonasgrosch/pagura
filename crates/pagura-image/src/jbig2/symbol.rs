@@ -1,6 +1,4 @@
-//! Arithmetic symbol dictionaries, including refinement and aggregation.
-//! ISO 32000-2 clause 7.4.7 delegates these algorithms to T.88, whose
-//! primary-text review is pending. Generated pixels are checked with PDFium.
+//! Arithmetic dictionaries and retained contexts, T.88 (02/2000), 6.5/7.4.2.
 use super::{
     Bitmap,
     arithmetic::{Context, Decoder},
@@ -21,11 +19,13 @@ pub(super) struct Dictionary {
 }
 
 pub(super) struct Retained {
-    generic: Vec<Context>,
-    refinement: Option<Vec<Context>>,
+    pub(super) settings: Settings,
+    pub(super) generic: Vec<Context>,
+    pub(super) refinement: Option<Vec<Context>>,
 }
 
 struct Config {
+    settings: Settings,
     generic: Template,
     refinement: Option<Parameters>,
     reuse: bool,
@@ -92,6 +92,7 @@ pub(super) fn decode(
     let selected = select(&symbols, exported, &mut decoder, limits, work)?;
     let contexts = if config.retain {
         Some(Retained {
+            settings: config.settings,
             generic: procedure.generic,
             refinement: procedure
                 .aggregation
@@ -107,9 +108,43 @@ pub(super) fn decode(
     })
 }
 
+/// All bitmap coding parameters must match on context reuse (7.4.2.2 step 3).
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) struct Settings {
+    modes: u16,
+    adaptive: [u8; 12],
+    length: usize,
+}
+impl Settings {
+    pub(super) fn new(flags: u16, bytes: &[u8]) -> Result<Self> {
+        let mut adaptive = [0; 12];
+        adaptive
+            .get_mut(..bytes.len())
+            .ok_or_else(|| Error::syntax("invalid JBIG2 bitmap parameter size"))?
+            .copy_from_slice(bytes);
+        Ok(Self {
+            modes: flags & 0x1c03,
+            adaptive,
+            length: bytes.len(),
+        })
+    }
+    pub(super) fn check(self, retained: &Retained) -> Result<()> {
+        if self != retained.settings {
+            return Err(Error::syntax(
+                "incompatible JBIG2 retained bitmap parameters",
+            ));
+        }
+        Ok(())
+    }
+}
+
 impl Config {
     fn read(reader: &mut Reader<'_>) -> Result<Self> {
         let flags = reader.u16()?;
+        let adaptive_start = reader.offset;
+        if flags & 0xfc != 0 || flags & 2 == 0 && flags & 0x1000 != 0 {
+            return Err(Error::syntax("unused JBIG2 symbol coding flags"));
+        }
         if flags & 0xe000 != 0 {
             return Err(Error::syntax("reserved JBIG2 symbol dictionary flags"));
         }
@@ -128,6 +163,7 @@ impl Config {
             None
         };
         Ok(Self {
+            settings: Settings::new(flags, &reader.data[adaptive_start..reader.offset])?,
             generic,
             refinement,
             reuse: flags & 0x100 != 0,
@@ -168,6 +204,9 @@ impl Procedure {
         } else {
             None
         };
+        if let Some(retained) = retained {
+            config.settings.check(retained)?;
+        }
         Ok(Self {
             heights: Integer::new(),
             widths: Integer::new(),
@@ -212,7 +251,9 @@ impl Procedure {
                 work.pixels(u64::from(width) * u64::from(height), limits)?;
                 let bitmap = if let Some(aggregation) = &mut self.aggregation {
                     let instances = usize::try_from(self.instances.required(decoder)?)
-                        .map_err(|_| Error::syntax("invalid JBIG2 aggregate instance count"))?;
+                        .ok()
+                        .filter(|&n| n != 0)
+                        .ok_or_else(|| Error::syntax("invalid JBIG2 aggregate instance count"))?;
                     if instances == 1 {
                         aggregation.single(
                             decoder,

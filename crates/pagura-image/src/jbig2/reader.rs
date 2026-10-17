@@ -16,6 +16,56 @@ impl<'a> Reader<'a> {
         }
     }
 
+    /// Segment body framing and unknown-length row counts, 7.2.7/7.4.6.4.
+    pub(super) fn segment(&mut self, kind: u8, length: u32) -> Result<(Self, Option<u32>)> {
+        let base = match self.position() {
+            Position::Buffer(p) => p,
+            _ => 0,
+        };
+        let mut actual_rows = None;
+        let body = if length == u32::MAX {
+            if kind != 38 {
+                return Err(Error::syntax(
+                    "unspecified length of JBIG2 non-generic segment",
+                ));
+            }
+            let start = self.offset;
+            let coding = *self
+                .data
+                .get(start + 17)
+                .ok_or_else(|| Error::syntax("truncated JBIG2 unknown-length region"))?;
+            let arithmetic = coding & 1 == 0;
+            let header = 18
+                + if arithmetic {
+                    if coding & 6 == 0 { 8 } else { 2 }
+                } else {
+                    0
+                };
+            let marker = if arithmetic { [255, 172] } else { [0, 0] };
+            let tail = self
+                .data
+                .get(start + header..)
+                .ok_or_else(|| Error::syntax("truncated JBIG2 unknown-length header"))?;
+            let end = tail
+                .windows(2)
+                .position(|pair| pair == marker)
+                .ok_or_else(|| Error::syntax("unterminated JBIG2 unknown-length region"))?
+                + header;
+            let payload_length = end + if arithmetic { 2 } else { 0 };
+            let body = self.take(payload_length)?;
+            if !arithmetic {
+                self.take(2)?;
+            }
+            actual_rows = Some(self.u32()?);
+            body
+        } else {
+            self.take(
+                usize::try_from(length).map_err(|_| Error::limit("JBIG2 segment size overflow"))?,
+            )?
+        };
+        Ok((Reader::new(body, base), actual_rows))
+    }
+
     pub(super) fn position(&self) -> Position {
         Position::Buffer(self.base + self.offset)
     }
