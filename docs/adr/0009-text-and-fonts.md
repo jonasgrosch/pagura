@@ -27,10 +27,30 @@ Fonts are loaded once per document and font dictionary and shared; glyph
 outlines are cached by program and glyph. Unicode text is retained for
 extraction and search (M6).
 
-## Open decisions
+## Bundled font data (decided 2026-10-17)
 
-- **Non-embedded fonts** (including the standard 14) need bundled substitute
-  fonts and metrics. Their licences and provenance require a separate
-  decision under ADR 0008; until then they fail with `font.non-embedded`.
-- **Predefined CJK CMaps** (beyond Identity-H/V) need bundled CMap data;
-  until decided they fail with `font.predefined-cmap`.
+Non-embedded fonts and predefined CMaps need data the PDF does not carry.
+The data is bundled as **data files with their licences**, never as code,
+and reaches the engine only through a provider (invariant 7):
+
+- **Predefined CMaps** (Table 116 and the `Adobe-*-UCS2` maps used for
+  Unicode): Adobe's `cmap-resources` (BSD-3-Clause), at a pinned tag.
+- **Standard 14 metrics**: Adobe's Core14 AFM files, whose notice permits use,
+  copying and distribution with the notice retained. They supply widths
+  when a standard-14 font has no `/Widths`.
+- **Standard 14 outlines**: Arimo, Tinos and Cousine (Apache-2.0), which are
+  metric-compatible with Helvetica, Times and Courier, from Google's pinned
+  `croscorefonts` release. A substituted glyph uses the AFM advance, so
+  layout follows the PDF's metrics even where outlines differ slightly.
+- **Symbol and ZapfDingbats** have no permissively licensed metric-compatible
+  outlines. Copyleft sets such as URW base-35 cannot be bundled in an MIT/Apache
+  project, so these fonts keep failing with `font.non-embedded` until a
+  permissive source exists. Their AFM metrics are still bundled.
+
+`pagura-text` defines the provider interface (standard font by base name,
+predefined CMap by name). A data crate implements it over the bundled files,
+which are recorded with source URLs and SHA-256 in a lock, like the corpora.
+Hosts may supply their own provider; the browser can fetch data lazily
+instead of embedding it in the WebAssembly module. Substitution is reported
+as a diagnostic, never silent, and a document's own embedded program always
+wins.
