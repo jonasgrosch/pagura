@@ -135,6 +135,9 @@ impl<'a> Compiler<'a> {
     }
 
     fn sequence(&mut self, streams: &[&IndirectObject], resources: &Dictionary) -> Result<()> {
+        // Pattern execution restores the parent's initial graphics state (8.7.3.1).
+        // Retain its rendering intent when initializing opaque composition.
+        self.state.composite.conversion.intent = crate::icc::Intent::from_name(&self.state.intent);
         self.initial_state = self.state.clone();
         let mut bytes = Vec::new();
         let mut origins = Vec::new();
@@ -404,13 +407,17 @@ fn rendering_intent(value: &Value) -> Result<Vec<u8>> {
     let name = value
         .as_name()
         .ok_or(Error::syntax("rendering intent must be a name"))?;
-    // Only relative colorimetry is implemented. Table 69 (8.6.5.8) permits
-    // falling back to RelativeColorimetric for unsupported or unknown intents.
-    Ok(if name == b"RelativeColorimetric" {
-        name.as_bytes().to_vec()
-    } else {
-        b"RelativeColorimetric".to_vec()
-    })
+    // ISO 8.6.5.8 Table 69 permits RelativeColorimetric for unknown intents.
+    Ok(
+        if matches!(
+            name.as_bytes(),
+            b"RelativeColorimetric" | b"AbsoluteColorimetric" | b"Perceptual" | b"Saturation"
+        ) {
+            name.as_bytes().to_vec()
+        } else {
+            b"RelativeColorimetric".to_vec()
+        },
+    )
 }
 
 fn resource<'a>(

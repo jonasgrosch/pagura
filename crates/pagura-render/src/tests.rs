@@ -24,6 +24,17 @@ const RENDER: &[&str] = &[
     "stroke-adjusted-open-oblique",
     "dash-hairline-anisotropic-expanded",
     "dash-width-anisotropic-expanded",
+    "icc-range",
+    "icc-gray-media-white",
+    "icc-gray-lab-pcs",
+    "icc-mft2-4-Lab-v4",
+    "icc-mft1-4-Lab-v4",
+    "icc-mAB-full-Lab-2",
+    "icc-intent-state",
+    "icc-indexed-Lab-input",
+    "icc-image-mft2",
+    "icc-image-mft1",
+    "icc-image-mAB",
     "icc-rgb-columns",
     "stitch-endpoint-encode-0",
     "stitch-endpoint-encode-1",
@@ -330,28 +341,28 @@ fn all_supported_fixtures_assemble_as_single_pixel_tiles() {
 }
 
 #[test]
-fn unsupported_tags_and_stream_positions() {
-    for (name, tag) in [
-        ("icc-range", "colorspace.ICCRange"),
-        ("cie-blackpoint", "colorspace.BlackPoint"),
-    ] {
+fn unsupported_colour_reports_its_stream_and_object() {
+    let document = open("cie-blackpoint");
+    let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
+    assert_eq!(
+        error.feature().map(pagura_core::Feature::as_str),
+        Some("colorspace.BlackPoint")
+    );
+    assert!(matches!(error.position, Position::Stream { .. }), "{error}");
+    assert!(error.object.is_some());
+}
+
+#[test]
+fn unsupported_forward_icc_transforms_identify_the_profile() {
+    for name in ["icc-lut-mBA", "icc-lut8-XYZ"] {
         let document = open(name);
-        let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
+        let list = compile_page(&document, document.page(0).unwrap()).unwrap();
+        let error = list.render(&RenderOptions::default()).unwrap_err();
         assert_eq!(
             error.feature().map(pagura_core::Feature::as_str),
-            Some(tag),
-            "{name}: {error}"
+            Some("colorspace.ICCBased")
         );
-        if !matches!(
-            name,
-            "knockout" | "annotation-flags" | "group-DeviceGray" | "group-DeviceCMYK"
-        ) {
-            assert!(
-                matches!(error.position, Position::Stream { .. }),
-                "{name}: {error}"
-            );
-        }
-        assert!(error.object.is_some());
+        assert_eq!(error.object, Some(pagura_core::ObjectId::new(5, 0)));
     }
 }
 

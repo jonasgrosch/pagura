@@ -249,13 +249,13 @@
     {
       "id": "content/icc-alternate",
       "kind": "pdf",
-      "description": "ICC stream Alternate/N fallback for a synthetic later-version profile; primary ICC-text review pending",
+      "description": "ICC stream Alternate/N fallback for a synthetic later-version profile",
       "expected": "render",
       "requirements": [
         "content-colour"
       ],
       "path": "corpus/generated/content/icc-alternate.pdf",
-      "sha256": "97074b85147c5a1d21bbf1d0d81b29d2167b285be65a6aaa7dfb7290d2a79540",
+      "sha256": "2921d4edc9784658b4f671b273254dfe1a73b2805acf337ac44166ebeb29b355",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -269,13 +269,13 @@
     {
       "id": "content/icc-default",
       "kind": "pdf",
-      "description": "ICC stream Alternate/N fallback for a synthetic later-version profile; primary ICC-text review pending",
+      "description": "ICC stream Alternate/N fallback for a synthetic later-version profile",
       "expected": "render",
       "requirements": [
         "content-colour"
       ],
       "path": "corpus/generated/content/icc-default.pdf",
-      "sha256": "b07525e99f11aadf12c43a05dc2f16c9bce951429d8883bf6f3015d31ee9c6cf",
+      "sha256": "7fed90724a4336927318f672de938b1edd25572c4486e3c7632cbaea9ab3d808",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -289,13 +289,13 @@
     {
       "id": "content/default-space",
       "kind": "pdf",
-      "description": "ICC stream Alternate/N fallback for a synthetic later-version profile; primary ICC-text review pending",
+      "description": "ICC stream Alternate/N fallback for a synthetic later-version profile",
       "expected": "render",
       "requirements": [
         "content-colour"
       ],
       "path": "corpus/generated/content/default-space.pdf",
-      "sha256": "92d0a80f940a9a1cecd2f76a1395234cc54c6ee6f9e753a2a0b5d072ee924a9c",
+      "sha256": "0dd8339ed66de4400228c475d2281f3b9d51fd6c8a2b38bcf9193b5828b928f1",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -5863,13 +5863,13 @@
     {
       "id": "content/icc-1-identity",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-1-identity.pdf",
-      "sha256": "edf2ae03603fca31be22288bc29a80f261d396447de3eb7e8b843682480b114b",
+      "sha256": "80c4bd353d70dc06aed9290901e97a55d2c3f30e422d23ff6a005ba86f3e5d81",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -5883,13 +5883,13 @@
     {
       "id": "content/icc-3-identity",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-3-identity.pdf",
-      "sha256": "6741c102e5b35749c80b430abf48be7a0a36b31e7bdfd4c0a2ec2502dc29e1eb",
+      "sha256": "e1ec4e70ed4e5643c317d00b4f9768e2827065c212b1b456def204e6f078931f",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -5903,13 +5903,13 @@
     {
       "id": "content/icc-1-gamma",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-1-gamma.pdf",
-      "sha256": "816f5e858048dd51e91d526e99ba585fc39c5dea6c62b849a327ebfdcdd86cff",
+      "sha256": "46d3472ec16348ccbe35eb1f2987b65a34730524474fde77caaa68d774b60437",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -5923,13 +5923,13 @@
     {
       "id": "content/icc-3-gamma",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-3-gamma.pdf",
-      "sha256": "c136751e4688c2f0ec579cffcb86ec78af44781343119037c8200058a3887b32",
+      "sha256": "0513d83b953c9b330208ad743b220b0df4a57b2c6991fd8862595b1521d7fe69",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -5943,13 +5943,13 @@
     {
       "id": "content/icc-1-sampled",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-1-sampled.pdf",
-      "sha256": "48e232f5431d60e79b2203ae1452dfd5757db4210bc9d3b1a11899d7ad4c0fd3",
+      "sha256": "ecef3961c8c99066861511b31f90cd72be6906b22caa8059d410ce677773af5f",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -5963,13 +5963,13 @@
     {
       "id": "content/icc-3-sampled",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-3-sampled.pdf",
-      "sha256": "0b4e6854c46a485c4d7f0a553fbb82587cd9c014253f7a71e4ba5ab733de984a",
+      "sha256": "6132a13ae6cb21dba4ceebad750ef7f704cbbb9e3188c2f7af2e401f6dfe124d",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -5983,13 +5983,13 @@
     {
       "id": "content/icc-1-param0",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-1-param0.pdf",
-      "sha256": "e4c1364b514cb3a4457eecd9f800af4f1933916d7c69fa5766133bc348d95de0",
+      "sha256": "1c5dbf4f4ac3742dae62e620c601965663fedc158da26616df5f303911b01732",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -6003,13 +6003,13 @@
     {
       "id": "content/icc-3-param0",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-3-param0.pdf",
-      "sha256": "413a25337653f56f21cd7abe1739f82898536b92699fe8663664a0dd10ce4d38",
+      "sha256": "9bf1e8027ab95564a4799074b7d5775ed8f8b231eaf6ce77baf50335531952f8",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -6023,13 +6023,13 @@
     {
       "id": "content/icc-1-param1",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-1-param1.pdf",
-      "sha256": "326e143d6d413a2df42cb98084862cdc7dd351bfff90fe1f95e381914aaccdfc",
+      "sha256": "f198318873bd9863a9a84b46fabcdf7122d013bb93c6d0f05d4604232e251d4a",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -6043,13 +6043,13 @@
     {
       "id": "content/icc-3-param1",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-3-param1.pdf",
-      "sha256": "6494e306530ef0effdfe281bc059ac2c081914822742729b17b80ca54a2e974f",
+      "sha256": "16e13683f7b798cb29ed039800374c9f6ec43e8c154d915e6b9cacf2a3bf5cbf",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -6063,13 +6063,13 @@
     {
       "id": "content/icc-1-param2",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-1-param2.pdf",
-      "sha256": "73153e5244f95ad69166aa7cbddb0dc38250ac3c30dfabe3b9cf6f68c293c9a5",
+      "sha256": "2640fe95dce82b4f5dcd2f90c025c9d0bf821fd3272f13828db42c59e6403367",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -6083,13 +6083,13 @@
     {
       "id": "content/icc-3-param2",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-3-param2.pdf",
-      "sha256": "0b615483858a1b5351daf7cf8bee8dfaa73c50cfb7e92d5693826b450c03158b",
+      "sha256": "8b1cfeef7732e43403dd4d602bf8314a6bd5c33808392ad6dbf45f409e1939fb",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -6103,13 +6103,13 @@
     {
       "id": "content/icc-1-param3",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-1-param3.pdf",
-      "sha256": "726ecb949c2b10a814607f27ddb676a78a37e4b555fabff318e083bf46a737fe",
+      "sha256": "c93468463cb1623f8fcf2f8d25ea0844654d4179b2e35aa09375b30a81fb6397",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -6123,13 +6123,13 @@
     {
       "id": "content/icc-3-param3",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-3-param3.pdf",
-      "sha256": "382b4c266f7b679ec67f95a9faf42600a36055fa5997791170bd961cb8eaa1ff",
+      "sha256": "6f7bccb2b097fb5bf14cbd945ad1795233f61af7aec8c819d76f2f6d339cdb75",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -6143,13 +6143,13 @@
     {
       "id": "content/icc-1-param4",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-1-param4.pdf",
-      "sha256": "a5a1cd836aa66ab021f3db170f4ec54543e5d70078636e541c822c4cdf670bea",
+      "sha256": "39ad707154d6e7d0e32a1bb33ecff7fd7ff4c2dfb1a881e178038add90155b6b",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -6163,13 +6163,13 @@
     {
       "id": "content/icc-3-param4",
       "kind": "pdf",
-      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review",
+      "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-3-param4.pdf",
-      "sha256": "0aebf93006ff118c41c8ae98f1d71f1c88085d48905428764dae7accfad0e6f3",
+      "sha256": "e5247ee1850c3c653799a5bf65ef981e819146eb715588154cc6e48653b2d4a6",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -6183,13 +6183,13 @@
     {
       "id": "content/icc-rgb-columns",
       "kind": "pdf",
-      "description": "Independent unequal per-channel TRCs and PCS matrix columns; primary ICC-text review pending",
+      "description": "Independent unequal per-channel TRCs and PCS matrix columns",
       "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-rgb-columns.pdf",
-      "sha256": "f8e91e08a0ef9ba0a5ede3719f989be7519feafb63cdc2fb71ac31da74e75ae3",
+      "sha256": "40e7b4065474a159d0cf18414b40f1a9afabafb5904fdde451a01c5621cfc57b",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -6209,7 +6209,7 @@
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-initial-zero.pdf",
-      "sha256": "dc4caf165d77b8e69b404ca71daf859498fb0488636e29cb0155e606cc42ded7",
+      "sha256": "272d1dd2d98698f813799fc7c7dd2188dffc8e32359e08145457fb51350a664a",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -6228,7 +6228,7 @@
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-simple-operator.pdf",
-      "sha256": "6fd36366cf828fa9f6e63eab61068293a0c38e590bdd9dce6abf75d5bf5e9cf3",
+      "sha256": "dbec2e1f3e1d8b2f090af0b9bb3ba411bc76d2ffcd65fa447a0e632521c1312a",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -6250,64 +6250,2184 @@
       "render_error": "Syntax"
     },
     {
-      "id": "content/icc-lut-mft1",
+      "id": "content/icc-gray-media-white",
       "kind": "pdf",
-      "description": "Tag-defined LUT profile requires explicit processing rather than alternate substitution; primary ICC review pending",
-      "expected": "unsupported",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
-      "path": "corpus/generated/content/icc-lut-mft1.pdf",
-      "sha256": "e4a7b0b363c95588de1a1a67333d5ca622cb50c7c548cda907fba75dc1c35836",
+      "path": "corpus/generated/content/icc-gray-media-white.pdf",
+      "sha256": "f69a18f60915b60b42b5d19cab6de78e67345f3142fed00afa50aa8ba17ac89b",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "colorspace.ICCBased"
+      "oracle": "corpus/generated/content/icc-gray-media-white.ppm",
+      "oracle_sha256": "871fb704275717cc48ff078b45c1354b898511d7694bf2901a7570a97eba46ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
     },
     {
-      "id": "content/icc-lut-mft2",
+      "id": "content/icc-gray-lab-pcs",
       "kind": "pdf",
-      "description": "Tag-defined LUT profile requires explicit processing rather than alternate substitution; primary ICC review pending",
-      "expected": "unsupported",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
-      "path": "corpus/generated/content/icc-lut-mft2.pdf",
-      "sha256": "90121b6649521e001744e43c9422c81ea014e579e49168e95d0536d6db52e562",
+      "path": "corpus/generated/content/icc-gray-lab-pcs.pdf",
+      "sha256": "719d302ad9ef3298298c7fc360f8b28c84e44145195dead34a140a1a7ea9c8c8",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "colorspace.ICCBased"
+      "oracle": "corpus/generated/content/icc-gray-lab-pcs.ppm",
+      "oracle_sha256": "6fcd85d84a6e2609542c7bb627018041ae75a185a0af38e20a433be9a154a801",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
     },
     {
-      "id": "content/icc-lut-mAB",
+      "id": "content/icc-param-overflow",
       "kind": "pdf",
-      "description": "Tag-defined LUT profile requires explicit processing rather than alternate substitution; primary ICC review pending",
-      "expected": "unsupported",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
       "requirements": [
         "content-icc-matrix"
       ],
-      "path": "corpus/generated/content/icc-lut-mAB.pdf",
-      "sha256": "6689784866d21cc2ab9d5617d09630e3a63956d14091a0ae20ae8f2dadadb9c9",
+      "path": "corpus/generated/content/icc-param-overflow.pdf",
+      "sha256": "435b774cc82e77d669accf35a2173d568ee6d17ae08dbff7a11cfc9c58b47cb8",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "colorspace.ICCBased"
+      "oracle": "corpus/generated/content/icc-param-overflow.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-param-threshold",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-param-threshold.pdf",
+      "sha256": "e9f4e38e973fb89c3d68e86cecbe20a0678f8c38674d47cc6acd8c750270b19b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-param-threshold.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-param4-offset",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-param4-offset.pdf",
+      "sha256": "6373b66cbb3c8f960c4f492ec0a471a9c32e18e0a364b593e4cd807e7110c114",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-param4-offset.ppm",
+      "oracle_sha256": "01e44ae079a3edfbe5612896c4573c4473125227bd03eb1f41e7390359f8e59e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-param2-signed",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-param2-signed.pdf",
+      "sha256": "63864e97d7191da9cb98d4786c54e2d4d2dd1685fa7beef1fb3a635ebd320b5a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-param2-signed.ppm",
+      "oracle_sha256": "926d8cea88e9f0395a6104c0a37fc8b806af84f385c6821de3582c8cba2e3b69",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-input-low",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-input-low.pdf",
+      "sha256": "673bbf08e2b2c294cb3050d69e03a8c83abb8e38cc3c7b67ea2ba32e1f250c56",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-input-low.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-input-high",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-input-high.pdf",
+      "sha256": "e3172add87ab7737e1613c0686734b95fce55a37221ddb66f3cf218101eaec5c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-input-high.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-sampled-nonmonotonic",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-sampled-nonmonotonic.pdf",
+      "sha256": "8a332d3cb2ae04c1b823efac87a9113dfc56d9b15a7b581571b10722a82834ca",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-sampled-nonmonotonic.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-sampled-flat",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-sampled-flat.pdf",
+      "sha256": "b62d09b764b1a180b0ebbf9111e12f5825cb10c71af2b1e8050a19f99c548465",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-sampled-flat.ppm",
+      "oracle_sha256": "871fb704275717cc48ff078b45c1354b898511d7694bf2901a7570a97eba46ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-unused-saturation-lut",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-unused-saturation-lut.pdf",
+      "sha256": "f66fa8a64ade12a938453e77a3892ea09fd9bee058cd1f1f16b5a5af16ac633c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-unused-saturation-lut.ppm",
+      "oracle_sha256": "871fb704275717cc48ff078b45c1354b898511d7694bf2901a7570a97eba46ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-valid-btoa-ignored",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-valid-btoa-ignored.pdf",
+      "sha256": "5a082ebb6d5913e6ecf923c513006a64f270fc5ea9ea350dc2c64997299ba31c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-valid-btoa-ignored.ppm",
+      "oracle_sha256": "871fb704275717cc48ff078b45c1354b898511d7694bf2901a7570a97eba46ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-shared-trc",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-shared-trc.pdf",
+      "sha256": "4be5cf5e0ac7626196e86dfb0ce0d2317e7e450c356653358f1186ee4608f0cc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-shared-trc.ppm",
+      "oracle_sha256": "871fb704275717cc48ff078b45c1354b898511d7694bf2901a7570a97eba46ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-chad-not-reapplied",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-chad-not-reapplied.pdf",
+      "sha256": "03284b94c1b45c8f5c0a7f8cb6350a582a269248026262cd8bc27c92df68f7f2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-chad-not-reapplied.ppm",
+      "oracle_sha256": "871fb704275717cc48ff078b45c1354b898511d7694bf2901a7570a97eba46ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-chad-near-singular",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-chad-near-singular.pdf",
+      "sha256": "b4688ca73fd5b6fc7ab884f35bee6724529cef1119d4a46c4e317d6693a4e846",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-chad-near-singular.ppm",
+      "oracle_sha256": "871fb704275717cc48ff078b45c1354b898511d7694bf2901a7570a97eba46ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-header-intent-ignored",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-header-intent-ignored.pdf",
+      "sha256": "6e2dc42dc5d54862fcbc36f15b6cdc0afa9da9ae2e544c63ec88e1cbbc21a7af",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-header-intent-ignored.ppm",
+      "oracle_sha256": "871fb704275717cc48ff078b45c1354b898511d7694bf2901a7570a97eba46ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-profile-id-valid",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-profile-id-valid.pdf",
+      "sha256": "fb83e03f5bdee43c8db0b8e6c5e830982d03472276b74f018cc88b132488ab4a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-profile-id-valid.ppm",
+      "oracle_sha256": "871fb704275717cc48ff078b45c1354b898511d7694bf2901a7570a97eba46ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-header-vendor-bits",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-header-vendor-bits.pdf",
+      "sha256": "812320ef8382a1228108b08747fba95a405c373cee331eac4a7f6a9dd25f6bf3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-header-vendor-bits.ppm",
+      "oracle_sha256": "871fb704275717cc48ff078b45c1354b898511d7694bf2901a7570a97eba46ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-alternate-range-clipped",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-alternate-range-clipped.pdf",
+      "sha256": "fa36a6659a96d231aeee5b265d1029902611e6122507976faaf0d9298b9c9574",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-alternate-range-clipped.ppm",
+      "oracle_sha256": "b5c404e27d133ce582ea02f164b37bd2a469909355ab07764f13275dfe37691b",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-alternate-range-control",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-alternate-range-control.pdf",
+      "sha256": "b22d222d07d5c51e3e00237f00d3a6befe446ad127879bb0e8ca81d43aff854f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-alternate-range-control.ppm",
+      "oracle_sha256": "b5c404e27d133ce582ea02f164b37bd2a469909355ab07764f13275dfe37691b",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-unused-alternate",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "path": "corpus/generated/content/icc-unused-alternate.pdf",
+      "sha256": "c570ab4c368a52adb9409aec90e1c71392f14ac74cbac02293f9939b69d240f4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-unused-alternate.ppm",
+      "oracle_sha256": "871fb704275717cc48ff078b45c1354b898511d7694bf2901a7570a97eba46ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-header-d50",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-header-d50.pdf",
+      "sha256": "bea6ec04ce2bb6364d9de2727e5ded4d7740d3bd19a0177cf870c3644528fc19",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-header-version-reserved",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-header-version-reserved.pdf",
+      "sha256": "490223e7f7f1beb36e2f1e056c2cc67e95fd2d721b153b1eed5c356e37b2b11b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-header-version-bcd",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-header-version-bcd.pdf",
+      "sha256": "8f146c648907393befea2c6d33e8bda2a97430c338b8879329cc95f4bf660f7b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-header-date",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-header-date.pdf",
+      "sha256": "b2497178f6a41009605ff2dcb2f060f8886e5aa6a4d746965cb24bb583711822",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-header-leap-date",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-header-leap-date.pdf",
+      "sha256": "69676409cc7c0b5416e961f5c5fe7c83a03eeb891b4247872da0187373222c38",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-header-attributes",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-header-attributes.pdf",
+      "sha256": "a3e4b26f3a2eeb2f936b4e8ab1114aad990a229786d7dbd9dc5fefae25531b93",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-header-intent",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-header-intent.pdf",
+      "sha256": "e3d36488abef911d912197939a8ff7cfb146c43ee160970baed1c807e8c8beca",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-header-reserved",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-header-reserved.pdf",
+      "sha256": "3373ba1cc3656639910e479e4d35923e919cddbbef74f090d54b6478ee74274a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-header-pcs",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-header-pcs.pdf",
+      "sha256": "3c9566802ba3cc41276e50aa867f05d60043c042e57ff8c6ee083152c7ce4ac7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-profile-id-invalid",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-profile-id-invalid.pdf",
+      "sha256": "e69d966359c70852ec1639f24840317172159d0373f429af8d6159b8fcd78146",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-negative-xyz",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-negative-xyz.pdf",
+      "sha256": "9c899ee817733ae3e579fc9e191e1c8b80401ba63e088aa720fa413b520e65ed",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-xyz-partial-extra",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-xyz-partial-extra.pdf",
+      "sha256": "fc458c403fa092c94c200ba9ee3e390160680ad314beeac309910f3cd4d7958d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-xyz-reserved",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-xyz-reserved.pdf",
+      "sha256": "2b16de8845f346796bf3fc8af34e9f7ff9bb679fb5ec9318a2e407d663e22674",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-curve-reserved",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-curve-reserved.pdf",
+      "sha256": "4c0456cac989bd09e4240a8efe8c0280fa20ba2b048c29ef3f83b71d05f2a0f0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-curve-trailing",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-curve-trailing.pdf",
+      "sha256": "33699be33c378556e7b599b8290d5204b40b7c3d06247e853e03c25a5e0b86f1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-param-reserved",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-param-reserved.pdf",
+      "sha256": "d468dbecc89f24e9c291966267a3731ff1118fd2396474986c5b52f2460a3638",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-chad-type",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-chad-type.pdf",
+      "sha256": "11380dbbd5c116a9d8aba6a1497aa279bc467d8715f3f7bdfa5a606522762c43",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-chad-short",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-chad-short.pdf",
+      "sha256": "18312011599b1431a275b32d157ba14b34263e7167dbc4c8215c107ce84c0ddc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-chad-singular",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-chad-singular.pdf",
+      "sha256": "ec12c7714b34ae24fb1cc0cb8b8a651313265b0a3ffb728b3fcce1b46bc1386e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-rgb-missing-wtpt",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-rgb-missing-wtpt.pdf",
+      "sha256": "84b98241db4b3216c9dcafb4960d5eb5815a35d1e11ef0c1f4aac8c27731335b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-missing-metadata",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-missing-metadata.pdf",
+      "sha256": "08c4fbec0df01123553fc759c6e4f794ab277b9b106dfc9f64968d558a76e31a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-rgb-output-no-luts",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-rgb-output-no-luts.pdf",
+      "sha256": "3f0a6cec390f5cd99858c429af0180335ffdddb8112ee564941613a2ba9aedbd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-rgb-colorspace-no-luts",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-rgb-colorspace-no-luts.pdf",
+      "sha256": "a7a0b85724d2a1f6598ad9a556d3f089c8d3bd3aa4f0c5eb5914819aad0775a7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-display-white-invalid",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-display-white-invalid.pdf",
+      "sha256": "9a098f9f762ce03b81815087b313dd557f0fa1d408771bc0c1e2c028962a0e42",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-tag-gap",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-tag-gap.pdf",
+      "sha256": "085349708b85701b1994fda47e01f7827711dbe6f0a628b7b7fd29f685c4f418",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-tag-padding-nonzero",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-tag-padding-nonzero.pdf",
+      "sha256": "bb615d5d5013c6f6ba8fee67219a3208a5b6ab3eff18721914f074d9915fb63c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-tag-padding-missing",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-tag-padding-missing.pdf",
+      "sha256": "86ecbfd00774cff4b0668f907d28607cc838249cd27468cbc176e14a5fc43a92",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-alternate-wrong-n",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-alternate-wrong-n.pdf",
+      "sha256": "1cd16d36e086ed3e32e88e208176d75e5d00c9c96129e574038c0d6e75b5a19e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-alternate-pattern",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-alternate-pattern.pdf",
+      "sha256": "f16c7a52949bcadb9d235cd33835b3356bb211763807691035d6e75535133cb7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-range-rgb-mismatch",
+      "kind": "pdf",
+      "description": "ICC.1:2010 7.2\u20137.4, 8.2\u20138.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-range-rgb-mismatch.pdf",
+      "sha256": "cb378411b78f47596ed7924380470c62d354e144660751982698d7eac5ec1a70",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-mft2-1-XYZ-v2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-1-XYZ-v2.pdf",
+      "sha256": "4ce3e9622e74b1a8ef0f0163a06f5368cbb8050f857a9b1dad785ad5c3944918",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-1-XYZ-v2.ppm",
+      "oracle_sha256": "d428d70e5be9893c79354a194ab599564fac8a5a7c94962379429de644891b88",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-1-Lab-v2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-1-Lab-v2.pdf",
+      "sha256": "f93475dc9b6a036f211f2e2c7896b63cad88ed87e73e011b917308efae51a2ac",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-1-Lab-v2.ppm",
+      "oracle_sha256": "96b8010748bca3c0a7422bd873f58a49658036c474aae9583b5969b2edb2c55a",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-3-XYZ-v2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-3-XYZ-v2.pdf",
+      "sha256": "e4f43cf778d8b19589d543d87721254daf546c7b6acc887437df07981a09400c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-3-XYZ-v2.ppm",
+      "oracle_sha256": "461f65804cc3301b8ae246de21b740f7a6bf4c879013be0c614c576ef8ad98c5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-3-Lab-v2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-3-Lab-v2.pdf",
+      "sha256": "bdef2b67e3a8c99640e0c56f8013cb6e480e0012666580af0337c63cb8697b57",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-3-Lab-v2.ppm",
+      "oracle_sha256": "58638c384a1542ef595d660d6ebd030de8d6131b10e3b2ea9946d3f71811264d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-4-XYZ-v2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-4-XYZ-v2.pdf",
+      "sha256": "f380ac105055f97b53713bac8aae1bbba29bb9b565e77c28b1428c272d18f14e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-4-XYZ-v2.ppm",
+      "oracle_sha256": "4b8c5d2959b6b13b18eb9cd69bcba1c1584be7045388ca273f6abbcc603f43dd",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-4-Lab-v2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-4-Lab-v2.pdf",
+      "sha256": "945cfada1c4deb27b5dea4a5bc707cfeedcab797e70362d3685ba68ade55e50b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-4-Lab-v2.ppm",
+      "oracle_sha256": "fa5516c6eeea94c0323d4c7196920d791255c54a6e74d6209caf45a6a17d6860",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-1-XYZ-v4",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-1-XYZ-v4.pdf",
+      "sha256": "1c4f2ae2292266fcac3c5dd79ebd3a9e074e2124ea86c40e3974621c231670e2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-1-XYZ-v4.ppm",
+      "oracle_sha256": "d428d70e5be9893c79354a194ab599564fac8a5a7c94962379429de644891b88",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-1-Lab-v4",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-1-Lab-v4.pdf",
+      "sha256": "e6677077f3a06c3e2abe86de9c36f9befb90cb180ec6761a1c6937e4f9dd0775",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-1-Lab-v4.ppm",
+      "oracle_sha256": "96b8010748bca3c0a7422bd873f58a49658036c474aae9583b5969b2edb2c55a",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-3-XYZ-v4",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-3-XYZ-v4.pdf",
+      "sha256": "06a81acf4acd2bfb336224954a1db9fb319913e8a338928a8cdf1c3623e70420",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-3-XYZ-v4.ppm",
+      "oracle_sha256": "461f65804cc3301b8ae246de21b740f7a6bf4c879013be0c614c576ef8ad98c5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-3-Lab-v4",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-3-Lab-v4.pdf",
+      "sha256": "a5a65b11806a8c83dd340ddcf146a58317259ae06b61f2196e32ab06ed1f34fc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-3-Lab-v4.ppm",
+      "oracle_sha256": "58638c384a1542ef595d660d6ebd030de8d6131b10e3b2ea9946d3f71811264d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-4-XYZ-v4",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-4-XYZ-v4.pdf",
+      "sha256": "e7f5c0fa85ae0c7a66ace8d137723e83e1c4818bf41e5af35c674c417771be1f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-4-XYZ-v4.ppm",
+      "oracle_sha256": "4b8c5d2959b6b13b18eb9cd69bcba1c1584be7045388ca273f6abbcc603f43dd",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-4-Lab-v4",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-4-Lab-v4.pdf",
+      "sha256": "b43ed8371f9f66fed59bffcefd901a83f8f7cf3984b388c769382f0fc1aeedcb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-4-Lab-v4.ppm",
+      "oracle_sha256": "fa5516c6eeea94c0323d4c7196920d791255c54a6e74d6209caf45a6a17d6860",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft1-1-Lab-v2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft1-1-Lab-v2.pdf",
+      "sha256": "a2f99cfee1c3c067715672183dcf306c9e3caaa4041b0885146fdad352a93945",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft1-1-Lab-v2.ppm",
+      "oracle_sha256": "d4254ceda76cf64fdd1638a5480deb473f2c88922088481421943176f9caff81",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft1-3-Lab-v2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft1-3-Lab-v2.pdf",
+      "sha256": "9fcd071e8785d16cfd11a78f34fbb479b7ca18cfdc44fde3f66127c6448a483c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft1-3-Lab-v2.ppm",
+      "oracle_sha256": "b96a75822e9fae1d110697ded0b82d40f6df915e14c7e5a15bab81f514a814ea",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft1-4-Lab-v2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft1-4-Lab-v2.pdf",
+      "sha256": "afc896476db5dbfc9a39e226f3640940328531eaadae70272ced2567e3f38b5e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft1-4-Lab-v2.ppm",
+      "oracle_sha256": "c3d7891013ac11b9a4342813d085e6c6348affc0378d29e2bf61db40d855b372",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft1-1-Lab-v4",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft1-1-Lab-v4.pdf",
+      "sha256": "0b956e5af5f17a1c302099a555ebcc8e2ae7f8c8461cd29e1b06995284034dcb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft1-1-Lab-v4.ppm",
+      "oracle_sha256": "d4254ceda76cf64fdd1638a5480deb473f2c88922088481421943176f9caff81",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft1-3-Lab-v4",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft1-3-Lab-v4.pdf",
+      "sha256": "a924ec3577e32f62d0630d9d0c187da2c23fc8210a8eef95714b4bae6999d013",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft1-3-Lab-v4.ppm",
+      "oracle_sha256": "b96a75822e9fae1d110697ded0b82d40f6df915e14c7e5a15bab81f514a814ea",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft1-4-Lab-v4",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft1-4-Lab-v4.pdf",
+      "sha256": "97e3adc1409912ffcf70b3c7006f5ebdb479aa828df38548d6493e0f740f89cc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft1-4-Lab-v4.ppm",
+      "oracle_sha256": "c3d7891013ac11b9a4342813d085e6c6348affc0378d29e2bf61db40d855b372",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-curves-XYZ",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-curves-XYZ.pdf",
+      "sha256": "92850cb822e435dc8294f3464cdf820524cc757a667f449ee37625642ad5be2e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-curves-XYZ.ppm",
+      "oracle_sha256": "13dc6f5396b88ecdb9ce574a29030f08bc877448af05b1b7d026eebe044132a5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-curves-Lab",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-curves-Lab.pdf",
+      "sha256": "136ddf440c48ebfb4ed345ee637cd06211e28fc60dde5096130199295e739517",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-curves-Lab.ppm",
+      "oracle_sha256": "3afb7c0bc96353a13543ceff408e42a5f5f749777d4bbec256f260c7f6a2d9d2",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft1-curves-Lab",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft1-curves-Lab.pdf",
+      "sha256": "7ddf0b14d9f902bd0310177703386a2cf8d716d43c3debbf0dde7f43fb2dd298",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft1-curves-Lab.ppm",
+      "oracle_sha256": "3801113c914e6fa056578ce286d4d1c93d731fb314f7f13ea69ccba57919a008",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-b-XYZ-2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-b-XYZ-2.pdf",
+      "sha256": "4cc484f968a3ba662d409b2baaa635a4a9ffd25b5a946ffba09a5dc21114d1a6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-b-XYZ-2.ppm",
+      "oracle_sha256": "5602dce7f33ce9f9227a4d646a34fb5486d398fa48fb44d3b9f1fa56f229fee5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-matrix-XYZ-2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-matrix-XYZ-2.pdf",
+      "sha256": "0592ef34b111a657b7650b24017c5313106bfff41a23d5eef125baf0751e91b1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-matrix-XYZ-2.ppm",
+      "oracle_sha256": "4dc3b7c3663cbef1e8b76994eb8b2d9bcaf0325d0f846680c42f0c2b624de984",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-clut-XYZ-1",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-clut-XYZ-1.pdf",
+      "sha256": "3f1d755f0c7dd909cdd11a983d3bd74838e3c211c634ee72e5fc870d477cd128",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-clut-XYZ-1.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-clut-XYZ-2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-clut-XYZ-2.pdf",
+      "sha256": "e2d54d57ecd4924bfc7794c0113500e055951defa5ca12485217f18a740b6a55",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-clut-XYZ-2.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-full-XYZ-1",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-full-XYZ-1.pdf",
+      "sha256": "92498317e9442313dbb26167e94cc6949c93c3e57762c19e48b5e04408762a9a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-full-XYZ-1.ppm",
+      "oracle_sha256": "c9533d100955bf06965430cd957f2f8135e5c6373e2556ed53e18026b700196c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-full-XYZ-2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-full-XYZ-2.pdf",
+      "sha256": "1a4c27ef9cb20da53702d6801eb8a6f93a35cfbf91397a1f974bf52de79b5df1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-full-XYZ-2.ppm",
+      "oracle_sha256": "c6ea845ffda37dadaf37624cb8b2912a2151ae42019f3f359ebcfd16e7dd29f1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-b-Lab-2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-b-Lab-2.pdf",
+      "sha256": "ea2d45011519df382962dcd93e36aec7e073d9f276c26171d41b3d86f95a0c51",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-b-Lab-2.ppm",
+      "oracle_sha256": "139ddcf132bd07be9d69b20f0bfa1af1ab5125f94c3f2ba872c714bdedb96235",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-matrix-Lab-2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-matrix-Lab-2.pdf",
+      "sha256": "5b88fbe34ed695353f6345405408eaeb1b5583d41c67a9fb5cc64b1460f0a64b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-matrix-Lab-2.ppm",
+      "oracle_sha256": "5bfe732374d6dc80884bbd5df19ec4bba14cb38c3b28eb3f1eb9aace463f8026",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-clut-Lab-1",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-clut-Lab-1.pdf",
+      "sha256": "38f2b040b17d4ec592e433632290d3c37a41986dae5ceee29ec101213cc78ddd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-clut-Lab-1.ppm",
+      "oracle_sha256": "719cf3fcb7bf7277a83a19319828c2932dc5fe6dabb8e24fafb592fb5df98127",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-clut-Lab-2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-clut-Lab-2.pdf",
+      "sha256": "ef4f182e3c3b9eeec8193b1d5e8c46537f0f478d55f45762c0494b50d96ed9f9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-clut-Lab-2.ppm",
+      "oracle_sha256": "04596c66a0ea79abde3cced1dd8baadc42c6c75e856dc91394c8480dbf8492f9",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-full-Lab-1",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-full-Lab-1.pdf",
+      "sha256": "743276792bbaa176adfe6285b8252d06052fafcf04560138137315c8cf5c6961",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-full-Lab-1.ppm",
+      "oracle_sha256": "0b0cd3386671e21333a756d0af6e57b84aa3b6574a155e9c70f0f8ede0d86867",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-full-Lab-2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-full-Lab-2.pdf",
+      "sha256": "19ef0510f8e0238cf4e466d0444b7e5d1c7c0d88eb9b596be8e168cf803167a7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-full-Lab-2.ppm",
+      "oracle_sha256": "e8b8c4b2b04fb5031919c175cf2cec6a1af975c361e104d45c638f866398b67f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft1-Lab-input",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft1-Lab-input.pdf",
+      "sha256": "266b691944da1b6f544c8937ffee14c9e3868a5c2db562350a5a91b69377c3ab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft1-Lab-input.ppm",
+      "oracle_sha256": "2f05c1ce0ac4dc3aa2ae01f84f583147746c23de343b56ab9301ff05e5fa0f28",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-Lab-input",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-Lab-input.pdf",
+      "sha256": "0d67d947196d490259403e0b4986d6a32dcf7fc03d77c1dff12ecef55622f3bf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-Lab-input.ppm",
+      "oracle_sha256": "2f05c1ce0ac4dc3aa2ae01f84f583147746c23de343b56ab9301ff05e5fa0f28",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mft2-Lab-encoding-v2",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-Lab-encoding-v2.pdf",
+      "sha256": "0186f99f51837709a8184f7559452fd957f73b1cfa8861e283ffe645bc92372a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-Lab-encoding-v2.ppm",
+      "oracle_sha256": "afaee6b063fa7b5c76ffb8fea6ba6141ca746dd2fd96748b0282f8c294d5b3ef",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "content/icc-mft2-Lab-encoding-v4",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mft2-Lab-encoding-v4.pdf",
+      "sha256": "1fd46442659a309241456d8c0742637c2dc625f01969cbdadc4cae5c1f780538",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mft2-Lab-encoding-v4.ppm",
+      "oracle_sha256": "afaee6b063fa7b5c76ffb8fea6ba6141ca746dd2fd96748b0282f8c294d5b3ef",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "content/icc-intent-Perceptual",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-intent"
+      ],
+      "path": "corpus/generated/content/icc-intent-Perceptual.pdf",
+      "sha256": "2e4e40d90d384e9d145a7ef87e932e38c2dda965f297a7e9daa0f2ab7bf6663d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-intent-Perceptual.ppm",
+      "oracle_sha256": "b2cee0ad893f203b333040843190152dd884a30c03d5afa462229fdaca75b4ce",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-intent-RelativeColorimetric",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-intent"
+      ],
+      "path": "corpus/generated/content/icc-intent-RelativeColorimetric.pdf",
+      "sha256": "1e8ad43db369166b79628aa9ba3e9da8e1b00e11380ac5c9d309ba9ef085a228",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-intent-RelativeColorimetric.ppm",
+      "oracle_sha256": "bbe3cd1f882bf7e6efa7318f99089f5e237427b48d8dc2745c8a95b8a3f356ba",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-intent-Saturation",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-intent"
+      ],
+      "path": "corpus/generated/content/icc-intent-Saturation.pdf",
+      "sha256": "e24c4802a080aab4863a21b723a2efbfe63f23fa71c939c2ebcff88cee0d6248",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-intent-Saturation.ppm",
+      "oracle_sha256": "f8a2cd9c73ffad4bc201d4a71d37f5e5aa8c34b352db2c58713cd9232b633e5f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-intent-AbsoluteColorimetric",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-intent"
+      ],
+      "path": "corpus/generated/content/icc-intent-AbsoluteColorimetric.pdf",
+      "sha256": "aea2d001fc0a4aa0722baadce0e4663f29c22b5c1df480a505fc15663098d9a2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-intent-AbsoluteColorimetric.ppm",
+      "oracle_sha256": "bbe3cd1f882bf7e6efa7318f99089f5e237427b48d8dc2745c8a95b8a3f356ba",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-intent-state",
+      "kind": "pdf",
+      "description": "ICC 8.10.2 and ISO 8.4/8.6.5.8: intent changes after CS, ExtGState RI and q/Q",
+      "expected": "render",
+      "requirements": [
+        "content-icc-intent"
+      ],
+      "path": "corpus/generated/content/icc-intent-state.pdf",
+      "sha256": "b2666eabfcfc58dea5bd4db1ee1066c905b5676099d3263423728295b75848d9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-intent-state.ppm",
+      "oracle_sha256": "3a9733fbf346127b5f3f9177796b4f93dae28c37594abef48f779d9afe577ea6",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-intent-fallback-A2B0",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-intent"
+      ],
+      "path": "corpus/generated/content/icc-intent-fallback-A2B0.pdf",
+      "sha256": "d7bb5ab447f215b1ebe988019ef2d7e48c98aba1599a4d45aeb8624be5b71b24",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-intent-fallback-A2B0.ppm",
+      "oracle_sha256": "b2cee0ad893f203b333040843190152dd884a30c03d5afa462229fdaca75b4ce",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-intent-absolute-media",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-intent"
+      ],
+      "path": "corpus/generated/content/icc-intent-absolute-media.pdf",
+      "sha256": "a083a9cc35b588ec0086fd945a44d9dbf0dfc3a8de75d52ae8f7b63556bcc670",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-intent-absolute-media.ppm",
+      "oracle_sha256": "833719725779c1429823673e3921f5fbbbd30f8deb0f60d51b2341ef214ce68b",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
     },
     {
       "id": "content/icc-lut-mBA",
       "kind": "pdf",
-      "description": "Tag-defined LUT profile requires explicit processing rather than alternate substitution; primary ICC review pending",
+      "description": "Inverse transforms are not a source pipeline; ICC 10.9 leaves lut8 XYZ unspecified",
       "expected": "unsupported",
       "requirements": [
-        "content-icc-matrix"
+        "content-icc-lut"
       ],
       "path": "corpus/generated/content/icc-lut-mBA.pdf",
-      "sha256": "2f8f8d164dd34ab6e373547ba22137a8639f5dc936f6c9e66af5e646434fc08b",
+      "sha256": "6a05ef4e93fc30abeaa37136347eb73809f5b0eac56fef1340210c337aab727e",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
       "feature": "colorspace.ICCBased"
+    },
+    {
+      "id": "content/icc-lut8-XYZ",
+      "kind": "pdf",
+      "description": "Inverse transforms are not a source pipeline; ICC 10.9 leaves lut8 XYZ unspecified",
+      "expected": "unsupported",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-lut8-XYZ.pdf",
+      "sha256": "64e55e0fa82a5e615510fe7bce9c81678508006bb115dacca2636c6f555cbc6a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "colorspace.ICCBased"
+    },
+    {
+      "id": "content/icc-lut-channel-count",
+      "kind": "pdf",
+      "description": "ICC 10.8/10.10 invalid processing-element structure",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-lut-channel-count.pdf",
+      "sha256": "7d82f9fb108273d4cece72a2632565036088c3da89c9d2f3524faaa673a9aa25",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-lut-grid-zero",
+      "kind": "pdf",
+      "description": "ICC 10.8/10.10 invalid processing-element structure",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-lut-grid-zero.pdf",
+      "sha256": "34b4d9c39cc05d682e36d57f6f4dfdb7cd2859184bda899920bdd8d120a8a314",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-lut-reserved",
+      "kind": "pdf",
+      "description": "ICC 10.8/10.10 invalid processing-element structure",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-lut-reserved.pdf",
+      "sha256": "9bb7ce6498dda521c6a7279a1aebbd85219609fc4a434163f0d4acf4fa65803c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-lut-table-count",
+      "kind": "pdf",
+      "description": "ICC 10.8/10.10 invalid processing-element structure",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-lut-table-count.pdf",
+      "sha256": "dc9c83648a0d77e18a5984eeae54b9a4386c5047cdd5c30e252b86122c3df529",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-lut-table-count-high",
+      "kind": "pdf",
+      "description": "ICC 10.8/10.10 invalid processing-element structure",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-lut-table-count-high.pdf",
+      "sha256": "d4ba12f3ab3565c51da8a78265a623501b0f1364faed611ebce9cfc5acb3a85b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-lut-output-count",
+      "kind": "pdf",
+      "description": "ICC 10.8/10.10 invalid processing-element structure",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-lut-output-count.pdf",
+      "sha256": "127697fab8396331458c4282d42a37439c4de3fbf782a7afba4fef9dc5db00ac",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-lut-matrix",
+      "kind": "pdf",
+      "description": "ICC 10.8/10.10 invalid processing-element structure",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-lut-matrix.pdf",
+      "sha256": "ead02771c17a20f01aef74a9201e3010918be8c9a108f3750d637bc73668ce98",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-mAB-missing-A",
+      "kind": "pdf",
+      "description": "ICC 10.8/10.10 invalid processing-element structure",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-mAB-missing-A.pdf",
+      "sha256": "7abd4977e904d73b931aca772e6a5a9d6b15f5795881d7bef6d0cdefcff1ab7d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-mAB-missing-B",
+      "kind": "pdf",
+      "description": "ICC 10.8/10.10 invalid processing-element structure",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-mAB-missing-B.pdf",
+      "sha256": "575c6503f12e8b9d75c8ef24087093d64cef025f26e49c704a7ec8261ad43006",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-mAB-misaligned",
+      "kind": "pdf",
+      "description": "ICC 10.8/10.10 invalid processing-element structure",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-mAB-misaligned.pdf",
+      "sha256": "0e12f78290da72dc5027173813a1e96aa51206d89fbadf05e3ae4c3d67989fd7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-mAB-missing-M",
+      "kind": "pdf",
+      "description": "ICC 10.8/10.10 invalid processing-element structure",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-mAB-missing-M.pdf",
+      "sha256": "86f90fe39ead72352661573c9471d62a1b2267eb2dab335b8269e467c5e3a0e0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-mAB-precision",
+      "kind": "pdf",
+      "description": "ICC 10.8/10.10 invalid processing-element structure",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-mAB-precision.pdf",
+      "sha256": "00ca5a412c8129c85bfc8fbf6e801533f55aca955bea5cf715da3f5f3c4afbfa",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-mAB-unused-grid",
+      "kind": "pdf",
+      "description": "ICC 10.8/10.10 invalid processing-element structure",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-mAB-unused-grid.pdf",
+      "sha256": "c83aa0be019927832083d3207d5c806118b17d84b14717a3bcd75141b6709000",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-mAB-CLUT-padding",
+      "kind": "pdf",
+      "description": "ICC 10.8/10.10 invalid processing-element structure",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-mAB-CLUT-padding.pdf",
+      "sha256": "7c1d5497264044f88eb1a3d7e712d3436cd5178d95c07b6e66e0eb96a4a6f6f0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/icc-mft2-grid-budget",
+      "kind": "pdf",
+      "description": "ICC CLUT products are checked against implementation budgets before table access/allocation",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-mft2-grid-budget.pdf",
+      "sha256": "d566abd62714da81bf37748117b03c4512bc3ea45af9d2b9816c58305d367162",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Limit"
+    },
+    {
+      "id": "content/icc-mAB-grid-budget",
+      "kind": "pdf",
+      "description": "ICC CLUT products are checked against implementation budgets before table access/allocation",
+      "expected": "open",
+      "requirements": [
+        "content-icc-admission"
+      ],
+      "path": "corpus/generated/content/icc-mAB-grid-budget.pdf",
+      "sha256": "517a40e3d0d76a8950b1cddfdde36284fc66605dae16066a6cff523d0198b735",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Limit"
+    },
+    {
+      "id": "content/icc-image-mft2",
+      "kind": "pdf",
+      "description": "ICC forward LUT receives independently normalized image source components",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-image-mft2.pdf",
+      "sha256": "9e7219c160a301309e51f949b1cceddf39340608ebee9121a57a555375b8e3e2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-image-mft2.ppm",
+      "oracle_sha256": "f92a0b10d2bf53cad21672f99713036191684477a13877f777157d6a194a83d5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-image-mft1",
+      "kind": "pdf",
+      "description": "ICC forward LUT receives independently normalized image source components",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-image-mft1.pdf",
+      "sha256": "231edf04343730ce7534036bcadbca2e784e94a4f92f0693bae4c93f9ff09e53",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-image-mft1.ppm",
+      "oracle_sha256": "d3a49c453a68715a7f42fed6523623e0d3812453a338053b18fd3a30b896c91d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-image-mAB",
+      "kind": "pdf",
+      "description": "ICC forward LUT receives independently normalized image source components",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-image-mAB.pdf",
+      "sha256": "41814b915b66e880ad3b9bbe1139fd132bbb0b7d7f53862ab25502a181353a85",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-image-mAB.ppm",
+      "oracle_sha256": "355c32bae23c0b8b72eebd79c367b5dc16e9f459f66beb39b8a4bff08722130f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-indexed-Lab-input",
+      "kind": "pdf",
+      "description": "ISO 8.6.6.3 scales palette bytes into the ICC source component ranges",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-indexed-Lab-input.pdf",
+      "sha256": "a5b66daa7302955e80832a1356a05067d9c9a50729fac930cae39d82ff02724c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-indexed-Lab-input.ppm",
+      "oracle_sha256": "6fcd85d84a6e2609542c7bb627018041ae75a185a0af38e20a433be9a154a801",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-final-curve-unpadded",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-final-curve-unpadded.pdf",
+      "sha256": "6c32600186a4534cc1184c02514fb024dc25deaa732e27f193710d4b3d856153",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-final-curve-unpadded.ppm",
+      "oracle_sha256": "573f645954d3d9d95fec8a447afa8fcf8bfcaca2e435a4f80c0883123d481d7e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-final-CLUT-unpadded",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-final-CLUT-unpadded.pdf",
+      "sha256": "5b8beef811148ab9cd8fae2d13c6bfd356e1d18caedcc33a9e592afbf7072371",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-final-CLUT-unpadded.ppm",
+      "oracle_sha256": "160ce8ddc51160237935a21b539c21e27655c0c3a6a402ca8d8e57c8b4b99320",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-mAB-parametric",
+      "kind": "pdf",
+      "description": "ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy",
+      "expected": "render",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/icc-mAB-parametric.pdf",
+      "sha256": "3a8511b3019a50fa6ec4e66690777f07c03c22316ff0d0e608dc248d8a998d9d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-mAB-parametric.ppm",
+      "oracle_sha256": "e8b8c4b2b04fb5031919c175cf2cec6a1af975c361e104d45c638f866398b67f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/icc-intent-pattern-in-form",
+      "kind": "pdf",
+      "description": "ISO 8.7.3.1 and ICC 8.10.2: pattern inherits rendering intent from the parent form initial graphics state",
+      "expected": "render",
+      "requirements": [
+        "content-icc-intent"
+      ],
+      "path": "corpus/generated/content/icc-intent-pattern-in-form.pdf",
+      "sha256": "bed4d31d0de96db38452810660d6c66915e47ace61c8ee23d475bcde8ea6dc7c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/icc-intent-pattern-in-form.ppm",
+      "oracle_sha256": "d53a0a4df1f72d16102f629a06a1fe44fa8b677cdb40e0f5fcd9424798bb50d2",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
     },
     {
       "id": "content/soft-invalid-backdrop",
@@ -6619,17 +8739,21 @@
     {
       "id": "content/icc-range",
       "kind": "pdf",
-      "description": "Nondefault ICC input ranges require unsupported colour handling",
-      "expected": "unsupported",
+      "description": "ISO 8.6.5.5 Table 65: later-version fallback clips to declared ICC Range, then to Alternate",
+      "expected": "render",
       "requirements": [
-        "content-colour"
+        "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-range.pdf",
-      "sha256": "27d2a046e17ba4f18110a640b146c293c62061e6feb436948b486004c2a0d41f",
+      "sha256": "44c8a44f8cf44b90591f01e0b0814ec5d68e43db45d82a4b2af90acf5a0b98cb",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "colorspace.ICCRange",
+      "oracle": "corpus/generated/content/icc-range.ppm",
+      "oracle_sha256": "71f291e447e4e0f9c115c55e5b3752d93ca09ab78c2cf39c5d19f66f2ce09ffe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
       "api": "compile_page"
     },
     {
@@ -6681,7 +8805,7 @@
         "content-opaque-groups"
       ],
       "path": "corpus/generated/content/icc-rgb-group.pdf",
-      "sha256": "5cdb2e6089265a08b5b8c27aa2b38891bd1723061fbad3c8a01f57a754d6f55d",
+      "sha256": "25e1c14c016b341a20254342c5218fb90e176a8aafbf8a3f80e1356c388bea01",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],

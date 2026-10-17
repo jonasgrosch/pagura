@@ -5,7 +5,7 @@
 ```
 pagura-host      ──► pagura (facade and CLI)
 pagura           ──► pagura-render, pagura-write, pagura-document, pagura-raster
-pagura-render    ──► pagura-text, pagura-image, pagura-document, pagura-raster
+pagura-render    ──► pagura-text, pagura-image, pagura-document, pagura-raster, pagura-crypto (MD5 for ICC profile IDs)
 pagura-text      ──► pagura-font, pagura-document, pagura-raster
 pagura-image     ──► pagura-document, pagura-codec
 pagura-font      ──► pagura-raster

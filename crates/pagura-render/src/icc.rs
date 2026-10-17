@@ -1,12 +1,17 @@
-//! ICC source matrix/TRC processing for PDF colour spaces (8.6.5.5).
+//! ICC.1:2010 source transforms for PDF ICCBased spaces (ISO 32000-2 8.6.5.5).
 //!
-//! Accepts ICC v2.0–2.4 and v4.0–4.3 Gray/RGB profiles with XYZ PCS. Tag
-//! layouts and curve equations implemented here await primary ICC-text review;
-//! their independent fixtures carry the same qualification. LUT processing is
-//! explicit Unsupported. Later versions may request PDF Alternate fallback.
-//! Output policy: relative PCS D50, Bradford adaptation to D65, sRGB encoding.
+//! Forward Gray/RGB matrix/TRC and mft1/mft2/mAB pipelines use D50 PCS.
+//! Bradford adaptation to D65, sRGB encoding, gamut clipping and final byte
+//! rounding are output-device policy. Inverse BToA transforms are never used.
+
+mod clut;
+mod curves;
+mod format;
+mod lut;
+mod mab;
 
 use crate::{cie, features};
+use curves::Curve;
 use pagura_core::{Error, Limits, Result};
 use std::collections::BTreeMap;
 
@@ -55,7 +60,12 @@ impl<'a> ColorContext<'a> {
         }
         let object = self.document.object(id)?;
         let bytes = self.document.stream_data(object)?;
-        let profile = Profile::parse(&bytes, components, self.limits()).map(|p| p.map(Arc::new));
+        let profile = Profile::parse(&bytes, components, self.limits()).map(|p| {
+            p.map(|mut p| {
+                p.object = Some(id);
+                Arc::new(p)
+            })
+        });
         let profile = profile.map_err(|e| e.in_object(id))?;
         let charge = profile
             .as_ref()
@@ -84,264 +94,306 @@ impl<'a> ColorContext<'a> {
     }
 }
 
+const D50: [f64; 3] = [0.9642, 1.0, 0.8249];
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) enum Intent {
+    Perceptual,
+    #[default]
+    Relative,
+    Saturation,
+    Absolute,
+}
+impl Intent {
+    pub(crate) fn from_name(name: &[u8]) -> Self {
+        match name {
+            b"Perceptual" => Self::Perceptual,
+            b"Saturation" => Self::Saturation,
+            b"AbsoluteColorimetric" => Self::Absolute,
+            _ => Self::Relative,
+        }
+    }
+    fn index(self) -> usize {
+        match self {
+            Self::Perceptual => 0,
+            Self::Saturation => 2,
+            Self::Relative | Self::Absolute => 1,
+        }
+    }
+}
+
+struct Budget {
+    values: usize,
+    limits: Limits,
+}
+impl Budget {
+    fn charge(&mut self, values: usize) -> Result<()> {
+        self.values = self
+            .values
+            .checked_add(values)
+            .filter(|&n| n <= self.limits.value_nodes && n <= self.limits.decoded_bytes / 8)
+            .ok_or(Error::limit("ICC transform storage budget exceeded"))?;
+        Ok(())
+    }
+}
 #[derive(Debug, Clone)]
 pub(crate) struct Profile {
-    matrix: [[f64; 3]; 3],
-    curves: Vec<Curve>,
+    object: Option<ObjectId>,
+    transforms: [Option<Arc<Forward>>; 3],
+    model: Option<Forward>,
+    lab_input: bool,
+    white: [f64; 3],
     adaptation: [[f64; 3]; 3],
 }
 #[derive(Debug, Clone)]
-enum Curve {
-    Identity,
-    Gamma(f64),
-    Samples(Vec<f64>),
-    Parametric(u16, [f64; 7]),
+enum Forward {
+    Gray(Curve, bool),
+    Matrix([[f64; 3]; 3], [Curve; 3]),
+    Lut(lut::Lut, Encoding),
+    Mab(mab::Mab, Encoding),
+    Unsupported(Error),
+}
+#[derive(Debug, Clone, Copy)]
+enum Encoding {
+    Xyz,
+    Lab,
+    LegacyLab,
 }
 impl Profile {
     fn retained_bytes(&self) -> usize {
-        self.curves.iter().fold(
-            size_of::<Self>()
-                .saturating_add(self.curves.capacity().saturating_mul(size_of::<Curve>())),
-            |total, curve| {
-                total.saturating_add(if let Curve::Samples(values) = curve {
-                    values.capacity().saturating_mul(size_of::<f64>())
-                } else {
-                    0
-                })
-            },
-        )
+        let mut total = size_of::<Self>();
+        for (i, transform) in self.transforms.iter().enumerate() {
+            if let Some(transform) = transform
+                && !self.transforms[..i]
+                    .iter()
+                    .flatten()
+                    .any(|v| Arc::ptr_eq(v, transform))
+            {
+                total = total
+                    .saturating_add(size_of::<Forward>())
+                    .saturating_add(transform.retained_bytes());
+            }
+        }
+        total.saturating_add(self.model.as_ref().map_or(0, Forward::retained_bytes))
     }
     pub(crate) fn parse(data: &[u8], components: usize, limits: Limits) -> Result<Option<Self>> {
-        let tags = header(data, components, limits)?;
-        let major = *data.get(8).ok_or(Error::syntax("truncated ICC version"))?;
-        let minor = *data.get(9).ok_or(Error::syntax("truncated ICC version"))? >> 4;
+        let tags = format::header(data, components, limits)?;
+        let major = data[8];
+        let minor = data[9] >> 4;
         if major > 4 || (major == 4 && minor > 3) {
             return Ok(None);
         }
         if !((major == 2 && minor <= 4) || (major == 4 && minor <= 3)) {
             return Err(unsupported("unsupported ICC profile version"));
         }
-        if slice(data, 20, 4)? != b"XYZ " || components == 4 || slice(data, 16, 4)? == b"Lab " {
-            return Err(unsupported("ICC profile requires LUT processing"));
+        let mut budget = Budget { values: 0, limits };
+        let white = format::model_tags(data, &tags, &mut budget)?;
+        let lab = slice(data, 20, 4)? == b"Lab ";
+        let model = matrix_model(data, &tags, &mut budget)?;
+        let mut transforms: [Option<Arc<Forward>>; 3] = [None, None, None];
+        let names = [b"A2B0", b"A2B1", b"A2B2"];
+        for (i, name) in names.iter().enumerate() {
+            if let Some(bytes) = tags.get(*name) {
+                if let Some(j) = (0..i).find(|&j| tags.get(names[j]) == Some(bytes)) {
+                    let (previous, next) = transforms.split_at_mut(i);
+                    next[0].clone_from(&previous[j]);
+                } else {
+                    transforms[i] = Some(Arc::new(Forward::parse(
+                        bytes,
+                        components,
+                        lab,
+                        &mut budget,
+                    )?));
+                }
+            }
         }
-        if tags
-            .keys()
-            .any(|v| matches!(v, b"A2B0" | b"A2B1" | b"A2B2"))
-        {
-            return Err(unsupported("ICC AToB LUT processing is not implemented"));
+        if model.is_none() && transforms[0].is_none() {
+            return Err(Error::syntax("ICC profile has no forward model"));
         }
-        let tag = |name: &[u8; 4]| {
-            tags.get(name)
-                .copied()
-                .ok_or(Error::syntax("missing ICC matrix/TRC tag"))
-        };
-        let mut work = 0;
-        let (matrix, curves) = if components == 1 {
-            let white = xyz(tag(b"wtpt")?)?;
-            (
-                [
-                    [white[0], 0.0, 0.0],
-                    [white[1], 0.0, 0.0],
-                    [white[2], 0.0, 0.0],
-                ],
-                vec![Curve::parse(tag(b"kTRC")?, &mut work, limits)?],
-            )
-        } else {
-            let [r, g, b] = [
-                xyz(tag(b"rXYZ")?)?,
-                xyz(tag(b"gXYZ")?)?,
-                xyz(tag(b"bXYZ")?)?,
-            ];
-            let curves = [b"rTRC", b"gTRC", b"bTRC"]
-                .iter()
-                .map(|name| Curve::parse(tag(name)?, &mut work, limits))
-                .collect::<Result<Vec<_>>>()?;
-            (
-                [[r[0], g[0], b[0]], [r[1], g[1], b[1]], [r[2], g[2], b[2]]],
-                curves,
-            )
-        };
         Ok(Some(Self {
-            matrix,
-            curves,
-            adaptation: cie::adaptation([0.9642, 1.0, 0.8249])?,
+            object: None,
+            transforms,
+            model,
+            lab_input: slice(data, 16, 4)? == b"Lab ",
+            white,
+            adaptation: cie::adaptation(D50)?,
         }))
     }
-    pub(crate) fn convert(&self, inputs: &[f64]) -> Result<[f64; 3]> {
-        let mut linear = [0.0; 3];
-        for (i, curve) in self.curves.iter().enumerate() {
-            linear[i] = curve.evaluate(inputs.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0))?;
+    pub(crate) fn lab_input(&self) -> bool {
+        self.lab_input
+    }
+    pub(crate) fn convert(&self, inputs: &[f64], intent: Intent) -> Result<[f64; 3]> {
+        let mut values = [0.0; 4];
+        for (i, (value, &input)) in values.iter_mut().zip(inputs).enumerate() {
+            *value = if self.lab_input {
+                if i == 0 {
+                    input.clamp(0.0, 100.0) / 100.0
+                } else {
+                    (input.clamp(-128.0, 127.0) + 128.0) / 255.0
+                }
+            } else {
+                input.clamp(0.0, 1.0)
+            };
         }
-        let xyz = cie::map(self.adaptation, cie::map(self.matrix, linear));
-        Ok(cie::xyz_to_srgb(xyz))
+        // ICC 8.10.2: designated AToB, then AToB0, then matrix/TRCs.
+        // Unsupported DToB elements may be bypassed at step (a); BToA and
+        // the header's preferred intent are ignored for PDF source spaces.
+        let transform = self.transforms[intent.index()]
+            .as_deref()
+            .or(self.transforms[0].as_deref())
+            .or(self.model.as_ref())
+            .ok_or(Error::syntax(
+                "ICC profile has no applicable forward transform",
+            ))?;
+        let mut xyz = transform
+            .evaluate(values)
+            .map_err(|error| match self.object {
+                Some(id) => error.in_object(id),
+                None => error,
+            })?;
+        if intent == Intent::Absolute {
+            // ICC 6.3.2: recover media-absolute colorimetry from relative PCS.
+            for (i, value) in xyz.iter_mut().enumerate() {
+                *value *= self.white[i] / D50[i];
+            }
+        }
+        Ok(cie::xyz_to_srgb(cie::map(self.adaptation, xyz)))
     }
 }
-
-fn header(data: &[u8], components: usize, limits: Limits) -> Result<BTreeMap<[u8; 4], &[u8]>> {
-    if usize::try_from(u32_at(data, 0)?).ok() != Some(data.len()) || slice(data, 36, 4)? != b"acsp"
-    {
-        return Err(Error::syntax("invalid ICC profile header or size"));
-    }
-    if !matches!(slice(data, 12, 4)?, b"scnr" | b"mntr" | b"prtr" | b"spac") {
-        return Err(Error::syntax("invalid PDF ICC profile class"));
-    }
-    let actual = match slice(data, 16, 4)? {
-        b"GRAY" => 1,
-        b"RGB " | b"Lab " => 3,
-        b"CMYK" => 4,
-        _ => return Err(Error::syntax("invalid PDF ICC data colour space")),
-    };
-    if components != actual {
-        return Err(Error::syntax("ICC profile N differs from header"));
-    }
-    let count =
-        usize::try_from(u32_at(data, 128)?).map_err(|_| Error::limit("ICC tag count overflow"))?;
-    if count > limits.value_nodes || count > limits.decoded_bytes / 64 {
-        return Err(Error::limit("ICC tag budget exceeded"));
-    }
-    let end = count
-        .checked_mul(12)
-        .and_then(|n| n.checked_add(132))
-        .ok_or(Error::limit("ICC table overflow"))?;
-    slice(data, 0, end)?;
-    let mut tags = BTreeMap::new();
-    for i in 0..count {
-        let entry = 132 + i * 12;
-        let name = slice(data, entry, 4)?
-            .try_into()
-            .map_err(|_| Error::syntax("invalid ICC tag"))?;
-        let offset = usize::try_from(u32_at(data, entry + 4)?)
-            .map_err(|_| Error::limit("ICC offset overflow"))?;
-        let length = usize::try_from(u32_at(data, entry + 8)?)
-            .map_err(|_| Error::limit("ICC tag size overflow"))?;
-        if offset < end || !offset.is_multiple_of(4) || length < 8 {
-            return Err(Error::syntax("invalid ICC tag extent"));
-        }
-        let value = slice(data, offset, length)?;
-        if tags.insert(name, value).is_some() {
-            return Err(Error::syntax("duplicate ICC tag"));
-        }
-    }
-    Ok(tags)
-}
-impl Curve {
-    fn parse(data: &[u8], work: &mut usize, limits: Limits) -> Result<Self> {
-        match slice(data, 0, 4)? {
-            b"curv" => {
-                let count = usize::try_from(u32_at(data, 8)?)
-                    .map_err(|_| Error::limit("ICC curve size overflow"))?;
-                *work = work
-                    .checked_add(count)
-                    .filter(|&n| n <= limits.value_nodes && n <= limits.decoded_bytes / 8)
-                    .ok_or(Error::limit("ICC curve storage budget exceeded"))?;
-                slice(
-                    data,
-                    12,
-                    count
-                        .checked_mul(2)
-                        .ok_or(Error::limit("ICC curve size overflow"))?,
-                )?;
-                match count {
-                    0 => Ok(Self::Identity),
-                    1 => {
-                        let gamma = f64::from(u16_at(data, 12)?) / 256.0;
-                        if gamma <= 0.0 {
-                            return Err(Error::syntax("invalid ICC curve gamma"));
-                        }
-                        Ok(Self::Gamma(gamma))
-                    }
-                    _ => {
-                        let mut samples = Vec::new();
-                        samples
-                            .try_reserve_exact(count)
-                            .map_err(|_| Error::limit("ICC curve allocation failed"))?;
-                        for i in 0..count {
-                            samples.push(f64::from(u16_at(data, 12 + 2 * i)?) / 65535.0);
-                        }
-                        if samples.windows(2).any(|p| p[0] > p[1]) {
-                            return Err(Error::syntax("nonmonotonic ICC TRC"));
-                        }
-                        Ok(Self::Samples(samples))
-                    }
-                }
+impl Forward {
+    fn parse(data: &[u8], inputs: usize, lab: bool, budget: &mut Budget) -> Result<Self> {
+        let signature = slice(data, 0, 4)?;
+        let encoding = if lab {
+            if signature == b"mft2" {
+                Encoding::LegacyLab
+            } else {
+                Encoding::Lab
             }
-            b"para" => {
-                let kind = u16_at(data, 8)?;
-                let count = match kind {
-                    0 => 1,
-                    1 => 3,
-                    2 => 4,
-                    3 => 5,
-                    4 => 7,
-                    _ => return Err(unsupported("unsupported ICC parametric curve")),
-                };
-                let mut params = [0.0; 7];
-                for (i, p) in params.iter_mut().enumerate().take(count) {
-                    *p = fixed(data, 12 + 4 * i)?;
-                }
-                if params[0] <= 0.0 || (kind > 0 && params[1] <= 0.0) {
-                    return Err(Error::syntax("invalid ICC parametric curve"));
-                }
-                if kind >= 3 && params[4] <= 1.0 && params[1] * params[4].max(0.0) + params[2] < 0.0
-                {
-                    return Err(Error::syntax("ICC curve power includes negative inputs"));
-                }
-                Ok(Self::Parametric(kind, params))
-            }
-            _ => Err(unsupported("unsupported ICC curve tag type")),
-        }
-    }
-    fn evaluate(&self, x: f64) -> Result<f64> {
-        let value = match self {
-            Self::Identity => x,
-            Self::Gamma(g) => x.powf(*g),
-            Self::Samples(values) => {
-                let position = x * usize_f64(values.len() - 1);
-                let low = sample_index(position).min(values.len() - 1);
-                let high = (low + 1).min(values.len() - 1);
-                values[low] + (position - usize_f64(low)) * (values[high] - values[low])
-            }
-            Self::Parametric(kind, [g, a, b, c, d, e, f]) => match kind {
-                0 => x.powf(*g),
-                1 => {
-                    if x >= -b / a {
-                        (a * x + b).powf(*g)
-                    } else {
-                        0.0
-                    }
-                }
-                2 => {
-                    if x >= -b / a {
-                        (a * x + b).powf(*g) + c
-                    } else {
-                        *c
-                    }
-                }
-                3 => {
-                    if x >= *d {
-                        (a * x + b).powf(*g)
-                    } else {
-                        c * x
-                    }
-                }
-                _ => {
-                    if x >= *d {
-                        (a * x + b).powf(*g) + e
-                    } else {
-                        c * x + f
-                    }
-                }
-            },
+        } else {
+            Encoding::Xyz
         };
-        if !value.is_finite() {
-            return Err(Error::syntax("undefined ICC curve arithmetic"));
-        }
-        Ok(value.clamp(0.0, 1.0))
+        Ok(match signature {
+            b"mft1" if !lab => {
+                Self::Unsupported(unsupported("ICC lut8 XYZ PCS encoding is unspecified"))
+            }
+            b"mft1" | b"mft2" => Self::Lut(lut::Lut::parse(data, inputs, budget)?, encoding),
+            b"mAB " => Self::Mab(mab::Mab::parse(data, inputs, budget)?, encoding),
+            b"mBA " => Self::Unsupported(unsupported("ICC inverse mBA is not a forward transform")),
+            _ => Self::Unsupported(unsupported("unsupported ICC forward transform type")),
+        })
     }
+    fn evaluate(&self, values: [f64; 4]) -> Result<[f64; 3]> {
+        match self {
+            Self::Gray(curve, lab) => {
+                let value = curve.evaluate(values[0])?;
+                Ok(if *lab {
+                    lab_xyz([value * 100.0, 0.0, 0.0])
+                } else {
+                    D50.map(|w| w * value)
+                })
+            }
+            Self::Matrix(matrix, curves) => {
+                let mut linear = [0.0; 3];
+                for (i, curve) in curves.iter().enumerate() {
+                    linear[i] = curve.evaluate(values[i])?;
+                }
+                Ok(cie::map(*matrix, linear))
+            }
+            Self::Lut(lut, encoding) => Ok(encoding.decode(lut.evaluate(values))),
+            Self::Mab(mab, encoding) => Ok(encoding.decode(mab.evaluate(values)?)),
+            Self::Unsupported(error) => Err(error.clone()),
+        }
+    }
+    fn retained_bytes(&self) -> usize {
+        match self {
+            Self::Gray(curve, _) => curve.retained_bytes(),
+            Self::Matrix(_, curves) => curves.iter().map(Curve::retained_bytes).sum(),
+            Self::Lut(lut, _) => lut.retained_bytes(),
+            Self::Mab(mab, _) => mab.retained_bytes(),
+            Self::Unsupported(_) => 0,
+        }
+    }
+}
+impl Encoding {
+    fn decode(self, values: [f64; 3]) -> [f64; 3] {
+        match self {
+            Self::Xyz => values.map(|v| v * (65535.0 / 32768.0)), // 6.3.4.2, Table 11.
+            Self::Lab => lab_xyz([
+                values[0] * 100.0,
+                values[1] * 255.0 - 128.0,
+                values[2] * 255.0 - 128.0,
+            ]),
+            Self::LegacyLab => {
+                // 10.8, Tables 39–40: mft2 keeps FF00 white in v2 AND v4.
+                let v = values.map(|v| (v * (65535.0 / 65280.0)).clamp(0.0, 1.0));
+                lab_xyz([v[0] * 100.0, v[1] * 255.0 - 128.0, v[2] * 255.0 - 128.0])
+            }
+        }
+    }
+}
+fn lab_xyz([l, a, b]: [f64; 3]) -> [f64; 3] {
+    let y = (l + 16.0) / 116.0;
+    let inverse = |v: f64| {
+        if v > 6.0 / 29.0 {
+            v * v * v
+        } else {
+            (v - 4.0 / 29.0) * (108.0 / 841.0)
+        }
+    };
+    [
+        D50[0] * inverse(y + a / 500.0),
+        inverse(y),
+        D50[2] * inverse(y - b / 200.0),
+    ]
+}
+fn matrix_model(
+    data: &[u8],
+    tags: &format::Tags<'_>,
+    budget: &mut Budget,
+) -> Result<Option<Forward>> {
+    if slice(data, 16, 4)? == b"GRAY" {
+        return tags
+            .get(b"kTRC")
+            .map(|v| {
+                Curve::parse(v, budget).map(|curve| {
+                    Forward::Gray(curve, slice(data, 20, 4).is_ok_and(|v| v == b"Lab "))
+                })
+            })
+            .transpose();
+    }
+    if slice(data, 16, 4)? != b"RGB " || slice(data, 20, 4)? != b"XYZ " {
+        return Ok(None);
+    }
+    if ![b"rXYZ", b"gXYZ", b"bXYZ", b"rTRC", b"gTRC", b"bTRC"]
+        .iter()
+        .all(|name| tags.contains_key(*name))
+    {
+        return Ok(None);
+    }
+    let [r, g, b] = [
+        xyz(format::required(tags, b"rXYZ")?)?,
+        xyz(format::required(tags, b"gXYZ")?)?,
+        xyz(format::required(tags, b"bXYZ")?)?,
+    ];
+    let curves = [
+        Curve::parse(format::required(tags, b"rTRC")?, budget)?,
+        Curve::parse(format::required(tags, b"gTRC")?, budget)?,
+        Curve::parse(format::required(tags, b"bTRC")?, budget)?,
+    ];
+    Ok(Some(Forward::Matrix(
+        [[r[0], g[0], b[0]], [r[1], g[1], b[1]], [r[2], g[2], b[2]]],
+        curves,
+    )))
 }
 fn xyz(data: &[u8]) -> Result<[f64; 3]> {
-    if slice(data, 0, 4)? != b"XYZ " {
-        return Err(Error::syntax("invalid ICC XYZ tag type"));
+    if slice(data, 0, 4)? != b"XYZ " || data.len() < 20 || !(data.len() - 8).is_multiple_of(12) {
+        return Err(Error::syntax("invalid ICC XYZ tag type or extent"));
+    }
+    format::zeros(slice(data, 4, 4)?)?;
+    for at in (8..data.len()).step_by(4) {
+        if fixed(data, at)? < 0.0 {
+            return Err(Error::syntax("negative ICC XYZ tag value"));
+        }
     }
     Ok([fixed(data, 8)?, fixed(data, 12)?, fixed(data, 16)?])
 }
@@ -398,6 +450,51 @@ mod tests {
     use super::*;
     use pagura_core::{ErrorKind, ObjectId, Value};
     use pagura_document::{Document, OpenOptions};
+
+    #[test]
+    fn lut_storage_is_admitted_before_evaluation() {
+        let document = Document::open(
+            pagura_testkit::fixture("content", "icc-mft2-4-XYZ-v4.pdf"),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let data = document
+            .stream_data(document.object(ObjectId::new(5, 0)).unwrap())
+            .unwrap();
+        // Four two-sample input curves, 2^4 three-channel nodes and three
+        // two-sample output curves require 8 + 48 + 6 scalar values.
+        for (nodes, succeeds) in [(61, false), (62, true)] {
+            let result = Profile::parse(
+                &data,
+                4,
+                Limits {
+                    value_nodes: nodes,
+                    ..Limits::default()
+                },
+            );
+            if succeeds {
+                assert!(
+                    result
+                        .unwrap()
+                        .unwrap()
+                        .convert(&[0.5; 4], Intent::Relative)
+                        .is_ok()
+                );
+            } else {
+                assert_eq!(result.unwrap_err().kind, ErrorKind::Limit);
+            }
+        }
+        let error = Profile::parse(
+            &data,
+            4,
+            Limits {
+                decoded_bytes: 495,
+                ..Limits::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
+    }
 
     #[test]
     fn profile_extents_and_curve_storage_are_bounded() {

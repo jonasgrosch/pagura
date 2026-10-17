@@ -20,6 +20,7 @@ pub(crate) enum Space {
     Icc {
         base: Arc<Self>,
         profile: Option<Arc<crate::icc::Profile>>,
+        range: [[f64; 2]; 4],
     },
     Tint {
         inputs: usize,
@@ -136,14 +137,18 @@ impl Color {
         *selected = Some(Arc::new(pattern));
         Ok(())
     }
-    pub(crate) fn to_rgba(&self, transfer: Option<&crate::functions::Transfer>) -> Result<Rgba8> {
+    pub(crate) fn to_rgba(
+        &self,
+        transfer: Option<&crate::functions::Transfer>,
+        intent: crate::icc::Intent,
+    ) -> Result<Rgba8> {
         let Self::Solid { space, components } = self else {
             return Err(Error::invalid_argument("pattern is not a uniform colour"));
         };
         if !space.paints() {
             return Ok(Rgba8::TRANSPARENT);
         }
-        let mut rgb = space.convert(components)?;
+        let mut rgb = space.convert_with_intent(components, intent)?;
         if let Some(transfer) = transfer {
             for (channel, function) in rgb.iter_mut().zip(transfer.iter()) {
                 *channel = function
@@ -159,6 +164,31 @@ impl Color {
 }
 
 impl Space {
+    /// PDF Table 65 constrains source values before any Alternate substitution.
+    pub(crate) fn clip_icc(c: &[f64], range: &[[f64; 2]; 4]) -> [f64; 4] {
+        [0, 1, 2, 3].map(|i| {
+            c.get(i)
+                .copied()
+                .unwrap_or(0.0)
+                .clamp(range[i][0], range[i][1])
+        })
+    }
+
+    /// Map Indexed lookup bytes to the base space's source range (8.6.6.3).
+    pub(crate) fn decode_lookup(&self, bytes: &[u8]) -> Vec<f64> {
+        match self {
+            Self::Cie(cie) => cie.decode_lookup(bytes),
+            Self::Icc { range, .. } => bytes
+                .iter()
+                .zip(range)
+                .map(|(&v, &[low, high])| {
+                    low * (1.0 - f64::from(v) / 255.0) + high * (f64::from(v) / 255.0)
+                })
+                .collect(),
+            _ => bytes.iter().map(|&v| f64::from(v) / 255.0).collect(),
+        }
+    }
+
     /// None contributes neither colour, opacity nor shape (8.6.6.4–8.6.6.5).
     pub(crate) fn paints(&self) -> bool {
         match self {
@@ -167,6 +197,7 @@ impl Space {
             | Self::Icc {
                 base,
                 profile: None,
+                ..
             } => base.paints(),
             _ => true,
         }
@@ -176,6 +207,7 @@ impl Space {
         if let Self::Icc {
             base,
             profile: None,
+            ..
         } = &self
         {
             return base.as_ref().clone();
@@ -194,7 +226,11 @@ impl Space {
         }
     }
 
-    pub(crate) fn convert(&self, c: &[f64]) -> Result<[f64; 3]> {
+    pub(crate) fn convert_with_intent(
+        &self,
+        c: &[f64],
+        intent: crate::icc::Intent,
+    ) -> Result<[f64; 3]> {
         let n = |i: usize| c.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0);
         match self {
             Self::Pattern(_) => Err(Error::invalid_argument(
@@ -212,12 +248,21 @@ impl Space {
                 ])
             }
             Self::Cie(cie) => Ok(cie.convert(c)),
-            Self::Icc { base, profile } => profile
-                .as_ref()
-                .map_or_else(|| base.convert(c), |p| p.convert(c)),
+            Self::Icc {
+                base,
+                profile,
+                range,
+            } => {
+                let clipped = Self::clip_icc(c, range);
+                let clipped = &clipped[..base.components()];
+                profile.as_ref().map_or_else(
+                    || base.convert_with_intent(clipped, intent),
+                    |p| p.convert(clipped, intent),
+                )
+            }
             Self::Tint { base, function, .. } => {
                 let tint: Vec<_> = c.iter().map(|v| v.clamp(0.0, 1.0)).collect();
-                base.convert(&function.evaluate(&tint)?)
+                base.convert_with_intent(&function.evaluate(&tint)?, intent)
             }
             Self::Indexed { base, high, lookup } => {
                 let value = c
@@ -235,12 +280,8 @@ impl Space {
                 let bytes = lookup
                     .get(index * base.components()..(index + 1) * base.components())
                     .unwrap_or_default();
-                let components: Vec<_> = if let Self::Cie(cie) = base.as_ref() {
-                    cie.decode_lookup(bytes)
-                } else {
-                    bytes.iter().map(|&b| f64::from(b) / 255.0).collect()
-                };
-                base.convert(&components)
+                let components = base.decode_lookup(bytes);
+                base.convert_with_intent(&components, intent)
             }
         }
     }
@@ -515,17 +556,73 @@ fn icc_space(
         4 => Space::Cmyk,
         _ => return Err(Error::syntax("invalid ICC component count")),
     };
+    let component_range = icc_range(document, dictionary, default.components())?;
+    let profile = document.profile(id, default.components())?;
+    // Validate Alternate independently of whether its rendering model is used.
+    // A supported ICC profile must not require support for an unused alternate.
+    if let Some(alternate) = dictionary.get(b"Alternate") {
+        if alternate_components(document, resources, alternate, depth + 1)? != default.components()
+        {
+            return Err(Error::syntax("ICC alternate has wrong component count"));
+        }
+        if profile.is_some()
+            && let Err(error) = resolve(document, resources, alternate, depth + 1, false)
+            && !error.is_unsupported()
+        {
+            return Err(error);
+        }
+    }
+    if profile.as_ref().is_some_and(|p| p.lab_input()) {
+        for (i, pair) in component_range.iter().take(3).enumerate() {
+            let expected = if i == 0 {
+                [0.0, 100.0]
+            } else {
+                [-128.0, 127.0]
+            };
+            if pair[0] < expected[0] || pair[1] > expected[1] {
+                return Err(Error::syntax("ICC Range exceeds Lab profile range"));
+            }
+        }
+    } else if profile.is_some()
+        && component_range
+            .iter()
+            .take(default.components())
+            .any(|p| p[0] < 0.0 || p[1] > 1.0)
+    {
+        return Err(Error::syntax("ICC Range exceeds profile range"));
+    }
+    let base = if profile.is_some() {
+        default
+    } else {
+        dictionary
+            .get(b"Alternate")
+            .map(|v| resolve(document, resources, v, depth + 1, false))
+            .transpose()?
+            .unwrap_or(default)
+    };
+    Ok(Space::Icc {
+        base: Arc::new(base),
+        profile,
+        range: component_range,
+    })
+}
+
+fn icc_range(
+    document: &pagura_document::Document,
+    dictionary: &Dictionary,
+    count: usize,
+) -> Result<[[f64; 2]; 4]> {
+    let mut component_range = [[0.0, 1.0]; 4];
     if let Some(range) = dictionary.get(b"Range") {
         let range = document
             .resolve(range)?
             .as_array()
             .ok_or(Error::syntax("ICC Range must be an array"))?;
-        let expected =
-            usize::try_from(count).map_err(|_| Error::syntax("invalid ICC component count"))? * 2;
+        let expected = count * 2;
         if range.len() != expected {
             return Err(Error::syntax("wrong ICC Range length"));
         }
-        for pair in range.as_chunks::<2>().0 {
+        for (i, pair) in range.as_chunks::<2>().0.iter().enumerate() {
             let low = document
                 .resolve(&pair[0])?
                 .as_number()
@@ -537,33 +634,80 @@ fn icc_space(
             if low > high {
                 return Err(Error::syntax("reversed ICC Range"));
             }
-            if low != 0.0 || high != 1.0 {
-                return Err(Error::unsupported(
-                    features::COLORSPACE_ICC_RANGE,
-                    "nondefault ICC component ranges are not implemented",
-                ));
-            }
+            component_range[i] = [low, high];
         }
     }
-    let profile = document.profile(id, default.components())?;
-    // Only later, unsupported profile versions may use Alternate (8.6.5.5).
-    // Keep ICCBased identity even then: its initial components are all zero.
-    let base = if profile.is_some() {
-        default
-    } else {
-        dictionary
-            .get(b"Alternate")
-            .map(|v| resolve(document, resources, v, depth + 1, false))
-            .transpose()?
-            .unwrap_or(default)
-    };
-    if matches!(base, Space::Pattern(_)) || base.components() != usize::try_from(count).unwrap_or(0)
-    {
-        return Err(Error::syntax("ICC alternate has wrong component count"));
+    Ok(component_range)
+}
+
+fn alternate_components(
+    document: &ColorContext<'_>,
+    resources: &Dictionary,
+    value: &Value,
+    depth: usize,
+) -> Result<usize> {
+    if depth > document.limits().depth {
+        return Err(Error::limit("ICC alternate depth exceeded"));
     }
-    Ok(Space::Icc {
-        base: Arc::new(base),
-        profile,
+    let value = document.resolve(value)?;
+    let (family, args) = if let Some(name) = value.as_name() {
+        (name.as_bytes(), &[][..])
+    } else {
+        let array = value
+            .as_array()
+            .ok_or(Error::syntax("invalid ICC alternate"))?;
+        let family = array
+            .first()
+            .and_then(Value::as_name)
+            .ok_or(Error::syntax("invalid ICC alternate family"))?;
+        (family.as_bytes(), &array[1..])
+    };
+    Ok(match family {
+        b"DeviceGray" | b"CalGray" | b"Indexed" | b"Separation" => 1,
+        b"DeviceRGB" | b"CalRGB" | b"Lab" => 3,
+        b"DeviceCMYK" => 4,
+        b"DeviceN" => document
+            .resolve(
+                args.first()
+                    .ok_or(Error::syntax("missing ICC alternate DeviceN names"))?,
+            )?
+            .as_array()
+            .ok_or(Error::syntax("invalid ICC alternate DeviceN names"))?
+            .len(),
+        b"ICCBased" => {
+            let id = args
+                .first()
+                .and_then(Value::as_reference)
+                .ok_or(Error::syntax("invalid ICC alternate profile reference"))?;
+            let object = document.object(id)?;
+            let dictionary = object
+                .dictionary()
+                .filter(|_| object.is_stream())
+                .ok_or(Error::syntax("invalid ICC alternate profile"))?;
+            let n = document
+                .resolve(
+                    dictionary
+                        .get(b"N")
+                        .ok_or(Error::syntax("missing ICC alternate N"))?,
+                )?
+                .as_integer()
+                .filter(|v| matches!(v, 1 | 3 | 4))
+                .ok_or(Error::syntax("invalid ICC alternate N"))?;
+            usize::try_from(n).map_err(|_| Error::syntax("invalid ICC alternate N"))?
+        }
+        b"Pattern" => return Err(Error::syntax("Pattern is not an ICC alternate")),
+        name if args.is_empty() => {
+            let spaces = resources
+                .get(b"ColorSpace")
+                .map(|v| document.resolve_dictionary(v))
+                .transpose()?
+                .ok_or(Error::syntax("undefined ICC alternate"))?;
+            let value = spaces
+                .get(name)
+                .ok_or(Error::syntax("undefined ICC alternate"))?;
+            return alternate_components(document, resources, value, depth + 1);
+        }
+        _ => return Err(Error::syntax("invalid ICC alternate family")),
     })
 }
 

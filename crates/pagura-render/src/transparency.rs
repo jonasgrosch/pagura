@@ -46,6 +46,7 @@ impl Composite {
 /// functions replace that policy when a CMYK blending space requires conversion.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Conversion {
+    pub(crate) intent: crate::icc::Intent,
     pub(crate) black: Option<Arc<Function>>,
     pub(crate) ucr: Option<Arc<Function>>,
 }
@@ -129,9 +130,11 @@ impl Model {
         if let Space::Icc {
             base,
             profile: None,
+            range,
         } = space
         {
-            return self.source(base, components, conversion, work);
+            let clipped = Space::clip_icc(components, range);
+            return self.source(base, &clipped[..base.components()], conversion, work);
         }
         if let Space::Tint { base, function, .. } = space {
             let input: Vec<_> = components.iter().map(|v| v.clamp(0.0, 1.0)).collect();
@@ -158,11 +161,7 @@ impl Model {
             let values = lookup
                 .get(index * base.components()..(index + 1) * base.components())
                 .ok_or(Error::syntax("truncated Indexed colour lookup"))?;
-            let decoded = if let Space::Cie(cie) = base.as_ref() {
-                cie.decode_lookup(values)
-            } else {
-                values.iter().map(|&v| f64::from(v) / 255.0).collect()
-            };
+            let decoded = base.decode_lookup(values);
             return self.source(base, &decoded, conversion, work);
         }
         let matching = matches!(
@@ -180,7 +179,11 @@ impl Model {
             }
             return Ok(out);
         }
-        self.encode_rgb(space.convert(components)?, conversion, work)
+        self.encode_rgb(
+            space.convert_with_intent(components, conversion.intent)?,
+            conversion,
+            work,
+        )
     }
     pub(crate) fn black(self) -> [f64; 4] {
         if self == Self::Cmyk {

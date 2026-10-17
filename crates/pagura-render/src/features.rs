@@ -114,7 +114,7 @@ operator_tags!(
     "Tz", "v", "w", "W", "W*", "y", "'", "\""
 );
 
-/// ICC profile component ranges other than zero to one.
+/// Unsupported ICC range interpretation (retained feature-tag API).
 pub const COLORSPACE_ICC_RANGE: Feature = Feature::new("colorspace.ICCRange");
 
 /// Nonzero calibrated black points require black-point compensation.
@@ -146,5 +146,5 @@ pub const PATTERN_TILING: Feature = Feature::new("pattern.tiling");
 /// Temporary graphics parameters in a shading pattern.
 pub const PATTERN_STATE: Feature = Feature::new("pattern.ExtGState");
 
-/// ICC profile processing outside the supported matrix/TRC subset.
+/// ICC profile processing outside the supported forward matrix/TRC and LUT subset.
 pub const COLORSPACE_ICC: Feature = Feature::new("colorspace.ICCBased");

@@ -13,6 +13,7 @@ workspace = true
 
 [dependencies]
 pagura-core.workspace = true
+pagura-crypto.workspace = true
 pagura-document.workspace = true
 pagura-raster.workspace = true
 pagura-text.workspace = true

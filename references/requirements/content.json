@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "content",
-  "scope": "Content interpretation, colour, functions, forms, optional content and page transforms checked against the local ISO 32000-2:2020 sponsored EC3 text. Implemented transparency in clause 11, analytic/mesh shadings, shading and tiling patterns in 8.7, annotation appearances, generated link/square/note shapes and view flags in 12.5 and continuous-tone halftone bypass in 10.6 are covered by independent fixtures. Exact-area bytes, Bradford adaptation, sRGB output and rounding are project policy. ICC tag processing awaits primary ICC-text review.",
+  "scope": "Content interpretation, colour, functions, forms, optional content and page transforms checked against the local ISO 32000-2:2020 sponsored EC3 text. Implemented transparency in clause 11, analytic/mesh shadings, shading and tiling patterns in 8.7, annotation appearances, generated link/square/note shapes and view flags in 12.5 and continuous-tone halftone bypass in 10.6 are covered by independent fixtures. Exact-area bytes, Bradford adaptation, sRGB output and rounding are project policy. ICC source admission, Gray/RGB matrix/TRC and forward mft1/mft2/mAB processing are checked against locally supplied ICC.1:2010 (v4.3); legacy v2 transform encodings are covered, but v2-specific metadata rules await a primary v2 text.",
   "requirements": [
     {
       "id": "content-vector-pipeline",
@@ -85,7 +85,7 @@
         "10.4.2.2",
         "10.4.2.5"
       ],
-      "status": "device, Indexed, CalGray/CalRGB/Lab, tint alternates and source ICC matrix/TRC; All/None colourants",
+      "status": "device, Indexed, CalGray/CalRGB/Lab, tint alternates and source ICC matrix/TRC and forward LUT; All/None colourants",
       "tests": [
         "content/cmyk",
         "content/indexed",
@@ -101,15 +101,24 @@
         "content/DeviceN-forbidden-All",
         "content/DeviceN-duplicate-None"
       ],
-      "gaps": "ICC LUTs, nondefault ICC ranges and nonzero calibrated BlackPoint",
-      "rule": "Device conversion, default remapping, Indexed lookup, tint alternates and colour selection follow their source-space rules; ICC profile handling is constrained by Tables 65 and 66."
+      "gaps": "Calibrated group inverse ICC transforms and nonzero calibrated BlackPoint",
+      "rule": "Device conversion, default remapping, Indexed lookup, tint alternates and colour selection follow their source-space rules; ICC profile handling is constrained by Tables 65 and 66.",
+      "external_primary_review": [
+        {
+          "reference": "icc-v43",
+          "locator": "7.2.6–7.2.7, 8.2–8.7, 10.5, 10.8–10.10, 10.16, F.2–F.3",
+          "verdict": "verified with documented choices",
+          "reason": "Source ICC transforms and their output policy are specified in content-icc-matrix/lut/intent; legacy v2 metadata rules are not inferred from v4."
+        }
+      ]
     },
     {
       "id": "content-opaque-groups",
       "reference": "iso32000-2-full-text",
       "clauses": [
         "11.3",
-        "11.4"
+        "11.4",
+        "8.6.5.5"
       ],
       "status": "opaque Normal RGB fast path; general composition covered by content-transparency",
       "tests": [
@@ -381,22 +390,33 @@
       "id": "content-icc-matrix",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.6.5.5",
-        "8.6.8",
-        "10.3"
+        "8.6.5.5, Tables 65–68",
+        "8.6.5.8, Table 69"
       ],
-      "rule": "Supported embedded source profiles are processed rather than replaced by Alternate. ICCBased source components initialize to zero; only later unsupported profile versions use an alternate. ICC v2.0\u20132.4 and v4.0\u20134.3 Gray/RGB matrix/TRC tag definitions, including parametric and sampled curves, are implemented with independent formula oracles pending primary ICC-text review. Bradford PCS-D50 adaptation, relative-colorimetric fallback and sRGB output are project policy.",
-      "status": "source matrix/TRC processing; tag definitions pending primary ICC-text review",
+      "rule": "Supported embedded source profiles use forward processing, never silent Alternate substitution. Gray TRCs scale PCS D50 XYZ or L*=100, not media white (ICC F.2); RGB uses the column matrix and per-channel TRCs (F.3). Sampled forward curves may be nonmonotonic and matrices need not be invertible. Parametric outputs clip, including positive overflow; threshold arithmetic preserves the nonnegative power domain. ICC Table 34 count-one gamma is two-byte unsigned 8.8 per 4.9; Table 65 is interpreted with complementary branches and the separate e offset for type 4 because its printed formulas conflict with its parameter list. Source values clip to ICC Range before Alternate, including later-version fallback; Alternate structure is validated even when unused. Bradford D50-to-D65 adaptation, sRGB output encoding, gamut clipping and final rounding are project policy.",
+      "status": "implemented; ICC.1:2010 primary text verified with documented table interpretations",
       "tests": [
-        "content/icc-3-param4",
-        "content/icc-1-sampled",
-        "content/icc-initial-zero",
-        "content/icc-lut-mft1",
-        "content/icc-invalid-data",
+        "content/icc-gray-media-white",
+        "content/icc-gray-lab-pcs",
+        "content/icc-param-overflow",
+        "content/icc-param-threshold",
+        "content/icc-sampled-nonmonotonic",
+        "content/icc-param4-offset",
+        "content/icc-alternate-range-clipped",
+        "content/icc-unused-alternate",
         "content/icc-rgb-columns",
+        "content/icc-chad-not-reapplied",
         "pagura-render/src/icc.rs"
       ],
-      "gaps": "LUT profiles; calibrated group inverse transforms; nondefault ranges; primary ICC specification not locally available"
+      "gaps": "Calibrated transparency-group inverse transforms; v2-specific metadata/tag-admission rules need the corresponding primary v2 edition.",
+      "external_primary_review": [
+        {
+          "reference": "icc-v43",
+          "locator": "4.6, 4.9, 6.2.1, 6.3.1–6.3.4, 7.2.16, 9.2.4–9.2.5, 9.2.15, 9.2.29–9.2.31, 9.2.44–9.2.45, 10.5, 10.16 Tables 64–65, F.2–F.3",
+          "verdict": "verified with documented choices",
+          "reason": "PCS data is already adapted; chad is validated and is not applied twice. Curve table inconsistencies and device-output choices are documented in the rule."
+        }
+      ]
     },
     {
       "id": "content-special-inks",
@@ -618,7 +638,110 @@
       "tests": [
         "content/overprint-cmyk-boundary"
       ],
-      "gaps": "CMYK output-intent simulation is deferred: retained colours lack colourant-write masks/OPM and the engine does not process CMYK ICC LUT profiles. Accepting this input as ordinary source-over would erase underlying inks."
+      "gaps": "CMYK output-intent simulation is deferred: retained colours lack colourant-write masks/OPM and destination ICC inverse transforms are not implemented. Accepting this input as ordinary source-over would erase underlying inks."
+    },
+    {
+      "id": "content-icc-admission",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.6.5.5, Tables 65–68"
+      ],
+      "rule": "ICC.1:2010 v4 profiles validate BCD/version reserved bytes, Gregorian dates, permitted source class/colour-space/PCS, attributes, intent, D50 illuminant, MD5 ProfileID and reserved bytes; required tags depend on profile class/model. Tag bodies are tightly packed, aligned and zero-padded, with exact shared bodies allowed. XYZ records are complete and nonnegative, reserved type fields and curve extents are exact, and chad is a signed sf32 invertible 3-by-3 matrix. These v4 metadata rules are not imposed on legacy v2 profiles. All table products, extents, allocations and cumulative retained profile storage are bounded before use.",
+      "status": "implemented; ICC.1:2010 primary text verified",
+      "tests": [
+        "content/icc-profile-id-valid",
+        "content/icc-profile-id-invalid",
+        "content/icc-header-leap-date",
+        "content/icc-display-white-invalid",
+        "content/icc-tag-gap",
+        "content/icc-tag-padding-nonzero",
+        "content/icc-tag-padding-missing",
+        "content/icc-chad-singular",
+        "content/icc-rgb-output-no-luts",
+        "content/icc-alternate-wrong-n",
+        "pagura-render/src/icc.rs",
+        "content/icc-mft2-grid-budget",
+        "content/icc-mAB-grid-budget",
+        "content/icc-chad-near-singular"
+      ],
+      "gaps": "v2-specific admission beyond common extents and transform definitions",
+      "external_primary_review": [
+        {
+          "reference": "icc-v43",
+          "locator": "7.1.2, 7.2.4–7.2.19, 7.3–7.4, 8.2–8.7, 9.2.15, 9.2.34, 10.1, 10.5, 10.16, 10.20, 10.29",
+          "verdict": "verified with documented choices",
+          "reason": "Primary header, packing, class/model and tag definitions reviewed locally. Vendor-specific header bits remain permitted."
+        }
+      ]
+    },
+    {
+      "id": "content-icc-lut",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.6.5.5, Tables 65–68"
+      ],
+      "rule": "Forward mft2 uses input tables, CLUT and output tables; its source-non-XYZ matrix must be identity. Forward mft1 uses 256-sample input/output tables and Lab PCS. mAB accepts B, M+matrix+B, A+CLUT+B and A+CLUT+M+matrix+B, including unequal grid sizes and 8/16-bit CLUTs. PCSXYZ uses unsigned 1.15; mft2 uses legacy FF00 Lab white in both v2 and v4, while mft1 and mAB use modern Lab encodings. Source Lab values use L* 0–100 and a*/b* -128–127 before normalization. Multilinear CLUT interpolation is project policy; two-point axes are linear as ICC requires. Evaluation uses at most 16 corners for PDF source profiles. Inverse mBA selected as a forward transform fails explicitly; optional BToA tags are ignored. LUT8 XYZ PCS has no specified encoding and remains explicit Unsupported.",
+      "status": "implemented; ICC.1:2010 primary text verified",
+      "tests": [
+        "content/icc-mft2-4-Lab-v4",
+        "content/icc-mft2-4-XYZ-v2",
+        "content/icc-mft1-4-Lab-v4",
+        "content/icc-mft2-curves-Lab",
+        "content/icc-mAB-full-Lab-1",
+        "content/icc-mAB-full-XYZ-2",
+        "content/icc-mft2-Lab-input",
+        "content/icc-lut-mBA",
+        "content/icc-lut8-XYZ",
+        "pagura-render/src/icc/lut.rs",
+        "pagura-render/src/icc/mab.rs",
+        "content/icc-image-mft2",
+        "content/icc-image-mft1",
+        "content/icc-image-mAB",
+        "content/icc-indexed-Lab-input",
+        "content/icc-mft2-Lab-encoding-v4"
+      ],
+      "gaps": "LUT8 XYZ PCS is implementation-specific and unsupported; inverse BToA processing; multiProcessElementsType DToB transforms. Image default Decode and Indexed-image palettes must use ICC component ranges in the image painting layer.",
+      "external_primary_review": [
+        {
+          "reference": "icc-v43",
+          "locator": "6.3.4.2 Tables 11–13, 10.5, 10.8 Tables 37–40, 10.9 Table 41, 10.10 Tables 42–43",
+          "verdict": "verified with documented choices",
+          "reason": "Legacy Lab belongs to mft2, irrespective of profile major version. All legal mAB stage combinations and per-stage clipping are covered."
+        }
+      ]
+    },
+    {
+      "id": "content-icc-intent",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.4, Table 58",
+        "8.7.3.1",
+        "8.6.5.5",
+        "8.6.5.8, Table 69"
+      ],
+      "rule": "PDF ri and ExtGState RI, saved/restored with graphics state, choose the designated source AToB intent transform, then AToB0, then matrix/TRCs. An unrelated AToB2 does not block relative matrix processing. Unsupported DToB elements may be bypassed under ICC 8.10.2(a). PDF ignores profile-header intent and inverse BToA tags. Absolute colorimetry uses the relative transform and scales by media-white/PCS-white. Unknown PDF intents fall back to RelativeColorimetric. The RGB output target and its adaptation remain project policy.",
+      "status": "implemented; ICC.1:2010 primary text verified",
+      "tests": [
+        "content/icc-intent-Perceptual",
+        "content/icc-intent-RelativeColorimetric",
+        "content/icc-intent-Saturation",
+        "content/icc-intent-AbsoluteColorimetric",
+        "content/icc-intent-state",
+        "content/icc-intent-pattern-in-form",
+        "content/icc-intent-fallback-A2B0",
+        "content/icc-intent-absolute-media",
+        "content/icc-unused-saturation-lut",
+        "content/icc-header-intent-ignored"
+      ],
+      "gaps": "Perceptual output-side gamut mapping and black-point compensation; unsupported DToB element types use the permitted fallback.",
+      "external_primary_review": [
+        {
+          "reference": "icc-v43",
+          "locator": "6.3.2, 7.2.15, 8.10.2, 9.1 Table 25, 9.2.1–9.2.3",
+          "verdict": "verified with documented choices",
+          "reason": "Primary precedence order and colorimetric media-white scaling reviewed locally; PDF source processing overrides header hints."
+        }
+      ]
     }
   ]
 }

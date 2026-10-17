@@ -103,6 +103,7 @@ name = "pagura-render"
 version = "0.1.0"
 dependencies = [
  "pagura-core",
+ "pagura-crypto",
  "pagura-document",
  "pagura-image",
  "pagura-raster",

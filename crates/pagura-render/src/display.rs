@@ -260,7 +260,10 @@ impl PathCommand {
         mask: &Mask,
         origin: (u32, u32),
     ) -> Result<()> {
-        let paint = Paint::Solid(self.color.to_rgba(self.transfer.as_ref())?);
+        let paint = Paint::Solid(
+            self.color
+                .to_rgba(self.transfer.as_ref(), self.composite.conversion.intent)?,
+        );
         match &self.mark {
             Mark::Fill(rule) => fill_path_at(
                 target,

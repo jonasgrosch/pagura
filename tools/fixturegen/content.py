@@ -49,14 +49,14 @@ def form_pdf(content=b"1 0 0 rg -2 -2 8 8 re f", extra=b"", form_resources=b"<< 
 
 def icc_case(name, count, alternate, command, key=b"ICC"):
     # A synthetic later-version header exercises PDF's alternate rule.
-    # ICC tag definitions await primary-text review; these are not vendor bytes.
+    # The synthetic later-version header tests ISO 8.6.5.5 fallback, not ICCmax.
     pdf = document([
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /" + key + b" [/ICCBased 5 0 R] >> >> /Contents 4 0 R >>",
         stream(command), stream(icc_profile(count, version=5), b"/N %d " % count + alternate),
     ])
-    return Case(name, pdf, RENDER, ("content-colour",), "ICC stream Alternate/N fallback for a synthetic later-version profile; primary ICC-text review pending", oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]), extra={"api":"compile_page"})
+    return Case(name, pdf, RENDER, ("content-colour",), "ICC stream Alternate/N fallback for a synthetic later-version profile", oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]), extra={"api":"compile_page"})
 
 
 def optional_pdf(content, ocmd=b"<< /Type /OCMD /OCGs [5 0 R 6 0 R] /P /AnyOn >>", configuration=b"/BaseState /ON /OFF [6 0 R]", usage_on=b"", usage_off=b""):
@@ -143,7 +143,7 @@ def cases():
     yield Case("recursive-form", form_pdf(content=b"/Self Do", form_resources=b"<< /XObject << /Self 5 0 R >> >>"), OPEN, ("content-forms",), "Recursive form must return Cycle", extra={"api":"compile_page", "render_error":"Cycle"})
     yield render("annotation-no-normal", b"", page_extra=b"/Annots [<< /Subtype /Widget /Rect [0 0 0 0] >>]")
     yield render("annotation-hidden", b"", page_extra=b"/Annots [<< /F 2 /AP << /N 4 0 R >> >>]")
-    yield Case("icc-range", icc_case("unused", 3, b"/Range [0 2 0 1 0 1]", b"/ICC cs").pdf, UNSUPPORTED, ("content-colour",), "Nondefault ICC input ranges require unsupported colour handling", feature="colorspace.ICCRange", extra={"api":"compile_page"})
+    yield Case("icc-range", icc_case("unused", 3, b"/Range [0 2 0 1 0 1]", b"/ICC cs 2 -1 .5 scn 0 0 8 8 re f").pdf, RENDER, ("content-icc-matrix",), "ISO 8.6.5.5 Table 65: later-version fallback clips to declared ICC Range, then to Alternate", oracle=opaque_rectangles(8,8,[((0,0,8,8),(255,0,128))]), extra={"api":"compile_page"})
     yield render("rgb-page-group", b"1 0 0 rg 0 0 4 4 re f", [((0,0,4,4),RED)], page_extra=b"/Group << /S /Transparency /CS /DeviceRGB /I true /K false >>", requirements=("content-opaque-groups",))
     yield Case("rgb-form-group", form_pdf(extra=b"/Group << /S /Transparency /CS /DeviceRGB >>"), RENDER, ("content-opaque-groups",), "Opaque RGB form group paints directly", oracle=opaque_rectangles(8,8,[((2,2,4,4),RED)]))
     # Construct the page group independently rather than rewriting object bytes
@@ -189,7 +189,9 @@ def cie_rgb(family, values, white=(.96422, 1, .82521), gamma=1, ranges=(-100,100
         return [row[3:] for row in a]
     def apply(matrix, vector):
         return [sum(a*b for a,b in zip(row,vector)) for row in matrix]
-    if family=='CalRGB':
+    if family=='XYZ':
+        xyz=list(values)
+    elif family=='CalRGB':
         gammas=(gamma,)*3 if isinstance(gamma,(float,int)) else gamma
         decoded=[min(1,max(0,v))**g for v,g in zip(values,gammas)]
         xyz=[sum(matrix[row+3*col]*decoded[col] for col in range(3)) for row in range(3)]
@@ -614,44 +616,46 @@ def icc_curve(kind, values):
     return b'para'+bytes(4)+struct.pack('>HH',kind,0)+b''.join(struct.pack('>i',icc_fixed(v)) for v in values)
 
 
-def icc_profile(count=3, version=4, curve=None, lut=None):
-    """Construct tag-defined ICC matrix/TRC data; primary ICC-text review pending.
-
-    Version 2.1 uses text/desc metadata; version 4.3 uses mluc. All data is
-    independently authored. A version-5 header exercises PDF's later-version
-    fallback; it is not a claim of ICCmax conformance.
-    """
+def icc_xyz(values):
     import struct
-    curve=curve or icc_curve('gamma',(2.2,))
-    xyz=lambda v:b'XYZ '+bytes(4)+b''.join(struct.pack('>i',icc_fixed(x)) for x in v)
+    return b'XYZ '+bytes(4)+b''.join(struct.pack('>i',icc_fixed(v)) for v in values)
+
+
+def icc_tags(count=3, curve=None, version=4):
+    """Independent ICC.1:2010 8.2/F.2/F.3 data, never vendor profile bytes."""
+    import struct
+    curve=curve if curve is not None else icc_curve('gamma',(2.2,))
     def mluc(value):
         data=value.encode('utf-16-be')
         return b'mluc'+bytes(4)+struct.pack('>II',1,12)+b'enUS'+struct.pack('>II',len(data),28)+data
-    tags={b'wtpt':xyz(ICC_D50),b'cprt':mluc('Public domain test data'),b'desc':mluc('Independent matrix profile')}
+    tags={b'wtpt':icc_xyz(ICC_D50),b'cprt':mluc('Public domain test data'),b'desc':mluc('Independent profile')}
     if version==2:
-        text=b'Independent matrix profile\0'
+        text=b'Independent profile\0'
         tags[b'desc']=b'desc'+bytes(4)+struct.pack('>I',len(text))+text+bytes(4+4+2+1+67)
         tags[b'cprt']=b'text'+bytes(4)+b'Public domain test data\0'
     if count==3:
         for i,prefix in enumerate((b'r',b'g',b'b')):
-            tags[prefix+b'XYZ']=xyz(ICC_RGB_MATRIX[i*3:i*3+3]);tags[prefix+b'TRC']=curve[i] if isinstance(curve,(tuple,list)) else curve
+            tags[prefix+b'XYZ']=icc_xyz(ICC_RGB_MATRIX[i*3:i*3+3]);tags[prefix+b'TRC']=curve[i] if isinstance(curve,(tuple,list)) else curve
     elif count==1:tags[b'kTRC']=curve
-    if lut is not None:
-        name=lut
-        matrix=b''.join(struct.pack('>i',65536 if i in (0,4,8) else 0) for i in range(9))
-        if lut==b'mft1':data=lut+bytes(4)+bytes([count,3,2,0])+matrix+bytes(range(256))*count+bytes(2**count*3)+bytes(range(256))*3
-        elif lut==b'mft2':data=lut+bytes(4)+bytes([count,3,2,0])+matrix+struct.pack('>HH',2,2)+struct.pack('>HH',0,65535)*count+bytes(2**count*3*2)+struct.pack('>HH',0,65535)*3
+    return tags
+
+
+def icc_pack(tags, count=3, version=4, space=None, pcs=b'XYZ ', device=b'scnr', changes=(), gap=0, share=False):
+    """ICC.1:2010 7.2–7.4; v2 transform encodings retain legacy metadata."""
+    import struct
+    header=bytearray(128);header[8:12]=bytes([version,0x10 if version==2 else 0x30,0,0]);header[12:16]=device;header[16:20]=space or {1:b'GRAY',3:b'RGB ',4:b'CMYK'}[count];header[20:24]=pcs;header[24:36]=struct.pack('>6H',2026,10,17,12,0,0);header[36:40]=b'acsp';header[68:80]=b''.join(struct.pack('>i',icc_fixed(v)) for v in ICC_D50)
+    for offset,value in changes:header[offset:offset+len(value)]=value
+    start=132+12*len(tags);entries=bytearray();payload=bytearray(gap);locations={}
+    for signature,data in sorted(tags.items()):
+        if share and data in locations:offset=locations[data]
         else:
-            # ICC v4 multi-process-element offsets, identity B curves and CLUT.
-            inputs,outputs=(3,count) if lut==b'mBA ' else (count,3)
-            curves=icc_curve('identity',())*3
-            data=lut+bytes(4)+bytes([inputs,outputs,0,0])+struct.pack('>IIIII',32,0,0,32+len(curves),0)+curves+bytes([2]*inputs+[0]*(16-inputs))+bytes([2,0,0,0])+bytes(2**inputs*outputs*2)
-        tags[b'B2A0' if lut==b'mBA ' else b'A2B0']=data
-    header=bytearray(128);header[8:12]=bytes([version,0x10 if version==2 else 0x30,0,0]);header[12:16]=b'prtr' if count==4 else b'mntr';header[16:20]={1:b'GRAY',3:b'RGB ',4:b'CMYK'}[count];header[20:24]=b'XYZ ';header[24:36]=struct.pack('>6H',2026,10,17,12,0,0);header[36:40]=b'acsp';header[68:80]=b''.join(struct.pack('>i',icc_fixed(v)) for v in ICC_D50)
-    start=132+12*len(tags);entries=bytearray();payload=bytearray()
-    for signature, data in sorted(tags.items()):
-        entries+=signature+struct.pack('>II',start+len(payload),len(data));payload+=data;payload+=bytes(-len(payload)%4)
+            offset=start+len(payload);locations[data]=offset;payload+=data;payload+=bytes(-len(payload)%4)
+        entries+=signature+struct.pack('>II',offset,len(data))
     result=header+struct.pack('>I',len(tags))+entries+payload;result[0:4]=struct.pack('>I',len(result));return bytes(result)
+
+
+def icc_profile(count=3, version=4, curve=None):
+    return icc_pack(icc_tags(count,curve,version),count,version)
 
 
 def icc_cases():
@@ -675,18 +679,18 @@ def icc_cases():
             curve=icc_curve(kind,parameters);profile=icc_profile(count,version=2 if kind in ('identity','gamma','sampled') else 4,curve=curve)
             command=b'/C cs '+b' '.join((' '.join([str(v)]*count)+f' scn {i} 0 1 8 re f').encode() for i,v in enumerate(values))
             colours=[cie_rgb('CalGray',(evaluate(v),),white=ICC_D50) if count==1 else cie_rgb('CalRGB',(evaluate(v),)*3,white=ICC_D50,matrix=tuple(icc_fixed(v)/65536 for v in ICC_RGB_MATRIX)) for v in values]
-            yield Case(f'icc-{count}-{name}',pdf(profile,count,command,b'/DeviceGray' if count==1 else b'[/Lab << /WhitePoint [.9642 1 .8249] >>]'),RENDER,('content-icc-matrix',),'Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review',oracle=opaque_rectangles(8,8,[((i,0,1,8),c) for i,c in enumerate(colours)]),extra={'tolerance':1})
+            yield Case(f'icc-{count}-{name}',pdf(profile,count,command,b'/DeviceGray' if count==1 else b'[/Lab << /WhitePoint [.9642 1 .8249] >>]'),RENDER,('content-icc-matrix',),'Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2–F.3 and 10.5/10.16',oracle=opaque_rectangles(8,8,[((i,0,1,8),c) for i,c in enumerate(colours)]),extra={'tolerance':1})
     rgb_values=[(0,0,0),(1,1,1),(1,0,0),(0,1,0),(0,0,1),(.25,.5,.75),(.6,.2,.3),(.08,.04,.02)]
     gammas=(1.8,2.2,2.4)
     profile=icc_profile(3,version=2,curve=[icc_curve('gamma',(g,)) for g in gammas])
     command=b'/C cs '+b' '.join((' '.join(map(str,v))+f' scn {i} 0 1 8 re f').encode() for i,v in enumerate(rgb_values))
     colours=[cie_rgb('CalRGB',tuple(x**(int(g*256+.5)/256) for x,g in zip(v,gammas)),white=ICC_D50,matrix=tuple(icc_fixed(v)/65536 for v in ICC_RGB_MATRIX)) for v in rgb_values]
-    yield Case('icc-rgb-columns',pdf(profile,command=command),RENDER,('content-icc-matrix',),'Independent unequal per-channel TRCs and PCS matrix columns; primary ICC-text review pending',oracle=opaque_rectangles(8,8,[((i,0,1,8),c) for i,c in enumerate(colours)]),extra={'tolerance':1})
+    yield Case('icc-rgb-columns',pdf(profile,command=command),RENDER,('content-icc-matrix',),'Independent unequal per-channel TRCs and PCS matrix columns',oracle=opaque_rectangles(8,8,[((i,0,1,8),c) for i,c in enumerate(colours)]),extra={'tolerance':1})
     yield Case('icc-initial-zero',pdf(icc_profile(4,version=5),4,b'/C cs 0 0 8 8 re f',b'/DeviceCMYK'),RENDER,('content-icc-matrix',),'Later-version fallback retains ICCBased all-zero initialization, rather than DeviceCMYK black',oracle=opaque_rectangles(8,8,[]))
     yield Case('icc-simple-operator',pdf(icc_profile(),command=b'/C cs .5 .5 .5 sc'),OPEN,('content-icc-matrix',),'ICCBased retains the SCN/scn applicability rule of Table 73',extra={'render_error':'Syntax'})
     yield Case('icc-invalid-data',pdf(b'not a profile'),OPEN,('content-icc-matrix',),'Non-profile data cannot establish ICC fallback',extra={'render_error':'Syntax'})
-    for kind in (b'mft1',b'mft2',b'mAB ',b'mBA '):
-        yield Case('icc-lut-'+kind.decode().strip(),pdf(icc_profile(4,lut=kind),4,b'/C cs 0 0 0 0 scn 0 0 8 8 re f',b'/DeviceCMYK'),UNSUPPORTED,('content-icc-matrix',),'Tag-defined LUT profile requires explicit processing rather than alternate substitution; primary ICC review pending',feature='colorspace.ICCBased')
+    yield from icc_validation_cases()
+    yield from icc_lut_cases()
 
 
 def standard_semantics_cases():
@@ -1069,3 +1073,318 @@ def note_icon_cases():
                 bg=int(background*255/(rate*rate)+.5)/255
                 pixels.extend((int(255*(1-fg)+.5),int(255*(1-fg)+.5),int(255*(1-bg)*(1-fg)+.5)))
         yield Case('annotation-icon-'+name,single_page([b''],media_box=b'[0 0 8 8]',page_extra=b'/Annots [<< /Subtype /Text /Rect [0 0 8 8] /Name /'+name.encode()+b' /C [1 1 0] >>]'),RENDER,('content-annotation-generation','content-annotation-view'),'12.5.6.4: predefined icon geometry is project policy; polygon offsets and dense independent membership samples supply the oracle',oracle=b'P6\n8 8\n255\n'+pixels,extra={'tolerance':3})
+
+
+def icc_pdf(profile, count=3, command=b'/C cs .5 .5 .5 scn 0 0 8 8 re f', alternate=None, extra=b''):
+    """ISO 8.6.5.5: N, Range and Alternate remain PDF objects, outside ICC."""
+    alternate=alternate if alternate is not None else {1:b'/DeviceGray',3:b'/DeviceRGB',4:b'/DeviceCMYK'}[count]
+    return document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/ICCBased 5 0 R] >> /ExtGState << /G << /RI /Saturation >> >> >> /Contents 4 0 R >>',stream(command),stream(profile,b'/N '+str(count).encode()+b' /Alternate '+alternate+b' '+extra)])
+
+
+def icc_samples(name, profile, inputs, colours, count=3, requirement='content-icc-matrix', intent=b'', **options):
+    width=8 if len(inputs)==1 else 1
+    command=b'/C cs '+b' '.join(intent+b' '+(' '.join(map(str,v))+f' scn {i} 0 {width} 8 re f').encode() for i,v in enumerate(inputs))
+    return Case(name,icc_pdf(profile,count,command,**options),RENDER,(requirement,),
+        'ICC.1:2010 forward equations; independent quantized formula oracle; Bradford adaptation and sRGB bytes are project policy',
+        oracle=opaque_rectangles(8,8,[((i,0,width,8),colour) for i,colour in enumerate(colours)]),extra={'tolerance':1})
+
+
+def icc_validation_cases():
+    """ICC.1:2010 7–10/F.2–F.3 and ISO 8.6.5.5 admission/forward cases."""
+    import struct, hashlib
+    identity=icc_curve('identity',())
+    matrix=lambda v:cie_rgb('CalRGB',v,white=ICC_D50,matrix=tuple(icc_fixed(x)/65536 for x in ICC_RGB_MATRIX))
+    neutral=lambda value:cie_rgb('CalGray',(value,),white=ICC_D50)
+    tags=icc_tags(1,identity);tags[b'wtpt']=icc_xyz((.8,.9,.6))
+    yield icc_samples('icc-gray-media-white',icc_pack(tags,1,device=b'prtr'),[(.5,)],[neutral(.5)],1)
+    yield icc_samples('icc-gray-lab-pcs',icc_pack(icc_tags(1,identity),1,pcs=b'Lab '),[(.5,)],[cie_rgb('Lab',(50,0,0),white=ICC_D50)],1)
+    for name,curve,value,linear in [
+        ('param-overflow',icc_curve(1,(1024,2,0)),1,1),
+        ('param-threshold',icc_curve(1,(.5,66459/65536,-923/65536)),.013888261935930422,0),
+        ('param4-offset',icc_curve(4,(2,1,0,.25,.5,.125,.0625)),.75,.75**2+.125),
+        ('param2-signed',icc_curve(2,(2,1,-.25,.125)),.125,.125),
+        ('input-low',identity,-1,0),('input-high',identity,2,1),
+    ]:
+        yield icc_samples('icc-'+name,icc_profile(1,curve=curve),[(value,)],[neutral(linear)],1)
+    for name,curve,value,linear in [
+        ('sampled-nonmonotonic',icc_curve('sampled',(0,65535,32768,65535)),1/3,1),
+        ('sampled-flat',icc_curve('sampled',(32768,32768)),.5,32768/65535),
+    ]:
+        yield icc_samples('icc-'+name,icc_profile(curve=curve),[(value,)*3],[matrix((linear,)*3)])
+    tags=icc_tags(curve=identity);tags[b'A2B2']=icc_mab(3,only_b=True)
+    yield icc_samples('icc-unused-saturation-lut',icc_pack(tags),[(.5,)*3],[matrix((.5,)*3)])
+    tags=icc_tags(curve=identity);tags[b'B2A0']=b'mBA '+icc_mab(3,only_b=True)[4:]
+    yield icc_samples('icc-valid-btoa-ignored',icc_pack(tags),[(.5,)*3],[matrix((.5,)*3)])
+    yield icc_samples('icc-shared-trc',icc_pack(icc_tags(curve=identity),share=True),[(.5,)*3],[matrix((.5,)*3)])
+    tags=icc_tags(curve=identity);tags[b'chad']=b'sf32'+bytes(4)+b''.join(struct.pack('>i',icc_fixed(v)) for v in (1.1,0,0,0,1,0,0,0,.8))
+    yield icc_samples('icc-chad-not-reapplied',icc_pack(tags,device=b'mntr'),[(.5,)*3],[matrix((.5,)*3)])
+    tags=icc_tags(curve=identity)
+    tags[b'chad']=b'sf32'+bytes(4)+b''.join(struct.pack('>i',v) for v in (65536,65535,0,65535,65534,0,0,0,65536))
+    yield icc_samples('icc-chad-near-singular',icc_pack(tags),[(.5,)*3],[matrix((.5,)*3)])
+    yield icc_samples('icc-header-intent-ignored',icc_pack(icc_tags(curve=identity),changes=[(64,struct.pack('>I',3))]),[(.5,)*3],[matrix((.5,)*3)])
+    raw=bytearray(icc_profile(curve=identity));raw[44:48]=struct.pack('>I',3);raw[64:68]=struct.pack('>I',3)
+    fingerprint=bytearray(raw)
+    for low,high in ((44,48),(64,68),(84,100)):fingerprint[low:high]=bytes(high-low)
+    raw[84:100]=hashlib.md5(fingerprint).digest()
+    yield icc_samples('icc-profile-id-valid',bytes(raw),[(.5,)*3],[matrix((.5,)*3)])
+    # Vendor-defined upper bits in flags/attributes are not ICC reserved bits.
+    yield icc_samples('icc-header-vendor-bits',icc_pack(icc_tags(curve=identity),changes=[(44,struct.pack('>I',0xffff0003)),(56,struct.pack('>II',0xffffffff,15))]),[(.5,)*3],[matrix((.5,)*3)])
+    profile=icc_profile(version=5)
+    lab=b'[/Lab << /WhitePoint [.9642 1 .8249] >>]'
+    for name,values in [('range-clipped',(50,-20,20)),('range-control',(1,0,1))]:
+        yield icc_samples('icc-alternate-'+name,profile,[values],[cie_rgb('Lab',(1,0,1),white=ICC_D50)],alternate=lab)
+    # An unused, structurally valid alternate need not have a supported renderer.
+    yield icc_samples('icc-unused-alternate',icc_profile(curve=identity),[(.5,)*3],[matrix((.5,)*3)],alternate=b'[/CalRGB << /WhitePoint [.9642 1 .8249] /BlackPoint [.1 .1 .1] >>]')
+    bad=[]
+    for name,offset,value in [
+        ('header-d50',68,b''.join(struct.pack('>i',icc_fixed(v)) for v in (1,1,1))),
+        ('header-version-reserved',10,b'\1'),('header-version-bcd',9,b'\x3a'),
+        ('header-date',24,bytes(12)),('header-leap-date',24,struct.pack('>6H',2025,2,29,0,0,0)),
+        ('header-attributes',60,struct.pack('>I',16)),('header-intent',64,struct.pack('>I',4)),
+        ('header-reserved',100,b'\1'),('header-pcs',20,b'abcd'),('profile-id-invalid',84,b'\1'*16),
+    ]:bad.append((name,icc_pack(icc_tags(),changes=[(offset,value)]),{}))
+    for name,key,value in [
+        ('negative-xyz',b'rXYZ',icc_xyz((-.1,.22,.01))),
+        ('xyz-partial-extra',b'rXYZ',icc_xyz((.4,.2,.01))+b'\0'),
+        ('xyz-reserved',b'rXYZ',b'XYZ \0\0\0\1'+icc_xyz((.4,.2,.01))[8:]),
+        ('curve-reserved',b'rTRC',b'curv\0\0\0\1'+bytes(4)),
+        ('curve-trailing',b'rTRC',identity+bytes(4)),
+        ('param-reserved',b'rTRC',b'para'+bytes(4)+struct.pack('>HH',0,1)+struct.pack('>i',65536)),
+        ('chad-type',b'chad',b'text'+bytes(4)+b'x'),('chad-short',b'chad',b'sf32'+bytes(4)),
+        ('chad-singular',b'chad',b'sf32'+bytes(40)),
+    ]:
+        tags=icc_tags();tags[key]=value;bad.append((name,icc_pack(tags),{}))
+    for name,missing in [('rgb-missing-wtpt',[b'wtpt']),('missing-metadata',[b'desc',b'cprt'])]:
+        tags=icc_tags()
+        for key in missing:del tags[key]
+        bad.append((name,icc_pack(tags),{}))
+    for name,device in [('rgb-output-no-luts',b'prtr'),('rgb-colorspace-no-luts',b'spac')]:bad.append((name,icc_pack(icc_tags(),device=device),{}))
+    tags=icc_tags();tags[b'wtpt']=icc_xyz((.8,.9,.6));bad.append(('display-white-invalid',icc_pack(tags,device=b'mntr'),{}))
+    bad.append(('tag-gap',icc_pack(icc_tags(),gap=4),{}))
+    tags=icc_tags();tags[b'zzzz']=b'text'+bytes(4)+b'x'
+    raw=bytearray(icc_pack(tags));raw[-1]=1;bad.append(('tag-padding-nonzero',bytes(raw),{}))
+    raw=bytearray(icc_pack(tags)[:-1]);raw[:4]=struct.pack('>I',len(raw));bad.append(('tag-padding-missing',bytes(raw),{}))
+    for name,alternate in [('alternate-wrong-n',b'/DeviceGray'),('alternate-pattern',b'/Pattern')]:bad.append((name,icc_profile(),{'alternate':alternate}))
+    bad.append(('range-rgb-mismatch',icc_profile(),{'extra':b'/Range [0 2 0 1 0 1]'}))
+    for name,raw,options in bad:
+        yield Case('icc-'+name,icc_pdf(raw,**options),OPEN,('content-icc-admission',),
+            'ICC.1:2010 7.2–7.4, 8.2–8.7, 9.2.15/34, 10.1/5/16/29; ISO 8.6.5.5 Table 65: reject the independently malformed field',extra={'render_error':'Syntax'})
+
+
+def icc_pcs_rgb(values, pcs, legacy=False):
+    """ICC.1:2010 6.3.4.2 and 10.8, followed by the project's RGB policy."""
+    if pcs==b'Lab ':
+        v=[min(1,max(0,x*65535/65280)) for x in values] if legacy else values
+        return cie_rgb('Lab',(100*v[0],255*v[1]-128,255*v[2]-128),white=ICC_D50,ranges=(-128,127,-128,127))
+    xyz=[v*65535/32768 for v in values]
+    return cie_rgb('XYZ',xyz,white=ICC_D50)
+
+
+def icc_grid(grids, precision, function):
+    """Independent tensor-product linear weights; integer samples are authored here."""
+    from itertools import product
+    maximum=255 if precision==1 else 65535
+    values={index:tuple(int(maximum*min(1,max(0,v))+.5) for v in function(tuple(i/(g-1) for i,g in zip(index,grids)))) for index in product(*(range(g) for g in grids))}
+    import struct
+    data=b''.join(bytes(v) if precision==1 else struct.pack('>3H',*v) for v in values.values())
+    def evaluate(point):
+        spans=[]
+        for x,g in zip(point,grids):
+            position=min(1,max(0,x))*(g-1);low=min(g-2,int(position));spans.append(((low,1-(position-low)),(low+1,position-low)))
+        total=[0.0]*3
+        for corner in product(*spans):
+            weight=1
+            for _,w in corner:weight*=w
+            for k,v in enumerate(values[tuple(i for i,_ in corner)]):total[k]+=weight*v/maximum
+        return total
+    return data,evaluate
+
+
+def icc_table(values, precision):
+    import struct
+    maximum=255 if precision==1 else 65535
+    samples=[int(maximum*v+.5) for v in values]
+    data=bytes(samples) if precision==1 else b''.join(struct.pack('>H',v) for v in samples)
+    def evaluate(x):
+        position=min(1,max(0,x))*(len(samples)-1);lo=min(len(samples)-2,int(position));fraction=position-lo
+        return ((1-fraction)*samples[lo]+fraction*samples[lo+1])/maximum
+    return data,evaluate
+
+
+def icc_legacy(count=4, kind=b'mft2', pcs=b'Lab ', constant=None, nonlinear=False, grid=2):
+    """ICC.1:2010 10.8/10.9: matrix, input tables, CLUT, output tables."""
+    import struct
+    precision=2 if kind==b'mft2' else 1;n=3 if nonlinear and precision==2 else (2 if precision==2 else 256)
+    m=n
+    tables=[icc_table([(i/(n-1))**(1+(k%2)) if nonlinear else i/(n-1) for i in range(n)],precision) for k in range(count)]
+    outputs=[icc_table([(i/(m-1))**(1+(k==0)) if nonlinear else i/(m-1) for i in range(m)],precision) for k in range(3)]
+    def function(v):
+        u=list(v)+[0]*4
+        if constant is not None:return constant
+        if pcs==b'Lab ':
+            lab=(.2+.35*u[0]+.15*u[1]*u[2]+.1*u[3],(128+30*(u[0]-u[1]))/255,(128+24*(u[2]-u[3]))/255)
+            return tuple(x*(65280/65535 if precision==2 else 1) for x in lab)
+        return tuple(x*32768/65535 for x in (.1+.2*u[0]+.05*u[1]*u[2],.1+.3*u[1]+.05*u[2]*u[3],.05+.25*u[2]+.05*u[0]*u[3]))
+    clut,evaluate=icc_grid([grid]*count,precision,function)
+    matrix=b''.join(struct.pack('>i',65536 if i%4==0 else 0) for i in range(9))
+    data=kind+bytes(4)+bytes([count,3,grid,0])+matrix+(struct.pack('>HH',n,m) if precision==2 else b'')+b''.join(v[0] for v in tables)+clut+b''.join(v[0] for v in outputs)
+    def reference(values):return [curve[1](value) for curve,value in zip(outputs,evaluate([curve[1](value) for curve,value in zip(tables,values)]))]
+    return data,reference
+
+
+def icc_mab(count=3, pcs=b'XYZ ', only_b=False, stages='full', precision=2, reference=False, parametric=False):
+    """ICC.1:2010 10.10: all four legal stage combinations, no missing A curves."""
+    import struct
+    identity=icc_curve('identity',());gamma=icc_curve(0,(2,)) if parametric else icc_curve('gamma',(2,))
+    offsets=[0]*5;payload=bytearray()
+    def add(index,data):
+        offsets[index]=32+len(payload);payload.extend(data);payload.extend(bytes(-len(payload)%4))
+    def curves(kinds):return b''.join(v+bytes(-len(v)%4) for v in kinds)
+    add(0,curves([identity]*3 if only_b else [gamma,identity,identity]))
+    has_clut=not only_b and stages in ('clut','full')
+    has_matrix=not only_b and stages in ('matrix','full')
+    if has_matrix:
+        add(1,b''.join(struct.pack('>i',icc_fixed(v)) for v in (1,.125,0,0,.75,.125,.125,0,1,.03125,0,-.03125)))
+        add(2,curves([identity,gamma,identity]))
+    if has_clut:
+        grids=[2,3,4,2][:count]
+        data,clut=icc_grid(grids,precision,lambda v:(.2+.3*v[0],.45+.1*v[1]*v[2],.45+.1*(v[3] if count==4 else v[0]*v[2])))
+        add(3,bytes(grids+[0]*(16-count))+bytes([precision,0,0,0])+data)
+        add(4,curves([gamma if i==0 else identity for i in range(count)]))
+    data=b'mAB '+bytes(4)+bytes([count,3,0,0])+struct.pack('>5I',*offsets)+payload
+    def evaluate(values):
+        v=list(values)
+        if has_clut:v=clut([x*x if i==0 else x for i,x in enumerate(v)])
+        if has_matrix:
+            x,y,z=v;x,y,z=x,y*y,z
+            v=[min(1,max(0,x+.125*y+.03125)),min(1,max(0,.75*y+.125*z)),min(1,max(0,.125*x+z-.03125))]
+        if not only_b:v[0]=v[0]**2
+        return v
+    return (data,evaluate) if reference else data
+
+
+def icc_lut_cases():
+    """Normative LUT data, PCS ranges/encodings and rendering-intent selection."""
+    import struct
+    points=[(0,0,0,0),(1,1,1,1),(.2,.4,.6,.8),(.9,.1,.7,.3),(.1,.9,.3,.7),(.5,.5,.5,.5),(.3,.8,.9,.1),(.8,.3,.1,.9)]
+    for kind in (b'mft2',b'mft1'):
+        for version in (2,4):
+            for count in (1,3,4):
+                for pcs in ((b'XYZ ',b'Lab ') if kind==b'mft2' else (b'Lab ',)):
+                    data,reference=icc_legacy(count,kind,pcs)
+                    tags=icc_tags(count,version=version)
+                    # Input profile with AToB0 is sufficient (8.3.2). Strip matrix
+                    # tags so every sample necessarily reaches the CLUT data.
+                    tags={k:v for k,v in tags.items() if k in (b'wtpt',b'desc',b'cprt')};tags[b'A2B0']=data
+                    profile=icc_pack(tags,count,version,pcs=pcs)
+                    inputs=[v[:count] for v in points]
+                    colours=[icc_pcs_rgb(reference(v),pcs,kind==b'mft2' and pcs==b'Lab ') for v in inputs]
+                    yield icc_samples(f'icc-{kind.decode()}-{count}-{pcs.decode().strip()}-v{version}',profile,inputs,colours,count,'content-icc-lut')
+    for kind,pcs in [(b'mft2',b'XYZ '),(b'mft2',b'Lab '),(b'mft1',b'Lab ')]:
+        data,reference=icc_legacy(4,kind,pcs,nonlinear=True,grid=3)
+        tags=icc_tags(4);tags[b'A2B0']=data
+        yield icc_samples(f'icc-{kind.decode()}-curves-{pcs.decode().strip()}',icc_pack(tags,4,pcs=pcs),points,[icc_pcs_rgb(reference(v),pcs,kind==b'mft2' and pcs==b'Lab ') for v in points],4,'content-icc-lut')
+    for pcs in (b'XYZ ',b'Lab '):
+        for stages in ('b','matrix','clut','full'):
+            for precision in ((1,2) if stages in ('clut','full') else (2,)):
+                count=4 if stages in ('clut','full') else 3
+                data,reference=icc_mab(count,pcs,only_b=stages=='b',stages=stages,precision=precision,reference=True)
+                tags=icc_tags(4);tags[b'A2B0']=data
+                inputs=[v[:count] for v in points]
+                yield icc_samples(f'icc-mAB-{stages}-{pcs.decode().strip()}-{precision}',icc_pack(tags,count,pcs=pcs),inputs,[icc_pcs_rgb(reference(v),pcs) for v in inputs],count,'content-icc-lut')
+    # Legacy Lab is used for mft2 in BOTH versions; mAB always uses modern Lab.
+    # An identity Lab input pipeline tests the device ranges independently of PCS.
+    for kind in (b'mft1',b'mft2'):
+        data,_=icc_legacy(3,kind,b'Lab ',constant=(.5,128/255,128/255))
+        # Replace a constant CLUT with an identity grid for a visible range test.
+        precision=1 if kind==b'mft1' else 2;start=48+256*3 if precision==1 else 52+2*2*3
+        clut,ref=icc_grid([2]*3,precision,lambda v:tuple(x*(65280/65535 if precision==2 else 1) for x in v))
+        data=data[:start]+clut+data[start+len(clut):]
+        tags=icc_tags(4);tags[b'A2B0']=data
+        inputs=[(0,-128,-128),(100,127,127),(50,0,0),(60,25,-20),(-1,-200,200),(200,200,-200),(25,-40,30),(75,10,20)]
+        normal=lambda v:(min(100,max(0,v[0]))/100,(min(127,max(-128,v[1]))+128)/255,(min(127,max(-128,v[2]))+128)/255)
+        yield icc_samples(f'icc-{kind.decode()}-Lab-input',icc_pack(tags,3,space=b'Lab ',pcs=b'Lab '),inputs,[icc_pcs_rgb(ref(normal(v)),b'Lab ',precision==2) for v in inputs],3,'content-icc-lut',extra=b'/Range [0 100 -128 127 -128 127]')
+    # Near black, legacy-vs-modern Lab decoding differs by multiple byte levels.
+    for version in (2,4):
+        tags=icc_tags(4,version=version);tags[b'A2B0']=icc_legacy(4,constant=(3264/65535,32768/65535,32768/65535))[0]
+        case=icc_samples('icc-mft2-Lab-encoding-v'+str(version),icc_pack(tags,4,version,pcs=b'Lab '),[(.5,)*4],[cie_rgb('Lab',(5,0,0),white=ICC_D50)],4,'content-icc-lut')
+        case.extra['tolerance']=0
+        yield case
+    # Intent-specific LUTs with distinct L* values; no header hint is consulted.
+    tags=icc_tags(4)
+    for i,l in enumerate((.2,.6,.85)):tags[f'A2B{i}'.encode()]=icc_legacy(4,pcs=b'Lab ',constant=(l*65280/65535,32768/65535,32768/65535))[0]
+    for name,l in [('Perceptual',20),('RelativeColorimetric',60),('Saturation',85),('AbsoluteColorimetric',60)]:
+        colour=cie_rgb('Lab',(l,0,0),white=ICC_D50)
+        yield icc_samples('icc-intent-'+name,icc_pack(tags,4,pcs=b'Lab '),[(.5,)*4],[colour],4,'content-icc-intent',intent=b'/'+name.encode()+b' ri')
+    command=b'/C cs /Perceptual ri .5 .5 .5 .5 scn 0 0 2 8 re f q /G gs .5 .5 .5 .5 scn 2 0 2 8 re f Q .5 .5 .5 .5 scn 4 0 2 8 re f /RelativeColorimetric ri .5 .5 .5 .5 scn 6 0 2 8 re f'
+    yield Case('icc-intent-state',icc_pdf(icc_pack(tags,4,pcs=b'Lab '),4,command),RENDER,('content-icc-intent',),'ICC 8.10.2 and ISO 8.4/8.6.5.8: intent changes after CS, ExtGState RI and q/Q',oracle=opaque_rectangles(8,8,[((i*2,0,2,8),cie_rgb('Lab',(l,0,0),white=ICC_D50)) for i,l in enumerate((20,85,20,60))]),extra={'tolerance':1})
+    tags={k:v for k,v in tags.items() if k not in (b'A2B1',b'A2B2')}
+    yield icc_samples('icc-intent-fallback-A2B0',icc_pack(tags,4,pcs=b'Lab '),[(.5,)*4],[cie_rgb('Lab',(20,0,0),white=ICC_D50)],4,'content-icc-intent',intent=b'/Saturation ri')
+    # Absolute colorimetry reconstructs media XYZ from the relative PCS.
+    tags=icc_tags(1,icc_curve('identity',()));tags[b'wtpt']=icc_xyz((.8,.9,.6))
+    white=[icc_fixed(v)/65536 for v in (.8,.9,.6)]
+    colour=cie_rgb('CalRGB',tuple(.5*v for v in white),white=ICC_D50,matrix=(1,0,0,0,1,0,0,0,1))
+    yield icc_samples('icc-intent-absolute-media',icc_pack(tags,1,device=b'prtr'),[(.5,)],[colour],1,'content-icc-intent',intent=b'/AbsoluteColorimetric ri')
+    for name,signature,pcs in [('lut-mBA',b'mBA ',b'XYZ '),('lut8-XYZ',b'mft1',b'XYZ ')]:
+        tags=icc_tags()
+        tags[b'A2B0']=signature+icc_mab(only_b=True)[4:] if signature==b'mBA ' else icc_legacy(3,b'mft1',pcs)[0]
+        yield Case('icc-'+name,icc_pdf(icc_pack(tags,pcs=pcs)),UNSUPPORTED,('content-icc-lut',),'Inverse transforms are not a source pipeline; ICC 10.9 leaves lut8 XYZ unspecified',feature='colorspace.ICCBased')
+    # Invalid stages, offsets, dimensions, padding and counts are syntax errors.
+    bad=[]
+    base=icc_legacy(4)[0]
+    for name,offset,value in [('lut-channel-count',8,b'\3'),('lut-grid-zero',10,b'\0'),('lut-reserved',11,b'\1'),('lut-table-count',48,struct.pack('>H',1)),('lut-table-count-high',48,struct.pack('>H',4097)),('lut-output-count',50,bytes(2)),('lut-matrix',12,struct.pack('>i',0))]:
+        raw=bytearray(base);raw[offset:offset+len(value)]=value;bad.append((name,bytes(raw)))
+    base=icc_mab(4)
+    for name,offset,value in [('mAB-missing-A',28,bytes(4)),('mAB-missing-B',12,bytes(4)),('mAB-misaligned',12,struct.pack('>I',33)),('mAB-missing-M',20,bytes(4))]:
+        raw=bytearray(base);raw[offset:offset+len(value)]=value;bad.append((name,bytes(raw)))
+    clut_offset=int.from_bytes(base[24:28],'big')
+    for name,offset,value in [('mAB-precision',clut_offset+16,b'\3'),('mAB-unused-grid',clut_offset+4,b'\2'),('mAB-CLUT-padding',clut_offset+17,b'\1')]:
+        raw=bytearray(base);raw[offset:offset+len(value)]=value;bad.append((name,bytes(raw)))
+    for name,raw in bad:
+        tags=icc_tags(4);tags[b'A2B0']=raw
+        yield Case('icc-'+name,icc_pdf(icc_pack(tags,4),4),OPEN,('content-icc-admission',),'ICC 10.8/10.10 invalid processing-element structure',extra={'render_error':'Syntax'})
+
+    for kind in ('mft2','mAB'):
+        raw=bytearray(icc_legacy(4)[0] if kind=='mft2' else icc_mab(4))
+        if kind=='mft2':raw[10]=255
+        else:
+            offset=int.from_bytes(raw[24:28],'big');raw[offset:offset+4]=bytes([255]*4)
+        tags=icc_tags(4);tags[b'A2B0']=bytes(raw)
+        yield Case('icc-'+kind+'-grid-budget',icc_pdf(icc_pack(tags,4),4),OPEN,('content-icc-admission',),'ICC CLUT products are checked against implementation budgets before table access/allocation',extra={'render_error':'Limit'})
+
+    for kind,pcs in [(b'mft2',b'XYZ '),(b'mft1',b'Lab '),(b'mAB ',b'Lab ')]:
+        data,reference=icc_mab(4,pcs,reference=True) if kind==b'mAB ' else icc_legacy(4,kind,pcs)
+        tags=icc_tags(4);tags[b'A2B0']=data;profile=icc_pack(tags,4,pcs=pcs)
+        samples=bytes([64,128,192,32]);values=tuple(v/255 for v in samples)
+        pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /XObject << /I 6 0 R >> >> /Contents 4 0 R >>',stream(b'8 0 0 8 0 0 cm /I Do'),stream(profile,b'/N 4'),stream(samples,b'/Type /XObject /Subtype /Image /Width 1 /Height 1 /BitsPerComponent 8 /ColorSpace [/ICCBased 5 0 R]')])
+        colour=icc_pcs_rgb(reference(values),pcs)
+        yield Case('icc-image-'+kind.decode().strip(),pdf,RENDER,('content-icc-lut',),'ICC forward LUT receives independently normalized image source components',oracle=opaque_rectangles(8,8,[((0,0,8,8),colour)]),extra={'tolerance':1})
+    data,reference=icc_legacy(3,b'mft2',b'Lab ',constant=(.5,128/255,128/255))
+    clut,ref=icc_grid([2]*3,2,lambda v:tuple(x*65280/65535 for x in v))
+    start=52+2*2*3;data=data[:start]+clut+data[start+len(clut):]
+    tags=icc_tags(4);tags[b'A2B0']=data
+    base=b'[/ICCBased 5 0 R]';palette=bytes([128,128,128])
+    pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/Indexed '+base+b' 0 <'+palette.hex().encode()+b'>] >> >> /Contents 4 0 R >>',stream(b'/C cs 0 scn 0 0 8 8 re f'),stream(icc_pack(tags,3,space=b'Lab ',pcs=b'Lab '),b'/N 3 /Range [0 100 -128 127 -128 127]')])
+    yield Case('icc-indexed-Lab-input',pdf,RENDER,('content-icc-lut',),'ISO 8.6.6.3 scales palette bytes into the ICC source component ranges',oracle=opaque_rectangles(8,8,[((0,0,8,8),icc_pcs_rgb(ref((128/255,)*3),b'Lab ',True))]),extra={'tolerance':1})
+
+    # 7.3.5 excludes external final alignment from tag size; 10.10 keeps
+    # intermediate elements aligned, including gamma curves of logical size 14.
+    gamma=icc_curve('gamma',(2,))
+    body=b'mAB '+bytes(4)+bytes([3,3,0,0])+struct.pack('>5I',32,0,0,0,0)+gamma+bytes(2)+gamma+bytes(2)+gamma
+    tags=icc_tags(4);tags[b'A2B0']=body
+    inputs=[v[:3] for v in points]
+    yield icc_samples('icc-mAB-final-curve-unpadded',icc_pack(tags,3),inputs,[icc_pcs_rgb([x*x for x in v],b'XYZ ') for v in inputs],3,'content-icc-lut')
+    table,reference=icc_grid([3]*3,1,lambda v:(.2+.3*v[0],.45+.1*v[1]*v[2],.45+.1*v[0]*v[2]))
+    curves=icc_curve('identity',())*3
+    body=b'mAB '+bytes(4)+bytes([3,3,0,0])+struct.pack('>5I',32,0,0,104,68)+curves+curves+bytes([3]*3+[0]*13)+bytes([1,0,0,0])+table
+    tags=icc_tags(4);tags[b'A2B0']=body
+    yield icc_samples('icc-mAB-final-CLUT-unpadded',icc_pack(tags,3),inputs,[icc_pcs_rgb(reference(v),b'XYZ ') for v in inputs],3,'content-icc-lut')
+
+    data,reference=icc_mab(4,b'Lab ',reference=True,parametric=True)
+    tags=icc_tags(4);tags[b'A2B0']=data
+    yield icc_samples('icc-mAB-parametric',icc_pack(tags,4,pcs=b'Lab '),points,[icc_pcs_rgb(reference(v),b'Lab ') for v in points],4,'content-icc-lut')
+
+    tags=icc_tags(4)
+    for i,l in enumerate((.2,.6,.85)):tags[f'A2B{i}'.encode()]=icc_legacy(4,pcs=b'Lab ',constant=(l*65280/65535,32768/65535,32768/65535))[0]
+    pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /XObject << /F 5 0 R >> >> /Contents 4 0 R >>',stream(b'/Perceptual ri /F Do'),stream(b'/Pattern cs /P scn 0 0 8 8 re f',b'/Type /XObject /Subtype /Form /BBox [0 0 8 8] /Resources << /Pattern << /P 6 0 R >> >>'),stream(b'/C cs .5 .5 .5 .5 scn 0 0 1 1 re f',b'/Type /Pattern /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 2 2] /XStep 2 /YStep 2 /Resources << /ColorSpace << /C [/ICCBased 7 0 R] >> >>'),stream(icc_pack(tags,4,pcs=b'Lab '),b'/N 4')])
+    yield Case('icc-intent-pattern-in-form',pdf,RENDER,('content-icc-intent',),'ISO 8.7.3.1 and ICC 8.10.2: pattern inherits rendering intent from the parent form initial graphics state',oracle=opaque_rectangles(8,8,[((x,y,1,1),cie_rgb('Lab',(20,0,0),white=ICC_D50)) for x in range(0,8,2) for y in range(0,8,2)]),extra={'tolerance':1})

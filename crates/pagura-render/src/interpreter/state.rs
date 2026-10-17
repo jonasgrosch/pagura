@@ -34,6 +34,8 @@ impl Compiler<'_> {
             b"ri" => {
                 self.state.intent =
                     rendering_intent(v.first().ok_or(Error::syntax("missing rendering intent"))?)?;
+                self.state.composite.conversion.intent =
+                    crate::icc::Intent::from_name(&self.state.intent);
             }
             b"d" => {
                 let array = v
