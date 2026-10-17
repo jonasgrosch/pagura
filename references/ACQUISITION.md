@@ -6,10 +6,11 @@ Normative reference entries indexed: 82.
 
 | Status | Resources |
 |---|---:|
-| cached | 63 |
-| indexed-only | 60 |
+| acquired-separately | 12 |
+| cached | 80 |
+| indexed-only | 52 |
 | locally-supplied | 1 |
-| unavailable | 12 |
+| unavailable | 8 |
 
 ## Access gaps
 
@@ -25,11 +26,7 @@ Failures:
 - [legacy-index](https://pdfa.org/resource/pdf-specification-archive/): HTTPError: HTTP Error 403: Forbidden
 - [iso-status](https://pdfa.org/iso-status/): HTTPError: HTTP Error 403: Forbidden
 - [adobe-automation](https://helpx.adobe.com/acrobat/kb/automation-and-document-workflows.html): HTTPError: HTTP Error 403: Forbidden
-- [ref-66573d1d29aa](https://pdfa.org/norm-refs/5014.CIDFont_Spec.pdf): HTTPError: HTTP Error 403: Forbidden
-- [ref-8527494a2d0e](https://pdfa.org/norm-refs/5176.CFF_.pdf): HTTPError: HTTP Error 403: Forbidden
-- [ref-a27a03167d23](https://pdfa.org/norm-refs/5177.type2_.pdf): HTTPError: HTTP Error 403: Forbidden
 - [ref-c92d513c4928](https://pdfa.org/norm-refs/5620.PortableJobTicket.pdf): HTTPError: HTTP Error 403: Forbidden
 - [ref-238425e45d9a](https://pdfa.org/norm-refs/PLRM.pdf): HTTPError: HTTP Error 403: Forbidden
 - [ref-5e937b5c9316](https://pdfa.org/norm-refs/SigBuildDict.pdf): HTTPError: HTTP Error 403: Forbidden
-- [ref-3ad2fe4b0863](https://pdfa.org/norm-refs/TIFF6.pdf): HTTPError: HTTP Error 403: Forbidden
 - [ref-6eed78241b1e](https://pdfa.org/norm-refs/Type1Fonts.pdf): HTTPError: HTTP Error 403: Forbidden

@@ -1,4 +1,13 @@
-"""Acquire official references into a private cache; keep a provenance ledger."""
+"""Acquire official references into a private cache; keep a provenance ledger.
+
+    python3 tools/references.py sync              # refresh the PDF 2.0 reference index
+    python3 tools/references.py fetch [ID ...]    # download the format standards below
+    python3 tools/references.py register PATH --id ID
+
+Fetched standards are freely published by their owners but not redistributable
+by this project: they stay in $PAGURA_REFERENCES_DIR, never in the repository.
+Searchable text goes to $PAGURA_REFERENCES_DIR/text/<ID>.txt.
+"""
 from __future__ import annotations
 
 import argparse
@@ -6,6 +15,7 @@ import concurrent.futures
 import hashlib
 import json
 import os
+import subprocess
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
@@ -41,6 +51,42 @@ SEEDS = [
     ("verapdf-rules", "veraPDF PDF/A and PDF/UA machine validation", "https://docs.verapdf.org/validation/", "validation"),
     ("ghent-suite", "Ghent PDF Output Suite 5", "https://gwg.org/resources/ghent-pdf-output-suite/", "corpus-access"),
     ("adobe-automation", "Adobe desktop automation policy", "https://helpx.adobe.com/acrobat/kb/automation-and-document-workflows.html", "license-policy"),
+]
+
+
+# Non-PDF format standards the codecs, fonts and crypto are verified against.
+# (ID, title, official download URL, normative-index record it fulfils, users)
+STANDARDS = [
+    ("itu-t88-2000", "ITU-T T.88 (02/2000): JBIG2 bi-level image compression",
+     "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.88-200002-S!!PDF-E&type=items", None, "jbig2"),
+    ("itu-t800-2019", "ITU-T T.800 (06/2019): JPEG 2000 core coding system",
+     "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.800-201906-S!!PDF-E&type=items", None, "jpx"),
+    ("itu-t81-1992", "ITU-T T.81 (09/1992): JPEG digital compression of still images",
+     "https://www.w3.org/Graphics/JPEG/itu-t81.pdf", None, "image"),
+    ("itu-t4-2003", "ITU-T T.4 (07/2003): Group 3 facsimile coding",
+     "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.4-200307-I!!PDF-E&type=items", "ref-c9db1781d544", "image"),
+    ("itu-t6-1988", "ITU-T T.6 (11/1988): Group 4 facsimile coding",
+     "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.6-198811-I!!PDF-E&type=items", "ref-334231984265", "image"),
+    ("rfc1950", "RFC 1950: ZLIB compressed data format", "https://www.rfc-editor.org/rfc/rfc1950.txt", "ref-cbcb41294671", "codec"),
+    ("rfc1951", "RFC 1951: DEFLATE compressed data format", "https://www.rfc-editor.org/rfc/rfc1951.txt", "ref-e25089654d67", "codec"),
+    ("rfc1321", "RFC 1321: The MD5 message-digest algorithm", "https://www.rfc-editor.org/rfc/rfc1321.txt", "ref-3dc7af1c3b24", "crypto"),
+    ("nist-fips180-4", "FIPS 180-4: Secure Hash Standard",
+     "https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf", "ref-5b9a7774758f", "crypto"),
+    ("nist-fips197-upd1", "FIPS 197 (2023 update): Advanced Encryption Standard",
+     "https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf", "ref-55dc3d1c068a", "crypto"),
+    ("w3c-png-2003", "PNG (Second Edition), W3C Recommendation 2003-11-10",
+     "https://www.w3.org/TR/2003/REC-PNG-20031110/", None, "codec"),
+    ("tiff6", "TIFF Revision 6.0", "https://www.itu.int/itudoc/itu-t/com16/tiff-fx/docs/tiff6.pdf", "ref-3ad2fe4b0863", "codec"),
+    ("adobe-type1", "Adobe Type 1 Font Format",
+     "https://adobe-type-tools.github.io/font-tech-notes/pdfs/T1_SPEC.pdf", None, "font"),
+    ("adobe-tn5176-cff", "Adobe Technical Note #5176: The Compact Font Format Specification",
+     "https://adobe-type-tools.github.io/font-tech-notes/pdfs/5176.CFF.pdf", "ref-8527494a2d0e", "font"),
+    ("adobe-tn5177-type2", "Adobe Technical Note #5177: The Type 2 Charstring Format",
+     "https://adobe-type-tools.github.io/font-tech-notes/pdfs/5177.Type2.pdf", "ref-a27a03167d23", "font"),
+    ("adobe-tn5014-cidfont", "Adobe Technical Note #5014: Adobe CMap and CIDFont Files Specification",
+     "https://adobe-type-tools.github.io/font-tech-notes/pdfs/5014.CIDFont_Spec.pdf", "ref-66573d1d29aa", "text, font"),
+    ("adobe-glyph-list", "Adobe Glyph List (glyphlist.txt)",
+     "https://raw.githubusercontent.com/adobe-type-tools/agl-aglfn/master/glyphlist.txt", "ref-7f1ab0d524b6", "text"),
 ]
 
 
@@ -99,7 +145,8 @@ def acquire(url):
             raise ValueError("HTTPS downgrade refused")
         mime = response.headers.get_content_type()
         digest = hashlib.sha256(data).hexdigest()
-        extension = ".pdf" if data.startswith(b"%PDF-") else ".html" if "html" in mime else ".bin"
+        extension = (".pdf" if data.startswith(b"%PDF-") else ".html" if "html" in mime
+                     else ".txt" if mime == "text/plain" else ".bin")
         CACHE.mkdir(parents=True, exist_ok=True)
         path = CACHE / (digest + extension)
         path.write_bytes(data)
@@ -205,7 +252,16 @@ def report(lock):
 
 
 def preserve_local(previous, records):
-    """Refreshing web metadata must never forget a legitimately supplied document."""
+    """Refreshing web metadata must never forget a supplied or fetched document."""
+    standards = [r for r in previous["sources"] if r.get("kind") == "format-standard"]
+    for record in standards:
+        if hashlib.sha256(cached_path(record["cache_path"]).read_bytes()).hexdigest() != record["sha256"]:
+            raise ValueError(f"{record['id']}: cached standard changed; fetch it again explicitly")
+    acquired = {r["id"]: r["acquired_as"] for r in previous["sources"] if r.get("acquired_as")}
+    for record in records:
+        if record["id"] in acquired and record["status"] == "indexed-only":
+            record.update(status="acquired-separately", acquired_as=acquired[record["id"]])
+    records = [r for r in records if r.get("kind") != "format-standard"] + standards
     supplied = {r["id"]: r for r in previous["sources"] if r["status"] == "locally-supplied"}
     for record in supplied.values():
         path = cached_path(record["cache_path"]).resolve()
@@ -215,6 +271,82 @@ def preserve_local(previous, records):
             raise ValueError("Locally supplied reference changed; register it again explicitly")
     merged = [supplied.pop(r["id"], r) for r in records]
     return merged + list(supplied.values())
+
+
+def text_of(path: Path, data: bytes) -> str | None:
+    """Searchable text: pdftotext for PDFs when available, tags stripped from HTML."""
+    if data.startswith(b"%PDF-"):
+        try:
+            result = subprocess.run(["pdftotext", "-layout", "-enc", "UTF-8", str(path), "-"],
+                                    capture_output=True, timeout=300, check=True)
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return result.stdout.decode("utf-8", errors="replace")
+    if path.suffix == ".html":
+        parser = TextParser()
+        parser.feed(data.decode("utf-8", errors="replace"))
+        return parser.text()
+    return data.decode("utf-8", errors="replace")
+
+
+class TextParser(HTMLParser):
+    """Visible text of an HTML document, one block per line."""
+
+    def __init__(self):
+        super().__init__()
+        self.parts, self.skip = [], 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script", "style"):
+            self.skip += 1
+        elif tag in ("p", "div", "br", "tr", "li", "h1", "h2", "h3", "h4", "pre", "table"):
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag):
+        if tag in ("script", "style") and self.skip:
+            self.skip -= 1
+
+    def handle_data(self, data):
+        if not self.skip:
+            self.parts.append(data)
+
+    def text(self) -> str:
+        return "".join(self.parts)
+
+
+def fetch(idents):
+    """Download the selected format standards, verify them and record them."""
+    unknown = set(idents) - {s[0] for s in STANDARDS}
+    if unknown:
+        raise SystemExit(f"unknown standards: {', '.join(sorted(unknown))}")
+    lock_path = ROOT / "references/lock.json"
+    lock = json.loads(lock_path.read_text())
+    by_id = {r["id"]: r for r in lock["sources"]}
+    (CACHE / "text").mkdir(parents=True, exist_ok=True)
+    for ident, title, url, index_entry, users in STANDARDS:
+        if idents and ident not in idents:
+            continue
+        evidence, data = acquire(url)
+        expected_pdf = not url.endswith((".txt", "/"))
+        if expected_pdf != data.startswith(b"%PDF-"):
+            raise SystemExit(f"{ident}: unexpected content ({evidence['mime']}, {len(data)} bytes)")
+        record = {"id": ident, "title": title, "kind": "format-standard", "used_by": users,
+                  "redistribution": "freely published by its owner; private cache only", **evidence}
+        if ident in by_id:
+            by_id[ident].clear()
+            by_id[ident].update(record)
+        else:
+            lock["sources"].append(record)
+            by_id[ident] = record
+        if index_entry in by_id:
+            by_id[index_entry].update(status="acquired-separately", acquired_as=ident)
+        text = text_of(cached_path(record["cache_path"]), data)
+        if text is not None:
+            (CACHE / "text" / f"{ident}.txt").write_text(text)
+        print(f"{ident}: {len(data)} bytes, sha256 {evidence['sha256'][:16]}…"
+              + ("" if text is not None else " (no text extraction)"), flush=True)
+    lock_path.write_text(json.dumps(lock, indent=2) + "\n")
+    report(lock)
 
 
 def register(path, ident):
@@ -244,11 +376,15 @@ if __name__ == "__main__":
     argument = argparse.ArgumentParser(description=__doc__)
     sub = argument.add_subparsers(dest="command", required=True)
     sub.add_parser("sync")
+    get = sub.add_parser("fetch", help="download format standards (all when no ID is given)")
+    get.add_argument("ids", nargs="*")
     reg = sub.add_parser("register")
     reg.add_argument("path")
     reg.add_argument("--id", required=True)
     args = argument.parse_args()
     if args.command == "sync":
         sync()
+    elif args.command == "fetch":
+        fetch(args.ids)
     else:
         register(args.path, args.id)

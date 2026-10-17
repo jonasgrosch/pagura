@@ -751,8 +751,9 @@
       "url": "https://pdfa.org/norm-refs/5014.CIDFont_Spec.pdf",
       "kind": "official-linked-reference",
       "redistribution": "private cache only",
-      "status": "unavailable",
-      "error": "HTTPError: HTTP Error 403: Forbidden"
+      "status": "acquired-separately",
+      "error": "HTTPError: HTTP Error 403: Forbidden",
+      "acquired_as": "adobe-tn5014-cidfont"
     },
     {
       "id": "ref-c57948f56daa",
@@ -785,16 +786,18 @@
       "url": "https://pdfa.org/norm-refs/5176.CFF_.pdf",
       "kind": "official-linked-reference",
       "redistribution": "private cache only",
-      "status": "unavailable",
-      "error": "HTTPError: HTTP Error 403: Forbidden"
+      "status": "acquired-separately",
+      "error": "HTTPError: HTTP Error 403: Forbidden",
+      "acquired_as": "adobe-tn5176-cff"
     },
     {
       "id": "ref-a27a03167d23",
       "url": "https://pdfa.org/norm-refs/5177.type2_.pdf",
       "kind": "official-linked-reference",
       "redistribution": "private cache only",
-      "status": "unavailable",
-      "error": "HTTPError: HTTP Error 403: Forbidden"
+      "status": "acquired-separately",
+      "error": "HTTPError: HTTP Error 403: Forbidden",
+      "acquired_as": "adobe-tn5177-type2"
     },
     {
       "id": "ref-c92d513c4928",
@@ -838,8 +841,9 @@
       "url": "https://pdfa.org/norm-refs/TIFF6.pdf",
       "kind": "official-linked-reference",
       "redistribution": "private cache only",
-      "status": "unavailable",
-      "error": "HTTPError: HTTP Error 403: Forbidden"
+      "status": "acquired-separately",
+      "error": "HTTPError: HTTP Error 403: Forbidden",
+      "acquired_as": "tiff6"
     },
     {
       "id": "ref-6eed78241b1e",
@@ -1079,8 +1083,9 @@
       "id": "ref-7f1ab0d524b6",
       "url": "https://github.com/adobe-type-tools/agl-aglfn",
       "title": "Adobe Glyph List, Adobe Systems Incorporated. https://github.com/adobe-type-tools/agl-aglfn",
-      "status": "indexed-only",
-      "reason": "Publisher page/repository; full document access not established."
+      "status": "acquired-separately",
+      "reason": "Publisher page/repository; full document access not established.",
+      "acquired_as": "adobe-glyph-list"
     },
     {
       "id": "ref-c66c7518d960",
@@ -1093,8 +1098,9 @@
       "id": "ref-5b9a7774758f",
       "url": "https://doi.org/10.6028/NIST.FIPS.180-4",
       "title": "FIPS PUB 180-4, Secure Hash Standard (SHS), (August 2015), Federal Information Processing Standards, https://doi.org/10.6028/NIST.FIPS.180-4",
-      "status": "indexed-only",
-      "reason": "Publisher page/repository; full document access not established."
+      "status": "acquired-separately",
+      "reason": "Publisher page/repository; full document access not established.",
+      "acquired_as": "nist-fips180-4"
     },
     {
       "id": "ref-ecc2f6615181",
@@ -1107,29 +1113,33 @@
       "id": "ref-55dc3d1c068a",
       "url": "https://doi.org/10.6028/NIST.FIPS.197",
       "title": "FIPS PUB 197, Advanced Encryption Standard (AES), (November 2001), Federal Information Processing Standards, https://doi.org/10.6028/NIST.FIPS.197",
-      "status": "indexed-only",
-      "reason": "Publisher page/repository; full document access not established."
+      "status": "acquired-separately",
+      "reason": "Publisher page/repository; full document access not established.",
+      "acquired_as": "nist-fips197-upd1"
     },
     {
       "id": "ref-3dc7af1c3b24",
       "url": "https://dx.doi.org/10.17487/rfc1321",
       "title": "RFC 1321, The MD5 Message-Digest Algorithm, (April 1992), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc1321",
-      "status": "indexed-only",
-      "reason": "Publisher page/repository; full document access not established."
+      "status": "acquired-separately",
+      "reason": "Publisher page/repository; full document access not established.",
+      "acquired_as": "rfc1321"
     },
     {
       "id": "ref-cbcb41294671",
       "url": "https://dx.doi.org/10.17487/rfc1950",
       "title": "RFC 1950, ZLIB Compressed Data Format Specification, Version 3.3, (May 1996), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc1950",
-      "status": "indexed-only",
-      "reason": "Publisher page/repository; full document access not established."
+      "status": "acquired-separately",
+      "reason": "Publisher page/repository; full document access not established.",
+      "acquired_as": "rfc1950"
     },
     {
       "id": "ref-e25089654d67",
       "url": "https://dx.doi.org/10.17487/rfc1951",
       "title": "RFC 1951, DEFLATE Compressed Data Format Specification, Version 1.3, (May 1996), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc1951",
-      "status": "indexed-only",
-      "reason": "Publisher page/repository; full document access not established."
+      "status": "acquired-separately",
+      "reason": "Publisher page/repository; full document access not established.",
+      "acquired_as": "rfc1951"
     },
     {
       "id": "ref-e93526bbd249",
@@ -1303,15 +1313,17 @@
       "id": "ref-c9db1781d544",
       "url": "https://www.itu.int/rec/T-REC-T.4/en",
       "title": "ITU Recommendation T.4: Standardization of Group 3 facsimile terminals for document transmission, International Telecommunication Union (ITU). https://www.itu.int/rec/T-REC-T.4/en",
-      "status": "indexed-only",
-      "reason": "Publisher page/repository; full document access not established."
+      "status": "acquired-separately",
+      "reason": "Publisher page/repository; full document access not established.",
+      "acquired_as": "itu-t4-2003"
     },
     {
       "id": "ref-334231984265",
       "url": "https://www.itu.int/rec/T-REC-T.6/en",
       "title": "ITU Recommendation T.6: Facsimile coding schemes and coding control functions for Group 4 facsimile apparatus, International Telecommunication Union (ITU). https://www.itu.int/rec/T-REC-T.6/en",
-      "status": "indexed-only",
-      "reason": "Publisher page/repository; full document access not established."
+      "status": "acquired-separately",
+      "reason": "Publisher page/repository; full document access not established.",
+      "acquired_as": "itu-t6-1988"
     },
     {
       "id": "ref-58b29e996236",
@@ -1358,6 +1370,261 @@
       "mime": "application/pdf",
       "cache_path": ".cache/references/9de0ca9e8570d6209e8bd48a355be8eb6ec376acfc3fc3ae97cd8730351417ff.pdf",
       "retrieved_at": "2026-10-17T15:03:04.751900+00:00"
+    },
+    {
+      "id": "itu-t88-2000",
+      "title": "ITU-T T.88 (02/2000): JBIG2 bi-level image compression",
+      "kind": "format-standard",
+      "used_by": "jbig2",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.88-200002-S!!PDF-E&type=items",
+      "resolved_url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.88-200002-S!!PDF-E&type=items",
+      "sha256": "a94850aa659f4c5267051d1e17081dc4ffd04531c3d659c6bc2835802035ec69",
+      "bytes": 1219588,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/a94850aa659f4c5267051d1e17081dc4ffd04531c3d659c6bc2835802035ec69.pdf",
+      "retrieved_at": "2026-10-17T18:49:56.385576+00:00"
+    },
+    {
+      "id": "itu-t800-2019",
+      "title": "ITU-T T.800 (06/2019): JPEG 2000 core coding system",
+      "kind": "format-standard",
+      "used_by": "jpx",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.800-201906-S!!PDF-E&type=items",
+      "resolved_url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.800-201906-S!!PDF-E&type=items",
+      "sha256": "9932e967462cd56a193db87117917e74734fb385913bf51d1f52fb0428924e1c",
+      "bytes": 10969421,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/9932e967462cd56a193db87117917e74734fb385913bf51d1f52fb0428924e1c.pdf",
+      "retrieved_at": "2026-10-17T18:50:02.039302+00:00"
+    },
+    {
+      "id": "itu-t81-1992",
+      "title": "ITU-T T.81 (09/1992): JPEG digital compression of still images",
+      "kind": "format-standard",
+      "used_by": "image",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://www.w3.org/Graphics/JPEG/itu-t81.pdf",
+      "resolved_url": "https://www.w3.org/Graphics/JPEG/itu-t81.pdf",
+      "sha256": "631031d4ba56b06abee3e312a0f235b9422da9c7267d1c8f7604418795768bf0",
+      "bytes": 1058883,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/631031d4ba56b06abee3e312a0f235b9422da9c7267d1c8f7604418795768bf0.pdf",
+      "retrieved_at": "2026-10-17T18:50:03.111549+00:00"
+    },
+    {
+      "id": "itu-t4-2003",
+      "title": "ITU-T T.4 (07/2003): Group 3 facsimile coding",
+      "kind": "format-standard",
+      "used_by": "image",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.4-200307-I!!PDF-E&type=items",
+      "resolved_url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.4-200307-I!!PDF-E&type=items",
+      "sha256": "84c66fab164990bf48cb127e6f43598197d6260cd4ae533c190cbb14edac74f8",
+      "bytes": 580049,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/84c66fab164990bf48cb127e6f43598197d6260cd4ae533c190cbb14edac74f8.pdf",
+      "retrieved_at": "2026-10-17T18:50:04.012075+00:00"
+    },
+    {
+      "id": "itu-t6-1988",
+      "title": "ITU-T T.6 (11/1988): Group 4 facsimile coding",
+      "kind": "format-standard",
+      "used_by": "image",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.6-198811-I!!PDF-E&type=items",
+      "resolved_url": "https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-T.6-198811-I!!PDF-E&type=items",
+      "sha256": "8ccbe2d203e03ee2ac37478d50d2d946bab49dfb45376eb0f773009d183a7767",
+      "bytes": 112837,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/8ccbe2d203e03ee2ac37478d50d2d946bab49dfb45376eb0f773009d183a7767.pdf",
+      "retrieved_at": "2026-10-17T18:50:04.311234+00:00"
+    },
+    {
+      "id": "rfc1950",
+      "title": "RFC 1950: ZLIB compressed data format",
+      "kind": "format-standard",
+      "used_by": "codec",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://www.rfc-editor.org/rfc/rfc1950.txt",
+      "resolved_url": "https://www.rfc-editor.org/rfc/rfc1950.txt",
+      "sha256": "8f0475a5c984657bf26277f73df9456c9b97f175084f0c1748f1eb1f0b9b10b9",
+      "bytes": 20502,
+      "mime": "text/plain",
+      "cache_path": ".cache/references/8f0475a5c984657bf26277f73df9456c9b97f175084f0c1748f1eb1f0b9b10b9.txt",
+      "retrieved_at": "2026-10-17T18:50:04.582679+00:00"
+    },
+    {
+      "id": "rfc1951",
+      "title": "RFC 1951: DEFLATE compressed data format",
+      "kind": "format-standard",
+      "used_by": "codec",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://www.rfc-editor.org/rfc/rfc1951.txt",
+      "resolved_url": "https://www.rfc-editor.org/rfc/rfc1951.txt",
+      "sha256": "5ebf4b5b7fe1c3a0c0ab9aa3ac8c0f3853a7dc484905e76e03b0b0f301350009",
+      "bytes": 36944,
+      "mime": "text/plain",
+      "cache_path": ".cache/references/5ebf4b5b7fe1c3a0c0ab9aa3ac8c0f3853a7dc484905e76e03b0b0f301350009.txt",
+      "retrieved_at": "2026-10-17T18:50:04.813113+00:00"
+    },
+    {
+      "id": "rfc1321",
+      "title": "RFC 1321: The MD5 message-digest algorithm",
+      "kind": "format-standard",
+      "used_by": "crypto",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://www.rfc-editor.org/rfc/rfc1321.txt",
+      "resolved_url": "https://www.rfc-editor.org/rfc/rfc1321.txt",
+      "sha256": "284a79d148400d9cd2a423211d1103b5cef0fb9256a4cbe6d7ebe5197c3149dd",
+      "bytes": 35222,
+      "mime": "text/plain",
+      "cache_path": ".cache/references/284a79d148400d9cd2a423211d1103b5cef0fb9256a4cbe6d7ebe5197c3149dd.txt",
+      "retrieved_at": "2026-10-17T18:50:05.042952+00:00"
+    },
+    {
+      "id": "nist-fips180-4",
+      "title": "FIPS 180-4: Secure Hash Standard",
+      "kind": "format-standard",
+      "used_by": "crypto",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf",
+      "resolved_url": "https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf",
+      "sha256": "0455b406d89648d20cbde375561e19c245b9815e894164c2670772e3d54deb82",
+      "bytes": 833315,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/0455b406d89648d20cbde375561e19c245b9815e894164c2670772e3d54deb82.pdf",
+      "retrieved_at": "2026-10-17T18:50:06.809672+00:00"
+    },
+    {
+      "id": "nist-fips197-upd1",
+      "title": "FIPS 197 (2023 update): Advanced Encryption Standard",
+      "kind": "format-standard",
+      "used_by": "crypto",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf",
+      "resolved_url": "https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf",
+      "sha256": "62c86eb567f13edb8f71826e985da870b04ef6381634f303cdb16e84d47becd1",
+      "bytes": 1184436,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/62c86eb567f13edb8f71826e985da870b04ef6381634f303cdb16e84d47becd1.pdf",
+      "retrieved_at": "2026-10-17T18:50:08.482244+00:00"
+    },
+    {
+      "id": "w3c-png-2003",
+      "title": "PNG (Second Edition), W3C Recommendation 2003-11-10",
+      "kind": "format-standard",
+      "used_by": "codec",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://www.w3.org/TR/2003/REC-PNG-20031110/",
+      "resolved_url": "https://www.w3.org/TR/2003/REC-PNG-20031110/",
+      "sha256": "65b50834b63dffd30eea76b0bc81e9ef07539a842fca970f6274245958e488d6",
+      "bytes": 318600,
+      "mime": "text/html",
+      "cache_path": ".cache/references/65b50834b63dffd30eea76b0bc81e9ef07539a842fca970f6274245958e488d6.html",
+      "retrieved_at": "2026-10-17T18:50:08.858948+00:00"
+    },
+    {
+      "id": "tiff6",
+      "title": "TIFF Revision 6.0",
+      "kind": "format-standard",
+      "used_by": "codec",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://www.itu.int/itudoc/itu-t/com16/tiff-fx/docs/tiff6.pdf",
+      "resolved_url": "https://www.itu.int/itudoc/itu-t/com16/tiff-fx/docs/tiff6.pdf",
+      "sha256": "dbcdf729182937ecff415dfd06806894bf03bfd741291aa3ad7ba45335673def",
+      "bytes": 249524,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/dbcdf729182937ecff415dfd06806894bf03bfd741291aa3ad7ba45335673def.pdf",
+      "retrieved_at": "2026-10-17T18:50:09.110222+00:00"
+    },
+    {
+      "id": "adobe-type1",
+      "title": "Adobe Type 1 Font Format",
+      "kind": "format-standard",
+      "used_by": "font",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://adobe-type-tools.github.io/font-tech-notes/pdfs/T1_SPEC.pdf",
+      "resolved_url": "https://adobe-type-tools.github.io/font-tech-notes/pdfs/T1_SPEC.pdf",
+      "sha256": "1ca29a1f6d49ae129463c03aa6a51bc247ef94b36c7ee9a3c04d8694c67dae32",
+      "bytes": 1812144,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/1ca29a1f6d49ae129463c03aa6a51bc247ef94b36c7ee9a3c04d8694c67dae32.pdf",
+      "retrieved_at": "2026-10-17T18:50:09.395011+00:00"
+    },
+    {
+      "id": "adobe-tn5176-cff",
+      "title": "Adobe Technical Note #5176: The Compact Font Format Specification",
+      "kind": "format-standard",
+      "used_by": "font",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://adobe-type-tools.github.io/font-tech-notes/pdfs/5176.CFF.pdf",
+      "resolved_url": "https://adobe-type-tools.github.io/font-tech-notes/pdfs/5176.CFF.pdf",
+      "sha256": "60e0696c4fac326de597722af37bcdbbd688e0337a548709a287405ff3b3996a",
+      "bytes": 1062494,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/60e0696c4fac326de597722af37bcdbbd688e0337a548709a287405ff3b3996a.pdf",
+      "retrieved_at": "2026-10-17T18:50:09.773093+00:00"
+    },
+    {
+      "id": "adobe-tn5177-type2",
+      "title": "Adobe Technical Note #5177: The Type 2 Charstring Format",
+      "kind": "format-standard",
+      "used_by": "font",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://adobe-type-tools.github.io/font-tech-notes/pdfs/5177.Type2.pdf",
+      "resolved_url": "https://adobe-type-tools.github.io/font-tech-notes/pdfs/5177.Type2.pdf",
+      "sha256": "74e77442e63e38f03f2be5a41d2dafb3076260d2b6cd9b9d14f3990d6e17102b",
+      "bytes": 199112,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/74e77442e63e38f03f2be5a41d2dafb3076260d2b6cd9b9d14f3990d6e17102b.pdf",
+      "retrieved_at": "2026-10-17T18:50:09.997083+00:00"
+    },
+    {
+      "id": "adobe-tn5014-cidfont",
+      "title": "Adobe Technical Note #5014: Adobe CMap and CIDFont Files Specification",
+      "kind": "format-standard",
+      "used_by": "text, font",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://adobe-type-tools.github.io/font-tech-notes/pdfs/5014.CIDFont_Spec.pdf",
+      "resolved_url": "https://adobe-type-tools.github.io/font-tech-notes/pdfs/5014.CIDFont_Spec.pdf",
+      "sha256": "f8a51fc50d252dd3fdaead19a32b7110a3d23ceb99758cc407c1597d862ba511",
+      "bytes": 554217,
+      "mime": "application/pdf",
+      "cache_path": ".cache/references/f8a51fc50d252dd3fdaead19a32b7110a3d23ceb99758cc407c1597d862ba511.pdf",
+      "retrieved_at": "2026-10-17T18:50:10.193872+00:00"
+    },
+    {
+      "id": "adobe-glyph-list",
+      "title": "Adobe Glyph List (glyphlist.txt)",
+      "kind": "format-standard",
+      "used_by": "text",
+      "redistribution": "freely published by its owner; private cache only",
+      "status": "cached",
+      "url": "https://raw.githubusercontent.com/adobe-type-tools/agl-aglfn/master/glyphlist.txt",
+      "resolved_url": "https://raw.githubusercontent.com/adobe-type-tools/agl-aglfn/master/glyphlist.txt",
+      "sha256": "a3b2f61ced9f3644cc0d4ecde5c59df34ca286c689d9484a43a710a81c466789",
+      "bytes": 78060,
+      "mime": "text/plain",
+      "cache_path": ".cache/references/a3b2f61ced9f3644cc0d4ecde5c59df34ca286c689d9484a43a710a81c466789.txt",
+      "retrieved_at": "2026-10-17T18:50:10.555050+00:00"
     }
   ]
 }
