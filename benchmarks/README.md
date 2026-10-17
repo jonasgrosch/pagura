@@ -143,6 +143,11 @@ may emit `{ "status": "unsupported", "feature": "security.password" }` and exit
 3; this is distinguished from failed authentication and remains gate-blocking.
 Native adapter overrides `PAGURA_HAYRO` / `PAGURA_QUARTZ` select rebuilt executables
 outside the repository; reports hash the actual selected binaries.
+CoreGraphics applies DPI explicitly: its page-fitting transform only scales down.
+After rebuilding that adapter, run `python3 benchmarks/adapters/quartz_geometry_test.py /external/path/to/quartz`.
+This opt-in platform check requires exact independent rectangle pixels at 36, 72
+and 150 dpi, both rotations and a nonzero page origin; portable checks still use
+fake engines and require no competitor installation.
 
 `tolerance` is an integer per-channel maximum absolute RGB8 difference (0..255,
 default 0). Generated cases inherit it; arbitrary manifests can set a document

@@ -32,8 +32,11 @@ if args.count == 2 && args[1] == "--version" {
     guard let page = document.page(at: index + 1) else { throw Failure.input }
     let box = page.getBoxRect(.cropBox)
     let rotated = abs(page.rotationAngle % 180) == 90
-    let pixelWidth = ceil((rotated ? box.height : box.width) * dpi / 72)
-    let pixelHeight = ceil((rotated ? box.width : box.height) * dpi / 72)
+    let pageWidth = rotated ? box.height : box.width
+    let pageHeight = rotated ? box.width : box.height
+    let scale = dpi / 72
+    let pixelWidth = ceil(pageWidth * scale)
+    let pixelHeight = ceil(pageHeight * scale)
     guard pixelWidth.isFinite, pixelHeight.isFinite,
           pixelWidth > 0, pixelHeight > 0, pixelWidth * pixelHeight <= 16_000_000
           else { throw Failure.render }
@@ -46,8 +49,11 @@ if args.count == 2 && args[1] == "--version" {
           else { throw Failure.render }
     context.setFillColor(red: 1, green: 1, blue: 1, alpha: 1)
     context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+    // CGPDFPageGetDrawingTransform fits by scaling down only (SDK contract).
+    // Map the page in points, then apply DPI explicitly, including enlargement.
+    context.scaleBy(x: scale, y: scale)
     context.concatenate(page.getDrawingTransform(.cropBox,
-        rect: CGRect(x: 0, y: 0, width: width, height: height), rotate: 0, preserveAspectRatio: true))
+        rect: CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight), rotate: 0, preserveAspectRatio: true))
     context.drawPDFPage(page)
     let rendered = DispatchTime.now().uptimeNanoseconds
     guard let raw = context.data else { throw Failure.render }
