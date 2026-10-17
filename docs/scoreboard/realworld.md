@@ -1,15 +1,16 @@
 # Scoreboard: realworld
 
-Recorded 2026-10-17T17:55:07+00:00 at commit `9edd783`; binary SHA-256 `d4e3ee94cb81bef6…`;
+Recorded 2026-10-17T18:26:31+00:00 at commit `4390401`; binary SHA-256 `5f8a67a475781cf9…`;
 corpus digest `9c0e0b1e40f8a5cf…` over 1000 files. Pages scanned at 72 dpi.
 
 | Metric | Value |
 |---|---:|
 | Not PDF (no `%PDF-` in the first 1024 bytes) | 2 |
-| PDF files opened | 997 / 998 (99.9%) |
-| … strictly | 921 |
-| … only with repairs | 76 |
+| PDF files opened, pages enumerated | 996 / 998 (99.8%) |
+| … strictly, every scanned page compiling | 921 |
+| … only with repairs | 75 |
 | Failed to open | 1 |
+| Opened, but the page tree failed | 1 |
 | Crashes | 0 |
 | Timeouts | 0 |
 | Pages rendered | 18 / 16248 (0.1%) |
@@ -17,6 +18,10 @@ corpus digest `9c0e0b1e40f8a5cf…` over 1000 files. Pages scanned at 72 dpi.
 | Open failure | Count |
 |---|---:|
 | `password` | 1 |
+
+| Page-tree failure | Count |
+|---|---:|
+| `missing-object` | 1 |
 
 | Page failure | Count |
 |---|---:|
@@ -40,21 +45,19 @@ corpus digest `9c0e0b1e40f8a5cf…` over 1000 files. Pages scanned at 72 dpi.
 | `colorspace.special-ink` | 4 |
 | `raster.stroke-adjustment-geometry` | 4 |
 | `operator.Tz` | 1 |
-| `missing-object` | 1 |
 
 | Repair | Count |
 |---|---:|
 | `xref.offset-corrected` | 384 |
 | `filter.trailing-data` | 351 |
 | `xref.stream-boundary` | 143 |
-| `xref.rebuilt` | 16 |
 | `stream.eol` | 16 |
+| `xref.rebuilt` | 15 |
 | `syntax.duplicate-key` | 8 |
 | `file.header-format` | 7 |
 | `file.trailing-bytes` | 6 |
 | `file.header-offset` | 4 |
 | `security.hash-padding` | 1 |
 | `security.permissions-unsigned` | 1 |
-| `trailer.reconstructed` | 1 |
 
 Raw report: `benchmarks/results/local/scoreboard-realworld.json` (not committed).

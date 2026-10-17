@@ -1,71 +1,73 @@
 # Scoreboard: pdfjs
 
-Recorded 2026-10-17T17:24:07+00:00 at commit `6d3c14c`; binary SHA-256 `36c4f1463031bd69…`;
+Recorded 2026-10-17T18:26:44+00:00 at commit `4390401`; binary SHA-256 `5f8a67a475781cf9…`;
 corpus digest `928cf4a073e547ed…` over 997 files. Pages scanned at 72 dpi.
 
 | Metric | Value |
 |---|---:|
 | Not PDF (no `%PDF-` in the first 1024 bytes) | 1 |
-| PDF files opened | 975 / 996 (97.9%) |
-| … strictly | 738 |
-| … only with repairs | 237 |
-| Failed to open | 21 |
+| PDF files opened, pages enumerated | 969 / 996 (97.3%) |
+| … strictly, every scanned page compiling | 734 |
+| … only with repairs | 235 |
+| Failed to open | 17 |
+| Opened, but the page tree failed | 10 |
 | Crashes | 0 |
 | Timeouts | 0 |
-| Pages rendered | 74 / 1769 (4.2%) |
+| Pages rendered | 79 / 1773 (4.5%) |
 
 | Open failure | Count |
 |---|---:|
 | `password` | 11 |
-| `syntax` | 9 |
+| `syntax` | 5 |
 | `filter.unknown` | 1 |
+
+| Page-tree failure | Count |
+|---|---:|
+| `syntax` | 7 |
+| `missing-object` | 2 |
+| `cycle` | 1 |
 
 | Page failure | Count |
 |---|---:|
-| `operator.BT` | 645 |
-| `extgstate.HT` | 350 |
-| `transparency.group-colorspace` | 196 |
-| `image.xobject` | 170 |
-| `annotation.appearance` | 151 |
-| `syntax` | 33 |
-| `extgstate.SM` | 31 |
-| `pattern.colorspace` | 27 |
-| `colorspace.CalRGB` | 17 |
+| `operator.BT` | 820 |
+| `extgstate.HT` | 351 |
+| `image.xobject` | 178 |
+| `annotation.appearance` | 175 |
+| `pattern.colorspace` | 38 |
+| `syntax` | 30 |
+| `colorspace.CalRGB` | 18 |
+| `operator.Tf` | 11 |
 | `extgstate.unknown` | 11 |
-| `operator.Tf` | 10 |
-| `shading.paint` | 9 |
-| `transparency.SMask` | 8 |
-| `extgstate.TK` | 6 |
-| `image.inline` | 6 |
-| `optionalcontent.usage` | 6 |
+| `shading.paint` | 10 |
+| `transparency.group-colorspace` | 10 |
+| `transparency.SMask` | 10 |
+| `image.inline` | 7 |
 | `transparency.knockout` | 6 |
 | `transparency.BM` | 5 |
-| `colorspace.CalGray` | 3 |
-| `extgstate.BG` | 3 |
-| `colorspace.DeviceN` | 2 |
-| `colorspace.Separation` | 2 |
-| `missing-object` | 2 |
-| `cycle` | 1 |
+| `transparency.ca` | 4 |
+| `transparency.CA` | 4 |
 | `filter.JBIG2Decode` | 1 |
+| `raster.stroke-adjustment-geometry` | 1 |
+| `colorspace.BlackPoint` | 1 |
+| `colorspace.special-ink` | 1 |
 | `operator.TL` | 1 |
-| `transparency.ca` | 1 |
-| `transparency.CA` | 1 |
-| `extgstate.TR` | 1 |
+| `colorspace.unknown` | 1 |
 
 | Repair | Count |
 |---|---:|
-| `xref.rebuilt` | 205 |
+| `xref.rebuilt` | 201 |
 | `xref.stream-boundary` | 60 |
+| `filter.trailing-data` | 14 |
 | `xref.offset-corrected` | 10 |
-| `stream.length-corrected` | 7 |
-| `filter.trailing-data` | 6 |
+| `stream.length-corrected` | 9 |
 | `stream.eol` | 5 |
 | `filter.truncated` | 5 |
+| `file.header-format` | 5 |
 | `syntax.duplicate-key` | 3 |
 | `pages.count-mismatch` | 3 |
 | `trailer.reconstructed` | 2 |
 | `security.hash-padding` | 2 |
-| `file.header-format` | 2 |
+| `object.end-missing` | 2 |
 | `catalog.type-missing` | 1 |
 | `file.header-offset` | 1 |
 

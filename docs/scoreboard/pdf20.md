@@ -1,15 +1,16 @@
 # Scoreboard: pdf20
 
-Recorded 2026-10-17T17:23:59+00:00 at commit `6d3c14c`; binary SHA-256 `36c4f1463031bd69…`;
+Recorded 2026-10-17T18:26:46+00:00 at commit `4390401`; binary SHA-256 `5f8a67a475781cf9…`;
 corpus digest `d64185ac2dfd4ccd…` over 7 files. Pages scanned at 72 dpi.
 
 | Metric | Value |
 |---|---:|
 | Not PDF (no `%PDF-` in the first 1024 bytes) | 0 |
-| PDF files opened | 7 / 7 (100.0%) |
-| … strictly | 6 |
+| PDF files opened, pages enumerated | 7 / 7 (100.0%) |
+| … strictly, every scanned page compiling | 6 |
 | … only with repairs | 1 |
 | Failed to open | 0 |
+| Opened, but the page tree failed | 0 |
 | Crashes | 0 |
 | Timeouts | 0 |
 | Pages rendered | 0 / 8 (0.0%) |

@@ -1,15 +1,16 @@
 # Scoreboard: poppler
 
-Recorded 2026-10-17T17:24:10+00:00 at commit `6d3c14c`; binary SHA-256 `36c4f1463031bd69…`;
+Recorded 2026-10-17T18:26:46+00:00 at commit `4390401`; binary SHA-256 `5f8a67a475781cf9…`;
 corpus digest `ac8351deb33a1529…` over 83 files. Pages scanned at 72 dpi.
 
 | Metric | Value |
 |---|---:|
 | Not PDF (no `%PDF-` in the first 1024 bytes) | 0 |
-| PDF files opened | 79 / 83 (95.2%) |
-| … strictly | 74 |
-| … only with repairs | 5 |
+| PDF files opened, pages enumerated | 78 / 83 (94.0%) |
+| … strictly, every scanned page compiling | 74 |
+| … only with repairs | 4 |
 | Failed to open | 4 |
+| Opened, but the page tree failed | 1 |
 | Crashes | 0 |
 | Timeouts | 0 |
 | Pages rendered | 11 / 95 (11.6%) |
@@ -18,18 +19,22 @@ corpus digest `ac8351deb33a1529…` over 83 files. Pages scanned at 72 dpi.
 |---|---:|
 | `password` | 4 |
 
+| Page-tree failure | Count |
+|---|---:|
+| `syntax` | 1 |
+
 | Page failure | Count |
 |---|---:|
-| `annotation.appearance` | 31 |
-| `operator.BT` | 18 |
-| `transparency.group-colorspace` | 15 |
+| `annotation.appearance` | 35 |
+| `operator.BT` | 30 |
 | `extgstate.unknown` | 6 |
 | `image.xobject` | 4 |
 | `operator.Tc` | 4 |
-| `extgstate.SM` | 3 |
-| `syntax` | 2 |
 | `transparency.ca` | 1 |
 | `image.inline` | 1 |
+| `transparency.group-colorspace` | 1 |
+| `syntax` | 1 |
+| `pattern.colorspace` | 1 |
 
 | Repair | Count |
 |---|---:|
