@@ -54,7 +54,22 @@ class ScoreboardTests(unittest.TestCase):
         self.assertIn("| Pages rendered | 2 / 3 (66.7%) |", summary)
         self.assertIn("| `operator.BT` | 1 |", summary)
         self.assertIn("| `xref.rebuilt` | 1 |", summary)
-        self.assertIn("| Timeouts | 1 |", summary)
+        self.assertIn("| Timeouts (wall-clock budget) | 1 |", summary)
+
+    @unittest.skipUnless(scoreboard.CPU_LIMITS, "CPU budgets need RLIMIT_CPU")
+    def test_cpu_budget_turns_a_spinning_scan_into_a_timeout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            spinner = Path(directory) / "spin"
+            spinner.write_text("#!/bin/sh\nwhile :; do :; done\n")
+            spinner.chmod(0o755)
+            pdf = Path(directory) / "x.pdf"
+            pdf.write_bytes(b"%PDF-1.7\n")
+            arguments = type("Arguments", (), {"dpi": 72, "max_pages": 0, "timeout": 1})()
+            original, scoreboard.BINARY = scoreboard.BINARY, spinner
+            try:
+                self.assertEqual(scoreboard.scan(pdf, arguments), {"outcome": "timeout", "budget": "cpu"})
+            finally:
+                scoreboard.BINARY = original
 
     def test_files_without_a_header_are_not_scanned(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -2,7 +2,7 @@
 
     python3 tools/scoreboard.py CORPUS_DIR --name upstream [--max-pages 20]
 
-Runs `pagura scan` on every PDF below CORPUS_DIR, with a per-file timeout, and
+Runs `pagura scan` on every PDF below CORPUS_DIR, with a per-file time budget, and
 reports: files opened with an enumerated page tree (strictly, or only with
 repairs), failed to open or to enumerate pages (by error kind and feature
 tag), pages found and rendered, the histogram of
@@ -16,6 +16,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import signal
 import subprocess
 import sys
 from collections import Counter
@@ -50,9 +52,12 @@ def scan(path: Path, arguments) -> dict:
     if arguments.max_pages:
         command[2:2] = ["--max-pages", str(arguments.max_pages)]
     try:
-        result = subprocess.run(command, capture_output=True, timeout=arguments.timeout)
+        result = subprocess.run(command, capture_output=True, timeout=wall_budget(arguments),
+                                preexec_fn=cpu_limit(arguments.timeout) if CPU_LIMITS else None)
     except subprocess.TimeoutExpired:
-        return {"outcome": "timeout"}
+        return {"outcome": "timeout", "budget": "wall"}
+    if CPU_LIMITS and result.returncode in (-signal.SIGXCPU, -signal.SIGKILL):
+        return {"outcome": "timeout", "budget": "cpu"}
     if result.returncode != 0:
         return {"outcome": "crash", "exit_code": result.returncode,
                 "stderr": result.stderr.decode(errors="replace")[-2000:]}
@@ -60,6 +65,24 @@ def scan(path: Path, arguments) -> dict:
         return {"outcome": "scanned", **json.loads(result.stdout)}
     except json.JSONDecodeError:
         return {"outcome": "crash", "exit_code": 0, "stderr": "invalid JSON from scan"}
+
+
+# The per-file budget is CPU time where the OS can enforce it, so a busy
+# machine does not turn slow wall-clock progress into timeouts. A wall-clock
+# backstop of ten times the budget still catches a file that hangs without
+# using the CPU. Windows has no RLIMIT_CPU and uses the wall-clock budget.
+CPU_LIMITS = os.name == "posix"
+
+
+def cpu_limit(seconds: int):
+    def apply() -> None:
+        import resource
+        resource.setrlimit(resource.RLIMIT_CPU, (seconds, seconds + 5))
+    return apply
+
+
+def wall_budget(arguments) -> int:
+    return arguments.timeout * 10 if CPU_LIMITS else arguments.timeout
 
 
 def tag(error: dict) -> str:
@@ -118,7 +141,7 @@ def summarize(name: str, report: dict) -> str:
         f"| Failed to open | {count['open-failed']} |",
         f"| Opened, but the page tree failed | {count['enumeration-failed']} |",
         f"| Crashes | {count['crash']} |",
-        f"| Timeouts | {count['timeout']} |",
+        f"| Timeouts ({report.get('budget', 'wall-clock')} budget) | {count['timeout']} |",
         f"| Pages rendered | {rendered} / {pages} ({percent(rendered, pages)}) |", "",
     ]
     lines += table(open_failures, "Open failure")
@@ -133,7 +156,7 @@ def main() -> int:
     parser.add_argument("corpus", type=Path)
     parser.add_argument("--name", required=True)
     parser.add_argument("--jobs", type=int, default=8)
-    parser.add_argument("--timeout", type=int, default=60)
+    parser.add_argument("--timeout", type=int, default=60, help="per-file budget in seconds (CPU time on POSIX)")
     parser.add_argument("--dpi", type=float, default=72)
     parser.add_argument("--max-pages", type=int, default=0)
     parser.add_argument("--summary", type=Path)
@@ -154,6 +177,7 @@ def main() -> int:
     report = {
         "schema": 1, "name": arguments.name, "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "commit": commit, "binary_sha256": sha256(BINARY), "dpi": arguments.dpi, "max_pages": arguments.max_pages,
+        "budget": f"{arguments.timeout} s CPU" if CPU_LIMITS else f"{arguments.timeout} s wall-clock",
         "corpus_sha256": hashlib.sha256("".join(sorted(hashes)).encode()).hexdigest(),
         "files": [{"path": str(path.relative_to(arguments.corpus)), "sha256": digest, "result": result}
                   for path, digest, result in zip(paths, hashes, results)],
