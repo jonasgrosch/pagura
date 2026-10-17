@@ -48,7 +48,23 @@ fn load_stream(
         diagnostics.repair(Diagnostic::new(STREAM_LENGTHS, problem).in_object(id))?;
         document.report(diagnostics.take());
     }
-    FontProgram::parse(data.into_owned(), format, &document.limits()).map_err(|mut error| {
+    // Program-level repairs (damaged tables, glyphs and cmaps) are reported
+    // with the document's, located in the font stream rather than its buffer.
+    let mut diagnostics = Diagnostics::new(document.recovery());
+    let result = FontProgram::parse_with_diagnostics(
+        data.into_owned(),
+        format,
+        &document.limits(),
+        &mut diagnostics,
+    );
+    document.report(diagnostics.take().into_iter().map(|mut diagnostic| {
+        if let Position::Buffer(offset) = diagnostic.position {
+            diagnostic.position = Position::Stream { object: id, offset };
+        }
+        diagnostic.object.get_or_insert(id);
+        diagnostic
+    }));
+    result.map_err(|mut error| {
         if let Position::Buffer(offset) = error.position {
             error.position = Position::Stream { object: id, offset };
         }

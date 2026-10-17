@@ -7,7 +7,7 @@ use crate::{
     metrics::Metrics,
     objects::{array, optional, required},
 };
-use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
+use pagura_core::{Diagnostic, Dictionary, Error, Name, ObjectId, Position, Result, Value};
 use pagura_document::Document;
 use pagura_font::{FontProgram, GlyphId};
 use pagura_raster::Transform;
@@ -58,7 +58,7 @@ pub(crate) fn load_with(
     if kind == FontKind::Type3 {
         return type3(document, font);
     }
-    let (metrics_font, mapping) = if kind == FontKind::Type0 {
+    let (metrics_font, mapping, metrics_id) = if kind == FontKind::Type0 {
         let descendants = array(required(document, font, b"DescendantFonts")?)?;
         if descendants.len() != 1 {
             return Err(Error::syntax("Type0 requires one descendant font"));
@@ -78,9 +78,10 @@ pub(crate) fn load_with(
                 false,
                 provider,
             )?)),
+            descendants[0].as_reference(),
         )
     } else {
-        (font, None)
+        (font, None, None)
     };
     let descriptor = optional(document, metrics_font, b"FontDescriptor")?
         .map(|v| document.resolve_dictionary(v))
@@ -119,12 +120,12 @@ pub(crate) fn load_with(
             program.builtin_encoding(),
         )?))
     };
-    let cid_map = cid_map(document, metrics_font)?;
+    let cid_map = cid_map(document, metrics_font, metrics_id)?;
     let mode = match &mapping {
         Mapping::Composite(map) => map.mode,
         Mapping::Simple(_) => WritingMode::Horizontal,
     };
-    let to_unicode = to_unicode(document, font, &mapping)?;
+    let to_unicode = to_unicode(document, font, &mapping);
     let cid_unicode = collection_unicode(document, metrics_font, &mapping, provider)?;
     Ok(PdfFont {
         kind,
@@ -236,7 +237,7 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
     }
     let encoding = encoding::load(document, Some(encoding), std::array::from_fn(|_| None))?;
     let mapping = Mapping::Simple(Box::new(SimpleMapping::new(encoding, document.limits())?));
-    let to_unicode = to_unicode(document, font, &mapping)?;
+    let to_unicode = to_unicode(document, font, &mapping);
     Ok(PdfFont {
         kind: FontKind::Type3,
         writing_mode: WritingMode::Horizontal,
@@ -257,23 +258,49 @@ pub(crate) fn to_unicode(
     document: &Document,
     font: &Dictionary,
     mapping: &Mapping,
-) -> Result<Option<CMap>> {
-    let Some(value) = font.get(b"ToUnicode") else {
-        return Ok(None);
-    };
+) -> Option<CMap> {
+    let value = font.get(b"ToUnicode")?;
+    match to_unicode_map(document, value, mapping) {
+        Ok(map) => Some(map),
+        Err(error) => {
+            crate::repairs::Report::new(document).discarded(&error, value.as_reference());
+            None
+        }
+    }
+}
+
+// This extraction-only operation may fail under Strict. Its caller keeps the
+// drawable font, records the rejection and discards the optional map (9.10.3).
+pub(crate) fn to_unicode_map(
+    document: &Document,
+    value: &Value,
+    mapping: &Mapping,
+) -> Result<CMap> {
+    to_unicode_inner(document, value, mapping).map_err(|mut error| {
+        error
+            .repair
+            .get_or_insert(crate::repairs::TOUNICODE_INVALID);
+        error
+    })
+}
+
+fn to_unicode_inner(document: &Document, value: &Value, mapping: &Mapping) -> Result<CMap> {
     let id = value
         .as_reference()
         .ok_or_else(|| Error::syntax("ToUnicode must be a stream reference"))?;
-    let map = cmap::load(document, value, true)?;
-    let result = match mapping {
-        Mapping::Simple(_) if !map.simple_codes() => Err(Error::syntax(
-            "simple font ToUnicode must use one-byte codes",
-        )),
+    let mut map = cmap::load(document, value, true)?;
+    match mapping {
+        Mapping::Simple(_) => map.simple_compatible(
+            document,
+            Position::Stream {
+                object: id,
+                offset: 0,
+            },
+        ),
         Mapping::Composite(encoding) => map.consistent_with(encoding, document.limits()),
-        Mapping::Simple(_) => Ok(()),
-    };
-    result.map_err(|e| e.in_object(id))?;
-    Ok(Some(map))
+    }
+    .map_err(|e| e.in_object(id))?;
+    Ok(map)
 }
 
 fn collection_unicode(
@@ -390,10 +417,22 @@ fn cid_glyph(program: &FontProgram, map: Option<&[u8]>, cid: u32) -> Option<Glyp
     (glyph < program.glyph_count()).then_some(GlyphId(glyph))
 }
 
-fn cid_map(document: &Document, metrics_font: &Dictionary) -> Result<Option<Vec<u8>>> {
+fn cid_map(
+    document: &Document,
+    metrics_font: &Dictionary,
+    id: Option<ObjectId>,
+) -> Result<Option<Vec<u8>>> {
     Ok(if metrics_font.is_name(b"Subtype", b"CIDFontType2") {
         match optional(document, metrics_font, b"CIDToGIDMap")? {
-            None => return Err(Error::syntax("embedded CIDFontType2 missing CIDToGIDMap")),
+            None => {
+                let mut diagnostic = Diagnostic::new(
+                    crate::repairs::CID_TO_GID_IDENTITY,
+                    "embedded CIDFontType2 missing CIDToGIDMap; using Identity (9.7.4.1, Table 115)",
+                );
+                diagnostic.object = id;
+                crate::repairs::Report::new(document).diagnostic(diagnostic)?;
+                None
+            }
             Some(Value::Name(name)) if name == b"Identity" => None,
             Some(_) => {
                 let bytes = stream(
@@ -438,7 +477,7 @@ mod tests {
             .object(ObjectId::new(4, 0))?
             .dictionary()
             .ok_or_else(|| Error::syntax("missing dictionary"))?;
-        let map = cid_map(&document, dict)?;
+        let map = cid_map(&document, dict, Some(ObjectId::new(4, 0)))?;
         let data = fixture("text", "cid-to-gid.out");
         let expected = Parser::new(&data, Origin::Buffer, document.limits()).parse()?;
         for value in array(&expected)? {

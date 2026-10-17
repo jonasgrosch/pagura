@@ -236,18 +236,7 @@ fn font_error_vectors() -> Result<()> {
         "predefined-cmap",
         "differences-overflow",
         "width-count",
-        "unicode-surrogate",
-        "unicode-cycle",
-        "unicode-range-overflow",
-        "unicode-odd-destination",
-        "unicode-two-byte",
-        "unicode-prefix-overlap",
-        "unicode-range-array-length",
-        "unicode-block-count",
-        "unicode-usecmap-mismatch",
         "binding-wrong-fontfile",
-        "unicode-cid-code-length",
-        "unicode-simple-source-length",
     ] {
         let document = document(name)?;
         let error = PdfFont::load(&document, dictionary(&document)?)

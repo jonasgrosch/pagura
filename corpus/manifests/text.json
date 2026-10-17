@@ -5,6 +5,861 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "text/paint-tounicode-simple",
+      "kind": "pdf",
+      "description": "Invalid extraction data leaves the same analytic rectangle glyph",
+      "expected": "render",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "path": "corpus/generated/text/paint-tounicode-simple.pdf",
+      "sha256": "aabf8bfce0505f521d821eba136ac9d39296f33e27222e72682ed60a0c6a096e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [
+        "font.tounicode-simple-codes"
+      ],
+      "oracle": "corpus/generated/text/paint-tounicode-simple.ppm",
+      "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "text/paint-tounicode-utf16",
+      "kind": "pdf",
+      "description": "Invalid extraction data leaves the same analytic rectangle glyph",
+      "expected": "render",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "path": "corpus/generated/text/paint-tounicode-utf16.pdf",
+      "sha256": "6874ebecb7203c23fa72a5a7b463c50ca5e908b2ea28e6f19755a34dfbb5cace",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [
+        "font.tounicode-utf16"
+      ],
+      "oracle": "corpus/generated/text/paint-tounicode-utf16.ppm",
+      "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "text/paint-tounicode-range",
+      "kind": "pdf",
+      "description": "Invalid extraction data leaves the same analytic rectangle glyph",
+      "expected": "render",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "path": "corpus/generated/text/paint-tounicode-range.pdf",
+      "sha256": "4eace401911c554a9c594ee0f4f0d2559f3770c76496747b058f28074ad1d097",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [
+        "font.tounicode-range"
+      ],
+      "oracle": "corpus/generated/text/paint-tounicode-range.ppm",
+      "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "text/paint-tounicode-block-count",
+      "kind": "pdf",
+      "description": "Invalid extraction data leaves the same analytic rectangle glyph",
+      "expected": "render",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "path": "corpus/generated/text/paint-tounicode-block-count.pdf",
+      "sha256": "4eea5a8f4851131c19e1b8264d6c246ff713f2305ecb4e05d846d6e3a0ca5148",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [
+        "font.cmap-block-count"
+      ],
+      "oracle": "corpus/generated/text/paint-tounicode-block-count.ppm",
+      "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "text/paint-tounicode-invalid",
+      "kind": "pdf",
+      "description": "Invalid extraction data leaves the same analytic rectangle glyph",
+      "expected": "render",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "path": "corpus/generated/text/paint-tounicode-invalid.pdf",
+      "sha256": "19c2bafb67cd2f58400a1f53ec3f231461527e4aff8660f5e9089cf2f17b29c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [
+        "font.tounicode-invalid"
+      ],
+      "oracle": "corpus/generated/text/paint-tounicode-invalid.ppm",
+      "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "text/paint-cmap-identity",
+      "kind": "pdf",
+      "description": "A reported font/CMap repair paints the exact rectangle; strict rejects it",
+      "expected": "render",
+      "requirements": [
+        "text-cmap-recovery"
+      ],
+      "path": "corpus/generated/text/paint-cmap-identity.pdf",
+      "sha256": "723113be053b2781b87cf8749c4ba14f6035088f16e5cb38b73c20128c98fc90",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.cid-to-gid-identity"
+      ],
+      "oracle": "corpus/generated/text/paint-cmap-identity.ppm",
+      "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "text/paint-cmap-codespace",
+      "kind": "pdf",
+      "description": "A reported font/CMap repair paints the exact rectangle; strict rejects it",
+      "expected": "render",
+      "requirements": [
+        "text-cmap-recovery"
+      ],
+      "path": "corpus/generated/text/paint-cmap-codespace.pdf",
+      "sha256": "9f7ed82de84c7e3d7a7b1e83527cf008c2a20f332436d1213588f73fa31bb8a3",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.cmap-codespace"
+      ],
+      "oracle": "corpus/generated/text/paint-cmap-codespace.ppm",
+      "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "text/paint-cmap-block-count",
+      "kind": "pdf",
+      "description": "A reported font/CMap repair paints the exact rectangle; strict rejects it",
+      "expected": "render",
+      "requirements": [
+        "text-cmap-recovery"
+      ],
+      "path": "corpus/generated/text/paint-cmap-block-count.pdf",
+      "sha256": "eaa455daf8e097b4210470014fee11103da941ed6c55ea72be831104fe318468",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.cmap-block-count"
+      ],
+      "oracle": "corpus/generated/text/paint-cmap-block-count.ppm",
+      "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "text/repair-tounicode-simple",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-simple.input",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-simple.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-simple.out",
+          "sha256": "34cee1bd89bace66e105eb64273ce7617fab26a1f5af563f1a212175acc033da"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-simple.pdf",
+          "sha256": "170893ce3743ebcb5c7e215ac93b25ba54c0b8a881e3e30755083e906c28ec6d"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-simple.repair",
+          "sha256": "8ab92d0a73ebe6bc612f8c63390ae209180703b5c3d5fb42cb8e852cf2286c07"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-simple.strict.out",
+          "sha256": "c7428abdfff032f2a111fe97ed0695518d79dab529a4fbba00e392af34a80097"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-tounicode-mixed-sources",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-mixed-sources.input",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-mixed-sources.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-mixed-sources.out",
+          "sha256": "34cee1bd89bace66e105eb64273ce7617fab26a1f5af563f1a212175acc033da"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-mixed-sources.pdf",
+          "sha256": "d12f305a6f92e462da004d4c8a300bc68fa92862e5d44b424afb7969347d88c5"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-mixed-sources.repair",
+          "sha256": "8ab92d0a73ebe6bc612f8c63390ae209180703b5c3d5fb42cb8e852cf2286c07"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-mixed-sources.strict.out",
+          "sha256": "c7428abdfff032f2a111fe97ed0695518d79dab529a4fbba00e392af34a80097"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-tounicode-alias-conflict",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-alias-conflict.input",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-alias-conflict.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-alias-conflict.out",
+          "sha256": "5ec9620ca6a12f4edaf9214e3ca2e2e4197a163669ad16e3e312e0435e614af3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-alias-conflict.pdf",
+          "sha256": "79db5c0fda67e2a19eab6d3eb7a8e6581350534ea27ec292fb2e69f20a753988"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-alias-conflict.repair",
+          "sha256": "8ab92d0a73ebe6bc612f8c63390ae209180703b5c3d5fb42cb8e852cf2286c07"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-alias-conflict.strict.out",
+          "sha256": "c7428abdfff032f2a111fe97ed0695518d79dab529a4fbba00e392af34a80097"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-tounicode-utf16",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-utf16.input",
+          "sha256": "f0393febe8baaa55e32f7be2a7cc180bf34e52137d99e056c817a9c07b8f239a"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-utf16.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-utf16.out",
+          "sha256": "9b59e389e55ccb969b6098f0658599c7f2fcb9dce8577a1afb4c01bfb47b493d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-utf16.pdf",
+          "sha256": "a618433ea07edc943923c1eeeefa7cba630d28163d4c2beb8e4e27d2d46f33ad"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-utf16.repair",
+          "sha256": "e4546eb0a9519a04433004e6f56a399e51935d3093e3be98bb28667ce5c64e75"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-utf16.strict.out",
+          "sha256": "f458e2ea3b28aeb6a7dca85649aa9fce2bf2652ebec807f87d5b5a033dd26915"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-tounicode-range",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-range.input",
+          "sha256": "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-range.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-range.out",
+          "sha256": "1204349edec10464755627dd41bb250f7d6e2c1852573704293819c2682a6291"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-range.pdf",
+          "sha256": "422ce96d8a7faf4a043b5a4490d7487f4f396228bc472478a9712aa92d33a6f2"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-range.repair",
+          "sha256": "8dd3c6c36911836e3f655d22ad167ff5da0d2974d93b79ed223998831aac09cf"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-range.strict.out",
+          "sha256": "9a823d53c73f15c31ad4e2268c54e237c5e425c48178ec91a99574f9deab7e77"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-tounicode-range-end",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-range-end.input",
+          "sha256": "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-range-end.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-range-end.out",
+          "sha256": "83a969bdcaab3b70b9b771e732e15e8f239cac702eff98cf2aeac7346ca74cfd"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-range-end.pdf",
+          "sha256": "1ba7647462dd82b44e445c75f5f0beb66167f5a620fab646db4db7a48008da5c"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-range-end.repair",
+          "sha256": "8dd3c6c36911836e3f655d22ad167ff5da0d2974d93b79ed223998831aac09cf"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-range-end.strict.out",
+          "sha256": "67c69e3c5d1ec0e68beb99fab828659235fa55ba64fed14189a274575189dc48"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-tounicode-range-surrogates",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-range-surrogates.input",
+          "sha256": "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-range-surrogates.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-range-surrogates.out",
+          "sha256": "2a8854422976cdcbf9bd224ca927078a7735223d52bc392f4da12c17678bff37"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-range-surrogates.pdf",
+          "sha256": "3161004514d740737ce7810a6ae517a48047f80ecf5a157988a089c21e47f264"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-range-surrogates.repair",
+          "sha256": "c2304eb4adc4ae8b0446f5588a02480294f9bf8d35e7758eac17a17bd2699c50"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-range-surrogates.strict.out",
+          "sha256": "9a823d53c73f15c31ad4e2268c54e237c5e425c48178ec91a99574f9deab7e77"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-tounicode-parent-invalid",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-parent-invalid.input",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-parent-invalid.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-parent-invalid.out",
+          "sha256": "5ec9620ca6a12f4edaf9214e3ca2e2e4197a163669ad16e3e312e0435e614af3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-parent-invalid.pdf",
+          "sha256": "560fa134a1f97c6d81f2d479d6317c2c69627379d9ba505c8d841721aa5add4f"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-parent-invalid.repair",
+          "sha256": "e4546eb0a9519a04433004e6f56a399e51935d3093e3be98bb28667ce5c64e75"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-parent-invalid.strict.out",
+          "sha256": "c7428abdfff032f2a111fe97ed0695518d79dab529a4fbba00e392af34a80097"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-tounicode-block-count",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-block-count.input",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-block-count.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-block-count.out",
+          "sha256": "8dbc1806be0819f9ce9895b69992df4bdb322a3cbb91480a30916a01df1e2b3e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-block-count.pdf",
+          "sha256": "63509826c33683b52575d95c10adf3a8a8cbc79e3db99a462ccb8c792709ddea"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-block-count.repair",
+          "sha256": "3fa1baaeb70f9a99c359d26adaf8d268e6361df1be3b2598b79ca0b135c577d3"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-block-count.strict.out",
+          "sha256": "c7428abdfff032f2a111fe97ed0695518d79dab529a4fbba00e392af34a80097"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-tounicode-cycle",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-cycle.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-cycle.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-cycle.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-cycle.pdf",
+          "sha256": "c24206c4f9a01bc8e10db03419399bdeddb99ac6a1dd7e4c27846d08c730bd60"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-cycle.repair",
+          "sha256": "213d92c65a5cfd6fea2c0f5c0a431f24397c290b0f97ae391bc25e73e37d7fc0"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-cycle.strict.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-tounicode-unsupported",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-unsupported.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-unsupported.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-unsupported.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-unsupported.pdf",
+          "sha256": "975a04d08fd9914240b059e868dc46407a49bfda4f3e4ef6b8d59a74d886fc70"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-unsupported.repair",
+          "sha256": "213d92c65a5cfd6fea2c0f5c0a431f24397c290b0f97ae391bc25e73e37d7fc0"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-unsupported.strict.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-tounicode-truncated",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-truncated.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-truncated.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-truncated.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-truncated.pdf",
+          "sha256": "d12ea446134efca3152b506e474fef2672628fa923a8659d0277d4f2038a6a30"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-truncated.repair",
+          "sha256": "213d92c65a5cfd6fea2c0f5c0a431f24397c290b0f97ae391bc25e73e37d7fc0"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-truncated.strict.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-tounicode-limit",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-limit.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-limit.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-limit.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-limit.pdf",
+          "sha256": "e8fd47bb6281d903384b7d73eaeff7947d3ff5b33b03639d82fbef09a4d9da9b"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-limit.repair",
+          "sha256": "213d92c65a5cfd6fea2c0f5c0a431f24397c290b0f97ae391bc25e73e37d7fc0"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-limit.strict.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-tounicode-object",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-object.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-object.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-object.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-object.pdf",
+          "sha256": "76b72408373a1ed6b4b40866bf9292e6299d0157a1c59c26a09645b48cda244e"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-object.repair",
+          "sha256": "213d92c65a5cfd6fea2c0f5c0a431f24397c290b0f97ae391bc25e73e37d7fc0"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-object.strict.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-cmap-block-count",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-cmap-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-cmap-block-count.input",
+          "sha256": "8b8f35d5e17eba9299698ffd1fb4e8b33e59eedbd351e0c0d354dfad0e20e57b"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-cmap-block-count.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-cmap-block-count.out",
+          "sha256": "2cd83040bb5d8d3f3a0cc1ae8de49fb386c826d64d5497e8bcdfd790ffe6d979"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-cmap-block-count.pdf",
+          "sha256": "9309805275990ebeaf4ce6b73af28c74e806a23d4039d89af478d499a7299651"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-cmap-block-count.repair",
+          "sha256": "3fa1baaeb70f9a99c359d26adaf8d268e6361df1be3b2598b79ca0b135c577d3"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": false
+    },
+    {
+      "id": "text/repair-cmap-codespace",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-cmap-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-cmap-codespace.input",
+          "sha256": "5049aabad4d66d5703b0fedfa5f74ff72c914588c629700136d91bb41dd44eb8"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-cmap-codespace.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-cmap-codespace.out",
+          "sha256": "9bfb5434325d662cba32d306b575dcbd01079233b54ba601023ac49d6bfdd682"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-cmap-codespace.pdf",
+          "sha256": "ba59c373c850d40179021dbc89254e54097765a1296d1c0b19559816817dd659"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-cmap-codespace.repair",
+          "sha256": "9335e0cd523c968d1b1474fc616ffeb890e68ea6305cabe3b6c617e0ffb52af7"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": false
+    },
+    {
+      "id": "text/repair-tounicode-codespace",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-tounicode-codespace.input",
+          "sha256": "759d6d0c3c52a6ce033bfd74b1242d3f0f41f3cbfac41227b301cb035b05cd60"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-tounicode-codespace.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-codespace.out",
+          "sha256": "c1506728af2cd16739d93bef0e58af2a1e693d101dd27abcad34332560a44871"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-codespace.pdf",
+          "sha256": "eb41f77771dfd6a127f7bf23b9cd73cc6c79e292a73c798df8dc0997910ff4e6"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-tounicode-codespace.repair",
+          "sha256": "9335e0cd523c968d1b1474fc616ffeb890e68ea6305cabe3b6c617e0ffb52af7"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/repair-tounicode-codespace.strict.out",
+          "sha256": "f82b35e5de30af31f5f869a79980f8c10f7ea368c90c672f2b13a0602624233a"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": true
+    },
+    {
+      "id": "text/repair-cmap-codespace-wide",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-cmap-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-cmap-codespace-wide.input",
+          "sha256": "b234bb5a15b6dd410cc5e56a4a119c3b60cbabae92f19ade4fa55d40b2b29aa1"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-cmap-codespace-wide.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-cmap-codespace-wide.out",
+          "sha256": "706a27f6614a80c11971d76e911a11873206623347b6a32e8457178e0bd60051"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-cmap-codespace-wide.pdf",
+          "sha256": "a772f8fd127e0ebf76cf7d64d34c10ec7bd616433c91dc72fdf1a1681c268203"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-cmap-codespace-wide.repair",
+          "sha256": "9335e0cd523c968d1b1474fc616ffeb890e68ea6305cabe3b6c617e0ffb52af7"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": false
+    },
+    {
+      "id": "text/repair-tounicode-diagnostic-cap",
+      "kind": "vector",
+      "description": "Unicode faults use the bounded document diagnostic sink without accumulating a temporary error list",
+      "requirements": [
+        "text-tounicode-recovery"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/text/repair-tounicode-diagnostic-cap.out",
+          "sha256": "c97c214c613d3d52fbc850c6e85425fb86dd17f1fac42746cffe92fc9f47c7bf"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-tounicode-diagnostic-cap.pdf",
+          "sha256": "7304614f0d60dfc0630db463829fdb3d35f2602c2933d09fec4bfff54ba4f247"
+        }
+      },
+      "driver": "diagnostic-cap"
+    },
+    {
+      "id": "text/repair-cid-to-gid-identity",
+      "kind": "vector",
+      "description": "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",
+      "requirements": [
+        "text-cmap-recovery"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-cid-to-gid-identity.input",
+          "sha256": "a952577e7fb3a2f24c293362b4979876d15343cb9bedf0e999fe96b534faf7ef"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-cid-to-gid-identity.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-cid-to-gid-identity.out",
+          "sha256": "4d21edb039fa96cd810929bb48ee491cad394d9f4584bfbff85e10bcb6f614cb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-cid-to-gid-identity.pdf",
+          "sha256": "3a98a4eab9d3cb5587711da27d3ec3522bca930d05470fe24274379585a46c7c"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-cid-to-gid-identity.repair",
+          "sha256": "c1b39b9f2e1ac2af4d9f1966a8ad565d1d248e28e7061ef3585932a05a09451f"
+        }
+      },
+      "driver": "text-repair",
+      "extraction_only": false
+    },
+    {
       "id": "text/type3-differences",
       "kind": "vector",
       "description": "Type3 character codes, advances, word spacing, Unicode and procedures",
@@ -536,56 +1391,110 @@
     {
       "id": "text/unicode-surrogate",
       "kind": "vector",
-      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "description": "Invalid ToUnicode rejects extraction in strict mode; glyph selection remains usable in both modes",
       "requirements": [
-        "text-font-policy"
+        "text-font-policy",
+        "text-tounicode-recovery"
       ],
       "files": {
         ".error": {
           "path": "corpus/generated/text/unicode-surrogate.error",
           "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
         },
+        ".input": {
+          "path": "corpus/generated/text/unicode-surrogate.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/unicode-surrogate.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
+        },
         ".pdf": {
           "path": "corpus/generated/text/unicode-surrogate.pdf",
           "sha256": "f8f4dfb6a6bbd400e668416c3b2a397cd684c2aa59c88d92571af62345630def"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/unicode-surrogate.repair",
+          "sha256": "e4546eb0a9519a04433004e6f56a399e51935d3093e3be98bb28667ce5c64e75"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/unicode-surrogate.strict.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
         }
-      }
+      },
+      "driver": "unicode-fault"
     },
     {
       "id": "text/unicode-cycle",
       "kind": "vector",
-      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "description": "Invalid ToUnicode rejects extraction in strict mode; glyph selection remains usable in both modes",
       "requirements": [
-        "text-font-policy"
+        "text-font-policy",
+        "text-tounicode-recovery"
       ],
       "files": {
         ".error": {
           "path": "corpus/generated/text/unicode-cycle.error",
           "sha256": "1094b987df2190e669f219ed21b7b5f14b5ad1996e5282e158efddf0a67e50a4"
         },
+        ".input": {
+          "path": "corpus/generated/text/unicode-cycle.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/unicode-cycle.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
+        },
         ".pdf": {
           "path": "corpus/generated/text/unicode-cycle.pdf",
           "sha256": "03378dd201d5d18b41fbe73dc1eef8ce387cf5ee6d86ae770cab3e3b9595959c"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/unicode-cycle.repair",
+          "sha256": "213d92c65a5cfd6fea2c0f5c0a431f24397c290b0f97ae391bc25e73e37d7fc0"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/unicode-cycle.strict.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
         }
-      }
+      },
+      "driver": "unicode-fault"
     },
     {
       "id": "text/unicode-range-overflow",
       "kind": "vector",
-      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "description": "Invalid ToUnicode rejects extraction in strict mode; glyph selection remains usable in both modes",
       "requirements": [
-        "text-font-policy"
+        "text-font-policy",
+        "text-tounicode-recovery"
       ],
       "files": {
         ".error": {
           "path": "corpus/generated/text/unicode-range-overflow.error",
           "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
         },
+        ".input": {
+          "path": "corpus/generated/text/unicode-range-overflow.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/unicode-range-overflow.out",
+          "sha256": "25fa8202081d88523992bf96397a6f5260f4617e5fb963def2fb0ae17591cbf9"
+        },
         ".pdf": {
           "path": "corpus/generated/text/unicode-range-overflow.pdf",
           "sha256": "1e5860f2e876ca66c026270d3f89499a24c7fea8cf8d2a036c8b82d58875006f"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/unicode-range-overflow.repair",
+          "sha256": "8dd3c6c36911836e3f655d22ad167ff5da0d2974d93b79ed223998831aac09cf"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/unicode-range-overflow.strict.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
         }
-      }
+      },
+      "driver": "unicode-fault"
     },
     {
       "id": "text/type3-undefined",
@@ -612,110 +1521,218 @@
     {
       "id": "text/unicode-odd-destination",
       "kind": "vector",
-      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "description": "Invalid ToUnicode rejects extraction in strict mode; glyph selection remains usable in both modes",
       "requirements": [
-        "text-font-policy"
+        "text-font-policy",
+        "text-tounicode-recovery"
       ],
       "files": {
         ".error": {
           "path": "corpus/generated/text/unicode-odd-destination.error",
           "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
         },
+        ".input": {
+          "path": "corpus/generated/text/unicode-odd-destination.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/unicode-odd-destination.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
+        },
         ".pdf": {
           "path": "corpus/generated/text/unicode-odd-destination.pdf",
           "sha256": "5f708df6098c8234fe036d643025193c20a12d639fd62338b03e0deec5cd1eb2"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/unicode-odd-destination.repair",
+          "sha256": "e4546eb0a9519a04433004e6f56a399e51935d3093e3be98bb28667ce5c64e75"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/unicode-odd-destination.strict.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
         }
-      }
+      },
+      "driver": "unicode-fault"
     },
     {
       "id": "text/unicode-two-byte",
       "kind": "vector",
-      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "description": "Invalid ToUnicode rejects extraction in strict mode; glyph selection remains usable in both modes",
       "requirements": [
-        "text-font-policy"
+        "text-font-policy",
+        "text-tounicode-recovery"
       ],
       "files": {
         ".error": {
           "path": "corpus/generated/text/unicode-two-byte.error",
           "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
         },
+        ".input": {
+          "path": "corpus/generated/text/unicode-two-byte.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/unicode-two-byte.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
+        },
         ".pdf": {
           "path": "corpus/generated/text/unicode-two-byte.pdf",
           "sha256": "92c7cd5ea506aee351fb8adae86c54a4ac9f0d2d0d7763fd2c9c7ce13eee3902"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/unicode-two-byte.repair",
+          "sha256": "8ab92d0a73ebe6bc612f8c63390ae209180703b5c3d5fb42cb8e852cf2286c07"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/unicode-two-byte.strict.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
         }
-      }
+      },
+      "driver": "unicode-fault"
     },
     {
       "id": "text/unicode-prefix-overlap",
       "kind": "vector",
-      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "description": "Invalid ToUnicode rejects extraction in strict mode; glyph selection remains usable in both modes",
       "requirements": [
-        "text-font-policy"
+        "text-font-policy",
+        "text-tounicode-recovery"
       ],
       "files": {
         ".error": {
           "path": "corpus/generated/text/unicode-prefix-overlap.error",
           "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
         },
+        ".input": {
+          "path": "corpus/generated/text/unicode-prefix-overlap.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/unicode-prefix-overlap.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
+        },
         ".pdf": {
           "path": "corpus/generated/text/unicode-prefix-overlap.pdf",
           "sha256": "a815edb831869813f09f4ed39cfabf37774d36d3ca4390f43a8dd353f67c3d1f"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/unicode-prefix-overlap.repair",
+          "sha256": "213d92c65a5cfd6fea2c0f5c0a431f24397c290b0f97ae391bc25e73e37d7fc0"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/unicode-prefix-overlap.strict.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
         }
-      }
+      },
+      "driver": "unicode-fault"
     },
     {
       "id": "text/unicode-range-array-length",
       "kind": "vector",
-      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "description": "Invalid ToUnicode rejects extraction in strict mode; glyph selection remains usable in both modes",
       "requirements": [
-        "text-font-policy"
+        "text-font-policy",
+        "text-tounicode-recovery"
       ],
       "files": {
         ".error": {
           "path": "corpus/generated/text/unicode-range-array-length.error",
           "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
         },
+        ".input": {
+          "path": "corpus/generated/text/unicode-range-array-length.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/unicode-range-array-length.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
+        },
         ".pdf": {
           "path": "corpus/generated/text/unicode-range-array-length.pdf",
           "sha256": "c02a3b30be0961f1ef2d70d9b365c1bad31ecce4196e3561234546c473eabb16"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/unicode-range-array-length.repair",
+          "sha256": "213d92c65a5cfd6fea2c0f5c0a431f24397c290b0f97ae391bc25e73e37d7fc0"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/unicode-range-array-length.strict.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
         }
-      }
+      },
+      "driver": "unicode-fault"
     },
     {
       "id": "text/unicode-block-count",
       "kind": "vector",
-      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "description": "Invalid ToUnicode rejects extraction in strict mode; glyph selection remains usable in both modes",
       "requirements": [
-        "text-font-policy"
+        "text-font-policy",
+        "text-tounicode-recovery"
       ],
       "files": {
         ".error": {
           "path": "corpus/generated/text/unicode-block-count.error",
           "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
         },
+        ".input": {
+          "path": "corpus/generated/text/unicode-block-count.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/unicode-block-count.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
+        },
         ".pdf": {
           "path": "corpus/generated/text/unicode-block-count.pdf",
           "sha256": "3f97e5bbd8afa03d6b6b888d9c7bb406b80d0ffcbc86139dd8e8559b1211ee79"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/unicode-block-count.repair",
+          "sha256": "213d92c65a5cfd6fea2c0f5c0a431f24397c290b0f97ae391bc25e73e37d7fc0"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/unicode-block-count.strict.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
         }
-      }
+      },
+      "driver": "unicode-fault"
     },
     {
       "id": "text/unicode-usecmap-mismatch",
       "kind": "vector",
-      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "description": "Invalid ToUnicode rejects extraction in strict mode; glyph selection remains usable in both modes",
       "requirements": [
-        "text-font-policy"
+        "text-font-policy",
+        "text-tounicode-recovery"
       ],
       "files": {
         ".error": {
           "path": "corpus/generated/text/unicode-usecmap-mismatch.error",
           "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
         },
+        ".input": {
+          "path": "corpus/generated/text/unicode-usecmap-mismatch.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/unicode-usecmap-mismatch.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
+        },
         ".pdf": {
           "path": "corpus/generated/text/unicode-usecmap-mismatch.pdf",
           "sha256": "0c6c50b813e8ba7516e515fdcfb50449d1cc0a13ccee567e3313d251d5bdb34f"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/unicode-usecmap-mismatch.repair",
+          "sha256": "213d92c65a5cfd6fea2c0f5c0a431f24397c290b0f97ae391bc25e73e37d7fc0"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/unicode-usecmap-mismatch.strict.out",
+          "sha256": "739a7487310f6b2193a0e16522aee282d2ee09e4be6bf0150ffcf16ddaaf5db8"
         }
-      }
+      },
+      "driver": "unicode-fault"
     },
     {
       "id": "text/cid-width-reversed",
@@ -2204,40 +3221,82 @@
     {
       "id": "text/unicode-cid-code-length",
       "kind": "vector",
-      "description": "PDF binding or ToUnicode consistency violation derived from the ISO rules",
+      "description": "Invalid ToUnicode rejects extraction in strict mode; glyph selection remains usable in both modes",
       "requirements": [
-        "text-unicode"
+        "text-unicode",
+        "text-tounicode-recovery"
       ],
       "files": {
         ".error": {
           "path": "corpus/generated/text/unicode-cid-code-length.error",
           "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
         },
+        ".input": {
+          "path": "corpus/generated/text/unicode-cid-code-length.input",
+          "sha256": "b413f47d13ee2fe6c845b2ee141af81de858df4ec549a58b7970bb96645bc8d2"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/unicode-cid-code-length.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/unicode-cid-code-length.out",
+          "sha256": "7f4be7a2a04d9e246925c0f5f7bcd84e1e7e29affd92c60cda66a0d90c457d85"
+        },
         ".pdf": {
           "path": "corpus/generated/text/unicode-cid-code-length.pdf",
           "sha256": "370da651caf5cd6d4db4e238dfc556fa3ee075b2f7da85fd420cf1baa63a223d"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/unicode-cid-code-length.repair",
+          "sha256": "213d92c65a5cfd6fea2c0f5c0a431f24397c290b0f97ae391bc25e73e37d7fc0"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/unicode-cid-code-length.strict.out",
+          "sha256": "7f4be7a2a04d9e246925c0f5f7bcd84e1e7e29affd92c60cda66a0d90c457d85"
         }
       },
-      "driver": "font-error"
+      "driver": "unicode-fault"
     },
     {
       "id": "text/unicode-simple-source-length",
       "kind": "vector",
-      "description": "PDF binding or ToUnicode consistency violation derived from the ISO rules",
+      "description": "Invalid ToUnicode rejects extraction in strict mode; glyph selection remains usable in both modes",
       "requirements": [
-        "text-unicode"
+        "text-unicode",
+        "text-tounicode-recovery"
       ],
       "files": {
         ".error": {
           "path": "corpus/generated/text/unicode-simple-source-length.error",
           "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
         },
+        ".input": {
+          "path": "corpus/generated/text/unicode-simple-source-length.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/unicode-simple-source-length.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/unicode-simple-source-length.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        },
         ".pdf": {
           "path": "corpus/generated/text/unicode-simple-source-length.pdf",
           "sha256": "e6294338f6c40d4770d3b867eb3821e54251105b051e85674ea8b87e3f6575fa"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/unicode-simple-source-length.repair",
+          "sha256": "8ab92d0a73ebe6bc612f8c63390ae209180703b5c3d5fb42cb8e852cf2286c07"
+        },
+        ".strict.out": {
+          "path": "corpus/generated/text/unicode-simple-source-length.strict.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
         }
       },
-      "driver": "font-error"
+      "driver": "unicode-fault"
     },
     {
       "id": "text/standard14-Courier",

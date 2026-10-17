@@ -51,7 +51,25 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   replace unusable glyphs with empty paths; page callers still need to forward
   these diagnostics.
 - `syntax.duplicate-key`: the last value of a repeated key wins.
-- `image.data-short`, `image.data-excess` (8.9.3, 8.9.5.1): zero-fill missing packed bytes or ignore the excess suffix; `jpeg.entropy-padding` (T.81 B.1.1.5, E.1.4): ignore non-one unused entropy bits; `jpeg.adobe-marker` (7.4.8, Table 13): use the known APP14 prefix and ignore its extension (Adobe TN 5116 review pending); `ccitt.eob-padding` (Table 11; T.6 2.4.1.1-2): ignore up to seven zero fill bits before a byte-aligned Group 4 EOFB; `ccitt.damaged-row` (Table 11): substitute the preceding good row or white within the declared tolerance.
+- `image.data-short`, `image.data-excess` (8.9.3, 8.9.5.1): zero-fill missing
+  packed bytes or ignore the excess suffix; `jpeg.entropy-padding` (T.81
+  B.1.1.5, E.1.4): ignore non-one unused entropy bits; `jpeg.adobe-marker`
+  (7.4.8, Table 13): use the known APP14 prefix and ignore its extension (Adobe
+  TN 5116 review pending); `ccitt.eob-padding` (Table 11; T.6 2.4.1.1-2): ignore
+  up to seven zero fill bits before a byte-aligned Group 4 EOFB;
+  `ccitt.damaged-row` (Table 11): substitute the preceding good row or white
+  within the declared tolerance.
+- `font.cid-to-gid-identity` (9.7.4.1, Table 115): a missing embedded Type2
+  CIDFont map uses Identity; `font.cmap-block-count` (9.7.5.4; TN5014 7.4):
+  accept blocks above 100 within budgets; `font.cmap-codespace` (9.7.6.2): split
+  malformed byte bounds into exact disjoint integer-interval pieces;
+  `font.tounicode-simple-codes`, `font.tounicode-utf16`, `font.tounicode-range`,
+  `font.tounicode-invalid` (9.10.3): use low-byte simple-font sources, omit
+  invalid UTF-16 values, carry overflowing range destinations without
+  full-string wrap, or discard unusable extraction data. Conflicting low-byte
+  aliases lose their Unicode value. Strict rejects extraction repairs and
+  discards their map, reporting the rejection while painting continues;
+  painting-critical repairs still reject in Strict.
 - `filter.truncated`, `filter.checksum-mismatch`, `filter.trailing-data`,
   `filter.raw-deflate`: damaged filter data yields the bytes decoded so far.
 - `filter.lzw-full-table`, `filter.lzw-padding`: an LZW encoder that fills its

@@ -3,11 +3,21 @@ use crate::{
     WritingMode,
     cidmap::{CidMap, CidRange},
     features,
+    repairs::{self, Report},
 };
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Error, Limits, Name, ObjectId, Result, Value};
 use pagura_document::Document;
 use std::collections::BTreeMap;
+
+mod tolerate;
+
+struct ParseContext<'a> {
+    limits: Limits,
+    unicode: bool,
+    work: usize,
+    report: Report<'a>,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct Code {
@@ -74,7 +84,7 @@ pub(crate) struct CMap {
     spaces: Vec<Range>,
     mappings: CidMap,
     notdef: CidMap,
-    unicode: BTreeMap<Code, String>,
+    unicode: BTreeMap<Code, Option<String>>,
     pub(crate) mode: WritingMode,
     pub(crate) use_name: Option<Name>,
     mode_explicit: bool,
@@ -128,12 +138,27 @@ impl CMap {
         limits: Limits,
         unicode: bool,
     ) -> Result<Self> {
+        Self::parse_reported(data, origin, limits, unicode, Report::strict())
+    }
+
+    fn parse_reported(
+        data: &[u8],
+        origin: Origin,
+        limits: Limits,
+        unicode: bool,
+        report: Report<'_>,
+    ) -> Result<Self> {
+        let mut context = ParseContext {
+            limits,
+            unicode,
+            work: 0,
+            report,
+        };
         let mut parser = Parser::new(data, origin, limits);
         let mut map = Self::default();
         let mut operands = Vec::new();
-        let mut work = 0;
         while let Some(byte) = parser.peek() {
-            charge(&mut work, 1, limits.operations)?;
+            charge(&mut context.work, 1, limits.operations)?;
             if matches!(
                 byte,
                 b'/' | b'(' | b'<' | b'[' | b'+' | b'-' | b'.' | b'0'..=b'9'
@@ -153,34 +178,7 @@ impl CMap {
                 | b"beginnotdefchar"
                 | b"beginnotdefrange"
                 | b"beginbfchar"
-                | b"beginbfrange" => {
-                    let count = operands
-                        .pop()
-                        .and_then(|v| v.as_integer())
-                        .ok_or_else(|| Error::syntax("CMap block missing count"))?;
-                    if !(0..=100).contains(&count) {
-                        return Err(Error::syntax("CMap block count outside 0 to 100").at(position));
-                    }
-                    for _ in 0..count {
-                        charge(&mut work, 1, limits.operations)?;
-                        map.entry(&mut parser, operator, unicode, limits, &mut work)
-                            .map_err(|e| e.at(parser.position()))?;
-                    }
-                    let end = match operator {
-                        b"begincodespacerange" => b"endcodespacerange".as_slice(),
-                        b"begincidchar" => b"endcidchar",
-                        b"begincidrange" => b"endcidrange",
-                        b"beginnotdefchar" => b"endnotdefchar",
-                        b"beginnotdefrange" => b"endnotdefrange",
-                        b"beginbfchar" => b"endbfchar",
-                        _ => b"endbfrange",
-                    };
-                    if parser.keyword(end) {
-                        Ok(())
-                    } else {
-                        Err(Error::syntax("CMap block count or terminator mismatch"))
-                    }
-                }
+                | b"beginbfrange" => map.block(&mut parser, operator, &mut operands, &mut context),
                 b"def" => self_definition(&mut map, &operands),
                 b"usecmap" => {
                     map.use_name = Some(
@@ -220,18 +218,61 @@ impl CMap {
         if !operands.is_empty() {
             return Err(Error::syntax("unterminated CMap operands").at(parser.position()));
         }
-        map.parse_work = work;
+        map.parse_work = context.work;
         Ok(map)
+    }
+
+    fn block(
+        &mut self,
+        parser: &mut Parser<'_>,
+        op: &[u8],
+        operands: &mut Vec<Value>,
+        context: &mut ParseContext<'_>,
+    ) -> Result<()> {
+        let position = parser.position();
+        let count = operands
+            .pop()
+            .and_then(|v| v.as_integer())
+            .and_then(|v| usize::try_from(v).ok())
+            .ok_or_else(|| Error::syntax("invalid CMap block count"))?;
+        if count > 100 {
+            context.report.repair(
+                repairs::CMAP_BLOCK_COUNT,
+                "CMap block count exceeds 100 (9.7.5.4; TN5014 7.4)",
+                position,
+            )?;
+        }
+        if count > context.limits.value_nodes || count > context.limits.operations {
+            return Err(Error::limit("CMap block entry budget exceeded"));
+        }
+        for _ in 0..count {
+            charge(&mut context.work, 1, context.limits.operations)?;
+            self.entry(parser, op, context)
+                .map_err(|e| e.at(parser.position()))?;
+        }
+        let end = match op {
+            b"begincodespacerange" => b"endcodespacerange".as_slice(),
+            b"begincidchar" => b"endcidchar",
+            b"begincidrange" => b"endcidrange",
+            b"beginnotdefchar" => b"endnotdefchar",
+            b"beginnotdefrange" => b"endnotdefrange",
+            b"beginbfchar" => b"endbfchar",
+            _ => b"endbfrange",
+        };
+        if parser.keyword(end) {
+            Ok(())
+        } else {
+            Err(Error::syntax("CMap block count or terminator mismatch"))
+        }
     }
 
     fn entry(
         &mut self,
         parser: &mut Parser<'_>,
         op: &[u8],
-        unicode: bool,
-        limits: Limits,
-        work: &mut usize,
+        context: &mut ParseContext<'_>,
     ) -> Result<()> {
+        let limits = context.limits;
         let first = Code::parse(&parser.parse()?)?;
         let is_range = op.ends_with(b"range");
         let last = if is_range {
@@ -241,26 +282,17 @@ impl CMap {
         };
         let range = Range::new(first, last)?;
         if op == b"begincodespacerange" {
-            for i in 0..usize::from(first.len) {
-                let shift = 8 * i;
-                if ((first.value >> shift) & 255) > ((last.value >> shift) & 255) {
-                    return Err(Error::syntax("invalid codespace byte interval"));
-                }
-            }
-            if self.spaces.len() >= limits.value_nodes {
-                return Err(Error::limit("CMap codespace limit exceeded"));
-            }
-            self.spaces.push(range);
+            self.codespace(range, context, parser.position())?;
             return Ok(());
         }
         let value = parser.parse()?;
         if op.starts_with(b"beginbf") {
-            if !unicode {
+            if !context.unicode {
                 return Err(Error::syntax("Unicode mappings in an Encoding CMap"));
             }
-            self.unicode_range(range, &value, limits, work)
+            self.unicode_range(range, &value, context, parser.position())
         } else {
-            if unicode {
+            if context.unicode {
                 return Err(Error::syntax("CID mappings in a ToUnicode CMap"));
             }
             let cid = value
@@ -286,84 +318,10 @@ impl CMap {
                     cid: u32::from(cid),
                     increment: !notdef,
                 },
-                work,
+                &mut context.work,
                 limits,
             )
         }
-    }
-
-    fn unicode_range(
-        &mut self,
-        range: Range,
-        value: &Value,
-        limits: Limits,
-        work: &mut usize,
-    ) -> Result<()> {
-        let count = u64::from(range.last.value) - u64::from(range.first.value) + 1;
-        let count = usize::try_from(count).map_err(|_| Error::limit("Unicode range too large"))?;
-        charge(work, count, limits.operations)?;
-        if count > limits.value_nodes.saturating_sub(self.unicode.len()) {
-            return Err(Error::limit("Unicode mapping limit exceeded"));
-        }
-        if let Some(array) = value.as_array() {
-            if array.len() != count {
-                return Err(Error::syntax("bfrange array length mismatch"));
-            }
-            for (i, value) in array.iter().enumerate() {
-                let offset =
-                    u32::try_from(i).map_err(|_| Error::limit("Unicode range too large"))?;
-                self.insert_text(
-                    Code {
-                        value: range.first.value + offset,
-                        len: range.first.len,
-                    },
-                    value
-                        .as_string()
-                        .ok_or_else(|| Error::syntax("invalid Unicode destination"))?,
-                    limits,
-                )?;
-            }
-        } else {
-            let mut bytes = value
-                .as_string()
-                .ok_or_else(|| Error::syntax("invalid Unicode destination"))?
-                .to_vec();
-            if bytes.is_empty() && count > 1 {
-                return Err(Error::syntax("empty bfrange destination cannot increment"));
-            }
-            for code in range.first.value..=range.last.value {
-                self.insert_text(
-                    Code {
-                        value: code,
-                        len: range.first.len,
-                    },
-                    &bytes,
-                    limits,
-                )?;
-                if code != range.last.value {
-                    // 9.10.3 increments only the final byte, without carrying.
-                    let last = bytes
-                        .last_mut()
-                        .ok_or_else(|| Error::syntax("empty Unicode destination"))?;
-                    *last = last
-                        .checked_add(1)
-                        .ok_or_else(|| Error::syntax("bfrange destination final byte overflows"))?;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn insert_text(&mut self, code: Code, bytes: &[u8], limits: Limits) -> Result<()> {
-        if bytes.len() > 512 {
-            return Err(Error::syntax("Unicode destination exceeds 512 bytes"));
-        }
-        let text = utf16(bytes)?;
-        let old = self.unicode.get(&code).map_or(0, String::len);
-        self.unicode_bytes = self.unicode_bytes.saturating_sub(old);
-        charge(&mut self.unicode_bytes, text.len(), limits.decoded_bytes)?;
-        self.unicode.insert(code, text);
-        Ok(())
     }
 
     // TN5014 5.4: using resources cannot redefine their inherited codespace.
@@ -422,7 +380,11 @@ impl CMap {
                 if self.unicode.len() >= limits.value_nodes {
                     return Err(Error::limit("inherited Unicode mapping limit exceeded"));
                 }
-                charge(&mut self.unicode_bytes, text.len(), limits.decoded_bytes)?;
+                charge(
+                    &mut self.unicode_bytes,
+                    text.as_ref().map_or(0, String::len),
+                    limits.decoded_bytes,
+                )?;
                 self.unicode.insert(code, text);
             }
         }
@@ -519,7 +481,7 @@ impl CMap {
         Ok(self.notdef.get(code, work, limits)?.unwrap_or(0))
     }
     pub(crate) fn text(&self, code: Code) -> Option<&str> {
-        self.unicode.get(&code).map(String::as_str)
+        self.unicode.get(&code).and_then(|text| text.as_deref())
     }
 }
 
@@ -556,21 +518,6 @@ fn mode(value: Option<i64>) -> Result<WritingMode> {
         Some(1) => Ok(WritingMode::Vertical),
         _ => Err(Error::syntax("invalid CMap WMode")),
     }
-}
-
-fn utf16(bytes: &[u8]) -> Result<String> {
-    if !bytes.len().is_multiple_of(2) {
-        return Err(Error::syntax("odd UTF-16BE destination length"));
-    }
-    char::decode_utf16(
-        bytes
-            .as_chunks::<2>()
-            .0
-            .iter()
-            .map(|b| u16::from_be_bytes([b[0], b[1]])),
-    )
-    .collect::<std::result::Result<String, _>>()
-    .map_err(|_| Error::syntax("invalid UTF-16BE destination"))
 }
 
 pub(crate) fn load(document: &Document, value: &Value, unicode: bool) -> Result<CMap> {
@@ -665,8 +612,14 @@ fn load_inner(
         operations: limits.operations.saturating_sub(budget.work),
         ..limits
     };
-    let mut map = CMap::parse(&data, Origin::Stream(id), parse_limits, unicode)
-        .map_err(|e| e.in_object(id))?;
+    let mut map = CMap::parse_reported(
+        &data,
+        Origin::Stream(id),
+        parse_limits,
+        unicode,
+        Report::new(document),
+    )
+    .map_err(|e| e.in_object(id))?;
     charge(&mut budget.work, map.parse_work, limits.operations).map_err(|e| e.in_object(id))?;
     let entries = map
         .spaces

@@ -105,34 +105,42 @@ fn fonts_and_outlines_are_reused() {
 #[test]
 fn malformed_font_programs_report_their_own_stream() {
     let mut bytes = fixture("paint", "text-mode-0.pdf");
-    let content_start = bytes.windows(7).position(|b| b == b"stream\n").unwrap() + 7;
-    let content_end = bytes[content_start..]
-        .windows(9)
-        .position(|b| b == b"endstream")
-        .unwrap()
-        + content_start;
-    let tf = bytes[content_start..content_end]
-        .windows(2)
-        .position(|b| b == b"Tf")
-        .unwrap();
     let program_start = bytes
         .windows(11)
         .position(|b| b == b"stream\n\0\x01\0\0")
         .unwrap()
         + 7;
+    // An unknown sfnt version over intact tables is a reported repair: strict
+    // mode rejects it with the tag, and both modes locate it in the font
+    // stream (object 7), not in the content stream that selected the font.
     bytes[program_start..program_start + 4].copy_from_slice(b"bad!");
-    let document = Document::open(bytes, &OpenOptions::default()).unwrap();
-    let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
+    let font_stream = pagura_core::Position::Stream {
+        object: pagura_core::ObjectId::new(7, 0),
+        offset: 0,
+    };
+    let strict = Document::open(
+        bytes.clone(),
+        &OpenOptions {
+            recovery: Recovery::Strict,
+            ..OpenOptions::default()
+        },
+    )
+    .unwrap();
+    let error = compile_page(&strict, strict.page(0).unwrap()).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Syntax);
-    // A program that fails to load is located in its own stream; only lazy
-    // glyph-outline failures fall back to the content call site.
-    let _ = tf;
     assert_eq!(
-        error.position,
-        pagura_core::Position::Stream {
-            object: pagura_core::ObjectId::new(7, 0),
-            offset: 0
-        }
+        error.repair.map(pagura_core::Repair::as_str),
+        Some("font.sfnt-version")
     );
+    assert_eq!(error.position, font_stream);
     assert_eq!(error.object, Some(pagura_core::ObjectId::new(7, 0)));
+    let repaired = Document::open(bytes, &OpenOptions::default()).unwrap();
+    compile_page(&repaired, repaired.page(0).unwrap()).unwrap();
+    let diagnostic = repaired
+        .diagnostics()
+        .into_iter()
+        .find(|item| item.repair.as_str() == "font.sfnt-version")
+        .unwrap();
+    assert_eq!(diagnostic.position, font_stream);
+    assert_eq!(diagnostic.object, Some(pagura_core::ObjectId::new(7, 0)));
 }

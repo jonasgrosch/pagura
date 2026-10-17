@@ -53,7 +53,7 @@ pub(crate) fn load(
         Metrics::simple(document, font, descriptor, 0.001)?
     };
     let mapping = Mapping::Simple(Box::new(SimpleMapping::new(names, document.limits())?));
-    let to_unicode = to_unicode(document, font, &mapping)?;
+    let to_unicode = to_unicode(document, font, &mapping);
     let source = data
         .program
         .as_ref()

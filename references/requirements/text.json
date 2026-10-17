@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "text",
-  "scope": "The rule paraphrases and exact ISO locators below were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text (ISO_32000-2_sponsored_EC3.txt): PDF string-decoding/spacing interfaces, supported font dictionaries and embedding bindings, character selection, widths/CID metrics, PDF-specific CMap rules and ToUnicode. Every code-to-name slot of Standard, MacRoman, WinAnsi, PDFDoc, Symbol and ZapfDingbats was compared with Annex D; MacExpert was also checked. This is not verification of Adobe Glyph List rules, TN5014 grammar or external font-program binary formats. Provider additions were checked against ISO 9.6.2.2/Table 109 and 9.9.2, 9.8.1-9.8.2/Tables 120-121, 9.7.5.2/Table 116 and 9.10.2, and TN5014 sections 5.1-5.4 for pinned resource inheritance. AFM values and Unicode projection choices are checked against the pinned data files, not claimed as verification of external AFM or sfnt format standards.",
+  "scope": "The rule paraphrases and exact ISO locators below were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text (ISO_32000-2_sponsored_EC3.txt): PDF string-decoding/spacing interfaces, supported font dictionaries and embedding bindings, character selection, widths/CID metrics, PDF-specific CMap rules and ToUnicode. Every code-to-name slot of Standard, MacRoman, WinAnsi, PDFDoc, Symbol and ZapfDingbats was compared with Annex D; MacExpert was also checked. This is not verification of Adobe Glyph List rules, TN5014 grammar or external font-program binary formats. Provider additions were checked against ISO 9.6.2.2/Table 109 and 9.9.2, 9.8.1-9.8.2/Tables 120-121, 9.7.5.2/Table 116 and 9.10.2, and TN5014 sections 5.1-5.4 for pinned resource inheritance. AFM values and Unicode projection choices are checked against the pinned data files, not claimed as verification of external AFM or sfnt format standards. Recovery additions were checked against ISO 9.7.4.1 Table 115, 9.7.4.2, 9.7.5.4, 9.7.6.2, 9.10.3 and TN5014 7.4. Tolerant interpretations depart from those rules as individually reported below; corpus acceptance is evidence of tolerance, not standards conformance.",
   "requirements": [
     {
       "id": "text-type3",
@@ -120,19 +120,20 @@
         "text/unicode-ignored-stream-metadata",
         "text/unicode-inherited-ignored-name"
       ],
-      "gaps": "AGL-dependent names and character-collection-to-Unicode CMaps remain unbundled; the external grammar review remains pending.",
+      "gaps": "The bundled provider supplies four Adobe collection Unicode projections; full AGL name data and the external naming algorithm review remain outside this subset.",
       "tables": [
         "118"
       ],
       "verification": {
         "rule": "ToUnicode takes priority, uses font-consistent code lengths and UTF-16BE sequences, increments the final bfrange byte, and uses only UseCMap from the stream dictionary.",
-        "implementation": "corrected irrelevant stream metadata and source-code-length consistency; AGL-derived rules remain pending primary-text review",
+        "implementation": "Valid ISO ToUnicode rules agree. Strict extraction rejects malformed interpretations; painting retains the font and reports the discarded map. Repair mode preserves unambiguous Unicode as specified in text-tounicode-recovery.",
         "expectations": "agree with the ISO rules, including minimized metadata/source-length violations; glyph-name known answers do not constitute AGL verification",
         "verdict": "ISO subset agrees after corrections",
         "choices": [
           "Empty ToUnicode destinations are retained as empty sequences because ISO specifies an upper size but no nonzero lower size.",
-          "Undefined bfrange overflow and mismatched array lengths are rejected with syntax errors.",
-          "Unrecognized name components contribute no Unicode, and entirely unknown names return None; this external AGL algorithm remains pending primary-text review."
+          "Strict extraction rejects bfrange overflow; Repair uses documented byte carry. Mismatched array lengths discard the optional map in both modes.",
+          "Unrecognized name components contribute no Unicode, and entirely unknown names return None; this external AGL algorithm remains pending primary-text review.",
+          "Malformed ToUnicode interpretations no longer reject a drawable font; see text-tounicode-recovery for strict discard and tolerant results."
         ]
       }
     },
@@ -243,7 +244,8 @@
         "expectations": "agrees with the explicit unsupported outcomes",
         "verdict": "documented capability limit",
         "choices": [
-          "ADR 0009 excludes font substitution and predefined non-Identity CMap data until separately approved."
+          "Without an explicit Provider, the original loading API keeps its unavailable-font/CMap errors. ADR 0009 now approves the bundled data provider; its integration is covered separately.",
+          "Malformed ToUnicode data is extraction-only and follows text-tounicode-recovery; malformed painting-critical data still rejects or requires an authorized repair."
         ]
       }
     },
@@ -260,7 +262,8 @@
         "text/cid-to-gid",
         "text/cid-map-missing-entry",
         "text/cid-map-explicit-zero",
-        "text/embedded-cid-truetype-vertical"
+        "text/embedded-cid-truetype-vertical",
+        "text/repair-cid-to-gid-identity"
       ],
       "gaps": "External font-program interpretation remains delegated; map entries are checked for usable glyph selectors during decoding.",
       "tables": [
@@ -272,7 +275,8 @@
         "expectations": "agrees after the minimized text/cid-map-missing-entry regression",
         "verdict": "ISO subset agrees after corrections",
         "choices": [
-          "A present zero-valued CIDToGIDMap entry selects GID 0 and retains that CID; it is distinct from an absent entry, which requires CID 0."
+          "A present zero-valued CIDToGIDMap entry selects GID 0 and retains that CID; it is distinct from an absent entry, which requires CID 0.",
+          "A missing required map is font.cid-to-gid-identity: Strict rejects it, Repair assumes Identity (Table 115)."
         ]
       }
     },
@@ -958,6 +962,101 @@
       "data_sources": [
         "data/cmaps/*/cid2unicode.txt headers and data/lock.json hashes"
       ]
+    },
+    {
+      "reference": "iso32000-2-full-text",
+      "id": "text-tounicode-recovery",
+      "clauses": [
+        "9.10.3",
+        "9.7.5.4",
+        "9.7.6.2"
+      ],
+      "tables": [],
+      "status": "Bounded, reported tolerance with independent strict and repaired oracles",
+      "tests": [
+        "text/paint-tounicode-simple",
+        "text/paint-tounicode-utf16",
+        "text/paint-tounicode-range",
+        "text/paint-tounicode-block-count",
+        "text/paint-tounicode-invalid",
+        "text/repair-tounicode-simple",
+        "text/repair-tounicode-mixed-sources",
+        "text/repair-tounicode-alias-conflict",
+        "text/repair-tounicode-utf16",
+        "text/repair-tounicode-range",
+        "text/repair-tounicode-range-end",
+        "text/repair-tounicode-range-surrogates",
+        "text/repair-tounicode-parent-invalid",
+        "text/repair-tounicode-block-count",
+        "text/repair-tounicode-cycle",
+        "text/repair-tounicode-unsupported",
+        "text/repair-tounicode-truncated",
+        "text/repair-tounicode-limit",
+        "text/repair-tounicode-object",
+        "text/repair-tounicode-codespace",
+        "text/repair-tounicode-diagnostic-cap",
+        "text/unicode-surrogate",
+        "text/unicode-cycle",
+        "text/unicode-range-overflow",
+        "text/unicode-odd-destination",
+        "text/unicode-two-byte",
+        "text/unicode-prefix-overlap",
+        "text/unicode-range-array-length",
+        "text/unicode-block-count",
+        "text/unicode-usecmap-mismatch",
+        "text/unicode-cid-code-length",
+        "text/unicode-simple-source-length"
+      ],
+      "gaps": "The repaired interpretation is compatibility policy, not a claim that malformed input conforms.",
+      "verification": {
+        "rule": "ToUnicode controls extraction, independently of glyph selection. Sources in simple fonts use one byte, destinations use UTF-16BE, and bfrange increments may not overflow the final byte.",
+        "implementation": "Normative departures are rejected with a repair tag in strict interpretation and reported before tolerant use.",
+        "expectations": "Independently authored Python fixtures give exact glyph IDs, widths, matrices and Unicode in both modes; no Rust output is used. Pixel fixtures independently calculate the same rectangle in actual rendered pages.",
+        "verdict": "Normative checks and explicit repair policy agree with the independent fixtures.",
+        "choices": [
+          "Reject malformed extraction interpretations under Strict, report the rejection and discard the optional map while keeping the drawable font in both recovery modes. Other Unicode fallback methods remain available.",
+          "Repair two-byte simple-font source codes by their low byte, preserving agreeing aliases and dropping conflicting aliases.",
+          "Omit invalid UTF-16 destinations atomically, including malformed surrogate sequences and odd byte counts. An invalid child definition suppresses inherited text for that source.",
+          "Repair overflowing bfrange strings with big-endian byte carry. Keep valid UTF-16 results, omit invalid ones, and stop at full-string overflow without wrapping.",
+          "On other malformed, unsupported, cyclic or budget-exceeding ToUnicode data, discard the whole map and report font.tounicode-invalid. Existing parser and output budgets remain enforced."
+        ]
+      }
+    },
+    {
+      "reference": "iso32000-2-full-text",
+      "id": "text-cmap-recovery",
+      "clauses": [
+        "9.7.4.1",
+        "9.7.4.2",
+        "9.7.5.4",
+        "9.7.6.2"
+      ],
+      "tables": [
+        "115"
+      ],
+      "status": "Bounded, reported tolerance with independent strict and repaired oracles",
+      "tests": [
+        "text/paint-cmap-identity",
+        "text/paint-cmap-codespace",
+        "text/paint-cmap-block-count",
+        "text/repair-cmap-block-count",
+        "text/repair-cmap-codespace",
+        "text/repair-cmap-codespace-wide",
+        "text/repair-cid-to-gid-identity"
+      ],
+      "gaps": "The repaired interpretation is compatibility policy, not a claim that malformed input conforms.",
+      "verification": {
+        "rule": "Embedded Type2 CIDFonts require CIDToGIDMap; CMap block counts are at most 100 and codespaces compare each byte as a rectangular bound.",
+        "implementation": "Normative departures are rejected with a repair tag in strict interpretation and reported before tolerant use.",
+        "expectations": "Independently authored Python fixtures give exact glyph IDs, widths, matrices and Unicode in both modes; no Rust output is used. Pixel fixtures independently calculate the same rectangle in actual rendered pages.",
+        "verdict": "Normative checks and explicit repair policy agree with the independent fixtures.",
+        "choices": [
+          "Repair a missing CIDToGIDMap with Identity; explicit unusable maps still fail.",
+          "Accept block counts above 100 only within entry and operation budgets; negative and mismatched counts remain invalid.",
+          "Interpret an otherwise reversed byte bound as an integer interval, split into disjoint aligned rectangular pieces without widening it. Reversed whole intervals, conflicting codespaces and ambiguous code lengths remain errors.",
+          "Strict mode rejects these painting-critical repairs with their stable tags. ToUnicode maps inherit the extraction-only discard policy."
+        ]
+      }
     }
   ],
   "primary_text_review": {
@@ -1029,5 +1128,61 @@
       "evidence": "Independent sfnt writer and known glyph IDs/outlines; ISO 9.6.5.4 verifies PDF selection routes, not the unavailable binary format specifications."
     }
   ],
-  "external_api_limits": []
+  "external_api_limits": [],
+  "repair_policy": [
+    {
+      "tag": "font.tounicode-invalid",
+      "clauses": [
+        "9.10.3"
+      ],
+      "behaviour": "Discard unusable optional extraction data in both recovery modes; never change glyph selection."
+    },
+    {
+      "tag": "font.tounicode-simple-codes",
+      "clauses": [
+        "9.10.3"
+      ],
+      "behaviour": "In repair mode use low bytes of two-byte simple-font sources; conflicting aliases have unknown Unicode. Strict discards the rejected map."
+    },
+    {
+      "tag": "font.tounicode-utf16",
+      "clauses": [
+        "9.10.3"
+      ],
+      "behaviour": "In repair mode omit invalid destinations, retaining unaffected entries and blocking invalid child overrides from resurrecting parent values. Strict discards the rejected map."
+    },
+    {
+      "tag": "font.tounicode-range",
+      "clauses": [
+        "9.10.3"
+      ],
+      "behaviour": "In repair mode increment with big-endian carry, retaining valid destinations until full-string overflow; never wrap. Strict discards the rejected map."
+    },
+    {
+      "tag": "font.cmap-block-count",
+      "clauses": [
+        "9.7.5.4"
+      ],
+      "additional_reference": "adobe-tn5014-cidfont section 7.4",
+      "behaviour": "Accept counts above 100 within existing budgets only after permission to repair."
+    },
+    {
+      "tag": "font.cmap-codespace",
+      "clauses": [
+        "9.7.6.2"
+      ],
+      "behaviour": "Split malformed rectangular bounds into an exact integer interval, accepting only non-overlapping, unambiguous pieces."
+    },
+    {
+      "tag": "font.cid-to-gid-identity",
+      "clauses": [
+        "9.7.4.1",
+        "9.7.4.2"
+      ],
+      "tables": [
+        "115"
+      ],
+      "behaviour": "Assume Identity when the required embedded Type2 CIDFont map is missing, after permission to repair."
+    }
+  ]
 }

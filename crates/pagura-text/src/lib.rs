@@ -33,6 +33,7 @@ mod metrics;
 mod objects;
 mod program;
 mod provider;
+pub mod repairs;
 mod substitute;
 
 /// Stable diagnostic tag for a host-provided outline substitution.
@@ -154,9 +155,13 @@ pub struct PdfFont {
 impl PdfFont {
     /// Loads the font dictionary `font` (already resolved) of `document`.
     ///
+    /// Faulty ToUnicode interpretations are reported and discarded without
+    /// affecting glyph selection, even in Strict mode (9.10.3). Repair mode
+    /// retains unambiguous values through the documented text repairs.
+    ///
     /// # Errors
     ///
-    /// Returns a syntax error for malformed dictionaries, `Unsupported`
+    /// Returns a syntax error for malformed painting-critical dictionaries, `Unsupported`
     /// (for example [`features::NON_EMBEDDED`]) for fonts that cannot be
     /// drawn yet, and errors from loading the font program.
     pub fn load(document: &Document, font: &Dictionary) -> Result<Self> {
@@ -302,3 +307,5 @@ impl PdfFont {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tolerance_tests;

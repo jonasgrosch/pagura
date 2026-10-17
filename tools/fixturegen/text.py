@@ -90,6 +90,38 @@ def error_case(name, font, tag, objects=()):
 
 
 def cases():
+    yield from tolerance_paint_cases()
+    yield from tolerance_cases()
+    for case in original_cases():
+        if case.name.startswith("unicode-") and ".error" in case.files:
+            from dataclasses import replace
+            files = dict(case.files)
+            if case.name in ("unicode-cid-code-length","unicode-simple-source-length"):
+                files[".matrix"] = expected([(.001,0,0,.001,0,0)])
+                length = 2 if case.name=="unicode-cid-code-length" else 1
+                data = b"\0\1" if length==2 else b"A"
+                gid = 1
+                fallback = None if length==2 else "A"
+                out = [(1 if length==2 else 65,length,1.0 if length==2 else .6,False,fallback,gid,None,None,None)]
+                repaired = [list(row) for row in out]
+                if length==1: repaired[0][4]="A"
+            else:
+                data=b"A"
+                out=[(65,1,.5,False,"A",None)]
+                repaired=[list(row) for row in out]
+                if case.name=="unicode-range-overflow":repaired[0][4]="ÿ"
+            tag = {
+                "unicode-surrogate":"font.tounicode-utf16",
+                "unicode-odd-destination":"font.tounicode-utf16",
+                "unicode-two-byte":"font.tounicode-simple-codes",
+                "unicode-simple-source-length":"font.tounicode-simple-codes",
+                "unicode-range-overflow":"font.tounicode-range",
+            }.get(case.name,"font.tounicode-invalid")
+            files.update({".input":data,".out":expected(repaired),".strict.out":expected(out),".repair":tag.encode()+b"\n"})
+            yield replace(case,files=files,requirements=tuple(dict.fromkeys((*case.requirements,"text-tounicode-recovery"))),description="Invalid ToUnicode rejects extraction in strict mode; glyph selection remains usable in both modes",extra={"driver":"unicode-fault"})
+        else: yield case
+
+def original_cases():
     yield simple_case("type3-differences", [(32, b"space", " "), (65, b"A", "A"), (66, b"uni00660069", "fi"), (67, b"u1F600", "😀"), (68, b"A_B.alt", "AB"), (90, b"unknown", None)],
                       first=65, widths=[600, 450, 1000, 750])
     yield simple_case("type3-matrix", [(65, b"A", "A"), (66, b"B", "B")], first=65, widths=[300, -100], matrix=b"[0.002 0.003 -0.004 0.005 2 3]", scale=.002)
@@ -366,7 +398,7 @@ def annex_cases():
         yield Vector("annex-"+name, {".base": name.encode(), ".out": expected([(code,names.get(code)) for code in range(256)])}, ("text-simple-encoding",), "All code-to-name slots, including undefined slots, from Annex D", {"driver": "encoding-names"})
 
 
-def embedded_document(program, *, subtype=b"TrueType", fontfile=b"/FontFile2", font_extra=b"", stream_extra=b"", encoding=b"/WinAnsiEncoding", flags=32, first=32, widths=None, cmap=None, cmap_extra=b"", unicode_map=None, cid_map=None, descendant_extra=b"", cid_subtype=b"CIDFontType2"):
+def embedded_document(program, *, subtype=b"TrueType", fontfile=b"/FontFile2", font_extra=b"", stream_extra=b"", encoding=b"/WinAnsiEncoding", flags=32, first=32, widths=None, cmap=None, cmap_extra=b"", unicode_map=None, cid_map=None, descendant_extra=b"", cid_subtype=b"CIDFontType2", omit_cid_map=False, unicode_extra=b"", parents=()):
     """PDF-level bindings; the independent font writer supplies program bytes."""
     widths = widths if widths is not None else [600] * 192
     encoding_entry = b" /Encoding " + encoding if encoding else b""
@@ -378,13 +410,13 @@ def embedded_document(program, *, subtype=b"TrueType", fontfile=b"/FontFile2", f
     root += (b" /ToUnicode 9 0 R" if unicode_map is not None else b"") + b" " + font_extra + b" >>"
     descriptor = b"<< /Type /FontDescriptor /FontName /Fixture /Flags %d /FontBBox [0 0 300 300] /ItalicAngle 0 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 " % flags + fontfile + b" 6 0 R >>"
     descendant = b"<< /Type /Font /Subtype /" + cid_subtype + b" /BaseFont /Fixture /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 5 0 R " + descendant_extra
-    if cid_subtype == b"CIDFontType2":
+    if cid_subtype == b"CIDFontType2" and not omit_cid_map:
         descendant += b" /CIDToGIDMap 10 0 R" if cid_map is not None else b" /CIDToGIDMap /Identity"
     descendant += b" >>"
     return pdf(root, [descriptor, stream(program,stream_extra), descendant,
                      stream(cmap,b"/Type /CMap /CMapName /Fixture /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> " + cmap_extra) if cmap is not None else b"null",
-                     stream(unicode_map) if unicode_map is not None else b"null",
-                     stream(cid_map) if cid_map is not None else b"null"])
+                     stream(unicode_map,unicode_extra) if unicode_map is not None else b"null",
+                     stream(cid_map) if cid_map is not None else b"null", *parents])
 
 
 def binding_vector(name, program, data, rows, *, matrix=(.001,0,0,.001,0,0), requirements=("text-embedded-fonts",), **options):
@@ -783,3 +815,117 @@ def substitution_cases(data, lock):
     for name,base,flags in [("unsafe-symbolic","UnknownSymbol",4),("unsafe-symbolic-both","UnknownSymbol",36),("unsafe-symbolic-known-base","Arial",4)]:
         font = b"<< /Type /Font /Subtype /TrueType /BaseFont /"+base.encode()+b" /FontDescriptor 5 0 R /Encoding /WinAnsiEncoding /FirstChar 65 /LastChar 65 /Widths [731] >>"
         yield Vector("substitute-"+name,{".pdf":pdf(font,[b"<< /Flags %d >>" % flags]),".error":b"font.non-embedded\n"},("text-font-substitution",),"Unsafe symbolic substitution fails explicitly",{"driver":"provider-error"})
+
+
+def tolerance_cases():
+    """Paired strict extraction rejections and exact tolerant glyph outcomes.
+
+    Malformed input is independently constructed. Expected code, Unicode,
+    advance, glyph ID and matrix never come from the product executable.
+    """
+    from .font import truetype
+    program = text_truetype([(3,1,{65:1,66:2,67:3,68:4})],names=(b"A",b"B",b"C",b"D"))
+    cid_program = without_sfnt_tables(truetype(),{b"cmap"})
+    space = b"1 begincodespacerange <00> <ff> endcodespacerange "
+    def row(code,glyph,text=None,*,width=.6,length=1):
+        return (code,length,width,code==32 and length==1,text,glyph,None,None,None)
+    def vector(name, tags, inp, repaired, strict=None, *, cmap=None, **options):
+        selected = cid_program if options.get("subtype")==b"Type0" else program
+        files = {".pdf":embedded_document(selected,stream_extra=b"/Length1 %d" % len(selected),cmap=cmap,**options),
+                 ".input":inp,".out":expected(repaired),".repair":("\n".join(tags)+"\n").encode(),".matrix":expected([(.001,0,0,.001,0,0)])}
+        if strict is not None: files[".strict.out"] = expected(strict)
+        return Vector(name,files,("text-tounicode-recovery",) if strict is not None else ("text-cmap-recovery",),
+                      "Reported tolerance preserves usable mappings and glyph selection; exact strict and repaired outcomes",{"driver":"text-repair","extraction_only":strict is not None})
+    original = [row(65,1,"A"),row(66,2,"B"),row(67,3,"C"),row(68,4,"D")]
+    for name, sources in [("simple",b"<0041> <005A> <0142> <03A9>"),("mixed-sources",b"<41> <005A> <0142> <03A9>")]:
+        cmap=b"1 begincodespacerange <0000> <ffff> endcodespacerange 2 beginbfchar "+sources+b" endbfchar"
+        yield vector("repair-tounicode-"+name,["font.tounicode-simple-codes"],b"AB",[row(65,1,"Z"),row(66,2,"Ω")],original[:2],unicode_map=cmap)
+    cmap=b"1 begincodespacerange <0000> <ffff> endcodespacerange 3 beginbfchar <0041> <005A> <0141> <03A9> <0042> <0059> endbfchar"
+    yield vector("repair-tounicode-alias-conflict",["font.tounicode-simple-codes"],b"AB",[row(65,1,"A"),row(66,2,"Y")],original[:2],unicode_map=cmap)
+    cmap=space+b"5 beginbfchar <41> <005A> <42> <D800> <43> <DC00> <44> <00> <45> <D83DDE00> endbfchar"
+    yield vector("repair-tounicode-utf16",["font.tounicode-utf16"],b"ABCDE",[row(65,1,"Z"),*original[1:],row(69,0,"😀")],[*original,row(69,0,"E")],unicode_map=cmap)
+    cmap=space+b"1 beginbfrange <41> <44> <00FE> endbfrange"
+    yield vector("repair-tounicode-range",["font.tounicode-range"],b"ABCD",[row(65+i,i+1,chr(254+i)) for i in range(4)],original,unicode_map=cmap)
+    cmap=space+b"1 beginbfrange <41> <43> <FFFF> endbfrange"
+    yield vector("repair-tounicode-range-end",["font.tounicode-range"],b"ABC",[row(65,1,chr(65535)),*original[1:3]],original[:3],unicode_map=cmap)
+    cmap=space+b"1 beginbfrange <41> <44> <D7FF> endbfrange"
+    yield vector("repair-tounicode-range-surrogates",["font.tounicode-range","font.tounicode-utf16"],b"ABCD",[row(65,1,chr(0xd7ff)),*original[1:]],original,unicode_map=cmap)
+    parent=space+b"2 beginbfchar <41> <0058> <42> <0059> endbfchar"
+    child=b"1 beginbfchar <41> <D800> endbfchar"
+    yield vector("repair-tounicode-parent-invalid",["font.tounicode-utf16"],b"AB",[row(65,1,"A"),row(66,2,"Y")],original[:2],unicode_map=child,unicode_extra=b"/UseCMap 11 0 R",parents=[stream(parent)])
+    block=b"101 beginbfchar "+b" ".join(b"<%02X> <%04X>" % (i,256+i) for i in range(101))+b" endbfchar"
+    yield vector("repair-tounicode-block-count",["font.cmap-block-count"],b"AB",[row(65,1,chr(321)),row(66,2,chr(322))],original[:2],unicode_map=space+block)
+    for name,cmap,extra,options in [
+        ("cycle",b"",b"/UseCMap 9 0 R",{}),
+        ("unsupported",b"run",b"",{}),
+        ("truncated",space+b"2 beginbfchar <41> <005A> endbfchar",b"",{}),
+        ("limit",b"1 begincodespacerange <00000000> <ffffffff> endcodespacerange 1 beginbfrange <00000000> <ffffffff> <0041> endbfrange",b"",{}),
+        ("object",None,b"",{"font_extra":b"/ToUnicode false"}),
+    ]:
+        yield vector("repair-tounicode-"+name,["font.tounicode-invalid"],b"A",original[:1],original[:1],unicode_map=cmap,unicode_extra=extra,**options)
+    widths=b"/DW 600 /W [1 [500 600 700 800]]"
+    block=b"1 begincodespacerange <0000> <ffff> endcodespacerange 101 begincidchar "+b" ".join(b"<%04X> %d" % (i,1+i%4) for i in range(101))+b" endcidchar"
+    yield vector("repair-cmap-block-count",["font.cmap-block-count"],b"\0@\0A",[row(64,1,width=.5,length=2),row(65,2,width=.6,length=2)],subtype=b"Type0",encoding=b"8 0 R",cmap=block,descendant_extra=widths)
+    cmap=b"1 begincodespacerange <00ff> <0102> endcodespacerange 1 begincidrange <00ff> <0103> 1 endcidrange"
+    inp=b"".join(code.to_bytes(2,"big") for code in range(255,260))
+    result=[row(255+i,i+1,width=.5+.1*i,length=2) for i in range(4)]+[row(259,0,length=2)]
+    yield vector("repair-cmap-codespace",["font.cmap-codespace"],inp,result,subtype=b"Type0",encoding=b"8 0 R",cmap=cmap,descendant_extra=widths)
+    cmap=b"1 begincodespacerange <00ff> <0102> endcodespacerange 1 beginbfrange <00ff> <0102> <0057> endbfrange"
+    inp=b"".join(code.to_bytes(2,"big") for code in range(255,259))
+    cidmap=bytearray(259*2)
+    for i in range(4):cidmap[(255+i)*2:(256+i)*2]=(i+1).to_bytes(2,"big")
+    result=[row(255+i,i+1,chr(87+i),width=.5+.1*i,length=2) for i in range(4)]
+    strict=[row(255+i,i+1,width=.5+.1*i,length=2) for i in range(4)]
+    # Widths belong to CIDs 255..258, independently of replacement GIDs.
+    yield vector("repair-tounicode-codespace",["font.cmap-codespace"],inp,result,strict,subtype=b"Type0",encoding=b"/Identity-H",cid_map=bytes(cidmap),unicode_map=cmap,descendant_extra=b"/W [255 [500 600 700 800]]")
+    lo,hi=0x00ffffff,0x01000002
+    cmap=b"1 begincodespacerange <00ffffff> <01000002> endcodespacerange 1 begincidrange <00ffffff> <01000002> 1 endcidrange"
+    inp=b"".join(code.to_bytes(4,"big") for code in range(lo,hi+2))
+    result=[row(lo+i,i+1,width=.5+.1*i,length=4) for i in range(4)]+[row(hi+1,0,length=4)]
+    yield vector("repair-cmap-codespace-wide",["font.cmap-codespace"],inp,result,subtype=b"Type0",encoding=b"8 0 R",cmap=cmap,descendant_extra=widths)
+    # One more distinct failure than the retained diagnostic cap (ADR 0012),
+    # followed by the simple-code repair: 1024 retained, two suppressed.
+    blocks=[]
+    for start in range(0,1025,100):
+        values=range(start,min(start+100,1025))
+        blocks.append(b"%d beginbfchar " % len(values)+b" ".join(b"<%04X> <D800>" % code for code in values)+b" endbfchar")
+    cmap=b"1 begincodespacerange <0000> <ffff> endcodespacerange "+b" ".join(blocks)
+    yield Vector("repair-tounicode-diagnostic-cap",{".pdf":embedded_document(program,stream_extra=b"/Length1 %d" % len(program),unicode_map=cmap),".out":expected([(1024,2)])},("text-tounicode-recovery",),"Unicode faults use the bounded document diagnostic sink without accumulating a temporary error list",{"driver":"diagnostic-cap"})
+    inp=b"\0\1\0\2\0\3\0\4\0\5"
+    result=[row(i,i,width=.4+.1*i,length=2) for i in range(1,5)]+[row(5,0,length=2)]
+    yield vector("repair-cid-to-gid-identity",["font.cid-to-gid-identity"],inp,result,subtype=b"Type0",encoding=b"/Identity-H",omit_cid_map=True,descendant_extra=widths)
+
+
+def tolerance_paint_cases():
+    """Actual page pixels prove optional Unicode never selects the outline."""
+    from .paint import ttf, page
+    from .model import Case, RENDER
+    from .pdf import opaque_rectangles
+    oracle=opaque_rectangles(32,32,[((4,4,8,12),(0,0,0))])
+    space=b"1 begincodespacerange <00> <ff> endcodespacerange "
+    block=b"101 beginbfchar "+b" ".join(b"<%02X> <%04X>" % (i,256+i) for i in range(101))+b" endbfchar"
+    for name,cmap,tag in [
+        ("simple",b"1 begincodespacerange <0000> <ffff> endcodespacerange 1 beginbfchar <0041> <005A> endbfchar","font.tounicode-simple-codes"),
+        ("utf16",space+b"1 beginbfchar <41> <D800> endbfchar","font.tounicode-utf16"),
+        ("range",space+b"1 beginbfrange <41> <42> <00FF> endbfrange","font.tounicode-range"),
+        ("block-count",space+block,"font.cmap-block-count"),
+        ("invalid",b"run","font.tounicode-invalid"),
+    ]:
+        objects=ttf()
+        objects[0]=objects[0][:-2]+b" /ToUnicode 8 0 R >>"
+        objects.append(stream(cmap))
+        yield Case("paint-tounicode-"+name,page(b"BT /F 20 Tf 4 4 Td (A) Tj ET",objects,b"<< /Font << /F 5 0 R >> >>"),RENDER,
+                   ("text-tounicode-recovery",),"Invalid extraction data leaves the same analytic rectangle glyph",oracle=oracle,repairs=(tag,))
+    for name,cmap,tag in [
+        ("identity",None,"font.cid-to-gid-identity"),
+        ("codespace",b"1 begincodespacerange <00ff> <0102> endcodespacerange 1 begincidchar <00ff> 1 endcidchar","font.cmap-codespace"),
+        ("block-count",b"1 begincodespacerange <0000> <ffff> endcodespacerange 101 begincidchar "+b" ".join(b"<%04X> 1" % i for i in range(101))+b" endcidchar","font.cmap-block-count"),
+    ]:
+        original=ttf()
+        font=b"<< /Type /Font /Subtype /Type0 /BaseFont /Rect /DescendantFonts [8 0 R] /Encoding "+(b"9 0 R" if cmap else b"/Identity-H")+b" >>"
+        descendant=b"<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Rect /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 6 0 R /DW 400 "+(b"/CIDToGIDMap /Identity" if cmap else b"")+b" >>"
+        objects=[font,*original[1:],descendant]
+        if cmap:objects.append(stream(cmap,b"/CMapName /Fixture /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >>"))
+        code=b"00ff" if name=="codespace" else b"0001"
+        yield Case("paint-cmap-"+name,page(b"BT /F 20 Tf 4 4 Td <"+code+b"> Tj ET",objects,b"<< /Font << /F 5 0 R >> >>"),RENDER,
+                   ("text-cmap-recovery",),"A reported font/CMap repair paints the exact rectangle; strict rejects it",oracle=oracle,repairs=(tag,),strict_valid=False)
