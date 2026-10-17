@@ -55,14 +55,19 @@ pub(crate) fn ascii85(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -
             continue;
         }
         if byte == b'~' {
-            match input.get(offset + 1) {
-                Some(b'>') => {
-                    end = offset + 2;
+            // Clause 7.4.3 ignores all PDF whitespace, including within EOD.
+            let next = input
+                .get(offset + 1..)
+                .and_then(|tail| tail.iter().position(|&byte| !is_whitespace(byte)))
+                .map(|index| offset + 1 + index);
+            match next.and_then(|index| input.get(index).copied().map(|byte| (index, byte))) {
+                Some((index, b'>')) => {
+                    end = index + 1;
                     terminated = true;
                     break;
                 }
                 None => break,
-                _ => return Err(syntax("invalid ASCII85 end marker", offset)),
+                Some((index, _)) => return Err(syntax("invalid ASCII85 end marker", index)),
             }
         }
         if byte == b'z' {

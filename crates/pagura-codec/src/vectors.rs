@@ -1,6 +1,6 @@
 //! Generated vector tests; all expected bytes originate outside Pagura.
-use crate::{Filter, Predictor, PredictorKind};
-use pagura_core::{Diagnostics, ErrorKind, Position, Recovery};
+use crate::{Filter, FilterChain, features};
+use pagura_core::{Diagnostics, Dictionary, ErrorKind, Name, Position, Recovery, Value};
 use pagura_testkit::{assert_bytes_eq, fixture, fixture_path};
 use std::collections::BTreeMap;
 
@@ -15,29 +15,75 @@ fn options(name: &str) -> BTreeMap<String, String> {
         .collect()
 }
 
-fn filter(params: &BTreeMap<String, String>) -> Filter {
-    let value = |key: &str, default: u32| params.get(key).map_or(default, |s| s.parse().unwrap());
-    let predictor = Predictor {
-        kind: match value("predictor", 1) {
-            1 => PredictorKind::None,
-            2 => PredictorKind::Tiff,
-            _ => PredictorKind::Png,
-        },
-        colors: u8::try_from(value("colors", 1)).unwrap(),
-        bits_per_component: u8::try_from(value("bits", 8)).unwrap(),
-        columns: value("columns", 1),
+fn chain(params: &BTreeMap<String, String>) -> pagura_core::Result<FilterChain> {
+    let value = |text: &str| match text {
+        "null" => Value::Null,
+        "true" => Value::Boolean(true),
+        _ if text.starts_with('/') => Value::name(text.trim_start_matches('/').as_bytes()),
+        _ => Value::Integer(text.parse().unwrap()),
     };
-    match params["filter"].as_str() {
-        "FlateDecode" => Filter::Flate { predictor },
-        "LZWDecode" => Filter::Lzw {
-            predictor,
-            early_change: value("early", 1) == 1,
-        },
-        "ASCII85Decode" => Filter::Ascii85,
-        "ASCIIHexDecode" => Filter::AsciiHex,
-        "RunLengthDecode" => Filter::RunLength,
-        name => panic!("unknown fixture filter {name}"),
+    let dictionary: Dictionary = [
+        ("predictor", b"Predictor".as_slice()),
+        ("colors", b"Colors"),
+        ("bits", b"BitsPerComponent"),
+        ("columns", b"Columns"),
+        ("early", b"EarlyChange"),
+        ("crypt_type", b"Type"),
+        ("crypt_name", b"Name"),
+    ]
+    .into_iter()
+    .filter_map(|(key, name)| params.get(key).map(|text| (Name::new(name), value(text))))
+    .collect();
+    let names: Vec<_> = params["filter"]
+        .split(',')
+        .map(|name| Value::name(name.as_bytes()))
+        .collect();
+    let entries = Value::Array(names);
+    let decode_params = Value::Array(
+        entries
+            .as_array()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .map(|(index, _)| {
+                if index == 0 {
+                    Value::Dictionary(dictionary.clone())
+                } else {
+                    Value::Null
+                }
+            })
+            .collect(),
+    );
+    FilterChain::from_entries(Some(&entries), Some(&decode_params))
+}
+
+fn error_kind(outcome: &str) -> ErrorKind {
+    match outcome {
+        "limit" => ErrorKind::Limit,
+        "unsupported-dimensions" => ErrorKind::Unsupported(features::PREDICTOR_DIMENSIONS),
+        _ => ErrorKind::Syntax,
     }
+}
+
+fn assert_error_position(error: &pagura_core::Error, parameter_error: bool, name: &str) {
+    if parameter_error {
+        assert_eq!(error.position, Position::Unknown, "{name}: {error}");
+    } else {
+        assert!(
+            matches!(error.position, Position::Buffer(_)),
+            "{name}: {error}"
+        );
+    }
+}
+
+fn assert_repair_rejection(error: &pagura_core::Error, tag: &str, name: &str) {
+    assert_eq!(error.kind, ErrorKind::Syntax, "{name}: {error}");
+    assert!(matches!(error.position, Position::Buffer(_)), "{name}");
+    assert_eq!(
+        error.repair.map(pagura_core::Repair::as_str),
+        Some(tag),
+        "{name}"
+    );
 }
 
 #[test]
@@ -55,15 +101,27 @@ fn independent_vectors_exact_errors_repairs_and_caps() {
     assert!(names.len() > 200);
     for name in names {
         let params = options(&name);
-        let filter = filter(&params);
+        let chain = chain(&params);
         let encoded = fixture("codec", &format!("{name}.in"));
         let expected = fixture("codec", &format!("{name}.out"));
         let cap = params["cap"].parse().unwrap();
-        let decode = |cap, diagnostics: &mut Diagnostics| {
+        let decode = |cap, diagnostics: &mut Diagnostics| -> pagura_core::Result<Vec<u8>> {
+            let chain = chain.as_ref().map_err(Clone::clone)?;
             if params.get("raw").is_some_and(|s| s == "1") {
-                crate::decode_raw_deflate(&encoded, cap, Predictor::default(), diagnostics)
+                let Some(Filter::Flate { predictor }) = chain.filters().first() else {
+                    panic!("invalid raw fixture");
+                };
+                crate::decode_raw_deflate(&encoded, cap, *predictor, diagnostics)
+            } else if params.get("take_crypt").is_some_and(|s| s == "1") {
+                let mut chain = chain.clone();
+                assert!(matches!(chain.take_crypt(), Some(None)), "{name}");
+                chain
+                    .decode(&encoded, cap, diagnostics)
+                    .map(std::borrow::Cow::into_owned)
             } else {
-                filter.decode(&encoded, cap, diagnostics)
+                chain
+                    .decode(&encoded, cap, diagnostics)
+                    .map(std::borrow::Cow::into_owned)
             }
         };
         let mut strict = Diagnostics::new(Recovery::Strict);
@@ -81,8 +139,7 @@ fn independent_vectors_exact_errors_repairs_and_caps() {
             }
             "valid" => {
                 let error = result.unwrap_err();
-                assert_eq!(error.kind, ErrorKind::Syntax, "{name}: {error}");
-                assert!(matches!(error.position, Position::Buffer(_)), "{name}");
+                assert_repair_rejection(&error, &params["repair"], &name);
                 let mut diagnostics = Diagnostics::default();
                 let actual =
                     decode(cap, &mut diagnostics).unwrap_or_else(|e| panic!("{name}: {e}"));
@@ -113,18 +170,11 @@ fn independent_vectors_exact_errors_repairs_and_caps() {
             }
             outcome => {
                 let error = result.unwrap_err();
-                assert_eq!(
-                    error.kind,
-                    if outcome == "limit" {
-                        ErrorKind::Limit
-                    } else {
-                        ErrorKind::Syntax
-                    },
-                    "{name}: {error}"
-                );
-                assert!(
-                    matches!(error.position, Position::Buffer(_)),
-                    "{name}: {error}"
+                assert_eq!(error.kind, error_kind(outcome), "{name}: {error}");
+                assert_error_position(
+                    &error,
+                    params.get("parameter_error").is_some_and(|s| s == "1"),
+                    &name,
                 );
                 assert_eq!(
                     decode(cap, &mut Diagnostics::default()).unwrap_err().kind,
@@ -143,14 +193,14 @@ fn malformed_small_inputs_never_panic_or_exceed_cap() {
         Filter::Ascii85,
         Filter::RunLength,
         Filter::Flate {
-            predictor: Predictor::default(),
+            predictor: crate::Predictor::default(),
         },
         Filter::Lzw {
-            predictor: Predictor::default(),
+            predictor: crate::Predictor::default(),
             early_change: false,
         },
         Filter::Lzw {
-            predictor: Predictor::default(),
+            predictor: crate::Predictor::default(),
             early_change: true,
         },
     ];

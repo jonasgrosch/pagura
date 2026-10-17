@@ -1,0 +1,6 @@
+filter=Crypt,ASCIIHexDecode
+outcome=valid
+repair=none
+cap=1
+crypt_type=/CryptFilterDecodeParms
+take_crypt=1

@@ -1,57 +1,208 @@
 {
   "schema": 2,
   "area": "codec",
-  "scope": "ISO 32000-2 clause locators from format knowledge; local full text unavailable and no network used. RFC 1950/1951 and PNG/TIFF locators also await primary-text review.",
+  "scope": "Verified the PDF-specific rules and locators in ISO 32000-2:2020(E), sponsored edition including Errata Collection 3: 7.4.1-7.4.5, 7.4.10, Tables 6-10 and 14, with parameter/chain context in 7.3.7-7.3.9 and Table 5 and whitespace in 7.2.3 Table 1. Image-codec clauses 7.4.6-7.4.9 are excluded. RFC 1950/1951, PNG and TIFF primary texts were unavailable and remain explicitly pending. Output caps and recovery are verified only as project policy, not ISO requirements; documented choices are not normative verdicts.",
+  "verification_source": {
+    "reference": "iso32000-2-full-text",
+    "edition": "ISO 32000-2:2020(E), sponsored edition including Errata Collection 3",
+    "errata": "The supplied supplements #300/#327 affect numeric syntax and #379 affects indirect identifiers; none of the supplied supplements changes clause 7.4."
+  },
   "requirements": [
     {
       "id": "filter-flate",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "7.4.4",
-        "RFC 1950 2.2",
-        "RFC 1951 3.2"
+        "7.4.1",
+        "7.4.4.1",
+        "7.4.4.3",
+        "7.3.7",
+        "7.3.9"
       ],
-      "status": "implemented",
+      "tables": [
+        6,
+        8
+      ],
+      "status": "partial",
+      "verdict": "locator corrected",
+      "rules": [
+        {
+          "locator": "7.4.1, Table 6; 7.4.4.1",
+          "rule": "FlateDecode denotes the zlib/DEFLATE method defined by RFC 1950 and RFC 1951.",
+          "implementation": "Agrees at the PDF boundary: wrapped data decodes, automatic raw fallback is a reported repair.",
+          "fixtures": "Agrees: zlib level/strategy cases and flate-raw-repair-fixed; this does not certify RFC bitstream details.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "7.4.4.3, Table 8",
+          "rule": "Flate uses Predictor=1, Colors=1, BitsPerComponent=8 and Columns=1 when parameters are absent.",
+          "implementation": "Agrees for representable dimensions; EarlyChange is not a Flate parameter.",
+          "fixtures": "Agrees: default Flate vectors and predictor grids.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "7.3.7; 7.3.9; 7.4.4.3, Table 8",
+          "rule": "A null-valued parameter is absent and therefore takes its default.",
+          "implementation": "Agrees after fixing null predictor parameters.",
+          "fixtures": "Agrees: flate-null-predictor-parameters.",
+          "verdict": "discrepancy fixed"
+        }
+      ],
       "tests": [
         "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
       ],
-      "gaps": "Primary-text clause verification pending, especially RFC 1951 code 284 extra=31. Valid zlib headers win automatic format detection; explicitly raw containers use decode_raw_deflate for header collisions."
+      "gaps": "RFC framing, checksum, dictionary and DEFLATE coding details remain pending external primary-text review; positive dimensions outside the public representation remain Unsupported(predictor.dimensions).",
+      "documented_choices": [
+        "A valid zlib header wins detection; explicitly raw containers use decode_raw_deflate for header collisions.",
+        "Preset-dictionary rejection and the code-284 extra=31 rejection are existing implementation decisions awaiting RFC review, not verified ISO prohibitions."
+      ],
+      "external_primary_review": [
+        {
+          "reference": "RFC 1950",
+          "locator": "2.2, 2.3",
+          "verdict": "pending",
+          "reason": "Primary text is not available locally; ISO citation and executable oracles do not verify the external specification."
+        },
+        {
+          "reference": "RFC 1951",
+          "locator": "3.2",
+          "verdict": "pending",
+          "reason": "Primary text is not available locally; ISO citation and executable oracles do not verify the external specification."
+        }
+      ]
     },
     {
       "id": "filter-lzw",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "7.4.4.2"
+        "7.4.1",
+        "7.4.4.2",
+        "7.4.4.3",
+        "7.3.7",
+        "7.3.9"
       ],
-      "status": "implemented",
+      "tables": [
+        6,
+        7,
+        8
+      ],
+      "status": "partial",
+      "verdict": "discrepancy fixed",
+      "rules": [
+        {
+          "locator": "7.4.4.2, Table 7",
+          "rule": "LZW starts with clear=256, represents byte literals with 0..255, and ends with code 257.",
+          "implementation": "Agrees: initial clear is required, clears reset the dictionary and width, and EOD ends decoding.",
+          "fixtures": "Agrees: empty, special-phrase, reset and literal-only boundary vectors.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "7.4.4.2; 7.4.4.3, Table 8",
+          "rule": "Codes are MSB-first, grow from 9 to at most 12 bits, and EarlyChange=1 advances each width transition by one code relative to 0.",
+          "implementation": "Agrees for both EarlyChange values; default is 1.",
+          "fixtures": "Agrees: lzw-iso-ec*-literal-boundary-* independently packs literal ordinals around width transitions.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "7.4.4.2, final paragraph",
+          "rule": "A full encoder dictionary must be cleared before encoding more data.",
+          "implementation": "Strict rejects continued full-table data with filter.lzw-full-table; Repair freezes the full dictionary until clear/EOD and reports once per stream.",
+          "fixtures": "Conforming lzw-iso-ec*-full-clear has no diagnostic; missing-full-clear and frozen-table cases assert tagged Strict rejection and exact independently generated Repair output. frozen-entry4095-clear covers stable entries and a second full episode after clear with one diagnostic.",
+          "verdict": "discrepancy fixed"
+        },
+        {
+          "locator": "7.4.4.2, bit-packing paragraph",
+          "rule": "Unused bits in the EOD byte are zero.",
+          "implementation": "Strict rejects nonzero residual bits with filter.lzw-padding; Repair ignores those bits and reports the fault.",
+          "fixtures": "lzw-eod-nonzero-padding and lzw-eod-nonzero-padding-literal assert tagged Strict rejection and exact Repair output; valid streams retain zero padding.",
+          "verdict": "discrepancy fixed"
+        },
+        {
+          "locator": "7.3.7; 7.3.9; 7.4.4.3, Table 8",
+          "rule": "Null decode parameters use defaults, including EarlyChange=1.",
+          "implementation": "Agrees after fixing null EarlyChange and predictor values.",
+          "fixtures": "Agrees: lzw-null-predictor-parameters.",
+          "verdict": "discrepancy fixed"
+        }
+      ],
       "tests": [
         "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
       ],
-      "gaps": "Primary-text clause verification pending; no broad conformance claim."
+      "gaps": "No external TIFF LZW compatibility or external format conformance is implied. Positive dimensions beyond the public predictor fields remain unsupported.",
+      "documented_choices": [
+        "filter.lzw-full-table: ISO 7.4.4.2 requires an encoder clear when full. Strict rejects with this repair tag; Repair completes the decoder-lag entry and freezes codes through 4095, without subsequent insertion until clear/EOD. It records the repair once per stream, including across later clear codes. This recovery is project policy, not ISO permission.",
+        "filter.lzw-padding: ISO 7.4.4.2 requires zero unused EOD bits. Strict rejects with this repair tag; Repair ignores nonzero residual bits and records the deviation. This recovery is project policy, not ISO permission."
+      ]
     },
     {
       "id": "filter-ascii85",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "7.4.3"
+        "7.4.3",
+        "7.2.3"
+      ],
+      "tables": [
+        6,
+        1
       ],
       "status": "implemented",
+      "verdict": "discrepancy fixed",
+      "rules": [
+        {
+          "locator": "7.4.3, conversion equation and final partial-group paragraphs",
+          "rule": "Four bytes map to five base-85 digits; a partial binary group is zero-filled during encoding and emits only n+1 digits.",
+          "implementation": "Agrees, including maximum byte values and final groups of two to four digits.",
+          "fixtures": "Agrees: a85-partial-* and a85-iso-max-partial-1 through -4 derive the conversion independently.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "7.4.3, invalid-combination list",
+          "rule": "Out-of-range full groups, z inside a group, and one-digit final groups are invalid.",
+          "implementation": "Agrees: all three are Syntax errors.",
+          "fixtures": "Agrees: a85-invalid-* covers overflow, misplaced z and a one-digit tail.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "7.4.3; 7.2.3, Table 1",
+          "rule": "ASCII85 ignores PDF whitespace and uses z for a full zero group and the ~> marker to terminate.",
+          "implementation": "Agrees after fixing whitespace handling between the EOD marker characters, consistent with the clause-wide whitespace rule.",
+          "fixtures": "Agrees: a85-z-whitespace, a85-eod-whitespace and truncated/trailing cases.",
+          "verdict": "discrepancy fixed"
+        }
+      ],
       "tests": [
         "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
       ],
-      "gaps": "Primary-text clause verification pending; no broad conformance claim."
+      "gaps": "",
+      "documented_choices": [
+        "Five zero digits are accepted for a zero group although the clause describes encoding that group as z; acceptance of that noncanonical spelling is a documented decoder choice."
+      ]
     },
     {
       "id": "filter-asciihex",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "7.4.2"
+        "7.4.2",
+        "7.2.3"
+      ],
+      "tables": [
+        6,
+        1
       ],
       "status": "implemented",
+      "verdict": "verified",
+      "rules": [
+        {
+          "locator": "7.4.2; 7.2.3, Table 1",
+          "rule": "Pairs of case-insensitive hexadecimal digits produce bytes, whitespace is ignored, > ends data, and an odd last digit has a low zero nibble.",
+          "implementation": "Agrees: invalid non-hex input is Syntax; missing termination is a reported repair.",
+          "fixtures": "Agrees: hex-binascii, hex-odd-whitespace, hex-invalid and hex-missing-end.",
+          "verdict": "verified"
+        }
+      ],
       "tests": [
         "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
       ],
-      "gaps": "Primary-text clause verification pending; no broad conformance claim."
+      "gaps": ""
     },
     {
       "id": "filter-runlength",
@@ -59,61 +210,235 @@
       "clauses": [
         "7.4.5"
       ],
+      "tables": [
+        6
+      ],
       "status": "implemented",
+      "verdict": "verified",
+      "rules": [
+        {
+          "locator": "7.4.5",
+          "rule": "Tags 0..127 copy the next tag+1 bytes, tags 129..255 repeat one byte 257-tag times, and 128 ends the stream.",
+          "implementation": "Agrees with all packet branches and bounds; truncation goes through reported repair.",
+          "fixtures": "Agrees: run-literals, run-repeats, run-truncated and run-repeat-truncated.",
+          "verdict": "verified"
+        }
+      ],
       "tests": [
         "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
       ],
-      "gaps": "Primary-text clause verification pending; no broad conformance claim."
+      "gaps": ""
     },
     {
       "id": "predictor-png",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "7.4.4.4",
-        "PNG 9"
+        "7.4.4.3",
+        "7.4.4.4"
       ],
-      "status": "implemented",
+      "tables": [
+        8,
+        9,
+        10
+      ],
+      "status": "partial",
+      "verdict": "verified",
+      "rules": [
+        {
+          "locator": "7.4.4.3, Table 8",
+          "rule": "Predictor defaults to 1; prediction uses positive color counts, a row sample count, and component depths 1/2/4/8/16.",
+          "implementation": "Agrees for representable dimensions; overlarge positive fields explicitly return Unsupported.",
+          "fixtures": "Agrees: PNG grid spans all component depths and color counts 1/3/5/255.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "7.4.4.4, Tables 9 and 10",
+          "rule": "All Predictor values 10..15 select PNG decoding, with the incoming row tag choosing the algorithm even when the parameter differs from the encoder selection.",
+          "implementation": "Agrees: no fixed-tag enforcement is required for values 10..14.",
+          "fixtures": "Agrees: png-iso-row-tag-predictor-10 through -15 each use Up-tagged rows.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "7.4.4.4, common assumptions and group differences",
+          "rule": "Rows are byte-rounded and high-bit-first, PNG prediction acts on bytes, and out-of-image neighbors are zero.",
+          "implementation": "Agrees with row layout, byte-wise reversal and boundary handling.",
+          "fixtures": "Agrees: packed/16-bit grids and predictor-png-distance-beyond-cap.",
+          "verdict": "verified"
+        }
+      ],
       "tests": [
         "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
       ],
-      "gaps": "Positive Colors >255 or Columns >u32::MAX require a coordinated stable API widening; currently Unsupported(predictor.dimensions). Primary-text clause verification pending."
+      "gaps": "Exact PNG algorithm arithmetic, including Average rounding and Paeth tie-breaking, remains pending review of the external PNG text; Colors>255 and Columns>u32::MAX exceed the current public fields.",
+      "documented_choices": [
+        "A partial row or a lone final tag is rejected rather than synthesizing samples.",
+        "Unused final-byte padding bits are preserved; no claim is made that the external predictor text requires this policy.",
+        "Supplied dimension fields are validated even with Predictor=1; ISO does not separately prescribe that validation policy.",
+        "Columns<=0 is rejected to ensure a nonempty row; Table 8 gives a row sample count but no separate explicit numeric minimum."
+      ],
+      "external_primary_review": [
+        {
+          "reference": "PNG / ISO/IEC 15948:2004",
+          "locator": "PNG filter method and algorithms (section number pending)",
+          "verdict": "pending",
+          "reason": "Primary text is not available locally; ISO citation and executable oracles do not verify the external specification."
+        }
+      ]
     },
     {
       "id": "predictor-tiff",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "7.4.4.4",
-        "TIFF 6.0 Predictor 2"
+        "7.4.4.3",
+        "7.4.4.4"
       ],
-      "status": "implemented",
+      "tables": [
+        8,
+        10
+      ],
+      "status": "partial",
+      "verdict": "verified",
+      "rules": [
+        {
+          "locator": "7.4.4.4, TIFF paragraph and final group-difference bullet",
+          "rule": "Predictor=2 uses the prior component of the same color to the left, accounting for component depth and components per sample, with no row tag.",
+          "implementation": "Agrees with interleaved sample-wise reversal for 1/2/4/8/16 bits.",
+          "fixtures": "Agrees: TIFF grid, tiff-padding-preserved and predictor-tiff-ring-wrap.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "7.4.4.4, common assumptions",
+          "rule": "Rows are whole-byte, high-bit-first sequences and components outside the image are zero.",
+          "implementation": "Agrees with checked layout, packing and left boundary handling.",
+          "fixtures": "Agrees: odd-width packed grids and independent sample encoding.",
+          "verdict": "verified"
+        }
+      ],
       "tests": [
         "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
       ],
-      "gaps": "Positive Colors >255 or Columns >u32::MAX require a coordinated stable API widening; currently Unsupported(predictor.dimensions). Primary-text clause verification pending."
+      "gaps": "TIFF 6.0 Predictor 2 external arithmetic details remain pending; Colors>255 and Columns>u32::MAX exceed the public fields.",
+      "documented_choices": [
+        "Unused row padding bits are preserved and partial rows rejected; these policies are not asserted as external-TIFF-verified.",
+        "Columns<=0 is rejected to ensure a nonempty row; Table 8 gives a row sample count but no separate explicit numeric minimum."
+      ],
+      "external_primary_review": [
+        {
+          "reference": "Adobe TIFF Revision 6.0",
+          "locator": "Predictor 2 (section number pending)",
+          "verdict": "pending",
+          "reason": "Primary text is not available locally; ISO citation and executable oracles do not verify the external specification."
+        }
+      ]
     },
     {
       "id": "decoder-output-cap",
-      "reference": "iso32000-2-full-text",
-      "clauses": [
-        "7.4"
-      ],
+      "reference": "project-policy",
+      "clauses": [],
+      "tables": [],
       "status": "implemented",
+      "verdict": "verified",
+      "rules": [
+        {
+          "locator": "CONTRIBUTING.md, Principles and Rust quality bar",
+          "rule": "Decoded buffers enforce the caller cap before growth or expansion; untrusted declarations do not authorize larger output.",
+          "implementation": "Agrees; this is project resource policy, not an ISO-prescribed numeric limit.",
+          "fixtures": "Agrees: flate-bomb and cap-minus-one checks on every nonempty valid or repaired vector.",
+          "verdict": "verified"
+        }
+      ],
       "tests": [
         "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
       ],
-      "gaps": "Primary-text clause verification pending; no broad conformance claim."
+      "gaps": "",
+      "documented_choices": [
+        "The same cap applies to each filter-chain intermediate; PNG row tags do not count as final decoded bytes."
+      ]
     },
     {
       "id": "filter-repairs",
-      "reference": "iso32000-2-full-text",
-      "clauses": [
-        "ADR 0003"
-      ],
+      "reference": "project-policy",
+      "clauses": [],
+      "tables": [],
       "status": "implemented",
+      "verdict": "verified",
+      "rules": [
+        {
+          "locator": "ADR 0003; ISO context 7.4.2, 7.4.3, 7.4.4.2 and 7.4.5",
+          "rule": "Deviations such as missing end markers are errors in Strict and may yield a documented prefix only through the diagnostic sink in Repair.",
+          "implementation": "Agrees with the project recovery contract, including tagged Strict errors and once-per-stream full-table diagnostics; ISO does not mandate these recovery choices.",
+          "fixtures": "Agrees: every repaired vector checks Strict rejection, exact Repair bytes and diagnostic identity.",
+          "verdict": "verified"
+        }
+      ],
       "tests": [
         "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
       ],
-      "gaps": "Primary-text clause verification pending; no broad conformance claim."
+      "gaps": "",
+      "documented_choices": [
+        "Truncated prefixes are retained; checksum mismatches may retain decoded data; trailing bytes are ignored with a diagnostic except accepted ASCII whitespace; raw Flate data uses a diagnostic.",
+        "EOF acceptance, checksum recovery, trailing-byte handling and raw fallback are project recovery choices, not verified standard permissions.",
+        "filter.lzw-full-table: ISO 7.4.4.2 requires an encoder clear when full. Strict rejects with this repair tag; Repair completes the decoder-lag entry and freezes codes through 4095, without subsequent insertion until clear/EOD. It records the repair once per stream, including across later clear codes. This recovery is project policy, not ISO permission.",
+        "filter.lzw-padding: ISO 7.4.4.2 requires zero unused EOD bits. Strict rejects with this repair tag; Repair ignores nonzero residual bits and records the deviation. This recovery is project policy, not ISO permission."
+      ]
+    },
+    {
+      "id": "filter-chain",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.1",
+        "7.3.8.2"
+      ],
+      "tables": [
+        5,
+        6
+      ],
+      "status": "implemented",
+      "verdict": "verified",
+      "rules": [
+        {
+          "locator": "7.4.1; 7.3.8.2, Table 5 Filter and DecodeParms",
+          "rule": "Filters run in listed order and nondefault parameter dictionaries align with their filter positions; absent parameters select defaults.",
+          "implementation": "Agrees with ordered construction and decoding.",
+          "fixtures": "Agrees: filter-chain-iso-order and chains_pair_filters_with_parameters_and_borrow_plain_data.",
+          "verdict": "verified"
+        }
+      ],
+      "tests": [
+        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+      ],
+      "gaps": "",
+      "documented_choices": [
+        "Inline-image filter aliases are recognized by the shared name API; validating their enclosing syntax is outside this requirement."
+      ]
+    },
+    {
+      "id": "filter-crypt-boundary",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.10",
+        "7.3.7",
+        "7.3.9"
+      ],
+      "tables": [
+        6,
+        14
+      ],
+      "status": "partial",
+      "verdict": "discrepancy fixed",
+      "rules": [
+        {
+          "locator": "7.4.10; Table 14",
+          "rule": "Crypt is first; optional Type, when present, identifies CryptFilterDecodeParms, and optional Name is a name defaulting to Identity.",
+          "implementation": "Agrees after validating position, Type and Name; null entries are absent.",
+          "fixtures": "Agrees: crypt-iso-default-null, crypt-iso-correct-type and crypt-iso-invalid-*.",
+          "verdict": "discrepancy fixed"
+        }
+      ],
+      "tests": [
+        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+      ],
+      "gaps": "Security-handler algorithm selection, CF name resolution and private security-handler parameters are delegated outside this codec boundary and were not audited here."
     }
   ]
 }

@@ -20,6 +20,7 @@ pub(crate) fn decode(
     let mut width = 9;
     let mut previous = None;
     let mut first_code = true;
+    let mut full_table_reported = false;
     let mut stack = [0; 4096];
     while let Some(code) = reader.read(width) {
         if first_code && code != 256 {
@@ -33,10 +34,32 @@ pub(crate) fn decode(
                 previous = None;
             }
             257 => {
+                // ISO 32000-2 7.4.4.2: unused final-byte bits are zero.
+                if reader.buffer & ((1 << reader.bits) - 1) != 0 {
+                    repair(
+                        diagnostics,
+                        tags::LZW_PADDING,
+                        "nonzero LZW end padding ignored",
+                        reader.position(),
+                    )?;
+                }
                 trailing(input, reader.offset, false, diagnostics)?;
                 return output.finish(reader.offset);
             }
             _ => {
+                // The encoder inserts one entry ahead while more input remains.
+                // At decoder next=4095, another data code would mean the encoder
+                // continued after filling its table instead of issuing clear
+                // (ISO 32000-2 7.4.4.2). EOD can still finish without that insertion.
+                if table.next >= 4095 && !full_table_reported {
+                    repair(
+                        diagnostics,
+                        tags::LZW_FULL_TABLE,
+                        "LZW full table not cleared; dictionary frozen",
+                        reader.position(),
+                    )?;
+                    full_table_reported = true;
+                }
                 let special = code == table.next && previous.is_some();
                 let source = if special { previous.unwrap_or(0) } else { code };
                 if source >= table.next || source == 256 || source == 257 {
@@ -52,6 +75,8 @@ pub(crate) fn decode(
                     output.write(&[first], reader.position())?;
                 }
                 if let Some(prev) = previous {
+                    // Complete the one pending decoder entry (4095), then
+                    // Table::add freezes the full dictionary until clear.
                     table.add(prev, first);
                     if width < 12 && table.next == (1 << width) - u16::from(early) {
                         width += 1;

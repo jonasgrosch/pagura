@@ -46,6 +46,9 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 - `syntax.duplicate-key`: the last value of a repeated key wins.
 - `filter.truncated`, `filter.checksum-mismatch`, `filter.trailing-data`,
   `filter.raw-deflate`: damaged filter data yields the bytes decoded so far.
+- `filter.lzw-full-table`, `filter.lzw-padding`: an LZW encoder that fills its
+  table without a clear code, or leaves nonzero bits after EOD (7.4.4.2), is
+  decoded with the table frozen and the padding ignored.
 - `xref.rebuilt`, `xref.offset-corrected`, `xref.stream-boundary`,
   `stream.length-corrected`, `stream.eol`, `trailer.reconstructed`,
   `file.header-offset`, `file.header-format`, `catalog.type-missing`:

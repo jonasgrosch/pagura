@@ -1,0 +1,4 @@
+filter=ASCIIHexDecode,RunLengthDecode
+outcome=valid
+repair=none
+cap=3

@@ -1,0 +1,6 @@
+filter=Crypt
+outcome=syntax
+repair=none
+cap=0
+parameter_error=1
+crypt_name=1

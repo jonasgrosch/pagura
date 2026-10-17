@@ -143,6 +143,27 @@ def lzw(data, early, reset_at=4096):
     return bytes(int(bit_string[i:i + 8], 2) for i in range(0, len(bit_string), 8))
 
 
+def lzw_literal_codes(count, early, clear=False):
+    """Literal-only boundary stream, ISO 32000-2 7.4.4.2 and Table 8.
+
+    Width follows the ordinal of the literal: the encoder makes entry 511
+    after literal 254; EarlyChange=0 delays the next-width code once.
+    Unlike the phrase encoder, this construction has no adaptive dictionary.
+    """
+    fields = [(256, 9)]
+    for ordinal in range(count):
+        width = min(12, max(9, (257 + ordinal + early).bit_length()))
+        fields.append((65, width))
+    width = min(12, max(9, (257 + count + early).bit_length()))
+    if clear:
+        fields.extend([(256, width), (66, 9), (257, 9)])
+    else:
+        fields.append((257, width))
+    bits = "".join(f"{code:0{width}b}" for code, width in fields)
+    bits += "0" * (-len(bits) % 8)
+    return bytes(int(bits[i:i + 8], 2) for i in range(0, len(bits), 8))
+
+
 def run_length(data):
     # Literal packets are sufficient as an independent general encoder;
     # explicit repeat packets exercise all repeat lengths separately.
@@ -323,7 +344,11 @@ def cases():
         for label, plain, reset in [("empty", b"", 4096), ("special", b"ABABABA" * 200, 4096),
                                     ("widths-reset", data * 4, 4096), ("early-reset", data, 1024),
                                     ("frozen-table", data * 4, 4097)]:
-            yield vector(f"lzw-ec{early}-{label}", lzw(plain, early, reset), plain, "filter-lzw", "LZWDecode", early=early)
+            # 7.4.4.2 requires clear on table exhaustion; a frozen
+            # dictionary that continues producing data is malformed.
+            yield vector(f"lzw-ec{early}-{label}", lzw(plain, early, reset), plain,
+                         "filter-lzw", "LZWDecode", early=early,
+                         repair="filter.lzw-full-table" if label == "frozen-table" else "none")
     yield vector("lzw-truncated", lzw(b"hello", 1)[:-2], b"hell", "filter-repairs", "LZWDecode", repair="filter.truncated")
     yield vector("lzw-trailing", lzw(b"hello", 1) + b"\0", b"hello", "filter-repairs", "LZWDecode", repair="filter.trailing-data")
     yield vector("lzw-invalid-code", bytes.fromhex("804b40"), b"", "filter-lzw", "LZWDecode", outcome="syntax", cap=4096)
@@ -368,3 +393,74 @@ def cases():
     yield vector("tiff-padding-preserved", zlib.compress(b"\xdf"), b"\xcf", "predictor-tiff", predictor=2, bits=2, columns=3)
     for name, plain in [("invalid-tag", b"\x05x"), ("partial-row", b"\0x"), ("tag-only", b"\0")]:
         yield vector("predictor-" + name, zlib.compress(plain), b"", "predictor-png", outcome="syntax", cap=4096, predictor=15, columns=2)
+
+    # ISO 32000-2 7.4.4.2 requires zero unused bits after EOD.
+    encoded = lzw(b"", 1)
+    yield vector("lzw-eod-nonzero-padding", encoded[:-1] + bytes([encoded[-1] | 1]), b"",
+                 "filter-lzw", "LZWDecode", repair="filter.lzw-padding", cap=1)
+    for early in (0, 1):
+        for count in (254, 255, 766, 767, 1790, 1791, 3838):
+            yield vector(f"lzw-iso-ec{early}-literal-boundary-{count}", lzw_literal_codes(count, early),
+                         b"A" * count, "filter-lzw", "LZWDecode", early=early)
+        yield vector(f"lzw-iso-ec{early}-full-clear", lzw_literal_codes(3838, early, clear=True),
+                     b"A" * 3838 + b"B", "filter-lzw", "LZWDecode", early=early)
+        yield vector(f"lzw-iso-ec{early}-missing-full-clear", lzw_literal_codes(3839, early),
+                     b"A" * 3839, "filter-lzw", "LZWDecode", early=early, repair="filter.lzw-full-table")
+    # 7.3.7/7.3.9 treat null dictionary entries as absent; Table 8 defaults apply.
+    yield vector("flate-null-predictor-parameters", zlib.compress(b"x"), b"x", "filter-flate",
+                 predictor="null", colors="null", bits="null", columns="null")
+    yield vector("lzw-null-predictor-parameters", lzw(b"x", 1), b"x", "filter-lzw", "LZWDecode",
+                 predictor="null", colors="null", bits="null", columns="null", early="null")
+    # 7.4.3's partial-group construction: zero-fill binary, convert, then trim.
+    for count in (1, 2, 3, 4):
+        plain = b"\xff" * count
+        number = int.from_bytes(plain + bytes(4 - count), "big")
+        digits = []
+        for _ in range(5):
+            number, digit = divmod(number, 85)
+            digits.append(digit + 33)
+        encoded = bytes(reversed(digits))[:count + 1] + b"~>"
+        yield vector(f"a85-iso-max-partial-{count}", encoded, plain, "filter-ascii85", "ASCII85Decode")
+    # 7.4.4.4 permits any PNG row tag for every Predictor value 10..15.
+    for predictor in range(10, 16):
+        yield vector(f"png-iso-row-tag-predictor-{predictor}", zlib.compress(b"\x02\x07\x02\x03"),
+                     bytes([7, 10]), "predictor-png", predictor=predictor)
+    # 7.4.1 / Table 5: filters run in array order with corresponding parameters.
+    yield vector("filter-chain-iso-order", b"ff4180>", b"AA", "filter-chain",
+                 "ASCIIHexDecode,RunLengthDecode", cap=3)
+    # 7.4.10 / Table 14: Crypt is first, optional Type and Name are checked.
+    yield vector("crypt-iso-default-null", b"41>", b"A", "filter-crypt-boundary", "Crypt,ASCIIHexDecode",
+                 crypt_type="null", crypt_name="null", take_crypt=1)
+    yield vector("crypt-iso-correct-type", b"41>", b"A", "filter-crypt-boundary", "Crypt,ASCIIHexDecode",
+                 crypt_type="/CryptFilterDecodeParms", take_crypt=1)
+    for name, filter_name, parameters in [
+        ("not-first", "ASCIIHexDecode,Crypt", {}),
+        ("wrong-type", "Crypt", {"crypt_type": "/Other"}),
+        ("wrong-name-type", "Crypt", {"crypt_name": 1}),
+    ]:
+        yield vector("crypt-iso-invalid-" + name, b"", b"", "filter-crypt-boundary", filter_name,
+                     outcome="syntax", parameter_error=1, **parameters)
+
+    # 7.4.3 ignores every Table 1 whitespace byte while recognizing EOD.
+    yield vector("a85-eod-whitespace", b"z~\x00\t\n\x0c\r >", bytes(4),
+                 "filter-ascii85", "ASCII85Decode")
+
+    encoded = lzw(b"x", 1)
+    yield vector("lzw-eod-nonzero-padding-literal", encoded[:-1] + bytes([encoded[-1] | 1]), b"x",
+                 "filter-lzw", "LZWDecode", repair="filter.lzw-padding")
+    # Each literal creates AA entries. Entry 4095 therefore means AA as well;
+    # repeated use must preserve its value after freezing. Two full-table
+    # episodes separated by clear still require only one stream diagnostic.
+    for early in (0, 1):
+        fields = [(256, 9)]
+        for _ in range(2):
+            for ordinal in range(3838):
+                width = min(12, max(9, (257 + ordinal + early).bit_length()))
+                fields.append((65, width))
+            fields.extend([(4095, 12), (4095, 12), (256, 12)])
+        fields.extend([(66, 9), (257, 9)])
+        bits = "".join(f"{code:0{width}b}" for code, width in fields)
+        bits += "0" * (-len(bits) % 8)
+        encoded = bytes(int(bits[i:i + 8], 2) for i in range(0, len(bits), 8))
+        yield vector(f"lzw-iso-ec{early}-frozen-entry4095-clear", encoded, b"A" * (3842 * 2) + b"B",
+                     "filter-lzw", "LZWDecode", early=early, repair="filter.lzw-full-table")

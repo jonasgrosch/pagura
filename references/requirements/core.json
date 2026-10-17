@@ -1,37 +1,147 @@
 {
   "schema": 2,
   "area": "core",
-  "scope": "Clause locators refer to Adobe PDF32000_2008 (ISO 32000-1) until ISO 32000-2 full text is acquired and reviewed.",
+  "scope": "Verified locators and lexical/object rules against ISO 32000-2:2020(E), sponsored edition including Errata Collection 3: 7.2, 7.3 and Tables 1-5, including numeric errata #300/#327 and identifier erratum #379; also checked rectangle representation in 7.9.5. Cross-reference/trailer locators 7.5.4/7.5.5 and Table 15 were checked against the same text, but document-level implementation behavior was not audited. Known core implementation discrepancies remain open; verified locators do not certify all consumers.",
+  "verification_source": {
+    "reference": "iso32000-2-full-text",
+    "edition": "ISO 32000-2:2020(E), sponsored edition including Errata Collection 3",
+    "errata": "The supplied supplements #300/#327 affect numeric syntax and #379 affects indirect identifiers; none of the supplied supplements changes clause 7.4."
+  },
   "requirements": [
     {
       "id": "syntax-classic-xref",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
-        "7.2",
-        "7.3",
+        "7.2.1",
+        "7.2.2",
+        "7.2.3",
+        "7.2.4",
+        "7.3.1",
+        "7.3.2",
+        "7.3.3",
+        "7.3.4.1",
+        "7.3.4.2",
+        "7.3.4.3",
+        "7.3.5",
+        "7.3.6",
+        "7.3.7",
+        "7.3.8.1",
+        "7.3.8.2",
+        "7.3.9",
+        "7.3.10",
         "7.5.4",
         "7.5.5"
       ],
-      "status": "partial",
-      "tests": [
-        "pagura-core",
-        "pagura/tests/syntax.rs",
-        "pagura/tests/document.rs"
+      "tables": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        15
       ],
-      "gaps": "xref streams, object streams, incremental revisions"
+      "status": "partial",
+      "verdict": "locator corrected",
+      "errata": [
+        "EC3 #300 and #327, 7.3.3 numeric examples and grammar diagrams",
+        "EC3 #379, 7.3.10 object/generation grammar"
+      ],
+      "rules": [
+        {
+          "locator": "7.2.3, Tables 1 and 2; 7.2.4",
+          "rule": "Whitespace separates tokens, comments act as whitespace, syntax is case-sensitive, and braces are extra delimiters in Type 4 calculator functions.",
+          "implementation": "Whitespace and comments agree; global brace delimiting prevents braces in ordinary literal names.",
+          "fixtures": "Existing syntax tests cover separators/comments; minimal discrepancy: /A{B becomes name A with two bytes left, rather than name A{B.",
+          "verdict": "pending"
+        },
+        {
+          "locator": "7.3.1-7.3.3; EC3 #300/#327",
+          "rule": "Objects distinguish booleans, integer and real forms; signed decimal forms allow leading zeros, while radix and exponent spellings are excluded.",
+          "implementation": "Agrees for the inspected forms, including integer 00987 and real 009.87; native numeric representation is bounded.",
+          "fixtures": "Existing numeric syntax tests agree; the EC3 leading-zero examples were also checked directly.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "7.3.4.1-7.3.4.3, Table 3",
+          "rule": "Strings are byte sequences; literal escapes, octal truncation, continuations and EOL normalization apply, while odd hex strings receive a final zero nibble.",
+          "implementation": "Agrees in the inspected parser branches.",
+          "fixtures": "Existing literal/hex syntax tests agree.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "7.3.5, Table 4",
+          "rule": "Literal names expand #xx escapes, exclude decoded NUL, preserve byte identity and permit an empty name.",
+          "implementation": "Agrees for escaping/NUL/empty names; brace classification remains a separate contextual discrepancy.",
+          "fixtures": "Existing name tests agree for covered byte/escape cases.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "7.3.6; 7.3.7",
+          "rule": "Arrays preserve heterogeneous element order; dictionary keys are direct names and duplicate keys are invalid.",
+          "implementation": "Agrees in parser construction; duplicate recovery is explicitly reported.",
+          "fixtures": "Existing array/dictionary and duplicate-key tests agree.",
+          "verdict": "verified"
+        },
+        {
+          "locator": "7.3.7; 7.3.9",
+          "rule": "A null dictionary value has the same interpretation as an absent entry.",
+          "implementation": "Raw source dictionaries retain null values; semantic consumers must apply absence/default behavior. Codec consumers are corrected; other consumers were not audited.",
+          "fixtures": "Codec null-parameter vectors cover its consumers; raw dictionary retention is not claimed to prove semantic handling everywhere.",
+          "verdict": "pending"
+        },
+        {
+          "locator": "7.3.8.1-7.3.8.2, Table 5",
+          "rule": "Streams are indirect, have a direct dictionary and encoded Length, and begin after LF or CRLF; Filter and DecodeParms describe ordered decoding.",
+          "implementation": "The core parser handles the direct dictionary; complete stream framing belongs to pagura-document and was not audited here.",
+          "fixtures": "Stream-filter pairing is covered in codec; no new verdict on complete document framing.",
+          "verdict": "pending"
+        },
+        {
+          "locator": "7.3.9; 7.3.10, amended by EC3 #379",
+          "rule": "References identify object and generation; undefined objects resolve to null, and identifiers exclude plus signs and leading zeros except generation zero itself.",
+          "implementation": "The parser silently accepts 01 0 R and 1 00 R as references, contrary to EC3 #379.",
+          "fixtures": "Existing reference tests lack these invalid-identifier cases; both minimal reproducers were confirmed.",
+          "verdict": "pending"
+        },
+        {
+          "locator": "7.5.4; 7.5.5, Table 15",
+          "rule": "Classic xref entries have a fixed 20-byte form and a trailer locates the last section and identifies root/size information.",
+          "implementation": "Primary clause/table locators and basic rules checked; the cross-reference/trailer implementation is outside this lexical/object audit.",
+          "fixtures": "Existing document tests remain evidence, but no new xref/trailer implementation-conformance verdict is asserted.",
+          "verdict": "pending"
+        }
+      ],
+      "tests": [
+        "pagura-core unit tests",
+        "crates/pagura/tests/syntax.rs",
+        "crates/pagura/tests/document.rs"
+      ],
+      "gaps": "EC3 #379 identifier restrictions and contextual brace handling remain implementation discrepancies. Null semantics, complete stream framing, cross-reference tables and trailers require consumer-level review."
     },
     {
       "id": "rectangle-normalization",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
-        "7.9.5"
+        "7.9.5",
+        "7.3.3"
       ],
+      "tables": [],
       "status": "implemented",
+      "verdict": "verified",
+      "rules": [
+        {
+          "locator": "7.9.5",
+          "rule": "A rectangle contains four numeric coordinates of opposite corners; neither a particular corner order nor positive width/height is required.",
+          "implementation": "Agrees: from_array accepts four numbers and from_corners normalizes either orientation, including degenerate rectangles.",
+          "fixtures": "Agrees: pagura-core rect tests and classic/normalized-media-box.",
+          "verdict": "verified"
+        }
+      ],
       "tests": [
         "pagura-core rect",
         "classic/normalized-media-box"
       ],
-      "gaps": ""
+      "gaps": "No broad geometric conformance claim beyond this rectangle representation rule."
     }
   ]
 }

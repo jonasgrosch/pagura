@@ -1,0 +1,7 @@
+filter=Crypt,ASCIIHexDecode
+outcome=valid
+repair=none
+cap=1
+crypt_type=null
+crypt_name=null
+take_crypt=1

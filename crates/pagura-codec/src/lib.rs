@@ -50,6 +50,13 @@ pub mod tags {
     /// Keep the decoded prefix when input ends before the required end marker.
     /// Incomplete predictor rows remain errors; no synthetic pixels are added.
     pub const TRUNCATED: Repair = Repair::new("filter.truncated");
+    /// Keep a full 12-bit LZW dictionary through entry 4095 without further
+    /// insertions until clear or EOD; report missing clear once per stream.
+    /// This recovers an encoder fault under ISO 32000-2 clause 7.4.4.2.
+    pub const LZW_FULL_TABLE: Repair = Repair::new("filter.lzw-full-table");
+    /// Ignore nonzero unused bits after LZW EOD. ISO 32000-2 clause 7.4.4.2
+    /// requires the encoder to zero them; Strict rejects this repair.
+    pub const LZW_PADDING: Repair = Repair::new("filter.lzw-padding");
     /// Keep decoded bytes despite a mismatched zlib Adler-32 checksum.
     pub const CHECKSUM_MISMATCH: Repair = Repair::new("filter.checksum-mismatch");
     /// Ignore bytes after the first end marker. ASCII filters permit trailing
@@ -254,7 +261,14 @@ impl FilterChain {
         let filters = names
             .into_iter()
             .zip(params)
-            .map(|(name, params)| Filter::from_pdf(name.as_bytes(), params))
+            .enumerate()
+            .map(|(index, (name, params))| {
+                let filter = Filter::from_pdf(name.as_bytes(), params)?;
+                if index != 0 && matches!(filter, Filter::Crypt(_)) {
+                    return Err(Error::syntax("Crypt must be the first stream filter"));
+                }
+                Ok(filter)
+            })
             .collect::<Result<_>>()?;
         Ok(Self { filters })
     }
@@ -333,7 +347,7 @@ impl Filter {
             b"LZWDecode" | b"LZW" => Self::Lzw {
                 predictor: Predictor::from_params(params)?,
                 early_change: match params.and_then(|p| p.get(b"EarlyChange")) {
-                    None | Some(Value::Integer(1)) => true,
+                    None | Some(Value::Null | Value::Integer(1)) => true,
                     Some(Value::Integer(0)) => false,
                     Some(_) => return Err(Error::syntax("EarlyChange must be 0 or 1")),
                 },
@@ -346,7 +360,20 @@ impl Filter {
             b"JPXDecode" => Self::image(ImageCodec::Jpx, params),
             b"JBIG2Decode" => Self::image(ImageCodec::Jbig2, params),
             b"CCITTFaxDecode" | b"CCF" => Self::image(ImageCodec::CcittFax, params),
-            b"Crypt" => Self::Crypt(params.and_then(|p| p.get_name(b"Name")).cloned()),
+            b"Crypt" => {
+                // ISO 32000-2 7.4.10, Table 14; null entries are absent (7.3.7).
+                match params.and_then(|p| p.get(b"Type")) {
+                    None | Some(Value::Null) => {}
+                    Some(Value::Name(name)) if name.as_bytes() == b"CryptFilterDecodeParms" => {}
+                    Some(_) => return Err(Error::syntax("invalid Crypt parameter Type")),
+                }
+                let name = match params.and_then(|p| p.get(b"Name")) {
+                    None | Some(Value::Null) => None,
+                    Some(Value::Name(name)) => Some(name.clone()),
+                    Some(_) => return Err(Error::syntax("Crypt parameter Name must be a name")),
+                };
+                Self::Crypt(name)
+            }
             _ => {
                 return Err(Error::unsupported(
                     Feature::new("filter.unknown"),
@@ -409,7 +436,7 @@ impl Predictor {
             return Ok(Self::default());
         };
         let integer = |key: &[u8], default: i64| match params.get(key) {
-            None => Ok(default),
+            None | Some(Value::Null) => Ok(default),
             Some(Value::Integer(value)) => Ok(*value),
             Some(_) => Err(Error::syntax("predictor parameter must be an integer")),
         };

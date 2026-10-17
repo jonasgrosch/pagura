@@ -4507,7 +4507,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/lzw-ec0-frozen-table.params",
-          "sha256": "878f7ceb57de80714400225f3a289f365bfd57cc6c57cd9e6f1e823dc82a2c47"
+          "sha256": "8867d65f4f906a8b7e746360d77fc7d26e10b65f08d2020f7d68d5b0c07e255f"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -4622,7 +4622,7 @@
         },
         ".params": {
           "path": "corpus/generated/codec/lzw-ec1-frozen-table.params",
-          "sha256": "cfff8f9ff0169be58073dca47caeda452f03099d6852cd4af1d90f7ffdcf30cf"
+          "sha256": "f39e3c18e0d96a0b7b3c2d92c3ea0e6ea0e782486238d74129134f3a26a64a37"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"
@@ -7751,6 +7751,949 @@
         ".params": {
           "path": "corpus/generated/codec/predictor-tag-only.params",
           "sha256": "cc00a84d6b6ddbc7bb5cc3021ee0bc6b70a9eac1f45fa66bce9329a0d44eefb6"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-eod-nonzero-padding",
+      "kind": "vector",
+      "description": "lzw eod nonzero padding",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-eod-nonzero-padding.in",
+          "sha256": "8ad4d692c5459e8f63dce6c4336ed335f13c1c0d43a2963166369de4eb7e6ba4"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-eod-nonzero-padding.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-eod-nonzero-padding.params",
+          "sha256": "f7f20c89bc14e43bd2d421b1b9596c7f8e6be90785bba51063dba812d27cd70d"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec0-literal-boundary-254",
+      "kind": "vector",
+      "description": "lzw iso ec0 literal boundary 254",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-254.in",
+          "sha256": "19f1faf8e8d0f8dad268b17e25d2e2b2e6eb49966676ae0ffa7d2eca9cb1b433"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-254.out",
+          "sha256": "9adfda9becb31c4fe960f340c20c2e4af6321f4029baefa8ee6d724eac240e65"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-254.params",
+          "sha256": "49ac075716c99a9e78483ed661687b4c0a933152fec56ec65b1d48de822943af"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec0-literal-boundary-255",
+      "kind": "vector",
+      "description": "lzw iso ec0 literal boundary 255",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-255.in",
+          "sha256": "f1252edd20f47b9cfd037aefdc18ea07017a6dd0575daa2ea00e441713ac2162"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-255.out",
+          "sha256": "ae53ef4fa49739df77cfc1f4074418f77bb99b00713f097514c8b404e458fedf"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-255.params",
+          "sha256": "8765e0e405e0d6d396ace496090b7fa174412cc0ed28848d578ecea48cef4d9f"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec0-literal-boundary-766",
+      "kind": "vector",
+      "description": "lzw iso ec0 literal boundary 766",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-766.in",
+          "sha256": "69f730725778d8c4b43c514448d8562e4f5fcd2317a1489967a32f0832dc394a"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-766.out",
+          "sha256": "1f61eb348ea104f475ea4d7121ea8fdfd4b3e35e24abb99394f1ff5476c4171a"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-766.params",
+          "sha256": "707c2693f1b607f0340ae8b733873d946434bec11375b6ce3e7ace2e01e18b6d"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec0-literal-boundary-767",
+      "kind": "vector",
+      "description": "lzw iso ec0 literal boundary 767",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-767.in",
+          "sha256": "527759820e56ea116026719674101c5bb55ed7bf9816600385e3e7f783afc655"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-767.out",
+          "sha256": "3386d5e1e1b23483eece9d00b6242c6582a134ccc22737b0001701b63251c116"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-767.params",
+          "sha256": "966c784594b138e67a311684a7341d4a3c2fde310bf61b2032cf3b0094774b32"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec0-literal-boundary-1790",
+      "kind": "vector",
+      "description": "lzw iso ec0 literal boundary 1790",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-1790.in",
+          "sha256": "de9cf2309938eac9606b354de1ef76a962c89ba8f6ff36d7c8016d1cb63f3dbd"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-1790.out",
+          "sha256": "4b8623a00a827d478b2c85e669f4567df0974d27a5058c9ea1ca95599030a88d"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-1790.params",
+          "sha256": "2e3a577d23423f20856e8212a21651961325c8d29a0847c1a90ebe736b3cf949"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec0-literal-boundary-1791",
+      "kind": "vector",
+      "description": "lzw iso ec0 literal boundary 1791",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-1791.in",
+          "sha256": "52699afbec348a3be5e0708a662c861d8d2e81862bd3a94ae94aec440099675f"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-1791.out",
+          "sha256": "7b8234ea64a6094bcfafcc6722df749809cd21615e9f87a528d4f6b5aba38f99"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-1791.params",
+          "sha256": "2ecd3655f78b505c795f0e87c074e0b7f5cb0659eaa256eb69056baae0bbc239"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec0-literal-boundary-3838",
+      "kind": "vector",
+      "description": "lzw iso ec0 literal boundary 3838",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-3838.in",
+          "sha256": "afb54a21f1e5edba641481564592845a337ec5c19b70a23a635ffe0dd8ae6f87"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-3838.out",
+          "sha256": "a3fdbd434d6c55d3383b06fb5a1450ca6d4c172260f14d282c64010e30cd4b01"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-literal-boundary-3838.params",
+          "sha256": "a64cfec78d14dd52d985727a09ecab91d873a4d4d8cf003a3992850525f90da3"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec0-full-clear",
+      "kind": "vector",
+      "description": "lzw iso ec0 full clear",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-full-clear.in",
+          "sha256": "9d688daa65a265bbd7b8de29a6e9edfa3967c106855961874307832bfc441186"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-full-clear.out",
+          "sha256": "90d6d0f3891f51268e294649d4ae394d7a1ae5d93baaf97c807e53ba84fb6988"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-full-clear.params",
+          "sha256": "352a1874953d15a53581997e0d64ea056b3281fb230d498ca117e3ffb3f733b0"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec0-missing-full-clear",
+      "kind": "vector",
+      "description": "lzw iso ec0 missing full clear",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-missing-full-clear.in",
+          "sha256": "4ae3dd78f986aaa1b7bd472d0f8e8eb02fbf54ee25cb326c99dc82f6635eb493"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-missing-full-clear.out",
+          "sha256": "b1e9d21787b0df5a4c34738ae45004b9236d2ec8c4cf2fdf475e416e802fbec9"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-missing-full-clear.params",
+          "sha256": "fe16e391b8a7d1efa2012f9818964559ccae60faddcdc392842508c5e98124e8"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec1-literal-boundary-254",
+      "kind": "vector",
+      "description": "lzw iso ec1 literal boundary 254",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-254.in",
+          "sha256": "0daf621e6fe04eeb4f072002e924bab4775d1e732bba53f2acf47a143843b568"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-254.out",
+          "sha256": "9adfda9becb31c4fe960f340c20c2e4af6321f4029baefa8ee6d724eac240e65"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-254.params",
+          "sha256": "0ef13814c28c72973c19241c025394fa561b1f7a679999ce9b9cebdb307817a2"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec1-literal-boundary-255",
+      "kind": "vector",
+      "description": "lzw iso ec1 literal boundary 255",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-255.in",
+          "sha256": "bf09fe345a2e92138a76db7679569e8e8ddf31c725ca55d2a4a76c902c4bcdad"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-255.out",
+          "sha256": "ae53ef4fa49739df77cfc1f4074418f77bb99b00713f097514c8b404e458fedf"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-255.params",
+          "sha256": "e53d2da3f59bd7893c92aea9c482b709b35b578f892765159f9afa77c1e30713"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec1-literal-boundary-766",
+      "kind": "vector",
+      "description": "lzw iso ec1 literal boundary 766",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-766.in",
+          "sha256": "765d2fa6f14f3748748d8e533ad0a9acdf1034897b16d7486566e1bb4a9bb23a"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-766.out",
+          "sha256": "1f61eb348ea104f475ea4d7121ea8fdfd4b3e35e24abb99394f1ff5476c4171a"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-766.params",
+          "sha256": "9f016afc488c24d4c9c08cfe85370d08a4f00398405a50519548a15c3ee064ca"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec1-literal-boundary-767",
+      "kind": "vector",
+      "description": "lzw iso ec1 literal boundary 767",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-767.in",
+          "sha256": "8a9566584ee043578c3a330963b4e456446ee5c880607d4b47be395bd1a80954"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-767.out",
+          "sha256": "3386d5e1e1b23483eece9d00b6242c6582a134ccc22737b0001701b63251c116"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-767.params",
+          "sha256": "3669f31330c84d7c3b8667d0952292d300f10cc0f2b2ede3d0a2a39837d61faf"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec1-literal-boundary-1790",
+      "kind": "vector",
+      "description": "lzw iso ec1 literal boundary 1790",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-1790.in",
+          "sha256": "258bfae6ea78ce2a00efd3882a9947f83edd1e45d955fba0f93a322ae55c96ce"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-1790.out",
+          "sha256": "4b8623a00a827d478b2c85e669f4567df0974d27a5058c9ea1ca95599030a88d"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-1790.params",
+          "sha256": "e684fcd4246e0afbb0db53e33ddc4dd56242562637951100c0c1c2137469f6ed"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec1-literal-boundary-1791",
+      "kind": "vector",
+      "description": "lzw iso ec1 literal boundary 1791",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-1791.in",
+          "sha256": "0a38590f5d980baabd90f7a9fc915423a96ef7634f580fc73da138cd7fed16d6"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-1791.out",
+          "sha256": "7b8234ea64a6094bcfafcc6722df749809cd21615e9f87a528d4f6b5aba38f99"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-1791.params",
+          "sha256": "c5f87d7b862045ef3205dbefbde19bd5b1709ce808648edc9512af70227abb8b"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec1-literal-boundary-3838",
+      "kind": "vector",
+      "description": "lzw iso ec1 literal boundary 3838",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-3838.in",
+          "sha256": "7205d63df6c5280585bf66a96c625c3adda27e524680eca35b68263d57880242"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-3838.out",
+          "sha256": "a3fdbd434d6c55d3383b06fb5a1450ca6d4c172260f14d282c64010e30cd4b01"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-literal-boundary-3838.params",
+          "sha256": "1017c23350169ccbfb10847ef740299b0fb74fb53e7fa270d87640cc6fd52786"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec1-full-clear",
+      "kind": "vector",
+      "description": "lzw iso ec1 full clear",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-full-clear.in",
+          "sha256": "5cf41cc2d4f50ec13a74d2059b367487ab67ed74eef1c49eef4f4a2d19338f06"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-full-clear.out",
+          "sha256": "90d6d0f3891f51268e294649d4ae394d7a1ae5d93baaf97c807e53ba84fb6988"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-full-clear.params",
+          "sha256": "07765039cd5f1b4bf614121a17099aada7c9b1f24286c259131d1d659dc6636c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec1-missing-full-clear",
+      "kind": "vector",
+      "description": "lzw iso ec1 missing full clear",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-missing-full-clear.in",
+          "sha256": "7c154964a32877cd3bd619eb2125650c0ce72ebfdcdeb4404a3db5f836b27ca3"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-missing-full-clear.out",
+          "sha256": "b1e9d21787b0df5a4c34738ae45004b9236d2ec8c4cf2fdf475e416e802fbec9"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-missing-full-clear.params",
+          "sha256": "d65153b7e33bc6b72cbdf17b96ff777d3cf942aabdab6d14d9567582f217fc38"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/flate-null-predictor-parameters",
+      "kind": "vector",
+      "description": "flate null predictor parameters",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/flate-null-predictor-parameters.in",
+          "sha256": "89ae37767e1c0fd466485d9c3997ba1eb7ca7412c8151c058306c4b56ba35ddd"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/flate-null-predictor-parameters.out",
+          "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/flate-null-predictor-parameters.params",
+          "sha256": "bbe097bf8b252c56cf777b350fd7969a3cf164e893bbec183d37c9f244ae0f24"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-null-predictor-parameters",
+      "kind": "vector",
+      "description": "lzw null predictor parameters",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-null-predictor-parameters.in",
+          "sha256": "d1b995cc51e67c1a54f2cd6da859153f860f0ecea6ca3706446fa3e0655cec1c"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-null-predictor-parameters.out",
+          "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-null-predictor-parameters.params",
+          "sha256": "779e33c9b82dff5031bc9f577135234f9bddd9032ea9ac0c55485f39289483c0"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/a85-iso-max-partial-1",
+      "kind": "vector",
+      "description": "a85 iso max partial 1",
+      "requirements": [
+        "filter-ascii85"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/a85-iso-max-partial-1.in",
+          "sha256": "4ec898847ce235f274937d287b834d7d7c3d369f807913cc03aac5f4ca6fc783"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/a85-iso-max-partial-1.out",
+          "sha256": "a8100ae6aa1940d0b663bb31cd466142ebbdbd5187131b92d93818987832eb89"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/a85-iso-max-partial-1.params",
+          "sha256": "1987adcce2444af5a5fc4acbe4592a816d613a3fe898dcd0660dc710f51e1ea8"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/a85-iso-max-partial-2",
+      "kind": "vector",
+      "description": "a85 iso max partial 2",
+      "requirements": [
+        "filter-ascii85"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/a85-iso-max-partial-2.in",
+          "sha256": "5fc0804b7a69cf8581b719141d1f51b18abd092f82447e3e48cab27ee4357487"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/a85-iso-max-partial-2.out",
+          "sha256": "ca2fd00fa001190744c15c317643ab092e7048ce086a243e2be9437c898de1bb"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/a85-iso-max-partial-2.params",
+          "sha256": "bd217dd0daf2344ffdaf230a10c6f7303779a7a90cccabc2df2c6b56768c1108"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/a85-iso-max-partial-3",
+      "kind": "vector",
+      "description": "a85 iso max partial 3",
+      "requirements": [
+        "filter-ascii85"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/a85-iso-max-partial-3.in",
+          "sha256": "8a877ad1c8d4e3ddea5495a1f9824234113f90a7de7c67e019d7118e20ebfaab"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/a85-iso-max-partial-3.out",
+          "sha256": "5ae7e6a42304dc6e4176210b83c43024f99a0bce9a870c3b6d2c95fc8ebfb74c"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/a85-iso-max-partial-3.params",
+          "sha256": "bac8e4a9f2fa33aa86ca25fec44e88cdf1b48d0d6663e321f3a15eeb671755c0"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/a85-iso-max-partial-4",
+      "kind": "vector",
+      "description": "a85 iso max partial 4",
+      "requirements": [
+        "filter-ascii85"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/a85-iso-max-partial-4.in",
+          "sha256": "cca2ae3f2bbc752f146e754d066f6bd8c3b7125bfe8803a04cf0322ff0dde092"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/a85-iso-max-partial-4.out",
+          "sha256": "ad95131bc0b799c0b1af477fb14fcf26a6a9f76079e48bf090acb7e8367bfd0e"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/a85-iso-max-partial-4.params",
+          "sha256": "7b71a9abefa3e98f35d4afe2b1826ba75bc8ce7e941625f843e75d95256fe03b"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-iso-row-tag-predictor-10",
+      "kind": "vector",
+      "description": "png iso row tag predictor 10",
+      "requirements": [
+        "predictor-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-10.in",
+          "sha256": "7d6fd9b9b4e5f5652fd5fe13ae58ceb7e08e8a118ce2613ac817873a1a11e94b"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-10.out",
+          "sha256": "216aad30ea7f64d1050f82685c4a0ce7abd7e553945ae50fecb123c27a3bfbb7"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-10.params",
+          "sha256": "b6d244d0ab257feee1b0b87f14e99049f910a301f6af6d7f92bc4a59aa85acbc"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-iso-row-tag-predictor-11",
+      "kind": "vector",
+      "description": "png iso row tag predictor 11",
+      "requirements": [
+        "predictor-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-11.in",
+          "sha256": "7d6fd9b9b4e5f5652fd5fe13ae58ceb7e08e8a118ce2613ac817873a1a11e94b"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-11.out",
+          "sha256": "216aad30ea7f64d1050f82685c4a0ce7abd7e553945ae50fecb123c27a3bfbb7"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-11.params",
+          "sha256": "e643df6f7c58e2f09473dbb447c8f0170d239bea4624b6b590c6271bb1960082"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-iso-row-tag-predictor-12",
+      "kind": "vector",
+      "description": "png iso row tag predictor 12",
+      "requirements": [
+        "predictor-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-12.in",
+          "sha256": "7d6fd9b9b4e5f5652fd5fe13ae58ceb7e08e8a118ce2613ac817873a1a11e94b"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-12.out",
+          "sha256": "216aad30ea7f64d1050f82685c4a0ce7abd7e553945ae50fecb123c27a3bfbb7"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-12.params",
+          "sha256": "06b8af460bc6778014317559ccda621228d69b30066b509a0a693c9fe49c6f19"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-iso-row-tag-predictor-13",
+      "kind": "vector",
+      "description": "png iso row tag predictor 13",
+      "requirements": [
+        "predictor-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-13.in",
+          "sha256": "7d6fd9b9b4e5f5652fd5fe13ae58ceb7e08e8a118ce2613ac817873a1a11e94b"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-13.out",
+          "sha256": "216aad30ea7f64d1050f82685c4a0ce7abd7e553945ae50fecb123c27a3bfbb7"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-13.params",
+          "sha256": "cf3d0515faaffcd2ba640b2ac065aea9474640189456c85f767770f55bff5afa"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-iso-row-tag-predictor-14",
+      "kind": "vector",
+      "description": "png iso row tag predictor 14",
+      "requirements": [
+        "predictor-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-14.in",
+          "sha256": "7d6fd9b9b4e5f5652fd5fe13ae58ceb7e08e8a118ce2613ac817873a1a11e94b"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-14.out",
+          "sha256": "216aad30ea7f64d1050f82685c4a0ce7abd7e553945ae50fecb123c27a3bfbb7"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-14.params",
+          "sha256": "55b73ba0a91c9750f85110d9f8458c02d6590466312435d9aa3c4e239efa19e0"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-iso-row-tag-predictor-15",
+      "kind": "vector",
+      "description": "png iso row tag predictor 15",
+      "requirements": [
+        "predictor-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-15.in",
+          "sha256": "7d6fd9b9b4e5f5652fd5fe13ae58ceb7e08e8a118ce2613ac817873a1a11e94b"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-15.out",
+          "sha256": "216aad30ea7f64d1050f82685c4a0ce7abd7e553945ae50fecb123c27a3bfbb7"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-iso-row-tag-predictor-15.params",
+          "sha256": "6966ad6f1eb527bd55a9050629c8bcf5f543ca68ace12c51dffdab0ee5931d45"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/filter-chain-iso-order",
+      "kind": "vector",
+      "description": "filter chain iso order",
+      "requirements": [
+        "filter-chain"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/filter-chain-iso-order.in",
+          "sha256": "c4063af0a6811c2f69435adefa26b9c82e495b04e62b345f9e55d73d793c5216"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/filter-chain-iso-order.out",
+          "sha256": "58bb119c35513a451d24dc20ef0e9031ec85b35bfc919d263e7e5d9868909cb5"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/filter-chain-iso-order.params",
+          "sha256": "680ae623606aa994021373e8a177b35368bffd71cb46c81600dca188d3a2c27f"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/crypt-iso-default-null",
+      "kind": "vector",
+      "description": "crypt iso default null",
+      "requirements": [
+        "filter-crypt-boundary"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/crypt-iso-default-null.in",
+          "sha256": "21d8d45825f77897ebcc3f65152aaa48800a6c1f55ead94119caf5781a4d4bfb"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/crypt-iso-default-null.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/crypt-iso-default-null.params",
+          "sha256": "b519d163623345a72c13432259f31bd2fb230a7ac402659068ed558bcdf95601"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/crypt-iso-correct-type",
+      "kind": "vector",
+      "description": "crypt iso correct type",
+      "requirements": [
+        "filter-crypt-boundary"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/crypt-iso-correct-type.in",
+          "sha256": "21d8d45825f77897ebcc3f65152aaa48800a6c1f55ead94119caf5781a4d4bfb"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/crypt-iso-correct-type.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/crypt-iso-correct-type.params",
+          "sha256": "05ca9c0e3daa630e8387c9ffb22f15aa0bd1c6b16501868d68eb3e022249b0fe"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/crypt-iso-invalid-not-first",
+      "kind": "vector",
+      "description": "crypt iso invalid not first",
+      "requirements": [
+        "filter-crypt-boundary"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/crypt-iso-invalid-not-first.in",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/crypt-iso-invalid-not-first.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/crypt-iso-invalid-not-first.params",
+          "sha256": "54db60ed3063d7c31cba0dba90a6a0d4356ec369c7793f58dc7ebd8faec4ed6a"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/crypt-iso-invalid-wrong-type",
+      "kind": "vector",
+      "description": "crypt iso invalid wrong type",
+      "requirements": [
+        "filter-crypt-boundary"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/crypt-iso-invalid-wrong-type.in",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/crypt-iso-invalid-wrong-type.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/crypt-iso-invalid-wrong-type.params",
+          "sha256": "ae438594a61f4c213146c3741748399e11fab1264a56af79a284bc3b0825e27f"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/crypt-iso-invalid-wrong-name-type",
+      "kind": "vector",
+      "description": "crypt iso invalid wrong name type",
+      "requirements": [
+        "filter-crypt-boundary"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/crypt-iso-invalid-wrong-name-type.in",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/crypt-iso-invalid-wrong-name-type.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/crypt-iso-invalid-wrong-name-type.params",
+          "sha256": "c3b0741725e3d416a2e48d08cf5cf5e2e21fcaf8152d7840ff5bf6488c8aa0c6"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/a85-eod-whitespace",
+      "kind": "vector",
+      "description": "a85 eod whitespace",
+      "requirements": [
+        "filter-ascii85"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/a85-eod-whitespace.in",
+          "sha256": "15bea633c0034ec7622b84fa8859c11f9cdae14d0e92e0b5ffbc2639862cc31a"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/a85-eod-whitespace.out",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/a85-eod-whitespace.params",
+          "sha256": "7b71a9abefa3e98f35d4afe2b1826ba75bc8ce7e941625f843e75d95256fe03b"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-eod-nonzero-padding-literal",
+      "kind": "vector",
+      "description": "lzw eod nonzero padding literal",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-eod-nonzero-padding-literal.in",
+          "sha256": "0d5cdcfbf5bf20a2260ac6e648d0fa7d367989d16926ce65197c159cfcde8c4f"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-eod-nonzero-padding-literal.out",
+          "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-eod-nonzero-padding-literal.params",
+          "sha256": "f7f20c89bc14e43bd2d421b1b9596c7f8e6be90785bba51063dba812d27cd70d"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec0-frozen-entry4095-clear",
+      "kind": "vector",
+      "description": "lzw iso ec0 frozen entry4095 clear",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-frozen-entry4095-clear.in",
+          "sha256": "6493e45cc457cd20a1e0bd5088111c0c12906f2943a9cd7d4ce686062182cd77"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-frozen-entry4095-clear.out",
+          "sha256": "b1ef18ec8f110573688b887c482a3469c3dd2d117d36c145d45158e3ebd3958b"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec0-frozen-entry4095-clear.params",
+          "sha256": "caa3ff4fd23e096c856aafea5625b153c354ac56179c30a42fffded840e47f22"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-iso-ec1-frozen-entry4095-clear",
+      "kind": "vector",
+      "description": "lzw iso ec1 frozen entry4095 clear",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-frozen-entry4095-clear.in",
+          "sha256": "e12d75dbd26c1b42fd993f867fc6d9b19beeb640f79353bf27178db30eeb6a05"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-frozen-entry4095-clear.out",
+          "sha256": "b1ef18ec8f110573688b887c482a3469c3dd2d117d36c145d45158e3ebd3958b"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-iso-ec1-frozen-entry4095-clear.params",
+          "sha256": "26128f89ab588e00adc9690101bca79ef7787118ff5571d7cb2d82d9f935bdf0"
         }
       },
       "oracle_source": "independent Python standard-library/format encoder"

@@ -1,0 +1,5 @@
+filter=LZWDecode
+outcome=valid
+repair=filter.lzw-full-table
+cap=7685
+early=0
