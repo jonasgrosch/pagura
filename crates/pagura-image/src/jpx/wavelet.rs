@@ -1,4 +1,4 @@
-//! Inverse lifting (ISO/IEC 15444-1 Annex F).
+//! JPEG 2000 inverse lifting; T.800 primary-text review pending.
 
 use pagura_core::Result;
 
@@ -101,7 +101,7 @@ pub(super) fn synthesize(
         }
     }
     let mut column = budget.filled(height, 0.0)?;
-    // Annex F reconstructs rows before columns; reversible rounding makes the order significant.
+    // Reconstruction order is differential-tested; reversible rounding makes it significant.
     for x in 0..width {
         for (y, value) in column.iter_mut().enumerate() {
             *value = result.values[y * width + x];

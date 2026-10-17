@@ -1,8 +1,9 @@
-//! Coding and quantization marker parameters (ISO/IEC 15444-1 Annex A).
+//! JPEG 2000 coding/quantization markers; T.800 primary-text review pending.
 
 use pagura_core::Result;
 
 use super::io::{Budget, Reader, syntax};
+use super::progression::{self, Change};
 use super::unsupported;
 
 #[derive(Clone, Default)]
@@ -11,6 +12,7 @@ pub(super) struct Style {
     pub block: [u8; 2],
     pub modes: u8,
     pub reversible: bool,
+    pub precincts: Vec<[u8; 2]>,
 }
 
 fn read_style(reader: &mut Reader<'_>, flags: u8, budget: &mut Budget<'_>) -> Result<Style> {
@@ -29,30 +31,17 @@ fn read_style(reader: &mut Reader<'_>, flags: u8, budget: &mut Budget<'_>) -> Re
             reader.position() - 5,
         ));
     }
-    if modes & (1 | 4 | 8 | 16) != 0 {
-        return Err(unsupported(
-            "JPEG 2000 bypass, termination and causal code-block modes are not implemented",
-            reader.position() - 2,
-        ));
-    }
+    let mut precincts = budget.filled(usize::from(levels) + 1, [15, 15])?;
     if flags & 1 != 0 {
-        // Validate the field even when it cannot be used by this packet iterator.
-        let precincts = reader.take(usize::from(levels) + 1)?;
-        if precincts
-            .iter()
-            .skip(1)
-            .any(|&p| p.trailing_zeros() >= 4 || p >> 4 == 0)
-        {
-            return Err(syntax(
-                "invalid JPEG 2000 high-resolution precinct size",
-                reader.position(),
-            ));
-        }
-        if precincts.iter().any(|&p| p != 255) {
-            return Err(unsupported(
-                "JPEG 2000 explicit precinct partitioning is not implemented",
-                reader.position(),
-            ));
+        for (resolution, exponents) in precincts.iter_mut().enumerate() {
+            let value = reader.u8()?;
+            *exponents = [value & 15, value >> 4];
+            if resolution != 0 && exponents.contains(&0) {
+                return Err(syntax(
+                    "invalid JPEG 2000 high-resolution precinct size",
+                    reader.position() - 1,
+                ));
+            }
         }
     }
     budget.work(usize::from(levels) + 1)?;
@@ -62,6 +51,7 @@ fn read_style(reader: &mut Reader<'_>, flags: u8, budget: &mut Budget<'_>) -> Re
         block: [block[0] + 2, block[1] + 2],
         modes,
         reversible: transform == 1,
+        precincts,
     })
 }
 
@@ -125,9 +115,11 @@ pub(super) struct Configuration {
     pub layers: usize,
     pub transform: bool,
     pub markers: [bool; 2],
+    pub roi: Vec<u8>,
+    pub progressions: Vec<Change>,
     has_style: bool,
     has_quant: bool,
-    seen_defaults: [bool; 2],
+    seen_defaults: [bool; 3],
     seen_components: Vec<u8>,
 }
 
@@ -140,9 +132,11 @@ impl Configuration {
             layers: 0,
             transform: false,
             markers: [false; 2],
+            roi: budget.filled(count, 0)?,
+            progressions: Vec::new(),
             has_style: false,
             has_quant: false,
-            seen_defaults: [false; 2],
+            seen_defaults: [false; 3],
             seen_components: budget.filled(count, 0)?,
         })
     }
@@ -150,6 +144,11 @@ impl Configuration {
     pub fn copy(&self, budget: &mut Budget<'_>) -> Result<Self> {
         budget.charge::<Style>(self.styles.len())?;
         budget.charge::<Quantization>(self.quants.len())?;
+        for style in &self.styles {
+            budget.charge::<[u8; 2]>(style.precincts.len())?;
+        }
+        budget.charge::<u8>(self.roi.len())?;
+        budget.charge::<Change>(self.progressions.len())?;
         for q in &self.quants {
             budget.charge::<(u8, u16)>(q.steps.len())?;
         }
@@ -160,9 +159,11 @@ impl Configuration {
             layers: self.layers,
             transform: self.transform,
             markers: self.markers,
+            roi: self.roi.clone(),
+            progressions: self.progressions.clone(),
             has_style: self.has_style,
             has_quant: self.has_quant,
-            seen_defaults: [false; 2],
+            seen_defaults: [false; 3],
             seen_components: budget.filled(self.styles.len(), 0)?,
         })
     }
@@ -189,7 +190,10 @@ impl Configuration {
                 self.transform = transform == 1;
                 self.markers = [flags & 2 != 0, flags & 4 != 0];
                 let style = read_style(fields, flags, budget)?;
-                self.styles.fill(style);
+                for entry in &mut self.styles {
+                    budget.charge::<[u8; 2]>(style.precincts.len())?;
+                    *entry = style.clone();
+                }
                 self.has_style = true;
             }
             0xff53 => {
@@ -230,25 +234,18 @@ impl Configuration {
                 if fields.u8()? != 0 {
                     return Err(syntax("invalid JPEG 2000 ROI style", fields.position() - 1));
                 }
-                if fields.u8()? != 0 {
-                    return Err(unsupported(
-                        "JPEG 2000 ROI maxshift is not implemented",
-                        fields.position() - 1,
-                    ));
-                }
+                self.roi[component] = fields.u8()?;
                 fields.finish()?;
             }
             0xff5f => {
-                return Err(unsupported(
-                    "JPEG 2000 progression changes are not implemented",
-                    fields.position(),
-                ));
-            }
-            0xff60 | 0xff61 => {
-                return Err(unsupported(
-                    "JPEG 2000 packed packet headers are not implemented",
-                    fields.position(),
-                ));
+                let values = progression::changes(fields, self.styles.len(), self.layers, budget)?;
+                if !self.seen_defaults[2] {
+                    self.progressions.clear();
+                }
+                self.seen_defaults[2] = true;
+                for value in values {
+                    budget.push(&mut self.progressions, value)?;
+                }
             }
             0xff55 => validate_tile_lengths(fields)?,
             0xff58 => validate_packet_lengths(fields, budget)?,
@@ -297,12 +294,25 @@ impl Configuration {
                 0,
             ));
         }
+        if self.progressions.iter().any(|p| p.layer_end > self.layers) {
+            return Err(syntax("JPEG 2000 progression exceeds tile layer count", 0));
+        }
         for (style, quant) in self.styles.iter().zip(&self.quants) {
             if (quant.kind != 1 && quant.steps.len() != 1 + 3 * usize::from(style.levels))
                 || (style.reversible && quant.kind != 0)
             {
                 return Err(syntax(
                     "JPEG 2000 quantization does not match coding style",
+                    0,
+                ));
+            }
+        }
+        for (quant, &roi) in self.quants.iter().zip(&self.roi) {
+            if quant.steps.iter().any(|&(exponent, _)| {
+                u16::from(exponent) + u16::from(quant.guard) + u16::from(roi) > 31
+            }) {
+                return Err(unsupported(
+                    "JPEG 2000 coefficient precision exceeds 30 bit planes",
                     0,
                 ));
             }

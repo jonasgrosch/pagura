@@ -1,9 +1,10 @@
-//! Embedded code-block bit planes (ISO/IEC 15444-1 Annex D).
+//! JPEG 2000 code-block bit planes; T.800 primary-text review pending.
 
 use pagura_core::Result;
 
 use super::io::{Budget, syntax};
-use super::mq::Decoder;
+use super::mq::{Context, Decoder};
+use super::segments::{self, Segment};
 
 #[derive(Clone, Copy, Default)]
 struct Sample {
@@ -18,6 +19,7 @@ struct Block {
     width: usize,
     height: usize,
     orientation: u8,
+    causal: bool,
 }
 
 impl Block {
@@ -29,7 +31,7 @@ impl Block {
         let mut sign_v = 0;
         for dy in -1_i32..=1 {
             for dx in -1_i32..=1 {
-                if dx == 0 && dy == 0 {
+                if (dx == 0 && dy == 0) || (self.causal && y % 4 == 3 && dy == 1) {
                     continue;
                 }
                 let Some(nx) = x
@@ -102,7 +104,7 @@ impl Block {
         }
     }
 
-    fn sign(&self, decoder: &mut Decoder<'_>, x: usize, y: usize) -> Result<bool> {
+    fn sign(&self, decoder: &mut Entropy<'_>, x: usize, y: usize) -> Result<bool> {
         let (_, _, _, mut h, mut v) = self.neighbours(x, y);
         let prediction = h < 0 || (h == 0 && v < 0);
         if prediction {
@@ -116,12 +118,16 @@ impl Block {
             (_, 0) => 12,
             _ => 13,
         };
-        Ok(decoder.bit(context)? ^ prediction)
+        if decoder.raw() {
+            decoder.bit(0)
+        } else {
+            Ok(decoder.bit(context)? ^ prediction)
+        }
     }
 
     fn make_significant(
         &mut self,
-        decoder: &mut Decoder<'_>,
+        decoder: &mut Entropy<'_>,
         x: usize,
         y: usize,
         plane: u8,
@@ -133,7 +139,7 @@ impl Block {
         Ok(())
     }
 
-    fn propagation(&mut self, decoder: &mut Decoder<'_>, plane: u8) -> Result<()> {
+    fn propagation(&mut self, decoder: &mut Entropy<'_>, plane: u8) -> Result<()> {
         for stripe in (0..self.height).step_by(4) {
             for x in 0..self.width {
                 for y in stripe..(stripe + 4).min(self.height) {
@@ -151,7 +157,7 @@ impl Block {
         Ok(())
     }
 
-    fn refinement(&mut self, decoder: &mut Decoder<'_>, plane: u8) -> Result<()> {
+    fn refinement(&mut self, decoder: &mut Entropy<'_>, plane: u8) -> Result<()> {
         for stripe in (0..self.height).step_by(4) {
             for x in 0..self.width {
                 for y in stripe..(stripe + 4).min(self.height) {
@@ -174,7 +180,7 @@ impl Block {
         Ok(())
     }
 
-    fn cleanup(&mut self, decoder: &mut Decoder<'_>, plane: u8) -> Result<()> {
+    fn cleanup(&mut self, decoder: &mut Entropy<'_>, plane: u8) -> Result<()> {
         for stripe in (0..self.height).step_by(4) {
             for x in 0..self.width {
                 let end = (stripe + 4).min(self.height);
@@ -217,21 +223,75 @@ pub(super) struct Parameters {
     pub orientation: u8,
     pub planes: u8,
     pub passes: usize,
-    pub reset: bool,
-    pub segmentation_symbols: bool,
+    pub modes: u8,
+    pub roi: u8,
+}
+
+enum Entropy<'a> {
+    Mq(Decoder<'a>),
+    Raw(Raw<'a>),
+}
+
+impl Entropy<'_> {
+    fn bit(&mut self, context: usize) -> Result<bool> {
+        match self {
+            Self::Mq(decoder) => decoder.bit(context),
+            Self::Raw(decoder) => decoder.bit(),
+        }
+    }
+    fn raw(&self) -> bool {
+        matches!(self, Self::Raw(_))
+    }
+}
+
+struct Raw<'a> {
+    data: &'a [u8],
+    offset: usize,
+    base: usize,
+    byte: u8,
+    remaining: u8,
+}
+
+impl Raw<'_> {
+    fn bit(&mut self) -> Result<bool> {
+        if self.remaining == 0 {
+            let stuffed = self.byte == 255;
+            let next = self.data.get(self.offset).copied();
+            self.byte = next.unwrap_or(255);
+            if stuffed && next.is_some() && self.byte & 128 != 0 {
+                return Err(syntax(
+                    "invalid JPEG 2000 bypass bit stuffing",
+                    self.base + self.offset,
+                ));
+            }
+            self.offset += usize::from(next.is_some());
+            self.remaining = if stuffed { 7 } else { 8 };
+        }
+        self.remaining -= 1;
+        Ok(self.byte & (1 << self.remaining) != 0)
+    }
 }
 
 pub(super) fn decode(
-    data: &[u8],
-    parameters: &Parameters,
-    base: usize,
+    segments: &[Segment],
+    p: &Parameters,
     budget: &mut Budget<'_>,
 ) -> Result<Vec<i64>> {
-    let p = parameters;
-    if p.planes == 0 || p.planes > 30 || p.passes != usize::from(p.planes) * 3 - 2 {
+    let base = segments.first().map_or(0, |s| s.base);
+    let valid_modes = segments::BYPASS
+        | segments::RESET
+        | segments::TERMINATE
+        | segments::CAUSAL
+        | segments::PREDICTABLE
+        | segments::SYMBOLS;
+    if p.planes == 0
+        || p.planes > 30
+        || p.passes != usize::from(p.planes) * 3 - 2
+        || p.modes & !valid_modes != 0
+    {
         return Err(syntax("invalid or incomplete JPEG 2000 bit planes", base));
     }
-    let count = p.width * p.height; // Code-block dimensions are validated and at most 1024 each.
+    let count = p.width * p.height;
     budget.work(
         count
             .checked_mul(p.passes)
@@ -242,39 +302,90 @@ pub(super) fn decode(
         width: p.width,
         height: p.height,
         orientation: p.orientation,
+        causal: p.modes & segments::CAUSAL != 0,
     };
-    let mut decoder = Decoder::new(data, base)?;
-    for pass in 0..p.passes {
-        let plane = p.planes
-            - 1
-            - u8::try_from(pass.div_ceil(3))
-                .map_err(|_| syntax("JPEG 2000 bit plane overflow", base))?;
-        match pass % 3 {
-            1 => block.propagation(&mut decoder, plane)?,
-            2 => block.refinement(&mut decoder, plane)?,
-            _ => {
-                block.cleanup(&mut decoder, plane)?;
-                if p.segmentation_symbols {
-                    let mut symbol = 0;
-                    for _ in 0..4 {
-                        symbol = (symbol << 1) | u8::from(decoder.bit(18)?);
-                    }
-                    if symbol != 10 {
-                        return Err(syntax(
-                            "invalid JPEG 2000 cleanup segmentation symbol",
-                            base,
-                        ));
-                    }
-                }
-            }
-        }
-        if p.reset {
-            decoder.reset();
-        }
+    let mut contexts = Decoder::initial_contexts();
+    for segment in segments {
+        decode_segment(&mut block, segment, p, &mut contexts)?;
     }
     let mut result = budget.filled(count, 0_i64)?;
     for (out, sample) in result.iter_mut().zip(block.samples) {
         *out = i64::from(sample.magnitude) * if sample.negative { -1 } else { 1 };
     }
     Ok(result)
+}
+
+fn decode_segment_inner(
+    block: &mut Block,
+    segment: &Segment,
+    p: &Parameters,
+    contexts: &mut [Context; 19],
+) -> Result<()> {
+    if segment.data.is_empty()
+        && p.modes & segments::PREDICTABLE == 0
+        && !segments::raw(segment.first, p.modes, p.roi)
+    {
+        return Err(syntax("empty JPEG 2000 arithmetic segment", 0));
+    }
+    let mut decoder = if segments::raw(segment.first, p.modes, p.roi) {
+        Entropy::Raw(Raw {
+            data: &segment.data,
+            offset: 0,
+            base: 0,
+            byte: 0,
+            remaining: 0,
+        })
+    } else {
+        Entropy::Mq(Decoder::new(&segment.data, 0, *contexts)?)
+    };
+    for pass in segment.first..segment.first + segment.passes {
+        let plane = p.planes
+            - 1
+            - u8::try_from(pass.div_ceil(3))
+                .map_err(|_| syntax("JPEG 2000 bit plane overflow", 0))?;
+        match pass % 3 {
+            1 => block.propagation(&mut decoder, plane)?,
+            2 => block.refinement(&mut decoder, plane)?,
+            _ => {
+                block.cleanup(&mut decoder, plane)?;
+                if p.modes & segments::SYMBOLS != 0 {
+                    let mut symbol = 0;
+                    for _ in 0..4 {
+                        symbol = (symbol << 1) | u8::from(decoder.bit(18)?);
+                    }
+                    if symbol != 10 {
+                        return Err(syntax("invalid JPEG 2000 cleanup segmentation symbol", 0));
+                    }
+                }
+            }
+        }
+        if p.modes & segments::RESET != 0 {
+            *contexts = Decoder::initial_contexts();
+            if let Entropy::Mq(decoder) = &mut decoder {
+                decoder.reset();
+            }
+        }
+    }
+    if let Entropy::Mq(decoder) = decoder {
+        *contexts = decoder.contexts();
+    }
+    Ok(())
+}
+
+fn decode_segment(
+    block: &mut Block,
+    segment: &Segment,
+    p: &Parameters,
+    contexts: &mut [Context; 19],
+) -> Result<()> {
+    decode_segment_inner(block, segment, p, contexts).map_err(|mut error| {
+        if let pagura_core::Position::Buffer(offset) = error.position {
+            error.position = pagura_core::Position::Buffer(super::io::source_position(
+                &segment.spans,
+                offset,
+                segment.base,
+            ));
+        }
+        error
+    })
 }

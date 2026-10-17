@@ -1,4 +1,4 @@
-//! JP2 container fields (ISO/IEC 15444-1 Annex I; PDF clause 7.4.9).
+//! JP2 fields for PDF 7.4.9; T.800/T.801 encodings await primary-text review.
 
 use pagura_core::{Error, Result};
 
@@ -104,7 +104,7 @@ pub(super) fn parse<'a>(
             b"jP  " | b"ftyp" => {
                 return Err(syntax("repeated JP2 signature or file type", b.position));
             }
-            _ => {} // Unrecognised boxes are length-delimited metadata, Annex I.
+            _ => {} // Unknown length-delimited metadata is skipped; extension semantics remain pending.
         }
     }
     let (stream, position) =
@@ -228,7 +228,17 @@ fn parse_color(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<JpxCo
         ));
     }
     match method {
-        1 => Ok(JpxColor::Enumerated(fields.u32()?)),
+        1 => {
+            let color = fields.u32()?;
+            // PDF 7.4.9 excludes this enumerated space even from the baseline set.
+            if color == 19 {
+                return Err(syntax(
+                    "CIEJab colour is forbidden in PDF JPEG 2000 images",
+                    fields.position() - 4,
+                ));
+            }
+            Ok(JpxColor::Enumerated(color))
+        }
         2 | 3 => {
             let bytes = fields.take(fields.remaining())?;
             if bytes.len() < 128 {
@@ -393,7 +403,7 @@ impl Header {
                                 } else {
                                     0
                                 };
-                            // Annex I maps out-of-range indices to the nearest palette endpoint.
+                            // Endpoint clamping remains pending primary T.800 review.
                             let index = usize::try_from(signed_index)
                                 .unwrap_or(0)
                                 .min(palette.entries - 1);

@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "jpx",
-  "scope": "ISO 32000-2:2020 clause 7.4.9 verified against the locally supplied reference; codec algorithms independently implemented for the stated ISO/IEC 15444-1 subset. Annex locators refer to Part 1.",
+  "scope": "Verified only the PDF JPX permissions, prohibitions and image-dictionary contracts against the local ISO_32000-2_sponsored_EC3.txt (ISO 32000-2:2020 with Errata Collection 3), clause 7.4.9 and clause 8.9.5 Table 87 (Width, Height, ColorSpace, BitsPerComponent, ImageMask, Decode, SMask, SMaskInData). ITU-T T.800 / ISO/IEC 15444-1 codec and JP2 mechanics and ITU-T T.801 / ISO/IEC 15444-2 JPX baseline mechanics are pending primary-text review; generated source-sample oracles and OpenJPEG differential results are evidence, not specification verification.",
   "requirements": [
     {
       "id": "jpx-part1",
@@ -9,22 +9,57 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ISO/IEC 15444-1, Annex A; B; C; D",
-      "status": "Part 1 MQ code-blocks, tag trees, reset and segmentation symbols; signed 1-16-bit components",
+      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
+      "status": "Full code-block MQ/raw coding, tag trees and all six Part 1 style flags; signed 1-16-bit components",
       "tests": [
         "jpx/gray",
         "jpx/zero",
         "jpx/sixteen-bit",
         "jpx/signed",
-        "jpx/code-blocks",
+        "jpx/modes-1",
         "jpx/modes-2",
+        "jpx/modes-4",
+        "jpx/modes-8",
+        "jpx/modes-16",
         "jpx/modes-32",
         "jpx/modes-34",
-        "jpx/markers",
+        "jpx/modes-3",
+        "jpx/modes-5",
+        "jpx/modes-9",
+        "jpx/modes-17",
+        "jpx/modes-6",
+        "jpx/modes-12",
+        "jpx/modes-20",
+        "jpx/modes-24",
+        "jpx/modes-36",
+        "jpx/modes-63",
         "jpx/packet-markers",
-        "jpx/packet-lengths"
+        "jpx/code-blocks",
+        "jpx/markers",
+        "jpx/roi-4",
+        "jpx/roi-12",
+        "jpx/layer-contributions-0",
+        "jpx/layer-contributions-1",
+        "jpx/layer-contributions-4",
+        "jpx/layer-contributions-63",
+        "jpx/packet-lengths",
+        "jpx/pdf-depth-17",
+        "jpx/roi-precision-limit"
       ],
-      "gaps": "Bypass, terminate-each-pass, predictable termination, vertical-causal coding, ROI shifts and partial bit-plane quality truncation return Unsupported."
+      "gaps": "Current sample representation rejects depths 17-38 explicitly; incomplete bit-plane quality truncation and coefficient precision above 30 bits remain unsupported.",
+      "pdf_review": {
+        "rule": "PDF allows different per-component depths from 1 through 38; JPEG 2000 algorithms are delegated to the external format standard.",
+        "verdict": "partial: decoder explicitly supports 1-16 bits and rejects higher supported PDF depths as Unsupported; sample oracles agree for that subset, not a complete implementation.",
+        "implementation_expectations": "partial: decoder explicitly supports 1-16 bits and rejects higher supported PDF depths as Unsupported; sample oracles agree for that subset, not a complete implementation.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
+        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
+        "depends_on": "Component headers, MQ probability transitions, pass scanning, sign contexts, reset, segmentation symbols and tag-tree encodings.",
+        "evidence": "Exact OpenJPEG comparisons for each style flag and combinations through modes-63, nonterminated/raw/terminated segments split across layers, ROI and ROI+bypass combinations, plus the earlier signed/precision/code-block vectors."
+      }
     },
     {
       "id": "jpx-wavelet",
@@ -32,7 +67,7 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ISO/IEC 15444-1, Annex F",
+      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
       "status": "Reversible 5/3 synthesis with reference-grid parity, symmetric extension and singleton dimensions",
       "tests": [
         "jpx/reversible-1",
@@ -51,7 +86,20 @@
         "jpx/singleton-1-1-1-1-0",
         "jpx/singleton-1-1-1-1-1"
       ],
-      "gaps": "Component precision above 16 bits and coefficient precision above 30 bit planes exceed the current representation."
+      "gaps": "Component precision above 16 bits and coefficient precision above 30 bit planes exceed the current representation.",
+      "pdf_review": {
+        "rule": "PDF permits lossless JPEG 2000 and resolution progressions; it does not define inverse lifting or border extension.",
+        "verdict": "permission verified; implementation and generator agree on the tested subset, while the algorithm remains pending primary-text review.",
+        "implementation_expectations": "permission verified; implementation and generator agree on the tested subset, while the algorithm remains pending primary-text review.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
+        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
+        "depends_on": "5/3 and 9/7 lifting, transform order, reference-grid parity, symmetric border extension and singleton rules.",
+        "evidence": "reversible-1/2/3, offset, odd and singleton vectors: exact reversible OpenJPEG comparisons, tolerance 1 for irreversible singleton vectors."
+      }
     },
     {
       "id": "jpx-progression",
@@ -59,17 +107,49 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ISO/IEC 15444-1, Annex B",
-      "status": "All five progression orders with one default precinct per resolution and multiple layers",
+      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
+      "status": "All five progression orders, multiple/non-default precincts, overlapping POC ranges, deferred tile-part POC declarations and PPM/PPT headers",
       "tests": [
         "jpx/rct-progression-0",
         "jpx/rct-progression-1",
         "jpx/rct-progression-2",
         "jpx/rct-progression-3",
         "jpx/rct-progression-4",
-        "jpx/layers"
+        "jpx/layers",
+        "jpx/precincts-0",
+        "jpx/precincts-1",
+        "jpx/precincts-2",
+        "jpx/precincts-3",
+        "jpx/precincts-4",
+        "jpx/precincts-offset",
+        "jpx/precincts-tiles",
+        "jpx/poc",
+        "jpx/poc-overlap",
+        "jpx/poc-tile-part",
+        "jpx/packed-ppm",
+        "jpx/packed-ppt",
+        "jpx/combined-lossy",
+        "jpx/spatial-offset-boundary",
+        "jpx/spatial-offset-0",
+        "jpx/spatial-offset-1",
+        "jpx/spatial-offset-2",
+        "jpx/spatial-offset-3",
+        "jpx/spatial-offset-4"
       ],
-      "gaps": "Explicit non-default precinct partitioning, multiple precincts per resolution, POC and PPM/PPT return Unsupported."
+      "gaps": "Other coding parameter changes after the first tile-part remain unsupported; all T.800 mechanics pending primary-text review.",
+      "pdf_review": {
+        "rule": "JPEG 2000 progression information is carried by the image data; PDF supplies no decoding parameters for it.",
+        "verdict": "PDF delegation and progression permissions verified; generated full-quality expectations agree with the decoder and OpenJPEG on the listed organizations, not a primary-text codec verification.",
+        "implementation_expectations": "PDF delegation and progression permissions verified; generated full-quality expectations agree with the decoder and OpenJPEG on the listed organizations, not a primary-text codec verification.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
+        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
+        "depends_on": "Reference-grid precinct alignment, five progression orders, overlapping POC inclusion, tile-wide POC scope (including later declarations), layer contributions and PPM/PPT fragmentation.",
+        "evidence": "Exact OpenJPEG comparisons for precincts-0..4, spatial-offset-0..4, spatial-offset-boundary, poc/overlap/tile-part/deferred-declaration, packed-ppm/ppt and zero-coefficient variants, plus combined-reversible; combined-lossy tolerance 3."
+      }
     },
     {
       "id": "jpx-rct",
@@ -77,7 +157,7 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ISO/IEC 15444-1, Annex G",
+      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
       "status": "Inverse reversible component transform and DC level shift",
       "tests": [
         "jpx/rct-progression-0",
@@ -86,7 +166,20 @@
         "jpx/rct-progression-3",
         "jpx/rct-progression-4"
       ],
-      "gaps": ""
+      "gaps": "",
+      "pdf_review": {
+        "rule": "PDF permits multiple-component JPEG 2000 images; component-transform mathematics comes from the external format standard.",
+        "verdict": "permission verified; tested transform expectations agree with decoder and differential results, with T.800 mechanics pending.",
+        "implementation_expectations": "permission verified; tested transform expectations agree with decoder and differential results, with T.800 mechanics pending.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
+        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
+        "depends_on": "RCT, component-transform eligibility, signed sample representation and DC level shifting.",
+        "evidence": "rct-progression-0 through -4, tiles and signed source-pixel vectors compare exactly with OpenJPEG."
+      }
     },
     {
       "id": "jpx-tiles",
@@ -94,15 +187,29 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ISO/IEC 15444-1, Annex A; B",
-      "status": "Tile grids and packet-boundary tile-parts, assembled without partial success",
+      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
+      "status": "Multiple tiles and packet-boundary tile-parts; tile-wide POC declarations collected before packet decoding",
       "tests": [
         "jpx/tiles",
         "jpx/tile-parts",
-        "jpx/final-tile-part",
-        "jpx/tile-coding"
+        "jpx/precincts-tiles",
+        "jpx/tile-coding",
+        "jpx/final-tile-part"
       ],
-      "gaps": "Coding parameter changes after the first tile-part return Unsupported."
+      "gaps": "Coding-parameter changes other than POC after the first tile-part remain unsupported.",
+      "pdf_review": {
+        "rule": "PDF describes tiled and progressive JPEG 2000 data but does not define tile or tile-part marker mechanics.",
+        "verdict": "permission verified; tested tile expectations agree with the decoder and OpenJPEG, with T.800 mechanics pending.",
+        "implementation_expectations": "permission verified; tested tile expectations agree with the decoder and OpenJPEG, with T.800 mechanics pending.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
+        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
+        "depends_on": "Tile-grid clipping, tile-component bounds, SOT lengths, tile-part sequencing and coding-parameter inheritance.",
+        "evidence": "Exact OpenJPEG comparisons for tiles, tile-parts, final-tile-part, tile-coding, precincts-tiles, packed-ppm/ppt and deferred POC declarations."
+      }
     },
     {
       "id": "jpx-irreversible",
@@ -110,13 +217,27 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ISO/IEC 15444-1, Annex E; F; G",
-      "status": "9/7 lifting, expounded and derived scalar dequantization, ICT; input sample oracle with tolerance 3",
+      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
+      "status": "Scalar expounded/derived dequantization, 9/7 lifting and ICT, including combined precinct/PPT/mode case; tolerance 3",
       "tests": [
         "jpx/irreversible",
-        "jpx/derived-quantization"
+        "jpx/derived-quantization",
+        "jpx/combined-lossy"
       ],
-      "gaps": "Floating-point reconstruction; no bit-exact lossy output claim."
+      "gaps": "No bit-exact irreversible output claim; T.800 mechanics pending primary-text review.",
+      "pdf_review": {
+        "rule": "PDF permits JPEG 2000 image compression; quantization and irreversible reconstruction are external format rules.",
+        "verdict": "permission verified; source-pixel oracles and decoder agree within declared tolerance, not a primary-text algorithm verification.",
+        "implementation_expectations": "permission verified; source-pixel oracles and decoder agree within declared tolerance, not a primary-text algorithm verification.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
+        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
+        "depends_on": "Scalar quantization steps, 9/7 normalization and lifting, ICT coefficients and reconstruction rounding.",
+        "evidence": "irreversible, derived-quantization and combined-lossy compare with OpenJPEG within the declared source-pixel tolerance 3; observed maximum difference 2."
+      }
     },
     {
       "id": "jpx-boxes",
@@ -124,18 +245,33 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ISO/IEC 15444-1, Annex I",
+      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
       "status": "JP2 bounds, ihdr, colr methods 1-3, cdef, res and extended box lengths",
       "tests": [
+        "jpx/final-box",
+        "jpx/bit-depth-box",
         "jpx/color-1",
         "jpx/color-2",
         "jpx/color-3",
-        "jpx/channel-alpha",
         "jpx/resolution-extended",
-        "jpx/final-box",
-        "jpx/bit-depth-box"
+        "jpx/channel-alpha",
+        "jpx/pdf-colour-19",
+        "jpx/pdf-colour-12"
       ],
-      "gaps": "Multiple colour specifications need negotiation. Premultiplied, partial and per-colour opacity definitions require a richer public image API. ICC profile bytes are preserved, not interpreted."
+      "gaps": "Multiple colour specifications need negotiation. Premultiplied, partial and per-colour opacity definitions require a richer public image API. ICC profile bytes are preserved, not interpreted.",
+      "pdf_review": {
+        "rule": "PDF requires full JPX packaging and baseline features, excludes colour 19, permits CMYK 12, and defers dictionary colour and opacity use to the stated image entries.",
+        "verdict": "partial: colour 19 rejection is corrected; decoder preserves colour and alpha metadata, while full JPX, colour negotiation and dictionary interactions need caller support.",
+        "implementation_expectations": "partial: colour 19 rejection is corrected; decoder preserves colour and alpha metadata, while full JPX, colour negotiation and dictionary interactions need caller support.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
+        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1 and ITU-T T.801 / ISO/IEC 15444-2",
+        "depends_on": "JP2 lengths and header encodings, colr/profile methods, cdef associations and resolution boxes; JPX baseline details also depend on T.801.",
+        "evidence": "color-1, resolution-extended, final-box and bit-depth-box compare exactly with OpenJPEG; color-2/3 are accepted; channel-alpha has independent channel-order expectations."
+      }
     },
     {
       "id": "jpx-palette",
@@ -143,12 +279,25 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ISO/IEC 15444-1, Annex I",
+      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
       "status": "JP2 palette and component mapping, applied before channel definitions",
       "tests": [
         "jpx/palette"
       ],
-      "gaps": "Palette and component precision limited to 16 bits."
+      "gaps": "Palette and component precision limited to 16 bits.",
+      "pdf_review": {
+        "rule": "PDF permits a JPEG 2000 palette and allows a PDF ColorSpace override; PDF Indexed spaces retain the 256-colour limit.",
+        "verdict": "permission verified; codec palette expectations agree with the decoder, but box encodings and endpoint mapping remain pending T.800 review; PDF Indexed validation belongs to the caller.",
+        "implementation_expectations": "permission verified; codec palette expectations agree with the decoder, but box encodings and endpoint mapping remain pending T.800 review; PDF Indexed validation belongs to the caller.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
+        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
+        "depends_on": "pclr/cmap layouts, signed values, palette index endpoint selection and ordering before channel definitions.",
+        "evidence": "palette compares exactly with OpenJPEG; source oracle is the independently specified palette lookup, not decoded output."
+      }
     },
     {
       "id": "jpx-hostile",
@@ -156,9 +305,10 @@
       "clauses": [
         "7.4.9"
       ],
-      "codec_reference": "ISO/IEC 15444-1, Annex A; B; I",
+      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review (no verified annex/table locator)",
       "status": "Truncations, tag-tree precision, impossible tile counts and box lengths fail with bounded work",
       "tests": [
+        "jpx/packed-stuffing",
         "jpx/truncated",
         "jpx/bad-tag-tree",
         "jpx/absurd-tiles",
@@ -167,9 +317,283 @@
         "jpx/trailing",
         "jpx/duplicate-coding",
         "jpx/bad-tile-lengths",
-        "jpx/bad-packet-lengths"
+        "jpx/bad-packet-lengths",
+        "jpx/poc-range",
+        "jpx/precinct-size",
+        "jpx/ppm-index",
+        "jpx/ppt-index",
+        "jpx/packed-conflict",
+        "jpx/ppm-unused"
       ],
-      "gaps": "No recovery or invented pixels; allocation accounting conservatively includes temporary buffers."
+      "gaps": "No recovery or invented pixels; allocation accounting conservatively includes temporary buffers.",
+      "pdf_review": {
+        "rule": "PDF requires conforming JPEG 2000 structures but does not prescribe decoder budgets or malformed-data recovery.",
+        "verdict": "documented policy: strict errors and bounded allocations/work follow ADR 0003 and ADR 0010; hostile expectations agree with the decoder, not a claimed PDF repair mandate.",
+        "implementation_expectations": "documented policy: strict errors and bounded allocations/work follow ADR 0003 and ADR 0010; hostile expectations agree with the decoder, not a claimed PDF repair mandate.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
+        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
+        "depends_on": "Exact invalid marker/box/tag-tree classifications rely on T.800; resource limits are project policy.",
+        "evidence": "Original malformed vectors plus poc-range, precinct-size, ppm-index, ppt-index, packed-conflict, ppm-unused and packed-stuffing; original source position is checked across a header-fragment boundary. Truncation/mutation tests cover POC, PPM/PPT and the combined case."
+      }
+    },
+    {
+      "id": "jpx-pdf-contract",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9",
+        "8.9.5"
+      ],
+      "tables": [
+        "87: Width, Height, ColorSpace, BitsPerComponent, ImageMask, Decode, SMask, SMaskInData"
+      ],
+      "status": "PDF text verified; dictionary enforcement is partly outside this codec API",
+      "pdf_review": {
+        "rule": "JPX is for image XObjects with matching dimensions; dictionary colour overrides embedded colour; dictionary bit depth is ignored; absent dictionary colour suppresses Decode except for a one-channel one-bit stencil; nonzero SMaskInData selects embedded opacity, excludes SMask and requires one alpha for all colours.",
+        "verdict": "partial implementation: dispatch checks dimensions, ordinary component count, ignores dictionary BitsPerComponent, drops Decode when required and rejects simultaneous SMask/nonzero SMaskInData; embedded alpha values 1/2, colour negotiation/CMYK and full-file enforcement remain caller gaps.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: 7.4.9 lines 3561-3702; 8.9.5 Table 87 lines 15635-15772",
+        "implementation_expectations": "Codec vectors exercise colour metadata and a supported/unsupported bit-depth boundary; no PDF dictionary fixture is claimed because these paths belong to the image facade.",
+        "documented_choice": "Raw codestream input remains a standalone codec convenience, not evidence that a bare codestream meets the PDF full-JPX-file rule; ICC bytes are preserved without declaring profile conformance.",
+        "locator_verdict": "verified against the stated local PDF text; codec algorithms are not thereby verified"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1 and ITU-T T.801 / ISO/IEC 15444-2",
+        "depends_on": "JPEG 2000 header precision encodings, baseline JPX feature classification, colour and opacity channel box encodings.",
+        "evidence": "Independent source-pixel/metadata fixtures plus OpenJPEG 2.5.4 differential acceptance; PDF dictionary semantics are read from the local PDF text, not inferred from OpenJPEG."
+      },
+      "tests": [
+        "jpx/pdf-colour-19",
+        "jpx/pdf-colour-12",
+        "jpx/pdf-depth-17"
+      ],
+      "gaps": "Caller must enforce full JPX file packaging, implement SMaskInData 1/2 and ICC/CMYK/baseline colour selection, and validate any excluded inline path. Codec cannot inspect PDF dictionaries through decode(data, limits)."
+    },
+    {
+      "id": "jpx-precincts",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review",
+      "status": "Multiple/default/non-default precincts, independently sized resolution precincts, clipped reference-grid origins and code-block groups",
+      "pdf_review": {
+        "rule": "PDF delegates progression and precinct organization to JPEG 2000 rather than specifying its grid mathematics.",
+        "locator_verdict": "verified delegation against local PDF text; no codec algorithm verified",
+        "verdict": "implementation and source-sample expectations agree on the differential vectors; T.800 mechanics remain pending primary-text review",
+        "implementation_expectations": "All listed reversible source pixels are exact; irreversible combinations use the documented tolerance 3.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: 7.4.9, lines 3561-3702"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
+        "depends_on": "Precinct and subband partition bounds, effective code-block exponents, tag-tree scope, reference-grid alignment and spatial progression positions.",
+        "evidence": "precincts-0..4, precincts-offset, precincts-tiles, precincts-default-multiple, spatial-offset-0..4 and spatial-offset-boundary; exact OpenJPEG source pixels."
+      },
+      "tests": [
+        "jpx/precincts-0",
+        "jpx/precincts-1",
+        "jpx/precincts-2",
+        "jpx/precincts-3",
+        "jpx/precincts-4",
+        "jpx/precincts-offset",
+        "jpx/precincts-tiles",
+        "jpx/combined-lossy",
+        "jpx/precincts-default-multiple",
+        "jpx/combined-reversible",
+        "jpx/spatial-offset-boundary",
+        "jpx/spatial-offset-0",
+        "jpx/spatial-offset-1",
+        "jpx/spatial-offset-2",
+        "jpx/spatial-offset-3",
+        "jpx/spatial-offset-4",
+        "jpx/poc-deferred-declaration",
+        "jpx/precinct-size"
+      ],
+      "gaps": "T.800 primary text unavailable locally; differential agreement is not specification verification."
+    },
+    {
+      "id": "jpx-poc",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review",
+      "status": "POC ranges, overlap suppression, main/tile scope and later tile-part declarations resolved before packet decoding",
+      "pdf_review": {
+        "rule": "PDF expects the image data to provide its own progression information.",
+        "locator_verdict": "verified delegation against local PDF text; no codec algorithm verified",
+        "verdict": "implementation and source-sample expectations agree on the differential vectors; T.800 mechanics remain pending primary-text review",
+        "implementation_expectations": "All listed reversible source pixels are exact; irreversible combinations use the documented tolerance 3.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: 7.4.9, lines 3561-3702"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
+        "depends_on": "POC field sizes/ranges and scope, missing-packet classification, inclusion masks and tile-wide deferred declaration ordering.",
+        "evidence": "poc, poc-overlap, poc-tile-part, poc-deferred-declaration and combined-reversible compare exactly with OpenJPEG; poc-range is rejected."
+      },
+      "tests": [
+        "jpx/poc",
+        "jpx/poc-overlap",
+        "jpx/poc-tile-part",
+        "jpx/combined-reversible",
+        "jpx/poc-deferred-declaration",
+        "jpx/poc-range"
+      ],
+      "gaps": "T.800 primary text unavailable locally; differential agreement is not specification verification."
+    },
+    {
+      "id": "jpx-packed-headers",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review",
+      "status": "PPM/PPT fragment ordering, Nppm tile-part records, EPH/SOP placement, zero-codeword packets and original source offsets",
+      "pdf_review": {
+        "rule": "PDF defines no JPX decode parameters; packed packet-header details are external JPEG 2000 syntax.",
+        "locator_verdict": "verified delegation against local PDF text; no codec algorithm verified",
+        "verdict": "implementation and source-sample expectations agree on the differential vectors; T.800 mechanics remain pending primary-text review",
+        "implementation_expectations": "All listed reversible source pixels are exact; irreversible combinations use the documented tolerance 3.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: 7.4.9, lines 3561-3702"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
+        "depends_on": "PPM/PPT index scope, Nppm field boundaries, Ippm/Ippt concatenation, packet header/body separation, byte stuffing and marker placement.",
+        "evidence": "packed-ppm/ppt, packed-zero-ppm/ppt and combined-reversible compare exactly with OpenJPEG; combined-lossy tolerance 3. Index/conflict/unused/stuffing vectors reject deterministically, with a checked source offset."
+      },
+      "tests": [
+        "jpx/packed-ppm",
+        "jpx/packed-ppt",
+        "jpx/combined-lossy",
+        "jpx/packed-zero-ppm",
+        "jpx/packed-zero-ppt",
+        "jpx/combined-reversible",
+        "jpx/packed-stuffing",
+        "jpx/ppm-index",
+        "jpx/ppt-index",
+        "jpx/packed-conflict",
+        "jpx/ppm-unused"
+      ],
+      "gaps": "T.800 primary text unavailable locally; differential agreement is not specification verification."
+    },
+    {
+      "id": "jpx-roi",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review",
+      "status": "Per-component maxshift, ROI/background separation and bypass activation accounting for the ROI shift",
+      "pdf_review": {
+        "rule": "PDF permits JPEG 2000 image data and delegates ROI encoding mechanics to the format standard.",
+        "locator_verdict": "verified delegation against local PDF text; no codec algorithm verified",
+        "verdict": "implementation and source-sample expectations agree on the differential vectors; T.800 mechanics remain pending primary-text review",
+        "implementation_expectations": "All listed reversible source pixels are exact; irreversible combinations use the documented tolerance 3.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: 7.4.9, lines 3561-3702"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
+        "depends_on": "RGN style/range, ROI-adjusted code-block precision, maxshift coefficient selection, de-scaling and the bypass bit-plane threshold.",
+        "evidence": "roi-4 and roi-12 compare exactly with OpenJPEG; combined-reversible exercises ROI with bypass/reset/termination/causal coding, precincts, deferred POC and PPM."
+      },
+      "tests": [
+        "jpx/roi-4",
+        "jpx/roi-12",
+        "jpx/combined-reversible",
+        "jpx/roi-precision-limit"
+      ],
+      "gaps": "Coded coefficient precision is limited to 30 bits, including ROI shift; larger declarations return Unsupported before packet parsing. T.800 primary-text review remains pending."
+    },
+    {
+      "id": "jpx-codeblock-modes",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ITU-T T.800 / ISO/IEC 15444-1; pending primary-text review",
+      "status": "Raw bypass, MQ reset, per-pass termination, predictable termination codewords, vertical-causal contexts and segmentation symbols",
+      "pdf_review": {
+        "rule": "PDF delegates entropy coding to JPEG 2000 and supplies no parameters that replace the embedded code-block style.",
+        "locator_verdict": "verified delegation against local PDF text; no codec algorithm verified",
+        "verdict": "implementation and source-sample expectations agree on the differential vectors; T.800 mechanics remain pending primary-text review",
+        "implementation_expectations": "All listed reversible source pixels are exact; irreversible combinations use the documented tolerance 3.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: 7.4.9, lines 3561-3702"
+      },
+      "external_review": {
+        "status": "pending primary-text review",
+        "standard": "ITU-T T.800 / ISO/IEC 15444-1",
+        "depends_on": "Segment capacities, raw bit stuffing/signs, MQ context lifetime/reset, predictable flush, causal neighbours, cleanup symbols and layer-segment assembly.",
+        "evidence": "modes-1/2/4/8/16/32, combinations 3/5/6/9/12/17/20/24/34/36/63 and layer-contributions-0/1/4/63 compare exactly with OpenJPEG; combined-lossy tolerance 3."
+      },
+      "tests": [
+        "jpx/modes-1",
+        "jpx/modes-2",
+        "jpx/modes-4",
+        "jpx/modes-8",
+        "jpx/modes-16",
+        "jpx/modes-32",
+        "jpx/modes-34",
+        "jpx/modes-3",
+        "jpx/modes-5",
+        "jpx/modes-9",
+        "jpx/modes-17",
+        "jpx/modes-6",
+        "jpx/modes-12",
+        "jpx/modes-20",
+        "jpx/modes-24",
+        "jpx/modes-36",
+        "jpx/modes-63",
+        "jpx/combined-lossy",
+        "jpx/layer-contributions-0",
+        "jpx/layer-contributions-1",
+        "jpx/layer-contributions-4",
+        "jpx/layer-contributions-63",
+        "jpx/combined-reversible"
+      ],
+      "gaps": "Termination integrity validation is not implemented. T.800 primary-text review remains pending; differential decoding agreement does not verify its normative error-detection requirements."
     }
-  ]
+  ],
+  "external_standards": [
+    {
+      "name": "ITU-T T.800 / ISO/IEC 15444-1",
+      "status": "pending primary-text review",
+      "depends_on": "Codestream markers, grids, precincts, progression, packet and tag-tree syntax, MQ/EBCOT, ROI, quantization, DWT, MCT and JP2 box fields. No local primary text was available for this review.",
+      "evidence": "Independent Python encoder source pixels; OpenJPEG 2.5.4 differential decoding of the listed vectors. Not primary-text verification."
+    },
+    {
+      "name": "ITU-T T.801 / ISO/IEC 15444-2",
+      "status": "pending primary-text review",
+      "depends_on": "Exact JPX baseline feature set, extension boxes, full ICC colour method and channel association encodings. PDF 7.4.9 specifies the PDF exceptions but does not define those encodings.",
+      "evidence": "JP2-compatible generated subset and OpenJPEG acceptance; no claim of full JPX baseline conformance."
+    }
+  ],
+  "pdf_source": {
+    "id": "iso32000-2-full-text",
+    "file": "ISO_32000-2_sponsored_EC3.txt",
+    "sha256": "38f6e31c6d2ccfec0e66c7de704da42f01dd41ea1b0a1ea180d780a4c471ec04",
+    "verified_locators": [
+      "7.4.9",
+      "8.9.5, Table 87: Width, Height, ColorSpace, BitsPerComponent, ImageMask, Decode, SMask, SMaskInData"
+    ]
+  },
+  "differential_evidence": {
+    "engine": "OpenJPEG 2.5.4",
+    "kind": "differential evidence, not primary-text verification",
+    "source_sample_vectors": 87,
+    "results": "All reversible source-pixel comparisons exact; irreversible differences at most 2, within per-vector tolerances 1 or 3. ICC and channel/CMYK metadata assertions are separate from colour-managed output comparisons.",
+    "choices_and_gaps": [
+      "Raw codestream support is a standalone convenience; the PDF full-file rule must be enforced by the image facade.",
+      "No claim that PDF text specifies T.800 marker, entropy-coding, wavelet or box mechanics.",
+      "T.800-dependent strict corruption errors, progression collection and packed-header fragment handling remain pending primary-text review.",
+      "Predictable-termination codewords decode in the differential vectors; termination integrity validation is not implemented and awaits T.800 primary-text review.",
+      "Floating-point irreversible rounding is tolerance-tested, not claimed bit-exact."
+    ]
+  }
 }

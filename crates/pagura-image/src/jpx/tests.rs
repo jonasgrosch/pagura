@@ -66,6 +66,7 @@ fn independent_sample_vectors() -> Result<(), Box<dyn std::error::Error>> {
 fn container_color_palette_and_opacity() -> pagura_core::Result<()> {
     for (name, expected) in [
         ("color-1", JpxColor::Enumerated(17)),
+        ("pdf-colour-12", JpxColor::Enumerated(12)),
         ("palette", JpxColor::Enumerated(16)),
         ("channel-alpha", JpxColor::Enumerated(16)),
     ] {
@@ -112,9 +113,21 @@ fn malformed_inputs_have_positions() -> Result<(), Box<dyn std::error::Error>> {
             "{}: {result:?}",
             path.display()
         );
+        let position_file = path.with_extension("offset");
+        if position_file.exists() {
+            let offset = std::fs::read_to_string(position_file)?
+                .trim()
+                .parse::<usize>()?;
+            assert_eq!(
+                result.as_ref().err().map(|e| e.position),
+                Some(Position::Buffer(offset)),
+                "{}",
+                path.display()
+            );
+        }
         checked += 1;
     }
-    assert_eq!(checked, 9);
+    assert_eq!(checked, 19);
     Ok(())
 }
 
@@ -180,17 +193,52 @@ fn limits_bound_input_pixels_allocations_and_work() {
 }
 
 #[test]
-fn unsupported_modes_are_explicit() -> Result<(), Box<dyn std::error::Error>> {
+fn reserved_coding_modes_are_rejected() -> Result<(), Box<dyn std::error::Error>> {
     let data = fixture("jpx", "gray.jpx");
     let cod = data
         .windows(2)
         .position(|v| v == [255, 82])
         .ok_or("missing COD")?;
-    for mode in [1, 4, 8, 16] {
+    for mode in [64, 128, 255] {
         let mut changed = data.clone();
         changed[cod + 12] = mode;
         let result = decode(&changed, &Limits::default());
-        assert!(matches!(result,Err(e) if e.feature() == Some(super::UNSUPPORTED)));
+        assert!(matches!(result,Err(e) if e.kind == ErrorKind::Syntax));
     }
     Ok(())
+}
+
+#[test]
+fn packed_and_progression_boundaries_never_panic() {
+    let limits = Limits {
+        pixels: 4096,
+        decoded_bytes: 2_000_000,
+        operations: 200_000,
+        objects: 256,
+        ..Limits::default()
+    };
+    for name in [
+        "packed-ppm",
+        "packed-ppt",
+        "poc-overlap",
+        "combined-reversible",
+    ] {
+        let data = fixture("jpx", &format!("{name}.jpx"));
+        for length in 0..data.len() {
+            assert!(
+                decode(&data[..length], &limits).is_err(),
+                "{name} prefix {length}"
+            );
+        }
+        for index in 0..data.len() {
+            let mut changed = data.clone();
+            changed[index] ^= 0xff;
+            if let Err(error) = decode(&changed, &limits) {
+                assert!(
+                    matches!(error.position,Position::Buffer(offset) if offset <= changed.len()),
+                    "{name} byte {index}: {error}"
+                );
+            }
+        }
+    }
 }

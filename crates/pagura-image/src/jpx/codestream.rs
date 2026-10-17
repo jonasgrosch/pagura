@@ -1,10 +1,12 @@
-//! Part 1 markers, tile assembly and component reconstruction (Annexes A–G).
+//! JPEG 2000 tile assembly and reconstruction; T.800 primary-text review pending.
 
 use pagura_core::{Error, Result};
 
 use super::coding::{Configuration, Quantization, Style};
 use super::io::{Budget, Reader, area, syntax, usize_from};
+use super::packed::{Fragments, Ppm};
 use super::packet::{self, Band};
+use super::progression::{self, Packet, Precinct};
 use super::tier1;
 use super::wavelet::{self, Plane};
 use super::{JpxColor, JpxComponent, JpxImage, unsupported};
@@ -157,6 +159,7 @@ fn segment<'a>(reader: &mut Reader<'a>) -> Result<Reader<'a>> {
 struct Resolution {
     bounds: [u32; 4],
     bands: Vec<Band>,
+    precincts: Vec<Precinct>,
 }
 struct TileComponent {
     resolutions: Vec<Resolution>,
@@ -164,10 +167,14 @@ struct TileComponent {
 struct Tile {
     config: Configuration,
     components: Vec<TileComponent>,
-    packets: Vec<(usize, usize, usize)>, // layer, resolution, component
+    packets: Vec<Packet>,
+    all_packets: Vec<Packet>,
+    visited: Vec<bool>,
+    decoded_packets: usize,
     next_packet: usize,
     next_part: u16,
     part_count: Option<u16>,
+    next_ppt_index: u16,
 }
 
 impl Tile {
@@ -205,72 +212,92 @@ impl Tile {
                         .map_err(|_| Error::limit("JPEG 2000 resolution coordinate overflow"))
                 };
                 let bounds = [reduce(cx0)?, reduce(cy0)?, reduce(cx1)?, reduce(cy1)?];
-                let [x0, y0, x1, y1] = bounds;
-                if x0 != x1
-                    && y0 != y1
-                    && (x0 >> 15 != (x1 - 1) >> 15 || y0 >> 15 != (y1 - 1) >> 15)
-                {
-                    return Err(unsupported(
-                        "multiple JPEG 2000 precincts per resolution are not implemented",
-                        0,
-                    ));
-                }
-                let bands_count = if resolution == 0 { 1 } else { 3 };
-                budget.charge::<Band>(bands_count)?;
-                let mut bands = Vec::with_capacity(bands_count);
-                if resolution == 0 {
+                let precincts = progression::precincts(
+                    bounds,
+                    style.precincts[usize::from(resolution)],
+                    scale,
+                    [component.dx, component.dy],
+                    [tx0, ty0],
+                    budget,
+                )?;
+                let band_count = if resolution == 0 { 1 } else { 3 };
+                budget.charge::<Band>(band_count)?;
+                let mut bands = Vec::with_capacity(band_count);
+                let precinct_exponents = style.precincts[usize::from(resolution)];
+                let reduction = u8::from(resolution != 0);
+                let block = [
+                    style.block[0].min(precinct_exponents[0] - reduction),
+                    style.block[1].min(precinct_exponents[1] - reduction),
+                ];
+                for orientation in if resolution == 0 { 0..=0 } else { 1..=3 } {
+                    let [bx0, by0, bx1, by1] = progression::band_bounds(bounds, orientation);
                     bands.push(Band::new(
-                        Plane::new(x0, y0, x1, y1, budget)?,
-                        0,
-                        style.block,
+                        Plane::new(bx0, by0, bx1, by1, budget)?,
+                        orientation,
+                        block,
+                        &precincts,
                         budget,
                     )?);
-                } else {
-                    for orientation in 1..=3 {
-                        let high_x = orientation & 1 != 0;
-                        let high_y = orientation & 2 != 0;
-                        let bx0 = if high_x { x0 / 2 } else { x0.div_ceil(2) };
-                        let bx1 = if high_x { x1 / 2 } else { x1.div_ceil(2) };
-                        let by0 = if high_y { y0 / 2 } else { y0.div_ceil(2) };
-                        let by1 = if high_y { y1 / 2 } else { y1.div_ceil(2) };
-                        bands.push(Band::new(
-                            Plane::new(bx0, by0, bx1, by1, budget)?,
-                            orientation,
-                            style.block,
-                            budget,
-                        )?);
-                    }
                 }
-                resolutions.push(Resolution { bounds, bands });
+                resolutions.push(Resolution {
+                    bounds,
+                    bands,
+                    precincts,
+                });
             }
             components.push(TileComponent { resolutions });
         }
-        let packets = packet_order(&components, &config, budget)?;
+        let all_packets = packet_candidates(&components, config.layers, budget)?;
+        let visited = budget.filled(all_packets.len(), false)?;
+        let packets = progression::order(
+            &all_packets,
+            &config.progressions,
+            config.progression,
+            &visited,
+            budget,
+        )?;
         Ok(Self {
             config,
             components,
             packets,
+            all_packets,
+            visited,
+            decoded_packets: 0,
             next_packet: 0,
             next_part: 0,
             part_count: None,
+            next_ppt_index: 0,
         })
     }
 
-    fn read_packets(&mut self, reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<()> {
+    fn read_packets(
+        &mut self,
+        reader: &mut Reader<'_>,
+        mut packed: Option<&mut Reader<'_>>,
+        budget: &mut Budget<'_>,
+    ) -> Result<()> {
         let mut sequence = 0_u16;
-        while reader.remaining() != 0 {
-            let &(layer, resolution, component) = self
+        while reader.remaining() != 0 || packed.as_ref().is_some_and(|r| r.remaining() != 0) {
+            let packet = *self
                 .packets
                 .get(self.next_packet)
                 .ok_or_else(|| syntax("extra JPEG 2000 packet data", reader.position()))?;
+            let parameters = packet::Parameters {
+                layer: packet.layer,
+                precinct: packet.precinct,
+                markers: self.config.markers,
+                sequence,
+                modes: self.config.styles[packet.component].modes,
+            };
             packet::read(
                 reader,
-                &mut self.components[component].resolutions[resolution].bands,
-                layer,
-                self.config.markers,
-                sequence,
+                packed.as_deref_mut(),
+                &mut self.components[packet.component].resolutions[packet.resolution].bands,
+                &parameters,
                 budget,
             )?;
+            self.visited[packet.id] = true;
+            self.decoded_packets += 1;
             self.next_packet += 1;
             sequence = sequence.wrapping_add(1);
         }
@@ -278,24 +305,26 @@ impl Tile {
     }
 
     fn reconstruct(self, size: &Size, image: &mut JpxImage, budget: &mut Budget<'_>) -> Result<()> {
-        if self.next_packet != self.packets.len()
+        if self.decoded_packets != self.all_packets.len()
             || self.part_count.is_some_and(|n| self.next_part != n)
         {
             return Err(syntax("incomplete JPEG 2000 tile or tile-parts", 0));
         }
         budget.charge::<Plane>(self.components.len())?;
         let mut planes = Vec::with_capacity(self.components.len());
-        for ((component, style), (quant, source)) in self
+        for (((component, style), (quant, source)), roi) in self
             .components
             .into_iter()
             .zip(&self.config.styles)
             .zip(self.config.quants.iter().zip(&size.components))
+            .zip(self.config.roi)
         {
             planes.push(reconstruct_component(
                 component,
                 style,
                 quant,
                 source.bits,
+                roi,
                 budget,
             )?);
         }
@@ -335,63 +364,33 @@ fn sample_u16(value: f64) -> u16 {
     value as u16
 }
 
-// A single precinct per resolution collapses spatial progression to these
-// bounded nested axes. Enumerating them directly keeps packet ordering linear.
-fn packet_order(
+fn packet_candidates(
     components: &[TileComponent],
-    config: &Configuration,
+    layers: usize,
     budget: &mut Budget<'_>,
-) -> Result<Vec<(usize, usize, usize)>> {
-    let resolutions = components
-        .iter()
-        .map(|c| c.resolutions.len())
-        .max()
-        .unwrap_or(0);
-    let mut count = 0_usize;
-    for resolution in components.iter().flat_map(|c| &c.resolutions) {
-        let [x0, y0, x1, y1] = resolution.bounds;
-        if x0 != x1 && y0 != y1 {
-            count = count
-                .checked_add(config.layers)
-                .ok_or_else(|| Error::limit("JPEG 2000 packet count overflow"))?;
-        }
-    }
-    let axes = match config.progression {
-        1 => [resolutions, config.layers, components.len()],
-        2 => [resolutions, components.len(), config.layers],
-        3 | 4 => [components.len(), resolutions, config.layers],
-        _ => [config.layers, resolutions, components.len()],
-    };
-    budget.work(
-        axes[0]
-            .checked_mul(axes[1])
-            .and_then(|v| v.checked_mul(axes[2]))
-            .ok_or_else(|| Error::limit("JPEG 2000 packet work overflow"))?,
-    )?;
-    budget.charge::<(usize, usize, usize)>(count)?;
-    let mut packets = Vec::new();
-    packets
-        .try_reserve_exact(count)
-        .map_err(|_| Error::limit("JPEG 2000 packet allocation failed"))?;
-    for a in 0..axes[0] {
-        for b in 0..axes[1] {
-            for c in 0..axes[2] {
-                let (layer, resolution, component) = match config.progression {
-                    1 => (b, a, c),
-                    2 => (c, a, b),
-                    3 | 4 => (c, b, a),
-                    _ => (a, b, c),
-                };
-                if let Some(r) = components[component].resolutions.get(resolution) {
-                    let [x0, y0, x1, y1] = r.bounds;
-                    if x0 != x1 && y0 != y1 {
-                        packets.push((layer, resolution, component));
-                    }
+) -> Result<Vec<Packet>> {
+    let mut result = Vec::new();
+    for (c, component) in components.iter().enumerate() {
+        for (r, resolution) in component.resolutions.iter().enumerate() {
+            for (p, precinct) in resolution.precincts.iter().enumerate() {
+                for layer in 0..layers {
+                    let id = result.len();
+                    budget.push(
+                        &mut result,
+                        Packet {
+                            layer,
+                            resolution: r,
+                            component: c,
+                            precinct: p,
+                            id,
+                            position: precinct.position,
+                        },
+                    )?;
                 }
             }
         }
     }
-    Ok(packets)
+    Ok(result)
 }
 
 fn reconstruct_component(
@@ -399,6 +398,7 @@ fn reconstruct_component(
     style: &Style,
     quant: &Quantization,
     bits: u8,
+    roi: u8,
     budget: &mut Budget<'_>,
 ) -> Result<Plane> {
     let mut low = None;
@@ -425,23 +425,26 @@ fn reconstruct_component(
             } else {
                 quant.steps[band_index]
             };
-            let maximum_planes = exponent
-                .checked_add(quant.guard)
-                .and_then(|v| v.checked_sub(1))
-                .ok_or_else(|| syntax("invalid JPEG 2000 quantization precision", 0))?;
+            let maximum_planes = u16::from(exponent) + u16::from(quant.guard) + u16::from(roi);
+            if maximum_planes == 0 {
+                return Err(syntax("invalid JPEG 2000 quantization precision", 0));
+            }
+            let maximum_planes = maximum_planes - 1;
             if maximum_planes > 30 {
                 return Err(unsupported(
                     "JPEG 2000 coefficient precision exceeds 30 bit planes",
                     0,
                 ));
             }
+            let maximum_planes = u8::try_from(maximum_planes)
+                .map_err(|_| Error::limit("JPEG 2000 coefficient precision overflow"))?;
             let step = if style.reversible {
                 1.0
             } else {
                 (1.0 + f64::from(mantissa) / 2048.0)
                     * 2.0_f64.powi(i32::from(bits) - i32::from(exponent))
             };
-            for block in &band.blocks {
+            for block in band.partitions.iter().flat_map(|p| &p.blocks) {
                 if block.passes == 0 {
                     continue;
                 }
@@ -461,12 +464,15 @@ fn reconstruct_component(
                     orientation: band.orientation,
                     planes,
                     passes: block.passes,
-                    reset: style.modes & 2 != 0,
-                    segmentation_symbols: style.modes & 32 != 0,
+                    modes: style.modes,
+                    roi,
                 };
-                let values = tier1::decode(&block.data, &parameters, block.base, budget)?;
+                let values = tier1::decode(&block.segments, &parameters, budget)?;
                 let width = usize_from(band.plane.width)?;
-                for (index, value) in values.into_iter().enumerate() {
+                for (index, mut value) in values.into_iter().enumerate() {
+                    if roi != 0 && value.unsigned_abs() >= (1_u64 << roi) {
+                        value = value.signum() * (value.abs() >> roi);
+                    }
                     let coefficient = if style.reversible || value == 0 {
                         value as f64
                     } else {
@@ -564,93 +570,224 @@ fn allocate_image(size: &Size, budget: &mut Budget<'_>) -> Result<JpxImage> {
     })
 }
 
+struct MainHeader {
+    size: Size,
+    config: Configuration,
+    next: (u16, usize),
+    ppm: Ppm,
+}
+
 pub(super) fn decode(data: &[u8], base: usize, budget: &mut Budget<'_>) -> Result<JpxImage> {
     let mut reader = Reader::new(data, base);
-    let (size, config, mut next) = read_header(&mut reader, budget)?;
+    let header = read_header(&mut reader, budget)?;
+    let mut declarations = collect_progressions(data, base, reader.offset, &header, budget)?;
+    let MainHeader {
+        size,
+        config,
+        mut next,
+        mut ppm,
+    } = header;
     let count = area(size.columns, size.rows)?;
     budget.charge::<Option<Tile>>(count)?;
     let mut tiles: Vec<Option<Tile>> = (0..count).map(|_| None).collect();
     let mut image = allocate_image(&size, budget)?;
     loop {
-        let tile_start = next.1;
-        let mut fields = segment(&mut reader)?;
-        let index = usize::from(fields.u16()?);
-        let length = usize_from(fields.u32()?)?;
-        let part = u16::from(fields.u8()?);
-        let parts = u16::from(fields.u8()?);
-        fields.finish()?;
-        if index >= count || parts != 0 && part >= parts {
-            return Err(syntax("invalid JPEG 2000 tile-part index", tile_start));
-        }
-        let end = tile_part_end(data, base, tile_start, length, reader.position())?;
-        let header_base = reader.position();
-        let body = reader.take(end - header_base)?;
-        let mut tile_reader = Reader::new(body, header_base);
-        let mut local = if tiles[index].is_none() {
+        let mut part = read_part(&mut reader, data, next.1, count)?;
+        let mut local = if tiles[part.index].is_none() {
             Some(config.copy(budget)?)
         } else {
             None
         };
-        loop {
-            let (code, position) = marker(&mut tile_reader, budget)?;
-            if code == 0xff93 {
-                break;
+        let ppt = tile_header(&mut part.reader, &mut local, &mut tiles[part.index], budget)?;
+        if let Some(mut local) = local {
+            if let Some(changes) = declarations[part.index].take() {
+                local.progressions = changes;
             }
-            if matches!(
-                code,
-                0xff4f | 0xff51 | 0xff55 | 0xff90 | 0xff91 | 0xff92 | 0xffd9
-            ) {
-                return Err(syntax("misplaced JPEG 2000 tile-header marker", position));
-            }
-            if let Some(local) = &mut local {
-                local.marker(code, &mut segment(&mut tile_reader)?, budget)?;
-            } else {
-                match code {
-                    0xff58 | 0xff64 => {
-                        segment(&mut tile_reader)?;
-                    }
-                    _ => {
-                        return Err(unsupported(
-                            "JPEG 2000 coding changes after the first tile-part are not implemented",
-                            position,
-                        ));
-                    }
-                }
-            }
-        }
-        if let Some(local) = local {
-            tiles[index] = Some(Tile::new(
+            tiles[part.index] = Some(Tile::new(
                 &size,
-                u32::try_from(index).map_err(|_| Error::limit("JPEG 2000 tile index overflow"))?,
+                u32::try_from(part.index)
+                    .map_err(|_| Error::limit("JPEG 2000 tile index overflow"))?,
                 local,
                 budget,
             )?);
         }
-        let tile = tiles[index]
+        let tile = tiles[part.index]
             .as_mut()
-            .ok_or_else(|| syntax("missing JPEG 2000 tile", tile_start))?;
-        if tile.next_part != part || parts != 0 && tile.part_count.is_some_and(|n| n != parts) {
-            return Err(syntax("out-of-order JPEG 2000 tile-part", tile_start));
+            .ok_or_else(|| syntax("missing JPEG 2000 tile", next.1))?;
+        if tile.next_part != part.number
+            || part.count != 0 && tile.part_count.is_some_and(|n| n != part.count)
+        {
+            return Err(syntax("out-of-order JPEG 2000 tile-part", next.1));
         }
-        if parts != 0 {
-            tile.part_count = Some(parts);
+        if part.count != 0 {
+            tile.part_count = Some(part.count);
         }
         tile.next_part += 1;
-        tile.read_packets(&mut tile_reader, budget)?;
+        if ppt.present() {
+            tile.next_ppt_index = ppt.end_index();
+        }
+        if ppm.fragments.present() && ppt.present() {
+            return Err(syntax("simultaneous JPEG 2000 PPM and PPT", next.1));
+        }
+        let mut packed = if ppm.fragments.present() {
+            Some(ppm.next()?)
+        } else {
+            ppt.reader()
+        };
+        tile.read_packets(&mut part.reader, packed.as_mut(), budget)?;
         next = marker(&mut reader, budget)?;
         if next.0 == 0xffd9 {
             break;
         }
-        if length == 0 || next.0 != 0xff90 {
+        if part.length == 0 || next.0 != 0xff90 {
             return Err(syntax("missing JPEG 2000 SOT or EOC", next.1));
         }
     }
     reader.finish()?;
+    ppm.finish()?;
     for tile in tiles {
         tile.ok_or_else(|| syntax("missing JPEG 2000 tile", base))?
             .reconstruct(&size, &mut image, budget)?;
     }
     Ok(image)
+}
+
+struct Part<'a> {
+    index: usize,
+    number: u16,
+    count: u16,
+    length: usize,
+    reader: Reader<'a>,
+}
+
+fn read_part<'a>(
+    reader: &mut Reader<'a>,
+    data: &'a [u8],
+    start: usize,
+    tiles: usize,
+) -> Result<Part<'a>> {
+    let mut fields = segment(reader)?;
+    let index = usize::from(fields.u16()?);
+    let length = usize_from(fields.u32()?)?;
+    let number = u16::from(fields.u8()?);
+    let count = u16::from(fields.u8()?);
+    fields.finish()?;
+    if index >= tiles || count != 0 && number >= count {
+        return Err(syntax("invalid JPEG 2000 tile-part index", start));
+    }
+    let end = tile_part_end(data, reader.base, start, length, reader.position())?;
+    let base = reader.position();
+    Ok(Part {
+        index,
+        number,
+        count,
+        length,
+        reader: Reader::new(reader.take(end - base)?, base),
+    })
+}
+
+fn tile_header(
+    reader: &mut Reader<'_>,
+    local: &mut Option<Configuration>,
+    tile: &mut Option<Tile>,
+    budget: &mut Budget<'_>,
+) -> Result<Fragments> {
+    let mut ppt = Fragments::with_index(tile.as_ref().map_or(0, |tile| tile.next_ppt_index));
+    loop {
+        let (code, position) = marker(reader, budget)?;
+        if code == 0xff93 {
+            break;
+        }
+        if matches!(
+            code,
+            0xff4f | 0xff51 | 0xff55 | 0xff60 | 0xff90 | 0xff91 | 0xff92 | 0xffd9
+        ) {
+            return Err(syntax("misplaced JPEG 2000 tile-header marker", position));
+        }
+        let mut fields = segment(reader)?;
+        if code == 0xff61 {
+            ppt.push(&mut fields, budget)?;
+        } else if let Some(local) = local {
+            local.marker(code, &mut fields, budget)?;
+        } else {
+            let tile = tile
+                .as_mut()
+                .ok_or_else(|| syntax("missing JPEG 2000 tile", position))?;
+            match code {
+                0xff5f => {
+                    let entries = progression::changes(
+                        &mut fields,
+                        tile.config.styles.len(),
+                        tile.config.layers,
+                        budget,
+                    )?;
+                    drop(entries); // The full tile declaration was collected before packet decoding.
+                }
+                0xff58 | 0xff64 => tile.config.marker(code, &mut fields, budget)?,
+                _ => {
+                    return Err(unsupported(
+                        "JPEG 2000 coding changes after the first tile-part are not implemented",
+                        position,
+                    ));
+                }
+            }
+        }
+    }
+    Ok(ppt)
+}
+
+// POC entries describe a tile schedule even when carried in a later tile-part.
+// Collect declarations before interpreting any packet headers; otherwise a
+// later spatial order can assign earlier codewords to the wrong subbands.
+fn collect_progressions(
+    data: &[u8],
+    base: usize,
+    offset: usize,
+    header: &MainHeader,
+    budget: &mut Budget<'_>,
+) -> Result<Vec<Option<Vec<progression::Change>>>> {
+    let count = area(header.size.columns, header.size.rows)?;
+    let mut declarations: Vec<Option<Vec<progression::Change>>> = budget.filled(count, None)?;
+    let mut reader = Reader::new(data, base);
+    reader.offset = offset;
+    let mut next = header.next;
+    loop {
+        let mut part = read_part(&mut reader, data, next.1, count)?;
+        loop {
+            let (code, position) = marker(&mut part.reader, budget)?;
+            if code == 0xff93 {
+                break;
+            }
+            if matches!(
+                code,
+                0xff4f | 0xff51 | 0xff55 | 0xff60 | 0xff90 | 0xff91 | 0xff92 | 0xffd9
+            ) {
+                return Err(syntax("misplaced JPEG 2000 tile-header marker", position));
+            }
+            let mut fields = segment(&mut part.reader)?;
+            if code == 0xff5f {
+                let values = progression::changes(
+                    &mut fields,
+                    header.size.components.len(),
+                    usize::MAX,
+                    budget,
+                )?;
+                let declaration = declarations[part.index].get_or_insert_with(Vec::new);
+                for value in values {
+                    budget.push(declaration, value)?;
+                }
+            }
+        }
+        next = marker(&mut reader, budget)?;
+        if next.0 == 0xffd9 {
+            break;
+        }
+        if part.length == 0 || next.0 != 0xff90 {
+            return Err(syntax("missing JPEG 2000 SOT or EOC", next.1));
+        }
+    }
+    reader.finish()?;
+    Ok(declarations)
 }
 
 fn tile_part_end(
@@ -673,26 +810,36 @@ fn tile_part_end(
     }
 }
 
-fn read_header(
-    reader: &mut Reader<'_>,
-    budget: &mut Budget<'_>,
-) -> Result<(Size, Configuration, (u16, usize))> {
+fn read_header(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<MainHeader> {
     if marker(reader, budget)?.0 != 0xff4f || marker(reader, budget)?.0 != 0xff51 {
         return Err(syntax("missing JPEG 2000 SOC or SIZ", reader.base));
     }
     let size = read_size(&mut segment(reader)?, budget)?;
     let mut config = Configuration::new(size.components.len(), budget)?;
+    let mut ppm = Ppm::default();
     let mut next = marker(reader, budget)?;
     while next.0 != 0xff90 {
         if next.0 == 0xffd9 {
             return Err(syntax("JPEG 2000 codestream has no tiles", next.1));
         }
-        if matches!(next.0, 0xff4f | 0xff51 | 0xff58 | 0xff93 | 0xff91 | 0xff92) {
+        if matches!(
+            next.0,
+            0xff4f | 0xff51 | 0xff58 | 0xff61 | 0xff93 | 0xff91 | 0xff92
+        ) {
             return Err(syntax("misplaced JPEG 2000 main-header marker", next.1));
         }
-        config.marker(next.0, &mut segment(reader)?, budget)?;
+        if next.0 == 0xff60 {
+            ppm.fragments.push(&mut segment(reader)?, budget)?;
+        } else {
+            config.marker(next.0, &mut segment(reader)?, budget)?;
+        }
         next = marker(reader, budget)?;
     }
     config.validate()?;
-    Ok((size, config, next))
+    Ok(MainHeader {
+        size,
+        config,
+        next,
+        ppm,
+    })
 }

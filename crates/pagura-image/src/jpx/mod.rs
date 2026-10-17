@@ -2,11 +2,16 @@
 //! JP2 files and raw codestreams.
 //!
 //! Supports 1–16-bit components, multiple tiles and packet-boundary tile-parts,
-//! all five progression orders with one default precinct per resolution,
-//! multiple layers with complete code-block bit planes, MQ coding (including
-//! context reset and cleanup segmentation symbols), 5/3 and 9/7 synthesis,
-//! RCT/ICT, palettes and straight opacity. Unsupported coding modes and JPX
-//! extensions return `Unsupported(filter.JPXDecode)`; no partial image is returned.
+//! default and explicit precincts, all five progression orders and POC changes,
+//! PPM/PPT packed headers, complete code-block bit planes across quality layers,
+//! ROI maxshift, MQ and raw bypass coding, context reset, pass termination,
+//! predictable termination, vertical-causal contexts and segmentation symbols,
+//! 5/3 and 9/7 synthesis, RCT/ICT, palettes and straight opacity.
+//! Format mechanics remain pending primary T.800/T.801 review; independently
+//! encoded source-sample vectors are compared with OpenJPEG. This is separate
+//! from the PDF rules verified against clause 7.4.9 and Table 87.
+//! Unsupported JPX extensions and sample representations return
+//! `Unsupported(filter.JPXDecode)`; no partial image is returned.
 //! ICC bytes and enumerated colour identifiers are preserved for the caller.
 //!
 //! `Limits::stream_bytes` caps encoded input, `pixels` caps the reference-grid
@@ -19,7 +24,10 @@ mod codestream;
 mod coding;
 mod io;
 mod mq;
+mod packed;
 mod packet;
+mod progression;
+mod segments;
 mod tier1;
 mod wavelet;
 

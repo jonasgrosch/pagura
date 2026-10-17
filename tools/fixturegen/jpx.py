@@ -3,7 +3,7 @@
 The encoder deliberately writes one layer, default precincts, rectangular code-blocks
 per subband, full bit planes and the ordinary MQ coding style. It implements
 forward integer 5/3 lifting, RCT, scalar-quantized 9/7 lifting, tag-tree leaves,
-and Annex C arithmetic encoding, using only the Python standard library.
+and MQ arithmetic encoding, using only the Python standard library.
 Expected samples are the input pixels, never the output of a decoder. Lossy
 vectors have an explicit tolerance for quantization. This is test tooling,
 not a general JPEG 2000 encoder.
@@ -15,7 +15,8 @@ from .model import Vector
 
 AREA = "jpx"
 
-# ISO/IEC 15444-1 Table C.2: Qe, next-MPS, next-LPS, exchange flag.
+# T.800-dependent MQ state data: pending primary-text/table-locator review.
+# Qe, next-MPS, next-LPS, exchange flag; compared with OpenJPEG, not verified here.
 PROBABILITIES = [
     (0x5601,1,1,1),(0x3401,2,6,0),(0x1801,3,9,0),(0x0ac1,4,12,0),
     (0x0521,5,29,0),(0x0221,38,33,0),(0x5601,7,6,1),(0x5401,8,14,0),
@@ -33,10 +34,12 @@ PROBABILITIES = [
 
 
 class ArithmeticEncoder:
-    def __init__(self):
+    def __init__(self, state=None, mps=None):
         self.a, self.c, self.ct = 0x8000, 0, 12
         self.output = [0]  # Carry propagation sentinel, not part of the stream.
         self.reset()
+        if state is not None:
+            self.state, self.mps = list(state), list(mps)
 
     def reset(self):
         self.state = [0] * 19
@@ -77,7 +80,17 @@ class ArithmeticEncoder:
             if self.ct == 0:
                 self.emit_byte()
 
-    def finish(self):
+    def finish(self, predictable=False):
+        if predictable:
+            remaining = 12-self.ct
+            while remaining > 0:
+                self.c <<= self.ct
+                self.emit_byte()
+                remaining -= self.ct
+            if self.output[-1] != 255:
+                self.emit_byte()
+            # The last byte is the arithmetic coder's pending carry byte.
+            return bytes(self.output[1:-1])
         upper = self.c + self.a
         self.c |= 65535
         if self.c >= upper:
@@ -90,19 +103,68 @@ class ArithmeticEncoder:
         return bytes(self.output[1:])
 
 
-def encode_block(coefficients, orientation, reset=False, segmentation=False):
+class PassEncoder:
+    def __init__(self, planes, modes, roi=0):
+        self.total, self.modes, self.pass_index, self.first = planes*3-2, modes, 0, 0
+        self.roi = roi
+        self.encoder = ArithmeticEncoder()
+        self.state, self.mps = self.encoder.state, self.encoder.mps
+        self.raw_bits, self.parts, self.raw = [], [], False
+
+    def write(self, context, value):
+        if self.raw:
+            self.raw_bits.append(value)
+        else:
+            self.encoder.write(context, value)
+
+    def reset(self):
+        fresh = ArithmeticEncoder()
+        self.state, self.mps = fresh.state, fresh.mps
+        if not self.raw:
+            self.encoder.state, self.encoder.mps = self.state, self.mps
+
+    def end_pass(self):
+        self.pass_index += 1
+        boundary = (self.pass_index == self.total or self.modes & 4 or
+                    (self.modes & 1 and self.pass_index >= 10 and self.pass_index % 3 != 2))
+        if not boundary:
+            return
+        if self.raw:
+            result, position, count = bytearray(), 0, 8
+            while position < len(self.raw_bits):
+                group = self.raw_bits[position:position+count]
+                padding = [i % 2 for i in range(count-len(group))]
+                value = sum(bit << (count-1-i) for i, bit in enumerate(group+padding))
+                result.append(value)
+                position += count
+                count = 7 if value == 255 else 8
+            if result and result[-1] == 255:
+                result.append(0x2a)
+            data = bytes(result)
+        else:
+            data = self.encoder.finish(bool(self.modes & 16))
+            self.state, self.mps = self.encoder.state, self.encoder.mps
+        self.parts.append((self.pass_index-self.first, data))
+        self.first = self.pass_index
+        self.raw = bool(self.modes & 1 and self.pass_index >= 10+3*self.roi and self.pass_index % 3 != 0)
+        self.raw_bits = []
+        self.encoder = ArithmeticEncoder(self.state,self.mps)
+
+
+def encode_block(coefficients, orientation, modes=0, roi=0):
     height, width = len(coefficients), len(coefficients[0])
     maximum = max(abs(v) for row in coefficients for v in row)
     if maximum == 0:
-        return 0, b""
+        return 0, []
     planes = maximum.bit_length()
     sig, visited, refined = set(), set(), set()
-    arithmetic = ArithmeticEncoder()
+    arithmetic = PassEncoder(planes,modes,roi)
 
     def neighbours(x, y):
         h = [(xx, y) for xx in (x - 1, x + 1) if (xx, y) in sig]
-        v = [(x, yy) for yy in (y - 1, y + 1) if (x, yy) in sig]
-        d = sum((xx, yy) in sig for xx in (x - 1, x + 1) for yy in (y - 1, y + 1))
+        vertical_rows = (y-1,) if modes & 8 and y % 4 == 3 else (y-1,y+1)
+        v = [(x, yy) for yy in vertical_rows if (x, yy) in sig]
+        d = sum((xx, yy) in sig for xx in (x - 1, x + 1) for yy in vertical_rows)
         sign = lambda points: max(-1, min(1, sum(1 if coefficients[yy][xx] > 0 else -1 for xx, yy in points)))
         return len(h), len(v), d, sign(h), sign(v)
 
@@ -128,7 +190,7 @@ def encode_block(coefficients, orientation, reset=False, segmentation=False):
             if prediction:
                 h, v = -h, -v
             context = (9 if v == 0 else 10) if h == 0 else 11 if v < 0 else 12 if v == 0 else 13
-            arithmetic.write(context, int(coefficients[y][x] < 0) ^ prediction)
+            arithmetic.write(context, int(coefficients[y][x] < 0) ^ (0 if arithmetic.raw else prediction))
             sig.add((x, y))
 
     positions = [(x, y) for stripe in range(0, height, 4) for x in range(width)
@@ -139,15 +201,17 @@ def encode_block(coefficients, orientation, reset=False, segmentation=False):
                 if (x, y) not in sig and zc(x, y) != 0:
                     visited.add((x, y))
                     significant(x, y, plane)
-            if reset:
+            if modes & 2:
                 arithmetic.reset()
+            arithmetic.end_pass()
             for x, y in positions:
                 if (x, y) in sig and (x, y) not in visited:
                     context = 16 if (x, y) in refined else 14 + int(zc(x, y) != 0)
                     arithmetic.write(context, (abs(coefficients[y][x]) >> plane) & 1)
                     refined.add((x, y))
-            if reset:
+            if modes & 2:
                 arithmetic.reset()
+            arithmetic.end_pass()
         for stripe in range(0, height, 4):
             for x in range(width):
                 end = min(height, stripe + 4)
@@ -167,13 +231,14 @@ def encode_block(coefficients, orientation, reset=False, segmentation=False):
                 for y in range(start, end):
                     if (x, y) not in sig and (x, y) not in visited:
                         significant(x, y, plane)
-        if segmentation:
+        if modes & 32:
             for bit in (1, 0, 1, 0):
                 arithmetic.write(18, bit)
-        if reset:
+        if modes & 2:
             arithmetic.reset()
+        arithmetic.end_pass()
         visited.clear()
-    return planes, arithmetic.finish()
+    return planes, arithmetic.parts
 
 
 def forward_line(values, origin, reversible):
@@ -268,16 +333,17 @@ class TagTree:
 def partition(band, origin, block_size):
     height, width = len(band), len(band[0]) if band else 0
     x0, y0 = origin
+    block_width, block_height = (block_size,block_size) if isinstance(block_size,int) else block_size
     if width == 0 or height == 0:
         return 0, 0, []
-    xs = [x0] + list(range((x0//block_size+1)*block_size, x0+width, block_size)) + [x0+width]
-    ys = [y0] + list(range((y0//block_size+1)*block_size, y0+height, block_size)) + [y0+height]
+    xs = [x0] + list(range((x0//block_width+1)*block_width, x0+width, block_width)) + [x0+width]
+    ys = [y0] + list(range((y0//block_height+1)*block_height, y0+height, block_height)) + [y0+height]
     blocks = [[row[a-x0:b-x0] for row in band[c-y0:d-y0]]
               for c, d in zip(ys, ys[1:]) for a, b in zip(xs, xs[1:])]
     return len(xs)-1, len(ys)-1, blocks
 
 
-def packet(bands, maxima, origins, block_size=64, reset=False, segmentation=False, markers=False, layer=0):
+def packet(bands, maxima, origins, block_size=64, modes=0, markers=False, layer=0, roi=0):
     header, body = PacketBits(), b""
     present = any(any(v for row in band for v in row) for band in bands)
     header.number(int(present))
@@ -286,11 +352,10 @@ def packet(bands, maxima, origins, block_size=64, reset=False, segmentation=Fals
             columns, rows, blocks = partition(band, origin, block_size)
             if not blocks:
                 continue
-            encoded = [encode_block(block, 0 if len(bands) == 1 else orientation_index+1,
-                                    reset=reset, segmentation=segmentation) for block in blocks]
+            encoded = [encode_block(block, 0 if len(bands) == 1 else orientation_index+1, modes, roi) for block in blocks]
             inclusion = TagTree(columns, rows, [layer if planes else layer+1 for planes, _ in encoded])
             zeros = TagTree(columns, rows, [maximum-planes if planes else maximum for planes, _ in encoded])
-            for index, (planes, data) in enumerate(encoded):
+            for index, (planes, pieces) in enumerate(encoded):
                 x, y = index % columns, index // columns
                 inclusion.write(header, x, y, layer+1)
                 if planes == 0:
@@ -311,28 +376,85 @@ def packet(bands, maxima, origins, block_size=64, reset=False, segmentation=Fals
                 else:
                     header.number(0b111111111, 9)
                     header.number(passes - 37, 7)
-                exponent = passes.bit_length()-1
-                extra = max(0, len(data).bit_length()-3-exponent)
+                extra = max([0]+[len(data).bit_length()-3-(n.bit_length()-1) for n,data in pieces])
                 header.number((1 << extra)-1, extra)
                 header.number(0)
-                header.number(len(data), 3+exponent+extra)
-                body += data
-    return header.finish() + (b"\xff\x92" if markers else b"") + body
+                for n,data in pieces:
+                    header.number(len(data),3+(n.bit_length()-1)+extra)
+                    body += data
+    return header.finish() + (b"\xff\x92" if markers else b""), body
 
 
 def marker(code, payload=b""):
     return struct.pack(">HH", 0xff00 | code, len(payload)+2) + payload
 
 
+def subband_bounds(bounds,orientation):
+    if orientation == 0:
+        return bounds
+    x0,y0,x1,y1 = bounds
+    x = lambda v: v//2 if orientation & 1 else (v+1)//2
+    y = lambda v: v//2 if orientation & 2 else (v+1)//2
+    return x(x0),y(y0),x(x1),y(y1)
+
+
+def progression_keys(keys,default,changes):
+    def ordering(key,order):
+        l,r,c,p,x,y = key
+        return ((l,r,c,p) if order == 0 else (r,l,c,p) if order == 1 else
+                (r,y,x,c,l) if order == 2 else (y,x,c,r,l) if order == 3 else (c,y,x,r,l))
+    emitted, result = set(), []
+    for r0,c0,l1,r1,c1,order in changes or [(0,0,65535,33,65535,default)]:
+        selected = [key for key in keys if key not in emitted and key[0] < l1
+                    and r0 <= key[1] < r1 and c0 <= key[2] < c1]
+        result += sorted(selected,key=lambda key:ordering(key,order))
+        emitted.update(selected)
+    return result
+
+
+def encode_poc(changes):
+    return b"".join(struct.pack(">BBHBBB",r0,c0,l1,r1,c1,order) for r0,c0,l1,r1,c1,order in changes)
+
+
+def packed_markers(code,data,split,start_index=0):
+    chunks = [data[i:i+split] for i in range(0,len(data),split)] or [b""]
+    assert len(chunks)+start_index <= 256
+    return b"".join(marker(code,bytes([index+start_index])+chunk) for index,chunk in enumerate(chunks))
+
+
+def ppm_markers(headers,split):
+    chunks, current = [], b""
+    for header in headers:
+        if split-len(current) < 4:
+            chunks.append(current)
+            current = b""
+        current += struct.pack(">I",len(header))
+        while header:
+            if len(current) == split:
+                chunks.append(current)
+                current = b""
+            amount = min(split-len(current),len(header))
+            current += header[:amount]
+            header = header[amount:]
+    if current:
+        chunks.append(current)
+    assert len(chunks) <= 256
+    return b"".join(marker(0x60,bytes([index])+chunk) for index,chunk in enumerate(chunks))
+
+
 def codestream(planes, width, height, *, levels=0, tile=None, progression=0,
                bits=8, signed=False, mct=False, lossy=False, origin=(0, 0),
-               tile_parts=False, markers=False, modes=0, extra_markers=False, block_exp=6, layers=1, derived_quant=False):
+               tile_parts=False, markers=False, modes=0, extra_markers=False, block_exp=6, layers=1, derived_quant=False, precincts=None, poc=(), late_poc=(), packed=None, packed_split=60000, roi=0):
     x0, y0 = origin
     tile = tile or (width, height)
     count = len(planes)
     siz = struct.pack(">H8IH", 0, width+x0, height+y0, x0, y0, tile[0], tile[1], x0, y0, count)
     siz += bytes([bits-1 + 128*int(signed), 1, 1])*count
-    coding = bytes([6 if markers else 0, progression]) + struct.pack(">H", layers) + bytes([int(mct), levels, block_exp-2, block_exp-2, modes, int(not lossy)])
+    precinct_exponents = [precincts]*(levels+1) if isinstance(precincts,tuple) else precincts or [(15,15)]*(levels+1)
+    roi = [roi]*count if isinstance(roi,int) else roi
+    coding = bytes([(6 if markers else 0) | int(precincts is not None), progression]) + struct.pack(">H", layers) + bytes([int(mct), levels, block_exp-2, block_exp-2, modes, int(not lossy)])
+    if precincts is not None:
+        coding += bytes(x+(y << 4) for x,y in precinct_exponents)
     if lossy:
         # Delta=1/4 for every subband (Rb=bits, exponent=bits+2, mantissa=0).
         exponents = ([bits+2] + [bits+2-(levels-r) for r in range(1,levels+1) for _ in range(3)]
@@ -343,6 +465,12 @@ def codestream(planes, width, height, *, levels=0, tile=None, progression=0,
         exponents = [bits] + [bits + gain for _ in range(levels) for gain in (1, 1, 2)]
         qcd = bytes([0x40]) + bytes(exp << 3 for exp in exponents)
     result = b"\xff\x4f" + marker(0x51, siz) + marker(0x52, coding) + marker(0x5c, qcd)
+    if poc:
+        result += marker(0x5f,encode_poc(poc))
+    for component,shift in enumerate(roi):
+        if shift:
+            result += marker(0x5e,bytes([component,0,shift]))
+    encoded_parts, part_headers = [], []
     if extra_markers:
         result += marker(0x53, b"\0\0"+coding[5:]) + marker(0x5d, b"\0"+qcd)
         result += marker(0x5e, b"\0\0\0") + marker(0x64, b"\0\1independent fixture")
@@ -368,38 +496,122 @@ def codestream(planes, width, height, *, levels=0, tile=None, progression=0,
             if lossy:
                 bands = [[[[math.trunc(v / (2**(bits-e))) for v in row] for row in b]
                           for b, e in zip(comp,exponents)] for comp in bands]
-            keys = [(l,r,c) for c in range(count) for r in range(levels+1) for l in range(layers)]
-            keys.sort(key=lambda v: (v[0],v[1],v[2]) if progression == 0 else
-                      (v[1],v[0],v[2]) if progression == 1 else
-                      (v[1],v[2],v[0]) if progression == 2 else (v[2],v[1],v[0]))
-            packets = []
-            for layer, resolution, component in keys:
+            for c,component_bands in enumerate(bands):
+                if roi[c]:
+                    for b,band in enumerate(component_bands):
+                        for y,row in enumerate(band):
+                            for x,value in enumerate(row):
+                                if (x+2*y+b) % 3 == 0:
+                                    row[x] = value << roi[c]
+            descriptions, keys = {}, []
+            for resolution in range(levels+1):
                 scale = 1 << (levels-resolution)
-                if ((tx+tw+scale-1)//scale == (tx+scale-1)//scale or
-                    (ty+th+scale-1)//scale == (ty+scale-1)//scale):
+                rx0,ry0,rx1,ry1 = [(v+scale-1)//scale for v in (tx,ty,tx+tw,ty+th)]
+                if rx0 == rx1 or ry0 == ry1:
                     continue
-                start = 0 if resolution == 0 else 1 + 3*(resolution-1)
-                n = 1 if resolution == 0 else 3
-                divisor = 1 << (levels-resolution)
-                rx0, ry0 = (tx+divisor-1)//divisor, (ty+divisor-1)//divisor
-                origins = [(rx0, ry0)] if resolution == 0 else [
-                    (rx0//2 if o & 1 else (rx0+1)//2,
-                     ry0//2 if o & 2 else (ry0+1)//2) for o in (1, 2, 3)]
-                data = (packet(bands[component][start:start+n], [e+1 for e in exponents[start:start+n]],
-                              origins, 1 << block_exp, reset=bool(modes & 2), segmentation=bool(modes & 32), markers=markers, layer=layer)
-                        if layer == layers-1 else b"\0"+(b"\xff\x92" if markers else b""))
-                packets.append(data)
-            parts = [[p] for p in packets] if tile_parts else [packets]
-            for part, group in enumerate(parts):
-                payload = b""
-                for seq, p in enumerate(group):
+                ppx,ppy = precinct_exponents[resolution]
+                pw,ph = 1 << ppx,1 << ppy
+                cells = [(px,py) for py in range(ry0//ph,(ry1+ph-1)//ph)
+                         for px in range(rx0//pw,(rx1+pw-1)//pw)]
+                first_band = 0 if resolution == 0 else 1+3*(resolution-1)
+                orientations = [0] if resolution == 0 else [1,2,3]
+                for p,(px,py) in enumerate(cells):
+                    bounds = (max(rx0,px*pw),max(ry0,py*ph),min(rx1,(px+1)*pw),min(ry1,(py+1)*ph))
+                    x = tx if px == rx0//pw and rx0 % pw else px*pw*scale
+                    y = ty if py == ry0//ph and ry0 % ph else py*ph*scale
+                    for c in range(count):
+                        crops,origins = [],[]
+                        for b,orientation in enumerate(orientations):
+                            bx0,by0,bx1,by1 = subband_bounds((rx0,ry0,rx1,ry1),orientation)
+                            sx,sy,ex,ey = subband_bounds(bounds,orientation)
+                            band = bands[c][first_band+b]
+                            crops.append([row[sx-bx0:ex-bx0] for row in band[sy-by0:ey-by0]])
+                            origins.append((sx,sy))
+                        reduction = int(resolution != 0)
+                        block_size = (1 << min(block_exp,ppx-reduction),1 << min(block_exp,ppy-reduction))
+                        maxima = [e+1+roi[c] for e in exponents[first_band:first_band+len(orientations)]]
+                        descriptions[(c,resolution,p)] = (crops,origins,block_size,maxima)
+                        keys += [(layer,resolution,c,p,x,y) for layer in range(layers)]
+            ordered = progression_keys(keys,progression,late_poc or poc)
+            if late_poc:
+                groups = [ordered[:1],ordered[1:]]
+            else:
+                groups = [[key] for key in ordered] if tile_parts else [ordered]
+            ppt_index = 0
+            for part,group in enumerate(groups):
+                body,headers = b"",b""
+                for sequence,key in enumerate(group):
+                    layer,resolution,c,precinct,_,_ = key
+                    crops,origins,block_size,maxima = descriptions[(c,resolution,precinct)]
+                    header,data = (packet(crops,maxima,origins,block_size,modes,markers,layer,roi[c])
+                                   if layer == layers-1 else (b"\0"+(b"\xff\x92" if markers else b""),b""))
+                    headers += header
                     if markers:
-                        payload += marker(0x91, struct.pack(">H", seq))
-                    payload += p
-                result += marker(0x90, struct.pack(">HIBB", index, 14+len(payload), part, len(parts)))
-                result += b"\xff\x93" + payload
+                        body += marker(0x91,struct.pack(">H",sequence))
+                    body += (b"" if packed else header)+data
+                tile_header = marker(0x5f,encode_poc(late_poc)) if late_poc and part == 1 else b""
+                if packed == "ppt":
+                    tile_header += packed_markers(0x61,headers,packed_split,ppt_index)
+                    ppt_index += max(1,(len(headers)+packed_split-1)//packed_split)
+                encoded_parts.append(marker(0x90,struct.pack(">HIBB",index,14+len(tile_header)+len(body),part,len(groups)))+tile_header+b"\xff\x93"+body)
+                part_headers.append(headers)
             index += 1
-    return result + b"\xff\xd9"
+    if packed == "ppm":
+        result += ppm_markers(part_headers,packed_split)
+    return result + b"".join(encoded_parts) + b"\xff\xd9"
+
+
+def pass_count_bits(header,passes):
+    if passes == 1:
+        header.number(0)
+    elif passes == 2:
+        header.number(2,2)
+    elif passes <= 5:
+        header.number(12+passes-3,4)
+    elif passes <= 36:
+        header.number(15,4)
+        header.number(passes-6,5)
+    else:
+        header.number(511,9)
+        header.number(passes-37,7)
+
+
+def layered_codestream(values,modes):
+    """Split one code-block's codewords and passes across two real contributions."""
+    source = [[v-128 for v in values[y*8:y*8+8]] for y in range(8)]
+    planes,pieces = encode_block(source,0,modes)
+    cutoff,done = 11,0
+    first,second = [],[]
+    for n,data in pieces:
+        if done+n <= cutoff:
+            first.append((n,data))
+        elif done >= cutoff:
+            second.append((n,data))
+        else:
+            # A nonterminated segment is assembled before full-quality decoding.
+            split = len(data)//2
+            first.append((cutoff-done,data[:split]))
+            second.append((done+n-cutoff,data[split:]))
+        done += n
+    lblock,payload = 3,b""
+    for layer,group in enumerate((first,second)):
+        header = PacketBits()
+        header.number(1)
+        header.number(1)
+        if layer == 0:
+            header.number(0,9-planes)
+            header.number(1)
+        pass_count_bits(header,sum(n for n,_ in group))
+        extra = max([0]+[len(data).bit_length()-lblock-(n.bit_length()-1) for n,data in group])
+        header.number((1 << extra)-1,extra)
+        header.number(0)
+        lblock += extra
+        for n,data in group:
+            header.number(len(data),lblock+n.bit_length()-1)
+        payload += header.finish()+b"".join(data for _,data in group)
+    prefix = codestream([values],8,8,modes=modes,layers=2)
+    prefix = prefix[:prefix.index(b"\xff\x90")]
+    return prefix+marker(0x90,struct.pack(">HIBB",0,14+len(payload),0,1))+b"\xff\x93"+payload+b"\xff\xd9"
 
 
 def tile_header_marker(stream, code, payload):
@@ -474,8 +686,8 @@ def cases():
     yield vector("odd",codestream([odd],9,7,levels=2),[odd],9,7,("jpx-wavelet",))
     yield vector("sixteen-bit",codestream([[v*257 for v in gray]],8,8,bits=16),[[v*257 for v in gray]],8,8,bits=16)
     yield vector("signed",codestream([gray],8,8,signed=True),[gray],8,8,signed=True)
-    for modes in (2,32,34):
-        yield vector(f"modes-{modes}",codestream([gray],8,8,modes=modes),[gray],8,8)
+    for modes in (1,2,4,8,16,32,34,3,5,9,17,6,12,20,24,36,63):
+        yield vector(f"modes-{modes}",codestream([gray],8,8,modes=modes),[gray],8,8,("jpx-part1","jpx-codeblock-modes"))
     yield vector("packet-markers",codestream([gray],8,8,levels=2,markers=True),[gray],8,8)
     yield vector("code-blocks",codestream([odd],9,7,levels=1,block_exp=2),[odd],9,7,("jpx-part1",))
     yield vector("markers",codestream([gray],8,8,extra_markers=True),[gray],8,8)
@@ -487,6 +699,32 @@ def cases():
             yield vector(f"singleton-{w}-{h}-{origin[0]}-{origin[1]}-{int(lossy)}",
                          codestream([values],w,h,levels=1,origin=origin,lossy=lossy),[values],w,h,
                          ("jpx-wavelet",),tolerance=1 if lossy else 0)
+    for order in range(5):
+        yield vector(f"precincts-{order}",codestream(rgb,8,8,levels=2,mct=True,precincts=(2,2),progression=order,layers=3),rgb,8,8,("jpx-progression","jpx-precincts"))
+    yield vector("precincts-offset",codestream([odd],9,7,levels=2,origin=(3,5),precincts=[(1,2),(2,1),(2,3)]),[odd],9,7,("jpx-progression","jpx-precincts"))
+    yield vector("precincts-tiles",codestream(rgb,8,8,levels=1,tile=(4,4),mct=True,precincts=(1,1)),rgb,8,8,("jpx-progression","jpx-tiles","jpx-precincts"))
+    changes = [(0,0,1,1,3,4),(1,0,1,3,3,2)]
+    yield vector("poc",codestream(rgb,8,8,levels=2,mct=True,precincts=(2,2),poc=changes),rgb,8,8,("jpx-progression","jpx-poc"))
+    yield vector("poc-overlap",codestream(rgb,8,8,levels=2,mct=True,precincts=(2,2),layers=3,poc=[(0,0,1,3,3,4),(0,0,3,3,3,2)]),rgb,8,8,("jpx-progression","jpx-poc"))
+    yield vector("poc-tile-part",codestream(rgb,8,8,levels=2,mct=True,precincts=(2,2),late_poc=[(0,0,1,3,3,4)]),rgb,8,8,("jpx-progression","jpx-poc"))
+    for shift in (4,12):
+        # Shift 4 uses small-amplitude data so background coefficients fit below 2**shift.
+        source = [[128+(v % 7)-3 for v in gray]] if shift == 4 else rgb
+        yield vector(f"roi-{shift}",codestream(source,8,8,levels=1,roi=shift,precincts=(2,2)),source,8,8,("jpx-part1","jpx-roi"))
+    for method in ("ppm","ppt"):
+        yield vector(f"packed-{method}",codestream(rgb,8,8,levels=2,mct=True,precincts=(2,2),packed=method,packed_split=7,tile_parts=True,markers=True),rgb,8,8,("jpx-progression","jpx-packed-headers"))
+    yield vector("combined-lossy",codestream(rgb,8,8,levels=2,mct=True,lossy=True,precincts=(2,2),packed="ppt",packed_split=7,modes=63),rgb,8,8,("jpx-irreversible","jpx-progression","jpx-codeblock-modes","jpx-packed-headers","jpx-precincts"),tolerance=3)
+    for mode in (0,1,4,63):
+        yield vector(f"layer-contributions-{mode}",layered_codestream(gray,mode),[gray],8,8,("jpx-part1","jpx-codeblock-modes"))
+    for method in ("ppm","ppt"):
+        yield vector(f"packed-zero-{method}",codestream([[128]*64],8,8,levels=2,precincts=(1,1),packed=method,packed_split=7,tile_parts=True,markers=True),[[128]*64],8,8,("jpx-packed-headers",))
+    yield vector("precincts-default-multiple",codestream([[i%256 for i in range(32769)]],32769,1),[[i%256 for i in range(32769)]],32769,1,("jpx-precincts",))
+    yield vector("combined-reversible",codestream([odd],9,7,levels=2,origin=(3,5),precincts=[(1,1),(2,2),(2,3)],modes=63,roi=12,packed="ppm",packed_split=13,late_poc=[(0,0,1,3,1,3)]),[odd],9,7,("jpx-codeblock-modes","jpx-precincts","jpx-packed-headers","jpx-roi","jpx-poc"))
+    yield vector("spatial-offset-boundary",codestream([[30,70,110]],1,3,levels=1,origin=(0,1),precincts=[(0,0),(1,1)],progression=3),[[30,70,110]],1,3,("jpx-precincts","jpx-progression"))
+    for order in range(5):
+        yield vector(f"spatial-offset-{order}",codestream([odd],9,7,levels=2,origin=(3,5),precincts=[(1,1),(2,2),(2,3)],progression=order),[odd],9,7,("jpx-precincts","jpx-progression"))
+    yield vector("poc-deferred-declaration",codestream([[30,70,110]],1,3,levels=1,origin=(0,1),precincts=[(0,0),(1,1)],late_poc=[(0,0,1,2,1,3)]),[[30,70,110]],1,3,("jpx-poc","jpx-precincts"))
+    yield Vector("roi-precision-limit",{".jpx":codestream([[128]*64],8,8,roi=37),".error":b"unsupported\n"},("jpx-roi","jpx-part1"),"ROI coding precision beyond the 30-bit coefficient representation is explicitly unsupported",extra={"error":"unsupported"})
     raw = codestream([gray],8,8)
     packet_size = len(raw)-raw.index(b"\xff\x93")-4
     variable_length = [packet_size & 127]
@@ -519,6 +757,13 @@ def cases():
     alpha = [(i*5) % 256 for i in range(64)]
     definitions = struct.pack(">H",4)+b"".join(struct.pack(">HHH",*v) for v in ((0,1,0),(1,0,3),(2,0,1),(3,0,2)))
     yield vector("channel-alpha",jp2(codestream([alpha,rgb[2],rgb[0],rgb[1]],8,8),8,8,4,extra=box(b"cdef",definitions)),rgb+[alpha],8,8,("jpx-boxes",),color="rgb",alpha=3)
+    # PDF 7.4.9 directly names these enumerations; encoding mechanics remain T.800/T.801 pending review.
+    forbidden_color = jp2(codestream(rgb,8,8),8,8,3).replace(struct.pack(">I",16),struct.pack(">I",19),1)
+    yield Vector("pdf-colour-19",{".jpx":forbidden_color,".error":b"syntax\n"},("jpx-boxes","jpx-pdf-contract"),"PDF 7.4.9 excludes enumerated CIEJab 19",extra={"error":"syntax"})
+    cmyk = [gray,gray,gray,gray]
+    cmyk_data = jp2(codestream(cmyk,8,8),8,8,4).replace(struct.pack(">I",16),struct.pack(">I",12),1)
+    yield vector("pdf-colour-12",cmyk_data,cmyk,8,8,("jpx-boxes","jpx-pdf-contract"),color="cmyk")
+    yield Vector("pdf-depth-17",{".jpx":codestream([[65536]*64],8,8,bits=17),".error":b"unsupported\n"},("jpx-part1","jpx-pdf-contract"),"PDF allows 17-bit samples; the current unsigned 16-bit sample API reports Unsupported",extra={"error":"unsupported"})
     corrupt_tree = PacketBits()
     corrupt_tree.number(1)  # Nonempty packet.
     corrupt_tree.number(1)  # Included code-block.
@@ -536,5 +781,36 @@ def cases():
         "bad-tile-lengths": raw[:raw.index(b"\xff\x90")]+marker(0x55,b"\0\x30")+raw[raw.index(b"\xff\x90"):],
         "bad-packet-lengths": tile_header_marker(raw,0x58,b"\0\x80"),
     }
+    bad["poc-range"] = raw[:raw.index(b"\xff\x90")]+marker(0x5f,encode_poc([(0,0,0,1,1,0)]))+raw[raw.index(b"\xff\x90"):]
+    invalid_precinct = bytearray(codestream([gray],8,8,levels=1,precincts=(2,2)))
+    invalid_precinct[invalid_precinct.index(b"\xff\x52")+15] = 0
+    bad["precinct-size"] = bytes(invalid_precinct)
+    ppm = bytearray(codestream([gray],8,8,packed="ppm",packed_split=7))
+    ppm[ppm.index(b"\xff\x60")+4] = 1
+    bad["ppm-index"] = bytes(ppm)
+    ppt = bytearray(codestream([gray],8,8,packed="ppt",packed_split=7))
+    ppt[ppt.index(b"\xff\x61")+4] = 1
+    bad["ppt-index"] = bytes(ppt)
+    dual = codestream([gray],8,8,packed="ppt")
+    bad["packed-conflict"] = dual[:dual.index(b"\xff\x90")]+marker(0x60,b"\0\0\0\0\0")+dual[dual.index(b"\xff\x90"):]
+    valid_ppm = codestream([gray],8,8,packed="ppm")
+    first_tile = valid_ppm.index(b"\xff\x90")
+    bad["ppm-unused"] = valid_ppm[:first_tile]+marker(0x60,b"\1extra")+valid_ppm[first_tile:]
+    # Put the invalid stuffed byte at a fragment end so its source offset differs
+    # from the following marker's data. Expected position follows the box layout.
+    packed_source = codestream([gray],8,8,packed="ppm")
+    ppm_start = packed_source.index(b"\xff\x60")
+    tile_start = packed_source.index(b"\xff\x90")
+    record = packed_source[ppm_start+5:tile_start]
+    first_chunk = record[:4]+b"\xff"
+    second_chunk = b"\xff"
+    third_chunk = record[6:]
+    fragments = marker(0x60,b"\0"+first_chunk)+marker(0x60,b"\1"+second_chunk)+marker(0x60,b"\2"+third_chunk)
+    stuffed = packed_source[:ppm_start]+fragments+packed_source[tile_start:]
+    bad_position = ppm_start+len(marker(0x60,b"\0"+first_chunk))+5
+    yield Vector("packed-stuffing",{".jpx":stuffed,".error":b"syntax\n",".offset":f"{bad_position}\n".encode()},("jpx-hostile","jpx-packed-headers"),"Packet stuffing error reports the original packed-header fragment byte",extra={"error":"syntax"})
     for name, data in bad.items():
-        yield Vector(name,{".jpx": data, ".error": b"syntax\n"},("jpx-hostile",),"Malformed JPEG 2000 input",extra={"error": "syntax"})
+        feature_requirements = {"poc-range":("jpx-poc",),"precinct-size":("jpx-precincts",),
+                                "ppm-index":("jpx-packed-headers",),"ppt-index":("jpx-packed-headers",),
+                                "packed-conflict":("jpx-packed-headers",),"ppm-unused":("jpx-packed-headers",)}
+        yield Vector(name,{".jpx": data, ".error": b"syntax\n"},("jpx-hostile",)+feature_requirements.get(name,()),"Malformed JPEG 2000 input",extra={"error": "syntax"})

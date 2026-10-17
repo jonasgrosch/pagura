@@ -6,10 +6,25 @@ pub(super) fn syntax(message: &'static str, offset: usize) -> Error {
     Error::syntax(message).at(Position::Buffer(offset))
 }
 
+pub(super) struct Span {
+    pub logical: usize,
+    pub source: usize,
+}
+
+pub(super) fn source_position(spans: &[Span], logical: usize, fallback: usize) -> usize {
+    let index = spans.partition_point(|s| s.logical <= logical);
+    index
+        .checked_sub(1)
+        .and_then(|i| spans.get(i))
+        .map_or(fallback, |span| span.source + (logical - span.logical))
+}
+
 pub(super) struct Reader<'a> {
     pub data: &'a [u8],
     pub offset: usize,
     pub base: usize,
+    source_map: Option<&'a [Span]>,
+    logical_origin: usize,
 }
 
 impl<'a> Reader<'a> {
@@ -18,10 +33,26 @@ impl<'a> Reader<'a> {
             data,
             offset: 0,
             base,
+            source_map: None,
+            logical_origin: 0,
+        }
+    }
+
+    pub fn mapped(data: &'a [u8], origin: usize, spans: &'a [Span]) -> Self {
+        Self {
+            data,
+            offset: 0,
+            base: 0,
+            source_map: Some(spans),
+            logical_origin: origin,
         }
     }
 
     pub fn position(&self) -> usize {
+        if let Some(spans) = self.source_map {
+            let logical = self.logical_origin + self.offset;
+            return source_position(spans, logical, self.base + self.offset);
+        }
         self.base + self.offset
     }
 
@@ -97,6 +128,41 @@ impl<'a> Budget<'a> {
             .and_then(|n| self.bytes.checked_add(n))
             .filter(|&n| n <= self.limits.decoded_bytes)
             .ok_or_else(|| Error::limit("JPEG 2000 allocation budget exceeded"))?;
+        Ok(())
+    }
+
+    pub fn push<T>(&mut self, values: &mut Vec<T>, value: T) -> Result<()> {
+        if values.len() == values.capacity() {
+            let capacity = values
+                .len()
+                .checked_mul(2)
+                .map(|n| n.max(1))
+                .ok_or_else(|| Error::limit("JPEG 2000 vector capacity overflow"))?;
+            self.charge::<T>(capacity)?;
+            values
+                .try_reserve_exact(capacity - values.len())
+                .map_err(|_| Error::limit("JPEG 2000 allocation failed"))?;
+        }
+        values.push(value);
+        Ok(())
+    }
+
+    pub fn append(&mut self, values: &mut Vec<u8>, bytes: &[u8]) -> Result<()> {
+        let needed = values
+            .len()
+            .checked_add(bytes.len())
+            .ok_or_else(|| Error::limit("JPEG 2000 byte length overflow"))?;
+        if needed > values.capacity() {
+            let capacity = needed
+                .checked_next_power_of_two()
+                .ok_or_else(|| Error::limit("JPEG 2000 byte capacity overflow"))?;
+            self.charge::<u8>(capacity)?;
+            values
+                .try_reserve_exact(capacity - values.len())
+                .map_err(|_| Error::limit("JPEG 2000 allocation failed"))?;
+        }
+        self.work(bytes.len())?;
+        values.extend_from_slice(bytes);
         Ok(())
     }
 

@@ -1,11 +1,11 @@
-//! Binary arithmetic decoding, ISO/IEC 15444-1 Annex C.
+//! JPEG 2000 binary arithmetic decoding; T.800 primary-text review pending.
 
 use pagura_core::Result;
 
 use super::io::syntax;
 
-// Probability estimates and state transitions from Annex C, Table C.2.
-const STATES: [(u32, usize, usize, bool); 47] = [
+// MQ probability estimates and transitions; the external table locator is unverified.
+const STATES: [(u32, u8, u8, bool); 47] = [
     (0x5601, 1, 1, true),
     (0x3401, 2, 6, false),
     (0x1801, 3, 9, false),
@@ -56,8 +56,8 @@ const STATES: [(u32, usize, usize, bool); 47] = [
 ];
 
 #[derive(Clone, Copy, Default)]
-struct Context {
-    state: usize,
+pub(super) struct Context {
+    state: u8,
     mps: bool,
 }
 
@@ -72,24 +72,32 @@ pub(super) struct Decoder<'a> {
 }
 
 impl<'a> Decoder<'a> {
-    pub fn new(bytes: &'a [u8], base: usize) -> Result<Self> {
-        if bytes.is_empty() {
-            return Err(syntax("empty JPEG 2000 arithmetic segment", base));
-        }
+    pub fn new(bytes: &'a [u8], base: usize, contexts: [Context; 19]) -> Result<Self> {
         let mut decoder = Self {
             bytes,
             position: 0,
             base,
             a: 0x8000,
-            c: u32::from(bytes[0]) << 16,
+            c: u32::from(bytes.first().copied().unwrap_or(255)) << 16,
             bits: 0,
-            contexts: [Context::default(); 19],
+            contexts,
         };
-        decoder.reset();
         decoder.byte_in()?;
         decoder.c <<= 7;
         decoder.bits -= 7;
         Ok(decoder)
+    }
+
+    pub fn contexts(&self) -> [Context; 19] {
+        self.contexts
+    }
+
+    pub fn initial_contexts() -> [Context; 19] {
+        let mut contexts = [Context::default(); 19];
+        contexts[0].state = 4;
+        contexts[17].state = 3;
+        contexts[18].state = 46;
+        contexts
     }
 
     pub fn reset(&mut self) {
@@ -104,7 +112,7 @@ impl<'a> Decoder<'a> {
         let next = self.bytes.get(self.position + 1).copied().unwrap_or(255);
         if previous == 255 {
             if next > 143 {
-                // Annex C supplies a marker at a terminated segment boundary.
+                // Terminated segments use an implicit marker; primary T.800 review is pending.
                 self.c = self.c.wrapping_add(0xff00);
                 self.bits = 8;
                 if self.position + 1 < self.bytes.len() {
@@ -128,7 +136,7 @@ impl<'a> Decoder<'a> {
 
     pub fn bit(&mut self, context: usize) -> Result<bool> {
         let old = self.contexts[context];
-        let (estimate, mps_next, lps_next, switch) = STATES[old.state];
+        let (estimate, mps_next, lps_next, switch) = STATES[usize::from(old.state)];
         self.a -= estimate;
         let value;
         if self.c >> 16 < estimate {
