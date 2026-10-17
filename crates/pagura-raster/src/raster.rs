@@ -93,6 +93,34 @@ impl std::fmt::Debug for Mask {
 }
 
 impl Mask {
+    /// Global device origin of this coverage region.
+    pub fn origin(&self) -> (u32, u32) {
+        self.origin
+    }
+
+    /// Rasterizes only the path bounds intersected with this clip's surface.
+    /// Geometry is intersected before coverage integration, never by multiplying
+    /// two antialiasing estimates. The result retains its global device origin.
+    ///
+    /// # Errors
+    /// Returns geometry and caller-budget errors as [`Self::from_path_with_limits`].
+    pub fn clipped_path(
+        &self,
+        path: &Path,
+        transform: Transform,
+        rule: FillRule,
+        limits: Limits,
+    ) -> Result<Option<Self>> {
+        fill_mask(
+            path,
+            transform,
+            rule,
+            Some(self),
+            (self.width, self.height),
+            self.origin,
+            limits,
+        )
+    }
     /// Rasterizes the area `path` covers under `rule` into a mask of the
     /// given size.
     ///
@@ -303,15 +331,36 @@ pub fn fill_path_at(
 ) -> Result<()> {
     check_clip(target, clip)?;
     let limits = *target.limits();
-    let Some((x, y, width, height)) = crate::bounds::region(
+    let Some(mask) = fill_mask(
         path,
         transform,
+        rule,
+        clip,
         (target.width(), target.height()),
         origin,
-        &limits,
+        limits,
     )?
     else {
         return Ok(());
+    };
+    let (x, y) = mask.origin;
+    composite(target, &mask, *paint, (x - origin.0, y - origin.1))?;
+    Ok(())
+}
+
+fn fill_mask(
+    path: &Path,
+    transform: Transform,
+    rule: FillRule,
+    clip: Option<&Mask>,
+    size: (u32, u32),
+    origin: (u32, u32),
+    limits: Limits,
+) -> Result<Option<Mask>> {
+    let Some((x, y, width, height)) =
+        crate::bounds::region(path, transform, size, origin, &limits)?
+    else {
+        return Ok(None);
     };
     let mut shapes = vec![Shape {
         path: Arc::new(path.clone()),
@@ -329,8 +378,33 @@ pub fn fill_path_at(
         }
     }
     let mask = Mask::from_shapes(width, height, shapes, limits, (x, y))?;
-    composite(target, &mask, *paint, (x - origin.0, y - origin.1))?;
-    Ok(())
+    Ok(Some(mask))
+}
+
+/// Converts a user-space stroke to a fill outline and its device transform.
+///
+/// # Errors
+/// Returns invalid geometry or exhausted caller budgets.
+pub fn stroke_outline(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+) -> Result<(Path, Transform)> {
+    crate::stroke::outline(path, transform, stroke, limits)
+}
+
+/// Converts an automatically grid-fitted stroke to a fill outline (10.7.5).
+///
+/// # Errors
+/// As [`stroke_outline`]; oblique/curved grid fitting is explicitly unsupported.
+pub fn adjusted_stroke_outline(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+) -> Result<(Path, Transform)> {
+    crate::adjust::outline(path, transform, stroke, limits)
 }
 
 /// Strokes `path` with `stroke` (in the path's space, then mapped by

@@ -283,36 +283,44 @@
     {
       "id": "classic/alpha-unsupported",
       "kind": "pdf",
-      "description": "constant alpha below 1 needs transparency (M5)",
-      "expected": "unsupported",
+      "description": "Constant half opacity over white (11.3.3)",
+      "expected": "render",
       "requirements": [
         "syntax-classic-xref",
         "page-tree",
-        "unsupported-is-explicit"
+        "opaque-rectangle-rendering"
       ],
       "path": "corpus/generated/classic/alpha-unsupported.pdf",
       "sha256": "2aaa3a94957e0aab938ead153e1aef11285071bc843e4ea6127f9619b033faa7",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "transparency.ca"
+      "oracle": "corpus/generated/classic/alpha-unsupported.ppm",
+      "oracle_sha256": "c7fcccb35e4e35be1787d09b6c60705c7d316d5466b1dc41842cec6cc9aea4ff",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
     },
     {
       "id": "classic/colorspace-unsupported",
       "kind": "pdf",
-      "description": "a CalRGB default colour space (8.6.5.6)",
-      "expected": "unsupported",
+      "description": "CalRGB default-space gamma/matrix to XYZ (8.6.5.3)",
+      "expected": "render",
       "requirements": [
         "syntax-classic-xref",
         "page-tree",
-        "unsupported-is-explicit"
+        "opaque-rectangle-rendering"
       ],
       "path": "corpus/generated/classic/colorspace-unsupported.pdf",
       "sha256": "3d11c5ffff7d5a306139bb9475e2412141ea3c9fd6bfe102ac16bccec10aa0da",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "colorspace.CalRGB"
+      "oracle": "corpus/generated/classic/colorspace-unsupported.ppm",
+      "oracle_sha256": "baf2d28433e076b2b95648ffa588181b043fc7789cfbb377390b09a18322837c",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
     },
     {
       "id": "classic/fractional-rectangle",

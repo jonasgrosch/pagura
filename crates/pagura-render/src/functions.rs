@@ -173,8 +173,63 @@ impl Function {
         })
     }
     pub(crate) fn evaluate(&self, inputs: &[f64]) -> Result<Vec<f64>> {
-        let mut work = 0;
-        self.run(inputs, 0, &mut work).map_err(|e| {
+        self.evaluate_with_work(inputs, &mut 0)
+    }
+    pub(crate) fn covers_domain(&self, domain: &[[f64; 2]]) -> bool {
+        domain.len() == self.domain.len()
+            && domain
+                .iter()
+                .zip(&self.domain)
+                .all(|(a, b)| a[0] >= b[0] && a[1] <= b[1])
+    }
+    /// Evaluate common exponential gradients without allocating per sample.
+    pub(crate) fn evaluate_into(
+        &self,
+        inputs: &[f64],
+        output: &mut [f64],
+        work: &mut usize,
+    ) -> Result<()> {
+        self.fill_output(inputs, output, work)
+            .map_err(|error| self.object.map_or(error.clone(), |id| error.in_object(id)))
+    }
+    fn fill_output(&self, inputs: &[f64], output: &mut [f64], work: &mut usize) -> Result<()> {
+        if inputs.len() != self.domain.len() || inputs.iter().any(|v| !v.is_finite()) {
+            return Err(Error::syntax("invalid function inputs"));
+        }
+        if output.len() != self.outputs {
+            return Err(Error::invalid_argument("wrong function output buffer"));
+        }
+        if let Body::Exponential { low, high, power } = &self.body {
+            if *work >= self.limits.operations {
+                return Err(Error::limit("function evaluation budget exceeded"));
+            }
+            *work += 1;
+            let [value] = inputs else {
+                return Err(Error::syntax("wrong function input count"));
+            };
+            let range = self
+                .domain
+                .first()
+                .ok_or(Error::syntax("missing function domain"))?;
+            let value = value.clamp(range[0], range[1]).powf(*power);
+            for (i, ((out, &low), &high)) in output.iter_mut().zip(low).zip(high).enumerate() {
+                *out = low + value * (high - low);
+                if !out.is_finite() {
+                    return Err(Error::syntax(
+                        "function arithmetic is undefined or overflows",
+                    ));
+                }
+                if let Some(range) = self.range.as_ref().and_then(|r| r.get(i)) {
+                    *out = out.clamp(range[0], range[1]);
+                }
+            }
+            return Ok(());
+        }
+        output.copy_from_slice(&self.evaluate_with_work(inputs, work)?);
+        Ok(())
+    }
+    pub(crate) fn evaluate_with_work(&self, inputs: &[f64], work: &mut usize) -> Result<Vec<f64>> {
+        self.run(inputs, 0, work).map_err(|e| {
             if let Some(id) = self.object {
                 e.in_object(id)
             } else {

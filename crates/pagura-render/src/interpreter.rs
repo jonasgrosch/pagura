@@ -1,11 +1,14 @@
 //! Content compilation. The only inputs are immutable document objects.
 
+mod annotations;
 mod forms;
+mod masks;
 mod path;
+mod shadings;
 mod state;
 
 use crate::color::{self, Color};
-use crate::display::{Clip, Command, DisplayList, Mark};
+use crate::display::{Clip, Command, DisplayList, Mark, PathCommand};
 use crate::features;
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Dictionary, Error, Feature, ObjectId, Position, Rect, Result, Value};
@@ -19,7 +22,7 @@ use std::sync::Arc;
 /// # Errors
 /// Returns positioned syntax errors, resource-limit errors and stable
 /// `Unsupported` tags. No partial list is returned on failure. Text, images,
-/// annotation appearances and nontrivial transparency currently remain unsupported.
+/// and mesh shadings currently remain unsupported.
 pub fn compile_page(document: &Document, page: &Page) -> Result<DisplayList> {
     let mut compiler = Compiler::new(document, page)?;
     compiler.page(page).map_err(|e| e.in_object(page.id()))?;
@@ -38,6 +41,9 @@ struct Graphics {
     flatness: f64,
     stroke_adjustment: bool,
     transfer: Option<crate::functions::Transfer>,
+    composite: crate::transparency::Composite,
+    stroke_alpha: f64,
+    stroke_overprint: bool,
 }
 
 impl Default for Graphics {
@@ -53,6 +59,9 @@ impl Default for Graphics {
             flatness: 1.0,
             stroke_adjustment: false,
             transfer: None,
+            composite: crate::transparency::Composite::opaque(),
+            stroke_alpha: 1.0,
+            stroke_overprint: false,
         }
     }
 }
@@ -70,6 +79,9 @@ struct Compiler<'a> {
     visible: bool,
     visibility: Arc<crate::optional::Visibility>,
     operations: usize,
+    marks: usize,
+    initial_ctm: Transform,
+    position: Position,
     forms: Vec<ObjectId>,
 }
 
@@ -88,30 +100,29 @@ impl<'a> Compiler<'a> {
             visible: true,
             visibility: Arc::new(crate::optional::Visibility::new(document)?),
             operations: 0,
+            marks: 0,
+            initial_ctm: Transform::IDENTITY,
+            position: Position::Unknown,
             forms: Vec::new(),
         })
     }
 
     fn page(&mut self, page: &Page) -> Result<()> {
-        group(self.document, page.dictionary(), page.resources())?;
+        self.list.group = crate::transparency::Attributes::parse(
+            self.document,
+            page.dictionary(),
+            page.resources(),
+        )?
+        .unwrap_or_default();
         self.state.fill = Color::new(color::named(
             self.document,
             page.resources(),
             b"DeviceGray",
         )?);
         self.state.stroke_color = self.state.fill.clone();
-        if let Some(annotations) = page.dictionary().get(b"Annots") {
-            let annotations = self
-                .document
-                .resolve(annotations)?
-                .as_array()
-                .ok_or(Error::syntax("Annots must be an array"))?;
-            for value in annotations {
-                annotation(self.document, value)?;
-            }
-        }
         let streams = self.document.content_streams(page)?;
-        self.sequence(&streams, page.resources())
+        self.sequence(&streams, page.resources())?;
+        self.annotations(page)
     }
 
     fn sequence(&mut self, streams: &[&IndirectObject], resources: &Dictionary) -> Result<()> {
@@ -133,6 +144,7 @@ impl<'a> Compiler<'a> {
             bytes.push(b'\n');
         }
         let mut parser = Parser::new(&bytes, Origin::Buffer, self.document.limits());
+        let mut stream_index = 0;
         while let Some(byte) = parser.peek() {
             self.operations = self
                 .operations
@@ -141,6 +153,18 @@ impl<'a> Compiler<'a> {
                 .ok_or(Error::limit("content token budget exceeded"))
                 .map_err(|e| stream_error(e, parser.offset(), &origins))?;
             let offset = parser.offset();
+            while origins
+                .get(stream_index + 1)
+                .is_some_and(|(start, _)| *start <= offset)
+            {
+                stream_index += 1;
+            }
+            if let Some(&(start, object)) = origins.get(stream_index) {
+                self.position = Position::Stream {
+                    object,
+                    offset: offset - start,
+                };
+            }
             let result = if matches!(
                 byte,
                 b'/' | b'(' | b'[' | b'<' | b'+' | b'-' | b'.' | b'0'..=b'9'
@@ -286,7 +310,7 @@ impl<'a> Compiler<'a> {
             }
             b"MP" | b"DP" => {}
             b"BI" => return Err(unsupported(features::IMAGE_INLINE)),
-            b"sh" => return Err(unsupported(features::SHADING_PAINT)),
+            b"sh" => self.shading(v, resources)?,
             _ => {
                 return Err(Error::unsupported(
                     tag,
@@ -391,44 +415,6 @@ fn unsupported(tag: Feature) -> Error {
     Error::unsupported(tag, "rendering feature is not implemented")
 }
 
-/// With alpha=1, Normal blending and no soft mask, the source-over equation
-/// (11.3–11.4) yields the source colour independently of backdrop/isolation.
-/// A non-knockout group can therefore be painted directly once every mark is
-/// validated as opaque. For a DeviceRGB blend space on an RGB output device
-/// there is no intervening colour conversion; ICCBased with an RGB alternate
-/// has the same fallback representation (8.6.5.5). Gray/CMYK and calibrated
-/// blend spaces require a conversion round trip and are excluded (11.4.7).
-fn group(document: &Document, dictionary: &Dictionary, resources: &Dictionary) -> Result<()> {
-    let Some(value) = dictionary.get(b"Group") else {
-        return Ok(());
-    };
-    let dictionary = document.resolve_dictionary(value)?;
-    if !dictionary.is_name(b"S", b"Transparency") {
-        return Err(unsupported(features::TRANSPARENCY_GROUP));
-    }
-    if let Some(value) = dictionary.get(b"K") {
-        let knockout = document
-            .resolve(value)?
-            .as_bool()
-            .ok_or(Error::syntax("group K must be boolean"))?;
-        if knockout {
-            return Err(unsupported(features::TRANSPARENCY_KNOCKOUT));
-        }
-    }
-    if let Some(isolated) = dictionary.get(b"I") {
-        document
-            .resolve(isolated)?
-            .as_bool()
-            .ok_or(Error::syntax("group I must be boolean"))?;
-    }
-    if let Some(space) = dictionary.get(b"CS")
-        && !color::rgb_blending(document, resources, space)?
-    {
-        return Err(unsupported(features::TRANSPARENCY_GROUP_COLORSPACE));
-    }
-    Ok(())
-}
-
 fn stream_error(mut error: Error, fallback: usize, origins: &[(usize, ObjectId)]) -> Error {
     let offset = match error.position {
         Position::Buffer(n) => n,
@@ -444,57 +430,4 @@ fn stream_error(mut error: Error, fallback: usize, origins: &[(usize, ObjectId)]
         error = error.in_object(object);
     }
     error
-}
-
-fn annotation(document: &Document, value: &Value) -> Result<()> {
-    let dictionary = document.resolve_dictionary(value)?;
-    let flags = dictionary
-        .get(b"F")
-        .map(|v| {
-            document
-                .resolve(v)?
-                .as_integer()
-                .ok_or(Error::syntax("annotation F must be integer"))
-        })
-        .transpose()?
-        .unwrap_or(0);
-    // Screen rendering: Hidden and NoView suppress normal appearances (12.5.3).
-    if flags & (2 | 32) != 0 {
-        return Ok(());
-    }
-    let Some(appearance) = dictionary.get(b"AP") else {
-        return Ok(());
-    };
-    let appearance = document.resolve_dictionary(appearance)?;
-    let Some(normal) = appearance.get(b"N") else {
-        return Ok(());
-    };
-    let normal = if let Some(id) = normal.as_reference()
-        && document.object(id)?.is_stream()
-    {
-        normal
-    } else {
-        let states = document.resolve_dictionary(normal)?;
-        if states.is_empty() {
-            return Ok(());
-        }
-        let state = dictionary
-            .get_name(b"AS")
-            .ok_or(Error::syntax("annotation has no appearance state"))?;
-        let Some(normal) = states.get(state.as_bytes()) else {
-            return Ok(());
-        };
-        normal
-    };
-    let id = normal.as_reference().ok_or(Error::syntax(
-        "normal appearance must be a stream reference",
-    ))?;
-    if !document.object(id)?.is_stream() {
-        return Err(Error::syntax("normal appearance must be a stream"));
-    }
-    let mut error = unsupported(features::ANNOTATION_APPEARANCE);
-    if let Some(id) = value.as_reference() {
-        error = error.in_object(id);
-    }
-    Err(error)
 }

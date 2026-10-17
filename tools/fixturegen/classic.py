@@ -72,11 +72,12 @@ def cases():
 
     yield unsupported("text-unsupported", "text objects need fonts (M3)", "operator.BT",
                       [b"BT /F1 12 Tf (hello) Tj ET\n"])
-    yield unsupported("alpha-unsupported", "constant alpha below 1 needs transparency (M5)", "transparency.ca",
-                      [b"/GS1 gs 0 0 64 64 re f\n"], resources=b"<< /ExtGState << /GS1 << /ca 0.5 >> >> >>")
-    yield unsupported("colorspace-unsupported", "a CalRGB default colour space (8.6.5.6)", "colorspace.CalRGB",
-                      [b"1 0 0 rg 0 0 64 64 re f\n"],
-                      resources=b"<< /ColorSpace << /DefaultRGB [/CalRGB << /WhitePoint [0.9505 1 1.089] >>] >> >>")
+    yield render("alpha-unsupported", "Constant half opacity over white (11.3.3)",
+                      [b"/GS1 gs 0 0 64 64 re f\n"], [((0,0,64,64),(128,128,128))], resources=b"<< /ExtGState << /GS1 << /ca 0.5 >> >> >>")
+    from .content import cie_rgb
+    yield render("colorspace-unsupported", "CalRGB default-space gamma/matrix to XYZ (8.6.5.3)",
+                 [b"1 0 0 rg 0 0 64 64 re f\n"], [((0,0,64,64),cie_rgb('CalRGB',(1,0,0),white=(.9505,1,1.089)))],
+                 resources=b"<< /ColorSpace << /DefaultRGB [/CalRGB << /WhitePoint [0.9505 1 1.089] >>] >> >>")
     yield Case("fractional-rectangle", single_page([b"0 g 0.5 0.5 20 20 re f\n"]), RENDER,
                BASE + ("opaque-rectangle-rendering", "content-fractional"),
                "edges inside pixels: coverage is the product of overlaps",

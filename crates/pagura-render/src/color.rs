@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Space {
+    Pattern(Option<Arc<Self>>),
     Gray,
     Rgb,
     Cmyk,
@@ -25,35 +26,44 @@ pub(crate) enum Space {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Color {
-    pub(crate) space: Space,
-    pub(crate) components: Vec<f64>,
+pub(crate) enum Color {
+    Solid {
+        space: Space,
+        components: Vec<f64>,
+    },
+    Pattern {
+        base: Option<Arc<Space>>,
+        selected: Option<Arc<crate::pattern::Pattern>>,
+    },
 }
-
 impl Default for Color {
     fn default() -> Self {
-        Self {
-            space: Space::Gray,
-            components: vec![0.0],
-        }
+        Self::new(Space::Gray)
     }
 }
-
 impl Color {
     pub(crate) fn new(space: Space) -> Self {
+        if let Space::Pattern(base) = space {
+            return Self::Pattern {
+                base,
+                selected: None,
+            };
+        }
         let components = match &space {
             Space::Cmyk => vec![0.0, 0.0, 0.0, 1.0],
             Space::Tint { inputs, .. } => vec![1.0; *inputs],
             _ => vec![0.0; space.components()],
         };
-        Self { space, components }
+        Self::Solid { space, components }
     }
-
     pub(crate) fn set(&mut self, values: &[Value]) -> Result<()> {
-        if values.len() != self.space.components() {
+        let Self::Solid { space, components } = self else {
+            return Err(Error::syntax("pattern requires SCN or scn"));
+        };
+        if values.len() != space.components() {
             return Err(Error::syntax("wrong colour component count"));
         }
-        self.components = values
+        *components = values
             .iter()
             .map(|v| {
                 v.as_number()
@@ -62,9 +72,37 @@ impl Color {
             .collect::<Result<_>>()?;
         Ok(())
     }
-
+    pub(crate) fn select_pattern(
+        &mut self,
+        document: &Document,
+        resources: &Dictionary,
+        values: &[Value],
+        initial: pagura_raster::Transform,
+    ) -> Result<()> {
+        let Self::Pattern { base, selected } = self else {
+            return self.set(values);
+        };
+        let Some((name, components)) = values.split_last() else {
+            return Err(Error::syntax("missing pattern name"));
+        };
+        let name = name
+            .as_name()
+            .ok_or(Error::syntax("pattern name expected"))?;
+        let pattern =
+            crate::pattern::Pattern::parse(document, resources, name.as_bytes(), initial)?;
+        if base.is_some() || !components.is_empty() {
+            return Err(Error::syntax(
+                "shading pattern cannot have an underlying colour",
+            ));
+        }
+        *selected = Some(Arc::new(pattern));
+        Ok(())
+    }
     pub(crate) fn to_rgba(&self, transfer: Option<&crate::functions::Transfer>) -> Result<Rgba8> {
-        let mut rgb = self.space.convert(&self.components)?;
+        let Self::Solid { space, components } = self else {
+            return Err(Error::invalid_argument("pattern is not a uniform colour"));
+        };
+        let mut rgb = space.convert(components)?;
         if let Some(transfer) = transfer {
             for (channel, function) in rgb.iter_mut().zip(transfer.iter()) {
                 *channel = function
@@ -82,6 +120,7 @@ impl Color {
 impl Space {
     pub(crate) fn components(&self) -> usize {
         match self {
+            Self::Pattern(base) => base.as_ref().map_or(0, |b| b.components()),
             Self::Gray | Self::Indexed { .. } => 1,
             Self::Rgb => 3,
             Self::Cmyk => 4,
@@ -90,9 +129,12 @@ impl Space {
         }
     }
 
-    fn convert(&self, c: &[f64]) -> Result<[f64; 3]> {
+    pub(crate) fn convert(&self, c: &[f64]) -> Result<[f64; 3]> {
         let n = |i: usize| c.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0);
         match self {
+            Self::Pattern(_) => Err(Error::invalid_argument(
+                "pattern is not a component colour space",
+            )),
             Self::Gray => Ok([n(0); 3]),
             Self::Rgb => Ok([n(0), n(1), n(2)]),
             Self::Cmyk => {
@@ -139,15 +181,12 @@ pub(crate) fn named(document: &Document, resources: &Dictionary, name: &[u8]) ->
     resolve(document, resources, &Value::name(name), 0, true)
 }
 
-pub(crate) fn rgb_blending(
+pub(crate) fn blending(
     document: &Document,
     resources: &Dictionary,
     value: &Value,
-) -> Result<bool> {
-    Ok(matches!(
-        resolve(document, resources, value, 0, false)?,
-        Space::Rgb
-    ))
+) -> Result<Space> {
+    resolve(document, resources, value, 0, true)
 }
 
 fn resolve(
@@ -162,6 +201,9 @@ fn resolve(
     }
     match document.resolve(value)? {
         Value::Name(name) => {
+            if name == b"Pattern" {
+                return Ok(Space::Pattern(None));
+            }
             let (device, default) = match name.as_bytes() {
                 b"DeviceGray" => (Some(Space::Gray), b"DefaultGray".as_slice()),
                 b"DeviceRGB" => (Some(Space::Rgb), b"DefaultRGB".as_slice()),
@@ -175,7 +217,9 @@ fn resolve(
             if let Some(device) = device {
                 if defaults && let Some(value) = spaces.and_then(|d| d.get(default)) {
                     let alternate = resolve(document, resources, value, depth + 1, false)?;
-                    if alternate.components() != device.components() {
+                    if matches!(alternate, Space::Pattern(_))
+                        || alternate.components() != device.components()
+                    {
                         return Err(Error::syntax(
                             "default colour space has wrong component count",
                         ));
@@ -211,6 +255,14 @@ fn array_space(
         .and_then(Value::as_name)
         .ok_or(Error::syntax("colour space array has no family"))?;
     match (family.as_bytes(), values) {
+        (b"Pattern", [_, base]) => {
+            let base = resolve(document, resources, base, depth + 1, false)?;
+            if matches!(base, Space::Pattern(_)) {
+                return Err(Error::syntax("nested Pattern colour space"));
+            }
+            Ok(Space::Pattern(Some(Arc::new(base))))
+        }
+
         (b"Separation", [_, name, base, function]) => {
             let name = document
                 .resolve(name)?
@@ -232,7 +284,7 @@ fn array_space(
             tint_space(document, resources, base, function, count, depth)
         }
         (b"ICCBased", [_, profile]) => icc_space(document, resources, profile, depth),
-        (b"CalGray" | b"Lab", [_, parameters]) => {
+        (b"CalGray" | b"CalRGB" | b"Lab", [_, parameters]) => {
             let parameters = document.resolve_dictionary(parameters)?;
             Ok(Space::Cie(Arc::new(crate::cie::Cie::parse(
                 document,
@@ -242,7 +294,7 @@ fn array_space(
         }
         (b"Indexed", [_, base, high, lookup]) => {
             let base = resolve(document, resources, base, depth + 1, false)?;
-            if matches!(base, Space::Indexed { .. }) {
+            if matches!(base, Space::Indexed { .. } | Space::Pattern(_)) {
                 return Err(Error::syntax("Indexed base cannot be Indexed"));
             }
             let high = document
@@ -277,9 +329,10 @@ fn array_space(
                 lookup: lookup.into(),
             })
         }
-        (b"ICCBased" | b"Indexed" | b"CalGray" | b"Lab" | b"Separation" | b"DeviceN", _) => {
-            Err(Error::syntax("wrong colour space array length"))
-        }
+        (
+            b"ICCBased" | b"Indexed" | b"CalGray" | b"CalRGB" | b"Lab" | b"Separation" | b"DeviceN",
+            _,
+        ) => Err(Error::syntax("wrong colour space array length")),
         _ => Err(Error::unsupported(
             unsupported(family.as_bytes()).unwrap_or(features::COLORSPACE_UNKNOWN),
             "colour space family is not implemented",
@@ -324,7 +377,10 @@ fn tint_space(
     depth: usize,
 ) -> Result<Space> {
     let base = resolve(document, resources, base, depth + 1, false)?;
-    if matches!(base, Space::Indexed { .. } | Space::Tint { .. }) {
+    if matches!(
+        base,
+        Space::Indexed { .. } | Space::Tint { .. } | Space::Pattern(_)
+    ) {
         return Err(Error::syntax("invalid tint alternate space"));
     }
     let function =

@@ -1,8 +1,8 @@
 //! Path construction, painting and deferred clipping (8.5).
 
 use super::{
-    Arc, Clip, Command, Compiler, Error, FillRule, Mark, Point, Result, Value, finite, nested,
-    number, point,
+    Arc, Clip, Command, Compiler, Error, FillRule, Mark, PathCommand, Point, Result, Value, finite,
+    nested, number, point,
 };
 
 impl Compiler<'_> {
@@ -83,27 +83,29 @@ impl Compiler<'_> {
         };
         let fill = matches!(word, b"f" | b"F" | b"f*" | b"B" | b"B*" | b"b" | b"b*");
         let stroke = matches!(word, b"S" | b"s" | b"B" | b"B*" | b"b" | b"b*");
-        if self
-            .list
-            .commands
-            .len()
-            .checked_add(usize::from(fill) + usize::from(stroke))
-            .is_none_or(|n| n > self.document.limits().display_commands)
-        {
-            return Err(Error::limit("display list budget exceeded"));
+        if self.visible {
+            self.marks = self
+                .marks
+                .checked_add(usize::from(fill) + usize::from(stroke))
+                .filter(|&n| n <= self.document.limits().display_commands)
+                .ok_or(Error::limit("display list budget exceeded"))?;
         }
+        let start = self.list.commands.len();
         if fill && self.visible {
-            self.list.commands.push(Command {
+            self.list.commands.push(Command::Path(PathCommand {
                 path: Arc::clone(&path),
+                position: self.position,
                 mark: Mark::Fill(rule),
                 clip: self.state.clip.clone(),
                 color: self.state.fill.clone(),
                 transfer: self.state.transfer.clone(),
-            });
+                composite: self.state.composite.clone(),
+            }));
         }
         if stroke && self.visible {
-            self.list.commands.push(Command {
+            self.list.commands.push(Command::Path(PathCommand {
                 path: Arc::clone(&path),
+                position: self.position,
                 mark: Mark::Stroke(
                     self.state.stroke.clone(),
                     self.state.ctm,
@@ -112,7 +114,45 @@ impl Compiler<'_> {
                 clip: self.state.clip.clone(),
                 color: self.state.stroke_color.clone(),
                 transfer: self.state.transfer.clone(),
-            });
+                composite: crate::transparency::Composite {
+                    alpha: self.state.stroke_alpha,
+                    overprint: self.state.stroke_overprint,
+                    ..self.state.composite.clone()
+                },
+            }));
+        }
+        if fill && stroke && self.visible {
+            // The combined operation is a single object for transparency
+            // (11.7.4.4); its fill and stroke do not composite with each other.
+            let overprint = self.state.composite.overprint
+                && self.state.stroke_overprint
+                && self.state.composite.alpha == self.state.stroke_alpha;
+            let mut commands = self.list.commands.split_off(start);
+            if overprint {
+                for command in &mut commands {
+                    if let Command::Path(p) = command {
+                        p.composite.alpha = 1.0;
+                        p.composite.blend = crate::blend::BlendMode::Normal;
+                        p.composite.mask = None;
+                    }
+                }
+            }
+            self.list
+                .commands
+                .push(Command::Group(crate::transparency::Group {
+                    position: self.position,
+                    commands,
+                    bounds: None,
+                    attributes: crate::transparency::Attributes {
+                        knockout: !overprint,
+                        ..Default::default()
+                    },
+                    composite: if overprint {
+                        self.state.composite.clone()
+                    } else {
+                        crate::transparency::Composite::opaque()
+                    },
+                }));
         }
         // 8.5.4: a pending clip takes effect only AFTER the painting operation.
         if let Some(rule) = self.pending_clip.take() {

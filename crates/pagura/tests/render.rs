@@ -17,8 +17,10 @@ fn ppm(pixmap: &Pixmap) -> Vec<u8> {
 }
 use pagura::{ErrorKind, RenderOptions, Tile};
 
-const RENDER_CASES: [&str; 15] = [
+const RENDER_CASES: [&str; 17] = [
     "blank",
+    "colorspace-unsupported",
+    "alpha-unsupported",
     "rectangle",
     "graphics-state",
     "negative-rectangle",
@@ -35,11 +37,7 @@ const RENDER_CASES: [&str; 15] = [
     "two-pages",
 ];
 
-const UNSUPPORTED_CASES: [(&str, &str); 3] = [
-    ("text-unsupported", "operator.BT"),
-    ("alpha-unsupported", "transparency.ca"),
-    ("colorspace-unsupported", "colorspace.CalRGB"),
-];
+const UNSUPPORTED_CASES: [(&str, &str); 1] = [("text-unsupported", "operator.BT")];
 
 #[test]
 fn exact_pixels_match_independent_oracles() {

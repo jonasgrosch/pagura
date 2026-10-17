@@ -98,6 +98,9 @@ impl Compiler<'_> {
                 *color = Color::new(color::named(self.document, resources, name)?);
                 color.set(v)?;
             }
+            b"SCN" | b"scn" => {
+                color.select_pattern(self.document, resources, v, self.initial_ctm)?;
+            }
             _ => color.set(v)?,
         }
         Ok(())
@@ -118,6 +121,32 @@ impl Compiler<'_> {
                 _ => None,
             };
             if replacement.is_some_and(|name| dictionary.contains_key(name)) {
+                continue;
+            }
+            if key == b"SMask" {
+                self.state.composite.mask = self.soft_mask(value, resources)?;
+                continue;
+            }
+            if matches!(key.as_bytes(), b"BG" | b"BG2" | b"UCR" | b"UCR2") {
+                let resolved = self.document.resolve(value)?;
+                let function = if resolved.as_name().is_some_and(|n| n == b"Default") {
+                    if !matches!(key.as_bytes(), b"BG2" | b"UCR2") {
+                        return Err(Error::syntax("Default requires BG2 or UCR2"));
+                    }
+                    None
+                } else {
+                    Some(std::sync::Arc::new(crate::functions::Function::parse(
+                        self.document,
+                        value,
+                        1,
+                        1,
+                    )?))
+                };
+                if matches!(key.as_bytes(), b"BG" | b"BG2") {
+                    self.state.composite.conversion.black = function;
+                } else {
+                    self.state.composite.conversion.ucr = function;
+                }
                 continue;
             }
             if key == b"TR"
@@ -149,6 +178,9 @@ impl Compiler<'_> {
                 continue;
             }
             self.extgstate_entry(key.as_bytes(), value)?;
+        }
+        if dictionary.contains_key(b"OP") && !dictionary.contains_key(b"op") {
+            self.state.composite.overprint = self.state.stroke_overprint;
         }
         Ok(())
     }
@@ -182,36 +214,26 @@ impl Compiler<'_> {
                 if !(0.0..=1.0).contains(&alpha) {
                     return Err(Error::syntax("alpha outside unit interval"));
                 }
-                if alpha != 1.0 {
-                    return Err(unsupported(if key == b"CA" {
-                        features::TRANSPARENCY_CA_STROKING
-                    } else {
-                        features::TRANSPARENCY_CA
-                    }));
+                if key == b"CA" {
+                    self.state.stroke_alpha = alpha;
+                } else {
+                    self.state.composite.alpha = alpha;
                 }
             }
             b"BM" => {
-                let name = value.as_name().or_else(|| {
-                    value
-                        .as_array()
-                        .and_then(|a| a.first())
-                        .and_then(Value::as_name)
-                });
-                if name.is_none_or(|n| n != b"Normal") {
-                    return Err(unsupported(features::TRANSPARENCY_BM));
-                }
-            }
-            b"SMask" => {
-                if value.as_name().is_none_or(|n| n != b"None") {
-                    return Err(unsupported(features::TRANSPARENCY_SMASK));
-                }
+                self.state.composite.blend = crate::blend::BlendMode::parse(self.document, value)?;
             }
             // Overprint cannot affect an RGB device without separations
             // (8.6.7), but malformed values remain errors.
             b"OP" | b"op" => {
-                value
+                let flag = value
                     .as_bool()
                     .ok_or(Error::syntax("overprint flag must be boolean"))?;
+                if key == b"OP" {
+                    self.state.stroke_overprint = flag;
+                } else {
+                    self.state.composite.overprint = flag;
+                }
             }
             b"OPM" => {
                 if !matches!(value.as_integer(), Some(0 | 1)) {
@@ -219,7 +241,7 @@ impl Compiler<'_> {
                 }
             }
             b"AIS" => {
-                value
+                self.state.composite.alpha_is_shape = value
                     .as_bool()
                     .ok_or(Error::syntax("AIS must be boolean"))?;
             }
@@ -243,7 +265,15 @@ impl Compiler<'_> {
                     ));
                 }
             }
-            b"HT" => return Err(unsupported(features::EXTGSTATE_HT)),
+            // Continuous-tone output transmits transferred components directly;
+            // no screening is performed (10.6.1). Validate the permitted shape.
+            b"HT" => {
+                if !matches!(value, Value::Dictionary(_))
+                    && value.as_name().is_none_or(|n| n != b"Default")
+                {
+                    return Err(Error::syntax("HT must be a halftone or Default"));
+                }
+            }
             // Smoothness is a device-dependent approximation hint (8.4.5).
             // Exact geometry uses no shading approximation and may ignore it.
             b"SM" => {

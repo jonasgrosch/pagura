@@ -12,6 +12,10 @@ use pagura_document::Document;
 #[derive(Debug, Clone)]
 enum Definition {
     Gray(f64),
+    Rgb {
+        gamma: [f64; 3],
+        matrix: [[f64; 3]; 3],
+    },
     Lab([f64; 4]),
 }
 
@@ -71,6 +75,7 @@ impl Cie {
                 }
                 Definition::Lab(range)
             }
+            b"CalRGB" => calibrated_rgb(document, dictionary)?,
             _ => return Err(Error::syntax("invalid calibrated colour family")),
         };
         let adaptation = adaptation(white)?;
@@ -83,13 +88,17 @@ impl Cie {
     pub(crate) fn components(&self) -> usize {
         match self.definition {
             Definition::Gray(_) => 1,
-            Definition::Lab(_) => 3,
+            Definition::Lab(_) | Definition::Rgb { .. } => 3,
         }
     }
     pub(crate) fn convert(&self, c: &[f64]) -> [f64; 3] {
         let n = |i: usize| c.get(i).copied().unwrap_or(0.0);
         let xyz = match self.definition {
             Definition::Gray(gamma) => self.white.map(|w| w * n(0).clamp(0.0, 1.0).powf(gamma)),
+            Definition::Rgb { gamma, matrix } => map(
+                matrix,
+                [0, 1, 2].map(|i| n(i).clamp(0.0, 1.0).powf(gamma[i])),
+            ),
             Definition::Lab(range) => {
                 let m = (n(0).clamp(0.0, 100.0) + 16.0) / 116.0;
                 let a = n(1).clamp(range[0], range[1]);
@@ -123,6 +132,7 @@ impl Cie {
         let n = |i: usize| f64::from(bytes.get(i).copied().unwrap_or(0)) / 255.0;
         match self.definition {
             Definition::Gray(_) => vec![n(0)],
+            Definition::Rgb { .. } => vec![n(0), n(1), n(2)],
             Definition::Lab(r) => vec![
                 100.0 * n(0),
                 r[0] + n(1) * (r[1] - r[0]),
@@ -130,6 +140,24 @@ impl Cie {
             ],
         }
     }
+}
+
+/// CalRGB's column-major gamma/matrix transformation to XYZ (8.6.5.3).
+fn calibrated_rgb(document: &Document, d: &Dictionary) -> Result<Definition> {
+    let gamma = numbers::<3>(document, d, b"Gamma", Some([1.0; 3]))?;
+    if gamma.iter().any(|&v| v <= 0.0) {
+        return Err(Error::syntax("CalRGB Gamma must be positive"));
+    }
+    let m = numbers::<9>(
+        document,
+        d,
+        b"Matrix",
+        Some([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]),
+    )?;
+    Ok(Definition::Rgb {
+        gamma,
+        matrix: [[m[0], m[3], m[6]], [m[1], m[4], m[7]], [m[2], m[5], m[8]]],
+    })
 }
 
 fn numbers<const N: usize>(

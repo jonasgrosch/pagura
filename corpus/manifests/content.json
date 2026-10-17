@@ -772,22 +772,6 @@
       "api": "compile_page"
     },
     {
-      "id": "content/shading",
-      "kind": "pdf",
-      "description": "shading",
-      "expected": "unsupported",
-      "requirements": [
-        "content-explicit-operators"
-      ],
-      "path": "corpus/generated/content/shading.pdf",
-      "sha256": "f964cb8a2a4b94fefea3f54b3f5494561ce1da88074c72a6028258bc513c6dfb",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "feature": "shading.paint",
-      "api": "compile_page"
-    },
-    {
       "id": "content/text-state",
       "kind": "pdf",
       "description": "text-state",
@@ -817,54 +801,6 @@
       "strict_valid": true,
       "repairs": [],
       "feature": "operator.d0",
-      "api": "compile_page"
-    },
-    {
-      "id": "content/alpha",
-      "kind": "pdf",
-      "description": "alpha",
-      "expected": "unsupported",
-      "requirements": [
-        "content-explicit-operators"
-      ],
-      "path": "corpus/generated/content/alpha.pdf",
-      "sha256": "e72322e81fb39b7a5d1ba4037d5c33a20c9ccdfec86034f9c9f05f3c5dcb9e8c",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "feature": "transparency.ca",
-      "api": "compile_page"
-    },
-    {
-      "id": "content/blend",
-      "kind": "pdf",
-      "description": "blend",
-      "expected": "unsupported",
-      "requirements": [
-        "content-explicit-operators"
-      ],
-      "path": "corpus/generated/content/blend.pdf",
-      "sha256": "483b6b58569e0cef4e7bfa26b3fd3e1724ac85fed0ff6f931c26e35b390ea59e",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "feature": "transparency.BM",
-      "api": "compile_page"
-    },
-    {
-      "id": "content/soft-mask",
-      "kind": "pdf",
-      "description": "soft-mask",
-      "expected": "unsupported",
-      "requirements": [
-        "content-explicit-operators"
-      ],
-      "path": "corpus/generated/content/soft-mask.pdf",
-      "sha256": "f773087f7b8ccc2a68ad8c26ffee19bc8c005d3d90b711ced13b9df1f3a15c4e",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "feature": "transparency.SMask",
       "api": "compile_page"
     },
     {
@@ -947,16 +883,20 @@
       "id": "content/space-CalRGB",
       "kind": "pdf",
       "description": "space-CalRGB",
-      "expected": "unsupported",
+      "expected": "render",
       "requirements": [
-        "content-explicit-operators"
+        "content-vector-pipeline"
       ],
       "path": "corpus/generated/content/space-CalRGB.pdf",
       "sha256": "3e074f5ab9119715510e8a69c1bbb4d903ac364daba22f957ac55057da26e7af",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "colorspace.CalRGB",
+      "oracle": "corpus/generated/content/space-CalRGB.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
       "api": "compile_page"
     },
     {
@@ -980,52 +920,1605 @@
       "api": "compile_page"
     },
     {
-      "id": "content/pattern",
-      "kind": "pdf",
-      "description": "pattern",
-      "expected": "unsupported",
-      "requirements": [
-        "content-explicit-operators"
-      ],
-      "path": "corpus/generated/content/pattern.pdf",
-      "sha256": "7a0c87ca14a4c6cf384626dc4fdfbd49d2728ef71e13ea550846d476dd930025",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "feature": "pattern.colorspace",
-      "api": "compile_page"
-    },
-    {
       "id": "content/knockout",
       "kind": "pdf",
       "description": "knockout",
-      "expected": "unsupported",
+      "expected": "render",
       "requirements": [
-        "content-explicit-operators"
+        "content-vector-pipeline"
       ],
       "path": "corpus/generated/content/knockout.pdf",
       "sha256": "a9bf153b7c1682aee4dd0fa04f12efc8db127cd286b0cb6d7b7ad0cb1130cf11",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "transparency.knockout",
+      "oracle": "corpus/generated/content/knockout.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
       "api": "compile_page"
     },
     {
       "id": "content/annotation",
       "kind": "pdf",
-      "description": "annotation",
-      "expected": "unsupported",
+      "description": "Normal appearance fitted by transformed BBox envelope after page content",
+      "expected": "render",
       "requirements": [
-        "content-explicit-operators"
+        "content-annotations"
       ],
       "path": "corpus/generated/content/annotation.pdf",
-      "sha256": "9d8bd1b8f97c6a92d6023b72c82d999b6247c9168197db7a1b9e58d140efd028",
+      "sha256": "4c8082eb44ae7767ae139a6e4103439f86ab3212f12348bcfd0237bede97dea5",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "annotation.appearance",
+      "oracle": "corpus/generated/content/annotation.ppm",
+      "oracle_sha256": "b790577476a5d634d0b998334fdfc260275ff1e308f0383b0a6a93661850d614",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-rotated",
+      "kind": "pdf",
+      "description": "Normal appearance fitted by transformed BBox envelope after page content",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-rotated.pdf",
+      "sha256": "67ff19a4c7f4a56eca56a68ca3f4325ec30fba93538fb25b2edfab4977774e69",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-rotated.ppm",
+      "oracle_sha256": "b790577476a5d634d0b998334fdfc260275ff1e308f0383b0a6a93661850d614",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-reversed-rect",
+      "kind": "pdf",
+      "description": "Normal appearance fitted by transformed BBox envelope after page content",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-reversed-rect.pdf",
+      "sha256": "582e6f0b7bc6640653b863dd1b283f1f182e024e5ad78564df83106ed1a260cc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-reversed-rect.ppm",
+      "oracle_sha256": "b790577476a5d634d0b998334fdfc260275ff1e308f0383b0a6a93661850d614",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-print-flag",
+      "kind": "pdf",
+      "description": "Normal appearance fitted by transformed BBox envelope after page content",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-print-flag.pdf",
+      "sha256": "ed699c0f19e8ac20702510b85fc59c7c678a9e53e69b2c6bde9fc3657e62b291",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-print-flag.ppm",
+      "oracle_sha256": "b790577476a5d634d0b998334fdfc260275ff1e308f0383b0a6a93661850d614",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-no-print-flag",
+      "kind": "pdf",
+      "description": "Normal appearance fitted by transformed BBox envelope after page content",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-no-print-flag.pdf",
+      "sha256": "e8bedc4de9a26ca19a8775daadb4ff09c6d4f87cd87cfcdfc4b3de8b853baa3d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-no-print-flag.ppm",
+      "oracle_sha256": "b790577476a5d634d0b998334fdfc260275ff1e308f0383b0a6a93661850d614",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-no-view",
+      "kind": "pdf",
+      "description": "Normal appearance fitted by transformed BBox envelope after page content",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-no-view.pdf",
+      "sha256": "8a1e7f4ffe21372410a9876f1b83dc54bc7fd6180913de534b9139c4dd18bdb0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-no-view.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-styling-ignored",
+      "kind": "pdf",
+      "description": "Normal appearance fitted by transformed BBox envelope after page content",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-styling-ignored.pdf",
+      "sha256": "aaaf4869cdb72555723bedb8e80177369712867477af37ac8e2693278533e740",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-styling-ignored.ppm",
+      "oracle_sha256": "b790577476a5d634d0b998334fdfc260275ff1e308f0383b0a6a93661850d614",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-state",
+      "kind": "pdf",
+      "description": "Normal appearance fitted by transformed BBox envelope after page content",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-state.pdf",
+      "sha256": "5a909d67534383c69dc65a412578ac84822b0496d17de39cfa2f47c7242372bf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-state.ppm",
+      "oracle_sha256": "b790577476a5d634d0b998334fdfc260275ff1e308f0383b0a6a93661850d614",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-undefined-state",
+      "kind": "pdf",
+      "description": "Normal appearance fitted by transformed BBox envelope after page content",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-undefined-state.pdf",
+      "sha256": "5f80da98321381f2d281c3e750d45d20da6b02a3d6c324d341609bd83ef0f3af",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-undefined-state.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-sheared",
+      "kind": "pdf",
+      "description": "All four transformed corners determine the fitted envelope; exact rational pixel intersections",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-sheared.pdf",
+      "sha256": "9446a75612847030403f41e803212dfe0ef165adf4dc40270b8e3f4ecc9fe649",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-sheared.ppm",
+      "oracle_sha256": "1a07a8bdeda7c10bdc7c5625f3e4ac8122984d1c30ebf2ccbdffbf911dcc3b1d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/annotation-state-isolation",
+      "kind": "pdf",
+      "description": "Appearance starts in default graphics state rather than page final colour and CTM",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-state-isolation.pdf",
+      "sha256": "d6a65c9c92f28dfdab4a58c7b860216a108ca79e534a970d9dfad99d946dbe8b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-state-isolation.ppm",
+      "oracle_sha256": "5045ea79ab37dfb74c15b6f335dff2e9b6d68b36b2b55a5d5132e71c6170d765",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/annotation-link-borderless",
+      "kind": "pdf",
+      "description": "annotation-link-borderless",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-link-borderless.pdf",
+      "sha256": "64921abb905944736e67c5ea7093c4762a1fe9ee5de586226dc3e0479c3e6b91",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-link-borderless.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
       "api": "compile_page"
+    },
+    {
+      "id": "content/annotation-flags",
+      "kind": "pdf",
+      "description": "Fixed display-size annotation needs view fitting",
+      "expected": "unsupported",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-flags.pdf",
+      "sha256": "e270f01c1393c7069f7ec4c08627cd8be8cc2e9b2f2149dcc2d73c1e50b7310a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.flags"
+    },
+    {
+      "id": "content/annotation-invalid-state",
+      "kind": "pdf",
+      "description": "Malformed appearance geometry or missing required AS",
+      "expected": "open",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-invalid-state.pdf",
+      "sha256": "83d206d9f320e0fb2bc2ce6993bc12d9ac87144be1db27f71dc41c41c9bae3f4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/annotation-singular-matrix",
+      "kind": "pdf",
+      "description": "Malformed appearance geometry or missing required AS",
+      "expected": "open",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-singular-matrix.pdf",
+      "sha256": "d87b4c197a97cbc4a1ccc56153d6e005a5fff1b2c4b67921f80d0d4f2703f8ef",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/halftone-continuous",
+      "kind": "pdf",
+      "description": "halftone-continuous",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-halftone"
+      ],
+      "path": "corpus/generated/content/halftone-continuous.pdf",
+      "sha256": "263a9b2d0c848c30351a76bbc6e250a1dd388eff11fe458b2aadfbc76e3af990",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/halftone-continuous.ppm",
+      "oracle_sha256": "f9e60c96597babfc7a2fc99c1751cf8c3007f7b862a5ed391c5ebdfa60b76c3e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/cie-CalRGB",
+      "kind": "pdf",
+      "description": "CalRGB gamma/matrix to XYZ with independently derived sRGB matrix",
+      "expected": "render",
+      "requirements": [
+        "content-cie"
+      ],
+      "path": "corpus/generated/content/cie-CalRGB.pdf",
+      "sha256": "eaa670446f9aa3e3314aa63a7202ec8a39795db49feb5fe5e52e4487b64cf282",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/cie-CalRGB.ppm",
+      "oracle_sha256": "0443b74cbb8d6a0dc6804dafd20e7cb2d27ca4af376a1b2694e7cce06f590a6c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/cie-CalRGB-matrix",
+      "kind": "pdf",
+      "description": "CalRGB gamma/matrix to XYZ with independently derived sRGB matrix",
+      "expected": "render",
+      "requirements": [
+        "content-cie"
+      ],
+      "path": "corpus/generated/content/cie-CalRGB-matrix.pdf",
+      "sha256": "1aafb53fa2ffc9248cfe0d798de20f459dc0808f30b16a47fd9de209efc9bce2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/cie-CalRGB-matrix.ppm",
+      "oracle_sha256": "7fc2a93a5420f573f3209aa113d7a7d34072780369116b4122578515963ed5d2",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-Normal",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-Normal.pdf",
+      "sha256": "1b23813301c3d8b901d7f65e24e3ffc61dc6a5217eedccd18aef167cb53b089f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-Normal.ppm",
+      "oracle_sha256": "8c48d8bdc0d3a1442ef1f2134702954a147b0c6667fe271d6abbd2facde02051",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-Compatible",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-Compatible.pdf",
+      "sha256": "2dc755ad61d54f337f5630bf580a6bcd4d71e2faacd59c3bf51254bb3b5d3942",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-Compatible.ppm",
+      "oracle_sha256": "8c48d8bdc0d3a1442ef1f2134702954a147b0c6667fe271d6abbd2facde02051",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-Multiply",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-Multiply.pdf",
+      "sha256": "7cce7a2dfd40596801ce68b22ac6b5f49b67ec5ce5ac6e8e9bcd786fbc0d76c6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-Multiply.ppm",
+      "oracle_sha256": "aa5f18bb6a98d6104a0827d4c77ef68efc8aaac39ef704ef136110ad0e0c7067",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-Screen",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-Screen.pdf",
+      "sha256": "f5f212010820787164a8f2feb24c8b08d85f256cae9659232308f5a89126d86a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-Screen.ppm",
+      "oracle_sha256": "39b803a86031b606c79b5145729821a47dfce58b720ae1218b25a3e0d26297a9",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-Overlay",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-Overlay.pdf",
+      "sha256": "316170a0c8aab989894574ae523c5fbe97ccad1cbbd51ab4f6b77ea874a0ee08",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-Overlay.ppm",
+      "oracle_sha256": "337b69f428d62178a7ce3f1e40a7909c75d08a4fba3420de24963e5457cc4c72",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-Darken",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-Darken.pdf",
+      "sha256": "62ee3158270f1dda4aa18fc6e826ae1ebf50c48aa9898744c10fa9975ebbb868",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-Darken.ppm",
+      "oracle_sha256": "2b87122a58a0577f9df8213661647d670720b05f5b246676cade8f7e61166730",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-Lighten",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-Lighten.pdf",
+      "sha256": "62f11fabf794f43a55c5637808bdcb52f82acf586c978dbf98a00cb98ff0e5a9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-Lighten.ppm",
+      "oracle_sha256": "5c8e6ba32cb266c4e703d00a72b2c68c546dfc8bbfa5674d583140f03a47a695",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-ColorDodge",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-ColorDodge.pdf",
+      "sha256": "b9f4ade18ec14dec2eaa2aad90737d37934fef4e7654fc37762d924509a1f5df",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-ColorDodge.ppm",
+      "oracle_sha256": "1b94535a2f70035156556b61974027b538d82f74fc4a1e17471bf587551baaee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-ColorBurn",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-ColorBurn.pdf",
+      "sha256": "89728e3125892b9301815153f18c4af39527dc9b6929f3806ff86d8c78b4eed8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-ColorBurn.ppm",
+      "oracle_sha256": "4b7035581e871b2ac33cc96014810e2a345ab865f4dabdc09a42ffb75890086d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-HardLight",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-HardLight.pdf",
+      "sha256": "fceebd23bbef8d6ede15acb3f6afdaf3ef5a71f28a6dfc5632f741fbee7497f8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-HardLight.ppm",
+      "oracle_sha256": "f2f3c1fd332427a8d0a246b545263e9ea0ef7043caa70d1564dfd49ee25ce127",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-SoftLight",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-SoftLight.pdf",
+      "sha256": "e9073e8cd4d1ce3a97bc783e5579f06f0ae7c238e47165bea335c99add8e6299",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-SoftLight.ppm",
+      "oracle_sha256": "141c041548951a48973792909a8d0f17100c68493a69065a8b2703e30235b7d2",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-Difference",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-Difference.pdf",
+      "sha256": "3e96dde454d41c0710b830239931c023bbb7f4432502b24979e43e296fd1ed6d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-Difference.ppm",
+      "oracle_sha256": "9fc70064ba98e1bcf26e6316e79b73c51f397da10f8b67f2957c6f950f9f43fb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-Exclusion",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-Exclusion.pdf",
+      "sha256": "63b7b470dfe50834d9c552ecde29114120aaf736678ef5488a13acd236f50711",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-Exclusion.ppm",
+      "oracle_sha256": "65e05ad7296832a28daa77db9539a9e1c93f03d31aad31fd04af6b6811407f8f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-Hue",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-Hue.pdf",
+      "sha256": "1f78b0eba6f7f1c98a469b8fc74ce168e1c11fb9dbdfea738b5f130ed7ffade9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-Hue.ppm",
+      "oracle_sha256": "da1b97e9584178dc0d81c6565048fabb96b888bcd72d0d51facf48c42cc4723c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-Saturation",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-Saturation.pdf",
+      "sha256": "a96d79259086039a4ffd9c2b7d3c7a1223477ba747f1a3997f7968feeba7f192",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-Saturation.ppm",
+      "oracle_sha256": "a43d508a1632ad7bb3529dcaa26115abd66b864d1f624852beb1b0689d286651",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-Color",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-Color.pdf",
+      "sha256": "e5bd268c121b8c9a00d08dcea1dadbec9f0ac9932891d8376e2b3e00edf01e93",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-Color.ppm",
+      "oracle_sha256": "454819932948ec0fafa1e787a20405fe096740cf33132a504e7762eccce1133b",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/blend-Luminosity",
+      "kind": "pdf",
+      "description": "Independent blend formulas with half opacity and PDF 2.0 boundary cases",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-Luminosity.pdf",
+      "sha256": "d1a1442f06eef5742da42ff2bcae3f3790e5987f1b62e1479565060e40373daf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-Luminosity.ppm",
+      "oracle_sha256": "35cfacc595515dac29c70de9a86ef920c7c2a60a08d7092633b47200f5cab9bd",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/alpha",
+      "kind": "pdf",
+      "description": "alpha",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/alpha.pdf",
+      "sha256": "4ec121fafa5ac39ee5450b8c638da29c4d01fbe547c3574a4ceca1935f95e370",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/alpha.ppm",
+      "oracle_sha256": "eaada89d708a817142a3b44889b31172f5f8603b12e53e661f9c8db3d365a0fe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/alpha-stroke",
+      "kind": "pdf",
+      "description": "alpha-stroke",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/alpha-stroke.pdf",
+      "sha256": "cbf4e8f6a0b34cb75477bf3809c9e4b1b68f9df312695789b74460046d28e0b5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/alpha-stroke.ppm",
+      "oracle_sha256": "76be58e756191b7dc618310a462e86655517f51bc46e5a3b2af78cf10f7044db",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/blend",
+      "kind": "pdf",
+      "description": "blend",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend.pdf",
+      "sha256": "a0e7778228f4258cda54f9f303d40fefccf12f256f5dd9267b74221cf4282f3f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/alpha-combined",
+      "kind": "pdf",
+      "description": "alpha-combined",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/alpha-combined.pdf",
+      "sha256": "885a8dd94be74debf3f7d78dc6d339a893b92b9f31796f271da772c6d4714a2c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/alpha-combined.ppm",
+      "oracle_sha256": "0cecbe318833fa3229ecc01798f261467f57f7e29f6f90567a574df50e04d3f5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/blend-isolated-page",
+      "kind": "pdf",
+      "description": "blend-isolated-page",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/blend-isolated-page.pdf",
+      "sha256": "b2415a932b61fcfe5bcc7f907f0bd95529df8130dd4d0ee4785d235cca5e8deb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/blend-isolated-page.ppm",
+      "oracle_sha256": "b6b17372a65af53023a45524177f8165cd2ce7192297c31a826ee148af1096cc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/group-i0-k0",
+      "kind": "pdf",
+      "description": "Shape replacement versus source-over, with group defaults reset",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/group-i0-k0.pdf",
+      "sha256": "ed6c693ce94bc501086e09b86cf091485ab5b7cf01a6806107da743563812e87",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/group-i0-k0.ppm",
+      "oracle_sha256": "a6bbc20cba25daa7f0ecac88941805e0d886c7fa0bec24ca6f107366c210dbac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/group-i0-k1",
+      "kind": "pdf",
+      "description": "Shape replacement versus source-over, with group defaults reset",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/group-i0-k1.pdf",
+      "sha256": "2c54345052aa0872f08d850fff1e9a906f8f75dc1d9e014ac34323fcee80155c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/group-i0-k1.ppm",
+      "oracle_sha256": "6963c05a869cb511b66390a141906a1fa0144145853d6990355cd8a99236bcf1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/group-i1-k0",
+      "kind": "pdf",
+      "description": "Shape replacement versus source-over, with group defaults reset",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/group-i1-k0.pdf",
+      "sha256": "0377912d2a5f9f30b6b96a7fcca1fa0382d9cfe56ec2f4421de8c74a073464e3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/group-i1-k0.ppm",
+      "oracle_sha256": "a6bbc20cba25daa7f0ecac88941805e0d886c7fa0bec24ca6f107366c210dbac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/group-i1-k1",
+      "kind": "pdf",
+      "description": "Shape replacement versus source-over, with group defaults reset",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/group-i1-k1.pdf",
+      "sha256": "e77d5b9ef2d54af7dbf645c936ff6a2bd5d73264c9ae7e64e5eca9f80790dcba",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/group-i1-k1.ppm",
+      "oracle_sha256": "6963c05a869cb511b66390a141906a1fa0144145853d6990355cd8a99236bcf1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/group-colour-DeviceGray",
+      "kind": "pdf",
+      "description": "Composite native components before converting the group to RGB",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/group-colour-DeviceGray.pdf",
+      "sha256": "d1c0a6f37106933064eb61f7c63c093a000a1376b2450fe5913dc924a304767f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/group-colour-DeviceGray.ppm",
+      "oracle_sha256": "3e61c04d8d500c40606f799c2d38a7c43bed9402cb95984223f61916e2746bdf",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/group-colour-DeviceCMYK",
+      "kind": "pdf",
+      "description": "Composite native components before converting the group to RGB",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/group-colour-DeviceCMYK.pdf",
+      "sha256": "83449eb078e02b2eb6767a09a015e77c9632dee014c22f43ced013fb64684414",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/group-colour-DeviceCMYK.ppm",
+      "oracle_sha256": "d0665774fdf07ea8327690a22c643617d1197cec9fd3a2d068c2badc926555eb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/soft-Alpha",
+      "kind": "pdf",
+      "description": "Group alpha/luminosity, backdrop and transfer including outside the BBox",
+      "expected": "render",
+      "requirements": [
+        "content-soft-masks"
+      ],
+      "path": "corpus/generated/content/soft-Alpha.pdf",
+      "sha256": "0137696757684e924136350efb21b1bb63f47e569c764bacf601c34329a67a48",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/soft-Alpha.ppm",
+      "oracle_sha256": "f75b61c7d80e51318d58de30c1b9958a5c85daed23640030e8f32ede3cc82235",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/soft-Alpha-transfer",
+      "kind": "pdf",
+      "description": "Group alpha/luminosity, backdrop and transfer including outside the BBox",
+      "expected": "render",
+      "requirements": [
+        "content-soft-masks"
+      ],
+      "path": "corpus/generated/content/soft-Alpha-transfer.pdf",
+      "sha256": "a8b15c3adce63b79518e0a2018d5d9c52d081893934ccc64498eb83b4bfea405",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/soft-Alpha-transfer.ppm",
+      "oracle_sha256": "1a4f689134af2b5d9a66dc93ebd283364a22f6f1a2dbf6d2a00a82373e455fca",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/soft-Luminosity",
+      "kind": "pdf",
+      "description": "Group alpha/luminosity, backdrop and transfer including outside the BBox",
+      "expected": "render",
+      "requirements": [
+        "content-soft-masks"
+      ],
+      "path": "corpus/generated/content/soft-Luminosity.pdf",
+      "sha256": "30de732ad9c5557fea77642a41f23577f0ea0d98b9b31bc4bee6d208287eb604",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/soft-Luminosity.ppm",
+      "oracle_sha256": "2afeb09f873ea04376b3e222d6676a97ea17491259b2f8b64162f89083d5193a",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/soft-Luminosity-transfer",
+      "kind": "pdf",
+      "description": "Group alpha/luminosity, backdrop and transfer including outside the BBox",
+      "expected": "render",
+      "requirements": [
+        "content-soft-masks"
+      ],
+      "path": "corpus/generated/content/soft-Luminosity-transfer.pdf",
+      "sha256": "4166757813d769296c6fda44b959b95efb5f17b4bb4ad4b3dd969da71c074d2d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/soft-Luminosity-transfer.ppm",
+      "oracle_sha256": "de5dac4cf2c0f170e716496840d2f2a45ee54a3f5a7adc74ed325183237e351c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/soft-mask",
+      "kind": "pdf",
+      "description": "A soft-mask dictionary requires S and G",
+      "expected": "open",
+      "requirements": [
+        "content-soft-masks"
+      ],
+      "path": "corpus/generated/content/soft-mask.pdf",
+      "sha256": "9190f7b170ef1b28c58e4dc228b95824f602da24787bd02b8659e8e5f74894c0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/shading-axial",
+      "kind": "pdf",
+      "description": "Independent analytic function at device sample locations",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-axial.pdf",
+      "sha256": "131197fb8f7fae761331e7565ec5d80af64bd0c80e52a5b1f0485e7713781c6e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/shading-axial.ppm",
+      "oracle_sha256": "ae6b3fa6927edbe2856487f34cb363c6fb66768f8f00c87e688e4638a86393a0",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/shading-axial-clip",
+      "kind": "pdf",
+      "description": "Independent analytic function at device sample locations",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-axial-clip.pdf",
+      "sha256": "4fa80f6511806ffb56e61b711e5a24243e5470627d229f05aca1428e51ce8dfe",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/shading-axial-clip.ppm",
+      "oracle_sha256": "dbf5f20a940e05f47769b05a5e68114f8c917c091101f1149801906b39b56e59",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/shading-background-ignored",
+      "kind": "pdf",
+      "description": "Independent analytic function at device sample locations",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-background-ignored.pdf",
+      "sha256": "3df02314d1db5a84cc016520f3c4effce4eee91604be458f340c4d9f1a6e53ca",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/shading-background-ignored.ppm",
+      "oracle_sha256": "282b1f2614c424043b67736fe98af5d8d0f0e645e2c2f575bcfaa4339fcb3b9f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/shading-axial-extend",
+      "kind": "pdf",
+      "description": "Independent analytic function at device sample locations",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-axial-extend.pdf",
+      "sha256": "e7b6f44d0a885a8af5698d4318a964c9de7bee3c2fa85c0b0b76cbf882749db9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/shading-axial-extend.ppm",
+      "oracle_sha256": "a15fd504d8f9df60083a04b1f25c7bb42de7d632cbb72a23c1d7ab7e9921c746",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/shading-axial-empty",
+      "kind": "pdf",
+      "description": "Independent analytic function at device sample locations",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-axial-empty.pdf",
+      "sha256": "36b81774a7c444851aa2d80241325c21422dab8d879a99d6bafd59e71f51e333",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/shading-axial-empty.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/shading-filter",
+      "kind": "pdf",
+      "description": "Independent analytic function at device sample locations",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-filter.pdf",
+      "sha256": "fb5fc2e719cc82123da9e1757b4ea1af3af441c481dd89a26331f3261c777992",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/shading-filter.ppm",
+      "oracle_sha256": "44feb6fa7ae4d9cf1ff951a4e7f7d3377061094ba0fd9833b9e34ecff7572974",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/shading-radial",
+      "kind": "pdf",
+      "description": "Independent analytic function at device sample locations",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-radial.pdf",
+      "sha256": "ed5d7d26694c0592e7dd2fed474326b7e229107c27c4f72783a0414b8fd68a5f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/shading-radial.ppm",
+      "oracle_sha256": "d33c6d6a6f604242fed14aada793d3db820b9861ec8be9fc244e7111a793e4c4",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/shading-radial-extend",
+      "kind": "pdf",
+      "description": "Independent analytic function at device sample locations",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-radial-extend.pdf",
+      "sha256": "7b8d66f21fd0ab6f8eeb6602dac23da601da2346d1689138d8a553523223a3a8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/shading-radial-extend.ppm",
+      "oracle_sha256": "91be5d4668f30b664297bf86c8da73e7e8c1b6af10aa39c65194a85e1d66421d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/shading-radial-reverse",
+      "kind": "pdf",
+      "description": "Independent analytic function at device sample locations",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-radial-reverse.pdf",
+      "sha256": "ced035b91891d9a279a333806f787522e1768a88f06736867f9b2fc874b80322",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/shading-radial-reverse.ppm",
+      "oracle_sha256": "c373d125ea578e005c7f755918447498299651b73b2fe9d520b72df02b2f00b8",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/shading-cone",
+      "kind": "pdf",
+      "description": "Independent analytic function at device sample locations",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-cone.pdf",
+      "sha256": "8f730d11c011de5cc42beec967188349995bff59eef28e279db1f4537f190df5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/shading-cone.ppm",
+      "oracle_sha256": "9528121bfd3f0334761922d1c47794d33f48f45f3db47b4f089540bea2b76cfd",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/shading-linear-cone",
+      "kind": "pdf",
+      "description": "Independent analytic function at device sample locations",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-linear-cone.pdf",
+      "sha256": "55d75c1ece866b130cb4fdfe110323b095bcae72727e7ff831987afc507e7099",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/shading-linear-cone.ppm",
+      "oracle_sha256": "535063ce65708e4683de7576faa28bc3b60d6d94e40b51ccbecca079f8041a52",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/shading-function",
+      "kind": "pdf",
+      "description": "Two-dimensional calculator with shading Matrix",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-function.pdf",
+      "sha256": "e6feec9dfd7248c575e125dbb491e1b01b9c24a48327ef18ee1de9d2a0cc8bde",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/shading-function.ppm",
+      "oracle_sha256": "933bb73632ff1d7ab091a669e0bb398f801156e70a38bb35ce54fa51ffaab7cf",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/pattern-shading",
+      "kind": "pdf",
+      "description": "Shading pattern uses parent initial space and paints the path shape once",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/pattern-shading.pdf",
+      "sha256": "46dce0a9d87948a07401ab87ce48c661344f6dfa40cfb33ac7e54280cff5b5a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/pattern-shading.ppm",
+      "oracle_sha256": "ae6b3fa6927edbe2856487f34cb363c6fb66768f8f00c87e688e4638a86393a0",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/pattern-anchored",
+      "kind": "pdf",
+      "description": "Shading pattern uses parent initial space and paints the path shape once",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/pattern-anchored.pdf",
+      "sha256": "ae066bc756f6d10a8c65615188f5d727b6983007297b45f3be789055fc09326a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/pattern-anchored.ppm",
+      "oracle_sha256": "3cd2b9660fb416f144943cf123743a89f8cb63bd083a77385ef1f1bd3cacc46c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/pattern-stroke",
+      "kind": "pdf",
+      "description": "Shading pattern uses parent initial space and paints the path shape once",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/pattern-stroke.pdf",
+      "sha256": "952c75057273cf504bfe8cbe1c3387853a05d6c6d2d3079857da42f62d31b513",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/pattern-stroke.ppm",
+      "oracle_sha256": "4303143f9fd17cb3741fbbca253fbbed2354ac86f8c753734a521729b097e5ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/pattern-background",
+      "kind": "pdf",
+      "description": "Shading pattern uses parent initial space and paints the path shape once",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/pattern-background.pdf",
+      "sha256": "ba28a030ebe25f4daf47b3e26b7c26a4550e59414309f917e94e5a48dd01487b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/pattern-background.ppm",
+      "oracle_sha256": "82a4687f92d6841700b7994167c873072bbb82ec6ba73e37a37f8ba45651cd75",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/pattern-initial",
+      "kind": "pdf",
+      "description": "pattern-initial",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/pattern-initial.pdf",
+      "sha256": "ded4b59466f999c44dce12d22699e944278badf7cb7266a1778cd8c7835f241c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/pattern-initial.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/shading",
+      "kind": "pdf",
+      "description": "Free-form triangle meshes are explicit unsupported input",
+      "expected": "unsupported",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading.pdf",
+      "sha256": "7e2d1c0b09b900dad0e30d6f405f880a10ebe93360f301f7706abe285478e708",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "shading.mesh"
+    },
+    {
+      "id": "content/pattern",
+      "kind": "pdf",
+      "description": "Tiling patterns are explicit unsupported input",
+      "expected": "unsupported",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/pattern.pdf",
+      "sha256": "b1892c96e1a0727f54e0efe5045dc91e67900935f1e3a539c95dbdf5d4492f6b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "pattern.tiling"
+    },
+    {
+      "id": "content/form-empty-group",
+      "kind": "pdf",
+      "description": "An empty transparency group contributes no painted marks",
+      "expected": "render",
+      "requirements": [
+        "content-forms",
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/form-empty-group.pdf",
+      "sha256": "1a3659e2413b1feb432a8fc9e2528ead436babd2a95d9a78e55a8ee12caa6554",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/form-empty-group.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/alpha-accumulation",
+      "kind": "pdf",
+      "description": "alpha-accumulation",
+      "expected": "render",
+      "requirements": [
+        "content-vector-pipeline",
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/alpha-accumulation.pdf",
+      "sha256": "59716e9cc176d4785ffec113eb00b55b591458e813d7efbc2105641295535fa4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/alpha-accumulation.ppm",
+      "oracle_sha256": "466045cca1fe64c3a1d91ab908039d17f47a5b7dbc3d99aa03bbc83416b1fe0a",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/group-incoming-alpha",
+      "kind": "pdf",
+      "description": "Incoming opacity applies once to the group result and resets inside G",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/group-incoming-alpha.pdf",
+      "sha256": "a3ac783add1f8f18e24cbd3c6406f5e46ed1d9616dc91cfdf3a54de8b72cd348",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/group-incoming-alpha.ppm",
+      "oracle_sha256": "eaada89d708a817142a3b44889b31172f5f8603b12e53e661f9c8db3d365a0fe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/soft-frozen-transform",
+      "kind": "pdf",
+      "description": "A later cm changes the painted path but does not move the captured soft mask",
+      "expected": "render",
+      "requirements": [
+        "content-soft-masks"
+      ],
+      "path": "corpus/generated/content/soft-frozen-transform.pdf",
+      "sha256": "a1b4443e7ef1c1818a46e20973186d87bb27fcb89defd51a1cbaa5d63ceac558",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/soft-frozen-transform.ppm",
+      "oracle_sha256": "4d42bd7315ad6d46468d7b312551d618775615e86a410228dd8589c5ac9636ce",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/soft-crop-once",
+      "kind": "pdf",
+      "description": "Mask source remains independent of the page crop; last column has half geometric coverage",
+      "expected": "render",
+      "requirements": [
+        "content-soft-masks"
+      ],
+      "path": "corpus/generated/content/soft-crop-once.pdf",
+      "sha256": "b79b8b6a0fe10db6c5d01f376ce9cac9f3ab7724ff368b1503e7dab3c0dffaab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/soft-crop-once.ppm",
+      "oracle_sha256": "6349788b5b1a4031a71a6b328464a7405047c37f5b39b4cd48022cd8b291a92d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "content/group-alpha-shape-0",
+      "kind": "pdf",
+      "description": "Knockout replaces prior contributions using shape separately from opacity",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/group-alpha-shape-0.pdf",
+      "sha256": "64b66b5e631f90292b6d623a2b26c3e44d2a918282777d6929ceba09c8fc6901",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/group-alpha-shape-0.ppm",
+      "oracle_sha256": "1b070ebc6c5145827ef84950ca5e650fb8c205a03d3b6f4a5f78acaf6a3e5899",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/group-alpha-shape-1",
+      "kind": "pdf",
+      "description": "Knockout replaces prior contributions using shape separately from opacity",
+      "expected": "render",
+      "requirements": [
+        "content-transparency"
+      ],
+      "path": "corpus/generated/content/group-alpha-shape-1.pdf",
+      "sha256": "84d1a7d91a2c5ff331acafe8b528319322c15432bb0f67dd9f244b35a8bd359b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/group-alpha-shape-1.ppm",
+      "oracle_sha256": "1b6eccad4134206f044e6b9a936c5df55c2724b0f0db036b87b7b74b6e850933",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "content/soft-invalid-backdrop",
+      "kind": "pdf",
+      "description": "Malformed mask backdrop, missing luminosity space or recursive group",
+      "expected": "open",
+      "requirements": [
+        "content-soft-masks"
+      ],
+      "path": "corpus/generated/content/soft-invalid-backdrop.pdf",
+      "sha256": "393f6b9862e0ec011f7ea10ef18c75caeef4b3baf36b92ab6c447567905e2a9e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/soft-missing-space",
+      "kind": "pdf",
+      "description": "Malformed mask backdrop, missing luminosity space or recursive group",
+      "expected": "open",
+      "requirements": [
+        "content-soft-masks"
+      ],
+      "path": "corpus/generated/content/soft-missing-space.pdf",
+      "sha256": "f9b2194f7e670ea744c3cb71b31444146368b74fd4e526f7d5fa63506f5367ad",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/soft-recursive",
+      "kind": "pdf",
+      "description": "Malformed mask backdrop, missing luminosity space or recursive group",
+      "expected": "open",
+      "requirements": [
+        "content-soft-masks"
+      ],
+      "path": "corpus/generated/content/soft-recursive.pdf",
+      "sha256": "dbcdff10ed2ddab61edb72523c7fb76ad76b72d858d747ac103ed3f5bd97c80b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Cycle"
+    },
+    {
+      "id": "content/shading-negative-radius",
+      "kind": "pdf",
+      "description": "Required radius and function-domain invariants",
+      "expected": "open",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-negative-radius.pdf",
+      "sha256": "d666c9f047e0691f1042d107a7ecba1b4760c7c3f3d09ea0f41fbceec1d6d455",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/shading-function-domain",
+      "kind": "pdf",
+      "description": "Required radius and function-domain invariants",
+      "expected": "open",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-function-domain.pdf",
+      "sha256": "a871f00bb2e2417b746b70b4fe81d89d0535ffc049c4f4516e7500bc590ca3ee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
     },
     {
       "id": "content/syntax-unknown",
@@ -1244,7 +2737,7 @@
         "content-vector-pipeline"
       ],
       "path": "corpus/generated/content/annotation-no-normal.pdf",
-      "sha256": "c27a3fc89e2e8ced1cabebbba7877d137923d4c12d389be3b4970bacd0da63c2",
+      "sha256": "8325fe5b4648361cc49a0aee179f36df973ae26021dec2e2eb82859e52541cd8",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1354,32 +2847,40 @@
       "id": "content/group-DeviceGray",
       "kind": "pdf",
       "description": "group-DeviceGray",
-      "expected": "unsupported",
+      "expected": "render",
       "requirements": [
-        "content-explicit-operators"
+        "content-vector-pipeline"
       ],
       "path": "corpus/generated/content/group-DeviceGray.pdf",
       "sha256": "c17b5fe35fba311cc713866c1bdf6989a6b06271c409be131bc956e1ba199e8f",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "transparency.group-colorspace",
+      "oracle": "corpus/generated/content/group-DeviceGray.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
       "api": "compile_page"
     },
     {
       "id": "content/group-DeviceCMYK",
       "kind": "pdf",
       "description": "group-DeviceCMYK",
-      "expected": "unsupported",
+      "expected": "render",
       "requirements": [
-        "content-explicit-operators"
+        "content-vector-pipeline"
       ],
       "path": "corpus/generated/content/group-DeviceCMYK.pdf",
       "sha256": "08a152b72e6b83ce53961cfd592c577ba795b39c22b94447e811b647ff58d52e",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "transparency.group-colorspace",
+      "oracle": "corpus/generated/content/group-DeviceCMYK.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
       "api": "compile_page"
     },
     {

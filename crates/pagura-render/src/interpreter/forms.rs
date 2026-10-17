@@ -2,7 +2,7 @@
 
 use super::{
     Arc, Compiler, Dictionary, DisplayList, Error, FillRule, ObjectId, PathBuilder, Rect, Result,
-    Transform, Value, features, group, matrix, resource, unsupported,
+    Transform, Value, features, matrix, resource, unsupported,
 };
 
 impl Compiler<'_> {
@@ -70,14 +70,26 @@ impl Compiler<'_> {
             .transpose()?
             .unwrap_or(Transform::IDENTITY);
         let mut child = self.form_context(id, visible, matrix, bbox)?;
+        let bounds = child.state.clip.as_ref().map(|c| Arc::clone(&c.path));
         let resources = dictionary
             .get(b"Resources")
             .map(|v| self.document.resolve_dictionary(v))
             .transpose()?
             .unwrap_or(resources);
-        group(self.document, dictionary, resources)?;
+        let attributes =
+            crate::transparency::Attributes::parse(self.document, dictionary, resources)?;
+        if attributes.is_some() {
+            child.state.composite = crate::transparency::Composite {
+                alpha: 1.0,
+                blend: crate::blend::BlendMode::Normal,
+                mask: None,
+                ..child.state.composite.clone()
+            };
+            child.state.stroke_alpha = 1.0;
+        }
         child.sequence(&[object], resources)?;
         self.operations = child.operations;
+        self.marks = child.marks;
         if self
             .list
             .commands
@@ -87,7 +99,24 @@ impl Compiler<'_> {
         {
             return Err(Error::limit("display list budget exceeded"));
         }
-        self.list.commands.extend(child.list.commands);
+        if let Some(attributes) = attributes {
+            self.marks = self
+                .marks
+                .checked_add(1)
+                .filter(|&n| n <= self.document.limits().display_commands)
+                .ok_or(Error::limit("display list budget exceeded"))?;
+            self.list
+                .commands
+                .push(crate::display::Command::Group(crate::transparency::Group {
+                    position: self.position,
+                    bounds,
+                    attributes,
+                    commands: child.list.commands,
+                    composite: self.state.composite.clone(),
+                }));
+        } else {
+            self.list.commands.extend(child.list.commands);
+        }
         Ok(())
     }
     pub(super) fn form_context(
@@ -97,7 +126,24 @@ impl Compiler<'_> {
         matrix: Transform,
         bbox: Rect,
     ) -> Result<Self> {
-        let mut child = Self {
+        let mut child = self.detached();
+        child.visible &= visible;
+        child.forms.push(id);
+        child.state.ctm = matrix.then(child.state.ctm);
+        if !child.state.ctm.is_finite() {
+            return Err(Error::syntax("form matrix arithmetic overflow"));
+        }
+        child.initial_ctm = child.state.ctm;
+        let mut clip = PathBuilder::new();
+        clip.rect(bbox.x0, bbox.y0, bbox.width(), bbox.height());
+        child.add_clip(
+            Arc::new(clip.finish().transformed(child.state.ctm)),
+            FillRule::NonZero,
+        )?;
+        Ok(child)
+    }
+    pub(super) fn detached(&self) -> Self {
+        Self {
             document: self.document,
             list: DisplayList {
                 commands: Vec::new(),
@@ -105,6 +151,7 @@ impl Compiler<'_> {
                 rotation: self.list.rotation,
                 user_unit: self.list.user_unit,
                 limits: self.list.limits,
+                group: self.list.group,
             },
             state: self.state.clone(),
             saved: Vec::new(),
@@ -113,22 +160,13 @@ impl Compiler<'_> {
             operands: Vec::new(),
             compatibility: 0,
             marked: Vec::new(),
-            visible: self.visible && visible,
+            visible: self.visible,
             visibility: Arc::clone(&self.visibility),
             operations: self.operations,
+            marks: self.marks,
+            initial_ctm: self.initial_ctm,
+            position: self.position,
             forms: self.forms.clone(),
-        };
-        child.forms.push(id);
-        child.state.ctm = matrix.then(child.state.ctm);
-        if !child.state.ctm.is_finite() {
-            return Err(Error::syntax("form matrix arithmetic overflow"));
         }
-        let mut clip = PathBuilder::new();
-        clip.rect(bbox.x0, bbox.y0, bbox.width(), bbox.height());
-        child.add_clip(
-            Arc::new(clip.finish().transformed(child.state.ctm)),
-            FillRule::NonZero,
-        )?;
-        Ok(child)
     }
 }

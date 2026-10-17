@@ -126,3 +126,22 @@ pub const FUNCTION_CALCULATOR: Feature = Feature::new("function.Type4");
 pub const FUNCTION_CUBIC: Feature = Feature::new("function.cubic-samples");
 /// Separation names None and All have special device semantics.
 pub const COLORSPACE_SPECIAL_INK: Feature = Feature::new("colorspace.special-ink");
+
+/// Annotation fitting that preserves display size or orientation.
+pub const ANNOTATION_FLAGS: Feature = Feature::new("annotation.flags");
+
+/// Transfer-function region selection for transparent artwork.
+pub const TRANSPARENCY_TRANSFER: Feature = Feature::new("transparency.transfer");
+/// Process-colour overprint inside a subtractive blending space.
+pub const TRANSPARENCY_OVERPRINT: Feature = Feature::new("transparency.overprint");
+
+/// Triangle and patch mesh shading sources.
+pub const SHADING_MESH: Feature = Feature::new("shading.mesh");
+/// Singular shading coordinate systems.
+pub const SHADING_TRANSFORM: Feature = Feature::new("shading.transform");
+/// Zero-width or zero-height shading boxes requiring scan-conversion adjustment.
+pub const SHADING_BOUNDS: Feature = Feature::new("shading.degenerate-bounds");
+/// Repeated coloured and uncoloured pattern cells.
+pub const PATTERN_TILING: Feature = Feature::new("pattern.tiling");
+/// Temporary graphics parameters in a shading pattern.
+pub const PATTERN_STATE: Feature = Feature::new("pattern.ExtGState");

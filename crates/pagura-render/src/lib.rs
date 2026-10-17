@@ -6,13 +6,18 @@
 //! expansion. The list renders into device tiles through `pagura-raster`.
 //! [`render_page`] and [`render_tile`] compile and render in one call.
 
+mod blend;
 mod cie;
 mod color;
+mod compositor;
 mod display;
 mod functions;
 mod interpreter;
 mod operators;
 mod optional;
+mod pattern;
+mod shading;
+mod transparency;
 
 pub use display::DisplayList;
 pub use interpreter::compile_page;

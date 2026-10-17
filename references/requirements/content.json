@@ -16,7 +16,7 @@
         "content/clip-after-paint",
         "content/stroke-nonuniform"
       ],
-      "gaps": "text, images, calibrated default RGB and general stroke adjustment remain incomplete"
+      "gaps": "text, images and general stroke adjustment remain incomplete"
     },
     {
       "id": "content-lexical-sequence",
@@ -42,7 +42,7 @@
         "content/text",
         "pagura-render/src/tests.rs"
       ],
-      "gaps": "text, images, Type3 and shadings unsupported"
+      "gaps": "text, images, Type3, mesh shadings and tiling patterns unsupported"
     },
     {
       "id": "content-colour",
@@ -52,14 +52,14 @@
         "8.6.5.5",
         "10.4"
       ],
-      "status": "device, ICC fallback, Indexed, CalGray/Lab, tint alternates",
+      "status": "device, ICC fallback, Indexed, CalGray/CalRGB/Lab, tint alternates",
       "tests": [
         "content/cmyk",
         "content/indexed",
         "content/icc-alternate",
         "content/default-space"
       ],
-      "gaps": "CalRGB; ICC profile transforms and nondefault input ranges; nonzero CIE black points; special colourants"
+      "gaps": "ICC profile transforms and nondefault input ranges; nonzero CIE black points; special colourants"
     },
     {
       "id": "content-opaque-groups",
@@ -68,7 +68,7 @@
         "11.3",
         "11.4"
       ],
-      "status": "opaque Normal non-knockout groups",
+      "status": "opaque Normal RGB fast path; general composition covered by content-transparency",
       "tests": [
         "content/opaque-page-group",
         "content/opaque-form-group",
@@ -76,7 +76,7 @@
         "content/rgb-form-group",
         "content/icc-rgb-group"
       ],
-      "gaps": "Gray/CMYK/calibrated blend spaces and nontrivial transparency unsupported"
+      "gaps": "calibrated blending spaces, subtractive overprint and transfer-region selection"
     },
     {
       "id": "content-page-transform",
@@ -141,19 +141,22 @@
     },
     {
       "id": "content-cie",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "8.6.5.2",
+        "8.6.5.3",
         "8.6.5.4"
       ],
-      "status": "CalGray and Lab; Bradford white adaptation to D65, sRGB output",
+      "status": "CalGray, CalRGB and Lab; Bradford white adaptation to D65, sRGB output",
       "tests": [
         "content/cie-CalGray",
         "content/cie-CalGray-gamma",
         "content/cie-Lab",
-        "content/cie-indexed-Lab"
+        "content/cie-indexed-Lab",
+        "content/cie-CalRGB",
+        "content/cie-CalRGB-matrix"
       ],
-      "gaps": "CalRGB is not implemented; a nonzero BlackPoint is unsupported"
+      "gaps": "nonzero BlackPoint unsupported"
     },
     {
       "id": "content-functions",
@@ -184,7 +187,7 @@
         "content/function-order3",
         "content/transfer-array"
       ],
-      "gaps": "sampled cubic interpolation with size >=4; special None/All colourants; CalRGB alternate pending facade contract migration"
+      "gaps": "sampled cubic interpolation with size >=4; special None/All colourants; transfer-region selection under transparency"
     },
     {
       "id": "content-usage",
@@ -203,6 +206,100 @@
         "content/usage-conjunction"
       ],
       "gaps": "user/language/creator-specific categories require explicit viewer context"
+    },
+    {
+      "id": "content-annotations",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.2",
+        "12.5.3",
+        "12.5.5"
+      ],
+      "status": "normal appearance streams, screen visibility and state selection",
+      "tests": [
+        "content/annotation",
+        "content/annotation-rotated",
+        "content/annotation-state",
+        "content/annotation-sheared",
+        "content/annotation-state-isolation",
+        "content/annotation-link-borderless"
+      ],
+      "gaps": "NoZoom/NoRotate; generation of absent appearances"
+    },
+    {
+      "id": "content-halftone",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "10.6.1"
+      ],
+      "status": "continuous-tone RGB bypass",
+      "tests": [
+        "content/halftone-continuous"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "content-transparency",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "11.3.3",
+        "11.3.5",
+        "11.4",
+        "11.6.6",
+        "11.7.4.4"
+      ],
+      "status": "constant opacity, standard blend modes, isolated/non-isolated and knockout groups, Gray/RGB/CMYK",
+      "tests": [
+        "content/blend-Multiply",
+        "content/blend-Hue",
+        "content/group-i0-k1",
+        "content/group-colour-DeviceCMYK",
+        "content/alpha-combined",
+        "content/group-alpha-shape-0",
+        "content/group-alpha-shape-1",
+        "content/blend-isolated-page",
+        "content/alpha-accumulation",
+        "content/group-incoming-alpha"
+      ],
+      "gaps": "calibrated group blending; subtractive overprint; transfer-region selection"
+    },
+    {
+      "id": "content-soft-masks",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "11.5.2",
+        "11.5.3",
+        "11.6.5.1"
+      ],
+      "status": "Alpha/Luminosity, BC and TR with frozen source CTM",
+      "tests": [
+        "content/soft-Alpha",
+        "content/soft-Luminosity-transfer",
+        "content/soft-crop-once",
+        "content/soft-frozen-transform"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "content-shadings",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.7.2",
+        "8.7.4.1",
+        "8.7.4.2",
+        "8.7.4.5.2",
+        "8.7.4.5.3",
+        "8.7.4.5.4"
+      ],
+      "status": "function, axial and radial shadings; shading patterns; global device-centre sampling and optional box filtering",
+      "tests": [
+        "content/shading-axial",
+        "content/shading-cone",
+        "content/shading-function",
+        "content/pattern-anchored",
+        "content/pattern-background"
+      ],
+      "gaps": "mesh shadings, tiling patterns, pattern ExtGState; degenerate BBox scan conversion"
     }
   ]
 }

@@ -24,14 +24,34 @@ pub(crate) enum Mark {
 }
 
 #[derive(Debug)]
-pub(crate) struct Command {
+pub(crate) enum Command {
+    Path(PathCommand),
+    Group(crate::transparency::Group),
+    Shading(ShadingCommand),
+}
+
+#[derive(Debug)]
+pub(crate) struct ShadingCommand {
+    pub(crate) shading: Arc<crate::shading::Shading>,
+    pub(crate) position: pagura_core::Position,
+    pub(crate) transform: Transform,
+    pub(crate) clip: Option<Arc<Clip>>,
+    pub(crate) composite: crate::transparency::Composite,
+    pub(crate) transfer: Option<crate::functions::Transfer>,
+    pub(crate) background: bool,
+}
+
+#[derive(Debug)]
+pub(crate) struct PathCommand {
     // Construction CTMs have already mapped every path point into default
     // user space. A stroke's pen CTM is retained independently (8.5.2).
     pub(crate) path: Arc<Path>,
     pub(crate) mark: Mark,
     pub(crate) clip: Option<Arc<Clip>>,
     pub(crate) color: Color,
+    pub(crate) position: pagura_core::Position,
     pub(crate) transfer: Option<crate::functions::Transfer>,
+    pub(crate) composite: crate::transparency::Composite,
 }
 
 /// An immutable interpreted page, retaining source colours and default-user-space
@@ -46,6 +66,7 @@ pub struct DisplayList {
     pub(crate) rotation: Rotation,
     pub(crate) user_unit: f64,
     pub(crate) limits: Limits,
+    pub(crate) group: crate::transparency::Attributes,
 }
 
 impl DisplayList {
@@ -56,17 +77,18 @@ impl DisplayList {
             rotation: page.rotation(),
             user_unit: page.user_unit(),
             limits,
+            group: crate::transparency::Attributes::default(),
         }
     }
 
     /// Number of painted marks (a fill-and-stroke operation produces two).
     pub fn len(&self) -> usize {
-        self.commands.len()
+        count_marks(&self.commands)
     }
 
     /// Whether the page contains no painted marks.
     pub fn is_empty(&self) -> bool {
-        self.commands.is_empty()
+        self.len() == 0
     }
 
     /// Device size after crop, rotation, user unit and scale (8.3.2).
@@ -109,6 +131,19 @@ impl DisplayList {
         {
             return Err(Error::invalid_argument("tile lies outside the page"));
         }
+        if self.group.knockout
+            || self
+                .group
+                .model
+                .is_some_and(|m| m != crate::transparency::Model::Rgb)
+            || !opaque_commands(&self.commands)
+        {
+            return crate::compositor::render(self, options, tile);
+        }
+        self.render_opaque(options, tile)
+    }
+
+    fn render_opaque(&self, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
         let device = self.device_transform(options);
         let mut target =
             Pixmap::new_with_limits(tile.width, tile.height, options.background, self.limits)?;
@@ -131,7 +166,25 @@ impl DisplayList {
         )?;
         let mut last_clip = None;
         let mut mask = crop.clone();
-        for command in &self.commands {
+        let mut stack = vec![self.commands.iter()];
+        while let Some(iter) = stack.last_mut() {
+            let Some(command) = iter.next() else {
+                stack.pop();
+                continue;
+            };
+            let command = match command {
+                Command::Path(command) => command,
+                Command::Group(group) => {
+                    if stack.len() >= self.limits.depth {
+                        return Err(Error::limit("group nesting exceeded"));
+                    }
+                    stack.push(group.commands.iter());
+                    continue;
+                }
+                Command::Shading(_) => {
+                    return Err(Error::invalid_argument("shading in opaque renderer"));
+                }
+            };
             let identity = command.clip.as_ref().map(Arc::as_ptr);
             if identity != last_clip {
                 mask = crop.clone();
@@ -155,44 +208,14 @@ impl DisplayList {
                 }
                 last_clip = identity;
             }
-            let paint = Paint::Solid(command.color.to_rgba(command.transfer.as_ref())?);
-            match &command.mark {
-                Mark::Fill(rule) => fill_path_at(
-                    &mut target,
-                    &command.path,
-                    device,
-                    *rule,
-                    &paint,
-                    Some(&mask),
-                    (tile.x, tile.y),
-                )?,
-                Mark::Stroke(stroke, ctm, adjust) => {
-                    let inverse = ctm.inverse().ok_or(Error::unsupported(
-                        crate::features::SINGULAR_STROKE,
-                        "singular stroke transform is not implemented",
-                    ))?;
-                    let path = command.path.transformed(inverse);
-                    let rasterize = if *adjust {
-                        stroke_path_adjusted_at
-                    } else {
-                        stroke_path_at
-                    };
-                    rasterize(
-                        &mut target,
-                        &path,
-                        ctm.then(device),
-                        stroke,
-                        &paint,
-                        Some(&mask),
-                        (tile.x, tile.y),
-                    )?;
-                }
-            }
+            command
+                .rasterize(&mut target, device, &mask, (tile.x, tile.y))
+                .map_err(|e| contextual(e, command.position))?;
         }
         Ok(target)
     }
 
-    fn device_transform(&self, options: &RenderOptions) -> Transform {
+    pub(crate) fn device_transform(&self, options: &RenderOptions) -> Transform {
         let r = self.crop;
         let rotation = match self.rotation {
             Rotation::None => Transform::new(1.0, 0.0, 0.0, -1.0, -r.x0, r.y1),
@@ -204,5 +227,96 @@ impl DisplayList {
             options.scale * self.user_unit,
             options.scale * self.user_unit,
         ))
+    }
+}
+
+fn count_marks(commands: &[Command]) -> usize {
+    commands
+        .iter()
+        .map(|command| match command {
+            Command::Path(_) | Command::Shading(_) => 1,
+            Command::Group(group) => count_marks(&group.commands),
+        })
+        .sum()
+}
+
+impl PathCommand {
+    fn rasterize(
+        &self,
+        target: &mut Pixmap,
+        device: Transform,
+        mask: &Mask,
+        origin: (u32, u32),
+    ) -> Result<()> {
+        let paint = Paint::Solid(self.color.to_rgba(self.transfer.as_ref())?);
+        match &self.mark {
+            Mark::Fill(rule) => fill_path_at(
+                target,
+                &self.path,
+                device,
+                *rule,
+                &paint,
+                Some(mask),
+                origin,
+            )?,
+            Mark::Stroke(stroke, ctm, adjust) => {
+                let inverse = ctm.inverse().ok_or(Error::unsupported(
+                    crate::features::SINGULAR_STROKE,
+                    "singular stroke transform is not implemented",
+                ))?;
+                let path = self.path.transformed(inverse);
+                let rasterize = if *adjust {
+                    stroke_path_adjusted_at
+                } else {
+                    stroke_path_at
+                };
+                rasterize(
+                    target,
+                    &path,
+                    ctm.then(device),
+                    stroke,
+                    &paint,
+                    Some(mask),
+                    origin,
+                )?;
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Opaque Normal non-knockout RGB groups are source-over associative
+/// (11.3.3, 11.4.5); no intermediate surface or colour conversion is needed.
+fn opaque_commands(commands: &[Command]) -> bool {
+    commands.iter().all(|command| match command {
+        Command::Path(p) => p.composite.simple() && matches!(p.color, Color::Solid { .. }),
+        Command::Group(g) => {
+            g.composite.simple()
+                && !g.attributes.knockout
+                && (!g.attributes.isolated
+                    || g.attributes
+                        .model
+                        .is_none_or(|m| m == crate::transparency::Model::Rgb))
+                && opaque_commands(&g.commands)
+        }
+        Command::Shading(_) => false,
+    })
+}
+
+pub(crate) fn contextual(error: Error, position: pagura_core::Position) -> Error {
+    let error = error.at(position);
+    if let pagura_core::Position::Stream { object, .. } = position {
+        error.in_object(object)
+    } else {
+        error
+    }
+}
+impl Command {
+    pub(crate) fn position(&self) -> pagura_core::Position {
+        match self {
+            Self::Path(p) => p.position,
+            Self::Shading(s) => s.position,
+            Self::Group(g) => g.position,
+        }
     }
 }

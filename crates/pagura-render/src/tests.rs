@@ -17,6 +17,79 @@ fn open(name: &str) -> Document {
 }
 
 const RENDER: &[&str] = &[
+    "form-empty-group",
+    "alpha-accumulation",
+    "group-incoming-alpha",
+    "soft-frozen-transform",
+    "soft-crop-once",
+    "group-alpha-shape-0",
+    "group-alpha-shape-1",
+    "annotation-sheared",
+    "annotation-state-isolation",
+    "annotation-link-borderless",
+    "blend-isolated-page",
+    "shading-axial",
+    "shading-axial-clip",
+    "shading-background-ignored",
+    "shading-axial-extend",
+    "shading-axial-empty",
+    "shading-filter",
+    "shading-radial",
+    "shading-radial-extend",
+    "shading-radial-reverse",
+    "shading-cone",
+    "shading-linear-cone",
+    "shading-function",
+    "pattern-shading",
+    "pattern-anchored",
+    "pattern-stroke",
+    "pattern-background",
+    "pattern-initial",
+    "alpha",
+    "alpha-stroke",
+    "alpha-combined",
+    "blend",
+    "knockout",
+    "group-DeviceGray",
+    "group-DeviceCMYK",
+    "group-colour-DeviceGray",
+    "group-colour-DeviceCMYK",
+    "halftone-continuous",
+    "cie-CalRGB",
+    "cie-CalRGB-matrix",
+    "annotation-rotated",
+    "annotation-reversed-rect",
+    "annotation-print-flag",
+    "annotation-no-print-flag",
+    "annotation-no-view",
+    "annotation-styling-ignored",
+    "annotation-state",
+    "annotation-undefined-state",
+    "blend-Normal",
+    "blend-Compatible",
+    "blend-Multiply",
+    "blend-Screen",
+    "blend-Overlay",
+    "blend-Darken",
+    "blend-Lighten",
+    "blend-ColorDodge",
+    "blend-ColorBurn",
+    "blend-HardLight",
+    "blend-SoftLight",
+    "blend-Difference",
+    "blend-Exclusion",
+    "blend-Hue",
+    "blend-Saturation",
+    "blend-Color",
+    "blend-Luminosity",
+    "group-i0-k0",
+    "group-i0-k1",
+    "group-i1-k0",
+    "group-i1-k1",
+    "soft-Alpha",
+    "soft-Alpha-transfer",
+    "soft-Luminosity",
+    "soft-Luminosity-transfer",
     "decimal-stroke-half-tie",
     "usage-View",
     "usage-Print-ignored",
@@ -92,6 +165,8 @@ const RENDER: &[&str] = &[
     "optional-AnyOff",
     "optional-AllOff",
     "optional-expression",
+    "annotation",
+    "space-CalRGB",
     "annotation-no-normal",
     "annotation-hidden",
 ];
@@ -118,6 +193,12 @@ fn independent_content_pixels() {
                     <= u8::from(
                         name.starts_with("fractional")
                             || name.starts_with("cie-")
+                            || name == "annotation-sheared"
+                            || name.starts_with("shading-")
+                            || name.starts_with("pattern-")
+                            || name.starts_with("blend-")
+                            || name.starts_with("group-")
+                            || name.starts_with("soft-")
                             || name.starts_with("function-")
                             || name == "decimal-stroke-half-tie"
                     ),
@@ -166,21 +247,14 @@ fn unsupported_tags_and_stream_positions() {
     for (name, tag) in [
         ("text", "operator.Tj"),
         ("inline-image", "image.inline"),
-        ("shading", "shading.paint"),
+        ("shading", "shading.mesh"),
         ("text-state", "operator.Tf"),
         ("type3", "operator.d0"),
-        ("alpha", "transparency.ca"),
-        ("blend", "transparency.BM"),
-        ("soft-mask", "transparency.SMask"),
         ("font-state", "extgstate.Font"),
-        ("space-CalRGB", "colorspace.CalRGB"),
-        ("pattern", "pattern.colorspace"),
-        ("knockout", "transparency.knockout"),
-        ("annotation", "annotation.appearance"),
+        ("pattern", "pattern.tiling"),
+        ("annotation-flags", "annotation.flags"),
         ("icc-range", "colorspace.ICCRange"),
         ("cie-blackpoint", "colorspace.BlackPoint"),
-        ("group-DeviceGray", "transparency.group-colorspace"),
-        ("group-DeviceCMYK", "transparency.group-colorspace"),
     ] {
         let document = open(name);
         let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
@@ -191,7 +265,7 @@ fn unsupported_tags_and_stream_positions() {
         );
         if !matches!(
             name,
-            "knockout" | "annotation" | "group-DeviceGray" | "group-DeviceCMYK"
+            "knockout" | "annotation-flags" | "group-DeviceGray" | "group-DeviceCMYK"
         ) {
             assert!(
                 matches!(error.position, Position::Stream { .. }),
@@ -345,6 +419,7 @@ fn legacy_aligned_oracles_also_match_the_vector_pipeline() {
 fn malformed_content_and_form_cycles_are_precise_errors() {
     for name in [
         "transfer",
+        "soft-mask",
         "syntax-BG-default",
         "syntax-UCR-default",
         "syntax-Lab-arity",
@@ -416,4 +491,84 @@ fn decimal_stroke_half_tie_has_independent_half_up_rounding() {
     for x in 2..6 {
         assert_eq!(&row[x * 4..x * 4 + 4], &[178, 178, 178, 255]);
     }
+}
+
+#[test]
+fn invalid_appearances_masks_and_shadings_have_precise_errors() {
+    for (name, kind) in [
+        ("annotation-invalid-state", ErrorKind::Syntax),
+        ("annotation-singular-matrix", ErrorKind::Syntax),
+        ("soft-invalid-backdrop", ErrorKind::Syntax),
+        ("soft-missing-space", ErrorKind::Syntax),
+        ("soft-recursive", ErrorKind::Cycle),
+        ("shading-negative-radius", ErrorKind::Syntax),
+        ("shading-function-domain", ErrorKind::Syntax),
+    ] {
+        let document = open(name);
+        let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
+        assert_eq!(error.kind, kind, "{name}: {error}");
+        assert!(error.object.is_some(), "{name}: {error}");
+    }
+}
+
+#[test]
+fn compositing_memory_work_and_shared_function_budgets_are_bounded() {
+    for (name, limits) in [
+        (
+            "group-i1-k0",
+            pagura_core::Limits {
+                decoded_bytes: 3600,
+                ..pagura_core::Limits::default()
+            },
+        ),
+        (
+            "group-i1-k0",
+            pagura_core::Limits {
+                raster_work: 1,
+                ..pagura_core::Limits::default()
+            },
+        ),
+        (
+            "shading-axial",
+            pagura_core::Limits {
+                operations: 2,
+                ..pagura_core::Limits::default()
+            },
+        ),
+    ] {
+        let document = Document::open(
+            pagura_testkit::fixture("content", &format!("{name}.pdf")),
+            &OpenOptions {
+                limits,
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        let list = compile_page(&document, document.page(0).unwrap()).unwrap();
+        let error = list.render(&RenderOptions::default()).expect_err(name);
+        assert_eq!(error.kind, ErrorKind::Limit, "{name}: {error}");
+    }
+    for name in ["group-i1-k0", "soft-Alpha", "annotation"] {
+        let document = Document::open(
+            pagura_testkit::fixture("content", &format!("{name}.pdf")),
+            &OpenOptions {
+                limits: pagura_core::Limits {
+                    display_commands: 0,
+                    ..pagura_core::Limits::default()
+                },
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit, "{name}: {error}");
+    }
+}
+
+#[test]
+fn empty_group_has_no_painted_marks() {
+    let document = open("form-empty-group");
+    let list = compile_page(&document, document.page(0).unwrap()).unwrap();
+    assert_eq!(list.len(), 0);
+    assert!(list.is_empty());
 }
