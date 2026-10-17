@@ -1,0 +1,388 @@
+{
+  "schema": 2,
+  "area": "paint",
+  "scope": "Verified the cited PDF painting rules against locally supplied ISO 32000-2:2020 with errata collection 3. Independent Python geometry and codec encoders provide the expected pixels. Memory limits and resampling choices are implementation policies from ADRs 0004, 0009, 0010 and 0012.",
+  "requirements": [
+    {
+      "id": "paint-text-state",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.3",
+        "9.4.2",
+        "9.4.3",
+        "9.4.4"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "paint/text-tj-adjustments",
+        "paint/text-spacing-rise",
+        "paint/text-positioning-quotes",
+        "paint/text-matrix-q",
+        "paint/text-state-persists",
+        "paint/text-negative-size",
+        "paint/text-zero-size",
+        "paint/text-vertical",
+        "paint/text-extgstate-font"
+      ],
+      "gaps": "Resource-selected embedded and Type3 fonts; font provider integration remains outside painting.",
+      "review": [
+        {
+          "locator": "9.3; 9.4.2; 9.4.3; 9.4.4",
+          "rule": "Text matrices are distinct from the saved text state. Scale, rise, leading and spacing precede the text matrix and CTM; TJ subtracts thousandths of a text-space unit along the writing direction.",
+          "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    },
+    {
+      "id": "paint-text-outlines",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.2.4",
+        "9.4.4"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "paint/text-triangle-area",
+        "paint/text-heavy-page",
+        "paint/text-type1",
+        "paint/text-cff"
+      ],
+      "gaps": "No hinting, as specified by ADR 0009.",
+      "review": [
+        {
+          "locator": "9.2.4; 9.4.4",
+          "rule": "Embedded glyph outlines are transformed through the program matrix, font size, horizontal scaling, rise, text matrix and CTM, then use the path fill pipeline.",
+          "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    },
+    {
+      "id": "paint-text-modes",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.3.6",
+        "9.4.1"
+      ],
+      "status": "implemented",
+      "tests": [
+        "paint/text-mode-0",
+        "paint/text-mode-1",
+        "paint/text-mode-2",
+        "paint/text-mode-3",
+        "paint/text-mode-4",
+        "paint/text-mode-5",
+        "paint/text-mode-6",
+        "paint/text-mode-7",
+        "paint/text-empty-clip",
+        "paint/text-clip-union",
+        "paint/text-clip-deferred",
+        "paint/text-clip-restored"
+      ],
+      "gaps": "",
+      "review": [
+        {
+          "locator": "9.3.6; 9.4.1",
+          "rule": "Modes 0 through 7 select fill and stroke in user space; clipping accumulates outline subpaths and applies their nonzero union at ET. Empty and zero-sized text do not clip. Type3 follows its distinct mode rules.",
+          "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    },
+    {
+      "id": "paint-text-knockout",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.3.8",
+        "11.7.4.3",
+        "11.7.4.4"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "paint/text-knockout-true",
+        "paint/text-knockout-false",
+        "paint/text-soft-mask-inside-object"
+      ],
+      "gaps": "Transfer functions across transparent artwork retain the existing explicit unsupported tag.",
+      "review": [
+        {
+          "locator": "9.3.8; 11.7.4.3; 11.7.4.4",
+          "rule": "TK defaults true and ignores changes within a text object. Each text object uses an implicit non-isolated knockout group, with inherited per-glyph transparency and opaque Normal group composition.",
+          "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    },
+    {
+      "id": "paint-type3",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.6.8",
+        "9.6.4",
+        "Table 111"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "paint/type3-mode-0",
+        "paint/type3-mode-1",
+        "paint/type3-mode-2",
+        "paint/type3-mode-3",
+        "paint/type3-mode-4",
+        "paint/type3-mode-5",
+        "paint/type3-mode-6",
+        "paint/type3-mode-7",
+        "paint/type3-d0-colour",
+        "paint/type3-d1-colour-ignored",
+        "paint/type3-d1-gstate",
+        "paint/type3-stencil-page-resources",
+        "paint/type3-d1-nested-colour",
+        "paint/type3-d1-image-shading-ignored",
+        "paint/type3-rotated-horizontal-width"
+      ],
+      "gaps": "Declared d1 bounding boxes are validated structurally; painting outside the box has implementation-dependent results.",
+      "review": [
+        {
+          "locator": "9.6.4; Table 111",
+          "rule": "Glyph procedures run with saved graphics state, a concatenated FontMatrix, isolated content parsing and bounded recursion. Metrics precede drawing. Uncoloured d1 restrictions propagate into invoked streams: colour and shading setters and non-stencil images are ignored; colour and transparency entries in gs are filtered while other graphics setters apply. Rotated FontMatrix glyph widths retain only their horizontal component (Table 110).",
+          "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    },
+    {
+      "id": "paint-text-errors",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.3.6",
+        "9.4.1",
+        "9.6.4"
+      ],
+      "status": "implemented",
+      "tests": [
+        "paint/text-show-outside",
+        "paint/text-nested",
+        "paint/text-end-without-begin",
+        "paint/text-unfinished",
+        "paint/text-mode-invalid",
+        "paint/text-clip-reset",
+        "paint/text-q-crosses",
+        "paint/text-et-crosses",
+        "paint/text-no-font",
+        "paint/type3-missing-metrics",
+        "paint/type3-metrics-repeated",
+        "paint/type3-metrics-outside",
+        "paint/type3-inconsistent-width",
+        "pagura-render interpreter::text::tests::font_buffer_errors_report_the_content_call_site"
+      ],
+      "gaps": "",
+      "review": [
+        {
+          "locator": "9.3.6; 9.4.1; 9.6.4",
+          "rule": "Invalid text state, crossing q/BT nesting, missing fonts and misplaced or repeated Type3 metrics are positioned syntax errors.",
+          "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    },
+    {
+      "id": "paint-images",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.4"
+      ],
+      "status": "implemented",
+      "tests": [
+        "paint/image-quarter-turn-0",
+        "paint/image-quarter-turn-1",
+        "paint/image-quarter-turn-2",
+        "paint/image-quarter-turn-3",
+        "paint/image-rgb",
+        "paint/image-cmyk",
+        "paint/image-jpx-icc-explicit",
+        "paint/image-stencil-pattern-explicit"
+      ],
+      "gaps": "",
+      "review": [
+        {
+          "locator": "8.9.4",
+          "rule": "The top-first image rows map to the CTM unit square with inverse image-space sampling; quarter turns and integer aligned magnification select source pixels exactly.",
+          "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    },
+    {
+      "id": "paint-image-decode",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.3",
+        "8.9.5.2",
+        "Table 88"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "paint/image-decode-reversed",
+        "paint/image-decode-clipped",
+        "paint/image-indexed",
+        "paint/image-depth-1",
+        "paint/image-depth-2",
+        "paint/image-depth-4",
+        "paint/image-depth-8",
+        "paint/image-depth-16"
+      ],
+      "gaps": "Embedded JPX ICC and unsupported enumerated colour descriptions fail with image.embedded-color.",
+      "review": [
+        {
+          "locator": "8.9.3; 8.9.5.2; Table 88",
+          "rule": "Unsigned sample endpoints map through Decode before colour conversion; Indexed defaults to the full integer sample range. Existing colour spaces perform component interpretation.",
+          "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    },
+    {
+      "id": "paint-image-masks",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.6.2",
+        "8.9.6.3",
+        "8.9.6.4",
+        "11.6.4.3"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "paint/image-stencil-0",
+        "paint/image-stencil-1",
+        "paint/image-colour-key",
+        "paint/image-explicit-mask",
+        "paint/image-mask-resolution"
+      ],
+      "gaps": "Pattern-coloured stencils fail with image.stencil-pattern.",
+      "review": [
+        {
+          "locator": "8.9.6.2; 8.9.6.3; 8.9.6.4; 11.6.4.3",
+          "rule": "Stencils use the current fill colour. Colour keys compare raw samples inclusively across all components. Explicit masks independently map their dimensions to the same unit square. Image-local masks override the current soft mask.",
+          "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    },
+    {
+      "id": "paint-image-soft-mask",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "11.6.4.3",
+        "11.6.5.2",
+        "Table 87",
+        "Table 143",
+        "Table 144"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "paint/image-soft-mask",
+        "paint/image-soft-mask-matte",
+        "paint/image-jpx-alpha-1",
+        "paint/image-jpx-alpha-2",
+        "paint/image-indexed-matte",
+        "paint/image-soft-overrides-state"
+      ],
+      "gaps": "The existing compositor retains explicit transfer-function and CMYK overprint limitations.",
+      "review": [
+        {
+          "locator": "11.6.4.3; 11.6.5.2; Table 87; Table 143; Table 144",
+          "rule": "Soft-mask samples, Decode and AIS determine image shape or opacity. Matte is removed after sample decoding and before colour conversion; SMaskInData opacity and premultiplication follow ImageAlpha.",
+          "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    },
+    {
+      "id": "paint-image-codecs",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.6",
+        "7.4.7",
+        "7.4.8",
+        "7.4.9",
+        "8.9.5"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "paint/image-flate",
+        "paint/image-dct",
+        "paint/image-ccitt",
+        "paint/image-jbig2",
+        "paint/image-jpx"
+      ],
+      "gaps": "Codec limitations retain their existing decoder tags.",
+      "review": [
+        {
+          "locator": "7.4.6; 7.4.7; 7.4.8; 7.4.9; 8.9.5",
+          "rule": "Real image XObjects route sample decoding through pagura-image for JPEG, CCITT, JBIG2 and JPEG 2000. Pixel expectations come from independent encoders and source planes.",
+          "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    },
+    {
+      "id": "paint-inline",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.7",
+        "Table 90",
+        "Table 91",
+        "Table 92"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "paint/image-inline",
+        "paint/image-inline-filtered",
+        "paint/image-inline-unfinished",
+        "paint/image-inline-id-outside",
+        "paint/image-inline-ei-outside",
+        "paint/image-inline-duplicate",
+        "paint/image-inline-missing-ei"
+      ],
+      "gaps": "Legacy inline filter-boundary detection retains the image crate limits.",
+      "review": [
+        {
+          "locator": "8.9.7; Table 90; Table 91; Table 92",
+          "rule": "BI/ID/EI dictionaries and bytes are framed separately from content tokens; the image decoder expands abbreviations and resolves colour-space resources.",
+          "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    },
+    {
+      "id": "paint-image-resampling",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.5.3"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "paint/image-minification",
+        "paint/image-interpolate"
+      ],
+      "gaps": "Interpolation is device policy rather than an ISO-prescribed filter. Strongly anisotropic transforms use area integration whenever an inverse pixel edge exceeds one source pixel.",
+      "review": [
+        {
+          "locator": "8.9.5.3",
+          "rule": "Implementation policy: nearest neighbours or bilinear associated colour/alpha for magnification, per Interpolate; exact source-cell footprint area integration for minification. Global device coordinates preserve tile parity.",
+          "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    },
+    {
+      "id": "paint-budgets",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "Annex C.1"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "paint/type3-recursion",
+        "pagura-render interpreter::text::tests::paint_cache_admission_is_atomic_and_shared_across_saved_states",
+        "pagura-render interpreter::text::tests::fonts_and_outlines_are_reused",
+        "pagura-render interpreter::text::cache::tests::malformed_font_fanout_is_rejected_before_loading_descendants"
+      ],
+      "gaps": "The opaque PdfFont API has no retained-memory estimator; parsed font internals retain their own per-font budgets, with at most 256 cached fonts. This is not a process peak-memory bound.",
+      "review": [
+        {
+          "locator": "Annex C.1",
+          "rule": "Implementation policy: shared caches and retained image/outline storage are bounded by decoded_bytes and display_commands; glyphs, image framing and sample integration charge work. Recursive glyph and mask graphs fail.",
+          "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    }
+  ]
+}

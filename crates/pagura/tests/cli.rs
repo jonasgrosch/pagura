@@ -96,12 +96,12 @@ fn does_not_overwrite_files_or_emit_partial_unsupported_images() {
     let missing = scratch.0.join("unsupported.ppm");
     let result = pagura()
         .arg("render")
-        .arg(fixture_path("classic", "text-unsupported.pdf"))
+        .arg(fixture_path("classic", "pattern-unsupported.pdf"))
         .arg(&missing)
         .output()
         .unwrap();
     assert!(!result.status.success());
-    assert!(String::from_utf8_lossy(&result.stderr).contains("unsupported [operator.BT]"));
+    assert!(String::from_utf8_lossy(&result.stderr).contains("unsupported [pattern.tiling]"));
     assert!(!missing.exists());
 }
 

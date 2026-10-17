@@ -1,0 +1,1863 @@
+{
+  "schema": 2,
+  "area": "paint",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "paint/text-mode-0",
+      "kind": "pdf",
+      "description": "text mode 0",
+      "expected": "render",
+      "requirements": [
+        "paint-text-modes"
+      ],
+      "path": "corpus/generated/paint/text-mode-0.pdf",
+      "sha256": "abe2e7b024d85c0afb45004531d479121836f40a95e8fdbd29b8b648c59edda6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-mode-0.ppm",
+      "oracle_sha256": "9a7ab8ac16ee41b2e332502a7db3f38f38788106bc12f293b01f95a67412b7ab",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-mode-0",
+      "kind": "pdf",
+      "description": "type3 mode 0",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-mode-0.pdf",
+      "sha256": "07fbcdeb8feb0068bc4769826362b9225035bb3655af9db304261cd0dcda4514",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-mode-0.ppm",
+      "oracle_sha256": "9a7ab8ac16ee41b2e332502a7db3f38f38788106bc12f293b01f95a67412b7ab",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-mode-1",
+      "kind": "pdf",
+      "description": "text mode 1",
+      "expected": "render",
+      "requirements": [
+        "paint-text-modes"
+      ],
+      "path": "corpus/generated/paint/text-mode-1.pdf",
+      "sha256": "d5703aa798d07bc1efd2652d17bc4940057164d5897eb5d23d5b270f9a1bfa72",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-mode-1.ppm",
+      "oracle_sha256": "4c13a0c65f2037e60590c72e9094c645ea6e26630671d491d753c36be274ebb9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-mode-1",
+      "kind": "pdf",
+      "description": "type3 mode 1",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-mode-1.pdf",
+      "sha256": "eaace11ecfc169e840eda639e088782a6b3839f66bad11c34dffea26ce84f1b0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-mode-1.ppm",
+      "oracle_sha256": "9a7ab8ac16ee41b2e332502a7db3f38f38788106bc12f293b01f95a67412b7ab",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-mode-2",
+      "kind": "pdf",
+      "description": "text mode 2",
+      "expected": "render",
+      "requirements": [
+        "paint-text-modes"
+      ],
+      "path": "corpus/generated/paint/text-mode-2.pdf",
+      "sha256": "86c9358bb45e49cb4acb891150846d5ae23767914857a82ba32efbe6720e4703",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-mode-2.ppm",
+      "oracle_sha256": "94cfe7c2e0e7b677b33334cb2248021306cf413aa7abc141053a1431dccf127a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-mode-2",
+      "kind": "pdf",
+      "description": "type3 mode 2",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-mode-2.pdf",
+      "sha256": "c440847331003b3713e92be5d4302345e3682ba790aee6f542ae629f29508b02",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-mode-2.ppm",
+      "oracle_sha256": "9a7ab8ac16ee41b2e332502a7db3f38f38788106bc12f293b01f95a67412b7ab",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-mode-3",
+      "kind": "pdf",
+      "description": "text mode 3",
+      "expected": "render",
+      "requirements": [
+        "paint-text-modes"
+      ],
+      "path": "corpus/generated/paint/text-mode-3.pdf",
+      "sha256": "306a063bfa7eaa68c476921d5348540426f0181b919e7d90930e0d42c73e7e15",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-mode-3.ppm",
+      "oracle_sha256": "46f6124b2cdf9c39a0d8d3e53061d22729fa924a3d061f2ae3a8363246dc8406",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-mode-3",
+      "kind": "pdf",
+      "description": "type3 mode 3",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-mode-3.pdf",
+      "sha256": "adeeb78b3ef0e6cd1e2efe4e2ff6c98adcfd503a654ffeb61b9404f86450dad8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-mode-3.ppm",
+      "oracle_sha256": "46f6124b2cdf9c39a0d8d3e53061d22729fa924a3d061f2ae3a8363246dc8406",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-mode-4",
+      "kind": "pdf",
+      "description": "text mode 4",
+      "expected": "render",
+      "requirements": [
+        "paint-text-modes"
+      ],
+      "path": "corpus/generated/paint/text-mode-4.pdf",
+      "sha256": "9d7815f4c90b300a79279c2c4ee22cf2bfdb6dceb21019c67cb0302e02bacbc4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-mode-4.ppm",
+      "oracle_sha256": "2ace598c8e37c524d5ed957b3093979012a7def002b394deea998b0638a16e04",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-mode-4",
+      "kind": "pdf",
+      "description": "type3 mode 4",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-mode-4.pdf",
+      "sha256": "85b0410c20333c4980215acd031b8835e73c077ca8e40612971b2dcf8187ae83",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-mode-4.ppm",
+      "oracle_sha256": "9a7ab8ac16ee41b2e332502a7db3f38f38788106bc12f293b01f95a67412b7ab",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-mode-5",
+      "kind": "pdf",
+      "description": "text mode 5",
+      "expected": "render",
+      "requirements": [
+        "paint-text-modes"
+      ],
+      "path": "corpus/generated/paint/text-mode-5.pdf",
+      "sha256": "3ca36ca78772fb8e77aa7efeae93013de0d6dc089c19d4399ffd6131a5572e58",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-mode-5.ppm",
+      "oracle_sha256": "9f7706d18d6abdc4fcc5d3033e082dabef5adb63fb85189dc4a7605e8b9741d8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-mode-5",
+      "kind": "pdf",
+      "description": "type3 mode 5",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-mode-5.pdf",
+      "sha256": "fbf983b08ce0a498a6aa151bf5ad74ebff86c50659c0cb06ef7b6ecc8ad485ff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-mode-5.ppm",
+      "oracle_sha256": "9a7ab8ac16ee41b2e332502a7db3f38f38788106bc12f293b01f95a67412b7ab",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-mode-6",
+      "kind": "pdf",
+      "description": "text mode 6",
+      "expected": "render",
+      "requirements": [
+        "paint-text-modes"
+      ],
+      "path": "corpus/generated/paint/text-mode-6.pdf",
+      "sha256": "10f8be5070da76b74624d670bffc1fdd122b212ebdebd127dbce6c6b0ba19567",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-mode-6.ppm",
+      "oracle_sha256": "ae8ba9b72b71df28eb6ed9398cae79cbaf00e446cde2404fa9b2dc8f67b4b652",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-mode-6",
+      "kind": "pdf",
+      "description": "type3 mode 6",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-mode-6.pdf",
+      "sha256": "80285e98ad19730f9ad43f3bf6427358fb16a949e70491cc3151364bdac1007e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-mode-6.ppm",
+      "oracle_sha256": "9a7ab8ac16ee41b2e332502a7db3f38f38788106bc12f293b01f95a67412b7ab",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-mode-7",
+      "kind": "pdf",
+      "description": "text mode 7",
+      "expected": "render",
+      "requirements": [
+        "paint-text-modes"
+      ],
+      "path": "corpus/generated/paint/text-mode-7.pdf",
+      "sha256": "ff00bae957ff82b4f4b5cf519e56fead29fdbeaea82b6c9ac460ba3026ede25d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-mode-7.ppm",
+      "oracle_sha256": "1838b9dcb724519d6e02e0003654069b4cf1c6d22826da18212953e0ee6b71fc",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-mode-7",
+      "kind": "pdf",
+      "description": "type3 mode 7",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-mode-7.pdf",
+      "sha256": "2fe69a22892f74fd8c0801ed37205a84de74cacf8351f450b861f4ed92797c85",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-mode-7.ppm",
+      "oracle_sha256": "46f6124b2cdf9c39a0d8d3e53061d22729fa924a3d061f2ae3a8363246dc8406",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-triangle-area",
+      "kind": "pdf",
+      "description": "text triangle area",
+      "expected": "render",
+      "requirements": [
+        "paint-text-outlines"
+      ],
+      "path": "corpus/generated/paint/text-triangle-area.pdf",
+      "sha256": "902a67f9bb491194256588faea0955002cb5098e4a6dbf3c591f5728fa58f51e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-triangle-area.ppm",
+      "oracle_sha256": "39d3b3afb08ef67c50629ac91ab8048409b859f0a1b98dc021e1421f1ee1f577",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/text-tj-adjustments",
+      "kind": "pdf",
+      "description": "text tj adjustments",
+      "expected": "render",
+      "requirements": [
+        "paint-text-state"
+      ],
+      "path": "corpus/generated/paint/text-tj-adjustments.pdf",
+      "sha256": "9b921ba0ca38fe4f2ba30b1e1c4bf45e6c60bd3733631c10eeeda5599f4c873c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-tj-adjustments.ppm",
+      "oracle_sha256": "16e6efe002ca9e2bda92e00fc2b3b4e0c8c9fe00524f6a85a2cdfdaf0dc46f75",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-spacing-rise",
+      "kind": "pdf",
+      "description": "text spacing rise",
+      "expected": "render",
+      "requirements": [
+        "paint-text-state"
+      ],
+      "path": "corpus/generated/paint/text-spacing-rise.pdf",
+      "sha256": "97924be17641f63401ffa2bf7c70aaff26c317d884046931ff9f491d945f4cc0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-spacing-rise.ppm",
+      "oracle_sha256": "f18ecf6781219ba189a4a5ffa91152eb0cf6b04e3363acaa0315f2448629e119",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-positioning-quotes",
+      "kind": "pdf",
+      "description": "text positioning quotes",
+      "expected": "render",
+      "requirements": [
+        "paint-text-state"
+      ],
+      "path": "corpus/generated/paint/text-positioning-quotes.pdf",
+      "sha256": "603fcd5a7fe43b9d11e6956661059e1a00addeedb2d4a9ac1a55eb8ad9719d68",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-positioning-quotes.ppm",
+      "oracle_sha256": "406e27afdcc88769e75505ec992b90f1901f98adb4f91c10a16ea7cc34509002",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-matrix-q",
+      "kind": "pdf",
+      "description": "text matrix q",
+      "expected": "render",
+      "requirements": [
+        "paint-text-state"
+      ],
+      "path": "corpus/generated/paint/text-matrix-q.pdf",
+      "sha256": "298ca0cabf8b1f101d43c2b14a8bd0985869cefbb1337546f74e0f8f45f7b85a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-matrix-q.ppm",
+      "oracle_sha256": "c24e0624e52ad5cc211f626bc892f069a5964c5d3444e2c69f9f7d66d00ebf34",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-state-persists",
+      "kind": "pdf",
+      "description": "text state persists",
+      "expected": "render",
+      "requirements": [
+        "paint-text-state"
+      ],
+      "path": "corpus/generated/paint/text-state-persists.pdf",
+      "sha256": "2cbc86813467982dc09e96adca280e2fcb73458217fd32e853dcccd035579c44",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-state-persists.ppm",
+      "oracle_sha256": "fb4b00aa04f4d70053343303cd2b345117e69f565e1163e285952f0e54c2309f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-negative-size",
+      "kind": "pdf",
+      "description": "text negative size",
+      "expected": "render",
+      "requirements": [
+        "paint-text-state"
+      ],
+      "path": "corpus/generated/paint/text-negative-size.pdf",
+      "sha256": "34bd33cb766e5230a0b0f8e01ddffce783dd5a3283f9c41b95d93b996e6791e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-negative-size.ppm",
+      "oracle_sha256": "4a83c7933146ab34ad46c287c04cd75e6a13b15d292a39b053c4d4b922b00896",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-zero-size",
+      "kind": "pdf",
+      "description": "text zero size",
+      "expected": "render",
+      "requirements": [
+        "paint-text-state"
+      ],
+      "path": "corpus/generated/paint/text-zero-size.pdf",
+      "sha256": "5c78b69ce4b2ee363266b901329c8250da8fe668e8ea90a0267dd83e46f362cb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-zero-size.ppm",
+      "oracle_sha256": "3fcfd2f5260006cc7ededc8f831dddf3938a9fcd6711c694ebde6e1176fa7777",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-empty-clip",
+      "kind": "pdf",
+      "description": "text empty clip",
+      "expected": "render",
+      "requirements": [
+        "paint-text-modes"
+      ],
+      "path": "corpus/generated/paint/text-empty-clip.pdf",
+      "sha256": "3b78b223df2ac724e30a4debb36e7f5740a90a967bfdbd59e45c1588fbb55e7c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-empty-clip.ppm",
+      "oracle_sha256": "3fcfd2f5260006cc7ededc8f831dddf3938a9fcd6711c694ebde6e1176fa7777",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-clip-union",
+      "kind": "pdf",
+      "description": "text clip union",
+      "expected": "render",
+      "requirements": [
+        "paint-text-modes"
+      ],
+      "path": "corpus/generated/paint/text-clip-union.pdf",
+      "sha256": "473dd3935a8cbdd6a6284cb6f64da95ab16dec7e5cee3292db8310bc8e703a3b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-clip-union.ppm",
+      "oracle_sha256": "399d8f6f66629af3931424d1bd81e9124bf29a7a5b6bc538e97cfaf5a95c4355",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-clip-deferred",
+      "kind": "pdf",
+      "description": "text clip deferred",
+      "expected": "render",
+      "requirements": [
+        "paint-text-modes"
+      ],
+      "path": "corpus/generated/paint/text-clip-deferred.pdf",
+      "sha256": "d384a2ea3eff804a2ed683a4fd12ad06da39902d98db60824187fd3116b93f9a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-clip-deferred.ppm",
+      "oracle_sha256": "d92334118059120330b9d0261e4af483ae3a3b62e1ddde4af3d9b72c55024dfa",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-clip-restored",
+      "kind": "pdf",
+      "description": "text clip restored",
+      "expected": "render",
+      "requirements": [
+        "paint-text-modes"
+      ],
+      "path": "corpus/generated/paint/text-clip-restored.pdf",
+      "sha256": "04a6b481320283d0a1baf53f1cc3ad1062f5c04b51a3a638e151c8dbb87239a5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-clip-restored.ppm",
+      "oracle_sha256": "3fcfd2f5260006cc7ededc8f831dddf3938a9fcd6711c694ebde6e1176fa7777",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-vertical",
+      "kind": "pdf",
+      "description": "text vertical",
+      "expected": "render",
+      "requirements": [
+        "paint-text-state"
+      ],
+      "path": "corpus/generated/paint/text-vertical.pdf",
+      "sha256": "6e8a9bb83ae09818ca5ec369bcf5603a84532d2aac74f997714924b96de2ce4a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-vertical.ppm",
+      "oracle_sha256": "d203ffdd62b8a58e10cfa8cdc4dd8e954a9fe23f2e91c397264fa8ac1e6fa24f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-knockout-true",
+      "kind": "pdf",
+      "description": "text knockout true",
+      "expected": "render",
+      "requirements": [
+        "paint-text-knockout"
+      ],
+      "path": "corpus/generated/paint/text-knockout-true.pdf",
+      "sha256": "c114b770781201663e042b51e0b24e2849d44a4ad6211d36e99c26f492e9a357",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-knockout-true.ppm",
+      "oracle_sha256": "ccd53be48ed03cb0810bbb37b406ea9b8f941d18ee66f88ffb44f691347ea1d2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-knockout-false",
+      "kind": "pdf",
+      "description": "text knockout false",
+      "expected": "render",
+      "requirements": [
+        "paint-text-knockout"
+      ],
+      "path": "corpus/generated/paint/text-knockout-false.pdf",
+      "sha256": "8f033087bbd492c810d3ef133e26bff9d11aa69983c2b425c8fdde2a26ba1ce0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-knockout-false.ppm",
+      "oracle_sha256": "9f7d11103049f6bc653bb5c7894c15cc75b4a4dcff64e5145f35263b303b7de1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-extgstate-font",
+      "kind": "pdf",
+      "description": "text extgstate font",
+      "expected": "render",
+      "requirements": [
+        "paint-text-state"
+      ],
+      "path": "corpus/generated/paint/text-extgstate-font.pdf",
+      "sha256": "73d5cd11a5769836bc13b593c9e30efffb3d0b136aa4a854b0c269b980b8e66a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-extgstate-font.ppm",
+      "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-d0-colour",
+      "kind": "pdf",
+      "description": "type3 d0 colour",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-d0-colour.pdf",
+      "sha256": "0aa2fcdd2e97bfaadd474358789f621507dd93d5a622397e1b02562f9a56d019",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-d0-colour.ppm",
+      "oracle_sha256": "d7479d6f18554aef82d0b58c0ff507751b830f4f56dcd6242ea2b4000e185838",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-d1-colour-ignored",
+      "kind": "pdf",
+      "description": "type3 d1 colour ignored",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-d1-colour-ignored.pdf",
+      "sha256": "1119f79d6bd0fcfabbb2e260aade3be2e38064ba78c44fb21cffe40593f6f6e3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-d1-colour-ignored.ppm",
+      "oracle_sha256": "8c2183ad43b0992329cbde55dd8b20e9f38cff133dcc6ed3532a938d304f6503",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-show-outside",
+      "kind": "pdf",
+      "description": "text show outside",
+      "expected": "open",
+      "requirements": [
+        "paint-text-errors"
+      ],
+      "path": "corpus/generated/paint/text-show-outside.pdf",
+      "sha256": "52c39b1c6210492bc4d8bdc513460aa763616ebcd8154a12f42087e90af8811d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/text-nested",
+      "kind": "pdf",
+      "description": "text nested",
+      "expected": "open",
+      "requirements": [
+        "paint-text-errors"
+      ],
+      "path": "corpus/generated/paint/text-nested.pdf",
+      "sha256": "c61ad6cfb35ba7407279c11722ee38e8d55cca6f6a4dd1c7b3fc4eb3ce24ed99",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/text-end-without-begin",
+      "kind": "pdf",
+      "description": "text end without begin",
+      "expected": "open",
+      "requirements": [
+        "paint-text-errors"
+      ],
+      "path": "corpus/generated/paint/text-end-without-begin.pdf",
+      "sha256": "bcb3ab026c4b1c2bada611c4f7b60516e7db80fefc11b2e729fff5669a43471b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/text-unfinished",
+      "kind": "pdf",
+      "description": "text unfinished",
+      "expected": "open",
+      "requirements": [
+        "paint-text-errors"
+      ],
+      "path": "corpus/generated/paint/text-unfinished.pdf",
+      "sha256": "cdd38f90ffcf6c56fbbfb562cd312681b6fb7bece49c83884d59d8c5a54e33ed",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/text-mode-invalid",
+      "kind": "pdf",
+      "description": "text mode invalid",
+      "expected": "open",
+      "requirements": [
+        "paint-text-errors"
+      ],
+      "path": "corpus/generated/paint/text-mode-invalid.pdf",
+      "sha256": "d9cca3ac68ff483bb3a2250141ae2e6ebc5bf17eca5691aba0a15954c57298f0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/text-clip-reset",
+      "kind": "pdf",
+      "description": "text clip reset",
+      "expected": "open",
+      "requirements": [
+        "paint-text-errors"
+      ],
+      "path": "corpus/generated/paint/text-clip-reset.pdf",
+      "sha256": "0ef4d51e65fbf13ab44f857fd2f9c60fdd3d5cd05a6facdce0a7b84c52a5631e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/text-q-crosses",
+      "kind": "pdf",
+      "description": "text q crosses",
+      "expected": "open",
+      "requirements": [
+        "paint-text-errors"
+      ],
+      "path": "corpus/generated/paint/text-q-crosses.pdf",
+      "sha256": "4391bcb615ffcacaec07a8b847ce6563b483c5eb1385b3735557d14b683aed0f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/text-et-crosses",
+      "kind": "pdf",
+      "description": "text et crosses",
+      "expected": "open",
+      "requirements": [
+        "paint-text-errors"
+      ],
+      "path": "corpus/generated/paint/text-et-crosses.pdf",
+      "sha256": "111c53b8d389a15ec103751630ed20167457f40433981a8b10a582cfadf98757",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/text-no-font",
+      "kind": "pdf",
+      "description": "text no font",
+      "expected": "open",
+      "requirements": [
+        "paint-text-errors"
+      ],
+      "path": "corpus/generated/paint/text-no-font.pdf",
+      "sha256": "bcd159c6f653b7200e03022126b21936d6ed59578199a631ffc9f946a7a841f6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/type3-missing-metrics",
+      "kind": "pdf",
+      "description": "type3 missing metrics",
+      "expected": "open",
+      "requirements": [
+        "paint-text-errors"
+      ],
+      "path": "corpus/generated/paint/type3-missing-metrics.pdf",
+      "sha256": "c5022ffa170c5833bbab723434b75f2b226e5e5babeb3fc72d60694580b15cb5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/type3-metrics-repeated",
+      "kind": "pdf",
+      "description": "type3 metrics repeated",
+      "expected": "open",
+      "requirements": [
+        "paint-text-errors"
+      ],
+      "path": "corpus/generated/paint/type3-metrics-repeated.pdf",
+      "sha256": "8b00c50d9f8787759bcfa1451feae4c4802ee9365044200fe8af62aac2e1c621",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/type3-metrics-outside",
+      "kind": "pdf",
+      "description": "type3 metrics outside",
+      "expected": "open",
+      "requirements": [
+        "paint-text-errors"
+      ],
+      "path": "corpus/generated/paint/type3-metrics-outside.pdf",
+      "sha256": "a0ecd5cc0aea80f15d63d17449b6c0d4a18bb2f289b63f3634a3450e4b7711fe",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/image-quarter-turn-0",
+      "kind": "pdf",
+      "description": "image quarter turn 0",
+      "expected": "render",
+      "requirements": [
+        "paint-images"
+      ],
+      "path": "corpus/generated/paint/image-quarter-turn-0.pdf",
+      "sha256": "15613585485204cdea91c19f8657ed3460559e5827617c189d76a5863c00848d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-quarter-turn-0.ppm",
+      "oracle_sha256": "ac5f01c5f686f88560345ca535ec96ea52ad6565699a5867fdc3b53e9fa292af",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-quarter-turn-1",
+      "kind": "pdf",
+      "description": "image quarter turn 1",
+      "expected": "render",
+      "requirements": [
+        "paint-images"
+      ],
+      "path": "corpus/generated/paint/image-quarter-turn-1.pdf",
+      "sha256": "37f058a014935aeb07c56c586672a19e3d0579232d8684fd1f62ac7327e40842",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-quarter-turn-1.ppm",
+      "oracle_sha256": "79b7bc8569e92fd29580ccd276770cc0383cc99b78afea583885735cb83f76c5",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-quarter-turn-2",
+      "kind": "pdf",
+      "description": "image quarter turn 2",
+      "expected": "render",
+      "requirements": [
+        "paint-images"
+      ],
+      "path": "corpus/generated/paint/image-quarter-turn-2.pdf",
+      "sha256": "58c31ace69ccf8d51f45e1966e65e72991f46cd681b0f548a0b0b3355580bd5c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-quarter-turn-2.ppm",
+      "oracle_sha256": "ac5f01c5f686f88560345ca535ec96ea52ad6565699a5867fdc3b53e9fa292af",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-quarter-turn-3",
+      "kind": "pdf",
+      "description": "image quarter turn 3",
+      "expected": "render",
+      "requirements": [
+        "paint-images"
+      ],
+      "path": "corpus/generated/paint/image-quarter-turn-3.pdf",
+      "sha256": "8237365744f6c70f11314323691a7b28cbc24068fc45a43c86acbba9168c5cfb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-quarter-turn-3.ppm",
+      "oracle_sha256": "79b7bc8569e92fd29580ccd276770cc0383cc99b78afea583885735cb83f76c5",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-decode-reversed",
+      "kind": "pdf",
+      "description": "image decode reversed",
+      "expected": "render",
+      "requirements": [
+        "paint-image-decode"
+      ],
+      "path": "corpus/generated/paint/image-decode-reversed.pdf",
+      "sha256": "6cf781b34423ed188c8de98026acc0fd960e9c61dbb01773d28ab1f751124df0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-decode-reversed.ppm",
+      "oracle_sha256": "731d3b29ea4eef5db88a4d19d3385de31247641a88ade5db1b77a519df76b6fe",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-decode-clipped",
+      "kind": "pdf",
+      "description": "image decode clipped",
+      "expected": "render",
+      "requirements": [
+        "paint-image-decode"
+      ],
+      "path": "corpus/generated/paint/image-decode-clipped.pdf",
+      "sha256": "a20000400e7d33757da0a76b7ef14ceb787919a948060abadcbb330cbc284bd1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-decode-clipped.ppm",
+      "oracle_sha256": "36c3ddcd840ec863e5303794331b779d627db9df9153dbc82a43b821f3d69890",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-indexed",
+      "kind": "pdf",
+      "description": "image indexed",
+      "expected": "render",
+      "requirements": [
+        "paint-image-decode"
+      ],
+      "path": "corpus/generated/paint/image-indexed.pdf",
+      "sha256": "ca94c6c546fda7b08c48b12e62a8d073fbdccb03038c80f08ee1c7d6f572d0ff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-indexed.ppm",
+      "oracle_sha256": "5440f9adfc27cf570f0928f88e70f648e933d8b32f7abf9a860c2a7ae9859637",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-depth-1",
+      "kind": "pdf",
+      "description": "image depth 1",
+      "expected": "render",
+      "requirements": [
+        "paint-image-decode"
+      ],
+      "path": "corpus/generated/paint/image-depth-1.pdf",
+      "sha256": "88df5226a1f9d51d27935bf4a6f497161886a2f877a7b91abb7aed3c65d61eeb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-depth-1.ppm",
+      "oracle_sha256": "e772d3a3f0d8363298717be332b764b17dac8b22da809f1e16a009e0298a9d83",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-depth-2",
+      "kind": "pdf",
+      "description": "image depth 2",
+      "expected": "render",
+      "requirements": [
+        "paint-image-decode"
+      ],
+      "path": "corpus/generated/paint/image-depth-2.pdf",
+      "sha256": "0cffe02c6aec649921dc03c31477592c2734fb6be5e2de726b28e4affa0597b2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-depth-2.ppm",
+      "oracle_sha256": "e772d3a3f0d8363298717be332b764b17dac8b22da809f1e16a009e0298a9d83",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-depth-4",
+      "kind": "pdf",
+      "description": "image depth 4",
+      "expected": "render",
+      "requirements": [
+        "paint-image-decode"
+      ],
+      "path": "corpus/generated/paint/image-depth-4.pdf",
+      "sha256": "01a103ded5cc551d07ad6c1eb2de756e7dee0a0a9f43e33ca2185d259e1bcc33",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-depth-4.ppm",
+      "oracle_sha256": "e772d3a3f0d8363298717be332b764b17dac8b22da809f1e16a009e0298a9d83",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-depth-8",
+      "kind": "pdf",
+      "description": "image depth 8",
+      "expected": "render",
+      "requirements": [
+        "paint-image-decode"
+      ],
+      "path": "corpus/generated/paint/image-depth-8.pdf",
+      "sha256": "362b6f34d87919361cd576e69c39e9d71bf19fa22d43f38093f049fe6a5f72ca",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-depth-8.ppm",
+      "oracle_sha256": "e772d3a3f0d8363298717be332b764b17dac8b22da809f1e16a009e0298a9d83",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-depth-16",
+      "kind": "pdf",
+      "description": "image depth 16",
+      "expected": "render",
+      "requirements": [
+        "paint-image-decode"
+      ],
+      "path": "corpus/generated/paint/image-depth-16.pdf",
+      "sha256": "607210450d9c41802de0dcd1a72675bed8fd75be515d3087a800709c3d8f9fee",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-depth-16.ppm",
+      "oracle_sha256": "e772d3a3f0d8363298717be332b764b17dac8b22da809f1e16a009e0298a9d83",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-stencil-0",
+      "kind": "pdf",
+      "description": "image stencil 0",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint/image-stencil-0.pdf",
+      "sha256": "32d310c360092163ade6247cf92fd594d6e907d9ec48032bf7c099fe71e42f16",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-stencil-0.ppm",
+      "oracle_sha256": "97f047a12e5dd868c40f0a2ba3bff0ec49b458d995c17b1a1679b1ec1969fa87",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-stencil-1",
+      "kind": "pdf",
+      "description": "image stencil 1",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint/image-stencil-1.pdf",
+      "sha256": "d31e67822a0b99fa1fe210f246c78c54c441c374f38a2db5768b1759c95693c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-stencil-1.ppm",
+      "oracle_sha256": "53a51f99d3672885e25ac38253c961ff6ae06e7f5a0c5825eeeb32a9297419ca",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-colour-key",
+      "kind": "pdf",
+      "description": "image colour key",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint/image-colour-key.pdf",
+      "sha256": "c2d73ee66a8a041eb65406bf7d26cccbaf77ba7b38eeb0f9ea1dfbcea68eb297",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-colour-key.ppm",
+      "oracle_sha256": "535162fcf8d84f011eb79fcd3fa4e6dd904c9be8d53745aa86670703f217f881",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-explicit-mask",
+      "kind": "pdf",
+      "description": "image explicit mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint/image-explicit-mask.pdf",
+      "sha256": "a0abed89149a0db1e46d9e684a739d06fed4937cbcbaae6b61eb9a6d9cf403a7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-explicit-mask.ppm",
+      "oracle_sha256": "d86d1c28f8032d243e343226d2f86fa249c71d22d1dc915e7d909ea5132b3bc0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-soft-mask",
+      "kind": "pdf",
+      "description": "image soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-soft-mask"
+      ],
+      "path": "corpus/generated/paint/image-soft-mask.pdf",
+      "sha256": "20853a7814294a00024277869aa16496a94025e9606f1a2c44ca739f94c82a2a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-soft-mask.ppm",
+      "oracle_sha256": "3e30801e02ffe35ad1fbe5351746c4e3a74665967685a2b320f663f3bc2e3a5d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-soft-mask-matte",
+      "kind": "pdf",
+      "description": "image soft mask matte",
+      "expected": "render",
+      "requirements": [
+        "paint-image-soft-mask"
+      ],
+      "path": "corpus/generated/paint/image-soft-mask-matte.pdf",
+      "sha256": "8050935dc4ce9d6048694e64b205d8e3a533610aa256c1118c6b340520db78e8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-soft-mask-matte.ppm",
+      "oracle_sha256": "410dca10fbc6b25beeca85fbeaa476bf24334e7833bf14186adfbb89cc5f5df0",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-flate",
+      "kind": "pdf",
+      "description": "image flate",
+      "expected": "render",
+      "requirements": [
+        "paint-image-codecs"
+      ],
+      "path": "corpus/generated/paint/image-flate.pdf",
+      "sha256": "8157c2d9dea5064a06f464915828be9582d98f987640d7dc575fb5f6dd6fdf98",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-flate.ppm",
+      "oracle_sha256": "ac5f01c5f686f88560345ca535ec96ea52ad6565699a5867fdc3b53e9fa292af",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-dct",
+      "kind": "pdf",
+      "description": "image dct",
+      "expected": "render",
+      "requirements": [
+        "paint-image-codecs"
+      ],
+      "path": "corpus/generated/paint/image-dct.pdf",
+      "sha256": "f88d02950691ce3f6d74f41720c083b7bba01a64608b32dbbeed68654aafac38",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-dct.ppm",
+      "oracle_sha256": "2d10bee5592f0a8a9d3ee3a965eedd33b47bc0bcc05712ec91c8fa9ecac7aec1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/image-ccitt",
+      "kind": "pdf",
+      "description": "image ccitt",
+      "expected": "render",
+      "requirements": [
+        "paint-image-codecs"
+      ],
+      "path": "corpus/generated/paint/image-ccitt.pdf",
+      "sha256": "8f19dca6c46be211581159e615a267dd8643d1842d42c8bfcdcaeea5feb1131f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-ccitt.ppm",
+      "oracle_sha256": "cbdba45097cc126a366dc8c3bf9b41c2b18a722e0c09b5a966731f37de5c1af6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-jbig2",
+      "kind": "pdf",
+      "description": "image jbig2",
+      "expected": "render",
+      "requirements": [
+        "paint-image-codecs"
+      ],
+      "path": "corpus/generated/paint/image-jbig2.pdf",
+      "sha256": "c5d9fc40e383c907e64a72d190a6be7ca0b2e647162bd167eda18dbe6927d4f4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-jbig2.ppm",
+      "oracle_sha256": "cbdba45097cc126a366dc8c3bf9b41c2b18a722e0c09b5a966731f37de5c1af6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-jpx",
+      "kind": "pdf",
+      "description": "image jpx",
+      "expected": "render",
+      "requirements": [
+        "paint-image-codecs"
+      ],
+      "path": "corpus/generated/paint/image-jpx.pdf",
+      "sha256": "4c6428c3beb6a361c762750b98be249fae255f253188fbd3726e8ce402b6393c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-jpx.ppm",
+      "oracle_sha256": "e8e83b0a70db650135319b8f67b9fd11cc33e2c0817eee36f39e7a03623fed67",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-jpx-alpha-1",
+      "kind": "pdf",
+      "description": "image jpx alpha 1",
+      "expected": "render",
+      "requirements": [
+        "paint-image-soft-mask"
+      ],
+      "path": "corpus/generated/paint/image-jpx-alpha-1.pdf",
+      "sha256": "261cca460a2cc6297c1a1aa4b0e747d58a08cca5dd181ecc8122669e66974ef7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-jpx-alpha-1.ppm",
+      "oracle_sha256": "d188e29f699a6d127485f045bb1f1161c1dad56b2e9f8be1ac5ea615f782d01b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-jpx-alpha-2",
+      "kind": "pdf",
+      "description": "image jpx alpha 2",
+      "expected": "render",
+      "requirements": [
+        "paint-image-soft-mask"
+      ],
+      "path": "corpus/generated/paint/image-jpx-alpha-2.pdf",
+      "sha256": "1c084cb906adbfd043a274a71a4664f5043e57216ff62cf560624994e88712e5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-jpx-alpha-2.ppm",
+      "oracle_sha256": "d188e29f699a6d127485f045bb1f1161c1dad56b2e9f8be1ac5ea615f782d01b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-inline",
+      "kind": "pdf",
+      "description": "image inline",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint/image-inline.pdf",
+      "sha256": "1078c0b5857d27bd58e2d42abe3b18198e05434bb6f68ca8060205a3debe4282",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-inline.ppm",
+      "oracle_sha256": "ac5f01c5f686f88560345ca535ec96ea52ad6565699a5867fdc3b53e9fa292af",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-inline-filtered",
+      "kind": "pdf",
+      "description": "image inline filtered",
+      "expected": "render",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint/image-inline-filtered.pdf",
+      "sha256": "cec30e986b7dccf9ccaa10a715c0c9596ce983074da4e01dfdb55ea2529004dc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-inline-filtered.ppm",
+      "oracle_sha256": "ac5f01c5f686f88560345ca535ec96ea52ad6565699a5867fdc3b53e9fa292af",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-minification",
+      "kind": "pdf",
+      "description": "image minification",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-minification.pdf",
+      "sha256": "cea832205cd350121bdfd5b19e9feae408a15175b9a8fa3c0f2664f0e1100b53",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-minification.ppm",
+      "oracle_sha256": "3072f0d6eb26c7c5b7619c0da7af14a3c0a9345d4ba7b9f972c4a97bee113354",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-interpolate",
+      "kind": "pdf",
+      "description": "image interpolate",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-interpolate.pdf",
+      "sha256": "2d6fd3f2fd3769c54c136538927297ae958086168909c2d0c12fb2bf188cd5c1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-interpolate.ppm",
+      "oracle_sha256": "9cda6f98195bac85f6aa1c40a6062aae5878d47f92b680d90953e67ce3329515",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-heavy-page",
+      "kind": "pdf",
+      "description": "text heavy page",
+      "expected": "render",
+      "requirements": [
+        "paint-text-outlines"
+      ],
+      "path": "corpus/generated/paint/text-heavy-page.pdf",
+      "sha256": "6b6137735950cfee33a71fa3acc52363d30b73c41677df1276a346a5a5dfe03a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-heavy-page.ppm",
+      "oracle_sha256": "dd8bb4098a86791a5e8b51337c0acb388d0ca32f32190ae2fd14617fca37fda0",
+      "dpi": 72,
+      "width": 256,
+      "height": 256,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-type1",
+      "kind": "pdf",
+      "description": "text type1",
+      "expected": "render",
+      "requirements": [
+        "paint-text-outlines"
+      ],
+      "path": "corpus/generated/paint/text-type1.pdf",
+      "sha256": "0fe976b8accd19b81c26c50771c6fae3bdbd73fd7f3ad297deb8fa27b5ff696e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-type1.ppm",
+      "oracle_sha256": "ca640479f5eddecfbca4558e82dfdb453059707643548a4d5c0ab745fa963646",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-cff",
+      "kind": "pdf",
+      "description": "text cff",
+      "expected": "render",
+      "requirements": [
+        "paint-text-outlines"
+      ],
+      "path": "corpus/generated/paint/text-cff.pdf",
+      "sha256": "a16d271d4ece1c12c84544b83a6a65c527b6a0022cdac6459b9825e09f2d479a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-cff.ppm",
+      "oracle_sha256": "ca640479f5eddecfbca4558e82dfdb453059707643548a4d5c0ab745fa963646",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-d1-gstate",
+      "kind": "pdf",
+      "description": "type3 d1 gstate",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-d1-gstate.pdf",
+      "sha256": "2025ef52dec649f337f0dea6df0f5f70617a61d579d10d1ea3cfa53e8c039512",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-d1-gstate.ppm",
+      "oracle_sha256": "9fa5403d3e7fd44b2fcc0965c83a42d351b649fd2c6e7dd2a7e7182ec9c9ca01",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-stencil-page-resources",
+      "kind": "pdf",
+      "description": "type3 stencil page resources",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-stencil-page-resources.pdf",
+      "sha256": "ce15b6a9769fa98fa1ebd8a1919e89cd4394541d95952f07af2df86e5341cd45",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-stencil-page-resources.ppm",
+      "oracle_sha256": "8c2183ad43b0992329cbde55dd8b20e9f38cff133dcc6ed3532a938d304f6503",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-recursion",
+      "kind": "pdf",
+      "description": "Recursive CharProc fails with a cycle",
+      "expected": "open",
+      "requirements": [
+        "paint-budgets"
+      ],
+      "path": "corpus/generated/paint/type3-recursion.pdf",
+      "sha256": "2d8d52651c85d2557673ea41c733b3fc8f79f83515ce1b628d86574d9f39b788",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "cycle"
+    },
+    {
+      "id": "paint/type3-inconsistent-width",
+      "kind": "pdf",
+      "description": "CharProc width disagrees with Widths",
+      "expected": "open",
+      "requirements": [
+        "paint-text-errors"
+      ],
+      "path": "corpus/generated/paint/type3-inconsistent-width.pdf",
+      "sha256": "93e4839b56d859fc8dfac2ef0714289b836f97b2c0424b25fc454c2283f1b24a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/image-indexed-matte",
+      "kind": "pdf",
+      "description": "image indexed matte",
+      "expected": "render",
+      "requirements": [
+        "paint-image-soft-mask"
+      ],
+      "path": "corpus/generated/paint/image-indexed-matte.pdf",
+      "sha256": "bdab0248757cdf115fe953cf44137ac6f453d8d1361dfeacbc80765012228821",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-indexed-matte.ppm",
+      "oracle_sha256": "c43a15711e2c6b7c0c8635dfb0b51c984cb7b5c95f453790c0ca43de26eb164e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-rgb",
+      "kind": "pdf",
+      "description": "image rgb",
+      "expected": "render",
+      "requirements": [
+        "paint-images"
+      ],
+      "path": "corpus/generated/paint/image-rgb.pdf",
+      "sha256": "da23a70652d4d8e998db7c78ac9087de03c82f8792bd894b2e0844b36198b644",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-rgb.ppm",
+      "oracle_sha256": "5e73ac2b6640ba428bce077ebf58204ee9f5d2fddc8a688b4bec02642e95321b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-cmyk",
+      "kind": "pdf",
+      "description": "image cmyk",
+      "expected": "render",
+      "requirements": [
+        "paint-images"
+      ],
+      "path": "corpus/generated/paint/image-cmyk.pdf",
+      "sha256": "43f9e255907e0c0414d3bbc9931e2755f991f3180b14f2944421ccb4ddfaaebb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-cmyk.ppm",
+      "oracle_sha256": "173992f342c163e3f52635edfbbb87654defaa07b061a406f8b3db340ad37538",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-soft-overrides-state",
+      "kind": "pdf",
+      "description": "image soft overrides state",
+      "expected": "render",
+      "requirements": [
+        "paint-image-soft-mask"
+      ],
+      "path": "corpus/generated/paint/image-soft-overrides-state.pdf",
+      "sha256": "0dc58ad6b71240b9c9e699ade02e6cb90049f94f216309d7414209882deeb4e7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-soft-overrides-state.ppm",
+      "oracle_sha256": "62471ca8edad777a8931c6fa2e2786e6204ebfdb3b339e6d21603a72bbb0ff37",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-mask-resolution",
+      "kind": "pdf",
+      "description": "image mask resolution",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint/image-mask-resolution.pdf",
+      "sha256": "412a82d3df76c7b2b778b9ed9d634d9785a3945d4e955737e7c756605e56273f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-mask-resolution.ppm",
+      "oracle_sha256": "fdc1c70583c49eb7492fde2feb57f03b7938a44644704a912a36e1b35fffb8b4",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-inline-unfinished",
+      "kind": "pdf",
+      "description": "image inline unfinished",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint/image-inline-unfinished.pdf",
+      "sha256": "8de1753362658cf4fa33dec81bb66a8f74f8def209f1e18428f3e1bc4ed8802d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/image-inline-id-outside",
+      "kind": "pdf",
+      "description": "image inline id outside",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint/image-inline-id-outside.pdf",
+      "sha256": "29dd2ba1555d71c4e83fe8af24d9869ac441ab548cb450bfd7f9dc80d26a46df",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/image-inline-ei-outside",
+      "kind": "pdf",
+      "description": "image inline ei outside",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint/image-inline-ei-outside.pdf",
+      "sha256": "c85baaf9e78848d2addbd43b2c86efdd0683e2f09fcf4c682d7600efad9240d2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/image-inline-duplicate",
+      "kind": "pdf",
+      "description": "image inline duplicate",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint/image-inline-duplicate.pdf",
+      "sha256": "9ec6aea1fde6d0139aff7c543650a3fdca05b5a68ebd200ac2f34f90110f7a38",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/image-inline-missing-ei",
+      "kind": "pdf",
+      "description": "image inline missing ei",
+      "expected": "open",
+      "requirements": [
+        "paint-inline"
+      ],
+      "path": "corpus/generated/paint/image-inline-missing-ei.pdf",
+      "sha256": "a09b44bd46f41f2bf2b1efbae187ab4b57a7128aed1a6f0c72a038baab88ecbd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/image-jpx-icc-explicit",
+      "kind": "pdf",
+      "description": "image jpx icc explicit",
+      "expected": "unsupported",
+      "requirements": [
+        "paint-images"
+      ],
+      "path": "corpus/generated/paint/image-jpx-icc-explicit.pdf",
+      "sha256": "d212845b9fc424b2385c5611135484f65203dade9f27cae5bd0a89d272911215",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "image.embedded-color"
+    },
+    {
+      "id": "paint/image-stencil-pattern-explicit",
+      "kind": "pdf",
+      "description": "image stencil pattern explicit",
+      "expected": "unsupported",
+      "requirements": [
+        "paint-images"
+      ],
+      "path": "corpus/generated/paint/image-stencil-pattern-explicit.pdf",
+      "sha256": "f2a8cdcd1ab130b31402172fce02c6f72351694f137ebb465b148dc2183d64d0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "image.stencil-pattern"
+    },
+    {
+      "id": "paint/text-soft-mask-inside-object",
+      "kind": "pdf",
+      "description": "text soft mask inside object",
+      "expected": "render",
+      "requirements": [
+        "paint-text-knockout"
+      ],
+      "path": "corpus/generated/paint/text-soft-mask-inside-object.pdf",
+      "sha256": "864eb376600097586350136ae701bf1c3ff6528b70fc0a6aad772a734e38abf7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-soft-mask-inside-object.ppm",
+      "oracle_sha256": "ccd53be48ed03cb0810bbb37b406ea9b8f941d18ee66f88ffb44f691347ea1d2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-d1-nested-colour",
+      "kind": "pdf",
+      "description": "type3 d1 nested colour",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-d1-nested-colour.pdf",
+      "sha256": "5832888bcbdfa8dabeba51f5644149a63ad76204ff1d81f1d8db0f5b55dc7d65",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-d1-nested-colour.ppm",
+      "oracle_sha256": "8c2183ad43b0992329cbde55dd8b20e9f38cff133dcc6ed3532a938d304f6503",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-d1-image-shading-ignored",
+      "kind": "pdf",
+      "description": "type3 d1 image shading ignored",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-d1-image-shading-ignored.pdf",
+      "sha256": "9f605da6a0d4f6e41cc3c156718b809f563592b191514064e5a966500b854b45",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-d1-image-shading-ignored.ppm",
+      "oracle_sha256": "8c2183ad43b0992329cbde55dd8b20e9f38cff133dcc6ed3532a938d304f6503",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-rotated-horizontal-width",
+      "kind": "pdf",
+      "description": "type3 rotated horizontal width",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-rotated-horizontal-width.pdf",
+      "sha256": "b8f886cc185215f1d288086eea066cbea59b564763c2e114982d924da4644867",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-rotated-horizontal-width.ppm",
+      "oracle_sha256": "69e405418474bdb6f55d69a83ed51fe8afb9ab67a911e25227058790d9c35a04",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    }
+  ]
+}

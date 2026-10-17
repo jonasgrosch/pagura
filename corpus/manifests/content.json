@@ -742,82 +742,82 @@
     {
       "id": "content/text",
       "kind": "pdf",
-      "description": "text",
-      "expected": "unsupported",
+      "description": "Malformed text or image context",
+      "expected": "open",
       "requirements": [
         "content-explicit-operators"
       ],
       "path": "corpus/generated/content/text.pdf",
-      "sha256": "a4ade4eea2e7cffb8411001594189111cce1b02a7b1bb2f1ae13be8f0cd632bc",
+      "sha256": "df5ccfbe2528d58566b82adf59396a37cbbec026352522cebd6b35415a73ea8d",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "operator.Tj",
-      "api": "compile_page"
+      "api": "compile_page",
+      "render_error": "Syntax"
     },
     {
       "id": "content/inline-image",
       "kind": "pdf",
-      "description": "inline-image",
-      "expected": "unsupported",
+      "description": "Malformed text or image context",
+      "expected": "open",
       "requirements": [
         "content-explicit-operators"
       ],
       "path": "corpus/generated/content/inline-image.pdf",
-      "sha256": "e18096b6cad83a8fb5ea41b8f2714cada70ba6e02ea8b43fc8fe8d720199aba3",
+      "sha256": "830e606e1f6eed691eae7ac3e59e9c8780d57a448964f61fbc16f7166dd001d1",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "image.inline",
-      "api": "compile_page"
+      "api": "compile_page",
+      "render_error": "Syntax"
     },
     {
       "id": "content/text-state",
       "kind": "pdf",
-      "description": "text-state",
-      "expected": "unsupported",
+      "description": "Malformed text or image context",
+      "expected": "open",
       "requirements": [
         "content-explicit-operators"
       ],
       "path": "corpus/generated/content/text-state.pdf",
-      "sha256": "2cd72b2077622f0e316693788f321afb17685dda36abd7da34845c7188ca545e",
+      "sha256": "afc16d3a767b140cf10ef1e9a02554dc1f1602bc0cca4edd547e6620348e658d",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "operator.Tf",
-      "api": "compile_page"
+      "api": "compile_page",
+      "render_error": "Syntax"
     },
     {
       "id": "content/type3",
       "kind": "pdf",
-      "description": "type3",
-      "expected": "unsupported",
+      "description": "Malformed text or image context",
+      "expected": "open",
       "requirements": [
         "content-explicit-operators"
       ],
       "path": "corpus/generated/content/type3.pdf",
-      "sha256": "fddd6546351cd877eb1887e4f8c0eb8d628cbc2866fb69cd3fe683165da6577a",
+      "sha256": "10c1a421db00e8eeb6e3c7803bd824414f9d5a4ab0e8ec13422c6bb625f0fb6c",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "operator.d0",
-      "api": "compile_page"
+      "api": "compile_page",
+      "render_error": "Syntax"
     },
     {
       "id": "content/font-state",
       "kind": "pdf",
-      "description": "font-state",
-      "expected": "unsupported",
+      "description": "Malformed text or image context",
+      "expected": "open",
       "requirements": [
         "content-explicit-operators"
       ],
       "path": "corpus/generated/content/font-state.pdf",
-      "sha256": "019c95666d0be46ecc46aee2c79459ee9d7041e0543b61f166879bfe43d1a284",
+      "sha256": "249527b7974248d192039405afc554940e9a8bdf4089497606594adc29e63fce",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "extgstate.Font",
-      "api": "compile_page"
+      "api": "compile_page",
+      "render_error": "Syntax"
     },
     {
       "id": "content/space-Separation",

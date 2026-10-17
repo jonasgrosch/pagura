@@ -107,10 +107,15 @@ def cases():
     for policy, visible in [(b"AnyOn", True), (b"AllOn", False), (b"AnyOff", True), (b"AllOff", False)]:
         yield Case("optional-"+policy.decode(), optional_pdf(b"/OC /Members BDC 0 0 8 8 re f EMC", b"<< /Type /OCMD /OCGs [5 0 R 6 0 R] /P /"+policy+b" >>"), RENDER, ("content-optional",), "Membership policy", oracle=opaque_rectangles(8,8,[((0,0,8,8),BLACK)] if visible else []), extra={"api":"compile_page"})
     yield Case("optional-expression", optional_pdf(b"/OC /Members BDC 0 0 8 8 re f EMC", b"<< /Type /OCMD /VE [/And 5 0 R [/Not 6 0 R]] >>"), RENDER, ("content-optional",), "Boolean visibility expression", oracle=opaque_rectangles(8,8,[((0,0,8,8),BLACK)]), extra={"api":"compile_page"})
-    for name, command, tag in [("text", b"(text) Tj", "operator.Tj"), ("inline-image", b"BI", "image.inline"), ("text-state", b"/F 12 Tf", "operator.Tf"), ("type3", b"1 2 d0", "operator.d0")]:
-        yield unsupported(name, command, tag)
-    for name, entry, tag in [("font-state",b"/Font [/F 12]","extgstate.Font")]:
-        yield unsupported(name,b"/GS gs",tag,resources=b"<< /ExtGState << /GS << "+entry+b" >> >> >>")
+    # Malformed text and image contexts are syntax errors: showing text outside
+    # BT (9.4.1), an unterminated inline image (8.9.7), an undefined font
+    # resource (7.8.3), glyph metrics outside a Type 3 glyph (9.6.4), and an
+    # ExtGState Font entry that is not [font-reference size] (Table 57).
+    for name, command, resources in [("text", b"(text) Tj", b"<< >>"), ("inline-image", b"BI", b"<< >>"),
+                                     ("text-state", b"/F 12 Tf", b"<< >>"), ("type3", b"1 2 d0", b"<< >>"),
+                                     ("font-state", b"/GS gs", b"<< /ExtGState << /GS << /Font [/F 12] >> >> >>")]:
+        yield Case(name, single_page([command], resources=resources), OPEN, ("content-explicit-operators",),
+                   "Malformed text or image context", extra={"api": "compile_page", "render_error": "Syntax"})
     for family, definition in [
         ("Separation", b"[/Separation /Spot /DeviceRGB << /FunctionType 2 /Domain [0 1] /C0 [1 1 1] /C1 [0 0 0] /N 1 >>]"),
         ("DeviceN", b"[/DeviceN [/Cyan] /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [1 0 0 0] /N 1 >>]"),

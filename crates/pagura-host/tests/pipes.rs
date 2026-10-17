@@ -22,7 +22,7 @@ fn binary_flushes_live_responses_and_reports_structured_unsupported() {
     let mut hello = [0; 13];
     std::io::Read::read_exact(&mut output, &mut hello).unwrap();
     assert_eq!(hello, [9, 0, 0, 0, 129, 1, 0, 0, 0, 1, 0, 0, 0]);
-    let pdf = fixture("classic", "text-unsupported.pdf");
+    let pdf = fixture("classic", "pattern-unsupported.pdf");
     let mut open = u32::try_from(pdf.len() + 14)
         .unwrap()
         .to_le_bytes()

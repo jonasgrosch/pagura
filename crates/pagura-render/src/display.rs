@@ -26,8 +26,20 @@ pub(crate) enum Mark {
 #[derive(Debug)]
 pub(crate) enum Command {
     Path(PathCommand),
+    Image(ImageCommand),
     Group(crate::transparency::Group),
     Shading(ShadingCommand),
+}
+
+#[derive(Debug)]
+pub(crate) struct ImageCommand {
+    pub(crate) image: Arc<crate::interpreter::images::Image>,
+    pub(crate) transform: Transform,
+    pub(crate) clip: Option<Arc<Clip>>,
+    pub(crate) stencil: Color,
+    pub(crate) composite: crate::transparency::Composite,
+    pub(crate) transfer: Option<crate::functions::Transfer>,
+    pub(crate) position: pagura_core::Position,
 }
 
 #[derive(Debug)]
@@ -181,7 +193,7 @@ impl DisplayList {
                     stack.push(group.commands.iter());
                     continue;
                 }
-                Command::Shading(_) => {
+                Command::Shading(_) | Command::Image(_) => {
                     return Err(Error::invalid_argument("shading in opaque renderer"));
                 }
             };
@@ -234,7 +246,7 @@ fn count_marks(commands: &[Command]) -> usize {
     commands
         .iter()
         .map(|command| match command {
-            Command::Path(_) | Command::Shading(_) => 1,
+            Command::Path(_) | Command::Shading(_) | Command::Image(_) => 1,
             Command::Group(group) => count_marks(&group.commands),
         })
         .sum()
@@ -299,7 +311,7 @@ fn opaque_commands(commands: &[Command]) -> bool {
                         .is_none_or(|m| m == crate::transparency::Model::Rgb))
                 && opaque_commands(&g.commands)
         }
-        Command::Shading(_) => false,
+        Command::Shading(_) | Command::Image(_) => false,
     })
 }
 
@@ -315,6 +327,7 @@ impl Command {
     pub(crate) fn position(&self) -> pagura_core::Position {
         match self {
             Self::Path(p) => p.position,
+            Self::Image(i) => i.position,
             Self::Shading(s) => s.position,
             Self::Group(g) => g.position,
         }

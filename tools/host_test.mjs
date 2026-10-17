@@ -209,7 +209,7 @@ async function main() {
     await testTwoPages(client, root, native, wasiRun);
     await testGenerations(client, root, native, wasiRun);
     // Explicit unsupported failures survive browser framing with context/tag.
-    const unsupported = await client.open(new Uint8Array(await readFile(join(root, 'corpus/generated/classic/text-unsupported.pdf'))));
+    const unsupported = await client.open(new Uint8Array(await readFile(join(root, 'corpus/generated/classic/pattern-unsupported.pdf'))));
     await assert.rejects(client.renderTile(unsupported.document, 0, 1, { x: 0, y: 0, width: 64, height: 64 }),
       (error) => error instanceof HostError && error.category === 3 && error.tag.length > 0);
     await client.close(unsupported.document);
@@ -458,7 +458,7 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
     elements.get('viewport').dispatch('touchend');
     fakeWindow.dispatch('keydown', { key: '0' }); await waitFor(ready);
     assert.equal(view(0).style.width, '64px'); elements.get('viewport').clientHeight = 300;
-    await pick(manifest.cases.find((entry) => entry.id === 'classic/text-unsupported'));
+    await pick(manifest.cases.find((entry) => entry.id === 'classic/pattern-unsupported'));
     await waitFor(() => !elements.get('error').hidden);
     assert.match(elements.get('error').textContent, /Unsupported \[[^\]]+\]/); assert.equal(canvases().length, 0);
     fakeWindow.dispatch('drop', { dataTransfer: { files: [new File([await readFile(join(root, rectangle.path))], 'dropped.pdf')] } });

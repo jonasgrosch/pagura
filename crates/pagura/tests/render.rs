@@ -37,7 +37,7 @@ const RENDER_CASES: [&str; 17] = [
     "two-pages",
 ];
 
-const UNSUPPORTED_CASES: [(&str, &str); 1] = [("text-unsupported", "operator.BT")];
+const UNSUPPORTED_CASES: [(&str, &str); 1] = [("pattern-unsupported", "pattern.tiling")];
 
 #[test]
 fn exact_pixels_match_independent_oracles() {

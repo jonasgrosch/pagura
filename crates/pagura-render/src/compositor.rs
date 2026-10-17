@@ -4,6 +4,9 @@
 //! group colours have their initial backdrop removed before final composition
 //! (11.4.4). Knockout replaces prior contributions according to shape, not alpha.
 
+mod images;
+mod sampled;
+
 use crate::display::{Clip, Command, DisplayList, Mark, PathCommand};
 use crate::transparency::{Composite, Group, MaskMethod, Model, SoftMask};
 use crate::{RenderOptions, Tile};
@@ -251,6 +254,7 @@ impl Context {
         for command in commands {
             let result = match command {
                 Command::Path(path) => self.path(path, target, initial, model, knockout, depth),
+                Command::Image(image) => self.image(image, target, initial, model, knockout, depth),
                 Command::Shading(shading) => {
                     self.shading(shading, target, initial, model, knockout, depth)
                 }

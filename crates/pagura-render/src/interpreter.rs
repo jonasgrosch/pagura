@@ -2,10 +2,12 @@
 
 mod annotations;
 mod forms;
+pub(crate) mod images;
 mod masks;
 mod path;
 mod shadings;
 mod state;
+mod text;
 
 use crate::color::{self, Color};
 use crate::display::{Clip, Command, DisplayList, Mark, PathCommand};
@@ -21,8 +23,7 @@ use std::sync::Arc;
 ///
 /// # Errors
 /// Returns positioned syntax errors, resource-limit errors and stable
-/// `Unsupported` tags. No partial list is returned on failure. Text, images,
-/// and mesh shadings currently remain unsupported.
+/// `Unsupported` tags. No partial list is returned on failure.
 pub fn compile_page(document: &Document, page: &Page) -> Result<DisplayList> {
     let mut compiler = Compiler::new(document, page)?;
     compiler.page(page).map_err(|e| e.in_object(page.id()))?;
@@ -31,6 +32,7 @@ pub fn compile_page(document: &Document, page: &Page) -> Result<DisplayList> {
 
 #[derive(Debug, Clone)]
 struct Graphics {
+    text: text::TextState,
     ctm: Transform,
     fill: Color,
     stroke_color: Color,
@@ -49,6 +51,7 @@ struct Graphics {
 impl Default for Graphics {
     fn default() -> Self {
         Self {
+            text: text::TextState::default(),
             ctm: Transform::IDENTITY,
             fill: Color::default(),
             stroke_color: Color::default(),
@@ -108,6 +111,9 @@ impl<'a> Compiler<'a> {
     }
 
     fn page(&mut self, page: &Page) -> Result<()> {
+        self.paint_charge(page.resources().retained_bytes(), 0)?;
+        self.state.text.cache.borrow_mut().page_resources =
+            Some(Arc::new(page.resources().clone()));
         self.list.group = crate::transparency::Attributes::parse(
             self.document,
             page.dictionary(),
@@ -175,6 +181,7 @@ impl<'a> Compiler<'a> {
                     b"true" => self.operand(Value::Boolean(true)),
                     b"false" => self.operand(Value::Boolean(false)),
                     b"null" => self.operand(Value::Null),
+                    b"BI" => self.inline_image(&mut parser, resources),
                     _ => self.operator(word, resources),
                 })
             };
@@ -186,6 +193,7 @@ impl<'a> Compiler<'a> {
             || !self.marked.is_empty()
             || !self.path.is_empty()
             || self.pending_clip.is_some()
+            || self.state.text.object.is_some()
         {
             return Err(stream_error(
                 Error::syntax("content sequence ends with unfinished state"),
@@ -215,13 +223,20 @@ impl<'a> Compiler<'a> {
             return Err(Error::syntax("unknown content operator"));
         };
         let operands = std::mem::take(&mut self.operands);
-        let result = self.execute(word, &operands, resources, tag);
+        let result = self.glyph_operator(word).and_then(|ignore| {
+            if ignore {
+                Ok(())
+            } else {
+                self.execute(word, &operands, resources, tag)
+            }
+        });
         self.operands = operands;
         self.operands.clear();
         if self.path.len() > self.document.limits().path_segments {
             return Err(Error::limit("path segment budget exceeded"));
         }
-        result
+        result?;
+        self.paint_charge(0, 0)
     }
 
     fn execute(
@@ -232,18 +247,8 @@ impl<'a> Compiler<'a> {
         tag: Feature,
     ) -> Result<()> {
         match word {
-            b"q" => {
-                if self.saved.len() >= self.document.limits().depth {
-                    return Err(Error::limit("graphics state nesting exceeded"));
-                }
-                self.saved.push(self.state.clone());
-            }
-            b"Q" => {
-                self.state = self
-                    .saved
-                    .pop()
-                    .ok_or(Error::syntax("Q without matching q"))?;
-            }
+            b"q" => self.save_graphics()?,
+            b"Q" => self.restore_graphics()?,
             b"cm" => {
                 let matrix = matrix(v)?.then(self.state.ctm);
                 if !matrix.is_finite() {
@@ -268,8 +273,12 @@ impl<'a> Compiler<'a> {
             }
             b"g" | b"G" | b"rg" | b"RG" | b"k" | b"K" | b"CS" | b"cs" | b"SC" | b"SCN" | b"sc"
             | b"scn" => self.color(word, v, resources)?,
-            b"gs" => self.extgstate(v, resources)?,
-            b"Do" => self.form(v, resources)?,
+            b"gs" => self.paint_gstate(v, resources)?,
+            b"Do" => self.xobject(v, resources)?,
+            b"BT" | b"ET" | b"Tc" | b"Tw" | b"Tz" | b"TL" | b"Tf" | b"Tr" | b"Ts" | b"Td"
+            | b"TD" | b"Tm" | b"T*" | b"Tj" | b"TJ" | b"'" | b"\"" | b"d0" | b"d1" => {
+                self.text_operator(word, v, resources)?;
+            }
             b"BX" => {
                 self.compatibility = nested(self.compatibility, self.document.limits().depth)?;
             }
@@ -309,7 +318,7 @@ impl<'a> Compiler<'a> {
                     .ok_or(Error::syntax("EMC without marked content"))?;
             }
             b"MP" | b"DP" => {}
-            b"BI" => return Err(unsupported(features::IMAGE_INLINE)),
+            b"ID" | b"EI" => return Err(Error::syntax("inline image delimiter outside image")),
             b"sh" => self.shading(v, resources)?,
             _ => {
                 return Err(Error::unsupported(

@@ -1,7 +1,7 @@
 """Bootstrap-era cases: classic xref files with opaque, pixel-aligned content."""
 from __future__ import annotations
 
-from .model import INVALID, RENDER, UNSUPPORTED, Case
+from .model import INVALID, OPEN, RENDER, UNSUPPORTED, Case
 from .pdf import document, opaque_rectangles, single_page, stream
 
 AREA = "classic"
@@ -70,8 +70,18 @@ def cases():
                       requirements=("recovery-reported",))
     yield Case(**{**trailing.__dict__, "repairs": ("file.trailing-bytes",), "strict_valid": False})
 
-    yield unsupported("text-unsupported", "text objects need fonts (M3)", "operator.BT",
-                      [b"BT /F1 12 Tf (hello) Tj ET\n"])
+    tiling = document([
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 64 64] /Resources << /Pattern << /P 5 0 R >> >> /Contents 4 0 R >>",
+        stream(b"/Pattern cs /P scn 0 0 64 64 re f\n"),
+        stream(b"0 0 1 1 re f", b"/Type /Pattern /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 1 1] /XStep 2 /YStep 2 /Resources << >>"),
+    ])
+    yield Case("pattern-unsupported", tiling, UNSUPPORTED, BASE + ("unsupported-is-explicit",),
+               "tiling patterns (8.7.3) are not implemented yet", feature="pattern.tiling", oracle=None)
+    yield Case("text-undefined-font", single_page([b"BT /F1 12 Tf (hello) Tj ET\n"]), OPEN, BASE,
+               "a font name that is not a page resource is malformed content (7.8.3)",
+               extra={"render_error": "Syntax"})
     yield render("alpha-unsupported", "Constant half opacity over white (11.3.3)",
                       [b"/GS1 gs 0 0 64 64 re f\n"], [((0,0,64,64),(128,128,128))], resources=b"<< /ExtGState << /GS1 << /ca 0.5 >> >> >>")
     from .content import cie_rgb

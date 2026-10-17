@@ -264,21 +264,37 @@
       "height": 64
     },
     {
-      "id": "classic/text-unsupported",
+      "id": "classic/pattern-unsupported",
       "kind": "pdf",
-      "description": "text objects need fonts (M3)",
+      "description": "tiling patterns (8.7.3) are not implemented yet",
       "expected": "unsupported",
       "requirements": [
         "syntax-classic-xref",
         "page-tree",
         "unsupported-is-explicit"
       ],
-      "path": "corpus/generated/classic/text-unsupported.pdf",
+      "path": "corpus/generated/classic/pattern-unsupported.pdf",
+      "sha256": "d5bb305b7d04b6fb4d211c326087fbce27bfd3ff724b3906c340385ce5d3d6ba",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "pattern.tiling"
+    },
+    {
+      "id": "classic/text-undefined-font",
+      "kind": "pdf",
+      "description": "a font name that is not a page resource is malformed content (7.8.3)",
+      "expected": "open",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree"
+      ],
+      "path": "corpus/generated/classic/text-undefined-font.pdf",
       "sha256": "cea8e143a0a136af6d9364d1eec5e935ecef9052e8886d02bd460bc3beaec775",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "operator.BT"
+      "render_error": "Syntax"
     },
     {
       "id": "classic/alpha-unsupported",

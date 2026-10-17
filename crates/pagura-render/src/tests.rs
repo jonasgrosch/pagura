@@ -245,12 +245,7 @@ fn all_supported_fixtures_assemble_as_single_pixel_tiles() {
 #[test]
 fn unsupported_tags_and_stream_positions() {
     for (name, tag) in [
-        ("text", "operator.Tj"),
-        ("inline-image", "image.inline"),
         ("shading", "shading.mesh"),
-        ("text-state", "operator.Tf"),
-        ("type3", "operator.d0"),
-        ("font-state", "extgstate.Font"),
         ("pattern", "pattern.tiling"),
         ("annotation-flags", "annotation.flags"),
         ("icc-range", "colorspace.ICCRange"),
