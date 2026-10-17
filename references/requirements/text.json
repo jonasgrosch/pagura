@@ -1,0 +1,171 @@
+{
+  "schema": 2,
+  "area": "text",
+  "scope": "ISO 32000-2:2020 clause 9 and Annex D, verified against the locally supplied standard.",
+  "requirements": [
+    {
+      "id": "text-type3",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.6.4",
+        "9.6.5.3"
+      ],
+      "status": "Type3 matrix, widths, procedures and resources",
+      "tests": [
+        "text/type3-differences",
+        "text/type3-matrix",
+        "text/encoding-winansi",
+        "text/encoding-macroman",
+        "text/encoding-standard",
+        "text/encoding-macexpert",
+        "text/encoding-symbol",
+        "text/encoding-dingbats",
+        "text/encoding-pdfdoc",
+        "text/tounicode-precedence",
+        "text/type3-undefined",
+        "text/tounicode-empty"
+      ],
+      "gaps": "Embedded font programs require pagura-font; complete AGL legacy-name data and predefined CJK maps remain unbundled."
+    },
+    {
+      "id": "text-simple-encoding",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.6.5",
+        "D.2",
+        "D.4",
+        "D.5",
+        "D.6"
+      ],
+      "status": "Base encodings and Differences",
+      "tests": [
+        "text/type3-differences",
+        "text/type3-matrix",
+        "text/encoding-winansi",
+        "text/encoding-macroman",
+        "text/encoding-standard",
+        "text/encoding-macexpert",
+        "text/encoding-symbol",
+        "text/encoding-dingbats",
+        "text/encoding-pdfdoc",
+        "text/tounicode-precedence",
+        "text/tounicode-empty",
+        "text/encoding-table-winansi",
+        "text/encoding-table-macroman"
+      ],
+      "gaps": "Embedded font programs require pagura-font; complete AGL legacy-name data and predefined CJK maps remain unbundled."
+    },
+    {
+      "id": "text-unicode",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.10.2",
+        "9.10.3"
+      ],
+      "status": "UTF-16BE ToUnicode and glyph-name fallback",
+      "tests": [
+        "text/type3-differences",
+        "text/type3-matrix",
+        "text/encoding-winansi",
+        "text/encoding-macroman",
+        "text/encoding-standard",
+        "text/encoding-macexpert",
+        "text/encoding-symbol",
+        "text/encoding-dingbats",
+        "text/encoding-pdfdoc",
+        "text/tounicode-precedence",
+        "text/unicode-parent",
+        "text/tounicode-empty"
+      ],
+      "gaps": "Embedded font programs require pagura-font; complete AGL legacy-name data and predefined CJK maps remain unbundled."
+    },
+    {
+      "id": "text-cmap",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.7.5",
+        "9.7.6"
+      ],
+      "status": "Variable-length codespaces, CID maps, notdef, inheritance",
+      "tests": [
+        "text/cmap-mixed",
+        "text/cmap-bytewise",
+        "text/cmap-usecmap",
+        "text/cmap-parent-stream",
+        "text/cmap-indirect-name"
+      ],
+      "gaps": "Embedded font programs require pagura-font; complete AGL legacy-name data and predefined CJK maps remain unbundled."
+    },
+    {
+      "id": "text-cid-metrics",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.7.4.3"
+      ],
+      "status": "Horizontal and vertical CID metrics",
+      "tests": [
+        "text/cid-metrics",
+        "text/cid-default-metrics",
+        "text/cid-width-reversed",
+        "text/cid-width-overflow",
+        "text/cid-w2-truncated",
+        "text/cid-range-truncated",
+        "text/cid-dw2-length"
+      ],
+      "gaps": "Embedded font programs require pagura-font; complete AGL legacy-name data and predefined CJK maps remain unbundled."
+    },
+    {
+      "id": "text-font-policy",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.6",
+        "9.7"
+      ],
+      "status": "Explicit unavailable fonts and malformed mappings",
+      "tests": [
+        "text/nonembedded-type1",
+        "text/nonembedded-mmtype1",
+        "text/nonembedded-truetype",
+        "text/predefined-cmap",
+        "text/differences-overflow",
+        "text/width-count",
+        "text/unicode-surrogate",
+        "text/unicode-cycle",
+        "text/unicode-range-overflow",
+        "text/unicode-odd-destination",
+        "text/unicode-two-byte",
+        "text/unicode-prefix-overlap",
+        "text/unicode-range-array-length",
+        "text/unicode-block-count",
+        "text/unicode-usecmap-mismatch"
+      ],
+      "gaps": "Embedded font programs require pagura-font; complete AGL legacy-name data and predefined CJK maps remain unbundled."
+    },
+    {
+      "id": "text-cid-to-gid",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.7.4.2"
+      ],
+      "status": "Big-endian CIDToGIDMap and Identity mappings",
+      "tests": [
+        "text/cid-to-gid"
+      ],
+      "gaps": "Program glyph presence checks require pagura-font."
+    },
+    {
+      "id": "text-simple-widths",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.6.2",
+        "9.6.3",
+        "9.6.4"
+      ],
+      "status": "FirstChar, LastChar, Widths and MissingWidth",
+      "tests": [
+        "text/simple-missing-width"
+      ],
+      "gaps": "Embedded-program decoding remains outside the manifest."
+    }
+  ]
+}

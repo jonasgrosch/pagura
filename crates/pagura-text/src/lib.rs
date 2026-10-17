@@ -8,12 +8,31 @@
 //! operand into glyphs carrying everything the renderer and text extraction
 //! need. Positioning glyphs on the page (text state, `Tm`, `TJ` adjustments)
 //! belongs to the content interpreter in `pagura-render`.
+//!
+//! Non-embedded programs and predefined CMaps beyond Identity-H/V are explicit
+//! unsupported capabilities (ADR 0009). Font-program parsing is delegated to
+//! `pagura-font`. Nonsymbolic TrueType fallback currently requires subtable
+//! availability metadata beyond its entry-lookup API; that case reports
+//! [`features::TRUETYPE_CMAP`]. Glyph-name Unicode fallback implements AGL name
+//! decomposition with Latin, Dingbats and common Symbol names; unbundled legacy
+//! names remain unknown. A `/ToUnicode` sequence always takes precedence.
+//!
+//! Loading and decoding enforce document limits. CID intervals stay compact;
+//! Unicode expansion, inherited CMap graphs and decoded glyph counts are bounded.
 
-use pagura_core::{Dictionary, Error, Feature, ObjectId, Result};
+use pagura_core::{Dictionary, Error, Limits, ObjectId, Position, Result};
 use pagura_document::Document;
 use pagura_font::{FontProgram, GlyphId};
 use pagura_raster::Transform;
 use std::sync::Arc;
+
+mod cidmap;
+mod cmap;
+mod encoding;
+mod font;
+mod metrics;
+mod objects;
+mod tables;
 
 /// Stable tags for text capabilities not implemented yet.
 pub mod features {
@@ -21,13 +40,13 @@ pub mod features {
 
     /// A font whose program is not embedded and has no substitute yet.
     pub const NON_EMBEDDED: Feature = Feature::new("font.non-embedded");
+    /// A CMap requires PostScript evaluation beyond declarative mappings.
+    pub const CMAP_PROGRAM: Feature = Feature::new("font.cmap-program");
+    /// TrueType fallback needs information about available program cmap subtables.
+    pub const TRUETYPE_CMAP: Feature = Feature::new("font.truetype-cmap");
     /// A predefined CMap other than Identity-H/V, whose data is not bundled.
     pub const PREDEFINED_CMAP: Feature = Feature::new("font.predefined-cmap");
 }
-
-/// Placeholder tag while the font layer is under construction. Must not
-/// survive the implementation.
-const PENDING: Feature = Feature::new("text.pending");
 
 /// The font dictionary's `/Subtype`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -113,6 +132,11 @@ pub struct Glyph {
 pub struct PdfFont {
     kind: FontKind,
     writing_mode: WritingMode,
+    source: font::Source,
+    mapping: font::Mapping,
+    metrics: metrics::Metrics,
+    to_unicode: Option<cmap::CMap>,
+    limits: Limits,
 }
 
 impl PdfFont {
@@ -124,11 +148,7 @@ impl PdfFont {
     /// (for example [`features::NON_EMBEDDED`]) for fonts that cannot be
     /// drawn yet, and errors from loading the font program.
     pub fn load(document: &Document, font: &Dictionary) -> Result<Self> {
-        let _ = (document, font);
-        Err(Error::unsupported(
-            PENDING,
-            "PDF fonts are not implemented yet",
-        ))
+        font::load(document, font)
     }
 
     /// The font's subtype.
@@ -143,7 +163,10 @@ impl PdfFont {
 
     /// The `/Resources` of a Type 3 font, for its glyph procedures.
     pub fn type3_resources(&self) -> Option<&Dictionary> {
-        None
+        match &self.source {
+            font::Source::Type3 { resources, .. } => resources.as_ref(),
+            font::Source::Program { .. } => None,
+        }
     }
 
     /// Splits a string operand into glyphs (clauses 9.4.3 and 9.7.6).
@@ -153,10 +176,88 @@ impl PdfFont {
     /// Returns syntax errors for codes outside the font's code space that
     /// recovery cannot map, and errors from loading glyph data.
     pub fn decode(&self, string: &[u8]) -> Result<Vec<Glyph>> {
-        let _ = string;
-        Err(Error::unsupported(
-            PENDING,
-            "text decoding is not implemented yet",
-        ))
+        self.decode_inner(string)
+            .map_err(|error| error.at(Position::Buffer(0)))
+    }
+
+    fn decode_inner(&self, string: &[u8]) -> Result<Vec<Glyph>> {
+        if string.len() > self.limits.string_bytes {
+            return Err(Error::limit("text string byte budget exceeded"));
+        }
+        let mut glyphs = Vec::new();
+        let mut offset = 0;
+        let mut work = 0;
+        let mut unicode_bytes = 0;
+        while let Some(input) = string.get(offset..).filter(|s| !s.is_empty()) {
+            cmap::charge(&mut work, 1, self.limits.operations)
+                .map_err(|e| e.at(Position::Buffer(offset)))?;
+            if glyphs.len() >= self.limits.value_nodes {
+                return Err(
+                    Error::limit("decoded glyph budget exceeded").at(Position::Buffer(offset))
+                );
+            }
+            let result = self.decode_glyph(input, &mut work);
+            let glyph = result.map_err(|e| e.at(Position::Buffer(offset)))?;
+            cmap::charge(
+                &mut unicode_bytes,
+                glyph.unicode.as_ref().map_or(0, String::len),
+                self.limits.decoded_bytes,
+            )
+            .map_err(|e| e.at(Position::Buffer(offset)))?;
+            offset += usize::from(glyph.byte_len);
+            glyphs.push(glyph);
+        }
+        Ok(glyphs)
+    }
+
+    fn decode_glyph(&self, input: &[u8], work: &mut usize) -> Result<Glyph> {
+        let (code, selector, name, fallback) = match &self.mapping {
+            font::Mapping::Simple(encoding) => {
+                let byte = *input
+                    .first()
+                    .ok_or_else(|| Error::syntax("empty character code"))?;
+                (
+                    cmap::Code {
+                        value: u32::from(byte),
+                        len: 1,
+                    },
+                    u32::from(byte),
+                    encoding.names[usize::from(byte)].as_ref(),
+                    encoding.unicode[usize::from(byte)].as_deref(),
+                )
+            }
+            font::Mapping::Composite(map) => {
+                let (code, valid) = map.next(input, work, self.limits)?;
+                let mut cid = if valid {
+                    map.cid(code, work, self.limits)?
+                } else {
+                    None
+                };
+                if cid.is_none_or(|cid| !self.has_cid(cid)) {
+                    cid = Some(map.notdef(code, work, self.limits)?);
+                }
+                let cid = cid.filter(|cid| self.has_cid(*cid)).unwrap_or(0);
+                (code, cid, None, None)
+            }
+        };
+        let unicode = self
+            .to_unicode
+            .as_ref()
+            .and_then(|map| map.text(code))
+            .map(str::to_owned)
+            .or_else(|| fallback.map(str::to_owned));
+        Ok(Glyph {
+            code: code.value,
+            byte_len: code.len,
+            advance: self.metrics.width(selector),
+            vertical: (self.writing_mode == WritingMode::Vertical)
+                .then(|| self.metrics.vertical(selector)),
+            word_space: code.len == 1 && code.value == 32,
+            unicode,
+            shape: self.shape(code, selector, name)?,
+        })
     }
 }
+
+#[cfg(test)]
+mod tests;

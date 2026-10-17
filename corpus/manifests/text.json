@@ -1,0 +1,947 @@
+{
+  "schema": 2,
+  "area": "text",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "text/type3-differences",
+      "kind": "vector",
+      "description": "Type3 character codes, advances, word spacing, Unicode and procedures",
+      "requirements": [
+        "text-type3",
+        "text-simple-encoding",
+        "text-unicode"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/type3-differences.input",
+          "sha256": "05d8033b505d31d73e64cbf14f0f9eea3f0e392615c0179dc74ef85410311b1a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/type3-differences.out",
+          "sha256": "2a3988458b3bb0254914ff572d24163b78d908c105fbe2728b066d0d8177775f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/type3-differences.pdf",
+          "sha256": "c3c38b6e2d4b0f36eb3deafcc6f09699c0ebb0b8fc222595d54890ecc588731f"
+        }
+      }
+    },
+    {
+      "id": "text/type3-matrix",
+      "kind": "vector",
+      "description": "Type3 character codes, advances, word spacing, Unicode and procedures",
+      "requirements": [
+        "text-type3",
+        "text-simple-encoding",
+        "text-unicode"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/type3-matrix.input",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".out": {
+          "path": "corpus/generated/text/type3-matrix.out",
+          "sha256": "031e62bc17b748a9127cba1acd76419043e43b00cbf6bf1dd2b714e188029a07"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/type3-matrix.pdf",
+          "sha256": "f583606bea908cf20625a0ff75ae310ab6db6af1b7a52d52169d60f030a05a2e"
+        }
+      }
+    },
+    {
+      "id": "text/encoding-winansi",
+      "kind": "vector",
+      "description": "Type3 character codes, advances, word spacing, Unicode and procedures",
+      "requirements": [
+        "text-type3",
+        "text-simple-encoding",
+        "text-unicode"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/encoding-winansi.base",
+          "sha256": "b77ef71e810bb0be76f33bff380b02a28c1973b300ddcdfcde607405360e431c"
+        },
+        ".input": {
+          "path": "corpus/generated/text/encoding-winansi.input",
+          "sha256": "8d60ae157230257589f9b9f02a65cc2e768c1b6f6f4a2b45aae1f6d24d1bd734"
+        },
+        ".out": {
+          "path": "corpus/generated/text/encoding-winansi.out",
+          "sha256": "19b5741bf66107b3841cd6dcde67ecbe7f02568fb1273d9a11f95e33cce24fa9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/encoding-winansi.pdf",
+          "sha256": "53c6e110ada8dade497671961c875a3f5cc700257dee77169230ff705ba30399"
+        }
+      }
+    },
+    {
+      "id": "text/encoding-macroman",
+      "kind": "vector",
+      "description": "Type3 character codes, advances, word spacing, Unicode and procedures",
+      "requirements": [
+        "text-type3",
+        "text-simple-encoding",
+        "text-unicode"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/encoding-macroman.base",
+          "sha256": "6fac2917ea48e533e8af40a5c027ced7cd76f25f9a379a27ea3c7f1d3cb942b8"
+        },
+        ".input": {
+          "path": "corpus/generated/text/encoding-macroman.input",
+          "sha256": "89a20b112c4ca2fbe716340e26322ceb7dc0a8611c28341c4c541f2be043ca6a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/encoding-macroman.out",
+          "sha256": "d1547674863e210cb501f3afc1a34de16ecb9a0cb38e84ff2b15372123e6f221"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/encoding-macroman.pdf",
+          "sha256": "173c1824d6049a92c5210b676e0aebfc38a4078c05e66f01c75d5d0f61609f57"
+        }
+      }
+    },
+    {
+      "id": "text/encoding-standard",
+      "kind": "vector",
+      "description": "Type3 character codes, advances, word spacing, Unicode and procedures",
+      "requirements": [
+        "text-type3",
+        "text-simple-encoding",
+        "text-unicode"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/encoding-standard.base",
+          "sha256": "9a31e5d41a70d80ad1b4c6127b2519925701ac589206b654b66ca7370e5ef5ca"
+        },
+        ".input": {
+          "path": "corpus/generated/text/encoding-standard.input",
+          "sha256": "d76fbfd96336882a3de77f13db8387b275d56874732ef328fdb6603d46c14c56"
+        },
+        ".out": {
+          "path": "corpus/generated/text/encoding-standard.out",
+          "sha256": "8c608a044ddf837af6849a4134b9f049ce172602acfe07d88c5e00d3bd682c9b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/encoding-standard.pdf",
+          "sha256": "43a56d745af82c83d855b672db2d800492bd7e61964aab7fe70da4fc56e7c1a5"
+        }
+      }
+    },
+    {
+      "id": "text/encoding-macexpert",
+      "kind": "vector",
+      "description": "Type3 character codes, advances, word spacing, Unicode and procedures",
+      "requirements": [
+        "text-type3",
+        "text-simple-encoding",
+        "text-unicode"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/encoding-macexpert.base",
+          "sha256": "372c4a1d54b38f5ac02ff34d5516625cabde7136a23a83b6bf50f468d2d19cf2"
+        },
+        ".input": {
+          "path": "corpus/generated/text/encoding-macexpert.input",
+          "sha256": "6e51ea983ca484235608f174a5ea0be3a3c6819c3dec0d59a3c3c0bd9fe7f1d7"
+        },
+        ".out": {
+          "path": "corpus/generated/text/encoding-macexpert.out",
+          "sha256": "04c515feb3ce71a784534155961108e331a39e857e1f646d46623cb171cb7935"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/encoding-macexpert.pdf",
+          "sha256": "07e890cd55c3f5d813965cd28ec8151a58042ffcc61ae639539128e581009b5b"
+        }
+      }
+    },
+    {
+      "id": "text/encoding-symbol",
+      "kind": "vector",
+      "description": "Type3 character codes, advances, word spacing, Unicode and procedures",
+      "requirements": [
+        "text-type3",
+        "text-simple-encoding",
+        "text-unicode"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/encoding-symbol.base",
+          "sha256": "ba0e4afa93400b805dfcc4b9e6aef549269946e2d1af5ababfc3a73c67912d89"
+        },
+        ".input": {
+          "path": "corpus/generated/text/encoding-symbol.input",
+          "sha256": "8cdda787695b5b3db87815f40d53110cb9373126efe6e08c955d7b565a812537"
+        },
+        ".out": {
+          "path": "corpus/generated/text/encoding-symbol.out",
+          "sha256": "0c2595f74539ac4c43604cbd08c252f2f6daa2e0ad3f2978854c81de8e25f0e5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/encoding-symbol.pdf",
+          "sha256": "0e449f7002d15d296febdfa37cce00a271b33d57e05bde6d47cd89a20523be54"
+        }
+      }
+    },
+    {
+      "id": "text/encoding-dingbats",
+      "kind": "vector",
+      "description": "Type3 character codes, advances, word spacing, Unicode and procedures",
+      "requirements": [
+        "text-type3",
+        "text-simple-encoding",
+        "text-unicode"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/encoding-dingbats.base",
+          "sha256": "af08b5c8c9dc4e2a131194f31bf0578feb273bc572af49369e031f4e24a703cb"
+        },
+        ".input": {
+          "path": "corpus/generated/text/encoding-dingbats.input",
+          "sha256": "470abc40ca8c80ba7d53646c77c67509536a5c252f135cd609ee580181aa2242"
+        },
+        ".out": {
+          "path": "corpus/generated/text/encoding-dingbats.out",
+          "sha256": "e5557c0df520dd7b223c2b1d5a2631b55d4e5424df33ef8588cbb7e53192028e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/encoding-dingbats.pdf",
+          "sha256": "ab2019da4d03c8c52af91908479f4d23b7886538ef4f837cf63941874d525d08"
+        }
+      }
+    },
+    {
+      "id": "text/encoding-pdfdoc",
+      "kind": "vector",
+      "description": "Type3 character codes, advances, word spacing, Unicode and procedures",
+      "requirements": [
+        "text-type3",
+        "text-simple-encoding",
+        "text-unicode"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/encoding-pdfdoc.base",
+          "sha256": "0daefbd72da7c6722d02d80a884be8c3b4bef2e5d5bca511bad487bf5e59b3ee"
+        },
+        ".input": {
+          "path": "corpus/generated/text/encoding-pdfdoc.input",
+          "sha256": "9c3ab22db5b411106f990b4d17f4ead22e6ff50cc51a0df42e6da856583ea493"
+        },
+        ".out": {
+          "path": "corpus/generated/text/encoding-pdfdoc.out",
+          "sha256": "7d205c06b0b7a6b8eb7590ed355697eb57acb828e4a91264605ac8057120fe48"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/encoding-pdfdoc.pdf",
+          "sha256": "1da593bc52981b42adede51c8f4b5def79274ce814c7456758b0d1a1d2c86399"
+        }
+      }
+    },
+    {
+      "id": "text/tounicode-precedence",
+      "kind": "vector",
+      "description": "Type3 character codes, advances, word spacing, Unicode and procedures",
+      "requirements": [
+        "text-type3",
+        "text-simple-encoding",
+        "text-unicode"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tounicode-precedence.input",
+          "sha256": "e9c0f8b575cbfcb42ab3b78ecc87efa3b011d9a5d10b09fa4e96f240bf6a82f5"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tounicode-precedence.out",
+          "sha256": "90f66daec148e835d9a64f013fb6cc0cdfaa675a63d16998519881cd61130002"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tounicode-precedence.pdf",
+          "sha256": "c0214166d35bf1c842605e738cf709f2ff1925efb17f886cde185e372244aabc"
+        }
+      }
+    },
+    {
+      "id": "text/cmap-mixed",
+      "kind": "vector",
+      "description": "CMap code lengths, mappings and undefined-code consumption",
+      "requirements": [
+        "text-cmap"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/cmap-mixed.input",
+          "sha256": "2af942d955c22d6e6f4db74092400a543ad2207cf4d95d75ce5a46af7d67ecae"
+        },
+        ".out": {
+          "path": "corpus/generated/text/cmap-mixed.out",
+          "sha256": "cd09e812b3bdaa0f90a90d02f5cc0dde92a29beda19b411ac281c0967aee0250"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cmap-mixed.pdf",
+          "sha256": "a504a0625c0308ec67e186d57ca55411122408bcd14e5f9394e6ac7c9f65377a"
+        }
+      },
+      "driver": "cid-cmap"
+    },
+    {
+      "id": "text/cmap-bytewise",
+      "kind": "vector",
+      "description": "CMap code lengths, mappings and undefined-code consumption",
+      "requirements": [
+        "text-cmap"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/cmap-bytewise.input",
+          "sha256": "732fadd2c08cc00eaac92cdaf6ae3ebd8753d87da7d3718880e5aa15fbe66007"
+        },
+        ".out": {
+          "path": "corpus/generated/text/cmap-bytewise.out",
+          "sha256": "21c4f2f03348db5d64cf756503fdd77299a8424451dc8e50733e8cedc70ffdb7"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cmap-bytewise.pdf",
+          "sha256": "33a3caa92d3b864366bb55caca946ffd425d80923be568b9c89ee588f2cdfa68"
+        }
+      },
+      "driver": "cid-cmap"
+    },
+    {
+      "id": "text/cmap-usecmap",
+      "kind": "vector",
+      "description": "CMap code lengths, mappings and undefined-code consumption",
+      "requirements": [
+        "text-cmap"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/cmap-usecmap.input",
+          "sha256": "7775bd0ec55cb939482c32ee56185bda08aa1e4616f1d78cb8859d207b0555e6"
+        },
+        ".out": {
+          "path": "corpus/generated/text/cmap-usecmap.out",
+          "sha256": "a364787de04fefc7b6ca3f56b9edddb8eb30ad313cd305f47e42f9d428fea33d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cmap-usecmap.pdf",
+          "sha256": "a32d97e6816cb1af78f32adb32a4416a812ee3bfbac91ca3d90823eb8132bcac"
+        }
+      },
+      "driver": "cid-cmap"
+    },
+    {
+      "id": "text/cmap-parent-stream",
+      "kind": "vector",
+      "description": "CMap code lengths, mappings and undefined-code consumption",
+      "requirements": [
+        "text-cmap"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/cmap-parent-stream.input",
+          "sha256": "4d06d074e8a7eb2fbfcae86795bc5e37529884765969ccc033c9b6f9ef11b865"
+        },
+        ".out": {
+          "path": "corpus/generated/text/cmap-parent-stream.out",
+          "sha256": "70989c4559bee036d3d77b0faeb0e75b344a2621b22385e8a8166744dcd01a12"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cmap-parent-stream.pdf",
+          "sha256": "8e059ad42642c7f2ea7de585b6b76eb0acd39406d2129e0af955c92fa647b11a"
+        }
+      },
+      "driver": "cid-cmap"
+    },
+    {
+      "id": "text/unicode-parent",
+      "kind": "vector",
+      "description": "CMap code lengths, mappings and undefined-code consumption",
+      "requirements": [
+        "text-unicode"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/unicode-parent.input",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".out": {
+          "path": "corpus/generated/text/unicode-parent.out",
+          "sha256": "1aae3297ddff88d1db7afea89f64183d79c488bbd4078720b927e8c7a62aa301"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/unicode-parent.pdf",
+          "sha256": "0198ff941973d17ba868118b5c36186aec580bddde7d861ea8643c255d9eb281"
+        }
+      },
+      "driver": "unicode-cmap"
+    },
+    {
+      "id": "text/cid-metrics",
+      "kind": "vector",
+      "description": "W and W2 list/range formats, first-wins overlap and defaults",
+      "requirements": [
+        "text-cid-metrics"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/text/cid-metrics.out",
+          "sha256": "32501df42d40fe228de2520aec513c0f303e3b9301670f9ebc2d767fb00eceb9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cid-metrics.pdf",
+          "sha256": "8775f9c0252e004d451ed563d10cde2fb668bc93bfea3487559534103e91c6ac"
+        }
+      },
+      "driver": "metrics"
+    },
+    {
+      "id": "text/cid-default-metrics",
+      "kind": "vector",
+      "description": "Default CID widths and vertical metrics",
+      "requirements": [
+        "text-cid-metrics"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/text/cid-default-metrics.out",
+          "sha256": "4091b9ab442306f876646ea525c0d4d7c1a7e1e1e62e1446d392a8306710e650"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cid-default-metrics.pdf",
+          "sha256": "1c59b989706e059b87693ca5041a6fcc6aec31ae9da1d37df9fd5805e6e6f091"
+        }
+      },
+      "driver": "metrics"
+    },
+    {
+      "id": "text/nonembedded-type1",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/nonembedded-type1.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/nonembedded-type1.pdf",
+          "sha256": "674a4925e9cb4afb28f95b68ec1b92d0b81e1a78c71dcc4ec81eaeac3d323cbc"
+        }
+      }
+    },
+    {
+      "id": "text/nonembedded-mmtype1",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/nonembedded-mmtype1.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/nonembedded-mmtype1.pdf",
+          "sha256": "654e5a5cfcb8807206dcb8592329ad7361a9be87ed6f7161d77e21586b01e2ef"
+        }
+      }
+    },
+    {
+      "id": "text/nonembedded-truetype",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/nonembedded-truetype.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/nonembedded-truetype.pdf",
+          "sha256": "540758be24ce719a6b54f601ab97b77ec17455a4afecbfec3a5bb2bbfcc2c68e"
+        }
+      }
+    },
+    {
+      "id": "text/predefined-cmap",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/predefined-cmap.error",
+          "sha256": "bdc9da692d73b77abccda882209c0e0b382b32bb507a1b39666e7e3566aeff95"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/predefined-cmap.pdf",
+          "sha256": "8eda1e60c44bd52ce642ab79bcb146d8041dbca42fa0fa09ae1c97d9cdeef933"
+        }
+      }
+    },
+    {
+      "id": "text/differences-overflow",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/differences-overflow.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/differences-overflow.pdf",
+          "sha256": "572071c8d7d1df157e6c51cb9134116228ad03e77d5a56a055d0055f5259a6a8"
+        }
+      }
+    },
+    {
+      "id": "text/width-count",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/width-count.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/width-count.pdf",
+          "sha256": "ae90a2f0c7150ff0c617417977d276a60bbd576e5286975b4443b0b04ac58d71"
+        }
+      }
+    },
+    {
+      "id": "text/unicode-surrogate",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/unicode-surrogate.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/unicode-surrogate.pdf",
+          "sha256": "f8f4dfb6a6bbd400e668416c3b2a397cd684c2aa59c88d92571af62345630def"
+        }
+      }
+    },
+    {
+      "id": "text/unicode-cycle",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/unicode-cycle.error",
+          "sha256": "1094b987df2190e669f219ed21b7b5f14b5ad1996e5282e158efddf0a67e50a4"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/unicode-cycle.pdf",
+          "sha256": "03378dd201d5d18b41fbe73dc1eef8ce387cf5ee6d86ae770cab3e3b9595959c"
+        }
+      }
+    },
+    {
+      "id": "text/unicode-range-overflow",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/unicode-range-overflow.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/unicode-range-overflow.pdf",
+          "sha256": "1e5860f2e876ca66c026270d3f89499a24c7fea8cf8d2a036c8b82d58875006f"
+        }
+      }
+    },
+    {
+      "id": "text/type3-undefined",
+      "kind": "vector",
+      "description": "An undefined Type3 glyph has no implicit default procedure",
+      "requirements": [
+        "text-type3"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/type3-undefined.input",
+          "sha256": "385e2ba0cc8fc6bd16e9a08b789b445ed47bc02ab8d17adf849aaeb52f66992d"
+        },
+        ".out": {
+          "path": "corpus/generated/text/type3-undefined.out",
+          "sha256": "a0cb77f2faa81527c53e92a240c87d75ae80cef1833a5db04a11cbf7370a47d8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/type3-undefined.pdf",
+          "sha256": "95bc256d2dd229fbdc454e4d19bbd14f532ab75a5bb9ca7645655dc2d85cdfdf"
+        }
+      }
+    },
+    {
+      "id": "text/unicode-odd-destination",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/unicode-odd-destination.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/unicode-odd-destination.pdf",
+          "sha256": "5f708df6098c8234fe036d643025193c20a12d639fd62338b03e0deec5cd1eb2"
+        }
+      }
+    },
+    {
+      "id": "text/unicode-two-byte",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/unicode-two-byte.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/unicode-two-byte.pdf",
+          "sha256": "92c7cd5ea506aee351fb8adae86c54a4ac9f0d2d0d7763fd2c9c7ce13eee3902"
+        }
+      }
+    },
+    {
+      "id": "text/unicode-prefix-overlap",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/unicode-prefix-overlap.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/unicode-prefix-overlap.pdf",
+          "sha256": "a815edb831869813f09f4ed39cfabf37774d36d3ca4390f43a8dd353f67c3d1f"
+        }
+      }
+    },
+    {
+      "id": "text/unicode-range-array-length",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/unicode-range-array-length.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/unicode-range-array-length.pdf",
+          "sha256": "c02a3b30be0961f1ef2d70d9b365c1bad31ecce4196e3561234546c473eabb16"
+        }
+      }
+    },
+    {
+      "id": "text/unicode-block-count",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/unicode-block-count.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/unicode-block-count.pdf",
+          "sha256": "3f97e5bbd8afa03d6b6b888d9c7bb406b80d0ffcbc86139dd8e8559b1211ee79"
+        }
+      }
+    },
+    {
+      "id": "text/unicode-usecmap-mismatch",
+      "kind": "vector",
+      "description": "Font loading reports malformed or unavailable capability explicitly",
+      "requirements": [
+        "text-font-policy"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/unicode-usecmap-mismatch.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/unicode-usecmap-mismatch.pdf",
+          "sha256": "0c6c50b813e8ba7516e515fdcfb50449d1cc0a13ccee567e3313d251d5bdb34f"
+        }
+      }
+    },
+    {
+      "id": "text/cid-width-reversed",
+      "kind": "vector",
+      "description": "Malformed CID metric arrays fail without invented widths",
+      "requirements": [
+        "text-cid-metrics"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/cid-width-reversed.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cid-width-reversed.pdf",
+          "sha256": "8c2df2387cb8257767511642c6e4bd192100322612a3ce53f0d396f676baf7f7"
+        }
+      },
+      "driver": "metrics-error"
+    },
+    {
+      "id": "text/cid-width-overflow",
+      "kind": "vector",
+      "description": "Malformed CID metric arrays fail without invented widths",
+      "requirements": [
+        "text-cid-metrics"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/cid-width-overflow.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cid-width-overflow.pdf",
+          "sha256": "65bbcbce83b8055b344ff357159c7c5bd6cfada1d70426c612841dbd77a4e5dc"
+        }
+      },
+      "driver": "metrics-error"
+    },
+    {
+      "id": "text/cid-w2-truncated",
+      "kind": "vector",
+      "description": "Malformed CID metric arrays fail without invented widths",
+      "requirements": [
+        "text-cid-metrics"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/cid-w2-truncated.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cid-w2-truncated.pdf",
+          "sha256": "6f82db0e9c5f1677780ba63acfcac09a985a89a2d5364e111b562596a29a3cb5"
+        }
+      },
+      "driver": "metrics-error"
+    },
+    {
+      "id": "text/cid-range-truncated",
+      "kind": "vector",
+      "description": "Malformed CID metric arrays fail without invented widths",
+      "requirements": [
+        "text-cid-metrics"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/cid-range-truncated.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cid-range-truncated.pdf",
+          "sha256": "b14cf0e8e7af53d5f989f4bf3803eb519ad191107e29298428faabf6dae7caaa"
+        }
+      },
+      "driver": "metrics-error"
+    },
+    {
+      "id": "text/cid-dw2-length",
+      "kind": "vector",
+      "description": "Malformed CID metric arrays fail without invented widths",
+      "requirements": [
+        "text-cid-metrics"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/cid-dw2-length.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cid-dw2-length.pdf",
+          "sha256": "217d169a3ff7b6d03ff5b1d694e1a8039bf36ec35cc1cfcaa6c44da8517143ac"
+        }
+      },
+      "driver": "metrics-error"
+    },
+    {
+      "id": "text/cid-to-gid",
+      "kind": "vector",
+      "description": "CIDToGIDMap is big-endian and absent entries select glyph zero",
+      "requirements": [
+        "text-cid-to-gid"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/text/cid-to-gid.out",
+          "sha256": "659cf4499d6fe2099f7e8eb0bf6643f78e0846db30478b86ce28ebaf11a87749"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cid-to-gid.pdf",
+          "sha256": "e422fc58c25938aa211b31a8a91ea8dd06bf2b1abaf2deb56f32af2af7b91273"
+        }
+      },
+      "driver": "cid-to-gid"
+    },
+    {
+      "id": "text/simple-missing-width",
+      "kind": "vector",
+      "description": "Simple font widths override MissingWidth within the declared interval",
+      "requirements": [
+        "text-simple-widths"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/text/simple-missing-width.out",
+          "sha256": "8c0d33be00eef3597633ad3eba6e24e79598de759db1c6f3716f0d2b9595c33b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/simple-missing-width.pdf",
+          "sha256": "1cc3744e76ce8b22cc0840e3f0975b0dce72ba567d36ddb320e1acf3660b1934"
+        }
+      },
+      "driver": "simple-metrics"
+    },
+    {
+      "id": "text/tounicode-empty",
+      "kind": "vector",
+      "description": "Type3 character codes, advances, word spacing, Unicode and procedures",
+      "requirements": [
+        "text-type3",
+        "text-simple-encoding",
+        "text-unicode"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tounicode-empty.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tounicode-empty.out",
+          "sha256": "5564affa2e6c47f08debd8ae24dd8d4c18e92d4e0290cf30eb1cfe25f949d6e3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tounicode-empty.pdf",
+          "sha256": "f1984daa6127e9d01e456bdce996bdd76c592da87abafb15f0d8da8df71f17f5"
+        }
+      }
+    },
+    {
+      "id": "text/cmap-indirect-name",
+      "kind": "vector",
+      "description": "CMap code lengths, mappings and undefined-code consumption",
+      "requirements": [
+        "text-cmap"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/cmap-indirect-name.input",
+          "sha256": "c00b4d3c929cb5cc316691ed4636f634576f2c9b2954767234c5274e9dde185d"
+        },
+        ".out": {
+          "path": "corpus/generated/text/cmap-indirect-name.out",
+          "sha256": "4bbdb369fa39508118dbd6054d39eff1e2d83ab1674bf6fa36e759be5cdf223e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cmap-indirect-name.pdf",
+          "sha256": "ccf574980131df923238728ba37834f0ac888246f45ed7148de223c541068a3d"
+        }
+      },
+      "driver": "cid-cmap"
+    },
+    {
+      "id": "text/encoding-table-winansi",
+      "kind": "vector",
+      "description": "All 256 base-encoding slots from independent Python codecs with Annex D corrections",
+      "requirements": [
+        "text-simple-encoding"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/encoding-table-winansi.base",
+          "sha256": "b77ef71e810bb0be76f33bff380b02a28c1973b300ddcdfcde607405360e431c"
+        },
+        ".input": {
+          "path": "corpus/generated/text/encoding-table-winansi.input",
+          "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+        },
+        ".out": {
+          "path": "corpus/generated/text/encoding-table-winansi.out",
+          "sha256": "719073761057efd17ff16dcda413e234e4be8b0593a4ae276f8a08c38576483b"
+        }
+      },
+      "driver": "base-encoding"
+    },
+    {
+      "id": "text/encoding-table-macroman",
+      "kind": "vector",
+      "description": "All 256 base-encoding slots from independent Python codecs with Annex D corrections",
+      "requirements": [
+        "text-simple-encoding"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/encoding-table-macroman.base",
+          "sha256": "6fac2917ea48e533e8af40a5c027ced7cd76f25f9a379a27ea3c7f1d3cb942b8"
+        },
+        ".input": {
+          "path": "corpus/generated/text/encoding-table-macroman.input",
+          "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+        },
+        ".out": {
+          "path": "corpus/generated/text/encoding-table-macroman.out",
+          "sha256": "9c5a10630f79274d404c8aab4de30bbe44f5f5cb468dd417524f998f40910d77"
+        }
+      },
+      "driver": "base-encoding"
+    }
+  ]
+}
