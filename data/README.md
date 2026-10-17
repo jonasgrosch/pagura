@@ -21,3 +21,7 @@ embedded program always takes precedence.
 
 The data reaches the engine only through a provider, never by a lookup from
 inside the PDF interpreter, so hosts can supply their own or load it lazily.
+
+A binary that links this data (the `pagura-data` features `standard-fonts`
+and `cmaps`) must reproduce its licence notices with its documentation;
+`pagura_data::notices()` returns exactly the notices of the enabled features.

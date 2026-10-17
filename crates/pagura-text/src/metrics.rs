@@ -17,6 +17,25 @@ pub(crate) struct Metrics {
 }
 
 impl Metrics {
+    pub(crate) fn standard(
+        metrics: &crate::StandardMetrics,
+        names: &[Option<pagura_core::Name>; 256],
+    ) -> Self {
+        Self {
+            widths: (0_u8..=255)
+                .filter_map(|code| {
+                    Some((
+                        u32::from(code),
+                        *metrics.widths.get(names[usize::from(code)].as_ref()?)? * 0.001,
+                    ))
+                })
+                .collect(),
+            vertical: BTreeMap::new(),
+            missing: 0.0,
+            default_vertical: (0.88, -1.0),
+        }
+    }
+
     pub(crate) fn simple(
         document: &Document,
         font: &Dictionary,

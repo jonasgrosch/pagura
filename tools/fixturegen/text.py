@@ -177,6 +177,7 @@ def cases():
     yield from program_cases()
     yield from glyph_name_cases()
     yield from embedding_error_cases()
+    yield from bundled_cases()
     yield cmap_case("unicode-ignored-stream-metadata", b"1 begincodespacerange <00> <ff> endcodespacerange 1 beginbfchar <41> <0042> endbfchar", b"A", [(65,1,None,0,"B")], extra=b"/WMode 7 /CMapName false /CIDSystemInfo false", unicode=True)
     yield cmap_case("unicode-inherited-ignored-name", b"/Parent usecmap", b"A", [(65,1,None,0,"B")], extra=b"/UseCMap 5 0 R", parents=[stream(b"/CMapName /Parent def 1 begincodespacerange <00> <ff> endcodespacerange 1 beginbfchar <41> <0042> endbfchar", b"/CMapName false /WMode 7")], unicode=True)
 
@@ -412,12 +413,15 @@ def without_sfnt_tables(program, excluded):
 
 
 def text_cmap_records(records):
-    """Independent sfnt cmap writer: format 0 for Mac and format 4 for BMP."""
+    """Independent sfnt cmap writer: Mac format 0, BMP format 4, full format 12."""
     from .font import u16, u32
     subtables=[]
     for platform,encoding,mapping in records:
         if (platform,encoding)==(1,0):
             sub=u16(0)+u16(262)+u16(0)+bytes(mapping.get(code,0) for code in range(256))
+        elif (platform,encoding)==(3,10):
+            groups=b"".join(u32(code)+u32(code)+u32(glyph) for code,glyph in sorted(mapping.items()))
+            sub=u16(12)+u16(0)+u32(16+len(groups))+u32(0)+u32(len(mapping))+groups
         else:
             codes=sorted(mapping)
             count=len(codes)+1
@@ -460,6 +464,9 @@ def program_cases():
     def tt(name, records, data=b"A", rows=None, *, names=(b"A",b"B",b"Aacute",b"D"), units=1000, **options):
         program=text_truetype(records,names,units)
         return binding_vector(name,program,data,rows or [row(65,1,"A")],matrix=(1/units,0,0,1/units,0,0),stream_extra=b"/Length1 %d" % len(program),requirements=("text-truetype-selection","text-embedded-fonts"),**options)
+    yield tt("tt-full-unicode-mac",[(3,10,{65:1}),(1,0,{65:2})],rows=[row(65,2,"A")])
+    yield tt("tt-platform-zero-mac",[(0,3,{65:1}),(1,0,{65:2})],rows=[row(65,2,"A")])
+    yield tt("tt-bmp-before-full",[(3,1,{65:1}),(3,10,{65:2})])
     yield tt("tt-unicode-priority",[(3,1,{65:1}),(1,0,{65:2})])
     # A zero from a present format-4 subtable is not a missing subtable.
     yield tt("tt-unicode-missing-post",[(3,1,{66:2}),(1,0,{65:2})])
@@ -536,3 +543,236 @@ def embedding_error_cases():
     ]
     for name,program,options in cases:
         yield Vector(name,{".pdf":embedded_document(program,**options),".error":b"syntax\n"},("text-unicode",) if name.startswith("unicode-") else ("text-embedded-fonts",),"PDF binding or ToUnicode consistency violation derived from the ISO rules",{"driver":"font-error"})
+
+
+def bundled_afm(path):
+    """AFM oracle: independent record parsing, retaining every glyph width."""
+    properties, glyphs = {}, []
+    for line in path.read_text().splitlines():
+        if line.startswith("C "):
+            fields = dict(part.strip().split(maxsplit=1) for part in line.split(";") if part.strip())
+            glyphs.append((int(fields["C"]), fields["N"], float(fields["WX"])))
+        elif line and not line.startswith("Comment"):
+            key, _, value = line.partition(" ")
+            properties[key] = value.strip()
+    return properties, glyphs
+
+
+def bundled_tt_glyph(path, scalar):
+    """Read the substitute's Windows BMP format-4 cmap, independently of Rust."""
+    raw = path.read_bytes()
+    count = struct.unpack_from(">H", raw, 4)[0]
+    tables = {tag: offset for tag, _, offset, _ in
+              (struct.unpack_from(">4sIII", raw, 12+16*i) for i in range(count))}
+    start = tables[b"cmap"]
+    records = struct.unpack_from(">H", raw, start+2)[0]
+    for i in range(records):
+        platform, encoding, offset = struct.unpack_from(">HHI", raw, start+4+8*i)
+        if (platform, encoding) != (3, 1):
+            continue
+        base = start+offset
+        assert struct.unpack_from(">H", raw, base)[0] == 4
+        segments = struct.unpack_from(">H", raw, base+6)[0]//2
+        ends = base+14
+        starts = ends+2*segments+2
+        deltas = starts+2*segments
+        offsets = deltas+2*segments
+        for j in range(segments):
+            first = struct.unpack_from(">H", raw, starts+2*j)[0]
+            last = struct.unpack_from(">H", raw, ends+2*j)[0]
+            if first <= scalar <= last:
+                delta = struct.unpack_from(">h", raw, deltas+2*j)[0]
+                extra = struct.unpack_from(">H", raw, offsets+2*j)[0]
+                if extra == 0:
+                    return (scalar+delta) & 0xffff
+                glyph = struct.unpack_from(">H", raw, offsets+2*j+extra+2*(scalar-first))[0]
+                return ((glyph+delta) & 0xffff) if glyph else 0
+    return 0
+
+
+def bundled_cmap(path, inventory, cache):
+    """Independent file oracle. Expand intervals in Python, overlaying parents."""
+    import re
+    if path.name in cache:
+        return cache[path.name]
+    text = re.sub(r"%[^\n]*", "", path.read_text())
+    parent = re.search(r"/(\S+)\s+usecmap", text)
+    codes, inherited = {}, set()
+    if parent:
+        codes.update(bundled_cmap(inventory[parent[1]], inventory, cache)[0])
+        inherited.update(codes)
+    local = []
+    for block in re.finditer(r"(\d+)\s+begincid(char|range)\s+(.*?)\s+endcid\2", text, re.S):
+        if block[2] == "char":
+            entries = [(a,a,c) for a,c in re.findall(r"<([0-9a-fA-F]+)>\s+(\d+)",block[3])]
+        else:
+            entries = re.findall(r"<([0-9a-fA-F]+)>\s+<([0-9a-fA-F]+)>\s+(\d+)",block[3])
+        assert len(entries) == int(block[1])
+        for low, high, cid in entries:
+            length = len(low)//2
+            lo, hi, dest = int(low,16), int(high,16), int(cid)
+            local.append((length,lo))
+            local.append((length,hi))
+            for value in range(lo,hi+1):
+                codes[length,value] = dest+value-lo
+    mode = re.search(r"/WMode\s+(\d+)\s+def",text)
+    assert mode
+    cache[path.name] = codes, int(mode[1]), local, inherited
+    return cache[path.name]
+
+
+def bundled_unicode(path):
+    """Aliases represent alternatives: prefer first horizontal, else first."""
+    result = {}
+    for line in path.read_text().splitlines():
+        if not line or line.startswith(("#","CID")):
+            continue
+        cid, values = line.split("\t")
+        aliases = [value.strip() for value in values.split(",")]
+        chosen = next((v for v in aliases if not v.endswith("v")),aliases[0])
+        result[int(cid)] = chr(int(chosen.removesuffix("v"),16))
+    return result
+
+
+def bundled_cases():
+    import json
+    from pathlib import Path
+    from .font import truetype
+    data = Path(__file__).resolve().parents[2]/"data"
+    lock = json.loads((data/"lock.json").read_text())
+    names = []
+    aliases = {
+        "Helvetica": ["Arial", "ArialMT", "Arial,Regular"],
+        "Helvetica-Bold": ["Arial-BoldMT", "Arial,Bold"],
+        "Helvetica-Oblique": ["Arial-ItalicMT", "Arial,Italic"],
+        "Helvetica-BoldOblique": ["Arial-BoldItalicMT", "Arial,BoldItalic"],
+        "Times-Roman": ["TimesNewRomanPSMT", "TimesNewRoman,Regular"],
+        "Times-Bold": ["TimesNewRomanPS-BoldMT", "TimesNewRoman,Bold"],
+        "Times-Italic": ["TimesNewRomanPS-ItalicMT", "TimesNewRoman,Italic"],
+        "Times-BoldItalic": ["TimesNewRomanPS-BoldItalicMT", "TimesNewRoman,BoldItalic"],
+        "Courier": ["CourierNewPSMT", "CourierNew,Regular"],
+        "Courier-Bold": ["CourierNewPS-BoldMT", "CourierNew,Bold"],
+        "Courier-Oblique": ["CourierNewPS-ItalicMT", "CourierNew,Italic"],
+        "Courier-BoldOblique": ["CourierNewPS-BoldItalicMT", "CourierNew,BoldItalic"],
+    }
+    for base, item in lock["standard_14"].items():
+        props,glyphs = bundled_afm(data/item["metrics"])
+        widths = {name:width for _,name,width in glyphs}
+        encoding = {code:name for code,name,_ in glyphs if code >= 0}
+        # These sample names have explicit known Unicode values; the complete
+        # AFM name/width/code set is separately checked without assuming AGL.
+        sample_unicode = {"space":" ","A":"A","a":"a","fi":"ﬁ","Alpha":"Α","alpha":"α"}
+        samples = [32,65,97,174,0]
+        outlines = item["outline"]
+        rows = [(code,widths.get(encoding.get(code),0)/1000,
+                 sample_unicode.get(encoding.get(code)),
+                 bundled_tt_glyph(data/outlines,ord(sample_unicode[encoding[code]]))
+                 if outlines and encoding.get(code) in sample_unicode else 0)
+                for code in samples]
+        variants = [(base,base),(base+"-subset","ABCDEF+"+base)]
+        variants += [(base+"-alias-%d" % i,name) for i,name in enumerate(aliases.get(base,[]))]
+        for fixture,name in variants:
+            fixture = "standard14-"+fixture
+            names.append(fixture)
+            files = {".pdf":pdf(b"<< /Type /Font /Subtype /Type1 /BaseFont /"+name.replace(",","#2C").encode()+b" >>"),
+                     ".input":bytes(samples), ".out":expected(rows), ".base":base.encode()}
+            if fixture == "standard14-"+base:
+                files[".metrics"] = expected([(code,name,width) for code,name,width in glyphs])
+                fields = [*map(float,props["FontBBox"].split()), float(props["ItalicAngle"]),props["IsFixedPitch"]=="true"]
+                fields += [float(props[key]) if key in props else None for key in ("Ascender","Descender","CapHeight","XHeight","StdVW","StdHW")]
+                files[".descriptor"] = expected([fields])
+            yield Vector(fixture,files,("text-standard-fonts","text-provider"),"AFM-derived standard font widths, encoding, descriptors and substitute glyphs",{"driver":"bundled-standard"})
+    for fixture, encoding, code, glyph_name, unicode_value, width in [
+        ("standard14-pdf-widths",b"/WinAnsiEncoding",65,"A","A",731),
+        ("standard14-differences",b"<< /Differences [65 /fi] >>",65,"fi","ﬁ",None),
+    ]:
+        item = lock["standard_14"]["Helvetica"]
+        _, glyphs = bundled_afm(data/item["metrics"])
+        width = width if width is not None else next(w for _,n,w in glyphs if n == glyph_name)
+        extra = b" /FirstChar 65 /LastChar 65 /Widths [731]" if fixture.endswith("widths") else b""
+        names.append(fixture)
+        yield Vector(fixture,{".pdf":pdf(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding "+encoding+extra+b" >>"),
+                              ".input":bytes([code]),".out":expected([(code,width/1000,unicode_value,bundled_tt_glyph(data/item["outline"],ord(unicode_value)))]),".base":b"Helvetica"},
+                     ("text-standard-fonts","text-provider"),"PDF widths override AFM; Differences selects AFM widths by glyph name",{"driver":"bundled-standard"})
+    yield Vector("bundled-standard-inventory",{".out":expected([(name,) for name in names])},("text-standard-fonts",),"All standard-14 canonical names and supported alias families",{"driver":"inventory"})
+    inventory = {Path(file).name:data/file for file in lock["files"] if file.startswith("cmaps/") and Path(file).name not in ("cid2unicode.txt","LICENSE.md")}
+    cache = {}
+    cmaps = []
+    program = without_sfnt_tables(truetype(),{b"cmap"})
+    for name,path in sorted(inventory.items()):
+        mappings,mode,local,inherited = bundled_cmap(path,inventory,cache)
+        candidates = sorted(key for key in mappings if key[0] > 1)
+        assert candidates
+        keys = [candidates[0],candidates[-1]]
+        keys += [key for key in local[:4] if key in mappings]
+        keys += sorted(inherited)[:1]
+        keys = list(dict.fromkeys(keys))
+        rows = [(code,length,mappings[length,code]) for length,code in keys]
+        inp = b"".join(code.to_bytes(length,"big") for length,code in keys)
+        unicode = bundled_unicode(path.parent/"cid2unicode.txt")
+        collection = path.parent.name.split("-")[1]
+        cidmap = bytearray((max(row[2] for row in rows)+1)*2)
+        for _,_,cid in rows:
+            cidmap[cid*2:cid*2+2] = b"\0\1"
+        widths = b" ".join(b"%d [%d]" % (cid,400+cid%100) for _,_,cid in rows)
+        doc = embedded_document(program,subtype=b"Type0",encoding=b"/"+name.encode(),cid_map=bytes(cidmap),stream_extra=b"/Length1 %d" % len(program),descendant_extra=b"/W ["+widths+b"]")
+        full_rows = [(code,length,(400+cid%100)/1000,code==32 and length==1,unicode.get(cid),1,
+                      -1 if mode else None, (400+cid%100)/2000 if mode else None,.88 if mode else None)
+                     for code,length,cid in rows]
+        fixture = "predefined-"+name
+        cmaps.append(fixture)
+        yield Vector(fixture,{".cmap":name.encode(),".input":inp,".out":expected(rows),".pdf":doc,".glyphs":expected(full_rows),".mode":str(mode).encode(),".collection":collection.encode()},("text-predefined-cmaps","text-collection-unicode","text-provider"),"Data-derived multibyte codes, parent overlays, writing mode, CID and Unicode selection",{"driver":"bundled-cmap"})
+    # An embedded map may inherit a bundled map, and explicit ToUnicode
+    # still takes priority over the collection projection.
+    parent_name = "90ms-RKSJ-V"
+    path = inventory[parent_name]
+    mapping,mode,_,_ = bundled_cmap(path,inventory,cache)
+    length,code = min(key for key in mapping if key[0] > 1)
+    raw = code.to_bytes(length,"big")
+    cid = mapping[length,code]
+    for fixture, override, explicit in [("predefined-stream-parent",True,False),("predefined-tounicode",False,True)]:
+        selected = 2 if override else cid
+        cidmap = bytearray((selected+1)*2)
+        cidmap[selected*2:selected*2+2] = b"\0\1"
+        local = b"/90ms-RKSJ-V usecmap 1 begincidchar <"+raw.hex().encode()+b"> 2 endcidchar" if override else None
+        unicode_map = (b"1 begincodespacerange <"+raw.hex().encode()+b"> <"+raw.hex().encode()+b"> endcodespacerange 1 beginbfchar <"+raw.hex().encode()+b"> <D83DDE00> endbfchar") if explicit else None
+        doc = embedded_document(program,subtype=b"Type0",encoding=b"8 0 R" if override else b"/90ms-RKSJ-V",cmap=local,cmap_extra=b"/UseCMap /90ms-RKSJ-V",cid_map=bytes(cidmap),unicode_map=unicode_map,stream_extra=b"/Length1 %d" % len(program),descendant_extra=b"/DW 615")
+        cmaps.append(fixture)
+        yield Vector(fixture,{".cmap":parent_name.encode(),".input":raw,".out":expected([(code,length,cid)]),".pdf":doc,
+                              ".glyphs":expected([(code,length,.615,False,"😀" if explicit else bundled_unicode(path.parent/"cid2unicode.txt").get(selected),1,-1,.3075,.88)]),
+                              ".mode":b"1",".collection":b"Japan1"},("text-predefined-cmaps","text-collection-unicode","text-provider"),"Embedded UseCMap resolves through provider; explicit ToUnicode wins",{"driver":"bundled-cmap"})
+    yield Vector("bundled-cmap-inventory",{".out":expected([(name,) for name in cmaps])},("text-predefined-cmaps",),"All 59 bundled Table 116 names",{"driver":"inventory"})
+    for path in sorted((data/"cmaps").glob("*/cid2unicode.txt")):
+        collection = path.parent.name.split("-")[1]
+        values = bundled_unicode(path)
+        chosen = [min(values),max(values)]
+        # Include ambiguous and vertical-only aliases and non-BMP values.
+        for line in path.read_text().splitlines():
+            if not line or line.startswith(("#","CID")):
+                continue
+            cid,aliases = line.split("\t")
+            if "," in aliases or aliases.endswith("v") or ord(values[int(cid)])>65535:
+                chosen.append(int(cid))
+                if len(chosen)>=12:
+                    break
+        yield Vector("collection-"+collection,{".collection":collection.encode(),".out":expected([(cid,values[cid]) for cid in dict.fromkeys(chosen)])},("text-collection-unicode",),"Independent collection Unicode rows, ambiguity choices and vertical aliases",{"driver":"collection"})
+    yield from substitution_cases(data,lock)
+
+
+def substitution_cases(data, lock):
+    choices = []
+    for flags,weight,base in [(32,400,"Helvetica"),(32,700,"Helvetica-Bold"),(96,400,"Helvetica-Oblique"),(96,700,"Helvetica-BoldOblique"),
+                              (34,400,"Times-Roman"),(34,700,"Times-Bold"),(98,400,"Times-Italic"),(98,700,"Times-BoldItalic"),
+                              (33,400,"Courier"),(33,700,"Courier-Bold"),(97,400,"Courier-Oblique"),(97,700,"Courier-BoldOblique")]:
+        item = lock["standard_14"][base]
+        glyph = bundled_tt_glyph(data/item["outline"],65)
+        for subtype in ("Type1","TrueType"):
+            fixture = "substitute-%s-%s" % (subtype,base)
+            choices.append(fixture)
+            font = b"<< /Type /Font /Subtype /"+subtype.encode()+b" /BaseFont /UnknownFont /Encoding /WinAnsiEncoding /FirstChar 65 /LastChar 65 /Widths [731] /FontDescriptor 5 0 R >>"
+            descriptor = b"<< /Flags %d /FontWeight %d >>" % (flags,weight)
+            yield Vector(fixture,{".pdf":pdf(font,[descriptor]),".input":b"A",".out":expected([(65,.731,"A",glyph)]),".base":base.encode()},("text-font-substitution","text-provider"),"Descriptor-based substitution preserves the PDF width",{"driver":"substitute"})
+    yield Vector("bundled-substitute-inventory",{".out":expected([(name,) for name in choices])},("text-font-substitution",),"All serif, fixed-pitch, weight and italic substitution routes",{"driver":"inventory"})
+    for name,base,flags in [("unsafe-symbolic","UnknownSymbol",4),("unsafe-symbolic-both","UnknownSymbol",36),("unsafe-symbolic-known-base","Arial",4)]:
+        font = b"<< /Type /Font /Subtype /TrueType /BaseFont /"+base.encode()+b" /FontDescriptor 5 0 R /Encoding /WinAnsiEncoding /FirstChar 65 /LastChar 65 /Widths [731] >>"
+        yield Vector("substitute-"+name,{".pdf":pdf(font,[b"<< /Flags %d >>" % flags]),".error":b"font.non-embedded\n"},("text-font-substitution",),"Unsafe symbolic substitution fails explicitly",{"driver":"provider-error"})

@@ -9,9 +9,9 @@
 //! need. Positioning glyphs on the page (text state, `Tm`, `TJ` adjustments)
 //! belongs to the content interpreter in `pagura-render`.
 //!
-//! Non-embedded programs and predefined CMaps beyond Identity-H/V are explicit
-//! unsupported capabilities (ADR 0009). Font-program parsing is delegated to
-//! `pagura-font`. TrueType selection uses the program's subtable availability
+//! [`PdfFont::load_with`] accepts a [`Provider`] for non-embedded programs and
+//! predefined CMaps; [`PdfFont::load`] retains explicit failures without one.
+//! Font-program parsing is delegated to `pagura-font`. TrueType selection uses the program's subtable availability
 //! and post names (9.6.5.4). Glyph-name Unicode fallback implements AGL name
 //! decomposition with Latin, Dingbats and common Symbol names; unbundled legacy
 //! names remain unknown. A `/ToUnicode` sequence always takes precedence.
@@ -32,6 +32,15 @@ mod font;
 mod metrics;
 mod objects;
 mod program;
+mod provider;
+mod substitute;
+
+/// Stable diagnostic tag for a host-provided outline substitution.
+pub use substitute::SUBSTITUTED;
+
+pub use provider::{
+    CidToUnicode, PredefinedCMap, Provider, StandardDescriptor, StandardFont, StandardMetrics,
+};
 mod selection;
 mod tables;
 
@@ -86,7 +95,7 @@ pub struct VerticalMetrics {
 /// How a glyph is drawn.
 #[derive(Debug, Clone)]
 pub enum GlyphShape {
-    /// An outline glyph of an embedded font program.
+    /// An outline glyph of an embedded or explicitly substituted font program.
     Outline {
         /// The program.
         program: Arc<FontProgram>,
@@ -138,6 +147,7 @@ pub struct PdfFont {
     metrics: metrics::Metrics,
     to_unicode: Option<cmap::CMap>,
     limits: Limits,
+    cid_unicode: Option<Arc<CidToUnicode>>,
 }
 
 impl PdfFont {
@@ -150,6 +160,26 @@ impl PdfFont {
     /// drawn yet, and errors from loading the font program.
     pub fn load(document: &Document, font: &Dictionary) -> Result<Self> {
         font::load(document, font)
+    }
+
+    /// Loads a font with host-supplied substitutes, metrics and predefined CMaps.
+    /// Embedded programs take precedence (9.6.2.2, 9.7.5.2; ADR 0009).
+    ///
+    /// # Errors
+    /// As [`Self::load`], plus errors from the provider. Unavailable or unsafe
+    /// substitutions remain explicit unsupported capabilities.
+    pub fn load_with(
+        document: &Document,
+        font: &Dictionary,
+        provider: &dyn Provider,
+    ) -> Result<Self> {
+        font::load_with(document, font, Some(provider))
+    }
+
+    /// Horizontal width in text space, by simple character code or CID.
+    /// Available even when a provider supplies metrics without outlines.
+    pub fn width(&self, code: u32) -> f64 {
+        self.metrics.width(code)
     }
 
     /// The font's subtype.
@@ -166,7 +196,7 @@ impl PdfFont {
     pub fn type3_resources(&self) -> Option<&Dictionary> {
         match &self.source {
             font::Source::Type3 { resources, .. } => resources.as_ref(),
-            font::Source::Program { .. } => None,
+            font::Source::Program { .. } | font::Source::MetricsOnly => None,
         }
     }
 
@@ -182,6 +212,12 @@ impl PdfFont {
     }
 
     fn decode_inner(&self, string: &[u8]) -> Result<Vec<Glyph>> {
+        if !string.is_empty() && matches!(self.source, font::Source::MetricsOnly) {
+            return Err(Error::unsupported(
+                features::NON_EMBEDDED,
+                "font metrics have no available outline program",
+            ));
+        }
         if string.len() > self.limits.string_bytes {
             return Err(Error::limit("text string byte budget exceeded"));
         }
@@ -234,13 +270,14 @@ impl PdfFont {
                 } else {
                     None
                 };
+                let unicode = cid.and_then(|cid| self.cid_unicode.as_ref()?.get(cid));
                 if cid.is_some_and(|cid| self.lacks_gid_entry(cid)) {
                     cid = Some(0);
                 } else if cid.is_none_or(|cid| !self.has_cid(cid)) {
                     cid = Some(map.notdef(code, work, self.limits)?);
                 }
                 let cid = cid.filter(|cid| self.has_cid(*cid)).unwrap_or(0);
-                (code, cid, None, None)
+                (code, cid, None, unicode)
             }
         };
         let unicode = self

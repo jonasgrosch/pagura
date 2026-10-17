@@ -1,0 +1,26 @@
+[package]
+name = "pagura-data"
+description = "Optional bundled standard-font metrics, substitute outlines and predefined CMaps"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["standard-fonts", "cmaps"]
+standard-fonts = []
+cmaps = []
+
+[dependencies]
+pagura-core.workspace = true
+pagura-font.workspace = true
+pagura-text.workspace = true
+
+[dev-dependencies]
+pagura-document.workspace = true
+pagura-testkit.workspace = true

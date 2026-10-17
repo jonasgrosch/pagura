@@ -15,6 +15,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Debug)]
 pub(crate) enum Source {
+    MetricsOnly,
     Type3 {
         procedures: BTreeMap<Name, ObjectId>,
         resources: Option<Dictionary>,
@@ -23,6 +24,7 @@ pub(crate) enum Source {
     Program {
         program: Arc<FontProgram>,
         truetype_raw: bool,
+        substituted: bool,
         cid_map: Option<Vec<u8>>,
     },
 }
@@ -30,10 +32,18 @@ pub(crate) enum Source {
 #[derive(Debug)]
 pub(crate) enum Mapping {
     Simple(Box<SimpleMapping>),
-    Composite(CMap),
+    Composite(Arc<CMap>),
 }
 
 pub(crate) fn load(document: &Document, font: &Dictionary) -> Result<PdfFont> {
+    load_with(document, font, None)
+}
+
+pub(crate) fn load_with(
+    document: &Document,
+    font: &Dictionary,
+    provider: Option<&dyn crate::Provider>,
+) -> Result<PdfFont> {
     let kind = match required(document, font, b"Subtype")?
         .as_name()
         .map(Name::as_bytes)
@@ -61,11 +71,12 @@ pub(crate) fn load(document: &Document, font: &Dictionary) -> Result<PdfFont> {
         }
         (
             descendant,
-            Some(Mapping::Composite(cmap::load(
+            Some(Mapping::Composite(cmap::load_with(
                 document,
                 font.get(b"Encoding")
                     .ok_or_else(|| Error::syntax("Type0 missing Encoding"))?,
                 false,
+                provider,
             )?)),
         )
     } else {
@@ -74,18 +85,18 @@ pub(crate) fn load(document: &Document, font: &Dictionary) -> Result<PdfFont> {
     let descriptor = optional(document, metrics_font, b"FontDescriptor")?
         .map(|v| document.resolve_dictionary(v))
         .transpose()?;
+    let embedded = descriptor.is_some_and(|dict| {
+        [b"FontFile".as_slice(), b"FontFile2", b"FontFile3"]
+            .iter()
+            .any(|key| dict.contains_key(key))
+    });
+    if !embedded && let Some(provider) = provider {
+        return crate::substitute::load(document, font, descriptor, kind, provider);
+    }
     let descriptor = descriptor.ok_or_else(|| {
         Error::unsupported(features::NON_EMBEDDED, "font program is not embedded")
     })?;
-    let flags = optional(document, descriptor, b"Flags")?
-        .and_then(Value::as_integer)
-        .ok_or_else(|| Error::syntax("invalid font descriptor Flags"))?;
-    let symbolic = flags & 4 != 0;
-    if symbolic == (flags & 32 != 0) {
-        return Err(Error::syntax(
-            "font must set exactly one of Symbolic and Nonsymbolic",
-        ));
-    }
+    let symbolic = symbolic(document, descriptor)?;
     let program = Arc::new(crate::program::load(
         document,
         descriptor,
@@ -114,19 +125,35 @@ pub(crate) fn load(document: &Document, font: &Dictionary) -> Result<PdfFont> {
         Mapping::Simple(_) => WritingMode::Horizontal,
     };
     let to_unicode = to_unicode(document, font, &mapping)?;
+    let cid_unicode = collection_unicode(document, metrics_font, &mapping, provider)?;
     Ok(PdfFont {
         kind,
         writing_mode: mode,
         source: Source::Program {
             program,
             truetype_raw: symbolic || optional(document, font, b"Encoding")?.is_none(),
+            substituted: false,
             cid_map,
         },
         mapping,
         metrics,
         to_unicode,
         limits: document.limits(),
+        cid_unicode,
     })
+}
+
+fn symbolic(document: &Document, descriptor: &Dictionary) -> Result<bool> {
+    let flags = optional(document, descriptor, b"Flags")?
+        .and_then(Value::as_integer)
+        .ok_or_else(|| Error::syntax("invalid font descriptor Flags"))?;
+    let symbolic = flags & 4 != 0;
+    if symbolic == (flags & 32 != 0) {
+        return Err(Error::syntax(
+            "font must set exactly one of Symbolic and Nonsymbolic",
+        ));
+    }
+    Ok(symbolic)
 }
 
 fn simple_mapping(
@@ -222,10 +249,15 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
         mapping,
         to_unicode,
         limits: document.limits(),
+        cid_unicode: None,
     })
 }
 
-fn to_unicode(document: &Document, font: &Dictionary, mapping: &Mapping) -> Result<Option<CMap>> {
+pub(crate) fn to_unicode(
+    document: &Document,
+    font: &Dictionary,
+    mapping: &Mapping,
+) -> Result<Option<CMap>> {
     let Some(value) = font.get(b"ToUnicode") else {
         return Ok(None);
     };
@@ -242,6 +274,31 @@ fn to_unicode(document: &Document, font: &Dictionary, mapping: &Mapping) -> Resu
     };
     result.map_err(|e| e.in_object(id))?;
     Ok(Some(map))
+}
+
+fn collection_unicode(
+    document: &Document,
+    font: &Dictionary,
+    mapping: &Mapping,
+    provider: Option<&dyn crate::Provider>,
+) -> Result<Option<Arc<crate::CidToUnicode>>> {
+    let (Mapping::Composite(map), Some(provider)) = (mapping, provider) else {
+        return Ok(None);
+    };
+    if let (Some(registry), Some(ordering)) = (&map.registry, &map.ordering) {
+        return provider.cid_to_unicode(registry.as_bytes(), ordering.as_bytes());
+    }
+    let Some(info) = optional(document, font, b"CIDSystemInfo")? else {
+        return Ok(None);
+    };
+    let info = document.resolve_dictionary(info)?;
+    let registry = required(document, info, b"Registry")?
+        .as_string()
+        .ok_or_else(|| Error::syntax("invalid CID registry"))?;
+    let ordering = required(document, info, b"Ordering")?
+        .as_string()
+        .ok_or_else(|| Error::syntax("invalid CID ordering"))?;
+    provider.cid_to_unicode(registry, ordering)
 }
 
 fn stream(document: &Document, value: &Value) -> Result<Vec<u8>> {
@@ -263,6 +320,7 @@ impl PdfFont {
         unicode: Option<&str>,
     ) -> GlyphShape {
         match &self.source {
+            Source::MetricsOnly => GlyphShape::Blank,
             Source::Type3 {
                 procedures, matrix, ..
             } => name
@@ -274,11 +332,12 @@ impl PdfFont {
             Source::Program {
                 program,
                 truetype_raw,
+                substituted,
                 cid_map,
             } => {
                 let glyph = if self.kind == FontKind::Type0 {
                     cid_glyph(program, cid_map.as_deref(), selector)
-                } else if self.kind == FontKind::TrueType {
+                } else if self.kind == FontKind::TrueType || *substituted {
                     crate::selection::truetype(program, code.value, name, unicode, *truetype_raw)
                 } else {
                     name.and_then(|name| program.glyph_for_name(name.as_bytes()))
@@ -311,7 +370,7 @@ impl PdfFont {
             Source::Program {
                 program, cid_map, ..
             } => cid_glyph(program, cid_map.as_deref(), cid).is_some(),
-            Source::Type3 { .. } => false,
+            Source::Type3 { .. } | Source::MetricsOnly => false,
         }
     }
 }

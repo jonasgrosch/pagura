@@ -409,6 +409,9 @@ fn check_program_vector(name: &str) -> Result<()> {
 #[test]
 fn embedded_program_vectors() -> Result<()> {
     for name in [
+        "tt-full-unicode-mac",
+        "tt-platform-zero-mac",
+        "tt-bmp-before-full",
         "tt-unicode-priority",
         "tt-unicode-missing-post",
         "tt-macroman-fallback",

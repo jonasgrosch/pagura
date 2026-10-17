@@ -7,6 +7,7 @@ members = [
     "crates/pagura-raster",
     "crates/pagura-font",
     "crates/pagura-text",
+    "crates/pagura-data",
     "crates/pagura-image",
     "crates/pagura-render",
     "crates/pagura-write",

@@ -79,7 +79,9 @@ pub(crate) struct CMap {
     pub(crate) use_name: Option<Name>,
     mode_explicit: bool,
     unicode_bytes: usize,
-    parse_work: usize,
+    pub(crate) parse_work: usize,
+    pub(crate) registry: Option<Name>,
+    pub(crate) ordering: Option<Name>,
 }
 
 impl CMap {
@@ -364,7 +366,27 @@ impl CMap {
         Ok(())
     }
 
-    fn inherit(&mut self, mut parent: Self, limits: Limits, work: &mut usize) -> Result<()> {
+    // TN5014 5.4: using resources cannot redefine their inherited codespace.
+    pub(crate) fn inherit_resource(
+        &mut self,
+        parent: Self,
+        limits: Limits,
+        work: &mut usize,
+    ) -> Result<()> {
+        if !self.spaces.is_empty() {
+            return Err(Error::syntax(
+                "predefined resource redefines inherited codespace",
+            ));
+        }
+        self.inherit(parent, limits, work)
+    }
+
+    pub(crate) fn inherit(
+        &mut self,
+        mut parent: Self,
+        limits: Limits,
+        work: &mut usize,
+    ) -> Result<()> {
         if self
             .mappings
             .len()
@@ -377,6 +399,12 @@ impl CMap {
         }
         if self.spaces.is_empty() {
             self.spaces = parent.spaces;
+        }
+        if self.registry.is_none() {
+            self.registry = parent.registry.take();
+        }
+        if self.ordering.is_none() {
+            self.ordering = parent.ordering.take();
         }
         if !self.mode_explicit {
             self.mode = parent.mode;
@@ -504,6 +532,13 @@ pub(crate) fn charge(work: &mut usize, amount: usize, limit: usize) -> Result<()
 }
 
 fn self_definition(map: &mut CMap, operands: &[Value]) -> Result<()> {
+    if let [.., Value::Name(key), Value::String(value)] = operands {
+        match key.as_bytes() {
+            b"Registry" => map.registry = Some(Name::new(value)),
+            b"Ordering" => map.ordering = Some(Name::new(value)),
+            _ => {}
+        }
+    }
     if operands.len() >= 2
         && operands[operands.len() - 2]
             .as_name()
@@ -543,9 +578,35 @@ pub(crate) fn load(document: &Document, value: &Value, unicode: bool) -> Result<
         document,
         value,
         unicode,
+        None,
         &mut Vec::new(),
         &mut LoadBudget::default(),
     )
+}
+
+pub(crate) fn load_with(
+    document: &Document,
+    value: &Value,
+    unicode: bool,
+    provider: Option<&dyn crate::Provider>,
+) -> Result<std::sync::Arc<CMap>> {
+    if !unicode
+        && let Some(name) = document.resolve(value)?.as_name()
+        && !matches!(name.as_bytes(), b"Identity-H" | b"Identity-V")
+        && let Some(provider) = provider
+        && let Some(map) = provider.predefined_cmap(name.as_bytes())?
+    {
+        return Ok(std::sync::Arc::clone(&map.0));
+    }
+    load_inner(
+        document,
+        value,
+        unicode,
+        provider,
+        &mut Vec::new(),
+        &mut LoadBudget::default(),
+    )
+    .map(std::sync::Arc::new)
 }
 
 #[derive(Default)]
@@ -560,6 +621,7 @@ fn load_inner(
     document: &Document,
     value: &Value,
     unicode: bool,
+    provider: Option<&dyn crate::Provider>,
     path: &mut Vec<ObjectId>,
     budget: &mut LoadBudget,
 ) -> Result<CMap> {
@@ -569,6 +631,14 @@ fn load_inner(
                 features::PREDEFINED_CMAP,
                 "predefined ToUnicode CMap data is not bundled",
             ));
+        }
+        if matches!(name.as_bytes(), b"Identity-H" | b"Identity-V") {
+            return CMap::identity(name.as_bytes());
+        }
+        if let Some(provider) = provider
+            && let Some(map) = provider.predefined_cmap(name.as_bytes())?
+        {
+            return Ok(map.0.as_ref().clone());
         }
         return CMap::identity(name.as_bytes());
     }
@@ -629,7 +699,7 @@ fn load_inner(
                 return Err(Error::syntax("usecmap disagrees with UseCMap").in_object(id));
             }
         }
-        let parent = load_inner(document, parent, unicode, path, budget)?;
+        let parent = load_inner(document, parent, unicode, provider, path, budget)?;
         map.inherit(parent, limits, &mut budget.work)?;
     } else if map.use_name.is_some() {
         return Err(Error::syntax("usecmap missing UseCMap dictionary entry").in_object(id));
