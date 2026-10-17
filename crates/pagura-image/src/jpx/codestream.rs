@@ -866,10 +866,16 @@ fn tile_part_end(
     position: usize,
 ) -> Result<usize> {
     if length == 0 {
+        // A final tile-part (Psot 0) runs to the EOC marker, which must come
+        // after its own SOT segment (T.800 A.4.2).
         if data.get(data.len().saturating_sub(2)..) != Some(&[255, 217]) {
             return Err(syntax("unterminated JPEG 2000 final tile-part", start));
         }
-        Ok(base + data.len() - 2)
+        let end = base + data.len() - 2;
+        if end < position {
+            return Err(syntax("JPEG 2000 final tile-part overlaps EOC", start));
+        }
+        Ok(end)
     } else {
         start
             .checked_add(length)
