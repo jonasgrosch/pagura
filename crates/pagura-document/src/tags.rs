@@ -53,3 +53,12 @@ pub const STREAM_EOL: Repair = Repair::new("stream.eol");
 /// Xref reconstruction resynchronized an indirectly sized or damaged stream at
 /// a validated terminator/object boundary without a preceding EOL (7.3.8).
 pub const STREAM_BOUNDARY: Repair = Repair::new("xref.stream-boundary");
+
+/// A complete indirect value followed by the next object or xref, without endobj
+/// (7.3.10). EOF alone never establishes a recoverable object boundary.
+pub const OBJECT_END: Repair = Repair::new("object.end-missing");
+/// An unknown catalog Type inferred from its Pages reference (7.7.2).
+/// Known conflicting structural types are never replaced.
+pub const CATALOG_TYPE_INVALID: Repair = Repair::new("catalog.type-invalid");
+/// A missing page-tree Type inferred from Kids or leaf attributes (7.7.3).
+pub const PAGE_TYPE: Repair = Repair::new("pages.type-missing");

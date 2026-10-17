@@ -4,6 +4,7 @@
 //! Heuristics follow the ADR 0003 repair catalogue and the damage classes seen
 //! in the real-world corpus.
 
+use crate::object::header;
 use crate::tags;
 use crate::xref::{Location, XrefEntry, XrefTable};
 use pagura_core::syntax::{Origin, Parser};
@@ -120,13 +121,7 @@ fn object(
             }
         }
     }
-    if !parser.keyword(b"endobj") {
-        return Err(
-            Error::syntax("incomplete indirect object during reconstruction")
-                .at(parser.position())
-                .in_object(id),
-        );
-    }
+    crate::object::end(parser, limits, id, diagnostics)?;
     if value
         .as_dictionary()
         .is_some_and(|dictionary| dictionary.is_name(b"Type", b"ObjStm"))
@@ -141,16 +136,6 @@ fn object(
         },
     );
     Ok(())
-}
-
-fn header(bytes: &[u8], offset: usize, limits: Limits) -> Option<ObjectId> {
-    if !bytes.get(offset).is_some_and(u8::is_ascii_digit) {
-        return None;
-    }
-    let mut parser = Parser::at(bytes, offset, Origin::File, limits).ok()?;
-    let number = u32::try_from(parser.unsigned().ok()?).ok()?;
-    let generation = u16::try_from(parser.unsigned().ok()?).ok()?;
-    (number != 0 && parser.keyword(b"obj")).then_some(ObjectId::new(number, generation))
 }
 
 /// Locate a payload's end without tokenizing binary data as PDF syntax.

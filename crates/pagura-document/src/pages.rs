@@ -9,6 +9,24 @@ use std::collections::BTreeSet;
 /// Page attributes a page inherits from its ancestors (Table 31).
 const INHERITABLE: [&[u8]; 4] = [b"Resources", b"MediaBox", b"CropBox", b"Rotate"];
 
+/// A branch missing its required Type is identifiable by reference-only Kids
+/// (7.7.3.2). The traversal reports the inference before following any children.
+pub(crate) fn branch(document: &Document, dictionary: &Dictionary) -> Result<bool> {
+    if dictionary.is_name(b"Type", b"Pages") {
+        return Ok(true);
+    }
+    if dictionary.contains_key(b"Type") {
+        return Ok(false);
+    }
+    let Some(kids) = dictionary.get(b"Kids") else {
+        return Ok(false);
+    };
+    Ok(document
+        .resolve(kids)?
+        .as_array()
+        .is_some_and(|kids| kids.iter().all(|kid| matches!(kid, Value::Reference(_)))))
+}
+
 /// Clockwise page rotation for display (`/Rotate`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Rotation {
@@ -142,12 +160,37 @@ impl Walk<'_> {
             .dictionary()
             .ok_or_else(|| Error::syntax("page tree node must be a dictionary").in_object(id))?
             .clone();
+        // Leaf evidence comes from the node itself: an inherited MediaBox
+        // would make every untyped, childless node look like a page.
+        let leaf = !dictionary.contains_key(b"Kids")
+            && (dictionary.contains_key(b"Contents") || dictionary.contains_key(b"MediaBox"));
         for key in INHERITABLE {
             if !dictionary.contains_key(key)
                 && let Some(value) = inherited.get(key)
             {
                 dictionary.insert(Name::new(key), value.clone());
             }
+        }
+        if !dictionary.contains_key(b"Type") {
+            let inferred = if branch(self.document, &dictionary)? {
+                b"Pages".as_slice()
+            } else if leaf {
+                b"Page"
+            } else {
+                return Err(Error::syntax("page tree node has no identifiable Type").in_object(id));
+            };
+            self.diagnostics.repair(
+                Diagnostic::new(
+                    tags::PAGE_TYPE,
+                    "missing page-tree Type inferred from Kids or leaf attributes",
+                )
+                .at(match self.document.object(id)?.source() {
+                    crate::ObjectSource::File(range) => pagura_core::Position::File(range.start),
+                    crate::ObjectSource::Compressed { .. } => pagura_core::Position::Unknown,
+                })
+                .in_object(id),
+            )?;
+            dictionary.insert(Name::new(b"Type"), Value::name(inferred));
         }
         if dictionary.is_name(b"Type", b"Pages") {
             self.intermediate(id, &dictionary, depth)

@@ -1269,6 +1269,333 @@
       "pages": null,
       "strict_valid": false,
       "repairs": []
+    },
+    {
+      "id": "document/header-nul",
+      "kind": "pdf",
+      "description": "Extra bytes after a complete version are reported without changing physical offsets",
+      "expected": "render",
+      "requirements": [
+        "document-repairs",
+        "document-header-recovery"
+      ],
+      "path": "corpus/generated/document/header-nul.pdf",
+      "sha256": "e15aceb8d650b74af39755a9bf08e02bfa059084cd1505a749427c5ada4db0f1",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.header-format"
+      ],
+      "oracle": "corpus/generated/document/header-nul.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/header-extra-digit",
+      "kind": "pdf",
+      "description": "Extra bytes after a complete version are reported without changing physical offsets",
+      "expected": "render",
+      "requirements": [
+        "document-repairs",
+        "document-header-recovery"
+      ],
+      "path": "corpus/generated/document/header-extra-digit.pdf",
+      "sha256": "1683af2fd10c814ce91f4eb69a165c0d361b3cbe1ad7946d345b66d5f51614c7",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.header-format"
+      ],
+      "oracle": "corpus/generated/document/header-extra-digit.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/header-attached-text",
+      "kind": "pdf",
+      "description": "Extra bytes after a complete version are reported without changing physical offsets",
+      "expected": "render",
+      "requirements": [
+        "document-repairs",
+        "document-header-recovery"
+      ],
+      "path": "corpus/generated/document/header-attached-text.pdf",
+      "sha256": "f5f76131b87bd42a471bca784bc952ecaf352a91abdbda3b1e88729600485a9f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "file.header-format"
+      ],
+      "oracle": "corpus/generated/document/header-attached-text.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/header-version-1-8",
+      "kind": "pdf",
+      "description": "Clause 7.5.2 permits a single minor-version digit after major version 1 or 2",
+      "expected": "render",
+      "requirements": [
+        "document-header-syntax"
+      ],
+      "path": "corpus/generated/document/header-version-1-8.pdf",
+      "sha256": "8209a060b1aa2bff9af6a0739154466d5b57c424b3172c67935547acb398fb7c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/header-version-1-8.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/header-version-1-9",
+      "kind": "pdf",
+      "description": "Clause 7.5.2 permits a single minor-version digit after major version 1 or 2",
+      "expected": "render",
+      "requirements": [
+        "document-header-syntax"
+      ],
+      "path": "corpus/generated/document/header-version-1-9.pdf",
+      "sha256": "a18109ba036bf4cd722884356ce413067058b53bbfd5c5a98f13d657610c8734",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/header-version-1-9.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/header-version-2-9",
+      "kind": "pdf",
+      "description": "Clause 7.5.2 permits a single minor-version digit after major version 1 or 2",
+      "expected": "render",
+      "requirements": [
+        "document-header-syntax"
+      ],
+      "path": "corpus/generated/document/header-version-2-9.pdf",
+      "sha256": "69ef2c78353ea9b892346b4712b161e165e51b1c165e207b0c293d8e381cffca",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/header-version-2-9.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/object-end-missing",
+      "kind": "pdf",
+      "description": "A complete object followed immediately by another object header has an unambiguous missing terminator",
+      "expected": "render",
+      "requirements": [
+        "object-boundary-recovery"
+      ],
+      "path": "corpus/generated/document/object-end-missing.pdf",
+      "sha256": "678a20e8f5a28e20a3091d29c4d9e22e709043512274a3ad2f6bf3f4a28ef897",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "object.end-missing"
+      ],
+      "oracle": "corpus/generated/document/object-end-missing.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/catalog-type-invalid",
+      "kind": "pdf",
+      "description": "An unknown Catalog Type can be inferred from its reference to a typed Pages root; known conflicting types remain errors",
+      "expected": "render",
+      "requirements": [
+        "catalog-type-recovery"
+      ],
+      "path": "corpus/generated/document/catalog-type-invalid.pdf",
+      "sha256": "d5c88d8c17fdd580681fdba8345131c2a45ee07b4867bf677920b7dafe25a225",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "catalog.type-invalid"
+      ],
+      "oracle": "corpus/generated/document/catalog-type-invalid.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/pages-type-missing",
+      "kind": "pdf",
+      "description": "Kids references distinguish a missing branch Type; leaves retain explicit MediaBox and content",
+      "expected": "render",
+      "requirements": [
+        "page-type-recovery",
+        "catalog-type-recovery"
+      ],
+      "path": "corpus/generated/document/pages-type-missing.pdf",
+      "sha256": "9ff21e587265850d6d45e8c088e7609fa631a46407d0ab0bc967157dd16ac737",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "catalog.type-missing",
+        "pages.type-missing",
+        "pages.type-missing"
+      ],
+      "oracle": "corpus/generated/document/pages-type-missing.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/pages-leaf-untyped",
+      "kind": "pdf",
+      "description": "An untyped node without Kids, Contents or its own MediaBox is not identifiable; inherited attributes are no evidence",
+      "expected": "invalid",
+      "requirements": [
+        "page-type-recovery"
+      ],
+      "path": "corpus/generated/document/pages-leaf-untyped.pdf",
+      "sha256": "7033cb8db579c3d027d1ca1f4c500ecb8f543528ec03771967589d8249ea534c",
+      "pages": null,
+      "strict_valid": false,
+      "repairs": []
+    },
+    {
+      "id": "document/stream-length-missing",
+      "kind": "pdf",
+      "description": "A unique line-delimited endstream/endobj within the physical object boundary recovers unusable Length",
+      "expected": "render",
+      "requirements": [
+        "stream-boundary-recovery"
+      ],
+      "path": "corpus/generated/document/stream-length-missing.pdf",
+      "sha256": "a8593274463b93bd5618b46b811fe5709dc7226fb99be0b53a64d27bbe73c203",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/document/stream-length-missing.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/stream-length-negative",
+      "kind": "pdf",
+      "description": "A unique line-delimited endstream/endobj within the physical object boundary recovers unusable Length",
+      "expected": "render",
+      "requirements": [
+        "stream-boundary-recovery"
+      ],
+      "path": "corpus/generated/document/stream-length-negative.pdf",
+      "sha256": "3b87d57f2ea8a288726d2e9b64d69f41e9a94f37ce0c692e65732461ae206621",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/document/stream-length-negative.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/stream-length-undefined",
+      "kind": "pdf",
+      "description": "A unique line-delimited endstream/endobj within the physical object boundary recovers unusable Length",
+      "expected": "render",
+      "requirements": [
+        "stream-boundary-recovery"
+      ],
+      "path": "corpus/generated/document/stream-length-undefined.pdf",
+      "sha256": "073aef2bafef583940a569e6b51092c0be43eece7d2b8813bc599704a6311c53",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/document/stream-length-undefined.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/stream-length-outside",
+      "kind": "pdf",
+      "description": "A unique line-delimited endstream/endobj within the physical object boundary recovers unusable Length",
+      "expected": "render",
+      "requirements": [
+        "stream-boundary-recovery"
+      ],
+      "path": "corpus/generated/document/stream-length-outside.pdf",
+      "sha256": "8b3da68a99f63844953cba5edb8f691047d1a5e31977681894a02c0388ef5db0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "stream.length-corrected"
+      ],
+      "oracle": "corpus/generated/document/stream-length-outside.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "document/security-indirect-cf",
+      "kind": "pdf",
+      "description": "Unencrypted crypt-filter dictionaries may be indirect (7.3.10, 7.6.2 and 7.6.6)",
+      "expected": "render",
+      "requirements": [
+        "security-indirect-filters"
+      ],
+      "path": "corpus/generated/document/security-indirect-cf.pdf",
+      "sha256": "f88fe3f9ffaf454915ca659be4fa20c4cd0adf1b4f82d97bee8e45bbd11df1c2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-indirect-cf.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner"
+    },
+    {
+      "id": "document/security-indirect-filter",
+      "kind": "pdf",
+      "description": "Unencrypted crypt-filter dictionaries may be indirect (7.3.10, 7.6.2 and 7.6.6)",
+      "expected": "render",
+      "requirements": [
+        "security-indirect-filters"
+      ],
+      "path": "corpus/generated/document/security-indirect-filter.pdf",
+      "sha256": "3711ded0d08fb993185e78a58a6487c99369e5ca08eb9d5542b3aeb0ab16a4b4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/document/security-indirect-filter.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "owner_password": "owner"
     }
   ]
 }

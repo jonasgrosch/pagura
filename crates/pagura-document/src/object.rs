@@ -108,11 +108,7 @@ pub(crate) fn parse_at(
     } else {
         None
     };
-    if !parser.keyword(b"endobj") {
-        return Err(Error::syntax("missing endobj")
-            .at(parser.position())
-            .in_object(id));
-    }
+    end(&mut parser, document.limits(), id, &mut repairs)?;
     let source = ObjectSource::File(offset..parser.offset());
     repairs.extend(
         parser
@@ -127,6 +123,50 @@ pub(crate) fn parse_at(
     ))
 }
 
+/// A complete value can end before a following object/xref token (7.3.10).
+/// Do not infer closure from EOF or skip arbitrary intervening tokens.
+pub(crate) fn end(
+    parser: &mut pagura_core::syntax::Parser<'_>,
+    limits: pagura_core::Limits,
+    id: ObjectId,
+    diagnostics: &mut pagura_core::Diagnostics,
+) -> Result<()> {
+    if parser.keyword(b"endobj") {
+        return Ok(());
+    }
+    let mut probe = pagura_core::syntax::Parser::at(
+        parser.data(),
+        parser.offset(),
+        pagura_core::syntax::Origin::File,
+        limits,
+    )?;
+    if header(parser.data(), parser.offset(), limits).is_some()
+        || probe.keyword(b"xref")
+        || probe.keyword(b"trailer")
+    {
+        return diagnostics.repair(
+            Diagnostic::new(crate::tags::OBJECT_END, "complete indirect value has no endobj before the next object or cross-reference section")
+                .at(parser.position()).in_object(id),
+        );
+    }
+    Err(Error::syntax("missing endobj")
+        .at(parser.position())
+        .in_object(id))
+}
+
+/// Recognize a positive indirect-object identity at a token boundary (7.3.10).
+pub(crate) fn header(bytes: &[u8], offset: usize, limits: pagura_core::Limits) -> Option<ObjectId> {
+    if !bytes.get(offset).is_some_and(u8::is_ascii_digit) {
+        return None;
+    }
+    let mut parser =
+        pagura_core::syntax::Parser::at(bytes, offset, pagura_core::syntax::Origin::File, limits)
+            .ok()?;
+    let number = u32::try_from(parser.unsigned().ok()?).ok()?;
+    let generation = u16::try_from(parser.unsigned().ok()?).ok()?;
+    (number != 0 && parser.keyword(b"obj")).then_some(ObjectId::new(number, generation))
+}
+
 /// Locates stream data after the `stream` keyword (clause 7.3.8.1).
 fn stream_extent(
     document: &Document,
@@ -139,61 +179,61 @@ fn stream_extent(
     let dictionary = value
         .as_dictionary()
         .ok_or_else(|| Error::syntax("stream value must be a dictionary").in_object(id))?;
-    let length = match dictionary.get(b"Length") {
-        Some(Value::Integer(length)) => *length,
-        Some(Value::Reference(length_id)) => {
-            if dictionary.is_name(b"Type", b"ObjStm")
-                && document
+    // ObjStm Length is explicitly excluded from compressed objects (7.5.7).
+    // It must never become a recoverable scalar-resolution failure.
+    if dictionary.is_name(b"Type", b"ObjStm")
+        && dictionary
+            .get(b"Length")
+            .and_then(Value::as_reference)
+            .is_some_and(|length_id| {
+                document
                     .slots
-                    .get(length_id)
+                    .get(&length_id)
                     .is_some_and(|slot| matches!(slot.location, crate::Location::Compressed { .. }))
-            {
-                return Err(
-                    Error::syntax("object stream Length cannot be compressed").in_object(id)
-                );
-            }
-            document
-                .object_inner(*length_id, path)?
-                .value()
-                .as_integer()
-                .ok_or_else(|| {
-                    Error::syntax("indirect stream Length must be an integer").in_object(id)
-                })?
-        }
-        _ => return Err(Error::syntax("stream Length must be an integer").in_object(id)),
-    };
-    let length = usize::try_from(length)
-        .map_err(|_| Error::syntax("stream Length is negative").in_object(id))?;
-    if length > document.limits().stream_bytes {
-        return Err(Error::limit("stream size budget exceeded").in_object(id));
-    }
-    let bytes = parser.data();
-    let start = crate::stream::start(parser, repairs, Some(id))?;
-    let end = start
-        .checked_add(length)
-        .filter(|&end| end <= bytes.len())
-        .ok_or_else(|| Error::syntax("stream extends beyond the file").in_object(id))?;
-    parser.seek(end).map_err(|error| error.in_object(id))?;
-    if parser.keyword(b"endstream") {
-        return Ok(start..end);
-    }
-    // Reject lengths spanning an object boundary: recovery must not consume
-    // the next object's bytes, even when a later terminator looks plausible.
-    if bytes
-        .get(start..end)
-        .is_some_and(|data| data.windows(6).any(|part| part == b"endobj"))
+            })
     {
-        return Err(Error::syntax("stream Length crosses an object boundary")
-            .at(parser.position())
-            .in_object(id));
+        return Err(Error::syntax("object stream Length cannot be compressed").in_object(id));
+    }
+    let start = crate::stream::start(parser, repairs, Some(id))?;
+    let declared = stream_length(document, id, dictionary, path);
+    let length = match declared {
+        Ok(length) => Some(length),
+        // A strict-mode repair needed by the Length object itself keeps its tag.
+        Err(error)
+            if error.repair.is_none()
+                && matches!(
+                    error.kind,
+                    pagura_core::ErrorKind::Syntax | pagura_core::ErrorKind::MissingObject
+                ) =>
+        {
+            None
+        }
+        Err(error) => return Err(error),
+    };
+    let bytes = parser.data();
+    let end = length.and_then(|length| start.checked_add(length).filter(|&end| end <= bytes.len()));
+    if let Some(end) = end {
+        parser.seek(end).map_err(|error| error.in_object(id))?;
+        if parser.keyword(b"endstream") {
+            return Ok(start..end);
+        }
+        // A wrong length cannot swallow another complete physical object.
+        if bytes
+            .get(start..end)
+            .is_some_and(|data| data.windows(6).any(|part| part == b"endobj"))
+        {
+            return Err(Error::syntax("stream Length crosses an object boundary")
+                .at(parser.position())
+                .in_object(id));
+        }
     }
     let (marker, actual) = terminator(document, id, start)?;
     repairs.repair(
         Diagnostic::new(
             crate::tags::LENGTH_CORRECTED,
-            "stream Length corrected to the unambiguous endstream terminator",
+            "unusable stream Length corrected to the unambiguous endstream terminator",
         )
-        .at(pagura_core::Position::File(end))
+        .at(pagura_core::Position::File(end.unwrap_or(start)))
         .in_object(id),
     )?;
     parser.seek(marker)?;
@@ -201,6 +241,31 @@ fn stream_extent(
         return Err(Error::syntax("missing endstream").in_object(id));
     }
     Ok(start..actual)
+}
+
+fn stream_length(
+    document: &Document,
+    id: ObjectId,
+    dictionary: &Dictionary,
+    path: &mut Vec<ObjectId>,
+) -> Result<usize> {
+    let length = match dictionary.get(b"Length") {
+        Some(Value::Integer(length)) => *length,
+        Some(Value::Reference(length_id)) => document
+            .object_inner(*length_id, path)?
+            .value()
+            .as_integer()
+            .ok_or_else(|| {
+                Error::syntax("indirect stream Length must be an integer").in_object(id)
+            })?,
+        _ => return Err(Error::syntax("stream Length must be an integer").in_object(id)),
+    };
+    let length = usize::try_from(length)
+        .map_err(|_| Error::syntax("stream Length is negative").in_object(id))?;
+    if length > document.limits().stream_bytes {
+        return Err(Error::limit("stream size budget exceeded").in_object(id));
+    }
+    Ok(length)
 }
 
 fn terminator(document: &Document, id: ObjectId, start: usize) -> Result<(usize, usize)> {
@@ -321,4 +386,122 @@ fn corrected_offset(
         .in_object(id),
     )?;
     Ok(corrected)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::end;
+    use crate::{Document, OpenOptions, tags};
+    use pagura_core::syntax::{Origin, Parser};
+    use pagura_core::{Diagnostics, ErrorKind, Limits, ObjectId, Recovery};
+    use pagura_testkit::fixture;
+
+    #[test]
+    fn missing_object_terminators_require_a_following_structural_token() {
+        let limits = Limits::default();
+        for next in [b"2 0 obj".as_slice(), b"xref", b"trailer << >>"] {
+            let bytes = [b"null\n".as_slice(), next].concat();
+            for recovery in [Recovery::Strict, Recovery::Repair] {
+                let mut parser = Parser::new(&bytes, Origin::File, limits);
+                parser.parse().unwrap();
+                let mut diagnostics = Diagnostics::new(recovery);
+                let result = end(&mut parser, limits, ObjectId::new(1, 0), &mut diagnostics);
+                if recovery == Recovery::Strict {
+                    let error = result.unwrap_err();
+                    assert_eq!(error.repair, Some(tags::OBJECT_END));
+                    assert_eq!(error.object, Some(ObjectId::new(1, 0)));
+                } else {
+                    result.unwrap();
+                    assert_eq!(&bytes[parser.offset()..], next);
+                    assert_eq!(diagnostics.as_slice()[0].repair, tags::OBJECT_END);
+                }
+            }
+        }
+        for bytes in [
+            b"null".as_slice(),
+            b"null\nunknown",
+            b"null\nendobject",
+            b"null\n0 0 obj",
+        ] {
+            let mut parser = Parser::new(bytes, Origin::File, limits);
+            parser.parse().unwrap();
+            let mut diagnostics = Diagnostics::new(Recovery::Repair);
+            assert_eq!(
+                end(&mut parser, limits, ObjectId::new(1, 0), &mut diagnostics)
+                    .unwrap_err()
+                    .kind,
+                ErrorKind::Syntax
+            );
+            assert!(diagnostics.is_empty());
+        }
+    }
+
+    #[test]
+    fn ambiguous_stream_boundaries_are_not_repaired() {
+        let mut bytes = fixture("document", "stream-length-missing.pdf");
+        let start = bytes
+            .windows(8)
+            .position(|part| part == b"\nstream\n")
+            .unwrap()
+            + 8;
+        bytes.splice(start..start, b"\nendstream\nendobj\n".iter().copied());
+        let document = Document::open(bytes, &OpenOptions::default()).unwrap();
+        let error = document.object(ObjectId::new(4, 0)).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        assert_eq!(error.message, "ambiguous stream terminators");
+    }
+
+    #[test]
+    fn unusable_lengths_are_repaired_lazily_and_keep_exact_bytes() {
+        for name in [
+            "stream-length-missing",
+            "stream-length-negative",
+            "stream-length-undefined",
+            "stream-length-outside",
+        ] {
+            let bytes = fixture("document", &format!("{name}.pdf"));
+            let strict = Document::open(
+                bytes.clone(),
+                &OpenOptions {
+                    recovery: Recovery::Strict,
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap();
+            let error = strict.object(ObjectId::new(4, 0)).unwrap_err();
+            assert_eq!(error.repair, Some(tags::LENGTH_CORRECTED), "{name}");
+            let document = Document::open(bytes.clone(), &OpenOptions::default()).unwrap();
+            let object = document.object(ObjectId::new(4, 0)).unwrap();
+            assert_eq!(
+                document.stream_data(object).unwrap().as_ref(),
+                b"1 0 0 rg 8 8 48 32 re f\n",
+                "{name}"
+            );
+            assert_eq!(document.original_bytes(), bytes);
+            assert_eq!(
+                document
+                    .diagnostics()
+                    .iter()
+                    .filter(|item| item.repair == tags::LENGTH_CORRECTED)
+                    .count(),
+                1
+            );
+        }
+        let bytes = fixture("document", "stream-length-outside.pdf");
+        let document = Document::open(
+            bytes,
+            &OpenOptions {
+                limits: Limits {
+                    stream_bytes: 32,
+                    ..Limits::default()
+                },
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            document.object(ObjectId::new(4, 0)).unwrap_err().kind,
+            ErrorKind::Limit
+        );
+    }
 }

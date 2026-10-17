@@ -1,11 +1,11 @@
 {
   "schema": 2,
   "area": "document",
-  "scope": "Clause locators refer to Adobe PDF32000_2008 (ISO 32000-1) until ISO 32000-2 full text is acquired and reviewed.",
+  "scope": "Normative clause locators refer to ISO 32000-2:2020, verified against the locally supplied text; recovery choices follow ADR 0003.",
   "requirements": [
     {
       "id": "page-tree",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.7.3"
       ],
@@ -17,7 +17,7 @@
     },
     {
       "id": "undefined-reference-null",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.3.10"
       ],
@@ -40,7 +40,7 @@
     },
     {
       "id": "xref-streams",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.5.8"
       ],
@@ -49,11 +49,11 @@
         "pagura-document unit tests",
         "corpus/manifests/document.json"
       ],
-      "gaps": "W1 filtered variants require integration; broad corpus validation"
+      "gaps": "broad corpus validation"
     },
     {
       "id": "object-streams",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.5.7"
       ],
@@ -66,7 +66,7 @@
     },
     {
       "id": "document-revisions",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.5.6",
         "7.5.8.4"
@@ -80,7 +80,7 @@
     },
     {
       "id": "document-repairs",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.5"
       ],
@@ -93,7 +93,7 @@
     },
     {
       "id": "document-security",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.6"
       ],
@@ -102,11 +102,11 @@
         "pagura-document unit tests",
         "corpus/manifests/document.json"
       ],
-      "gaps": "end-to-end password authentication and decryption require W3 integration"
+      "gaps": "non-ASCII R6 password preparation and public-key security handlers remain unsupported"
     },
     {
       "id": "document-header-recovery",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.5.2"
       ],
@@ -114,13 +114,16 @@
       "tests": [
         "document/header-text",
         "document/header-space",
-        "document/header-tab"
+        "document/header-tab",
+        "document/header-nul",
+        "document/header-extra-digit",
+        "document/header-attached-text"
       ],
-      "gaps": "bounded to supported versions and an EOL within 1024 bytes after the version"
+      "gaps": "requires a complete major/minor prefix and a line ending within 1024 bytes"
     },
     {
       "id": "security-field-recovery",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.3.4.2",
         "7.6"
@@ -135,7 +138,7 @@
     },
     {
       "id": "catalog-type-recovery",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.7.2",
         "7.7.3"
@@ -143,13 +146,14 @@
       "status": "implemented; bounded repairs",
       "tests": [
         "document/catalog-type-missing",
-        "document/catalog-type-missing-rebuilt"
+        "document/catalog-type-missing-rebuilt",
+        "document/catalog-type-invalid"
       ],
-      "gaps": "requires a direct Pages reference resolving to an explicitly typed Pages node"
+      "gaps": "known conflicting structural types and non-reference Kids remain errors"
     },
     {
       "id": "stream-boundary-recovery",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.3.8.1",
         "7.5"
@@ -157,9 +161,67 @@
       "status": "implemented; bounded repairs",
       "tests": [
         "document/stream-bare-cr",
-        "document/rebuild-indirect-stream-boundary"
+        "document/rebuild-indirect-stream-boundary",
+        "document/stream-length-missing",
+        "document/stream-length-negative",
+        "document/stream-length-undefined",
+        "document/stream-length-outside"
       ],
       "gaps": "ambiguous or absent stream boundaries remain errors; missing page definitions cannot be invented"
+    },
+    {
+      "id": "document-header-syntax",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.5.2"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/header-version-1-8",
+        "document/header-version-1-9",
+        "document/header-version-2-9"
+      ],
+      "gaps": "major versions other than 1 and 2 are not interpreted"
+    },
+    {
+      "id": "object-boundary-recovery",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.10"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/object-end-missing"
+      ],
+      "gaps": "requires a complete value and an immediately following object/xref/trailer boundary; EOF is insufficient"
+    },
+    {
+      "id": "page-type-recovery",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.7.3.2",
+        "7.7.3.3"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/pages-type-missing"
+      ],
+      "gaps": "missing boxes, invalid Kids and conflicting explicit types remain errors"
+    },
+    {
+      "id": "security-indirect-filters",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.10",
+        "7.6.2",
+        "7.6.6"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/security-indirect-cf",
+        "document/security-indirect-filter"
+      ],
+      "gaps": "crypt-filter scalar fields currently require direct values"
     }
   ]
 }

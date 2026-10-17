@@ -34,14 +34,7 @@ pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
         return Ok(None);
     };
     let id = encrypt.as_reference();
-    if let Some(id) = id
-        && document
-            .slots
-            .get(&id)
-            .is_some_and(|slot| matches!(slot.location, crate::Location::Compressed { .. }))
-    {
-        return Err(Error::syntax("Encrypt dictionary cannot be compressed").in_object(id));
-    }
+    uncompressed(document, encrypt, "Encrypt dictionary cannot be compressed")?;
     let dictionary = document.resolve_dictionary(encrypt)?;
     let filter = dictionary
         .get_name(b"Filter")
@@ -78,7 +71,14 @@ pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
     // Normalize one scalar without cloning the source dictionary/value tree.
     let mut params = parameters(dictionary, document.trailer(), permissions)?;
     crate::security_repair::hashes(document, id, &mut params, &mut diagnostics)?;
-    let (filters, strings, streams, embedded) = methods(dictionary, &params)?;
+    let (filters, strings, streams, embedded) = methods(dictionary, &params, |value| {
+        uncompressed(
+            document,
+            value,
+            "crypt filter dictionary cannot be compressed",
+        )?;
+        document.resolve(value)
+    })?;
     let key = standard::authenticate(&params, &document.options.password)?;
     document.record(diagnostics.take());
     Ok(Some(Security {
@@ -91,6 +91,22 @@ pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
         encrypt_metadata: params.encrypt_metadata,
         crypt_filters: params.version >= 4,
     }))
+}
+
+/// The encryption dictionary and its crypt filters are read before the handler
+/// exists. In an object stream they would need the handler they define to be
+/// decrypted (7.5.7), so such a reference is an error, never a cached guess.
+fn uncompressed(document: &Document, value: &Value, message: &'static str) -> Result<()> {
+    match value.as_reference() {
+        Some(id)
+            if document.slots.get(&id).is_some_and(|slot| {
+                matches!(slot.location, crate::Location::Compressed { .. })
+            }) =>
+        {
+            Err(Error::syntax(message).in_object(id))
+        }
+        _ => Ok(()),
+    }
 }
 
 fn integer(dictionary: &Dictionary, key: &[u8]) -> Result<i64> {
@@ -182,7 +198,13 @@ type Methods = (
     CryptMethod,
 );
 
-fn methods(dictionary: &Dictionary, params: &SecurityParams) -> Result<Methods> {
+// CF and its entries are not encrypted and may be indirect (7.6.2, Table 20).
+// Resolve dependencies before any authentication or cache initialization lock.
+fn methods<'a>(
+    dictionary: &'a Dictionary,
+    params: &SecurityParams,
+    resolve: impl Fn(&'a Value) -> Result<&'a Value>,
+) -> Result<Methods> {
     if params.version < 4 {
         return Ok((
             BTreeMap::new(),
@@ -193,14 +215,14 @@ fn methods(dictionary: &Dictionary, params: &SecurityParams) -> Result<Methods> 
     }
     let mut filters = BTreeMap::new();
     if let Some(value) = dictionary.get(b"CF") {
-        let dictionary = value
+        let dictionary = resolve(value)?
             .as_dictionary()
             .ok_or(Error::syntax("CF must be a dictionary"))?;
         for (name, value) in dictionary.iter() {
             if name == b"Identity" {
                 return Err(Error::syntax("CF must not redefine Identity"));
             }
-            let filter = value
+            let filter = resolve(value)?
                 .as_dictionary()
                 .ok_or(Error::syntax("crypt filter must be a dictionary"))?;
             let method = match filter.get_name(b"CFM").map(Name::as_bytes) {
@@ -429,7 +451,7 @@ mod tests {
     fn crypt_filter_defaults_identity_and_embedded_file_events() {
         let encryption = dictionary(b"<< /V 4 /R 4 /Length 128 /O () /U () /P -4 /CF << /RC << /CFM /V2 /Length 16 >> /AES << /CFM /AESV2 >> /EF << /CFM /V2 /AuthEvent /EFOpen >> >> /StrF /Identity /StmF /AES /EFF /EF >>");
         let params = parameters(&encryption, &trailer()).unwrap();
-        let (filters, strings, streams, embedded) = methods(&encryption, &params).unwrap();
+        let (filters, strings, streams, embedded) = methods(&encryption, &params, Ok).unwrap();
         assert_eq!(strings, CryptMethod::Identity);
         assert_eq!(streams, CryptMethod::AesV2);
         assert_eq!(embedded, CryptMethod::Rc4);
@@ -446,7 +468,7 @@ mod tests {
         encryption.remove(b"StrF");
         encryption.remove(b"StmF");
         encryption.remove(b"EFF");
-        let (_, strings, streams, embedded) = methods(&encryption, &params).unwrap();
+        let (_, strings, streams, embedded) = methods(&encryption, &params, Ok).unwrap();
         assert_eq!(
             (strings, streams, embedded),
             (
@@ -486,7 +508,7 @@ mod tests {
             encryption.extend(dictionary(&[b"<< ".as_slice(), entry, b" >>"].concat()));
             let params = parameters(&encryption, &trailer()).unwrap();
             assert_eq!(
-                methods(&encryption, &params).unwrap_err().kind,
+                methods(&encryption, &params, Ok).unwrap_err().kind,
                 ErrorKind::Syntax
             );
         }
@@ -535,5 +557,50 @@ mod tests {
             ..OpenOptions::default()
         };
         assert!(!format!("{options:?}").contains("private-password"));
+    }
+}
+
+#[cfg(test)]
+mod indirect_filters {
+    use crate::{Document, OpenOptions};
+    use pagura_core::{ErrorKind, ObjectId, Recovery};
+    use pagura_testkit::fixture;
+
+    #[test]
+    fn indirect_filter_dictionaries_authenticate_in_strict_mode() {
+        for name in ["security-indirect-cf", "security-indirect-filter"] {
+            let bytes = fixture("document", &format!("{name}.pdf"));
+            for password in [b"".as_slice(), b"owner"] {
+                let document = Document::open(
+                    bytes.clone(),
+                    &OpenOptions {
+                        recovery: Recovery::Strict,
+                        password: password.to_vec(),
+                        ..OpenOptions::default()
+                    },
+                )
+                .unwrap();
+                assert_eq!(
+                    document
+                        .stream_data(document.object(ObjectId::new(4, 0)).unwrap())
+                        .unwrap()
+                        .as_ref(),
+                    b"1 0 0 rg 8 8 48 32 re f\n"
+                );
+                assert_eq!(document.diagnostics(), []);
+            }
+            assert_eq!(
+                Document::open(
+                    bytes,
+                    &OpenOptions {
+                        password: b"wrong".to_vec(),
+                        ..OpenOptions::default()
+                    }
+                )
+                .unwrap_err()
+                .kind,
+                ErrorKind::Password
+            );
+        }
     }
 }

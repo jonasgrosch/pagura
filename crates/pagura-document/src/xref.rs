@@ -288,18 +288,11 @@ fn check_header(bytes: &[u8], diagnostics: &mut Diagnostics) -> Result<usize> {
         .and_then(|head| {
             head.windows(8).position(|part| {
                 part.starts_with(b"%PDF-")
-                    && matches!(
-                        &part[5..],
-                        b"1.0"
-                            | b"1.1"
-                            | b"1.2"
-                            | b"1.3"
-                            | b"1.4"
-                            | b"1.5"
-                            | b"1.6"
-                            | b"1.7"
-                            | b"2.0"
-                    )
+                    // The header grammar permits any single minor digit for
+                    // major versions 1 and 2 (ISO 32000-2:2020, 7.5.2).
+                    && matches!(part[5], b'1' | b'2')
+                    && part[6] == b'.'
+                    && part[7].is_ascii_digit()
             })
         })
         .filter(|&at| at < 1024)
@@ -317,18 +310,17 @@ fn check_header(bytes: &[u8], diagnostics: &mut Diagnostics) -> Result<usize> {
         let suffix = bytes
             .get(offset + 8..)
             .ok_or(Error::syntax("truncated PDF header"))?;
-        if !matches!(suffix.first(), Some(b' ' | b'\t'))
-            || !suffix
-                .iter()
-                .take(1024)
-                .any(|&byte| matches!(byte, b'\r' | b'\n'))
+        if !suffix
+            .iter()
+            .take(1024)
+            .any(|&byte| matches!(byte, b'\r' | b'\n'))
         {
             return Err(Error::syntax("missing or unknown PDF header").at(Position::File(offset)));
         }
         diagnostics.repair(
             Diagnostic::new(
                 tags::HEADER_FORMAT,
-                "trailing text or horizontal space in the PDF header line; version retained",
+                "extra bytes in the PDF header line; version retained",
             )
             .at(Position::File(offset + 8)),
         )?;

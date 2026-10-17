@@ -467,7 +467,7 @@ mod reconstruction {
     }
 }
 
-mod round3 {
+mod field_recovery {
     use crate::{Document, OpenOptions, tags};
     use pagura_core::{ErrorKind, ObjectId, Recovery};
     use pagura_testkit::fixture;

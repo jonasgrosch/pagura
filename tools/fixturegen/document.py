@@ -369,7 +369,8 @@ def cases():
                        requirement="document-security", strict_valid=False, repairs=("xref.rebuilt",),
                        extra={"owner_password": "owner", "marker": "independent"})
 
-    yield from round3_cases()
+    yield from field_recovery_cases()
+    yield from structural_recovery_cases()
 
 
 def replace_startxref(data, offset):
@@ -427,7 +428,7 @@ def security_pdf(params, key, method, *, literals=False, padding=0, unsigned=Fal
                     b"/Encrypt 5 0 R /ID [" + hex_string(ID) + b" " + hex_string(ID) + b"] ")
 
 
-def round3_cases():
+def field_recovery_cases():
     for name, suffix in [("header-text", b" Sharp Scanned ImagePDF"), ("header-space", b" "), ("header-tab", b"\t")]:
         builder = Builder()
         builder.data = bytearray(HEADER.replace(b"%PDF-1.7\n", b"%PDF-1.7" + suffix + b"\r\n"))
@@ -480,3 +481,65 @@ def round3_cases():
                           ("catalog-pages-wrong-type", b"<< /Pages 3 0 R >>")]:
         yield Case(name, document([catalog, *OBJECTS[1:]]), INVALID, ("document-repairs",),
                    "Missing-Type recovery cannot excuse an explicitly wrong Type or a non-Pages target", pages=None, strict_valid=False)
+
+
+def structural_recovery_cases():
+    for name, suffix in [("header-nul", b"\x00"), ("header-extra-digit", b"0"), ("header-attached-text", b"damaged")]:
+        builder = Builder()
+        builder.data = bytearray(HEADER.replace(b"%PDF-1.7\n", b"%PDF-1.7" + suffix + b"\n"))
+        for number, body in enumerate(OBJECTS, 1):
+            builder.obj(number, body)
+        data, _ = builder.classic()
+        yield repaired_document(name, data, "file.header-format", "Extra bytes after a complete version are reported without changing physical offsets")
+    for version in [b"1.8", b"1.9", b"2.9"]:
+        yield rendered("header-version-" + version.decode().replace(".", "-"),
+                       document(OBJECTS).replace(b"%PDF-1.7", b"%PDF-" + version),
+                       "Clause 7.5.2 permits a single minor-version digit after major version 1 or 2",
+                       requirement="document-header-syntax")
+    builder = Builder()
+    for number, body in enumerate(OBJECTS, 1):
+        builder.obj(number, body)
+        if number == 1:
+            del builder.data[-7:]  # Omit only the complete Catalog's terminator.
+    data, _ = builder.classic()
+    yield Case("object-end-missing", data, RENDER, ("object-boundary-recovery",),
+               "A complete object followed immediately by another object header has an unambiguous missing terminator",
+               oracle=RED, strict_valid=False, repairs=("object.end-missing",))
+    objects = list(OBJECTS)
+    objects[0] = b"<< /Type /Unrecognized /Pages 2 0 R >>"
+    yield Case("catalog-type-invalid", document(objects), RENDER, ("catalog-type-recovery",),
+               "An unknown Catalog Type can be inferred from its reference to a typed Pages root; known conflicting types remain errors",
+               oracle=RED, strict_valid=False, repairs=("catalog.type-invalid",))
+    objects = list(OBJECTS)
+    objects[0] = b"<< /Pages 2 0 R >>"
+    objects[1] = b"<< /Kids [3 0 R] /Count 1 >>"
+    objects[2] = OBJECTS[2].replace(b"/Type /Page ", b"")
+    yield Case("pages-type-missing", document(objects), RENDER, ("page-type-recovery", "catalog-type-recovery"),
+               "Kids references distinguish a missing branch Type; leaves retain explicit MediaBox and content",
+               oracle=RED, strict_valid=False, repairs=("catalog.type-missing", "pages.type-missing", "pages.type-missing"))
+    objects = list(OBJECTS)
+    objects[1] = b"<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 64 64] >>"
+    objects[2] = b"<< /Parent 2 0 R /Resources << >> >>"
+    yield Case("pages-leaf-untyped", document(objects), INVALID, ("page-type-recovery",),
+               "An untyped node without Kids, Contents or its own MediaBox is not identifiable; inherited attributes are no evidence",
+               pages=None, strict_valid=False)
+    for name, length in [("stream-length-missing", b""), ("stream-length-negative", b"/Length -1"),
+                         ("stream-length-undefined", b"/Length 99 0 R"), ("stream-length-outside", b"/Length 9999")]:
+        objects = list(OBJECTS)
+        objects[3] = b"<< " + length + b" >>\nstream\n" + CONTENT + b"\nendstream"
+        yield Case(name, document(objects), RENDER, ("stream-boundary-recovery",),
+                   "A unique line-delimited endstream/endobj within the physical object boundary recovers unusable Length",
+                   oracle=RED, strict_valid=False, repairs=("stream.length-corrected",))
+    from .crypto import parameters, encryption_dictionary, encrypt, hex_string, ID
+    params, key = parameters(6, b"", b"owner")
+    dictionary = encryption_dictionary(params, "AESV3", False)
+    direct = b"/CF << /StdCF << /CFM /AESV3 /AuthEvent /DocOpen /Length 32 >> >>"
+    assert direct in dictionary
+    for name, replacement, following in [
+        ("security-indirect-cf", b"/CF 6 0 R", [b"<< /StdCF 7 0 R >>", b"<< /CFM /AESV3 /Length 32 /AuthEvent /DocOpen >>"]),
+        ("security-indirect-filter", b"/CF << /StdCF 6 0 R >>", [b"<< /CFM /AESV3 /Length 32 /AuthEvent /DocOpen >>"]),
+    ]:
+        objects = [*OBJECTS[:3], stream(encrypt(key, "AESV3", 4, CONTENT)), dictionary.replace(direct, replacement), *following]
+        data = document(objects, b"/Encrypt 5 0 R /ID [" + hex_string(ID) + b" " + hex_string(ID) + b"] ")
+        yield rendered(name, data, "Unencrypted crypt-filter dictionaries may be indirect (7.3.10, 7.6.2 and 7.6.6)",
+                       requirement="security-indirect-filters", extra={"owner_password": "owner"})
