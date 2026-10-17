@@ -5,6 +5,8 @@ permissions:
 jobs:
   check:
     strategy:
+      # Report every platform; one failure must not cancel the others.
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}

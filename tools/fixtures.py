@@ -65,7 +65,7 @@ def render_area(module) -> dict[Path, bytes]:
             for suffix, data in sorted(case.files.items()):
                 path = directory / f"{case.name}{suffix}"
                 files[path] = data
-                entry["files"][suffix] = {"path": str(path.relative_to(ROOT)), "sha256": sha256(data)}
+                entry["files"][suffix] = {"path": path.relative_to(ROOT).as_posix(), "sha256": sha256(data)}
         else:
             raise SystemExit(f"{area}: unknown case type {type(case).__name__}")
         entry.update(case.extra)
