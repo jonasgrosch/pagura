@@ -3,8 +3,9 @@
     python3 tools/scoreboard.py CORPUS_DIR --name upstream [--max-pages 20]
 
 Runs `pagura scan` on every PDF below CORPUS_DIR, with a per-file timeout, and
-reports: files opened strictly, opened only with repairs, failed to open (by
-error kind and feature tag), pages found and rendered, the histogram of
+reports: files opened with an enumerated page tree (strictly, or only with
+repairs), failed to open or to enumerate pages (by error kind and feature
+tag), pages found and rendered, the histogram of
 Feature tags that stop pages from rendering, repairs applied, crashes and
 timeouts. The raw report goes to the ignored benchmarks/results/local/; the
 Markdown summary (with corpus and binary digests) goes to stdout or --summary.
@@ -69,7 +70,7 @@ def summarize(name: str, report: dict) -> str:
     files = report["files"]
     total = len(files)
     count = Counter()
-    open_failures, page_failures, repairs = Counter(), Counter(), Counter()
+    open_failures, enumeration_failures, page_failures, repairs = Counter(), Counter(), Counter(), Counter()
     pages = rendered = 0
     for entry in files:
         result = entry["result"]
@@ -79,6 +80,12 @@ def summarize(name: str, report: dict) -> str:
         if result["open"] is not None:
             count["open-failed"] += 1
             open_failures[tag(result["open"])] += 1
+            continue
+        if result["pages"] is None:
+            # M1 counts a file as opened only once its page tree enumerates;
+            # a catalog that parses lazily is not yet a usable document.
+            count["enumeration-failed"] += 1
+            enumeration_failures.update(tag(failure["error"]) for failure in result["failures"] if failure["page"] is None)
             continue
         count["strict" if result["strict"] else "repaired"] += 1
         repairs.update(result["repairs"])
@@ -105,15 +112,17 @@ def summarize(name: str, report: dict) -> str:
         + (f", at most {report['max_pages']} per file." if report["max_pages"] else "."), "",
         "| Metric | Value |", "|---|---:|",
         f"| Not PDF (no `%PDF-` in the first 1024 bytes) | {count['not-pdf']} |",
-        f"| PDF files opened | {opened} / {candidates} ({percent(opened, candidates)}) |",
-        f"| … strictly | {count['strict']} |",
+        f"| PDF files opened, pages enumerated | {opened} / {candidates} ({percent(opened, candidates)}) |",
+        f"| … strictly, every scanned page compiling | {count['strict']} |",
         f"| … only with repairs | {count['repaired']} |",
         f"| Failed to open | {count['open-failed']} |",
+        f"| Opened, but the page tree failed | {count['enumeration-failed']} |",
         f"| Crashes | {count['crash']} |",
         f"| Timeouts | {count['timeout']} |",
         f"| Pages rendered | {rendered} / {pages} ({percent(rendered, pages)}) |", "",
     ]
     lines += table(open_failures, "Open failure")
+    lines += table(enumeration_failures, "Page-tree failure")
     lines += table(page_failures, "Page failure")
     lines += table(repairs, "Repair")
     return "\n".join(lines)

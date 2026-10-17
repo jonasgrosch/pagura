@@ -39,13 +39,18 @@ class ScoreboardTests(unittest.TestCase):
             {"result": scanned(True, 2, 2)},
             {"result": scanned(False, 1, 0, [{"kind": "unsupported", "feature": "operator.BT"}], ["xref.rebuilt"])},
             {"result": {"outcome": "scanned", "strict": False, "open": {"kind": "syntax", "feature": None}, "pages": None}},
+            # A catalog that opens over a broken page tree (`/Kids 42`) is not opened.
+            {"result": {"outcome": "scanned", "strict": False, "open": None, "pages": None, "rendered": 0, "repairs": [],
+                        "failures": [{"page": None, "error": {"kind": "syntax", "feature": None}}]}},
             {"result": {"outcome": "not-pdf"}},
             {"result": {"outcome": "timeout"}},
         ]
         report = {"files": files, "created_at": "t", "commit": "c", "binary_sha256": "0" * 64,
                   "corpus_sha256": "1" * 64, "dpi": 72, "max_pages": 0}
         summary = scoreboard.summarize("unit", report)
-        self.assertIn("| PDF files opened | 2 / 4 (50.0%) |", summary)
+        self.assertIn("| PDF files opened, pages enumerated | 2 / 5 (40.0%) |", summary)
+        self.assertIn("| Opened, but the page tree failed | 1 |", summary)
+        self.assertIn("| Page-tree failure | Count |\n|---|---:|\n| `syntax` | 1 |", summary)
         self.assertIn("| Pages rendered | 2 / 3 (66.7%) |", summary)
         self.assertIn("| `operator.BT` | 1 |", summary)
         self.assertIn("| `xref.rebuilt` | 1 |", summary)
