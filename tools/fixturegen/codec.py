@@ -75,23 +75,117 @@ def fixed(symbols):
     return bits.bytes()
 
 
-def dynamic(lengths, distances, payload):
+def dynamic(lengths, distances, payload, *, code_lengths=None, runs=None):
     bits = Bits()
     bits.put(5, 3)  # final, dynamic
     bits.put(len(lengths) - 257, 5)
     bits.put(len(distances) - 1, 5)
     bits.put(15, 4)  # all 19 code lengths
     order = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15]
-    code_lengths = [4] * 16 + [0] * 3  # complete code-length alphabet
+    if code_lengths is None:
+        code_lengths = [4] * 16 + [0] * 3  # complete code-length alphabet
     for symbol in order:
         bits.put(code_lengths[symbol], 3)
     table = codes(code_lengths)
-    for value in lengths + distances:
-        bits.put(*table[value])
+    for value in lengths + distances if runs is None else runs:
+        if isinstance(value, int):
+            bits.put(*table[value])
+        else:
+            symbol, extra, width = value
+            bits.put(*table[symbol]); bits.put(extra, width)
     literal = codes(lengths)
-    for symbol in payload:
-        bits.put(*literal[symbol])
+    distance = codes(distances)
+    for item in payload:
+        if isinstance(item, int):
+            bits.put(*literal[item])
+        else:
+            lc, le, lb, dc, de, db = item
+            bits.put(*literal[lc]); bits.put(le, lb)
+            bits.put(*distance[dc]); bits.put(de, db)
     return bits.bytes()
+
+
+def zlib_stream(raw, plain, *, cinfo=7, level=2, dictionary=None):
+    """RFC 1950 2.2 framing; checksum from independently weighted byte sums."""
+    cmf = cinfo * 16 + 8
+    flg = level * 64 + (32 if dictionary is not None else 0)
+    flg += (-(cmf * 256 + flg)) % 31
+    size = len(plain)
+    s1 = (1 + sum(plain)) % 65521
+    s2 = (size + sum((size - i) * byte for i, byte in enumerate(plain))) % 65521
+    return (bytes([cmf, flg]) + (b"" if dictionary is None else struct.pack(">I", dictionary))
+            + raw + struct.pack(">I", s2 * 65536 + s1))
+
+
+def external_format_cases():
+    # RFC 1950 2.2/2.3: every defined window and advisory FLEVEL, valid FCHECK.
+    for cinfo in range(8):
+        for level in range(4):
+            encoded = zlib_stream(fixed([65]), b"A", cinfo=cinfo, level=level)
+            assert zlib.decompress(encoded) == b"A"
+            yield vector(f"zlib-rfc1950-cinfo{cinfo}-level{level}", encoded, b"A", "filter-flate")
+    yield vector("zlib-rfc1950-invalid-cinfo", zlib_stream(fixed([]), b"", cinfo=8), b"",
+                 "filter-flate", outcome="syntax")
+    yield vector("zlib-rfc1950-fdict", zlib_stream(fixed([]), b"", dictionary=0x12345678), b"",
+                 "filter-flate", outcome="syntax")
+    # The CINFO=0 window is 256, even when more decoded history is available.
+    for distance in (256, 257):
+        prefix_length = distance - 1
+        raw = fixed([65, (284, prefix_length - 227, 5, 0, 0, 0),
+                     (257, 0, 0, 15 if distance == 256 else 16,
+                      63 if distance == 256 else 0, 6 if distance == 256 else 7)])
+        plain = b"A" * (distance + 3)
+        encoded = zlib_stream(raw, plain, cinfo=0)
+        yield vector(f"zlib-rfc1950-window-distance{distance}", encoded,
+                     plain if distance == 256 else b"", "filter-flate",
+                     outcome="valid" if distance == 256 else "syntax", cap=len(plain))
+    # RFC 1951 3.2.6 literal boundaries, including the two literal bit widths.
+    plain = bytes([0, 143, 144, 255])
+    yield vector("flate-rfc1951-fixed-literal-boundaries", fixed(list(plain)), plain,
+                 "filter-flate", raw=1)
+    # RFC 1951 3.2.7 permits a one-bit distance alphabet with one unused branch.
+    lengths = [0] * 258
+    lengths[65], lengths[256], lengths[257] = 1, 2, 2
+    encoded = dynamic(lengths, [1], [65, (257, 0, 0, 0, 0, 0), 256])
+    assert zlib.decompress(encoded, -15) == b"AAAA"
+    yield vector("flate-rfc1951-single-distance", encoded, b"AAAA", "filter-flate", raw=1)
+    # One repeat-16 run spans the literal/distance boundary: EOB, length-3,
+    # and two distance codes all have length one (3.2.7's single sequence).
+    lengths = [0] * 256 + [1, 1]
+    code_lengths = [0] * 19
+    code_lengths[1], code_lengths[16], code_lengths[18] = 1, 2, 2
+    encoded = dynamic(lengths, [1, 1], [256], code_lengths=code_lengths,
+                      runs=[(18, 127, 7), (18, 107, 7), 1, (16, 0, 2)])
+    assert zlib.decompress(encoded, -15) == b""
+    yield vector("flate-rfc1951-repeat16-across-alphabets", encoded, b"", "filter-flate", raw=1)
+    # Exercise zero-repeat 17 alongside 18, rather than just zero literals.
+    code_lengths = [0] * 19
+    for symbol in (0, 1, 17, 18): code_lengths[symbol] = 2
+    encoded = dynamic([0] * 256 + [1], [0], [256], code_lengths=code_lengths,
+                      runs=[(18, 127, 7), (18, 104, 7), (17, 0, 3), 1, 0])
+    assert zlib.decompress(encoded, -15) == b""
+    yield vector("flate-rfc1951-repeat17-zero", encoded, b"", "filter-flate", raw=1)
+    # PNG Second Edition 9.3: floor(509/2)=254, without eight-bit sum overflow.
+    # Clause 9.4: equal nearest distances choose left before corner and above
+    # before corner. These hand-derived rows do not use the predictor encoder.
+    for label, raw, plain in [
+        ("average-overflow", bytes([0, 0, 254, 3, 255, 2]), bytes([0, 254, 255, 0])),
+        ("paeth-tie-left", bytes([0, 1, 0, 4, 2, 0]), bytes([1, 0, 3, 3])),
+        ("paeth-tie-above", bytes([0, 1, 3, 4, 255, 0]), bytes([1, 3, 0, 3])),
+        ("paeth-wide-sum", bytes([0, 0, 255, 4, 255, 1]), bytes([0, 255, 255, 0])),
+    ]:
+        # Adler-32 covers raw bytes including tags, before predictor reversal.
+        encoded = zlib_stream(fixed(list(raw)), raw)
+        assert zlib.decompress(encoded) == raw
+        yield vector("png-w3c-" + label, encoded, plain, "predictor-png", predictor=15, columns=2)
+    # TIFF 6.0 section 14 pp.64-65: sample-wise modular differences, stride
+    # SamplesPerPixel, reset each row. PDF 7.4.4.4 supplies MSB-first packing.
+    for depth in (1, 2, 4, 8, 16):
+        maximum = (1 << depth) - 1
+        raw = pack_samples([maximum, 1, 1, maximum], depth) * 2
+        plain = pack_samples([maximum, 1, 0, 0], depth) * 2
+        yield vector(f"tiff6-predictor2-wrap-b{depth}", zlib_stream(fixed(list(raw)), raw),
+                     plain, "predictor-tiff", predictor=2, colors=2, bits=depth, columns=2)
 
 
 def lzw(data, early, reset_at=4096):
@@ -210,6 +304,7 @@ def predictors(bits, colors, columns, png):
 
 
 def cases():
+    yield from external_format_cases()
     rng = random.Random(0x50414755)
     data = bytes(rng.randrange(256) for _ in range(4096)) + b"ABC\0" * 2048
     strategies = [zlib.Z_DEFAULT_STRATEGY, zlib.Z_FILTERED, zlib.Z_HUFFMAN_ONLY, zlib.Z_RLE, zlib.Z_FIXED]

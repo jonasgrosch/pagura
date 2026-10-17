@@ -1,0 +1,4 @@
+filter=FlateDecode
+outcome=syntax
+repair=none
+cap=260

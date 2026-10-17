@@ -5,6 +5,7 @@
 use crate::{Predictor, output::Output, repair, syntax, tags, trailing};
 use pagura_core::{Diagnostics, Error, Result};
 
+// RFC 1951 3.2.5, length and distance tables.
 const LENGTH_BASE: [usize; 29] = [
     3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131,
     163, 195, 227, 258,
@@ -165,6 +166,8 @@ fn header(input: &[u8]) -> Result<(usize, usize)> {
         return Err(syntax("invalid zlib header", 0));
     }
     if flg & 32 != 0 {
+        // RFC 1950 2.3 forbids FDICT in an enclosing format without preset
+        // dictionaries; ISO 32000-2 7.4.4 defines none for FlateDecode.
         return Err(syntax("zlib preset dictionary forbidden by PDF", 1));
     }
     Ok((2, 1 << ((cmf >> 4) + 8)))
@@ -253,6 +256,10 @@ impl Huffman {
                 return Err(syntax("oversubscribed Huffman alphabet", offset));
             }
         }
+        // RFC 1951 3.2.7 explicitly allows a one-bit single distance code.
+        // General incomplete-tree rejection is decoder policy: 3.2.1/3.2.2
+        // require prefix/canonical codes but do not explicitly require a
+        // complete tree. The same one-symbol exception permits EOB-only blocks.
         if remaining != 0 && !(allow_single && width == 1 && counts[1] == 1) {
             return Err(syntax("incomplete Huffman alphabet", offset));
         }

@@ -1,4 +1,6 @@
 //! Bounded output and incremental predictor reversal (ISO 32000-2 7.4.4.4).
+//! PNG arithmetic: Second Edition 9.2, Table 9.1, 9.3 and 9.4. TIFF sample
+//! arithmetic: TIFF 6.0 section 14, pp.64-65; PDF supplies high-bit-first packing.
 use crate::{Predictor, PredictorKind, syntax};
 use pagura_core::Result;
 
@@ -214,6 +216,7 @@ impl Output {
 }
 
 fn paeth(left: u8, above: u8, upper_left: u8) -> u8 {
+    // PNG Second Edition 9.4: exact arithmetic; ties prefer left, then above.
     let p = i16::from(left) + i16::from(above) - i16::from(upper_left);
     let a = (p - i16::from(left)).abs();
     let b = (p - i16::from(above)).abs();

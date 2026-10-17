@@ -5,6 +5,1133 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "codec/zlib-rfc1950-cinfo0-level0",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo0 level0",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo0-level0.in",
+          "sha256": "1ef9bf70a8d6b23602054139b3ab50faa6446946ee9edaf72b013e9c8b59ffda"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo0-level0.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo0-level0.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo0-level1",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo0 level1",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo0-level1.in",
+          "sha256": "54813a87c6efb8353d3d644bec08638d594ed8826e3d4cde5c4ef91a811c084a"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo0-level1.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo0-level1.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo0-level2",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo0 level2",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo0-level2.in",
+          "sha256": "fff0ca23d35999146089b68821e8a527de1a1d1f7e6e3dda2d9c0af8700d3fd5"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo0-level2.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo0-level2.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo0-level3",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo0 level3",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo0-level3.in",
+          "sha256": "ff5e0201283aee17a23d43011067624f5bc1727e5d3f8f17dab3268022122630"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo0-level3.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo0-level3.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo1-level0",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo1 level0",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo1-level0.in",
+          "sha256": "cb6389247c8a034aa73bcd5ffb8b7b5c9eafd422b9b615a8ffde9d7c9d726b9d"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo1-level0.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo1-level0.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo1-level1",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo1 level1",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo1-level1.in",
+          "sha256": "746071bea7903704838d01574c15b336194f7189077898eb60b4ac48d1520118"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo1-level1.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo1-level1.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo1-level2",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo1 level2",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo1-level2.in",
+          "sha256": "e3eabfc984a6103ca45c738a2c7a6992bf964315bf6ba597d7fdffc56ea29546"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo1-level2.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo1-level2.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo1-level3",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo1 level3",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo1-level3.in",
+          "sha256": "de54f679208315dd47c483b216bd09b26c695d804ed3e71feaa4ae6f186a3b3c"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo1-level3.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo1-level3.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo2-level0",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo2 level0",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo2-level0.in",
+          "sha256": "d11b62bce51c730856407dca3f1f3e2da35fab22e4b68ea78163a8776570efad"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo2-level0.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo2-level0.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo2-level1",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo2 level1",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo2-level1.in",
+          "sha256": "9e77d81e82385e679bf7eaee595c6b5d7c63ccfdbcda066861c10210d4e2240e"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo2-level1.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo2-level1.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo2-level2",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo2 level2",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo2-level2.in",
+          "sha256": "298a3e0964f50edd460b20ea80a75b50dacb4bcec2b7b7d89c1498af38793812"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo2-level2.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo2-level2.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo2-level3",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo2 level3",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo2-level3.in",
+          "sha256": "25b44f0cd4f34be3e8bc32dde88bdc4ec18a5cf8de61f78f34ae65e77890095c"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo2-level3.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo2-level3.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo3-level0",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo3 level0",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo3-level0.in",
+          "sha256": "118735df7f735a769e9db9cbe96ceae906b61aff77163712deceff3ac727bbce"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo3-level0.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo3-level0.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo3-level1",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo3 level1",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo3-level1.in",
+          "sha256": "c43a9e0de8ea82b340e7e0c6c65df9619ca563b15f7facde39b6236478d2fce3"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo3-level1.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo3-level1.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo3-level2",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo3 level2",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo3-level2.in",
+          "sha256": "9481d1b9acea4f87cb24c18e44bbb0a6d0edec2d158ab1ab2f60b34c5e88754f"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo3-level2.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo3-level2.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo3-level3",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo3 level3",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo3-level3.in",
+          "sha256": "9458c8314f318944653f61cd3414d0a88566ef92e63b44894060352a3c987c97"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo3-level3.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo3-level3.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo4-level0",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo4 level0",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo4-level0.in",
+          "sha256": "8f6c9292f4faa81e9bef80bc5545529a698f26c2a10daf85d2b0a35aa009d2f0"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo4-level0.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo4-level0.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo4-level1",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo4 level1",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo4-level1.in",
+          "sha256": "98dec5ad82370f49ae957eab9b41c7d2be80276b1a7a3daf939c94fa604d7ce6"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo4-level1.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo4-level1.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo4-level2",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo4 level2",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo4-level2.in",
+          "sha256": "822a408e5a05fdf6e57d299f7c6df955587a0a50b42a96133364b9f844a50b20"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo4-level2.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo4-level2.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo4-level3",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo4 level3",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo4-level3.in",
+          "sha256": "d2ade51ac55ebc991e3ec5dcf5a03832e628c216285398ccaa65c0bd25deca01"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo4-level3.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo4-level3.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo5-level0",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo5 level0",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo5-level0.in",
+          "sha256": "420854a3f7ee3fa85d10c0e7522670e0e4553fb6119fe275bdf30ef97c0dcf99"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo5-level0.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo5-level0.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo5-level1",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo5 level1",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo5-level1.in",
+          "sha256": "aa94986515397fc8bc56e1b51536d18b8620484abe424d8618705799ddd7225b"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo5-level1.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo5-level1.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo5-level2",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo5 level2",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo5-level2.in",
+          "sha256": "47d67ab6d9796deab45e1ebbc854a48c33ca6ffcefa804285c137b9f2345944e"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo5-level2.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo5-level2.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo5-level3",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo5 level3",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo5-level3.in",
+          "sha256": "c9e61f68bd354c9272e3c662f16b39dd9dda80d1c636b3e29ad92e43faacef71"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo5-level3.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo5-level3.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo6-level0",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo6 level0",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo6-level0.in",
+          "sha256": "35aeaeb86d680d50d45ce748424daf8a3085ebf3dd2dac322bf8ec0f986312dc"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo6-level0.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo6-level0.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo6-level1",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo6 level1",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo6-level1.in",
+          "sha256": "5384656413d12590883f3d2f8e54048b02bc0cdde6113a549493d34b41047b13"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo6-level1.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo6-level1.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo6-level2",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo6 level2",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo6-level2.in",
+          "sha256": "71438e0cf032a7ab34379ade3bd9da1a3682ddf051d9cfb823952e5929d5c33a"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo6-level2.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo6-level2.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo6-level3",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo6 level3",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo6-level3.in",
+          "sha256": "258ecb3a14e2cd9c726b7aaeb38fe4838c2f7a91e18830c769eed4e151b1f4cf"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo6-level3.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo6-level3.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo7-level0",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo7 level0",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo7-level0.in",
+          "sha256": "8a06b797143d8ba6645c06db362c5b2f9213437c262ad27b62d0bad18fe63d71"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo7-level0.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo7-level0.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo7-level1",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo7 level1",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo7-level1.in",
+          "sha256": "c1f4730a4af9b8006385941e48e668e362095ce2b8a3989769a9741a00cea277"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo7-level1.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo7-level1.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo7-level2",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo7 level2",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo7-level2.in",
+          "sha256": "d9e0f423b7a63ac0e9644a140cf29b4822eda2525c5ee7e8ba85c96527beeaf1"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo7-level2.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo7-level2.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-cinfo7-level3",
+      "kind": "vector",
+      "description": "zlib rfc1950 cinfo7 level3",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo7-level3.in",
+          "sha256": "cde270ea2688b5d5b321a41d3af77c1439aa004d284740e0d7a646993fbe0b5b"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo7-level3.out",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-cinfo7-level3.params",
+          "sha256": "b40593f6ae7436ffc57c0e03bba17894288896f34a739a1edc81f1b85a94bb6c"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-invalid-cinfo",
+      "kind": "vector",
+      "description": "zlib rfc1950 invalid cinfo",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-invalid-cinfo.in",
+          "sha256": "789eb570bbf3203bd3f180af89aac71370ecf11e8f9d55c7041a2238b6cb1d48"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-invalid-cinfo.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-invalid-cinfo.params",
+          "sha256": "b939ae62c29559bc7b4c2a521a4479301fd27285d1bde0fdcb54130a83574acb"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-fdict",
+      "kind": "vector",
+      "description": "zlib rfc1950 fdict",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-fdict.in",
+          "sha256": "cc68d2f42296d5462316d468e2bf94659d837b7bbdd3c6783640c408e7c3b490"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-fdict.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-fdict.params",
+          "sha256": "b939ae62c29559bc7b4c2a521a4479301fd27285d1bde0fdcb54130a83574acb"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-window-distance256",
+      "kind": "vector",
+      "description": "zlib rfc1950 window distance256",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-window-distance256.in",
+          "sha256": "e419c782e4f631a43f556feed7d9034296143aed360f2ea2ed4dd9f253ab931d"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-window-distance256.out",
+          "sha256": "bd29f5b5043ba9d48f0cd6fda241bb24d8c274987ed0c1697008dc73c0f37dc2"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-window-distance256.params",
+          "sha256": "dfb4a3ea7087d8b476ac4671f9c44101760c2d144668361b7ed971c01c073634"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/zlib-rfc1950-window-distance257",
+      "kind": "vector",
+      "description": "zlib rfc1950 window distance257",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/zlib-rfc1950-window-distance257.in",
+          "sha256": "d5117ba9ca90b63d73e39e9f53b20b4526fd029480531721c7df2d780054bd96"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/zlib-rfc1950-window-distance257.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/zlib-rfc1950-window-distance257.params",
+          "sha256": "292e70a1cdd82344eb940639344124bfcf4b2d72e96336c91b080bb69d5d7c09"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/flate-rfc1951-fixed-literal-boundaries",
+      "kind": "vector",
+      "description": "flate rfc1951 fixed literal boundaries",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/flate-rfc1951-fixed-literal-boundaries.in",
+          "sha256": "938754d6dadeffa08cd19a5f2f2ab4ac5d2da437ca719e787e2f1b5adead45a6"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/flate-rfc1951-fixed-literal-boundaries.out",
+          "sha256": "86b1db454df3f24b578be99ce07eef144d808d5da2838d1ac915fead23122fb3"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/flate-rfc1951-fixed-literal-boundaries.params",
+          "sha256": "c2c4694e2ae3f92079cb8a59857de10c30ce19bf9a0504399badd70de8d8d49e"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/flate-rfc1951-single-distance",
+      "kind": "vector",
+      "description": "flate rfc1951 single distance",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/flate-rfc1951-single-distance.in",
+          "sha256": "47d38eb3d0bb5901fb8abc5696536269cec4368df2f7869a6ec24e5474dae0b3"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/flate-rfc1951-single-distance.out",
+          "sha256": "63c1dd951ffedf6f7fd968ad4efa39b8ed584f162f46e715114ee184f8de9201"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/flate-rfc1951-single-distance.params",
+          "sha256": "c2c4694e2ae3f92079cb8a59857de10c30ce19bf9a0504399badd70de8d8d49e"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/flate-rfc1951-repeat16-across-alphabets",
+      "kind": "vector",
+      "description": "flate rfc1951 repeat16 across alphabets",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/flate-rfc1951-repeat16-across-alphabets.in",
+          "sha256": "bf9645356b5e74240818157ed0efc2c74c5eba020d0eb3be593889a3dd96c702"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/flate-rfc1951-repeat16-across-alphabets.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/flate-rfc1951-repeat16-across-alphabets.params",
+          "sha256": "d8c2ee769a4a903cc5c02f170fa93d83b50933f909b547501247867c9784d265"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/flate-rfc1951-repeat17-zero",
+      "kind": "vector",
+      "description": "flate rfc1951 repeat17 zero",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/flate-rfc1951-repeat17-zero.in",
+          "sha256": "99aea79ab78f56b314620a0510f3afac166160d9a94d29ebc2b5c0a6544b37a7"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/flate-rfc1951-repeat17-zero.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/flate-rfc1951-repeat17-zero.params",
+          "sha256": "d8c2ee769a4a903cc5c02f170fa93d83b50933f909b547501247867c9784d265"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-w3c-average-overflow",
+      "kind": "vector",
+      "description": "png w3c average overflow",
+      "requirements": [
+        "predictor-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-w3c-average-overflow.in",
+          "sha256": "66279d09b14b26ba1f48ac47c2d595f4a6bd9b384a166f0f199104bedc35b40d"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-w3c-average-overflow.out",
+          "sha256": "252ebd38aaa7f8c0bf1bd0e6b16dc2ba47edd9254988d1327d02fd81e8396d8e"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-w3c-average-overflow.params",
+          "sha256": "37f80f522371986daa0eacaacb22e601b736ebcfc2a1d6627d15210d69a8b675"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-w3c-paeth-tie-left",
+      "kind": "vector",
+      "description": "png w3c paeth tie left",
+      "requirements": [
+        "predictor-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-w3c-paeth-tie-left.in",
+          "sha256": "a1ec2f8973586858f501fa1ad707fb224887e3d8c9d1a92ff35787b35d681b13"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-w3c-paeth-tie-left.out",
+          "sha256": "adf27ba778d7f0f3a50f6ab16d6d1567a605ed0bcfefbf0e5361882a7c79fcc4"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-w3c-paeth-tie-left.params",
+          "sha256": "37f80f522371986daa0eacaacb22e601b736ebcfc2a1d6627d15210d69a8b675"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-w3c-paeth-tie-above",
+      "kind": "vector",
+      "description": "png w3c paeth tie above",
+      "requirements": [
+        "predictor-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-w3c-paeth-tie-above.in",
+          "sha256": "fde29252eb2840847def7d8f62a4f3204ba57bd13f5c8900a3b602cc1c9c7982"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-w3c-paeth-tie-above.out",
+          "sha256": "1471432889e0bfb5313628de317894c4d59b1f17216c8a44dbfcf98813ab19cc"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-w3c-paeth-tie-above.params",
+          "sha256": "37f80f522371986daa0eacaacb22e601b736ebcfc2a1d6627d15210d69a8b675"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/png-w3c-paeth-wide-sum",
+      "kind": "vector",
+      "description": "png w3c paeth wide sum",
+      "requirements": [
+        "predictor-png"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/png-w3c-paeth-wide-sum.in",
+          "sha256": "6bec8a1c6b42de815b21941360518a1efbbf1a6d422b74e0f23173ee56743842"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/png-w3c-paeth-wide-sum.out",
+          "sha256": "10db5223d19bd1d58c2b8eb3c723b0ba104cf17564f9434e53e1b9e642fb3b37"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/png-w3c-paeth-wide-sum.params",
+          "sha256": "37f80f522371986daa0eacaacb22e601b736ebcfc2a1d6627d15210d69a8b675"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/tiff6-predictor2-wrap-b1",
+      "kind": "vector",
+      "description": "tiff6 predictor2 wrap b1",
+      "requirements": [
+        "predictor-tiff"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b1.in",
+          "sha256": "40f0b8a4277bebd88fe1972cb142e39348dafc5e6a63fe3719bf9ee63b8dda7a"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b1.out",
+          "sha256": "924d46482608156796c55cf9f59843a261c720c001d9859321523ca9c794151e"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b1.params",
+          "sha256": "3d313ae886a92ff044482256723f463f9336bec8fae70a4119c35b7a73e7791d"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/tiff6-predictor2-wrap-b2",
+      "kind": "vector",
+      "description": "tiff6 predictor2 wrap b2",
+      "requirements": [
+        "predictor-tiff"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b2.in",
+          "sha256": "1db8155a605d7c1ee996b7cf59e4d668447b9df1edb72abcf5894bb01f0d3db9"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b2.out",
+          "sha256": "e768327affa627fcd05c300f829eef53e39bce9e98b7f77082368a51e2d85f17"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b2.params",
+          "sha256": "2f856d1d82cbf3877e2b36a7d336a827e39e643bd83d6c0cb85d83ea76c2b886"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/tiff6-predictor2-wrap-b4",
+      "kind": "vector",
+      "description": "tiff6 predictor2 wrap b4",
+      "requirements": [
+        "predictor-tiff"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b4.in",
+          "sha256": "6cd55b6998e84803517cca543433c9d63012ba972fb9528ad80e8f764e78778c"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b4.out",
+          "sha256": "705716b5594f002bc6ea748f3322e88543b97f760425d645f2bd61b8a9da47ff"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b4.params",
+          "sha256": "b5763920e8e738d47448d1863196a08e3b5f576b3c7e3c88cd3e9be039cb1f75"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/tiff6-predictor2-wrap-b8",
+      "kind": "vector",
+      "description": "tiff6 predictor2 wrap b8",
+      "requirements": [
+        "predictor-tiff"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b8.in",
+          "sha256": "e9454b043ae62410fb8f886b1f588d6adf109ba011c9948dcf8b81c4755459ed"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b8.out",
+          "sha256": "1a2d71251a145ab5e0a6d94c3141321284e1b4d9a8ec2be31072bc145b53da63"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b8.params",
+          "sha256": "ea010bad8cb533c508eecb4e344e7263a8089ea49c41ca816ae132a12694d720"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/tiff6-predictor2-wrap-b16",
+      "kind": "vector",
+      "description": "tiff6 predictor2 wrap b16",
+      "requirements": [
+        "predictor-tiff"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b16.in",
+          "sha256": "16cafa8114a078f22fadcdb728912ddd82b7c416da8ffae443134f5c4578f3ef"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b16.out",
+          "sha256": "507dbd81c0e29f67f4012bebffcd2491a7e725fb0e79a784aa77a2b468163740"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/tiff6-predictor2-wrap-b16.params",
+          "sha256": "af1754026538bf7c58ba13c2ec00dd395a8701ff59aad1669b451f51bf832121"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
       "id": "codec/flate-l0-s0-raw0",
       "kind": "vector",
       "description": "flate l0 s0 raw0",
