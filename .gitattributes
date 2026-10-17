@@ -2,3 +2,5 @@
 *.pdf binary
 *.ppm binary
 *.png binary
+# Bundled third-party data is stored byte for byte (data/lock.json).
+data/** -text
