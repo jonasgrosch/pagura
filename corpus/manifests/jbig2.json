@@ -5,6 +5,1436 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "jbig2/pdf-sequential-nonmonotonic",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-embedded-segments"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/pdf-sequential-nonmonotonic.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/pdf-sequential-nonmonotonic.jb2",
+          "sha256": "ff151f7483200f2e020ce0e39adfeb27c7bf47ce0da323881476b12b3e587766"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/pdf-sequential-nonmonotonic.out",
+          "sha256": "cb5674baddecb899464313d93dc30816402dda365e863446dc8f0c08a7ceb2d7"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/pdf-sequential-nonmonotonic.params",
+          "sha256": "619dc35c990cb8cd04f563eac1ad310f8a9780d6a7bd2cab46c429fabcb41dc4"
+        }
+      }
+    },
+    {
+      "id": "jbig2/pdf-file-header-forbidden",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-embedded-segments"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/pdf-file-header-forbidden.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/pdf-file-header-forbidden.jb2",
+          "sha256": "2654ea7e09cc368b73ad073c235f46eb9e93e3f799d861258efe4ab2461b2f52"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/pdf-file-header-forbidden.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/pdf-file-header-forbidden.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/pdf-region-colour-extension-forbidden",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-explicit-unsupported"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/pdf-region-colour-extension-forbidden.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/pdf-region-colour-extension-forbidden.jb2",
+          "sha256": "c193f51773833c3be2837650c0bb619f8150657172df0151fa5e80875ddf3893"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/pdf-region-colour-extension-forbidden.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/pdf-region-colour-extension-forbidden.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/pdf-globals-single-image",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-embedded-segments"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/pdf-globals-single-image.globals",
+          "sha256": "67b0358e5dd80ed96098d95bb7b2d6f37e6243ee1b3af42e7f83e2c38493b6d6"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/pdf-globals-single-image.jb2",
+          "sha256": "df46130fb86399e37a89eebcdaa5826e492e147158671cf9d0c8769cc0fdd705"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/pdf-globals-single-image.out",
+          "sha256": "cb5674baddecb899464313d93dc30816402dda365e863446dc8f0c08a7ceb2d7"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/pdf-globals-single-image.params",
+          "sha256": "619dc35c990cb8cd04f563eac1ad310f8a9780d6a7bd2cab46c429fabcb41dc4"
+        }
+      }
+    },
+    {
+      "id": "jbig2/pdf-global-in-page-stream",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-embedded-segments"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/pdf-global-in-page-stream.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/pdf-global-in-page-stream.jb2",
+          "sha256": "28a30c56e60fd282a4bcd0b7bcb4c1a7f5ed2a4d0f9be55eedbd77aae340cc1a"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/pdf-global-in-page-stream.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/pdf-global-in-page-stream.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/pdf-page-in-globals",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-embedded-segments"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/pdf-page-in-globals.globals",
+          "sha256": "279c5d6a9a83532874e5e790156d4ae61df56ae1191655b29bf996f61bc6fd47"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/pdf-page-in-globals.jb2",
+          "sha256": "df46130fb86399e37a89eebcdaa5826e492e147158671cf9d0c8769cc0fdd705"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/pdf-page-in-globals.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/pdf-page-in-globals.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/pdf-page-two-in-globals",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-embedded-segments"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/pdf-page-two-in-globals.globals",
+          "sha256": "7f1ac661dd7f72dc4116af0308fb9e42a31c31086fc95df377adae6018a6931d"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/pdf-page-two-in-globals.jb2",
+          "sha256": "df46130fb86399e37a89eebcdaa5826e492e147158671cf9d0c8769cc0fdd705"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/pdf-page-two-in-globals.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/pdf-page-two-in-globals.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/pdf-global-missing",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-embedded-segments"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/pdf-global-missing.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/pdf-global-missing.jb2",
+          "sha256": "df46130fb86399e37a89eebcdaa5826e492e147158671cf9d0c8769cc0fdd705"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/pdf-global-missing.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/pdf-global-missing.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-t0-prediction-0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-t0-prediction-0.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-t0-prediction-0.jb2",
+          "sha256": "88d042b98016546ccb9ccda5a31393cf46abaae12946b98420d1dc5a04a121aa"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-t0-prediction-0.out",
+          "sha256": "956d90d90daf968ac28649c1166eba2872906f7ac7ca5fff427fea3905c1fdc3"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-t0-prediction-0.params",
+          "sha256": "41eda08c5b4daa2cbb1fc2b24e422f43d1af3f73f80545157cc5c0176572a8c5"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-page-t0-prediction-0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-page-t0-prediction-0.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-page-t0-prediction-0.jb2",
+          "sha256": "dedd2ae025738290184408c625e3928d3951fba42a8bb5d39e4814be2699bb57"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-page-t0-prediction-0.out",
+          "sha256": "956d90d90daf968ac28649c1166eba2872906f7ac7ca5fff427fea3905c1fdc3"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-page-t0-prediction-0.params",
+          "sha256": "41eda08c5b4daa2cbb1fc2b24e422f43d1af3f73f80545157cc5c0176572a8c5"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-t0-prediction-1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-t0-prediction-1.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-t0-prediction-1.jb2",
+          "sha256": "9d655cbb8e3dab0883dc21190735f2b880dcb2939723f1cf9502bce25cad7310"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-t0-prediction-1.out",
+          "sha256": "956d90d90daf968ac28649c1166eba2872906f7ac7ca5fff427fea3905c1fdc3"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-t0-prediction-1.params",
+          "sha256": "41eda08c5b4daa2cbb1fc2b24e422f43d1af3f73f80545157cc5c0176572a8c5"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-page-t0-prediction-1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-page-t0-prediction-1.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-page-t0-prediction-1.jb2",
+          "sha256": "b97914fffc2d0bd4932cf159fcfcc5c096b87b2ddbd6db74348deefd4aac9efd"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-page-t0-prediction-1.out",
+          "sha256": "956d90d90daf968ac28649c1166eba2872906f7ac7ca5fff427fea3905c1fdc3"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-page-t0-prediction-1.params",
+          "sha256": "41eda08c5b4daa2cbb1fc2b24e422f43d1af3f73f80545157cc5c0176572a8c5"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-t1-prediction-0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-t1-prediction-0.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-t1-prediction-0.jb2",
+          "sha256": "f33c1c07e6f5ae9ff8b54ff93f445cc791a3c1d57a95aa7b73875aecaea067dd"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-t1-prediction-0.out",
+          "sha256": "956d90d90daf968ac28649c1166eba2872906f7ac7ca5fff427fea3905c1fdc3"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-t1-prediction-0.params",
+          "sha256": "41eda08c5b4daa2cbb1fc2b24e422f43d1af3f73f80545157cc5c0176572a8c5"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-page-t1-prediction-0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-page-t1-prediction-0.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-page-t1-prediction-0.jb2",
+          "sha256": "04e3b51bb333bfa47eb8a45985e503004a55262a38be9178197665b5860359f8"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-page-t1-prediction-0.out",
+          "sha256": "956d90d90daf968ac28649c1166eba2872906f7ac7ca5fff427fea3905c1fdc3"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-page-t1-prediction-0.params",
+          "sha256": "41eda08c5b4daa2cbb1fc2b24e422f43d1af3f73f80545157cc5c0176572a8c5"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-t1-prediction-1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-t1-prediction-1.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-t1-prediction-1.jb2",
+          "sha256": "112a465d6dd5cef675dca6bf2fe858637ccf341c1665635ab7622802fc962b75"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-t1-prediction-1.out",
+          "sha256": "956d90d90daf968ac28649c1166eba2872906f7ac7ca5fff427fea3905c1fdc3"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-t1-prediction-1.params",
+          "sha256": "41eda08c5b4daa2cbb1fc2b24e422f43d1af3f73f80545157cc5c0176572a8c5"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-page-t1-prediction-1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-page-t1-prediction-1.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-page-t1-prediction-1.jb2",
+          "sha256": "4fa3b1d1b84492e4be767412a2253f6625b01ab3dc01e77505b076e8a82a89de"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-page-t1-prediction-1.out",
+          "sha256": "956d90d90daf968ac28649c1166eba2872906f7ac7ca5fff427fea3905c1fdc3"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-page-t1-prediction-1.params",
+          "sha256": "41eda08c5b4daa2cbb1fc2b24e422f43d1af3f73f80545157cc5c0176572a8c5"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-intermediate-chain-adaptive",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-intermediate-chain-adaptive.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-intermediate-chain-adaptive.jb2",
+          "sha256": "c02e2c3bc0cbf6e60aef8b2832d78122351859c4f2f121821bcd5fe96451b6f6"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-intermediate-chain-adaptive.out",
+          "sha256": "162b56a736142cb32c8d0269921743a0bc52361f623654126622d8905a8da97b"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-intermediate-chain-adaptive.params",
+          "sha256": "befcca1a742d2bd4682bf6a1425362aabe36f9bc1194350be797f9e45782363e"
+        }
+      }
+    },
+    {
+      "id": "jbig2/text-refinement-t0-offset-1-2",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/text-refinement-t0-offset-1-2.globals",
+          "sha256": "4940b6b74d2e92ce15958f9ff7d660e1c8055a58eeccd7ef7c26b54d8f9a2a8d"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/text-refinement-t0-offset-1-2.jb2",
+          "sha256": "e4f07a7c39497ddb6d16f954fc98545bbd1285fb51d772ec2ac7b376227bc898"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/text-refinement-t0-offset-1-2.out",
+          "sha256": "7f7401edd0da7b183e3ace58ee2d3855c10bb332718866358cb9f5b32e492670"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/text-refinement-t0-offset-1-2.params",
+          "sha256": "41eda08c5b4daa2cbb1fc2b24e422f43d1af3f73f80545157cc5c0176572a8c5"
+        }
+      }
+    },
+    {
+      "id": "jbig2/text-refinement-t0-offset-0-3",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/text-refinement-t0-offset-0-3.globals",
+          "sha256": "4940b6b74d2e92ce15958f9ff7d660e1c8055a58eeccd7ef7c26b54d8f9a2a8d"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/text-refinement-t0-offset-0-3.jb2",
+          "sha256": "3a306a15e46e2808d7e72ff5d08c549c595567069706a61ddb9be7756376992f"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/text-refinement-t0-offset-0-3.out",
+          "sha256": "7f7401edd0da7b183e3ace58ee2d3855c10bb332718866358cb9f5b32e492670"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/text-refinement-t0-offset-0-3.params",
+          "sha256": "41eda08c5b4daa2cbb1fc2b24e422f43d1af3f73f80545157cc5c0176572a8c5"
+        }
+      }
+    },
+    {
+      "id": "jbig2/text-refinement-t0-offset-3-0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/text-refinement-t0-offset-3-0.globals",
+          "sha256": "4940b6b74d2e92ce15958f9ff7d660e1c8055a58eeccd7ef7c26b54d8f9a2a8d"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/text-refinement-t0-offset-3-0.jb2",
+          "sha256": "367b3ebe6e5d2e8030fd2c3779a1d95811a5d16faa5de1152b17c622dc6d59e1"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/text-refinement-t0-offset-3-0.out",
+          "sha256": "7f7401edd0da7b183e3ace58ee2d3855c10bb332718866358cb9f5b32e492670"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/text-refinement-t0-offset-3-0.params",
+          "sha256": "41eda08c5b4daa2cbb1fc2b24e422f43d1af3f73f80545157cc5c0176572a8c5"
+        }
+      }
+    },
+    {
+      "id": "jbig2/symbol-single-refinement-t0-offset-2-1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-symbol-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t0-offset-2-1.globals",
+          "sha256": "7684a377e844e6106c39bac8ce875fbba61c0e151971d50527d25a44ad67b2fe"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t0-offset-2-1.jb2",
+          "sha256": "b36a145ebff3ad192dc7722299c60d75fac5c9c61e18c8dc253c2f8af9fc2ba1"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t0-offset-2-1.out",
+          "sha256": "2e4af5ee50ff218f890a4c0e611ac91c8832bb6bd777bd9508802665b2c821fc"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t0-offset-2-1.params",
+          "sha256": "345bedcd5dac00e17bde0d7fcc7da2e819b44f94f60cd54bff6a6fd8934031a8"
+        }
+      }
+    },
+    {
+      "id": "jbig2/symbol-single-refinement-t0-offset-0-2",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-symbol-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t0-offset-0-2.globals",
+          "sha256": "f4530b48b822e8d8e453e57bbf57c6a7bd2310423b48349c641c5f9c24515d1c"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t0-offset-0-2.jb2",
+          "sha256": "b36a145ebff3ad192dc7722299c60d75fac5c9c61e18c8dc253c2f8af9fc2ba1"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t0-offset-0-2.out",
+          "sha256": "2e4af5ee50ff218f890a4c0e611ac91c8832bb6bd777bd9508802665b2c821fc"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t0-offset-0-2.params",
+          "sha256": "345bedcd5dac00e17bde0d7fcc7da2e819b44f94f60cd54bff6a6fd8934031a8"
+        }
+      }
+    },
+    {
+      "id": "jbig2/symbol-single-refinement-t0-offset-4-0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-symbol-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t0-offset-4-0.globals",
+          "sha256": "462c89864389cfeee08b11f2ffc68c127b9fb11f4fa16e6b61d7b7c9a9b8e0e2"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t0-offset-4-0.jb2",
+          "sha256": "b36a145ebff3ad192dc7722299c60d75fac5c9c61e18c8dc253c2f8af9fc2ba1"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t0-offset-4-0.out",
+          "sha256": "2e4af5ee50ff218f890a4c0e611ac91c8832bb6bd777bd9508802665b2c821fc"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t0-offset-4-0.params",
+          "sha256": "345bedcd5dac00e17bde0d7fcc7da2e819b44f94f60cd54bff6a6fd8934031a8"
+        }
+      }
+    },
+    {
+      "id": "jbig2/symbol-multiple-aggregation-t0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-symbol-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/symbol-multiple-aggregation-t0.globals",
+          "sha256": "40bf1c71db4bbe46d494a43a670bf346205a0a607c6d1feb075a3def15b7a3d3"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/symbol-multiple-aggregation-t0.jb2",
+          "sha256": "6f0ba838b7fd577d347985d30f0d2b7141eb75d77d5830816c82d88225e72790"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/symbol-multiple-aggregation-t0.out",
+          "sha256": "317c0722d4ce9e3944e58933e89d481f98636a38b4c013aad4057f438567cc18"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/symbol-multiple-aggregation-t0.params",
+          "sha256": "345bedcd5dac00e17bde0d7fcc7da2e819b44f94f60cd54bff6a6fd8934031a8"
+        }
+      }
+    },
+    {
+      "id": "jbig2/text-refinement-t1-offset-1-2",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/text-refinement-t1-offset-1-2.globals",
+          "sha256": "4940b6b74d2e92ce15958f9ff7d660e1c8055a58eeccd7ef7c26b54d8f9a2a8d"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/text-refinement-t1-offset-1-2.jb2",
+          "sha256": "0842aa727a51a0320391dc504e4524c369d5f79509756a11aed89cf63865f38f"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/text-refinement-t1-offset-1-2.out",
+          "sha256": "7f7401edd0da7b183e3ace58ee2d3855c10bb332718866358cb9f5b32e492670"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/text-refinement-t1-offset-1-2.params",
+          "sha256": "41eda08c5b4daa2cbb1fc2b24e422f43d1af3f73f80545157cc5c0176572a8c5"
+        }
+      }
+    },
+    {
+      "id": "jbig2/text-refinement-t1-offset-0-3",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/text-refinement-t1-offset-0-3.globals",
+          "sha256": "4940b6b74d2e92ce15958f9ff7d660e1c8055a58eeccd7ef7c26b54d8f9a2a8d"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/text-refinement-t1-offset-0-3.jb2",
+          "sha256": "e104e0f375c34c40017b75962e37e61c0d0f4bb06353473229213269d76dc776"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/text-refinement-t1-offset-0-3.out",
+          "sha256": "7f7401edd0da7b183e3ace58ee2d3855c10bb332718866358cb9f5b32e492670"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/text-refinement-t1-offset-0-3.params",
+          "sha256": "41eda08c5b4daa2cbb1fc2b24e422f43d1af3f73f80545157cc5c0176572a8c5"
+        }
+      }
+    },
+    {
+      "id": "jbig2/text-refinement-t1-offset-3-0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/text-refinement-t1-offset-3-0.globals",
+          "sha256": "4940b6b74d2e92ce15958f9ff7d660e1c8055a58eeccd7ef7c26b54d8f9a2a8d"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/text-refinement-t1-offset-3-0.jb2",
+          "sha256": "bf79a316aa3eb4adffcc03cd2187101a95f153ddbcbbc0bc930826adfb5efad1"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/text-refinement-t1-offset-3-0.out",
+          "sha256": "7f7401edd0da7b183e3ace58ee2d3855c10bb332718866358cb9f5b32e492670"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/text-refinement-t1-offset-3-0.params",
+          "sha256": "41eda08c5b4daa2cbb1fc2b24e422f43d1af3f73f80545157cc5c0176572a8c5"
+        }
+      }
+    },
+    {
+      "id": "jbig2/symbol-single-refinement-t1-offset-2-1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-symbol-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t1-offset-2-1.globals",
+          "sha256": "5a7edaefa0629d62b648005afbb6b106118c6ba14f2e93c11188a69fbdf8a14b"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t1-offset-2-1.jb2",
+          "sha256": "b36a145ebff3ad192dc7722299c60d75fac5c9c61e18c8dc253c2f8af9fc2ba1"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t1-offset-2-1.out",
+          "sha256": "2e4af5ee50ff218f890a4c0e611ac91c8832bb6bd777bd9508802665b2c821fc"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t1-offset-2-1.params",
+          "sha256": "345bedcd5dac00e17bde0d7fcc7da2e819b44f94f60cd54bff6a6fd8934031a8"
+        }
+      }
+    },
+    {
+      "id": "jbig2/symbol-single-refinement-t1-offset-0-2",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-symbol-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t1-offset-0-2.globals",
+          "sha256": "3769e9c64d39e499399f01c694f9bf2be8ce67501353d5bc37be66aab70ac7ff"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t1-offset-0-2.jb2",
+          "sha256": "b36a145ebff3ad192dc7722299c60d75fac5c9c61e18c8dc253c2f8af9fc2ba1"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t1-offset-0-2.out",
+          "sha256": "2e4af5ee50ff218f890a4c0e611ac91c8832bb6bd777bd9508802665b2c821fc"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t1-offset-0-2.params",
+          "sha256": "345bedcd5dac00e17bde0d7fcc7da2e819b44f94f60cd54bff6a6fd8934031a8"
+        }
+      }
+    },
+    {
+      "id": "jbig2/symbol-single-refinement-t1-offset-4-0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-symbol-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t1-offset-4-0.globals",
+          "sha256": "3f437c06fbc38176c4f7d4cb59b2e5270c7ba321118b28e1fcdbbbb523d44e0b"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t1-offset-4-0.jb2",
+          "sha256": "b36a145ebff3ad192dc7722299c60d75fac5c9c61e18c8dc253c2f8af9fc2ba1"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t1-offset-4-0.out",
+          "sha256": "2e4af5ee50ff218f890a4c0e611ac91c8832bb6bd777bd9508802665b2c821fc"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/symbol-single-refinement-t1-offset-4-0.params",
+          "sha256": "345bedcd5dac00e17bde0d7fcc7da2e819b44f94f60cd54bff6a6fd8934031a8"
+        }
+      }
+    },
+    {
+      "id": "jbig2/symbol-multiple-aggregation-t1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-symbol-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/symbol-multiple-aggregation-t1.globals",
+          "sha256": "44d7ca46ca9e4758bdb805ee755fbeb6187635b7b119135b5ca29f175e728b0c"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/symbol-multiple-aggregation-t1.jb2",
+          "sha256": "6f0ba838b7fd577d347985d30f0d2b7141eb75d77d5830816c82d88225e72790"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/symbol-multiple-aggregation-t1.out",
+          "sha256": "317c0722d4ce9e3944e58933e89d481f98636a38b4c013aad4057f438567cc18"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/symbol-multiple-aggregation-t1.params",
+          "sha256": "345bedcd5dac00e17bde0d7fcc7da2e819b44f94f60cd54bff6a6fd8934031a8"
+        }
+      }
+    },
+    {
+      "id": "jbig2/retained-generic-contexts-t0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-retained-contexts"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t0.globals",
+          "sha256": "30bc3233671de6e0e5027b9778664f47dc4697c0282e4ff88f669b50c7d2cc00"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t0.jb2",
+          "sha256": "b716ae62d5d076516e4f30fa9ae752396fce5a5447068d9438785bf009ea1c9e"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t0.out",
+          "sha256": "b152c05df1bca7b49e054b0bebf21db2f6e3941a645fe3709798dab3fb31aa00"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t0.params",
+          "sha256": "6e70b6cc570f824644af098a3070d078cafe0a67fd89c99ffa2f5ed5a2ea6cf4"
+        }
+      }
+    },
+    {
+      "id": "jbig2/retained-generic-contexts-t1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-retained-contexts"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t1.globals",
+          "sha256": "f55cbb54d0d91627535815bd18c1b7557d64f8e413ffb4c46e390facccfe52a6"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t1.jb2",
+          "sha256": "b716ae62d5d076516e4f30fa9ae752396fce5a5447068d9438785bf009ea1c9e"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t1.out",
+          "sha256": "b152c05df1bca7b49e054b0bebf21db2f6e3941a645fe3709798dab3fb31aa00"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t1.params",
+          "sha256": "6e70b6cc570f824644af098a3070d078cafe0a67fd89c99ffa2f5ed5a2ea6cf4"
+        }
+      }
+    },
+    {
+      "id": "jbig2/retained-generic-contexts-t2",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-retained-contexts"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t2.globals",
+          "sha256": "9e4c10ac9dd42e5a046c638e2fa65d133873470e4015cecb6b4d0e76d7d53236"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t2.jb2",
+          "sha256": "b716ae62d5d076516e4f30fa9ae752396fce5a5447068d9438785bf009ea1c9e"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t2.out",
+          "sha256": "b152c05df1bca7b49e054b0bebf21db2f6e3941a645fe3709798dab3fb31aa00"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t2.params",
+          "sha256": "6e70b6cc570f824644af098a3070d078cafe0a67fd89c99ffa2f5ed5a2ea6cf4"
+        }
+      }
+    },
+    {
+      "id": "jbig2/retained-generic-contexts-t3",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-retained-contexts"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t3.globals",
+          "sha256": "1b76a099dd3a4c78e8764c08073e6378f45f9330342632e00d1bf0134df1da2f"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t3.jb2",
+          "sha256": "b716ae62d5d076516e4f30fa9ae752396fce5a5447068d9438785bf009ea1c9e"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t3.out",
+          "sha256": "b152c05df1bca7b49e054b0bebf21db2f6e3941a645fe3709798dab3fb31aa00"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/retained-generic-contexts-t3.params",
+          "sha256": "6e70b6cc570f824644af098a3070d078cafe0a67fd89c99ffa2f5ed5a2ea6cf4"
+        }
+      }
+    },
+    {
+      "id": "jbig2/retained-refinement-contexts-t0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-retained-contexts"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/retained-refinement-contexts-t0.globals",
+          "sha256": "43f12061800e1862be5c0ad7cf4c3c711d89d52fa507dfcb1bb2ae7dac721533"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/retained-refinement-contexts-t0.jb2",
+          "sha256": "4039ecb9e0d855a9002cd35dc67bd332abf3a8607f3ac6b7e8d515511db3c059"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/retained-refinement-contexts-t0.out",
+          "sha256": "96afa0ab0bfa5cc977ce2ee68282d639c6803754b765901a235551ad3e188af9"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/retained-refinement-contexts-t0.params",
+          "sha256": "345bedcd5dac00e17bde0d7fcc7da2e819b44f94f60cd54bff6a6fd8934031a8"
+        }
+      }
+    },
+    {
+      "id": "jbig2/retained-refinement-contexts-t1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-retained-contexts"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/retained-refinement-contexts-t1.globals",
+          "sha256": "f181c113ef31774fbb98426b3e5c22cd689f29f639a51d9ba6755b5b3cbb2208"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/retained-refinement-contexts-t1.jb2",
+          "sha256": "4039ecb9e0d855a9002cd35dc67bd332abf3a8607f3ac6b7e8d515511db3c059"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/retained-refinement-contexts-t1.out",
+          "sha256": "96afa0ab0bfa5cc977ce2ee68282d639c6803754b765901a235551ad3e188af9"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/retained-refinement-contexts-t1.params",
+          "sha256": "345bedcd5dac00e17bde0d7fcc7da2e819b44f94f60cd54bff6a6fd8934031a8"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-adaptive-noncausal",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-hostile-input"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-adaptive-noncausal.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-adaptive-noncausal.jb2",
+          "sha256": "2d285c3163964fa62d1e1f05f336b33f5bb0aac2a9da0bb12ffdaff84e4eba45"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-adaptive-noncausal.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-adaptive-noncausal.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-reserved-flags",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-hostile-input"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-reserved-flags.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-reserved-flags.jb2",
+          "sha256": "d41b51233b9b2829d2532ddfec589d9a9ba5b442cdf66fdab70b9796025825e9"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-reserved-flags.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-reserved-flags.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-two-references",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-hostile-input"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-two-references.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-two-references.jb2",
+          "sha256": "d0edb05084f1e6a9bd8843f8e091e4c4ced311779ad7dde6498c6bf2435669d9"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-two-references.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-two-references.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-wrong-reference",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-hostile-input"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-wrong-reference.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-wrong-reference.jb2",
+          "sha256": "f5428cf2aa5589b533cba10295a7107b61051977da1c721c76d99cb55dd13a98"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-wrong-reference.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-wrong-reference.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-arithmetic-truncated",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-hostile-input"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-arithmetic-truncated.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-arithmetic-truncated.jb2",
+          "sha256": "0ed80c5ffd3baa6c599c3edf62579c99bc40d11a7cf0fa08c19ab5731c2be3f6"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-arithmetic-truncated.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-arithmetic-truncated.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/reserved-generic-type-32",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-explicit-unsupported"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/reserved-generic-type-32.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/reserved-generic-type-32.jb2",
+          "sha256": "81973b4f0771758233c1b74369fcaad11a0c75c8efdd840b2a0187fde69ab16d"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/reserved-generic-type-32.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/reserved-generic-type-32.params",
+          "sha256": "736ba769ab7191447825077f893c6d8d3c902381287734e9aa5f623420dd3fe6"
+        }
+      }
+    },
+    {
+      "id": "jbig2/text-refinement-zero-width",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-hostile-input"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/text-refinement-zero-width.globals",
+          "sha256": "4e6d8c8737309c6d866b9f923745c8643c4a97dbf6d3800309c72c817b14eff4"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/text-refinement-zero-width.jb2",
+          "sha256": "90bdc146afec94b29bb214151d1d07f0ba75a768522089fb9dd940099f1f5b67"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/text-refinement-zero-width.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/text-refinement-zero-width.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/text-refinement-pixel-limit",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-hostile-input"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/text-refinement-pixel-limit.globals",
+          "sha256": "4e6d8c8737309c6d866b9f923745c8643c4a97dbf6d3800309c72c817b14eff4"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/text-refinement-pixel-limit.jb2",
+          "sha256": "0e5f9575e85e152534c3881579b8135941f2e4538ed0dc4c968b4ef53ac0d122"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/text-refinement-pixel-limit.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/text-refinement-pixel-limit.params",
+          "sha256": "5ec8aa38c25f04c8d9201f0f62be6eb9e1074d8ad565978b2a9626d376bbe6dc"
+        }
+      }
+    },
+    {
+      "id": "jbig2/text-refinement-invalid-indicator",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-hostile-input"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/text-refinement-invalid-indicator.globals",
+          "sha256": "4e6d8c8737309c6d866b9f923745c8643c4a97dbf6d3800309c72c817b14eff4"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/text-refinement-invalid-indicator.jb2",
+          "sha256": "00a22708d5b7d987992f8c4a0f4f30a5ab64dc5d1cded076ffc3d49c5afd75f2"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/text-refinement-invalid-indicator.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/text-refinement-invalid-indicator.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/retained-contexts-missing",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-hostile-input"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/retained-contexts-missing.globals",
+          "sha256": "21183c6ea509826bdcfcf15db927eaa1388b1edec9099f4c7e2283bb2f20751e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/retained-contexts-missing.jb2",
+          "sha256": "3f461b7201604a6d9a7ab65097bc4ece36d29e04b5efe56b56720fde0b83de2d"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/retained-contexts-missing.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/retained-contexts-missing.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/retained-contexts-incompatible",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-hostile-input"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/retained-contexts-incompatible.globals",
+          "sha256": "d6b3a509837732465e8027fdc0f1781e82cff78b1399aeb3e780e199de931570"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/retained-contexts-incompatible.jb2",
+          "sha256": "3f461b7201604a6d9a7ab65097bc4ece36d29e04b5efe56b56720fde0b83de2d"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/retained-contexts-incompatible.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/retained-contexts-incompatible.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/retained-refinement-contexts-missing",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-hostile-input"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/retained-refinement-contexts-missing.globals",
+          "sha256": "05b340414214b028178b0636b12150f35b9eed3e12d12a28f4e2558bf170253e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/retained-refinement-contexts-missing.jb2",
+          "sha256": "3f461b7201604a6d9a7ab65097bc4ece36d29e04b5efe56b56720fde0b83de2d"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/retained-refinement-contexts-missing.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/retained-refinement-contexts-missing.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/symbol-mixed-aggregation-state-t0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-symbol-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/symbol-mixed-aggregation-state-t0.globals",
+          "sha256": "af0211d6f74e73f00e4031e9e5ffb0556624552af3b1c300d7661d169facd418"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/symbol-mixed-aggregation-state-t0.jb2",
+          "sha256": "6ee1fb956ecde65f48ce6465303c4be100be2d140b5a4856f542ea83f495d1de"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/symbol-mixed-aggregation-state-t0.out",
+          "sha256": "7e82c39ffb33bee16c298005aa2ea7a1ee649be1ab7cf2bc4b6a9af4f34ccb32"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/symbol-mixed-aggregation-state-t0.params",
+          "sha256": "2b554008b2fd590043cb5887dc20fff632728a5fb06b3427abcb4dc4c30446ee"
+        }
+      }
+    },
+    {
+      "id": "jbig2/symbol-mixed-aggregation-state-t1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-symbol-aggregation"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/symbol-mixed-aggregation-state-t1.globals",
+          "sha256": "30e5e85b8183714c33c357ec159734b7c35fd84c06cf7b9bdf395c1043f5f541"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/symbol-mixed-aggregation-state-t1.jb2",
+          "sha256": "6ee1fb956ecde65f48ce6465303c4be100be2d140b5a4856f542ea83f495d1de"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/symbol-mixed-aggregation-state-t1.out",
+          "sha256": "7e82c39ffb33bee16c298005aa2ea7a1ee649be1ab7cf2bc4b6a9af4f34ccb32"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/symbol-mixed-aggregation-state-t1.params",
+          "sha256": "2b554008b2fd590043cb5887dc20fff632728a5fb06b3427abcb4dc4c30446ee"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-prediction-uniform-0-t0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-0-t0.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-0-t0.jb2",
+          "sha256": "b5bc5bf8707975b1b152ab98748e1d09228c5ed6babae6a1cb72880fceb4218b"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-0-t0.out",
+          "sha256": "5322fecfc92a5e3248a297a3df3eddfb9bd9049504272e4f572b87fa36d4b3bd"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-0-t0.params",
+          "sha256": "868781bceb45220ddb0659c0dc77eac912b7214f9d68722e71a96b3784a538e2"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-prediction-uniform-1-t0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-1-t0.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-1-t0.jb2",
+          "sha256": "6e1bc63c6263291d392f7cace04b3748b67840e834836ec688364324ffa00664"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-1-t0.out",
+          "sha256": "6209f1cfba229929737bb95434645873c5eb9c20f1204eb3e6da212c6c078d14"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-1-t0.params",
+          "sha256": "868781bceb45220ddb0659c0dc77eac912b7214f9d68722e71a96b3784a538e2"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-prediction-uniform-0-t1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-0-t1.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-0-t1.jb2",
+          "sha256": "82b5e0dc524b5441868a9193409f5ed71a7e6c43e299a151eee31babe8b533f2"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-0-t1.out",
+          "sha256": "5322fecfc92a5e3248a297a3df3eddfb9bd9049504272e4f572b87fa36d4b3bd"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-0-t1.params",
+          "sha256": "868781bceb45220ddb0659c0dc77eac912b7214f9d68722e71a96b3784a538e2"
+        }
+      }
+    },
+    {
+      "id": "jbig2/refinement-prediction-uniform-1-t1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-refinement"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-1-t1.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-1-t1.jb2",
+          "sha256": "5600060884598a822e3df5d4b7965520cc8cfe785373beafc518a7d393d73c95"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-1-t1.out",
+          "sha256": "6209f1cfba229929737bb95434645873c5eb9c20f1204eb3e6da212c6c078d14"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/refinement-prediction-uniform-1-t1.params",
+          "sha256": "868781bceb45220ddb0659c0dc77eac912b7214f9d68722e71a96b3784a538e2"
+        }
+      }
+    },
+    {
       "id": "jbig2/arithmetic-t0-white",
       "kind": "vector",
       "description": "Independent T.88 encoding and geometric bitmap",
@@ -1942,7 +3372,7 @@
         },
         ".jb2": {
           "path": "corpus/generated/jbig2/intermediate-default-black.jb2",
-          "sha256": "22f96a62bf536d8727ca4c7bda52dc0c1a9df72046100ba9fc1b92af6ce7efbc"
+          "sha256": "74101c102a45314f5dc04562c9b71548cc65f12147cdbad405642db747ba21cf"
         },
         ".out": {
           "path": "corpus/generated/jbig2/intermediate-default-black.out",
@@ -2891,28 +4321,28 @@
       }
     },
     {
-      "id": "jbig2/unsupported-refinement-region",
+      "id": "jbig2/refinement-truncated",
       "kind": "vector",
       "description": "Malformed or explicitly unsupported embedded stream",
       "requirements": [
-        "jbig2-explicit-unsupported"
+        "jbig2-hostile-input"
       ],
       "files": {
         ".globals": {
-          "path": "corpus/generated/jbig2/unsupported-refinement-region.globals",
+          "path": "corpus/generated/jbig2/refinement-truncated.globals",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         ".jb2": {
-          "path": "corpus/generated/jbig2/unsupported-refinement-region.jb2",
+          "path": "corpus/generated/jbig2/refinement-truncated.jb2",
           "sha256": "5e13ecfd38d658ed588518d65023e749ea26f3c82d516ac97b3b28e9347e74ae"
         },
         ".out": {
-          "path": "corpus/generated/jbig2/unsupported-refinement-region.out",
+          "path": "corpus/generated/jbig2/refinement-truncated.out",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         ".params": {
-          "path": "corpus/generated/jbig2/unsupported-refinement-region.params",
-          "sha256": "2f4f28c86025bb15a0313726e099e1bb63fec04143a993865c029f85697b1e24"
+          "path": "corpus/generated/jbig2/refinement-truncated.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
         }
       }
     },
@@ -4399,80 +5829,80 @@
       }
     },
     {
-      "id": "jbig2/symbol-refinement",
+      "id": "jbig2/symbol-refinement-truncated",
       "kind": "vector",
       "description": "Malformed or explicitly unsupported embedded stream",
       "requirements": [
-        "jbig2-explicit-unsupported"
+        "jbig2-hostile-input"
       ],
       "files": {
         ".globals": {
-          "path": "corpus/generated/jbig2/symbol-refinement.globals",
+          "path": "corpus/generated/jbig2/symbol-refinement-truncated.globals",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         ".jb2": {
-          "path": "corpus/generated/jbig2/symbol-refinement.jb2",
+          "path": "corpus/generated/jbig2/symbol-refinement-truncated.jb2",
           "sha256": "3d4c3c64d327d11e94d4c5fd49ce9253a7a12f9cf53a1b87b47159c117b1d63b"
         },
         ".out": {
-          "path": "corpus/generated/jbig2/symbol-refinement.out",
+          "path": "corpus/generated/jbig2/symbol-refinement-truncated.out",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         ".params": {
-          "path": "corpus/generated/jbig2/symbol-refinement.params",
-          "sha256": "ed3a2d61031fb20ce17602f4bef6d754c86ad513e995ec5c3fd51d90930441ec"
+          "path": "corpus/generated/jbig2/symbol-refinement-truncated.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
         }
       }
     },
     {
-      "id": "jbig2/symbol-context",
+      "id": "jbig2/symbol-context-truncated",
       "kind": "vector",
       "description": "Malformed or explicitly unsupported embedded stream",
       "requirements": [
-        "jbig2-explicit-unsupported"
+        "jbig2-hostile-input"
       ],
       "files": {
         ".globals": {
-          "path": "corpus/generated/jbig2/symbol-context.globals",
+          "path": "corpus/generated/jbig2/symbol-context-truncated.globals",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         ".jb2": {
-          "path": "corpus/generated/jbig2/symbol-context.jb2",
+          "path": "corpus/generated/jbig2/symbol-context-truncated.jb2",
           "sha256": "182ce8372a4408e4ec78b9c1f970a34e3934a1749ed5da51e2dd4c944045b285"
         },
         ".out": {
-          "path": "corpus/generated/jbig2/symbol-context.out",
+          "path": "corpus/generated/jbig2/symbol-context-truncated.out",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         ".params": {
-          "path": "corpus/generated/jbig2/symbol-context.params",
-          "sha256": "b602941ba64e42649f57fb27f5c0b116a5ac2e7513dc2ce217402e877dcce5da"
+          "path": "corpus/generated/jbig2/symbol-context-truncated.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
         }
       }
     },
     {
-      "id": "jbig2/text-refinement",
+      "id": "jbig2/text-refinement-truncated",
       "kind": "vector",
       "description": "Malformed or explicitly unsupported embedded stream",
       "requirements": [
-        "jbig2-explicit-unsupported"
+        "jbig2-hostile-input"
       ],
       "files": {
         ".globals": {
-          "path": "corpus/generated/jbig2/text-refinement.globals",
+          "path": "corpus/generated/jbig2/text-refinement-truncated.globals",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         ".jb2": {
-          "path": "corpus/generated/jbig2/text-refinement.jb2",
+          "path": "corpus/generated/jbig2/text-refinement-truncated.jb2",
           "sha256": "fe1b118c0f2df0b2a38d97ed503053e8a701d53641fc8db67ce723bce0f3a12d"
         },
         ".out": {
-          "path": "corpus/generated/jbig2/text-refinement.out",
+          "path": "corpus/generated/jbig2/text-refinement-truncated.out",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         ".params": {
-          "path": "corpus/generated/jbig2/text-refinement.params",
-          "sha256": "0fef3b7cb6a3cde2adda13d4ee806d7c31f63a11cda6ab334fe9f81edaef409e"
+          "path": "corpus/generated/jbig2/text-refinement-truncated.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
         }
       }
     },

@@ -3,11 +3,14 @@
 //! adapter is responsible for PDF sample polarity.
 //!
 //! Generic regions support arithmetic templates 0–3, adaptive pixels,
-//! typical prediction and MMR. Direct arithmetic symbol dictionaries and
-//! top-left, non-transposed arithmetic text regions are supported. Other
+//! typical prediction and MMR, generic refinement, direct/refined/aggregate
+//! arithmetic symbols, retained bitmap contexts, and top-left arithmetic text
+//! regions with refinement. Other
 //! coding procedures fail with stable feature tags. File headers, page
 //! numbers other than 1, and end-of-page /
 //! end-of-file segments are rejected as required by PDF clause 7.4.7.
+//! Coding algorithms remain pending primary-text review of T.88; exact
+//! external bitmap comparisons are recorded separately in the requirements.
 
 mod arithmetic;
 mod bitmap;
@@ -16,6 +19,7 @@ mod generic;
 mod integer;
 mod mmr;
 mod reader;
+mod refinement;
 mod symbol;
 #[cfg(test)]
 mod tests;
@@ -25,16 +29,17 @@ use pagura_core::{Error, Limits, Position, Result};
 use reader::Reader;
 use std::{collections::BTreeMap, rc::Rc};
 
-/// Stable unsupported capabilities of the JBIG2 decoder.
+/// Stable JBIG2 feature tags. Tags for arithmetic capabilities now supported
+/// remain available for compatibility.
 pub mod tags {
     use pagura_core::Feature;
     /// Huffman symbol dictionary decoding (T.88 clause 6.5).
     pub const SYMBOL_DICTIONARY: Feature = Feature::new("jbig2.symbol-dictionary");
-    /// Refinement and aggregate symbols.
+    /// Compatibility tag for refinement and aggregate symbols.
     pub const SYMBOL_REFINEMENT: Feature = Feature::new("jbig2.symbol-refinement");
-    /// Reuse of retained arithmetic symbol contexts.
+    /// Compatibility tag for retained arithmetic symbol contexts.
     pub const SYMBOL_CONTEXT: Feature = Feature::new("jbig2.symbol-context");
-    /// Text refinement decoding.
+    /// Compatibility tag for text refinement decoding.
     pub const TEXT_REFINEMENT: Feature = Feature::new("jbig2.text-refinement");
     /// Transposed or non-top-left text reference corners.
     pub const TEXT_LAYOUT: Feature = Feature::new("jbig2.text-layout");
@@ -44,7 +49,7 @@ pub mod tags {
     pub const PATTERN_DICTIONARY: Feature = Feature::new("jbig2.pattern-dictionary");
     /// Halftone region decoding (T.88 clause 6.6).
     pub const HALFTONE_REGION: Feature = Feature::new("jbig2.halftone-region");
-    /// Generic refinement (T.88 clause 6.3).
+    /// Compatibility tag for generic refinement.
     pub const REFINEMENT_REGION: Feature = Feature::new("jbig2.refinement-region");
     /// User-defined Huffman tables (T.88 clause 7.4.13).
     pub const HUFFMAN_TABLE: Feature = Feature::new("jbig2.huffman-table");
@@ -131,9 +136,10 @@ struct Page {
     last_stripe: Option<u32>,
 }
 
-struct Segment {
-    kind: u8,
-    symbols: Vec<Rc<Bitmap>>,
+enum Segment {
+    Dictionary(symbol::Dictionary),
+    Region(Rc<Bitmap>),
+    Metadata,
 }
 
 struct State<'a> {
@@ -141,7 +147,7 @@ struct State<'a> {
     page: Option<Page>,
     // Retention bits are lifetime hints. Dictionary storage is retained until
     // completion and charged conservatively, including coding-state overhead.
-    // Intermediate region referrals currently fail before they can be used.
+    // Intermediate region bitmaps are retained and charged to the byte budget.
     segments: BTreeMap<u32, Segment>,
     bytes: usize,
     work: budget::Work,
@@ -150,6 +156,11 @@ struct State<'a> {
 
 impl State<'_> {
     fn stream(&mut self, data: &[u8], global: bool) -> Result<()> {
+        if data.starts_with(&[0x97, 0x4a, 0x42, 0x32, 0x0d, 0x0a, 0x1a, 0x0a]) {
+            return Err(
+                Error::syntax("JBIG2 file headers are forbidden in PDF").at(Position::Buffer(0))
+            );
+        }
         let mut reader = Reader::new(data, 0);
         while reader.offset < data.len() {
             let position = reader.position();
@@ -240,12 +251,12 @@ impl State<'_> {
         let mut body = Reader::new(body, base);
         let reference_bytes = references.len() * size_of::<u32>();
         self.bytes += reference_bytes;
-        let symbols = self
+        let segment = self
             .body(kind, global, &references, &mut body)
             .map_err(|error| error.at(Position::Buffer(base)))?;
         self.bytes -= reference_bytes;
         body.finish()?;
-        self.segments.insert(number, Segment { kind, symbols });
+        self.segments.insert(number, segment);
         Ok(())
     }
 
@@ -262,14 +273,13 @@ impl State<'_> {
         global: bool,
         references: &[u32],
         reader: &mut Reader<'_>,
-    ) -> Result<Vec<Rc<Bitmap>>> {
+    ) -> Result<Segment> {
         let unsupported = match kind {
             16 => Some(tags::PATTERN_DICTIONARY),
             20 | 22 | 23 => Some(tags::HALFTONE_REGION),
-            40 | 42 | 43 => Some(tags::REFINEMENT_REGION),
             53 => Some(tags::HUFFMAN_TABLE),
             62 => Some(tags::EXTENSION),
-            0 | 4 | 6 | 7 | 32 | 38 | 39 | 48..=52 => None,
+            0 | 4 | 6 | 7 | 36 | 38 | 39 | 40 | 42 | 43 | 48..=52 => None,
             54 => return Err(Error::syntax("JBIG2 colour palettes are forbidden in PDF")),
             _ => Some(tags::SEGMENT_TYPE),
         };
@@ -293,11 +303,18 @@ impl State<'_> {
             limits.decoded_bytes = limits
                 .decoded_bytes
                 .saturating_sub(self.bytes + imported.len() * size_of::<Rc<Bitmap>>());
-            let dictionary = symbol::decode(reader, &imported, &limits, &mut self.work)?;
+            let retained = references
+                .last()
+                .and_then(|n| self.segments.get(n))
+                .and_then(|s| match s {
+                    Segment::Dictionary(dictionary) => dictionary.contexts.as_ref(),
+                    _ => None,
+                });
+            let dictionary = symbol::decode(reader, &imported, retained, &limits, &mut self.work)?;
             self.bytes += dictionary.bytes;
-            return Ok(dictionary.symbols);
+            return Ok(Segment::Dictionary(dictionary));
         }
-        if !matches!(kind, 4 | 6 | 7) && !references.is_empty() {
+        if !matches!(kind, 4 | 6 | 7 | 40 | 42 | 43) && !references.is_empty() {
             return Err(Error::syntax("unexpected JBIG2 segment referrals"));
         }
         match kind {
@@ -309,9 +326,13 @@ impl State<'_> {
                     "JBIG2 profile segments are not implemented",
                 ));
             }
-            _ => self.region(reader, kind, references)?,
+            _ => {
+                return self
+                    .region(reader, kind, references)
+                    .map(|region| region.map_or(Segment::Metadata, Segment::Region));
+            }
         }
-        Ok(Vec::new())
+        Ok(Segment::Metadata)
     }
 
     fn imported(&mut self, references: &[u32]) -> Result<Vec<Rc<Bitmap>>> {
@@ -321,13 +342,13 @@ impl State<'_> {
                 .segments
                 .get(reference)
                 .ok_or_else(|| Error::syntax("missing JBIG2 symbol dictionary"))?;
-            if segment.kind != 0 {
+            let Segment::Dictionary(dictionary) = segment else {
                 return Err(Error::syntax(
                     "JBIG2 symbol referral has wrong segment type",
                 ));
-            }
+            };
             count = count
-                .checked_add(segment.symbols.len())
+                .checked_add(dictionary.symbols.len())
                 .filter(|&n| {
                     n <= self.limits.value_nodes
                         && n <= self.limits.decoded_bytes.saturating_sub(self.bytes)
@@ -338,8 +359,8 @@ impl State<'_> {
         self.work.operations(count, self.limits)?;
         let mut imported = Vec::with_capacity(count);
         for reference in references {
-            if let Some(segment) = self.segments.get(reference) {
-                imported.extend(segment.symbols.iter().cloned());
+            if let Some(Segment::Dictionary(dictionary)) = self.segments.get(reference) {
+                imported.extend(dictionary.symbols.iter().cloned());
             }
         }
         Ok(imported)
@@ -451,7 +472,12 @@ impl State<'_> {
         Ok(())
     }
 
-    fn region(&mut self, reader: &mut Reader<'_>, kind: u8, references: &[u32]) -> Result<()> {
+    fn region(
+        &mut self,
+        reader: &mut Reader<'_>,
+        kind: u8,
+        references: &[u32],
+    ) -> Result<Option<Rc<Bitmap>>> {
         let width = reader.u32()?;
         let height = reader.u32()?;
         let x = reader.u32()?;
@@ -464,7 +490,7 @@ impl State<'_> {
             .page
             .as_ref()
             .ok_or_else(|| Error::syntax("region before JBIG2 page information"))?;
-        let immediate = !matches!(kind, 4 | 32);
+        let immediate = !matches!(kind, 4 | 36 | 40);
         if immediate && !page.override_operator && flags != page.operator {
             return Err(Error::unsupported(
                 tags::PAGE_COMBINATION,
@@ -487,7 +513,9 @@ impl State<'_> {
             limits.decoded_bytes = limits
                 .decoded_bytes
                 .saturating_sub(imported.len() * size_of::<Rc<Bitmap>>());
-            text::decode(reader, width, height, &imported, &limits, &mut self.work)?
+            text::decode(reader, (width, height), &imported, &limits, &mut self.work)?
+        } else if matches!(kind, 40 | 42 | 43) {
+            self.refinement_region(reader, (width, height), (x, y), references, &limits)?
         } else {
             generic::decode(reader, width, height, &limits)?
         };
@@ -499,8 +527,67 @@ impl State<'_> {
             };
             page.bitmap.combine(&region, x, y, operator);
         }
-        // Intermediate regions have no effect until a refinement segment
-        // refers to them. Those segments fail explicitly above.
-        Ok(())
+        if immediate {
+            Ok(None)
+        } else {
+            self.bytes += region.data.len();
+            Ok(Some(Rc::new(region)))
+        }
+    }
+
+    fn refinement_region(
+        &mut self,
+        reader: &mut Reader<'_>,
+        size: (u32, u32),
+        origin: (u32, u32),
+        references: &[u32],
+        limits: &Limits,
+    ) -> Result<Bitmap> {
+        let (reference, dx, dy) = match references {
+            [] => {
+                let page = self
+                    .page
+                    .as_ref()
+                    .ok_or_else(|| Error::syntax("JBIG2 refinement has no reference page"))?;
+                (&page.bitmap, -i64::from(origin.0), -i64::from(origin.1))
+            }
+            [number] => {
+                let Some(Segment::Region(bitmap)) = self.segments.get(number) else {
+                    return Err(Error::syntax(
+                        "JBIG2 refinement referral has wrong segment type",
+                    ));
+                };
+                (bitmap.as_ref(), 0, 0)
+            }
+            _ => {
+                return Err(Error::syntax(
+                    "JBIG2 refinement requires at most one reference",
+                ));
+            }
+        };
+        let flags = reader.byte()?;
+        if flags & !3 != 0 {
+            return Err(Error::syntax("reserved JBIG2 refinement flags"));
+        }
+        let parameters = refinement::Parameters::read(reader, flags & 1)?;
+        let mut model = refinement::Model::new(parameters, None, limits)?;
+        let base = match reader.position() {
+            Position::Buffer(p) => p,
+            _ => 0,
+        };
+        let mut decoder = arithmetic::Decoder::new(reader.rest(), base)?;
+        model.decode(
+            &mut decoder,
+            reference,
+            refinement::Request {
+                width: size.0,
+                height: size.1,
+                dx,
+                dy,
+                prediction: flags & 2 != 0,
+            },
+            limits,
+            &mut self.work,
+        )
     }
 }

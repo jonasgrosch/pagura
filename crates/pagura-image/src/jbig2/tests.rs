@@ -54,7 +54,7 @@ fn independent_bitmaps_and_hostile_vectors() {
                 );
             }
             outcome => {
-                let error = result.unwrap_err();
+                let error = result.expect_err(name);
                 assert_eq!(error.kind.name(), outcome, "{name}: {error}");
                 if let Some(feature) = params.get("feature") {
                     assert_eq!(error.feature().unwrap().as_str(), *feature, "{name}");
@@ -137,7 +137,16 @@ fn truncations_and_mutations_remain_bounded() {
         file_bytes: 8192,
         ..Limits::default()
     };
-    for name in ["arithmetic-t0-noise", "mmr-geometry", "symbols-t2-text"] {
+    for name in [
+        "arithmetic-t0-noise",
+        "mmr-geometry",
+        "symbols-t2-text",
+        "refinement-t0-prediction-1",
+        "text-refinement-t1-offset-1-2",
+        "symbol-multiple-aggregation-t0",
+        "symbol-mixed-aggregation-state-t1",
+        "retained-refinement-contexts-t0",
+    ] {
         let data = fixture("jbig2", &format!("{name}.jb2"));
         let globals = fixture("jbig2", &format!("{name}.globals"));
         for cut in 0..data.len() {
@@ -158,5 +167,50 @@ fn truncations_and_mutations_remain_bounded() {
                 }
             }
         }
+    }
+}
+
+#[test]
+fn refinement_errors_reach_the_expected_coding_field() {
+    for (name, message) in [
+        (
+            "refinement-adaptive-noncausal",
+            "noncausal JBIG2 refinement adaptive pixel",
+        ),
+        (
+            "refinement-reserved-flags",
+            "reserved JBIG2 refinement flags",
+        ),
+        (
+            "refinement-two-references",
+            "JBIG2 refinement requires at most one reference",
+        ),
+        (
+            "retained-contexts-missing",
+            "missing JBIG2 retained symbol contexts",
+        ),
+        (
+            "retained-contexts-incompatible",
+            "incompatible JBIG2 retained generic contexts",
+        ),
+        (
+            "retained-refinement-contexts-missing",
+            "missing JBIG2 retained refinement contexts",
+        ),
+        (
+            "text-refinement-zero-width",
+            "invalid JBIG2 refined symbol dimension",
+        ),
+        (
+            "text-refinement-invalid-indicator",
+            "invalid JBIG2 text refinement indicator",
+        ),
+    ] {
+        let data = fixture("jbig2", &format!("{name}.jb2"));
+        let globals = fixture("jbig2", &format!("{name}.globals"));
+        let error = decode(&data, Some(&globals), &Limits::default()).expect_err(name);
+        assert_eq!(error.kind, ErrorKind::Syntax, "{name}");
+        assert_eq!(error.message, message, "{name}");
+        assert!(matches!(error.position, Position::Buffer(_)), "{name}");
     }
 }

@@ -259,7 +259,7 @@ def generic_cases():
     data+=segment(4,39,1,region(rows[5:],arithmetic(rows[5:],2),y=5))+segment(5,50,1,struct.pack(">I",8))
     yield vector("striped-unknown-height",data,rows,requirement="jbig2-page-combination")
     rows=[[1]*13 for _ in range(3)]
-    data=segment(1,48,1,page_info(13,3,4))+segment(2,32,1,region(rows,arithmetic(rows,2)))
+    data=segment(1,48,1,page_info(13,3,4))+segment(2,36,1,region(rows,arithmetic(rows,2)))
     yield vector("intermediate-default-black",data,rows,requirement="jbig2-page-combination")
     rows=[[0]*13 for _ in range(3)]
     data=segment(1,48,1,page_info(13,3,8))+segment(2,38,1,region([[1]*13 for _ in range(3)],arithmetic([[1]*13 for _ in range(3)],2),operator=4))
@@ -330,8 +330,9 @@ def identifier(encoder,count,value):
         history=history*2+bit
 
 
-def dictionary(glyphs,template,selection=None,imported=()):
+def dictionary(glyphs,template,selection=None,imported=(),retain=False,reuse_contexts=None,return_contexts=False):
     encoder=ArithmeticEncoder()
+    if reuse_contexts is not None: encoder.contexts.update(reuse_contexts)
     previous_height=0
     ordered=sorted(glyphs,key=len)
     for height in sorted(set(map(len,ordered))):
@@ -361,16 +362,19 @@ def dictionary(glyphs,template,selection=None,imported=()):
         integer(encoder,"export",end-index)
         export=not export
         index=end
-    body=struct.pack(">H",template<<10)+b"".join(struct.pack("bb",*p) for p in DEFAULT_AT[template])
+    body=struct.pack(">H",(template<<10)+(512 if retain else 0)+(256 if reuse_contexts is not None else 0))+b"".join(struct.pack("bb",*p) for p in DEFAULT_AT[template])
     body+=struct.pack(">II",sum(selection),len(ordered))+encoder.finish()
-    return body,[glyph for glyph,keep in zip(all_symbols,selection) if keep]
+    selected=[glyph for glyph,keep in zip(all_symbols,selection) if keep]
+    contexts={k:v for k,v in encoder.contexts.items() if isinstance(k,tuple) and k[0] in ("pixels","refinement")}
+    return (body,selected,contexts) if return_contexts else (body,selected)
 
 
-def text_region(symbols,placements,width,height,strips=1,offset=0,operator=0,default=0):
-    encoder=ArithmeticEncoder()
+def text_pixels(encoder,symbols,placements,width,height,strips=1,offset=0,operator=0,default=0,
+                refinements=None,refine_template=0,alphabet_count=None,complete_last_strip=False):
     integer(encoder,"strip",0)
     previous_strip=previous_first=0
     rows=[[default]*width for _ in range(height)]
+    previous_width=0
     for index,(x,y,glyph_id) in enumerate(placements):
         new_strip=index==0 or placements[index-1][1]//strips!=y//strips
         if new_strip:
@@ -381,28 +385,53 @@ def text_region(symbols,placements,width,height,strips=1,offset=0,operator=0,def
             previous_first=x
         else:
             px,py,pid=placements[index-1]
-            integer(encoder,"advance",x-(px+len(symbols[pid][0])-1)-offset)
-        if strips>1:
-            integer(encoder,"within",y%strips)
-        identifier(encoder,len(symbols),glyph_id)
+            integer(encoder,"advance",x-(px+previous_width-1)-offset)
+        if strips>1: integer(encoder,"within",y%strips)
+        identifier(encoder,alphabet_count or len(symbols),glyph_id)
         glyph=symbols[glyph_id]
+        if refinements is not None:
+            refinement=refinements[index]
+            integer(encoder,"refine-indicator",int(refinement is not None))
+            if refinement is not None:
+                refined,dx,dy=refinement
+                dw,dh=len(refined[0])-len(glyph[0]),len(refined)-len(glyph)
+                integer(encoder,"refine-width",dw);integer(encoder,"refine-height",dh)
+                integer(encoder,"refine-x",dx);integer(encoder,"refine-y",dy)
+                refinement_pixels(encoder,refined,glyph,refine_template,dw//2+dx,dh//2+dy)
+                glyph=refined
         for gy,row in enumerate(glyph):
             for gx,b in enumerate(row):
                 if 0<=x+gx<width and 0<=y+gy<height:
                     a=rows[y+gy][x+gx]
                     rows[y+gy][x+gx]=(a|b,a&b,a^b,1^a^b)[operator]
+        previous_width=len(glyph[0])
         last=index+1==len(placements)
-        if not last and placements[index+1][1]//strips!=y//strips:
-            integer(encoder,"advance",None)
+        if (last and complete_last_strip) or (not last and placements[index+1][1]//strips!=y//strips): integer(encoder,"advance",None)
+    return rows
+
+
+def text_region(symbols,placements,width,height,strips=1,offset=0,operator=0,default=0,refinements=None,refine_template=0):
+    encoder=ArithmeticEncoder()
+    rows=text_pixels(encoder,symbols,placements,width,height,strips,offset,operator,default,refinements,refine_template)
     flags=0x10+((strips.bit_length()-1)<<2)+(operator<<7)+(default<<9)+((offset&31)<<10)
-    return struct.pack(">IIIIBHI",width,height,0,0,0,flags,len(placements))+encoder.finish(),rows
+    if refinements is not None: flags+=2+(refine_template<<15)
+    header=struct.pack(">IIIIBH",width,height,0,0,0,flags)
+    if refinements is not None and refine_template==0: header+=bytes([255,255,255,255])
+    return header+struct.pack(">I",len(placements))+encoder.finish(),rows
 
 
 # Generic and symbol vectors share the fixture driver entry point.
 
 def cases():
+    yield from pdf_mapping_cases()
+    yield from refinement_cases()
+    yield from refined_symbol_cases()
+    yield from refinement_hostile_cases()
     for case in generic_cases():
-        if case.name=="unsupported-symbol-dictionary":
+        if case.name=="unsupported-refinement-region":
+            data=case.files[".jb2"]
+            yield vector("refinement-truncated",data,outcome="syntax",requirement="jbig2-hostile-input")
+        elif case.name=="unsupported-symbol-dictionary":
             page=segment(1,48,1,page_info(19,9))
             yield vector(case.name,page+segment(2,0,1,b"\x00\x01"),outcome="unsupported",feature="jbig2.symbol-dictionary",requirement="jbig2-explicit-unsupported")
         elif case.name=="unsupported-text-region":
@@ -447,10 +476,13 @@ def cases():
     yield vector("symbol-import-and-export",data,rows,globals=globals2,requirement="jbig2-arithmetic-symbols")
     page=segment(1,48,1,page_info(17,6))
     for name,flags,feature in (("symbol-refinement",2,"symbol-refinement"),("symbol-context",256,"symbol-context")):
-        yield vector(name,page+segment(2,0,1,struct.pack(">H",flags)),outcome="unsupported",feature="jbig2."+feature,requirement="jbig2-explicit-unsupported")
+        yield vector(name+"-truncated",page+segment(2,0,1,struct.pack(">H",flags)),outcome="syntax",requirement="jbig2-hostile-input")
     for name,flags in (("text-refinement",0x12),("text-layout",0)):
         coded=struct.pack(">IIIIBH",17,6,0,0,0,flags)
-        yield vector(name,page+segment(2,6,1,coded),outcome="unsupported",feature="jbig2."+name,requirement="jbig2-explicit-unsupported")
+        if name=="text-refinement":
+            yield vector(name+"-truncated",page+segment(2,6,1,coded),outcome="syntax",requirement="jbig2-hostile-input")
+        else:
+            yield vector(name,page+segment(2,6,1,coded),outcome="unsupported",feature="jbig2."+name,requirement="jbig2-explicit-unsupported")
 
     for number in (256,257,65536,65537,70002):
         body,one=dictionary([[[1,0,1],[0,1,0]]],2)
@@ -498,3 +530,247 @@ def cases():
     payload=arithmetic(rows,2)
     bad=payload[:-2]+b"\xff\x90\xff\xac"
     yield vector("arithmetic-invalid-stuffing",page+segment(2,38,1,region(rows,bad)),outcome="syntax",requirement="jbig2-hostile-input")
+
+
+def pdf_mapping_cases():
+    """PDF mapping rules derived from ISO 32000-2:2020 EC3, 7.4.7/Table 12.
+
+    JBIG2 coding details used to represent these small bitmaps remain subject
+    to primary-text review of ISO/IEC 14492 and T.88.
+    """
+    rows=[[1,0,1],[0,1,0]]
+    page=segment(10,48,1,page_info(3,2))
+    ordinary=segment(11,38,1,region(rows,arithmetic(rows,2)))
+    # Increasing segment numbers are recommended, not required by PDF.
+    yield vector("pdf-sequential-nonmonotonic",page+segment(2,38,1,region(rows,arithmetic(rows,2))),rows,requirement="jbig2-embedded-segments")
+    header=bytes([151,74,66,50,13,10,26,10,1,0,0,0,1])
+    yield vector("pdf-file-header-forbidden",header+page+ordinary,outcome="syntax",requirement="jbig2-embedded-segments")
+    yield vector("pdf-region-colour-extension-forbidden",page+segment(11,38,1,region(rows,arithmetic(rows,2),operator=8)),outcome="syntax",requirement="jbig2-explicit-unsupported")
+    body,symbols=dictionary([rows],2)
+    globals=segment(0,0,0,body)
+    coded,expected=text_region(symbols,[(0,0,0)],3,2)
+    data=segment(1,48,1,page_info(3,2))+segment(2,6,1,coded,refs=(0,))
+    yield vector("pdf-globals-single-image",data,expected,globals=globals,requirement="jbig2-embedded-segments")
+    yield vector("pdf-global-in-page-stream",globals+data,outcome="syntax",requirement="jbig2-embedded-segments")
+    yield vector("pdf-page-in-globals",data,outcome="syntax",globals=segment(0,0,1,body),requirement="jbig2-embedded-segments")
+    yield vector("pdf-page-two-in-globals",data,outcome="syntax",globals=segment(0,0,2,body),requirement="jbig2-embedded-segments")
+    yield vector("pdf-global-missing",data,outcome="syntax",requirement="jbig2-embedded-segments")
+
+
+def refinement_pixels(encoder, rows, reference, template, dx=0, dy=0, typical=False,
+                      adaptive=((-1,-1),(-1,-1)), namespace="refinement"):
+    """Geometric refinement neighbourhoods, in descending bit significance.
+
+    The T.88 locator is pending primary-text review. Encoded vectors require
+    exact external bitmap agreement before being accepted as evidence.
+    """
+    height,width=len(rows),len(rows[0])
+    rh,rw=len(reference),len(reference[0])
+    def old(x,y):
+        return reference[y][x] if 0<=x<rw and 0<=y<rh else 0
+    def new(x,y):
+        return rows[y][x] if 0<=x<width and 0<=y<height else 0
+    output=([adaptive[0],(0,-1),(1,-1),(-1,0)] if template==0 else [(-1,-1),(0,-1),(1,-1),(-1,0)])
+    prior=([adaptive[1],(0,-1),(1,-1),(-1,0),(0,0),(1,0),(-1,1),(0,1),(1,1)] if template==0
+           else [(0,-1),(-1,0),(0,0),(1,0),(0,1),(1,1)])
+    ltp=0
+    for y,row in enumerate(rows):
+        implicit=[]
+        for x in range(width):
+            values=[old(x-dx+ox,y-dy+oy) for oy in (-1,0,1) for ox in (-1,0,1)]
+            implicit.append(values[0] if min(values)==max(values) else None)
+        if typical:
+            next_ltp=int(all(value is None or value==row[x] for x,value in enumerate(implicit)))
+            encoder.encode((namespace,0x10 if template==0 else 8),ltp^next_ltp)
+            ltp=next_ltp
+        for x,value in enumerate(row):
+            if ltp and implicit[x] is not None: continue
+            context=0
+            for ox,oy in prior: context=context*2+old(x-dx+ox,y-dy+oy)
+            for ox,oy in output: context=context*2+new(x+ox,y+oy)
+            encoder.encode((namespace,context),value)
+
+
+def refinement_payload(rows, reference, template, dx=0, dy=0, typical=False, adaptive=((-1,-1),(-1,-1))):
+    encoder=ArithmeticEncoder()
+    refinement_pixels(encoder,rows,reference,template,dx,dy,typical,adaptive)
+    flags=template+(2 if typical else 0)
+    return bytes([flags])+(b"".join(struct.pack("bb",*p) for p in adaptive) if template==0 else b"")+encoder.finish()
+
+
+def refinement_cases():
+    reference=[[int(2<=x<9 and 2<=y<7 or x==y) for x in range(13)] for y in range(9)]
+    target=[[int(1<=x<10 and 2<=y<6 or x+y==9) for x in range(13)] for y in range(9)]
+    for template in (0,1):
+        for typical in (False,True):
+            page=segment(1,48,1,page_info(19,13))
+            intermediate=segment(2,36,1,region(reference,arithmetic(reference,2)))
+            payload=refinement_payload(target,reference,template,typical=typical)
+            coded=segment(3,42,1,region(target,payload,x=3,y=2),refs=(2,))
+            expected=[[0]*19 for _ in range(13)]
+            for y,row in enumerate(target): expected[y+2][3:16]=row
+            yield vector(f"refinement-t{template}-prediction-{int(typical)}",page+intermediate+coded,expected,requirement="jbig2-refinement")
+            # A refinement without a referral uses the current page as its
+            # reference, including the region's nonzero page origin.
+            page_reference=[[0]*19 for _ in range(13)]
+            for y,row in enumerate(reference): page_reference[y+2][3:16]=row
+            payload=refinement_payload(target,page_reference,template,dx=-3,dy=-2,typical=typical)
+            initial=segment(2,38,1,region(reference,arithmetic(reference,2),x=3,y=2))
+            coded=segment(3,43,1,region(target,payload,x=3,y=2,operator=4))
+            yield vector(f"refinement-page-t{template}-prediction-{int(typical)}",page+initial+coded,expected,requirement="jbig2-refinement")
+    adaptive=((-3,-2),(2,1))
+    payload=refinement_payload(target,reference,0,adaptive=adaptive)
+    page=segment(1,48,1,page_info(13,9))
+    initial=segment(2,36,1,region(reference,arithmetic(reference,2)))
+    refined=segment(3,40,1,region(target,payload),refs=(2,))
+    final=segment(4,42,1,region(reference,refinement_payload(reference,target,1)),refs=(3,))
+    yield vector("refinement-intermediate-chain-adaptive",page+initial+refined+final,reference,requirement="jbig2-refinement")
+
+
+def aggregate_dictionary(imported,definitions,template,retain=False,reuse_contexts=None):
+    """Refinement/aggregate symbols; bitmap expectations precede encoding."""
+    encoder=ArithmeticEncoder()
+    if reuse_contexts is not None: encoder.contexts.update(reuse_contexts)
+    symbols=list(imported)
+    count=len(imported)+len(definitions)
+    previous_height=0
+    for height in sorted(set(len(d[1]) for d in definitions)):
+        integer(encoder,"height",height-previous_height)
+        previous_height=height
+        previous_width=0
+        for definition in (d for d in definitions if len(d[1])==height):
+            kind,rows,*args=definition
+            width=len(rows[0])
+            integer(encoder,"width",width-previous_width)
+            previous_width=width
+            if kind=="single":
+                symbol_id,dx,dy=args
+                integer(encoder,"instances",1)
+                identifier(encoder,count,symbol_id)
+                integer(encoder,"refine-x",dx);integer(encoder,"refine-y",dy)
+                refinement_pixels(encoder,rows,symbols[symbol_id],template,dx,dy)
+            else:
+                placements,refinements=args
+                integer(encoder,"instances",len(placements))
+                expected=text_pixels(encoder,symbols,placements,width,height,refinements=refinements,refine_template=template,alphabet_count=count,complete_last_strip=True)
+                assert expected==rows
+            symbols.append(rows)
+        integer(encoder,"width",None)
+    integer(encoder,"export",0);integer(encoder,"export",count)
+    flags=2+(2<<10)+(template<<12)+(512 if retain else 0)+(256 if reuse_contexts is not None else 0)
+    header=struct.pack(">Hbb",flags,2,-1)
+    if template==0: header+=bytes([255,255,255,255])
+    header+=struct.pack(">II",count,len(definitions))
+    contexts={k:v for k,v in encoder.contexts.items() if isinstance(k,tuple) and k[0] in ("pixels","refinement")}
+    return header+encoder.finish(),symbols,contexts
+
+
+def refined_symbol_cases():
+    glyphs=[[[1,0,1],[0,1,0],[1,0,1]],[[1,1,1],[1,0,0],[1,1,1]]]
+    body,symbols=dictionary(glyphs,2)
+    globals=segment(0,0,0,body)
+    grown=[[int(x==y or x+y==4) for x in range(5)]for y in range(5)]
+    small=[[1,0],[0,1]]
+    for template in (0,1):
+        for dx,dy in ((0,0),(-1,1),(2,-2)):
+            coded,rows=text_region(symbols,[(1,1,0),(7,1,1),(12,1,0),(1,8,1)],19,13,
+                refinements=[(grown,dx,dy),None,(small,-dx,-dy),(grown,0,0)],refine_template=template)
+            data=segment(1,48,1,page_info(19,13))+segment(2,6,1,coded,refs=(0,))
+            yield vector(f"text-refinement-t{template}-offset-{dx+1}-{dy+2}",data,rows,globals=globals,requirement="jbig2-refinement")
+        for dx,dy in ((0,0),(-2,1),(2,-1)):
+            aggregate,selected,_=aggregate_dictionary(symbols,[("single",grown,0,dx,dy)],template)
+            global_aggregate=globals+segment(1,0,0,aggregate,refs=(0,))
+            coded,rows=text_region(selected,[(1,1,2),(8,1,0)],17,8)
+            data=segment(2,48,1,page_info(17,8))+segment(3,6,1,coded,refs=(1,))
+            yield vector(f"symbol-single-refinement-t{template}-offset-{dx+2}-{dy+1}",data,rows,globals=global_aggregate,requirement="jbig2-symbol-aggregation")
+        aggregate_rows=[[0]*13 for _ in range(5)]
+        for gx,gy,glyph in ((0,0,symbols[0]),(6,0,grown)):
+            for y,row in enumerate(glyph):
+                for x,value in enumerate(row):aggregate_rows[gy+y][gx+x]|=value
+        definitions=[("aggregate",aggregate_rows,[(0,0,0),(6,0,1)],[None,(grown,1,-1)])]
+        aggregate,selected,_=aggregate_dictionary(symbols,definitions,template)
+        global_aggregate=globals+segment(1,0,0,aggregate,refs=(0,))
+        coded,rows=text_region(selected,[(1,1,2)],17,8)
+        data=segment(2,48,1,page_info(17,8))+segment(3,6,1,coded,refs=(1,))
+        yield vector(f"symbol-multiple-aggregation-t{template}",data,rows,globals=global_aggregate,requirement="jbig2-symbol-aggregation")
+    # Carry bitmap probabilities across dictionary boundaries, while integer
+    # coding contexts start afresh. Dense shapes distinguish reuse from reset.
+    glyphs_a=[[[((x*3+y*7+x*y)^y)>>2&1 for x in range(11)] for y in range(7)]]
+    glyphs_b=[[[int(x%3==y%3) for x in range(11)]for y in range(7)]]
+    for template in range(4):
+        first,initial,contexts=dictionary(glyphs_a,template,retain=True,return_contexts=True)
+        second,selected=dictionary(glyphs_b,template,imported=initial,reuse_contexts=contexts)
+        global_retained=segment(0,0,0,first)+segment(1,0,0,second,refs=(0,))
+        coded,rows=text_region(selected,[(1,1,0),(14,1,1)],27,10)
+        data=segment(2,48,1,page_info(27,10))+segment(3,6,1,coded,refs=(1,))
+        yield vector(f"retained-generic-contexts-t{template}",data,rows,globals=global_retained,requirement="jbig2-retained-contexts")
+    for template in (0,1):
+        first,initial,contexts=aggregate_dictionary(symbols,[("single",grown,0,1,-1)],template,retain=True)
+        second_target=[[int((x+y)%3==0)for x in range(5)]for y in range(5)]
+        second,selected,_=aggregate_dictionary(initial,[("single",second_target,2,-1,1)],template,reuse_contexts=contexts)
+        global_retained=globals+segment(1,0,0,first,refs=(0,))+segment(2,0,0,second,refs=(1,))
+        coded,rows=text_region(selected,[(1,1,2),(8,1,3)],17,8)
+        data=segment(3,48,1,page_info(17,8))+segment(4,6,1,coded,refs=(2,))
+        yield vector(f"retained-refinement-contexts-t{template}",data,rows,globals=global_retained,requirement="jbig2-retained-contexts")
+
+
+def refinement_hostile_cases():
+    rows=[[1,0,1],[0,1,0],[1,0,1]]
+    page=segment(1,48,1,page_info(9,7))
+    prior=segment(2,36,1,region(rows,arithmetic(rows,2)))
+    cases={
+        "refinement-adaptive-noncausal":(region(rows,b"\x00\x00\x00\xff\xff\xff\xac"),(2,)),
+        "refinement-reserved-flags":(region(rows,b"\x04"),(2,)),
+        "refinement-two-references":(region(rows,refinement_payload(rows,rows,1)),(2,2)),
+        "refinement-wrong-reference":(region(rows,refinement_payload(rows,rows,1)),(1,)),
+        "refinement-arithmetic-truncated":(region(rows,refinement_payload(rows,rows,1)[:-1]),(2,)),
+    }
+    for name,(body,refs) in cases.items():
+        yield vector(name,page+prior+segment(3,42,1,body,refs=refs),outcome="syntax",requirement="jbig2-hostile-input")
+    yield vector("reserved-generic-type-32",page+segment(2,32,1,b""),outcome="unsupported",feature="jbig2.segment-type",requirement="jbig2-explicit-unsupported")
+    body,symbols=dictionary([rows],2)
+    globals=segment(0,0,0,body)
+    for name,value,outcome in (("text-refinement-zero-width",-3,"syntax"),("text-refinement-pixel-limit",30_000_000,"limit")):
+        encoder=ArithmeticEncoder()
+        integer(encoder,"strip",0);integer(encoder,"strip",1);integer(encoder,"first",1)
+        identifier(encoder,1,0);integer(encoder,"refine-indicator",1)
+        for family,n in (("refine-width",value),("refine-height",0),("refine-x",0),("refine-y",0)):integer(encoder,family,n)
+        coded=struct.pack(">IIIIBHI",9,7,0,0,0,0x8012,1)+encoder.finish()
+        yield vector(name,page+segment(2,6,1,coded,refs=(0,)),outcome=outcome,globals=globals,requirement="jbig2-hostile-input")
+    encoder=ArithmeticEncoder()
+    integer(encoder,"strip",0);integer(encoder,"strip",1);integer(encoder,"first",1)
+    identifier(encoder,1,0);integer(encoder,"refine-indicator",2)
+    coded=struct.pack(">IIIIBHI",9,7,0,0,0,0x8012,1)+encoder.finish()
+    yield vector("text-refinement-invalid-indicator",page+segment(2,6,1,coded,refs=(0,)),outcome="syntax",globals=globals,requirement="jbig2-hostile-input")
+    second,_=dictionary([rows],2,imported=symbols,reuse_contexts={})
+    yield vector("retained-contexts-missing",page,outcome="syntax",globals=globals+segment(1,0,0,second,refs=(0,)),requirement="jbig2-hostile-input")
+    first,initial,contexts=dictionary([rows],0,retain=True,return_contexts=True)
+    second,_=dictionary([rows],1,imported=initial,reuse_contexts=contexts)
+    yield vector("retained-contexts-incompatible",page,outcome="syntax",globals=segment(0,0,0,first)+segment(1,0,0,second,refs=(0,)),requirement="jbig2-hostile-input")
+    first,initial,contexts=dictionary([rows],2,retain=True,return_contexts=True)
+    second,_,_=aggregate_dictionary(initial,[("single",rows,0,0,0)],1,reuse_contexts=contexts)
+    yield vector("retained-refinement-contexts-missing",page,outcome="syntax",globals=segment(0,0,0,first)+segment(1,0,0,second,refs=(0,)),requirement="jbig2-hostile-input")
+    for template in (0,1):
+        small=[[1,0],[0,1]]
+        aggregate=[[0]*8 for _ in range(5)]
+        for ox,oy,glyph in ((0,0,rows),(4,1,small)):
+            for y,row in enumerate(glyph):
+                for x,value in enumerate(row):aggregate[oy+y][ox+x]|=value
+        grown=[[int(x+y==4 or x==y) for x in range(5)]for y in range(5)]
+        # One direct refinement, a two-instance aggregate containing it,
+        # and a refinement of that aggregate share coding state.
+        definitions=[("single",small,0,1,-1),("aggregate",aggregate,[(0,0,0),(4,1,1)],[None,None]),("single",grown,2,-1,1)]
+        body,selected,_=aggregate_dictionary(symbols,definitions,template)
+        aggregate_globals=globals+segment(1,0,0,body,refs=(0,))
+        coded,expected=text_region(selected,[(1,1,1),(5,1,2),(1,8,3)],17,15)
+        data=segment(2,48,1,page_info(17,15))+segment(3,6,1,coded,refs=(1,))
+        yield vector(f"symbol-mixed-aggregation-state-t{template}",data,expected,globals=aggregate_globals,requirement="jbig2-symbol-aggregation")
+
+    for template in (0,1):
+        for bit in (0,1):
+            reference=[[bit]*25 for _ in range(11)]
+            target=[[bit]*17 for _ in range(5)]
+            page=segment(1,48,1,page_info(17,5))
+            prior=segment(2,36,1,region(reference,arithmetic(reference,2)))
+            refined=segment(3,42,1,region(target,refinement_payload(target,reference,template,typical=True)),refs=(2,))
+            yield vector(f"refinement-prediction-uniform-{bit}-t{template}",page+prior+refined,target,requirement="jbig2-refinement")

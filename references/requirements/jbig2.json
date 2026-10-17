@@ -1,15 +1,14 @@
 {
   "schema": 2,
   "area": "jbig2",
-  "scope": "ISO 32000-2 clause 7.4.7 verified against the local EC3 text. T.88 algorithm locators identify the coding procedures; the full T.88 reference is not in the local standards cache. Independent arithmetic and T.6 encoders produce bitmap vectors; no PDF image integration is assumed.",
+  "scope": "Verified only the PDF JBIG2 mapping against the locally supplied ISO 32000-2:2020 sponsored EC3 text, clause 7.4.7 and Table 12: bitonal data, page 1, embedded sequential organization, forbidden file/EOP/EOF structures and separate page-0 globals, including single-image use. The referenced optional marker encoding and all coding algorithms remain pending primary-text review of ISO/IEC 14492:2019 / ITU-T T.88 (2018); T.4/T.6 run coding is also pending. Exact PDFium comparisons are differential evidence, not standards verification. Resource budgets, stable unsupported tags and conservative handling of ambiguous page operators are documented project choices.",
   "requirements": [
     {
       "id": "jbig2-embedded-segments",
       "reference": "iso32000-2",
       "clauses": [
         "7.4.7",
-        "T.88 7.2",
-        "T.88 Annex D.3"
+        "Table 12"
       ],
       "status": "implemented",
       "tests": [
@@ -18,16 +17,45 @@
         "corpus/manifests/jbig2.json"
       ],
       "gaps": "",
-      "description": "PDF embedded sequential organization; headers, referrals and page associations."
+      "description": "PDF embedded sequential organization; headers, referrals and page associations.",
+      "primary_text_review": {
+        "rule": "Use PDF page 1 in embedded sequential organization, omit file/EOP/EOF structures, and put page-0 globals in a separate stream even for one image.",
+        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
+        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
+        "verdict": "verified PDF mapping; pending primary-text review for segment grammar"
+      },
+      "external_dependencies": [
+        {
+          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
+          "review": "pending primary-text review",
+          "behavior": "Segment-header fields, referral widths/order, retention flags, and the numeric optional embedded-marker encoding."
+        }
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/pdf-sequential-nonmonotonic",
+          "jbig2/pdf-globals-single-image",
+          "jbig2/header-number-255",
+          "jbig2/header-number-256",
+          "jbig2/header-number-257",
+          "jbig2/header-number-65536",
+          "jbig2/header-number-65537",
+          "jbig2/symbol-reference-width-256",
+          "jbig2/symbol-reference-width-257",
+          "jbig2/symbol-reference-width-65536",
+          "jbig2/symbol-reference-width-65537",
+          "jbig2/symbol-reference-width-70002",
+          "jbig2/extended-referrals-valid"
+        ],
+        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+      }
     },
     {
       "id": "jbig2-generic-arithmetic",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7",
-        "T.88 6.2",
-        "T.88 7.4.6",
-        "T.88 Annex E"
+        "7.4.7"
       ],
       "status": "partial",
       "tests": [
@@ -35,14 +63,88 @@
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
-      "gaps": "Templates 0\u20133, adaptive pixels, TPGDON and MQ. Extended templates and unspecified segment lengths remain unsupported."
+      "gaps": "Templates 0\u20133, adaptive pixels, TPGDON and MQ. Extended templates and unspecified segment lengths remain unsupported.",
+      "primary_text_review": {
+        "rule": "The PDF filter decodes one bitonal page; arithmetic templates and MQ coding are delegated to ISO/IEC 14492.",
+        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
+        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
+        "verdict": "verified PDF mapping only; pending primary-text review for arithmetic coding"
+      },
+      "external_dependencies": [
+        {
+          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
+          "review": "pending primary-text review",
+          "behavior": "Generic templates 0\u20133, adaptive pixels, TPGDON, MQ probability states/byte stuffing and termination."
+        }
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/arithmetic-t0-white",
+          "jbig2/arithmetic-t0-black",
+          "jbig2/arithmetic-t0-checker",
+          "jbig2/arithmetic-t0-geometry",
+          "jbig2/arithmetic-t0-repeated",
+          "jbig2/arithmetic-t0-noise",
+          "jbig2/arithmetic-t0-typical-white",
+          "jbig2/arithmetic-t0-typical-black",
+          "jbig2/arithmetic-t0-typical-checker",
+          "jbig2/arithmetic-t0-typical-geometry",
+          "jbig2/arithmetic-t0-typical-repeated",
+          "jbig2/arithmetic-t0-typical-noise",
+          "jbig2/arithmetic-t0-adaptive",
+          "jbig2/arithmetic-t1-white",
+          "jbig2/arithmetic-t1-black",
+          "jbig2/arithmetic-t1-checker",
+          "jbig2/arithmetic-t1-geometry",
+          "jbig2/arithmetic-t1-repeated",
+          "jbig2/arithmetic-t1-noise",
+          "jbig2/arithmetic-t1-typical-white",
+          "jbig2/arithmetic-t1-typical-black",
+          "jbig2/arithmetic-t1-typical-checker",
+          "jbig2/arithmetic-t1-typical-geometry",
+          "jbig2/arithmetic-t1-typical-repeated",
+          "jbig2/arithmetic-t1-typical-noise",
+          "jbig2/arithmetic-t1-adaptive",
+          "jbig2/arithmetic-t2-white",
+          "jbig2/arithmetic-t2-black",
+          "jbig2/arithmetic-t2-checker",
+          "jbig2/arithmetic-t2-geometry",
+          "jbig2/arithmetic-t2-repeated",
+          "jbig2/arithmetic-t2-noise",
+          "jbig2/arithmetic-t2-typical-white",
+          "jbig2/arithmetic-t2-typical-black",
+          "jbig2/arithmetic-t2-typical-checker",
+          "jbig2/arithmetic-t2-typical-geometry",
+          "jbig2/arithmetic-t2-typical-repeated",
+          "jbig2/arithmetic-t2-typical-noise",
+          "jbig2/arithmetic-t2-adaptive",
+          "jbig2/arithmetic-t3-white",
+          "jbig2/arithmetic-t3-black",
+          "jbig2/arithmetic-t3-checker",
+          "jbig2/arithmetic-t3-geometry",
+          "jbig2/arithmetic-t3-repeated",
+          "jbig2/arithmetic-t3-noise",
+          "jbig2/arithmetic-t3-typical-white",
+          "jbig2/arithmetic-t3-typical-black",
+          "jbig2/arithmetic-t3-typical-checker",
+          "jbig2/arithmetic-t3-typical-geometry",
+          "jbig2/arithmetic-t3-typical-repeated",
+          "jbig2/arithmetic-t3-typical-noise",
+          "jbig2/arithmetic-t3-adaptive",
+          "jbig2/arithmetic-long-tail-0",
+          "jbig2/arithmetic-long-tail-1",
+          "jbig2/arithmetic-long-tail-2",
+          "jbig2/arithmetic-long-tail-3"
+        ],
+        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+      }
     },
     {
       "id": "jbig2-generic-mmr",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7",
-        "T.88 6.2.6"
+        "7.4.7"
       ],
       "status": "partial",
       "tests": [
@@ -50,16 +152,53 @@
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
-      "gaps": "T.6 pass, horizontal, vertical modes and EOFB. Uncompressed extension remains unsupported."
+      "gaps": "T.6 pass, horizontal, vertical modes and EOFB. Uncompressed extension remains unsupported.",
+      "primary_text_review": {
+        "rule": "The PDF filter decodes one bitonal page; MMR coding is delegated to ISO/IEC 14492.",
+        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
+        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
+        "verdict": "verified PDF mapping only; pending primary-text review for T.88/T.4/T.6 coding"
+      },
+      "external_dependencies": [
+        {
+          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
+          "review": "pending primary-text review",
+          "behavior": "MMR pass/horizontal/vertical modes, T.4 run tables, EOFB and padding."
+        },
+        {
+          "standard": "ITU-T T.4 / ITU-T T.6",
+          "review": "pending primary-text review",
+          "behavior": "Every white/black terminating and makeup run code, two-dimensional modes, EOFB and padding."
+        }
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/mmr-white",
+          "jbig2/mmr-black",
+          "jbig2/mmr-checker",
+          "jbig2/mmr-geometry",
+          "jbig2/mmr-repeated",
+          "jbig2/mmr-noise",
+          "jbig2/mmr-terminating",
+          "jbig2/mmr-makeup",
+          "jbig2/mmr-vertical-0",
+          "jbig2/mmr-vertical-1",
+          "jbig2/mmr-vertical-2",
+          "jbig2/mmr-vertical-3",
+          "jbig2/mmr-vertical-4",
+          "jbig2/mmr-vertical-5",
+          "jbig2/mmr-vertical-6",
+          "jbig2/mmr-pass"
+        ],
+        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+      }
     },
     {
       "id": "jbig2-page-combination",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7",
-        "T.88 7.4.5",
-        "T.88 7.4.8",
-        "T.88 7.4.9"
+        "7.4.7"
       ],
       "status": "partial",
       "tests": [
@@ -68,15 +207,39 @@
         "corpus/manifests/jbig2.json"
       ],
       "gaps": "A region operator differing from a non-overridable page default is explicitly unsupported pending review against the full T.88 text.",
-      "description": "Default pixels, combination operators, clipping and striped page height."
+      "description": "Default pixels, combination operators, clipping and striped page height.",
+      "primary_text_review": {
+        "rule": "PDF represents only page 1; page initialization, stripes and region-combination semantics are delegated to ISO/IEC 14492.",
+        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
+        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
+        "verdict": "verified PDF mapping only; pending primary-text review for page composition"
+      },
+      "external_dependencies": [
+        {
+          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
+          "review": "pending primary-text review",
+          "behavior": "Default pixels/operators, region coordinates, clipping, unknown heights and end-of-stripe fields."
+        }
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/combine-clipped-0",
+          "jbig2/combine-clipped-1",
+          "jbig2/combine-clipped-2",
+          "jbig2/combine-clipped-3",
+          "jbig2/combine-clipped-4",
+          "jbig2/striped-unknown-height",
+          "jbig2/intermediate-default-black"
+        ],
+        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+      }
     },
     {
       "id": "jbig2-hostile-input",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7",
-        "T.88 7.2",
-        "T.88 Annex E"
+        "7.4.7"
       ],
       "status": "implemented",
       "tests": [
@@ -85,18 +248,31 @@
         "corpus/manifests/jbig2.json"
       ],
       "gaps": "",
-      "description": "Positioned errors, pre-allocation byte/pixel limits, and cumulative referral, symbol, segment and operation work limits."
+      "description": "Positioned errors, pre-allocation byte/pixel limits, and cumulative referral, symbol, segment and operation work limits.",
+      "primary_text_review": {
+        "rule": "Clause 7.4.7 defines the PDF representation but does not specify resource-budget values or error categories.",
+        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
+        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
+        "verdict": "documented project choice for bounds/errors; pending primary-text review for format rejection rules"
+      },
+      "external_dependencies": [
+        {
+          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
+          "review": "pending primary-text review",
+          "behavior": "Malformed segment fields, arithmetic termination/stuffing, cycles and corrupt bitmap grammar."
+        }
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [],
+        "meaning": "No positive coding certification: malformed and unsupported expectations follow the documented strict/bounded policy and crate tests."
+      }
     },
     {
       "id": "jbig2-explicit-unsupported",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7",
-        "T.88 6.3",
-        "T.88 6.4",
-        "T.88 6.5",
-        "T.88 6.6",
-        "T.88 6.7"
+        "7.4.7"
       ],
       "status": "partial",
       "tests": [
@@ -104,16 +280,32 @@
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
-      "gaps": "Huffman symbols/text, refinement and aggregation, retained contexts, other text layouts, pattern/halftone, user Huffman, profile/extension segments, extended templates, unspecified segment lengths and T.6 uncompressed extension remain explicitly unsupported."
+      "gaps": "Huffman symbols/text, other text layouts, pattern/halftone, user Huffman, profile/extension segments, extended templates, unspecified segment lengths and T.6 uncompressed extension remain explicitly unsupported.",
+      "primary_text_review": {
+        "rule": "PDF forbids palette segments and colour-extension flags; explicit tags for other unimplemented coding procedures are a project choice.",
+        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
+        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
+        "verdict": "verified PDF palette/colour restriction; documented tag policy; pending primary-text review for coding modes"
+      },
+      "external_dependencies": [
+        {
+          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
+          "review": "pending primary-text review",
+          "behavior": "Segment identifiers/flags and the coding modes named by unsupported tags."
+        }
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [],
+        "meaning": "No positive coding certification: malformed and unsupported expectations follow the documented strict/bounded policy and crate tests."
+      }
     },
     {
       "id": "jbig2-arithmetic-symbols",
       "reference": "iso32000-2",
       "clauses": [
         "7.4.7",
-        "T.88 6.5",
-        "T.88 7.4.2",
-        "T.88 Annex A"
+        "Table 12"
       ],
       "status": "partial",
       "tests": [
@@ -121,16 +313,37 @@
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
-      "gaps": "Direct arithmetic symbols, imported dictionaries and export runs. Huffman, refinement, aggregation and retained coding contexts remain unsupported."
+      "gaps": "Huffman symbol dictionaries remain unsupported. Arithmetic direct symbols, refinement/aggregation and compatible retained bitmap contexts have exact differential coverage; all T.88 semantics are pending primary-text review.",
+      "primary_text_review": {
+        "rule": "PDF allows shared page-0 data through JBIG2Globals; symbol dictionary algorithms are delegated to ISO/IEC 14492.",
+        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
+        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
+        "verdict": "verified PDF globals mapping only; pending primary-text review for dictionary coding"
+      },
+      "external_dependencies": [
+        {
+          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
+          "review": "pending primary-text review",
+          "behavior": "Height classes, width differences, imported/exported symbols, arithmetic integers, refinement/aggregation and retained contexts."
+        }
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/symbols-t0-text",
+          "jbig2/symbols-t1-text",
+          "jbig2/symbols-t2-text",
+          "jbig2/symbols-t3-text",
+          "jbig2/symbol-import-and-export"
+        ],
+        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+      }
     },
     {
       "id": "jbig2-arithmetic-text",
       "reference": "iso32000-2",
       "clauses": [
-        "7.4.7",
-        "T.88 6.4",
-        "T.88 7.4.3",
-        "T.88 Annex A"
+        "7.4.7"
       ],
       "status": "partial",
       "tests": [
@@ -138,12 +351,252 @@
         "tools/fixturegen/jbig2.py",
         "corpus/manifests/jbig2.json"
       ],
-      "gaps": "Arithmetic integers and identifiers, strips, signed coordinates and offsets, internal combination, default pixels and clipped top-left text. Huffman, refinement, transposition and other reference corners remain unsupported."
+      "gaps": "Huffman, transposition and reference corners other than top-left remain unsupported. Text refinement has exact differential coverage; T.88 semantics are pending primary-text review.",
+      "primary_text_review": {
+        "rule": "The PDF filter decodes bitonal page-1 image data; text regions remain image coding rather than PDF font/text operators.",
+        "implementation_agreement": "agrees for the supported PDF mapping; coding details are not verified here",
+        "generated_expectations_agreement": "agrees for the PDF mapping; algorithmic bitmaps require separate differential evidence",
+        "verdict": "verified PDF bitonal/page mapping only; pending primary-text review for text-region coding"
+      },
+      "external_dependencies": [
+        {
+          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
+          "review": "pending primary-text review",
+          "behavior": "Arithmetic integers/identifiers, strips, reference corners, signed positioning, refinement and symbol placement."
+        }
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/text-strips-1-offset-0",
+          "jbig2/text-strips-1-offset-15",
+          "jbig2/text-strips-1-offset-16",
+          "jbig2/text-strips-1-offset-31",
+          "jbig2/text-strips-2-offset-0",
+          "jbig2/text-strips-2-offset-15",
+          "jbig2/text-strips-2-offset-16",
+          "jbig2/text-strips-2-offset-31",
+          "jbig2/text-strips-4-offset-0",
+          "jbig2/text-strips-4-offset-15",
+          "jbig2/text-strips-4-offset-16",
+          "jbig2/text-strips-4-offset-31",
+          "jbig2/text-strips-8-offset-0",
+          "jbig2/text-strips-8-offset-15",
+          "jbig2/text-strips-8-offset-16",
+          "jbig2/text-strips-8-offset-31",
+          "jbig2/integer-coordinate-0-negative",
+          "jbig2/integer-coordinate-0-positive",
+          "jbig2/integer-coordinate-3-negative",
+          "jbig2/integer-coordinate-3-positive",
+          "jbig2/integer-coordinate-4-negative",
+          "jbig2/integer-coordinate-4-positive",
+          "jbig2/integer-coordinate-19-negative",
+          "jbig2/integer-coordinate-19-positive",
+          "jbig2/integer-coordinate-20-negative",
+          "jbig2/integer-coordinate-20-positive",
+          "jbig2/integer-coordinate-83-negative",
+          "jbig2/integer-coordinate-83-positive",
+          "jbig2/integer-coordinate-84-negative",
+          "jbig2/integer-coordinate-84-positive",
+          "jbig2/integer-coordinate-339-negative",
+          "jbig2/integer-coordinate-339-positive",
+          "jbig2/integer-coordinate-340-negative",
+          "jbig2/integer-coordinate-340-positive",
+          "jbig2/integer-coordinate-4435-negative",
+          "jbig2/integer-coordinate-4435-positive",
+          "jbig2/integer-coordinate-4436-negative",
+          "jbig2/integer-coordinate-4436-positive",
+          "jbig2/integer-coordinate-65535-negative",
+          "jbig2/integer-coordinate-65535-positive",
+          "jbig2/integer-coordinate-4294967295-negative",
+          "jbig2/integer-coordinate-4294967295-positive",
+          "jbig2/integer-coordinate-4294971730-negative",
+          "jbig2/integer-coordinate-4294971730-positive",
+          "jbig2/text-combination-0",
+          "jbig2/text-combination-1",
+          "jbig2/text-combination-2",
+          "jbig2/text-combination-3"
+        ],
+        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+      }
+    },
+    {
+      "id": "jbig2-refinement",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.4.7"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "gaps": "Pending primary-text review of external coding semantics; exact differential evidence covers the implemented arithmetic paths.",
+      "primary_text_review": {
+        "rule": "PDF represents bitonal page 1; refinement coding is delegated to ISO/IEC 14492.",
+        "implementation_agreement": "agrees for the PDF mapping",
+        "generated_expectations_agreement": "agrees for the PDF mapping; refinement pixels need differential evidence",
+        "verdict": "verified PDF mapping only; pending primary-text review for refinement coding"
+      },
+      "external_dependencies": [
+        {
+          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
+          "review": "pending primary-text review",
+          "behavior": "Refinement templates, adaptive pixels, prediction, reference alignment and segment referrals."
+        }
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/refinement-t0-prediction-0",
+          "jbig2/refinement-page-t0-prediction-0",
+          "jbig2/refinement-t0-prediction-1",
+          "jbig2/refinement-page-t0-prediction-1",
+          "jbig2/refinement-t1-prediction-0",
+          "jbig2/refinement-page-t1-prediction-0",
+          "jbig2/refinement-t1-prediction-1",
+          "jbig2/refinement-page-t1-prediction-1",
+          "jbig2/refinement-intermediate-chain-adaptive",
+          "jbig2/text-refinement-t0-offset-1-2",
+          "jbig2/text-refinement-t0-offset-0-3",
+          "jbig2/text-refinement-t0-offset-3-0",
+          "jbig2/text-refinement-t1-offset-1-2",
+          "jbig2/text-refinement-t1-offset-0-3",
+          "jbig2/text-refinement-t1-offset-3-0",
+          "jbig2/refinement-prediction-uniform-0-t0",
+          "jbig2/refinement-prediction-uniform-1-t0",
+          "jbig2/refinement-prediction-uniform-0-t1",
+          "jbig2/refinement-prediction-uniform-1-t1"
+        ],
+        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+      },
+      "description": "Both refinement templates, adaptive pixels, typical prediction, explicit intermediate references, page references and text-region refinement."
+    },
+    {
+      "id": "jbig2-symbol-aggregation",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.4.7",
+        "Table 12"
+      ],
+      "status": "partial",
+      "description": "Single referenced-symbol refinement and multiple-symbol arithmetic aggregation.",
+      "gaps": "Pending primary-text review of external coding semantics; exact differential evidence covers the implemented arithmetic paths.",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "primary_text_review": {
+        "rule": "PDF permits shared page-0 globals; dictionary coding is delegated to ISO/IEC 14492.",
+        "implementation_agreement": "agrees for supported PDF globals mapping",
+        "generated_expectations_agreement": "agrees for PDF globals mapping; coding pixels require differential evidence",
+        "verdict": "verified PDF globals mapping only; pending primary-text review for dictionary coding"
+      },
+      "external_dependencies": [
+        {
+          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
+          "review": "pending primary-text review",
+          "behavior": "Single referenced-symbol refinement and multiple-symbol arithmetic aggregation."
+        }
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/symbol-single-refinement-t0-offset-2-1",
+          "jbig2/symbol-single-refinement-t0-offset-0-2",
+          "jbig2/symbol-single-refinement-t0-offset-4-0",
+          "jbig2/symbol-multiple-aggregation-t0",
+          "jbig2/symbol-single-refinement-t1-offset-2-1",
+          "jbig2/symbol-single-refinement-t1-offset-0-2",
+          "jbig2/symbol-single-refinement-t1-offset-4-0",
+          "jbig2/symbol-multiple-aggregation-t1",
+          "jbig2/symbol-mixed-aggregation-state-t0",
+          "jbig2/symbol-mixed-aggregation-state-t1"
+        ],
+        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+      }
+    },
+    {
+      "id": "jbig2-retained-contexts",
+      "reference": "iso32000-2",
+      "clauses": [
+        "7.4.7",
+        "Table 12"
+      ],
+      "status": "partial",
+      "description": "Reuse and retention of generic and refinement bitmap probability states across dictionaries; integer states reset.",
+      "gaps": "Pending primary-text review of external coding semantics; exact differential evidence covers the implemented arithmetic paths.",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "primary_text_review": {
+        "rule": "PDF permits shared page-0 globals; dictionary coding is delegated to ISO/IEC 14492.",
+        "implementation_agreement": "agrees for supported PDF globals mapping",
+        "generated_expectations_agreement": "agrees for PDF globals mapping; coding pixels require differential evidence",
+        "verdict": "verified PDF globals mapping only; pending primary-text review for dictionary coding"
+      },
+      "external_dependencies": [
+        {
+          "standard": "ITU-T T.88 (2018) / ISO/IEC 14492:2019",
+          "review": "pending primary-text review",
+          "behavior": "Reuse and retention of generic and refinement bitmap probability states across dictionaries; integer states reset."
+        }
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/retained-generic-contexts-t0",
+          "jbig2/retained-generic-contexts-t1",
+          "jbig2/retained-generic-contexts-t2",
+          "jbig2/retained-generic-contexts-t3",
+          "jbig2/retained-refinement-contexts-t0",
+          "jbig2/retained-refinement-contexts-t1"
+        ],
+        "meaning": "Exact significant packed bitmap agreement; not primary-text verification."
+      }
     }
   ],
   "differential_observations": {
     "mmr-repeated": "PDFium agrees with the horizontal-run oracle; Poppler preserves some preceding black runs on the final white row.",
     "mmr-pass": "PDFium agrees with the two pass operations and final vertical-zero oracle; Poppler preserves one black run.",
-    "page-default-operator": "The initial default-AND interpretation disagreed with PDFium, Poppler and hayro, which rendered the region using its REPLACE operator. Until the exact constraints in T.88 7.4.8 are verified, this combination fails explicitly with jbig2.page-combination. No alternative pixels are accepted as an oracle."
+    "page-default-operator": "The initial default-AND interpretation disagreed with PDFium, Poppler and hayro, which rendered the region using its REPLACE operator. This combination remains explicitly unsupported with jbig2.page-combination pending review against the unavailable T.88 primary text. No alternative pixels are accepted as an oracle.",
+    "intermediate-generic-type": "A new refinement reference vector exposed the former type-32 misreading shared by Rust and Python. Type 36 now represents intermediate generic bitmaps and type 32 is explicitly unsupported. PDFium agrees on the corrected reference/chain vectors; the T.88 type table remains pending primary-text review.",
+    "aggregation-strip-boundary": "Multiple-symbol aggregates require completing the final coded strip before decoding the next dictionary field. PDFium agrees on both templates and on mixed single/multiple aggregation with shared integer/refinement state. High-level aggregation parameter conventions were also studied in hayro; no implementation code or tables were copied."
+  },
+  "primary_source": {
+    "title": "ISO 32000-2:2020 sponsored EC3",
+    "local_text_sha256": "38f6e31c6d2ccfec0e66c7de704da42f01dd41ea1b0a1ea180d780a4c471ec04",
+    "verified_locators": [
+      "7.4.7",
+      "Table 12"
+    ],
+    "unavailable_standards": [
+      "ITU-T T.88 (2018)",
+      "ISO/IEC 14492:2019",
+      "ITU-T T.4",
+      "ITU-T T.6"
+    ]
+  },
+  "documented_choices": [
+    "Limits and error categories follow ADRs 0003/0010; 7.4.7 does not prescribe numeric budgets.",
+    "Dictionary storage and retained bitmap contexts remain live until decoding completes; budget accounting is conservative and does not implement early frees.",
+    "A region operator conflicting with a fixed page default is unsupported pending the external primary text.",
+    "The decoder consumes segment headers directly and never consumes an optional standalone embedded marker; the marker byte values await external primary-text review."
+  ],
+  "differential_summary": {
+    "engine": "PDFium 156.0.8076.0",
+    "method": "Extracted decoded image bitmap without page resampling; compared all significant packed samples to the generator bitmap.",
+    "successful_vectors": 180,
+    "mismatches": 0,
+    "interpretation": "Differential evidence only. Agreement with the generator does not verify ISO/IEC 14492 or T.88."
+  },
+  "table_gate": {
+    "huffman": "Unsupported: no T.88 Huffman table has complete entry-by-entry independent bitmap evidence; no remembered table entries were enabled.",
+    "patterns_and_halftones": "Remain explicitly unsupported; no positive coding evidence was added for these modes.",
+    "existing_mmr": "PDFium exact bitmap evidence exercises every white/black terminating and makeup entry through mmr-terminating/mmr-makeup, plus pass and all vertical offsets; T.4/T.6 primary-text review is still pending."
   }
 }

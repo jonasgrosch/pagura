@@ -1,4 +1,6 @@
-//! Arithmetic direct-coded symbol dictionaries (T.88 clauses 6.5 and 7.4.2).
+//! Arithmetic symbol dictionaries, including refinement and aggregation.
+//! ISO 32000-2 clause 7.4.7 delegates these algorithms to T.88, whose
+//! primary-text review is pending. Generated pixels are checked with PDFium.
 use super::{
     Bitmap,
     arithmetic::{Context, Decoder},
@@ -6,7 +8,8 @@ use super::{
     generic::{self, Template},
     integer::Integer,
     reader::Reader,
-    tags,
+    refinement::{Model, Parameters},
+    tags, text,
 };
 use pagura_core::{Error, Limits, Position, Result};
 use std::rc::Rc;
@@ -14,15 +17,37 @@ use std::rc::Rc;
 pub(super) struct Dictionary {
     pub(super) symbols: Vec<Rc<Bitmap>>,
     pub(super) bytes: usize,
+    pub(super) contexts: Option<Retained>,
+}
+
+pub(super) struct Retained {
+    generic: Vec<Context>,
+    refinement: Option<Vec<Context>>,
+}
+
+struct Config {
+    generic: Template,
+    refinement: Option<Parameters>,
+    reuse: bool,
+    retain: bool,
+}
+
+struct Procedure {
+    heights: Integer,
+    widths: Integer,
+    instances: Integer,
+    generic: Vec<Context>,
+    aggregation: Option<text::State>,
 }
 
 pub(super) fn decode(
     reader: &mut Reader<'_>,
     imported: &[Rc<Bitmap>],
+    retained: Option<&Retained>,
     limits: &Limits,
     work: &mut Work,
 ) -> Result<Dictionary> {
-    let template = read_template(reader)?;
+    let config = Config::read(reader)?;
     let exported = usize::try_from(reader.u32()?)
         .map_err(|_| Error::limit("JBIG2 exported symbol count overflow"))?;
     let added = usize::try_from(reader.u32()?)
@@ -39,94 +64,194 @@ pub(super) fn decode(
     }
     let overhead = total
         .checked_mul(2 * size_of::<Rc<Bitmap>>() + size_of::<Bitmap>() + 2 * size_of::<usize>())
-        .and_then(|n| n.checked_add(template.context_bytes() + 3 * size_of::<Integer>()))
+        .and_then(|n| n.checked_add(config.generic.context_bytes() + 4 * size_of::<Integer>()))
         .filter(|&n| n <= limits.decoded_bytes)
         .ok_or_else(|| Error::limit("JBIG2 symbol tables exceed byte budget"))?;
     let mut bitmap_limits = *limits;
     bitmap_limits.decoded_bytes -= overhead;
+    let mut procedure = Procedure::new(&config, retained, total, &bitmap_limits)?;
+    let aggregation_bytes = procedure
+        .aggregation
+        .as_ref()
+        .map_or(0, text::State::context_bytes);
     let base = match reader.position() {
         Position::Buffer(p) => p,
         _ => 0,
     };
     let mut decoder = Decoder::new(reader.rest(), base)?;
-    let mut heights = Integer::new();
-    let mut widths = Integer::new();
-    let mut contexts = vec![Context::default(); template.context_count()];
     let mut symbols = Vec::with_capacity(total);
     symbols.extend(imported.iter().cloned());
-    let mut height = 0i64;
-    let mut bytes = 0;
-    while symbols.len() < total {
-        work.operations(1, limits)?;
-        height = height
-            .checked_add(heights.required(&mut decoder)?)
-            .filter(|&n| n > 0 && n <= i64::from(u32::MAX))
-            .ok_or_else(|| Error::syntax("invalid JBIG2 symbol height"))?;
-        let height =
-            u32::try_from(height).map_err(|_| Error::syntax("invalid JBIG2 symbol height"))?;
-        let mut width = 0i64;
-        while let Some(delta) = widths.decode(&mut decoder)? {
-            if symbols.len() == total {
-                return Err(Error::syntax("too many JBIG2 new symbols"));
-            }
-            width = width
-                .checked_add(delta)
-                .filter(|&n| n > 0 && n <= i64::from(u32::MAX))
-                .ok_or_else(|| Error::syntax("invalid JBIG2 symbol width"))?;
-            let width =
-                u32::try_from(width).map_err(|_| Error::syntax("invalid JBIG2 symbol width"))?;
-            super::bitmap::layout(width, height, &bitmap_limits)?;
-            let pixel_work = u64::from(width) * u64::from(height);
-            work.pixels(pixel_work, limits)?;
-            let bitmap = generic::decode_arithmetic(
-                width,
-                height,
-                &template,
-                false,
-                &mut decoder,
-                &mut contexts,
-                &bitmap_limits,
-            )?;
-            bytes += bitmap.data.len();
-            bitmap_limits.decoded_bytes -= bitmap.data.len();
-            symbols.push(Rc::new(bitmap));
-        }
-    }
+    let bytes = procedure.new_symbols(
+        &mut decoder,
+        &config,
+        &mut symbols,
+        total,
+        &bitmap_limits,
+        work,
+    )?;
     let selected = select(&symbols, exported, &mut decoder, limits, work)?;
+    let contexts = if config.retain {
+        Some(Retained {
+            generic: procedure.generic,
+            refinement: procedure
+                .aggregation
+                .and_then(text::State::into_refinement_contexts),
+        })
+    } else {
+        None
+    };
     Ok(Dictionary {
         symbols: selected,
-        bytes: bytes + overhead,
+        bytes: bytes + overhead + aggregation_bytes,
+        contexts,
     })
 }
 
-fn read_template(reader: &mut Reader<'_>) -> Result<Template> {
-    let flags = reader.u16()?;
-    if flags & 0xe000 != 0 {
-        return Err(Error::syntax("reserved JBIG2 symbol dictionary flags"));
+impl Config {
+    fn read(reader: &mut Reader<'_>) -> Result<Self> {
+        let flags = reader.u16()?;
+        if flags & 0xe000 != 0 {
+            return Err(Error::syntax("reserved JBIG2 symbol dictionary flags"));
+        }
+        if flags & 1 != 0 {
+            return Err(Error::unsupported(
+                tags::SYMBOL_DICTIONARY,
+                "JBIG2 Huffman symbol dictionaries are not implemented",
+            ));
+        }
+        let template = u8::try_from((flags >> 10) & 3)
+            .map_err(|_| Error::syntax("invalid JBIG2 symbol template"))?;
+        let generic = Template::read(reader, template)?;
+        let refinement = if flags & 2 != 0 {
+            Some(Parameters::read(reader, u8::from(flags & 0x1000 != 0))?)
+        } else {
+            None
+        };
+        Ok(Self {
+            generic,
+            refinement,
+            reuse: flags & 0x100 != 0,
+            retain: flags & 0x200 != 0,
+        })
     }
-    if flags & 1 != 0 {
-        return Err(Error::unsupported(
-            tags::SYMBOL_DICTIONARY,
-            "JBIG2 Huffman symbol dictionaries are not implemented",
-        ));
+}
+
+impl Procedure {
+    fn new(
+        config: &Config,
+        retained: Option<&Retained>,
+        total: usize,
+        limits: &Limits,
+    ) -> Result<Self> {
+        let retained = if config.reuse {
+            Some(retained.ok_or_else(|| Error::syntax("missing JBIG2 retained symbol contexts"))?)
+        } else {
+            None
+        };
+        let generic = if let Some(retained) = retained {
+            if retained.generic.len() != config.generic.context_count() {
+                return Err(Error::syntax(
+                    "incompatible JBIG2 retained generic contexts",
+                ));
+            }
+            retained.generic.clone()
+        } else {
+            vec![Context::default(); config.generic.context_count()]
+        };
+        let aggregation = if let Some(parameters) = config.refinement {
+            let previous = retained.and_then(|r| r.refinement.as_deref());
+            if config.reuse && previous.is_none() {
+                return Err(Error::syntax("missing JBIG2 retained refinement contexts"));
+            }
+            let model = Model::new(parameters, previous, limits)?;
+            Some(text::State::new(total, Some(model), limits)?)
+        } else {
+            None
+        };
+        Ok(Self {
+            heights: Integer::new(),
+            widths: Integer::new(),
+            instances: Integer::new(),
+            generic,
+            aggregation,
+        })
     }
-    if flags & 2 != 0 {
-        return Err(Error::unsupported(
-            tags::SYMBOL_REFINEMENT,
-            "JBIG2 refinement and aggregate symbols are not implemented",
-        ));
+
+    fn new_symbols(
+        &mut self,
+        decoder: &mut Decoder<'_>,
+        config: &Config,
+        symbols: &mut Vec<Rc<Bitmap>>,
+        total: usize,
+        limits: &Limits,
+        work: &mut Work,
+    ) -> Result<usize> {
+        let mut height = 0i64;
+        let mut bytes = 0;
+        let mut bitmap_limits = *limits;
+        while symbols.len() < total {
+            work.operations(1, limits)?;
+            height = height
+                .checked_add(self.heights.required(decoder)?)
+                .filter(|&n| n > 0 && n <= i64::from(u32::MAX))
+                .ok_or_else(|| Error::syntax("invalid JBIG2 symbol height"))?;
+            let height =
+                u32::try_from(height).map_err(|_| Error::syntax("invalid JBIG2 symbol height"))?;
+            let mut width = 0i64;
+            while let Some(delta) = self.widths.decode(decoder)? {
+                if symbols.len() == total {
+                    return Err(Error::syntax("too many JBIG2 new symbols"));
+                }
+                width = width
+                    .checked_add(delta)
+                    .filter(|&n| n > 0 && n <= i64::from(u32::MAX))
+                    .ok_or_else(|| Error::syntax("invalid JBIG2 symbol width"))?;
+                let width = u32::try_from(width)
+                    .map_err(|_| Error::syntax("invalid JBIG2 symbol width"))?;
+                super::bitmap::layout(width, height, &bitmap_limits)?;
+                work.pixels(u64::from(width) * u64::from(height), limits)?;
+                let bitmap = if let Some(aggregation) = &mut self.aggregation {
+                    let instances = usize::try_from(self.instances.required(decoder)?)
+                        .map_err(|_| Error::syntax("invalid JBIG2 aggregate instance count"))?;
+                    if instances == 1 {
+                        aggregation.single(
+                            decoder,
+                            symbols,
+                            (width, height),
+                            &bitmap_limits,
+                            work,
+                        )?
+                    } else {
+                        aggregation.decode(
+                            decoder,
+                            symbols,
+                            text::Placement {
+                                size: (width, height),
+                                instances,
+                                config: text::Config::aggregation(),
+                            },
+                            &bitmap_limits,
+                            work,
+                        )?
+                    }
+                } else {
+                    generic::decode_arithmetic(
+                        width,
+                        height,
+                        &config.generic,
+                        false,
+                        decoder,
+                        &mut self.generic,
+                        &bitmap_limits,
+                    )?
+                };
+                bytes += bitmap.data.len();
+                bitmap_limits.decoded_bytes -= bitmap.data.len();
+                symbols.push(Rc::new(bitmap));
+            }
+        }
+        Ok(bytes)
     }
-    if flags & 0x300 != 0 {
-        return Err(Error::unsupported(
-            tags::SYMBOL_CONTEXT,
-            "JBIG2 retained symbol coding contexts are not implemented",
-        ));
-    }
-    Template::read(
-        reader,
-        u8::try_from((flags >> 10) & 3)
-            .map_err(|_| Error::syntax("invalid JBIG2 symbol template"))?,
-    )
 }
 
 fn select(
