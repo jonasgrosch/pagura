@@ -44,6 +44,19 @@ impl Range {
         }
         Ok(Self { first, last })
     }
+    fn prefix_overlaps(&self, other: &Self) -> bool {
+        let shared = usize::from(self.first.len.min(other.first.len));
+        (0..shared).all(|index| {
+            let shift_a = 8 * (usize::from(self.first.len) - 1 - index);
+            let shift_b = 8 * (usize::from(other.first.len) - 1 - index);
+            let lo_a = (self.first.value >> shift_a) & 255;
+            let hi_a = (self.last.value >> shift_a) & 255;
+            let lo_b = (other.first.value >> shift_b) & 255;
+            let hi_b = (other.last.value >> shift_b) & 255;
+            lo_a <= hi_b && lo_b <= hi_a
+        })
+    }
+
     // Codespaces compare each byte, not the integer interval (9.7.6.2).
     fn prefix(&self, bytes: &[u8]) -> bool {
         bytes.len() <= usize::from(self.first.len)
@@ -392,16 +405,7 @@ impl CMap {
         for (i, a) in self.spaces.iter().enumerate() {
             for b in &self.spaces[..i] {
                 charge(work, 1, limits.operations)?;
-                let shared = usize::from(a.first.len.min(b.first.len));
-                let overlaps = (0..shared).all(|index| {
-                    let shift_a = 8 * (usize::from(a.first.len) - 1 - index);
-                    let shift_b = 8 * (usize::from(b.first.len) - 1 - index);
-                    let lo_a = (a.first.value >> shift_a) & 255;
-                    let hi_a = (a.last.value >> shift_a) & 255;
-                    let lo_b = (b.first.value >> shift_b) & 255;
-                    let hi_b = (b.last.value >> shift_b) & 255;
-                    lo_a <= hi_b && lo_b <= hi_a
-                });
+                let overlaps = a.prefix_overlaps(b);
                 if overlaps {
                     return Err(Error::syntax("overlapping or ambiguous CMap codespaces"));
                 }
@@ -415,6 +419,22 @@ impl CMap {
 
     pub(crate) fn simple_codes(&self) -> bool {
         self.spaces.iter().all(|range| range.first.len == 1)
+            && self.unicode.keys().all(|code| code.len == 1)
+    }
+
+    pub(crate) fn consistent_with(&self, encoding: &Self, limits: Limits) -> Result<()> {
+        let mut work = 0;
+        for unicode in &self.spaces {
+            for font in &encoding.spaces {
+                charge(&mut work, 1, limits.operations)?;
+                if unicode.first.len != font.first.len && unicode.prefix_overlaps(font) {
+                    return Err(Error::syntax(
+                        "ToUnicode code length conflicts with font Encoding",
+                    ));
+                }
+            }
+        }
+        Ok(())
     }
 
     pub(crate) fn next(
@@ -587,7 +607,7 @@ fn load_inner(
     charge(&mut budget.entries, entries, limits.value_nodes).map_err(|e| e.in_object(id))?;
     charge(&mut budget.text, map.unicode_bytes, limits.decoded_bytes)
         .map_err(|e| e.in_object(id))?;
-    if let Some(value) = dict.get(b"WMode") {
+    if !unicode && let Some(value) = dict.get(b"WMode") {
         let declared = mode(document.resolve(value)?.as_integer())?;
         if map.mode_explicit && map.mode != declared {
             return Err(Error::syntax("CMap WMode disagrees with stream dictionary").in_object(id));
@@ -597,12 +617,15 @@ fn load_inner(
     }
     if let Some(parent) = dict.get(b"UseCMap") {
         if let Some(name) = &map.use_name {
-            let parent_name = if let Some(name) = document.resolve(parent)?.as_name() {
+            let resolved = document.resolve(parent)?;
+            let parent_name = if let Some(name) = resolved.as_name() {
                 Some(name)
+            } else if unicode {
+                None
             } else {
                 document.resolve_dictionary(parent)?.get_name(b"CMapName")
             };
-            if parent_name != Some(name) {
+            if (!unicode || resolved.as_name().is_some()) && parent_name != Some(name) {
                 return Err(Error::syntax("usecmap disagrees with UseCMap").in_object(id));
             }
         }

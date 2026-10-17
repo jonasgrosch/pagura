@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "text",
-  "scope": "ISO 32000-2:2020 clause 9 and Annex D, verified against the locally supplied standard.",
+  "scope": "The rule paraphrases and exact ISO locators below were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text (ISO_32000-2_sponsored_EC3.txt): PDF string-decoding/spacing interfaces, supported font dictionaries and embedding bindings, character selection, widths/CID metrics, PDF-specific CMap rules and ToUnicode. Every code-to-name slot of Standard, MacRoman, WinAnsi, PDFDoc, Symbol and ZapfDingbats was compared with Annex D; MacExpert was also checked. This is not verification of Adobe Glyph List rules, TN5014 grammar or external font-program binary formats.",
   "requirements": [
     {
       "id": "text-type3",
@@ -25,14 +25,28 @@
         "text/type3-undefined",
         "text/tounicode-empty"
       ],
-      "gaps": "Embedded font programs require pagura-font; complete AGL legacy-name data and predefined CJK maps remain unbundled."
+      "gaps": "Glyph-procedure execution, d0/d1 checks and page-resource fallback are renderer responsibilities, not performed by PdfFont.",
+      "tables": [
+        "110",
+        "111"
+      ],
+      "verification": {
+        "rule": "CharProcs names and complete Differences select procedures; FontMatrix transforms widths horizontally, out-of-range widths are zero, and missing Resources uses page resources.",
+        "implementation": "agrees for decoded widths, procedure identity and returned resource scope; d0/d1 execution is a renderer responsibility",
+        "expectations": "agrees, including rotation and the absence of an implicit default glyph",
+        "verdict": "ISO subset agrees",
+        "choices": []
+      }
     },
     {
       "id": "text-simple-encoding",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "9.6.5",
+        "9.6.5.1",
+        "9.6.5.2",
+        "D.1",
         "D.2",
+        "D.3",
         "D.4",
         "D.5",
         "D.6"
@@ -51,9 +65,32 @@
         "text/tounicode-precedence",
         "text/tounicode-empty",
         "text/encoding-table-winansi",
-        "text/encoding-table-macroman"
+        "text/encoding-table-macroman",
+        "text/annex-StandardEncoding",
+        "text/annex-MacRomanEncoding",
+        "text/annex-WinAnsiEncoding",
+        "text/annex-PDFDocEncoding",
+        "text/annex-MacExpertEncoding",
+        "text/annex-Symbol",
+        "text/annex-ZapfDingbats"
       ],
-      "gaps": "Embedded font programs require pagura-font; complete AGL legacy-name data and predefined CJK maps remain unbundled."
+      "gaps": "No differing Annex D code/name entry found; full AGL name-to-Unicode data is a separate pending dependency.",
+      "tables": [
+        "112",
+        "D.1",
+        "D.2",
+        "D.3",
+        "D.4",
+        "D.5",
+        "D.6"
+      ],
+      "verification": {
+        "rule": "Only MacRoman, MacExpert and WinAnsi are named PDF simple encodings; Differences changes consecutive code/name slots over the specified or built-in base.",
+        "implementation": "all seven tables agree in all 256 slots; no differing entry; TrueType selection is tracked separately",
+        "expectations": "agrees in independent full-slot code/name vectors and existing codec-derived WinAnsi/MacRoman vectors",
+        "verdict": "ISO subset agrees",
+        "choices": []
+      }
     },
     {
       "id": "text-unicode",
@@ -75,16 +112,39 @@
         "text/encoding-pdfdoc",
         "text/tounicode-precedence",
         "text/unicode-parent",
-        "text/tounicode-empty"
+        "text/tounicode-empty",
+        "text/embedded-cid-variable-codes",
+        "text/glyph-name-forms",
+        "text/unicode-cid-code-length",
+        "text/unicode-simple-source-length",
+        "text/unicode-ignored-stream-metadata",
+        "text/unicode-inherited-ignored-name"
       ],
-      "gaps": "Embedded font programs require pagura-font; complete AGL legacy-name data and predefined CJK maps remain unbundled."
+      "gaps": "AGL-dependent names and character-collection-to-Unicode CMaps remain unbundled; the external grammar review remains pending.",
+      "tables": [
+        "118"
+      ],
+      "verification": {
+        "rule": "ToUnicode takes priority, uses font-consistent code lengths and UTF-16BE sequences, increments the final bfrange byte, and uses only UseCMap from the stream dictionary.",
+        "implementation": "corrected irrelevant stream metadata and source-code-length consistency; AGL-derived rules remain pending primary-text review",
+        "expectations": "agree with the ISO rules, including minimized metadata/source-length violations; glyph-name known answers do not constitute AGL verification",
+        "verdict": "ISO subset agrees after corrections",
+        "choices": [
+          "Empty ToUnicode destinations are retained as empty sequences because ISO specifies an upper size but no nonzero lower size.",
+          "Undefined bfrange overflow and mismatched array lengths are rejected with syntax errors.",
+          "Unrecognized name components contribute no Unicode, and entirely unknown names return None; this external AGL algorithm remains pending primary-text review."
+        ]
+      }
     },
     {
       "id": "text-cmap",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "9.7.5",
-        "9.7.6"
+        "9.7.5.2",
+        "9.7.5.3",
+        "9.7.5.4",
+        "9.7.6.2",
+        "9.7.6.3"
       ],
       "status": "Variable-length codespaces, CID maps, notdef, inheritance",
       "tests": [
@@ -92,14 +152,34 @@
         "text/cmap-bytewise",
         "text/cmap-usecmap",
         "text/cmap-parent-stream",
-        "text/cmap-indirect-name"
+        "text/cmap-indirect-name",
+        "text/cid-map-missing-entry",
+        "text/cid-map-explicit-zero",
+        "text/embedded-cid-variable-codes",
+        "text/embedded-cid-notdef"
       ],
-      "gaps": "Embedded font programs require pagura-font; complete AGL legacy-name data and predefined CJK maps remain unbundled."
+      "gaps": "TN5014 syntax/inheritance details remain pending primary-text review; the decoder supports declarative mappings, not general PostScript evaluation. Complete validation of every required CMap metadata entry is not claimed.",
+      "tables": [
+        "116",
+        "118",
+        "119"
+      ],
+      "verification": {
+        "rule": "One-to-four-byte codespaces match per byte; missing glyphs consult notdef then CID 0, except an absent CIDToGIDMap stream entry requires CID 0 directly.",
+        "implementation": "corrected missing-stream-entry exception; supported ISO mapping subset agrees; TN5014 grammar/inheritance remains pending",
+        "expectations": "corrected by text/cid-map-missing-entry; existing bytewise, invalid-prefix and inheritance vectors agree",
+        "verdict": "ISO subset agrees after corrections",
+        "choices": [
+          "Invalid strings ending before the chosen codespace length consume the remaining bytes.",
+          "Local CMap mappings override inherited mappings; later local definitions override earlier ones. The full TN5014 rule is pending primary-text review."
+        ]
+      }
     },
     {
       "id": "text-cid-metrics",
       "reference": "iso32000-2-full-text",
       "clauses": [
+        "9.7.4.1",
         "9.7.4.3"
       ],
       "status": "Horizontal and vertical CID metrics",
@@ -110,16 +190,30 @@
         "text/cid-width-overflow",
         "text/cid-w2-truncated",
         "text/cid-range-truncated",
-        "text/cid-dw2-length"
+        "text/cid-dw2-length",
+        "text/embedded-cid-truetype-vertical"
       ],
-      "gaps": "Embedded font programs require pagura-font; complete AGL legacy-name data and predefined CJK maps remain unbundled."
+      "gaps": "CIDs are bounded to 16 bits; the complete font-program metrics are not cross-validated against PDF dictionary widths.",
+      "tables": [
+        "115"
+      ],
+      "verification": {
+        "rule": "DW/W and DW2/W2 define CID text-space metrics; default vertical origin x is half horizontal width; repeated W definitions use the first specification.",
+        "implementation": "agrees; W2 duplicate precedence follows the same first-definition choice",
+        "expectations": "agrees in list/range, overlap and default vectors",
+        "verdict": "ISO subset agrees",
+        "choices": [
+          "For repeated W2 entries the first specification wins, matching the explicit W rule."
+        ]
+      }
     },
     {
       "id": "text-font-policy",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "9.6",
-        "9.7"
+        "9.6.1",
+        "9.6.2.2",
+        "9.7.5.2"
       ],
       "status": "Explicit unavailable fonts and malformed mappings",
       "tests": [
@@ -139,33 +233,320 @@
         "text/unicode-block-count",
         "text/unicode-usecmap-mismatch"
       ],
-      "gaps": "Embedded font programs require pagura-font; complete AGL legacy-name data and predefined CJK maps remain unbundled."
+      "gaps": "Non-embedded fonts and predefined non-Identity CMaps remain unsupported under ADR 0009, including standard-14 fonts.",
+      "tables": [
+        "116"
+      ],
+      "verification": {
+        "rule": "PDF permits non-embedded fonts and specifies predefined CMaps; missing local substitutes/data are explicit ADR 0009 capability limits.",
+        "implementation": "documented capability boundary, not a claim that ISO forbids those fonts or CMaps",
+        "expectations": "agrees with the explicit unsupported outcomes",
+        "verdict": "documented capability limit",
+        "choices": [
+          "ADR 0009 excludes font substitution and predefined non-Identity CMap data until separately approved."
+        ]
+      }
     },
     {
       "id": "text-cid-to-gid",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "9.7.4.2"
+        "9.7.4.1",
+        "9.7.4.2",
+        "9.7.6.3"
       ],
       "status": "Big-endian CIDToGIDMap and Identity mappings",
       "tests": [
-        "text/cid-to-gid"
+        "text/cid-to-gid",
+        "text/cid-map-missing-entry",
+        "text/cid-map-explicit-zero",
+        "text/embedded-cid-truetype-vertical"
       ],
-      "gaps": "Program glyph presence checks require pagura-font."
+      "gaps": "External font-program interpretation remains delegated; map entries are checked for usable glyph selectors during decoding.",
+      "tables": [
+        "115"
+      ],
+      "verification": {
+        "rule": "Embedded CIDFontType2 requires Identity or a big-endian two-byte CIDToGIDMap; an absent stream entry selects the glyph for CID 0.",
+        "implementation": "corrected the absent-entry exception and the distinction between absent entries and explicit GID 0 mappings",
+        "expectations": "agrees after the minimized text/cid-map-missing-entry regression",
+        "verdict": "ISO subset agrees after corrections",
+        "choices": [
+          "A present zero-valued CIDToGIDMap entry selects GID 0 and retains that CID; it is distinct from an absent entry, which requires CID 0."
+        ]
+      }
     },
     {
       "id": "text-simple-widths",
       "reference": "iso32000-2-full-text",
       "clauses": [
-        "9.6.2",
+        "9.2.4",
+        "9.6.2.1",
         "9.6.3",
-        "9.6.4"
+        "9.6.4",
+        "9.8.1"
       ],
       "status": "FirstChar, LastChar, Widths and MissingWidth",
       "tests": [
         "text/simple-missing-width"
       ],
-      "gaps": "Embedded-program decoding remains outside the manifest."
+      "gaps": "Widths are interpreted from the PDF dictionary; agreement with every embedded program advance is not a complete conformance validation.",
+      "tables": [
+        "109",
+        "110",
+        "120"
+      ],
+      "verification": {
+        "rule": "Widths cover FirstChar through LastChar; other simple codes use MissingWidth (default zero), while Type3 uses zero and its FontMatrix.",
+        "implementation": "agrees for the supported loaded font dictionaries",
+        "expectations": "agrees; PDF dictionary widths remain independent of glyph-outline bounds",
+        "verdict": "ISO subset agrees",
+        "choices": []
+      }
+    },
+    {
+      "id": "text-string-contract",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.2.4",
+        "9.3.3",
+        "9.4.3"
+      ],
+      "tables": [
+        "107"
+      ],
+      "status": "Simple strings use one byte per glyph; composite strings use CMap codes; only single-byte code 32 is eligible for word spacing.",
+      "tests": [
+        "text/embedded-cid-variable-codes"
+      ],
+      "gaps": "Text-state operators, BT/ET, positioning and painting belong to pagura-render and are outside this registry's execution tests.",
+      "verification": {
+        "rule": "Simple strings use one byte per glyph; composite strings use CMap codes; only single-byte code 32 is eligible for word spacing.",
+        "implementation": "ISO decoder interface agrees; text-state operator execution remains in pagura-render",
+        "expectations": "agree for raw text-space advances and word spacing on code 32 even when its glyph name is not space; a byte 32 inside a multi-byte code is ineligible",
+        "verdict": "ISO decoder interface agrees; text-state operator execution remains in pagura-render",
+        "choices": []
+      }
+    },
+    {
+      "id": "text-truetype-selection",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.6.5.4",
+        "9.8.2"
+      ],
+      "tables": [
+        "113",
+        "121"
+      ],
+      "status": "Symbolic or unencoded fonts use direct symbol/Mac codes; encoded nonsymbolic fonts use names via Unicode, Mac OS Roman, then post.",
+      "tests": [
+        "text/tt-unicode-priority",
+        "text/tt-unicode-missing-post",
+        "text/tt-macroman-fallback",
+        "text/tt-mac-euro",
+        "text/tt-mac-currency-post",
+        "text/tt-mac-extra-apple",
+        "text/tt-post-without-cmap",
+        "text/tt-post-differences",
+        "text/tt-name-not-found",
+        "text/tt-named-mac-undefined",
+        "text/tt-dictionary-standard-fill",
+        "text/tt-symbol-0000",
+        "text/tt-symbol-f000",
+        "text/tt-symbol-f100",
+        "text/tt-symbol-f200",
+        "text/tt-symbol-mac-only",
+        "text/tt-symbol-present-missing",
+        "text/tt-noencoding-direct",
+        "text/tt-noencoding-symbol",
+        "text/tt-units-per-em",
+        "text/tt-tounicode-does-not-select",
+        "text/tt-mac-os-additions"
+      ],
+      "gaps": "Exact (3,1) selection for mixed/platform-0/full-Unicode records is blocked by the upstream record-classification issue in external_api_limits; those cases stay out of the manifest. Full AGL primary-text review remains pending.",
+      "verification": {
+        "rule": "Symbolic or unencoded fonts use direct symbol/Mac codes; encoded nonsymbolic fonts use names via Unicode, Mac OS Roman, then post.",
+        "implementation": "ISO selection routes implemented using the FontProgram subtable API; AGL lookup remains pending primary-text review",
+        "expectations": "agree for (3,1), (3,0) and (1,0) records, all Table 113 changes, post fallback, prefix cases and missing encodings; mixed-Unicode cases are excluded",
+        "verdict": "ISO routes agree under the documented subtable API contract; exact mixed-Unicode record selection remains blocked upstream",
+        "choices": [
+          "When symbolic/no-Encoding wording overlaps the named/Nonsymbolic wording, the more specific direct-code paragraph takes precedence.",
+          "A present subtable does not fall through to another cmap on a missing glyph; name selection falls back to post, and raw selection defaults to .notdef.",
+          "The four allowed symbol high-byte ranges are tried in ascending order; a conforming symbol cmap uses one range.",
+          "When Mac OS Roman contains aliases for a name, the lowest character code is used."
+        ]
+      }
+    },
+    {
+      "id": "text-embedded-fonts",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.6.2.1",
+        "9.6.3",
+        "9.7.4.2",
+        "9.9.1"
+      ],
+      "tables": [
+        "109",
+        "115",
+        "124",
+        "125"
+      ],
+      "status": "PDF font descriptors bind Type1, TrueType, CFF and CID CFF programs; PDF widths supply advances and program matrices transform outlines.",
+      "tests": [
+        "text/tt-unicode-priority",
+        "text/tt-unicode-missing-post",
+        "text/tt-macroman-fallback",
+        "text/tt-mac-euro",
+        "text/tt-mac-currency-post",
+        "text/tt-mac-extra-apple",
+        "text/tt-post-without-cmap",
+        "text/tt-post-differences",
+        "text/tt-name-not-found",
+        "text/tt-named-mac-undefined",
+        "text/tt-dictionary-standard-fill",
+        "text/tt-symbol-0000",
+        "text/tt-symbol-f000",
+        "text/tt-symbol-f100",
+        "text/tt-symbol-f200",
+        "text/tt-symbol-mac-only",
+        "text/tt-symbol-present-missing",
+        "text/tt-noencoding-direct",
+        "text/tt-noencoding-symbol",
+        "text/tt-units-per-em",
+        "text/tt-tounicode-does-not-select",
+        "text/tt-mac-os-additions",
+        "text/embedded-cff",
+        "text/embedded-opentype-cff",
+        "text/embedded-opentype-truetype",
+        "text/embedded-cid-cff",
+        "text/embedded-cid-cff-gid",
+        "text/embedded-type1",
+        "text/embedded-type1-matrix",
+        "text/embedded-cid-truetype-vertical",
+        "text/embedded-cid-variable-codes",
+        "text/embedded-cid-notdef",
+        "text/binding-wrong-fontfile",
+        "text/binding-length1",
+        "text/binding-cff-length",
+        "text/binding-type1-lengths"
+      ],
+      "gaps": "External binary format primary texts are unavailable. PDF binding kind and declared length extents are checked; Type1 Length1/2 boundaries are not independently reconciled with parsed eexec boundaries, and OpenType outline technology is not independently classified here.",
+      "verification": {
+        "rule": "PDF font descriptors bind Type1, TrueType, CFF and CID CFF programs; PDF widths supply advances and program matrices transform outlines.",
+        "implementation": "ISO PDF bindings agree; binary font formats remain pending primary-text review",
+        "expectations": "agree for the accepted PDF bindings and minimized wrong-kind/length violations; program bytes and analytic glyphs are known-answer evidence, not external-format verification",
+        "verdict": "ISO PDF bindings agree; binary font formats remain pending primary-text review",
+        "choices": []
+      }
+    },
+    {
+      "id": "text-glyph-names",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.10.2"
+      ],
+      "tables": [],
+      "status": "Simple-font glyph names may supply Unicode through the external AGL algorithms.",
+      "tests": [
+        "text/glyph-name-forms"
+      ],
+      "gaps": "pending primary-text review: Adobe Glyph List and Adobe Glyph List for New Fonts; only the implemented name repertoire and known-answer forms are covered.",
+      "verification": {
+        "rule": "Simple-font glyph names may supply Unicode through the external AGL algorithms.",
+        "implementation": "pending Adobe Glyph List primary-text review; numeric-name and ligature rules have known-answer coverage",
+        "expectations": "implementation agrees with explicit known-answer uni/u, suffix, underscore and legacy ligature forms; pending primary-text review, not verified against AGL",
+        "verdict": "pending Adobe Glyph List primary-text review; numeric-name and ligature rules have known-answer coverage",
+        "choices": [
+          "Drop the suffix starting at the first period before interpreting names.",
+          "Unknown underscore components contribute no Unicode; recognized components are concatenated, with each numeric component validated atomically.",
+          "An entirely unknown glyph name returns None; an explicitly empty ToUnicode sequence remains Some(empty string)."
+        ]
+      }
+    }
+  ],
+  "primary_text_review": {
+    "source": "ISO_32000-2_sponsored_EC3.txt",
+    "reference": "iso32000-2-full-text",
+    "encoding_tables": {
+      "STANDARD": {
+        "assigned": 149,
+        "checked_slots": 256,
+        "differences": []
+      },
+      "MAC_ROMAN": {
+        "assigned": 208,
+        "checked_slots": 256,
+        "differences": []
+      },
+      "WIN_ANSI": {
+        "assigned": 224,
+        "checked_slots": 256,
+        "differences": []
+      },
+      "PDF_DOC": {
+        "assigned": 232,
+        "checked_slots": 256,
+        "differences": []
+      },
+      "MAC_EXPERT": {
+        "assigned": 165,
+        "checked_slots": 256,
+        "differences": []
+      },
+      "SYMBOL": {
+        "assigned": 189,
+        "checked_slots": 256,
+        "differences": []
+      },
+      "ZAPF_DINGBATS": {
+        "assigned": 188,
+        "checked_slots": 256,
+        "differences": []
+      }
+    },
+    "encoding_rule": "D.2 assignments include WinAnsi bullet aliases, space/hyphen aliases, MacRoman currency and space; D.3 defines TAB/LF/CR; D.4-D.6 provide expert and symbolic assignments. No differing code-to-name entry was found.",
+    "ownership_boundary": "BT/ET, text-state operators, positioning and rendering are owned by pagura-render; this registry checks the font decoder interface and word-spacing eligibility, not execution of those operators."
+  },
+  "pending_primary_text_review": [
+    {
+      "standard": "Adobe Glyph List and Adobe Glyph List for New Fonts",
+      "behaviour": "Glyph-name scalars, legacy ligatures, suffix/underscore decomposition, uniXXXX and uXXXX[XX] names.",
+      "status": "pending primary-text review",
+      "evidence": "Independently specified known-answer name vectors and Annex D named characters; no differential results or AGL primary text reviewed."
+    },
+    {
+      "standard": "Adobe Technical Note #5014, Adobe CMap and CIDFont Files Specification",
+      "behaviour": "Declarative CMap grammar, block counts, usecmap inheritance and duplicate-definition precedence beyond the PDF-specific rules.",
+      "status": "pending primary-text review",
+      "evidence": "Independently authored mapping vectors exercise the implemented subset; ISO 9.7.5.4, 9.7.6 and 9.10.3 verify only the stated PDF restrictions and mapping algorithm."
+    },
+    {
+      "standard": "Adobe Type 1 Font Format; Adobe Technical Notes #5176 (CFF) and #5177 (Type 2 charstrings)",
+      "behaviour": "The independently generated embedded programs and delegated pagura-font parsing/charstring interpretation.",
+      "status": "pending primary-text review",
+      "evidence": "Existing independent font writers and analytic glyph expectations; ISO 9.9.1 Tables 124-125 verify PDF embedding bindings, not binary program formats."
+    },
+    {
+      "standard": "TrueType Reference Manual; ISO/IEC 14496-22:2019 Open Font Format",
+      "behaviour": "sfnt/cmap/post binary layouts, unitsPerEm and font-program outline parsing.",
+      "status": "pending primary-text review",
+      "evidence": "Independent sfnt writer and known glyph IDs/outlines; ISO 9.6.5.4 verifies PDF selection routes, not the unavailable binary format specifications."
+    }
+  ],
+  "external_api_limits": [
+    {
+      "crate": "pagura-font",
+      "contract": "CmapSubtable::WindowsUnicode documents the (3,1) Windows BMP subtable.",
+      "observed_implementation": "sfnt/cmap.rs groups (0,*), (3,1) and (3,10) into WindowsUnicode and prefers higher numbered formats.",
+      "impact": "The text selection routes follow the documented enum contract; exact ISO 9.6.5.4 priority is not established for fonts containing these additional or mixed Unicode records.",
+      "requested_api": "Expose exact cmap record queries, e.g. has_cmap_record(platform: u16, encoding: u16) -> bool and glyph_for_cmap_record(platform: u16, encoding: u16, code: u32) -> Option<GlyphId>, or make WindowsUnicode mean (3,1) exactly and add separate enum variants.",
+      "excluded_vectors": [
+        "(3,10) with (1,0) but no (3,1), which must use the Mac route",
+        "conflicting (3,1)/(3,10) records, which require exact (3,1) lookup",
+        "(0,*) with (1,0) but no (3,1)"
+      ]
     }
   ]
 }

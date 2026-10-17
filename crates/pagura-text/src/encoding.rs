@@ -112,28 +112,39 @@ pub(crate) fn load(
 /// AGL name decomposition: suffix removal, components, uniXXXX and uXXXX.
 /// Unknown names remain unknown rather than inventing a Unicode value.
 pub(crate) fn unicode(name: &[u8]) -> Option<String> {
-    let name = std::str::from_utf8(name).ok()?.split('.').next()?;
+    let stem = name.split(|byte| *byte == b'.').next()?;
     let mut result = String::new();
-    for component in name.split('_') {
-        if let Ok(index) = tables::UNICODE.binary_search_by_key(&component, |(name, _)| *name) {
-            result.push(char::from_u32(tables::UNICODE[index].1)?);
-        } else if let Some(hex) = component.strip_prefix("uni") {
-            if hex.is_empty() || hex.len() % 4 != 0 || !upper_hex(hex) {
-                return None;
-            }
-            for chunk in hex.as_bytes().as_chunks::<4>().0 {
-                let value = u32::from_str_radix(std::str::from_utf8(chunk).ok()?, 16).ok()?;
-                result.push(char::from_u32(value)?);
-            }
-        } else {
-            let hex = component.strip_prefix('u')?;
-            if !(4..=6).contains(&hex.len()) || !upper_hex(hex) {
-                return None;
-            }
-            result.push(char::from_u32(u32::from_str_radix(hex, 16).ok()?)?);
+    for component in stem.split(|byte| *byte == b'_') {
+        if let Some(text) = component_unicode(component) {
+            result.push_str(&text);
         }
     }
     (!result.is_empty()).then_some(result)
+}
+
+fn component_unicode(component: &[u8]) -> Option<String> {
+    let component = std::str::from_utf8(component).ok()?;
+    if let Ok(index) = tables::UNICODE.binary_search_by_key(&component, |(name, _)| *name) {
+        return Some(char::from_u32(tables::UNICODE[index].1)?.to_string());
+    }
+    if let Some(hex) = component.strip_prefix("uni") {
+        if hex.is_empty() || !hex.len().is_multiple_of(4) || !upper_hex(hex) {
+            return None;
+        }
+        // Build one component atomically: a malformed scalar invalidates this
+        // component, while other underscore components remain meaningful.
+        let mut result = String::new();
+        for chunk in hex.as_bytes().as_chunks::<4>().0 {
+            let scalar = u32::from_str_radix(std::str::from_utf8(chunk).ok()?, 16).ok()?;
+            result.push(char::from_u32(scalar)?);
+        }
+        return Some(result);
+    }
+    let hex = component.strip_prefix('u')?;
+    if !(4..=6).contains(&hex.len()) || !upper_hex(hex) {
+        return None;
+    }
+    Some(char::from_u32(u32::from_str_radix(hex, 16).ok()?)?.to_string())
 }
 
 fn upper_hex(value: &str) -> bool {
@@ -148,15 +159,10 @@ mod tests {
     #[test]
     fn names_and_encoding_exceptions() -> Result<()> {
         assert_eq!(unicode(b"uni00410042_u1F600.alt").as_deref(), Some("AB😀"));
-        for name in [
-            b"uniD800".as_slice(),
-            b"u110000",
-            b"uni00e9",
-            b"unknown",
-            b"A__B",
-        ] {
+        for name in [b"uniD800".as_slice(), b"u110000", b"uni00e9", b"unknown"] {
             assert_eq!(unicode(name), None);
         }
+        assert_eq!(unicode(b"A__B").as_deref(), Some("AB"));
         let win = base(b"WinAnsiEncoding")?;
         assert_eq!(
             win[160].as_ref().map(Name::as_bytes),

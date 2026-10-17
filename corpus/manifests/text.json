@@ -942,6 +942,1264 @@
         }
       },
       "driver": "base-encoding"
+    },
+    {
+      "id": "text/annex-StandardEncoding",
+      "kind": "vector",
+      "description": "All code-to-name slots, including undefined slots, from Annex D",
+      "requirements": [
+        "text-simple-encoding"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/annex-StandardEncoding.base",
+          "sha256": "9a31e5d41a70d80ad1b4c6127b2519925701ac589206b654b66ca7370e5ef5ca"
+        },
+        ".out": {
+          "path": "corpus/generated/text/annex-StandardEncoding.out",
+          "sha256": "0d4760b706ecac43ca42513e35d93056a6b46acc5687c87efe5d7b15901d51ab"
+        }
+      },
+      "driver": "encoding-names"
+    },
+    {
+      "id": "text/annex-MacRomanEncoding",
+      "kind": "vector",
+      "description": "All code-to-name slots, including undefined slots, from Annex D",
+      "requirements": [
+        "text-simple-encoding"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/annex-MacRomanEncoding.base",
+          "sha256": "6fac2917ea48e533e8af40a5c027ced7cd76f25f9a379a27ea3c7f1d3cb942b8"
+        },
+        ".out": {
+          "path": "corpus/generated/text/annex-MacRomanEncoding.out",
+          "sha256": "b5a99da91139e2f827a12694207fbacc057ae34878c65aaef9aafb5b1410bb79"
+        }
+      },
+      "driver": "encoding-names"
+    },
+    {
+      "id": "text/annex-WinAnsiEncoding",
+      "kind": "vector",
+      "description": "All code-to-name slots, including undefined slots, from Annex D",
+      "requirements": [
+        "text-simple-encoding"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/annex-WinAnsiEncoding.base",
+          "sha256": "b77ef71e810bb0be76f33bff380b02a28c1973b300ddcdfcde607405360e431c"
+        },
+        ".out": {
+          "path": "corpus/generated/text/annex-WinAnsiEncoding.out",
+          "sha256": "f6765ab55f1f3cb6bf5fe53e6908e75e347964573cb944724ae81777169e89a6"
+        }
+      },
+      "driver": "encoding-names"
+    },
+    {
+      "id": "text/annex-PDFDocEncoding",
+      "kind": "vector",
+      "description": "All code-to-name slots, including undefined slots, from Annex D",
+      "requirements": [
+        "text-simple-encoding"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/annex-PDFDocEncoding.base",
+          "sha256": "0daefbd72da7c6722d02d80a884be8c3b4bef2e5d5bca511bad487bf5e59b3ee"
+        },
+        ".out": {
+          "path": "corpus/generated/text/annex-PDFDocEncoding.out",
+          "sha256": "e6386fe7f1d7e6bd3e33c9d0e1645c4c64ca682f44b7b207f47a21dda017144d"
+        }
+      },
+      "driver": "encoding-names"
+    },
+    {
+      "id": "text/annex-MacExpertEncoding",
+      "kind": "vector",
+      "description": "All code-to-name slots, including undefined slots, from Annex D",
+      "requirements": [
+        "text-simple-encoding"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/annex-MacExpertEncoding.base",
+          "sha256": "372c4a1d54b38f5ac02ff34d5516625cabde7136a23a83b6bf50f468d2d19cf2"
+        },
+        ".out": {
+          "path": "corpus/generated/text/annex-MacExpertEncoding.out",
+          "sha256": "baf87ee0dbd79e04bb28c5cf2053d04160d0d39e5a79017d60b163394dfdfc83"
+        }
+      },
+      "driver": "encoding-names"
+    },
+    {
+      "id": "text/annex-Symbol",
+      "kind": "vector",
+      "description": "All code-to-name slots, including undefined slots, from Annex D",
+      "requirements": [
+        "text-simple-encoding"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/annex-Symbol.base",
+          "sha256": "ba0e4afa93400b805dfcc4b9e6aef549269946e2d1af5ababfc3a73c67912d89"
+        },
+        ".out": {
+          "path": "corpus/generated/text/annex-Symbol.out",
+          "sha256": "95d7adceffd07ad89bc6a180201e1af5a979af7f8137da14ed6bd77bc2664f0b"
+        }
+      },
+      "driver": "encoding-names"
+    },
+    {
+      "id": "text/annex-ZapfDingbats",
+      "kind": "vector",
+      "description": "All code-to-name slots, including undefined slots, from Annex D",
+      "requirements": [
+        "text-simple-encoding"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/annex-ZapfDingbats.base",
+          "sha256": "af08b5c8c9dc4e2a131194f31bf0578feb273bc572af49369e031f4e24a703cb"
+        },
+        ".out": {
+          "path": "corpus/generated/text/annex-ZapfDingbats.out",
+          "sha256": "c0df9ac1fa1ff4627fa3ad588d4674620ea8a091aaff8dbf5c562ea07997935e"
+        }
+      },
+      "driver": "encoding-names"
+    },
+    {
+      "id": "text/cid-map-missing-entry",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-cid-to-gid",
+        "text-cmap"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/cid-map-missing-entry.input",
+          "sha256": "c00b4d3c929cb5cc316691ed4636f634576f2c9b2954767234c5274e9dde185d"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/cid-map-missing-entry.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/cid-map-missing-entry.out",
+          "sha256": "05247cc13004f7553502759674c8089436836b635045b5ce20c940acd5ada13a"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cid-map-missing-entry.pdf",
+          "sha256": "9b65b81449d1360b3b92b49ff27bebe009a6de83f4b31de4522a45035e91d5f7"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/cid-map-explicit-zero",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-cid-to-gid",
+        "text-cmap"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/cid-map-explicit-zero.input",
+          "sha256": "c00b4d3c929cb5cc316691ed4636f634576f2c9b2954767234c5274e9dde185d"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/cid-map-explicit-zero.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/cid-map-explicit-zero.out",
+          "sha256": "05247cc13004f7553502759674c8089436836b635045b5ce20c940acd5ada13a"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/cid-map-explicit-zero.pdf",
+          "sha256": "faa08e1fe7cd76586cf1e091f41259c8cbdd0995f19bad999715e09574fc134e"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-unicode-priority",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-unicode-priority.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-unicode-priority.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-unicode-priority.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-unicode-priority.pdf",
+          "sha256": "0653435a300a812e78379dd67457ee386f69b5d6f45f5bfe5e523279cb0d9b0e"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-unicode-missing-post",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-unicode-missing-post.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-unicode-missing-post.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-unicode-missing-post.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-unicode-missing-post.pdf",
+          "sha256": "224ca8dcf55606092809a000e052c71d997d1819b19f0f2ef8d31a5af41bb4a6"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-macroman-fallback",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-macroman-fallback.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-macroman-fallback.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-macroman-fallback.out",
+          "sha256": "b8bd19c26fdca36ce5a021e3ac2f0bf6ee843928150bf989d72bafd896d1aa09"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-macroman-fallback.pdf",
+          "sha256": "e76a416bf1cf073e28a737d32ca0a8ff7f5a164362771ce8994a115c35a55ac3"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-mac-euro",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-mac-euro.input",
+          "sha256": "76be8b528d0075f7aae98d6fa57a6d3c83ae480a8469e668d7b0af968995ac71"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-mac-euro.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-mac-euro.out",
+          "sha256": "566c6c8a3701deaf6780684809fad613c1ef87fb1e5b28e3208736e02f67336c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-mac-euro.pdf",
+          "sha256": "b20eababfaf0e5b74bd85e18e6bdee9a2e8c537636c6dcd9978faf1c53c8dee0"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-mac-currency-post",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-mac-currency-post.input",
+          "sha256": "b7d25296e7bc6a6bf66da09b1c5ed273d99e3a9fc6d43e46ccb8b358fa13d4e9"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-mac-currency-post.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-mac-currency-post.out",
+          "sha256": "f5ced08631f612504369aa0fb8ddff682f40de39ceb33af60be346a5f386a786"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-mac-currency-post.pdf",
+          "sha256": "69d6d459cdec6605a3bb0fa1d252cad18709b1840404c58393c4c46487867791"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-mac-extra-apple",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-mac-extra-apple.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-mac-extra-apple.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-mac-extra-apple.out",
+          "sha256": "1357eecefeb084eda0483d88aa8c5b2b188e73d080d7f5e9d03b1ff855a1e967"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-mac-extra-apple.pdf",
+          "sha256": "da43a067b68cbc23cb799ebd6f06c5ff2bf184cf813ef9c9ce550d675c79d324"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-post-without-cmap",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-post-without-cmap.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-post-without-cmap.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-post-without-cmap.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-post-without-cmap.pdf",
+          "sha256": "bba0c43694cfeeb8cbc06a8a36cf3e264ec57493eb811860bf5f009b76f8d201"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-post-differences",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-post-differences.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-post-differences.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-post-differences.out",
+          "sha256": "459dd7e3f8efd02f5084aff04c36405826078e02723e12cc33f315bb08c36477"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-post-differences.pdf",
+          "sha256": "ab1ec2a6f74b49e46ed5f3e65c6e0e74c74a727c1b12b88d598d897fdc3b7d9e"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-name-not-found",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-name-not-found.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-name-not-found.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-name-not-found.out",
+          "sha256": "5c9e2a1b0a14046e6b6a7e61a2a1b4168f9aa63e7470816e96318406ec90cf92"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-name-not-found.pdf",
+          "sha256": "22c73f775abc4f8d4827156d5f4b5239192c3daa7c598a0b599a4a9e8b75b797"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-named-mac-undefined",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-named-mac-undefined.input",
+          "sha256": "22adaf058a2cb668b15cb4c1f30e7cc720bbe38c146544169db35fbf630389c4"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-named-mac-undefined.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-named-mac-undefined.out",
+          "sha256": "e4418b79d77486f64d003e565dfa2636e876a81269448c09a34604c747e540da"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-named-mac-undefined.pdf",
+          "sha256": "10f8e4a17acc78c9874a52578eea3f3174552c21c318f54fa6ae0e51c7cbd937"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-dictionary-standard-fill",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-dictionary-standard-fill.input",
+          "sha256": "22adaf058a2cb668b15cb4c1f30e7cc720bbe38c146544169db35fbf630389c4"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-dictionary-standard-fill.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-dictionary-standard-fill.out",
+          "sha256": "8f36d9aa2f6bccf6dd1beb398648df111e02ea09a2afc167c026cf1fc862634b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-dictionary-standard-fill.pdf",
+          "sha256": "5e82cd26873ddf62ead974174ab0cdb9e9b28621ad6582b9bd601534c9c7d728"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-symbol-0000",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-symbol-0000.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-symbol-0000.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-symbol-0000.out",
+          "sha256": "e70a4944364cb19b67c3a0176904ad99468df5d1a23695fabb85dea1919f5da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-symbol-0000.pdf",
+          "sha256": "3ac3132f41dbeb4a5fba82600e3fb617e4f4760dd5112ba54377e4f374dc974c"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-symbol-f000",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-symbol-f000.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-symbol-f000.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-symbol-f000.out",
+          "sha256": "e70a4944364cb19b67c3a0176904ad99468df5d1a23695fabb85dea1919f5da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-symbol-f000.pdf",
+          "sha256": "f59fca94a7c27795238ea52b1c56923717f48aaa10e39c0b0591c0c7778adf49"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-symbol-f100",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-symbol-f100.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-symbol-f100.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-symbol-f100.out",
+          "sha256": "e70a4944364cb19b67c3a0176904ad99468df5d1a23695fabb85dea1919f5da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-symbol-f100.pdf",
+          "sha256": "fe97a4503dd7f0616d335bdd8eb6a8e2636d5195bc1567614ada316b286bf3d3"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-symbol-f200",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-symbol-f200.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-symbol-f200.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-symbol-f200.out",
+          "sha256": "e70a4944364cb19b67c3a0176904ad99468df5d1a23695fabb85dea1919f5da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-symbol-f200.pdf",
+          "sha256": "273c2b6ac4d9bc3c82ae117074824660e18453413746b5e035fa9b193840e7a4"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-symbol-mac-only",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-symbol-mac-only.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-symbol-mac-only.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-symbol-mac-only.out",
+          "sha256": "1357eecefeb084eda0483d88aa8c5b2b188e73d080d7f5e9d03b1ff855a1e967"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-symbol-mac-only.pdf",
+          "sha256": "1b361eb2329b3d62c2230e6c6348790df4c3cf6ab4353d1f5541e2309a6cec9a"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-symbol-present-missing",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-symbol-present-missing.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-symbol-present-missing.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-symbol-present-missing.out",
+          "sha256": "5c9e2a1b0a14046e6b6a7e61a2a1b4168f9aa63e7470816e96318406ec90cf92"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-symbol-present-missing.pdf",
+          "sha256": "14ef0ce514d8288e797b562c36cf5a9f6c154fe7a1119f36ef95961caa431bca"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-noencoding-direct",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-noencoding-direct.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-noencoding-direct.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-noencoding-direct.out",
+          "sha256": "1357eecefeb084eda0483d88aa8c5b2b188e73d080d7f5e9d03b1ff855a1e967"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-noencoding-direct.pdf",
+          "sha256": "e5defa560c23447886709aeb7a0aef84798c035dcccb9ed08a2e8ed62d1510f2"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-noencoding-symbol",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-noencoding-symbol.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-noencoding-symbol.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-noencoding-symbol.out",
+          "sha256": "1357eecefeb084eda0483d88aa8c5b2b188e73d080d7f5e9d03b1ff855a1e967"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-noencoding-symbol.pdf",
+          "sha256": "e422e5d20360a60977c35c316613ebfee284bd620c860eaeb016427eb791a474"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-units-per-em",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-units-per-em.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-units-per-em.matrix",
+          "sha256": "f01babe64740bb3a20bc83d6a071364a42fe7504a11c1b4e1e9475596f12fc0d"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-units-per-em.out",
+          "sha256": "3a85fc9ebbd5b4fa07980809b0649a44da038cf4e65db71d81ee0614783964ad"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-units-per-em.pdf",
+          "sha256": "c741693f8d3515839fe4d102f1ca48e31348a72dbb5abdfac20328ed5072dfdc"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-tounicode-does-not-select",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-tounicode-does-not-select.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-tounicode-does-not-select.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-tounicode-does-not-select.out",
+          "sha256": "ac76874b226a6910ccc3dd51fafdbe0294da3dea8b5acd2bcb888a925d943e60"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-tounicode-does-not-select.pdf",
+          "sha256": "2305605f8b1a7eb9f327b10ecdc3276bf0c891c3d5ad48a172a18cc20fa0ff62"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-mac-os-additions",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-mac-os-additions.input",
+          "sha256": "36db1adc807ac50e4c85bd86a174b4aa260154e4f172a3659698945d7b16d084"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-mac-os-additions.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-mac-os-additions.out",
+          "sha256": "a3c3996159b1b8a674fa71f81966f1dc26f45b25b0ff1b91ad670c4d638923e1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-mac-os-additions.pdf",
+          "sha256": "b4e64e1024866141be158cbe4f8bcc60ba486aa1b89c6ad091fb22655d6e28b0"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/embedded-cff",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/embedded-cff.input",
+          "sha256": "20d5d67989dbb1d23a08dcbf54d35563f6d853a15c43168a6ddbb3e62ad34846"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/embedded-cff.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/embedded-cff.out",
+          "sha256": "ca54d65e3b257142086b1f64094210f456226840810ea861710aaec4ef359b2b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/embedded-cff.pdf",
+          "sha256": "ccba660724c8dfbf390f239a5e560464f90278724484c7c9c631a5b7f1e1cc11"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/embedded-opentype-cff",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/embedded-opentype-cff.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/embedded-opentype-cff.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/embedded-opentype-cff.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/embedded-opentype-cff.pdf",
+          "sha256": "0818933e2a9a1338011bd1061ba2b4ca3fc61d259b884cd582a2051193fed4f6"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/embedded-opentype-truetype",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/embedded-opentype-truetype.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/embedded-opentype-truetype.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/embedded-opentype-truetype.out",
+          "sha256": "164ea29fb26b68d334d55b92d485c4dcc18efda5600880ed716398843e7a867e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/embedded-opentype-truetype.pdf",
+          "sha256": "c8cec05c6a9106c86bd923da606f305133ce38391a0bc9651d10f21c98e1cd58"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/embedded-cid-cff",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/embedded-cid-cff.input",
+          "sha256": "e3791bd4871793d3f74b1300fecb0f70464c2be4b957eba4f411f69b7cd333d8"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/embedded-cid-cff.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/embedded-cid-cff.out",
+          "sha256": "a0193c18b1157b78cdbce409e4e6601ccc03f20bc4d588940ab42462b4b667bd"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/embedded-cid-cff.pdf",
+          "sha256": "829054dece470fd8bb03c74d8d381dd5f94112d30de0912b508875ab83cbd1ad"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/embedded-cid-cff-gid",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/embedded-cid-cff-gid.input",
+          "sha256": "5966bd417fc7a6658be96d4d7d2033028f24890c7ce89f74394dbe49dbc511fe"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/embedded-cid-cff-gid.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/embedded-cid-cff-gid.out",
+          "sha256": "f3ce9afed604c5f2a84185cbf93a8c5202db659a354f9e06b95268f93c8484ad"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/embedded-cid-cff-gid.pdf",
+          "sha256": "25dff39094bb10526737d8c55738f38ebb5723ad4e64e4fcfeec069de37ed6b4"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/embedded-type1",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/embedded-type1.input",
+          "sha256": "8e917f302b4d2981f694763ed0f4554210d7719fae839b16ab9b87ee44a2b34b"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/embedded-type1.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/embedded-type1.out",
+          "sha256": "d426254df2a8d6a7dcb1401ac8303dee1ccbacbe4ed439018fb1c9e150c8273d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/embedded-type1.pdf",
+          "sha256": "fe033bde3ea33a0e98b352100c3c952d3497f1a80879704ddf2dd8f34d7d99bf"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/embedded-type1-matrix",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/embedded-type1-matrix.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/embedded-type1-matrix.matrix",
+          "sha256": "4d078ae16d01353f92f9f1b57fde2218218878e00fa861c41ef8e6f8de7d70cc"
+        },
+        ".out": {
+          "path": "corpus/generated/text/embedded-type1-matrix.out",
+          "sha256": "f20b39d3c55cc1e012a6d6abf34b9ea818fb5d778a369173c59daf3c561cedd8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/embedded-type1-matrix.pdf",
+          "sha256": "e3d2ddf382c7a05a9812ca774bb2dcd981b26875876b0054c5af274aa6d02293"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/embedded-cid-truetype-vertical",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-embedded-fonts",
+        "text-cid-metrics",
+        "text-cid-to-gid"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/embedded-cid-truetype-vertical.input",
+          "sha256": "fc700fd55e6347e711ea0586b240e7b69815ec943a4001fe268c8f46a76cbc5a"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/embedded-cid-truetype-vertical.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/embedded-cid-truetype-vertical.out",
+          "sha256": "2402b1913c0559eb9fcce5e3e0efe7b4bbf94e569b6fa9480262781e604dd76e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/embedded-cid-truetype-vertical.pdf",
+          "sha256": "8c954efefba4611be0836bf6baf0077fe716d320255fbbac23ddcf2ce1f97551"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/embedded-cid-variable-codes",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-embedded-fonts",
+        "text-cmap",
+        "text-unicode",
+        "text-string-contract"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/embedded-cid-variable-codes.input",
+          "sha256": "7607f0bbae4d9a1a4349098900a85e29f51c45ab4d135fd947aec9256a88581a"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/embedded-cid-variable-codes.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/embedded-cid-variable-codes.out",
+          "sha256": "cc9e95ee5d4e5d6f8759309b7856c1c67de683c243ff88ba1bdab6652ca5c2bf"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/embedded-cid-variable-codes.pdf",
+          "sha256": "919896165e0ea67d78903d889aff51db61f7d80f93c57fc4f7efb7c65e51d047"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/embedded-cid-notdef",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-embedded-fonts",
+        "text-cmap"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/embedded-cid-notdef.input",
+          "sha256": "7775bd0ec55cb939482c32ee56185bda08aa1e4616f1d78cb8859d207b0555e6"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/embedded-cid-notdef.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/embedded-cid-notdef.out",
+          "sha256": "d6c5dd1cf18f0020c89298adab142a19997728440d7780c93185198938085ef7"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/embedded-cid-notdef.pdf",
+          "sha256": "00bc15c6caf3e66e058bf39e474dddc43476c5117610125530500c5cdbe757e0"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/glyph-name-forms",
+      "kind": "vector",
+      "description": "Known-answer legacy ligatures, suffixes, components and numeric glyph names",
+      "requirements": [
+        "text-glyph-names",
+        "text-unicode"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/text/glyph-name-forms.out",
+          "sha256": "f2869b78d717ff476983b1d20209d72119d01a4d8246a6b5687d3890c9d4f243"
+        }
+      },
+      "driver": "glyph-names",
+      "primary_text_status": "pending Adobe Glyph List primary-text review"
+    },
+    {
+      "id": "text/binding-wrong-fontfile",
+      "kind": "vector",
+      "description": "PDF binding or ToUnicode consistency violation derived from the ISO rules",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/binding-wrong-fontfile.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/binding-wrong-fontfile.pdf",
+          "sha256": "ace8f6bf3eed7a9f5f98d9cd176418936ad9d6498f02787adb7ec0990c818a9c"
+        }
+      },
+      "driver": "font-error"
+    },
+    {
+      "id": "text/binding-length1",
+      "kind": "vector",
+      "description": "PDF binding or ToUnicode consistency violation derived from the ISO rules",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/binding-length1.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/binding-length1.pdf",
+          "sha256": "36e70ac94f92e037ee4e403c8e7169c4e0c7f26d21775c0d70be28c6f4bc03ea"
+        }
+      },
+      "driver": "font-error"
+    },
+    {
+      "id": "text/binding-cff-length",
+      "kind": "vector",
+      "description": "PDF binding or ToUnicode consistency violation derived from the ISO rules",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/binding-cff-length.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/binding-cff-length.pdf",
+          "sha256": "8abc279b652dc81f3ea458e2e79a84c801acc30b8f435e96b599ae1deb3e8eaa"
+        }
+      },
+      "driver": "font-error"
+    },
+    {
+      "id": "text/binding-type1-lengths",
+      "kind": "vector",
+      "description": "PDF binding or ToUnicode consistency violation derived from the ISO rules",
+      "requirements": [
+        "text-embedded-fonts"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/binding-type1-lengths.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/binding-type1-lengths.pdf",
+          "sha256": "140b3e9343d11e986b75ce538f00f8af8acaba4a13d75f50c914cf189762df09"
+        }
+      },
+      "driver": "font-error"
+    },
+    {
+      "id": "text/unicode-cid-code-length",
+      "kind": "vector",
+      "description": "PDF binding or ToUnicode consistency violation derived from the ISO rules",
+      "requirements": [
+        "text-unicode"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/unicode-cid-code-length.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/unicode-cid-code-length.pdf",
+          "sha256": "370da651caf5cd6d4db4e238dfc556fa3ee075b2f7da85fd420cf1baa63a223d"
+        }
+      },
+      "driver": "font-error"
+    },
+    {
+      "id": "text/unicode-simple-source-length",
+      "kind": "vector",
+      "description": "PDF binding or ToUnicode consistency violation derived from the ISO rules",
+      "requirements": [
+        "text-unicode"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/unicode-simple-source-length.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/unicode-simple-source-length.pdf",
+          "sha256": "e6294338f6c40d4770d3b867eb3821e54251105b051e85674ea8b87e3f6575fa"
+        }
+      },
+      "driver": "font-error"
+    },
+    {
+      "id": "text/unicode-ignored-stream-metadata",
+      "kind": "vector",
+      "description": "CMap code lengths, mappings and undefined-code consumption",
+      "requirements": [
+        "text-unicode"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/unicode-ignored-stream-metadata.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/unicode-ignored-stream-metadata.out",
+          "sha256": "217dcb95031d4e0cded99eaf30364698e71b83552e81fcd53e8f79519db0739f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/unicode-ignored-stream-metadata.pdf",
+          "sha256": "5ac90806a053ee1c35f00deef0de634d4aa456b73553bc7ae3bf359b61d87903"
+        }
+      },
+      "driver": "unicode-cmap"
+    },
+    {
+      "id": "text/unicode-inherited-ignored-name",
+      "kind": "vector",
+      "description": "CMap code lengths, mappings and undefined-code consumption",
+      "requirements": [
+        "text-unicode"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/unicode-inherited-ignored-name.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/unicode-inherited-ignored-name.out",
+          "sha256": "217dcb95031d4e0cded99eaf30364698e71b83552e81fcd53e8f79519db0739f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/unicode-inherited-ignored-name.pdf",
+          "sha256": "4ff697832d6e9833b35471a678c48167720f809307459d21bbf2ceeafcb552eb"
+        }
+      },
+      "driver": "unicode-cmap"
     }
   ]
 }

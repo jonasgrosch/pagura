@@ -9,7 +9,7 @@ use crate::{
 };
 use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
 use pagura_document::Document;
-use pagura_font::{CmapSubtable, FontFormat, FontProgram, GlyphId};
+use pagura_font::{FontProgram, GlyphId};
 use pagura_raster::Transform;
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -22,7 +22,7 @@ pub(crate) enum Source {
     },
     Program {
         program: Arc<FontProgram>,
-        symbolic: bool,
+        truetype_raw: bool,
         cid_map: Option<Vec<u8>>,
     },
 }
@@ -86,7 +86,12 @@ pub(crate) fn load(document: &Document, font: &Dictionary) -> Result<PdfFont> {
             "font must set exactly one of Symbolic and Nonsymbolic",
         ));
     }
-    let program = Arc::new(program(document, descriptor)?);
+    let program = Arc::new(crate::program::load(
+        document,
+        descriptor,
+        kind,
+        metrics_font,
+    )?);
     let metrics = if kind == FontKind::Type0 {
         Metrics::composite(document, metrics_font)?
     } else {
@@ -108,17 +113,18 @@ pub(crate) fn load(document: &Document, font: &Dictionary) -> Result<PdfFont> {
         Mapping::Composite(map) => map.mode,
         Mapping::Simple(_) => WritingMode::Horizontal,
     };
+    let to_unicode = to_unicode(document, font, &mapping)?;
     Ok(PdfFont {
         kind,
         writing_mode: mode,
         source: Source::Program {
             program,
-            symbolic,
+            truetype_raw: symbolic || optional(document, font, b"Encoding")?.is_none(),
             cid_map,
         },
         mapping,
         metrics,
-        to_unicode: to_unicode(document, font)?,
+        to_unicode,
         limits: document.limits(),
     })
 }
@@ -130,7 +136,8 @@ fn simple_mapping(
     symbolic: bool,
     builtin: Option<&encoding::Encoding>,
 ) -> Result<SimpleMapping> {
-    if kind == FontKind::TrueType && symbolic {
+    if kind == FontKind::TrueType && (symbolic || optional(document, font, b"Encoding")?.is_none())
+    {
         return SimpleMapping::new(std::array::from_fn(|_| None), document.limits());
     }
     let default = if kind == FontKind::TrueType {
@@ -141,7 +148,10 @@ fn simple_mapping(
             .unwrap_or(encoding::base(b"StandardEncoding")?)
     };
     let mut names = encoding::load(document, font.get(b"Encoding"), default)?;
-    if kind == FontKind::TrueType {
+    if kind == FontKind::TrueType
+        && optional(document, font, b"Encoding")?
+            .is_some_and(|value| value.as_dictionary().is_some())
+    {
         for (slot, fallback) in names.iter_mut().zip(encoding::base(b"StandardEncoding")?) {
             if slot.is_none() {
                 *slot = fallback;
@@ -199,6 +209,7 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
     }
     let encoding = encoding::load(document, Some(encoding), std::array::from_fn(|_| None))?;
     let mapping = Mapping::Simple(Box::new(SimpleMapping::new(encoding, document.limits())?));
+    let to_unicode = to_unicode(document, font, &mapping)?;
     Ok(PdfFont {
         kind: FontKind::Type3,
         writing_mode: WritingMode::Horizontal,
@@ -209,55 +220,28 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
             matrix,
         },
         mapping,
-        to_unicode: to_unicode(document, font)?,
+        to_unicode,
         limits: document.limits(),
     })
 }
 
-fn to_unicode(document: &Document, font: &Dictionary) -> Result<Option<CMap>> {
-    let map = font
-        .get(b"ToUnicode")
-        .map(|value| {
-            if value.as_reference().is_none() {
-                return Err(Error::syntax("ToUnicode must be a stream reference"));
-            }
-            cmap::load(document, value, true)
-        })
-        .transpose()?;
-    if !font.is_name(b"Subtype", b"Type0") && map.as_ref().is_some_and(|map| !map.simple_codes()) {
-        let error = Error::syntax("simple font ToUnicode must use one-byte codes");
-        return Err(font
-            .get(b"ToUnicode")
-            .and_then(Value::as_reference)
-            .map_or(error.clone(), |id| error.in_object(id)));
-    }
-    Ok(map)
-}
-
-fn program(document: &Document, descriptor: &Dictionary) -> Result<FontProgram> {
-    for (key, format) in [
-        (b"FontFile".as_slice(), FontFormat::Type1),
-        (b"FontFile2".as_slice(), FontFormat::TrueType),
-        (b"FontFile3".as_slice(), FontFormat::Cff),
-    ] {
-        if let Some(value) = descriptor.get(key) {
-            let format = if key == b"FontFile3" {
-                let dict = document.resolve_dictionary(value)?;
-                match dict.get_name(b"Subtype").map(Name::as_bytes) {
-                    Some(b"Type1C" | b"CIDFontType0C") => FontFormat::Cff,
-                    Some(b"OpenType") => FontFormat::OpenType,
-                    _ => return Err(Error::syntax("invalid FontFile3 Subtype")),
-                }
-            } else {
-                format
-            };
-            return FontProgram::parse(stream(document, value)?, format, &document.limits());
-        }
-    }
-    Err(Error::unsupported(
-        features::NON_EMBEDDED,
-        "font program is not embedded",
-    ))
+fn to_unicode(document: &Document, font: &Dictionary, mapping: &Mapping) -> Result<Option<CMap>> {
+    let Some(value) = font.get(b"ToUnicode") else {
+        return Ok(None);
+    };
+    let id = value
+        .as_reference()
+        .ok_or_else(|| Error::syntax("ToUnicode must be a stream reference"))?;
+    let map = cmap::load(document, value, true)?;
+    let result = match mapping {
+        Mapping::Simple(_) if !map.simple_codes() => Err(Error::syntax(
+            "simple font ToUnicode must use one-byte codes",
+        )),
+        Mapping::Composite(encoding) => map.consistent_with(encoding, document.limits()),
+        Mapping::Simple(_) => Ok(()),
+    };
+    result.map_err(|e| e.in_object(id))?;
+    Ok(Some(map))
 }
 
 fn stream(document: &Document, value: &Value) -> Result<Vec<u8>> {
@@ -276,8 +260,9 @@ impl PdfFont {
         code: Code,
         selector: u32,
         name: Option<&Name>,
-    ) -> Result<GlyphShape> {
-        Ok(match &self.source {
+        unicode: Option<&str>,
+    ) -> GlyphShape {
+        match &self.source {
             Source::Type3 {
                 procedures, matrix, ..
             } => name
@@ -288,13 +273,13 @@ impl PdfFont {
                 }),
             Source::Program {
                 program,
-                symbolic,
+                truetype_raw,
                 cid_map,
             } => {
                 let glyph = if self.kind == FontKind::Type0 {
                     cid_glyph(program, cid_map.as_deref(), selector)
                 } else if self.kind == FontKind::TrueType {
-                    select_truetype(program, code.value, name, *symbolic)?
+                    crate::selection::truetype(program, code.value, name, unicode, *truetype_raw)
                 } else {
                     name.and_then(|name| program.glyph_for_name(name.as_bytes()))
                 };
@@ -304,7 +289,21 @@ impl PdfFont {
                     matrix: program.font_matrix(),
                 }
             }
-        })
+        }
+    }
+
+    // 9.7.6.3 specifically requires CID 0 when a CIDToGIDMap stream
+    // has no entry, before considering ordinary CMap notdef substitution.
+    pub(crate) fn lacks_gid_entry(&self, cid: u32) -> bool {
+        match &self.source {
+            Source::Program {
+                cid_map: Some(map), ..
+            } => usize::try_from(cid)
+                .ok()
+                .and_then(|cid| cid.checked_mul(2))
+                .is_none_or(|offset| offset >= map.len()),
+            _ => false,
+        }
     }
 
     pub(crate) fn has_cid(&self, cid: u32) -> bool {
@@ -321,41 +320,15 @@ fn cid_glyph(program: &FontProgram, map: Option<&[u8]>, cid: u32) -> Option<Glyp
     if program.is_cid_keyed() {
         return program.glyph_for_cid(cid);
     }
+    if map.is_some_and(|map| {
+        usize::try_from(cid)
+            .ok()
+            .is_none_or(|cid| cid >= map.len() / 2)
+    }) {
+        return None;
+    }
     let glyph = mapped_gid(map, cid);
-    (glyph < program.glyph_count() && (glyph != 0 || cid == 0)).then_some(GlyphId(glyph))
-}
-
-// A missing cmap entry and an absent subtable are distinct. The program API
-// currently exposes entry lookup only. Avoid choosing the wrong fallback
-// when (3,1) cannot select the requested glyph (9.6.5.4).
-fn select_truetype(
-    program: &FontProgram,
-    code: u32,
-    name: Option<&Name>,
-    symbolic: bool,
-) -> Result<Option<GlyphId>> {
-    if symbolic {
-        for high in [0, 0xf000, 0xf100, 0xf200] {
-            if let Some(glyph) = program.glyph_for_code(CmapSubtable::WindowsSymbol, code + high) {
-                return Ok(Some(glyph));
-            }
-        }
-        return Ok(program.glyph_for_code(CmapSubtable::MacRoman, code));
-    }
-    let Some(name) = name else { return Ok(None) };
-    if let Some(text) = encoding::unicode(name.as_bytes()) {
-        let mut chars = text.chars();
-        if let Some(ch) = chars.next()
-            && chars.next().is_none()
-            && let Some(glyph) = program.glyph_for_code(CmapSubtable::WindowsUnicode, u32::from(ch))
-        {
-            return Ok(Some(glyph));
-        }
-    }
-    Err(Error::unsupported(
-        features::TRUETYPE_CMAP,
-        "TrueType fallback requires cmap subtable availability",
-    ))
+    (glyph < program.glyph_count()).then_some(GlyphId(glyph))
 }
 
 fn cid_map(document: &Document, metrics_font: &Dictionary) -> Result<Option<Vec<u8>>> {
@@ -445,6 +418,11 @@ mod tests {
             false,
             None,
         )?;
+        assert!(mapping.names.iter().all(Option::is_none));
+        let named: Dictionary = [(Name::new(b"Encoding"), Value::name(b"WinAnsiEncoding"))]
+            .into_iter()
+            .collect();
+        let mapping = simple_mapping(&document, &named, FontKind::TrueType, false, None)?;
         assert_eq!(mapping.unicode[65].as_deref(), Some("A"));
         Ok(())
     }

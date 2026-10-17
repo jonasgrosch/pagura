@@ -11,9 +11,8 @@
 //!
 //! Non-embedded programs and predefined CMaps beyond Identity-H/V are explicit
 //! unsupported capabilities (ADR 0009). Font-program parsing is delegated to
-//! `pagura-font`. Nonsymbolic TrueType fallback currently requires subtable
-//! availability metadata beyond its entry-lookup API; that case reports
-//! [`features::TRUETYPE_CMAP`]. Glyph-name Unicode fallback implements AGL name
+//! `pagura-font`. TrueType selection uses the program's subtable availability
+//! and post names (9.6.5.4). Glyph-name Unicode fallback implements AGL name
 //! decomposition with Latin, Dingbats and common Symbol names; unbundled legacy
 //! names remain unknown. A `/ToUnicode` sequence always takes precedence.
 //!
@@ -32,6 +31,8 @@ mod encoding;
 mod font;
 mod metrics;
 mod objects;
+mod program;
+mod selection;
 mod tables;
 
 /// Stable tags for text capabilities not implemented yet.
@@ -42,7 +43,7 @@ pub mod features {
     pub const NON_EMBEDDED: Feature = Feature::new("font.non-embedded");
     /// A CMap requires PostScript evaluation beyond declarative mappings.
     pub const CMAP_PROGRAM: Feature = Feature::new("font.cmap-program");
-    /// TrueType fallback needs information about available program cmap subtables.
+    /// Historical ambiguity tag; supported TrueType selection no longer emits it.
     pub const TRUETYPE_CMAP: Feature = Feature::new("font.truetype-cmap");
     /// A predefined CMap other than Identity-H/V, whose data is not bundled.
     pub const PREDEFINED_CMAP: Feature = Feature::new("font.predefined-cmap");
@@ -233,7 +234,9 @@ impl PdfFont {
                 } else {
                     None
                 };
-                if cid.is_none_or(|cid| !self.has_cid(cid)) {
+                if cid.is_some_and(|cid| self.lacks_gid_entry(cid)) {
+                    cid = Some(0);
+                } else if cid.is_none_or(|cid| !self.has_cid(cid)) {
                     cid = Some(map.notdef(code, work, self.limits)?);
                 }
                 let cid = cid.filter(|cid| self.has_cid(*cid)).unwrap_or(0);
@@ -254,7 +257,7 @@ impl PdfFont {
                 .then(|| self.metrics.vertical(selector)),
             word_space: code.len == 1 && code.value == 32,
             unicode,
-            shape: self.shape(code, selector, name)?,
+            shape: self.shape(code, selector, name, fallback),
         })
     }
 }

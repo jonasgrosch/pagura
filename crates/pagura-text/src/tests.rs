@@ -121,12 +121,14 @@ fn cmap_vectors() -> Result<()> {
         "cmap-parent-stream",
         "cmap-indirect-name",
         "unicode-parent",
+        "unicode-ignored-stream-metadata",
+        "unicode-inherited-ignored-name",
     ] {
         let document = document(name)?;
         let map = cmap::load(
             &document,
             &Value::Reference(ObjectId::new(4, 0)),
-            name == "unicode-parent",
+            name.starts_with("unicode-"),
         )?;
         let input = fixture("text", &format!("{name}.input"));
         let mut offset = 0;
@@ -206,6 +208,12 @@ fn font_error_vectors() -> Result<()> {
         "unicode-range-array-length",
         "unicode-block-count",
         "unicode-usecmap-mismatch",
+        "binding-wrong-fontfile",
+        "binding-length1",
+        "binding-cff-length",
+        "binding-type1-lengths",
+        "unicode-cid-code-length",
+        "unicode-simple-source-length",
     ] {
         let document = document(name)?;
         let error = PdfFont::load(&document, dictionary(&document)?)
@@ -316,6 +324,141 @@ fn missing_width_vector() -> Result<()> {
     for value in expected("simple-missing-width")? {
         let row = rows(&value)?;
         near(metrics.width(integer(&row[0])?), float(&row[1])?);
+    }
+    Ok(())
+}
+
+#[test]
+fn annex_code_name_vectors() -> Result<()> {
+    for name in [
+        "StandardEncoding",
+        "MacRomanEncoding",
+        "WinAnsiEncoding",
+        "PDFDocEncoding",
+        "MacExpertEncoding",
+        "Symbol",
+        "ZapfDingbats",
+    ] {
+        let encoding = encoding::base(name.as_bytes())?;
+        for value in expected(&format!("annex-{name}"))? {
+            let row = rows(&value)?;
+            let code =
+                usize::try_from(integer(&row[0])?).map_err(|_| Error::syntax("invalid code"))?;
+            assert_eq!(
+                encoding[code].as_ref().map(pagura_core::Name::as_bytes),
+                row[1].as_string(),
+                "{name}: {code}"
+            );
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn missing_cid_map_entry_uses_cid_zero() -> Result<()> {
+    check_program_vector("cid-map-missing-entry")?;
+    check_program_vector("cid-map-explicit-zero")
+}
+
+fn check_program_vector(name: &str) -> Result<()> {
+    let document = document(name)?;
+    let font = PdfFont::load(&document, dictionary(&document)?)?;
+    let glyphs = font.decode(&fixture("text", &format!("{name}.input")))?;
+    let expectations = expected(name)?;
+    assert_eq!(glyphs.len(), expectations.len(), "{name}");
+    let matrix_bytes = fixture("text", &format!("{name}.matrix"));
+    let matrix = Parser::new(&matrix_bytes, Origin::Buffer, Limits::default()).parse()?;
+    let matrix = rows(&rows(&matrix)?[0])?;
+    for (glyph, value) in glyphs.iter().zip(&expectations) {
+        let row = rows(value)?;
+        assert_eq!(glyph.code, integer(&row[0])?, "{name}");
+        assert_eq!(u32::from(glyph.byte_len), integer(&row[1])?);
+        near(glyph.advance, float(&row[2])?);
+        assert_eq!(Some(glyph.word_space), row[3].as_bool());
+        assert_eq!(glyph.unicode.as_deref(), text(&row[4]), "{name}");
+        let GlyphShape::Outline {
+            program,
+            glyph: id,
+            matrix: actual,
+        } = &glyph.shape
+        else {
+            return Err(Error::syntax("expected outline"));
+        };
+        assert_eq!(id.0, integer(&row[5])?, "{name}");
+        for (actual, expected) in [actual.a, actual.b, actual.c, actual.d, actual.e, actual.f]
+            .into_iter()
+            .zip(matrix)
+        {
+            near(actual, float(expected)?);
+        }
+        program.outline(*id)?;
+        if row[6].is_null() {
+            assert!(glyph.vertical.is_none());
+        } else {
+            let vertical = glyph
+                .vertical
+                .ok_or_else(|| Error::syntax("missing vertical metric"))?;
+            near(vertical.advance, float(&row[6])?);
+            near(vertical.origin.0, float(&row[7])?);
+            near(vertical.origin.1, float(&row[8])?);
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn embedded_program_vectors() -> Result<()> {
+    for name in [
+        "tt-unicode-priority",
+        "tt-unicode-missing-post",
+        "tt-macroman-fallback",
+        "tt-mac-euro",
+        "tt-mac-currency-post",
+        "tt-mac-extra-apple",
+        "tt-mac-os-additions",
+        "tt-post-without-cmap",
+        "tt-post-differences",
+        "tt-name-not-found",
+        "tt-named-mac-undefined",
+        "tt-dictionary-standard-fill",
+        "tt-symbol-0000",
+        "tt-symbol-f000",
+        "tt-symbol-f100",
+        "tt-symbol-f200",
+        "tt-symbol-mac-only",
+        "tt-symbol-present-missing",
+        "tt-noencoding-direct",
+        "tt-noencoding-symbol",
+        "tt-units-per-em",
+        "tt-tounicode-does-not-select",
+        "embedded-cff",
+        "embedded-opentype-cff",
+        "embedded-opentype-truetype",
+        "embedded-cid-cff",
+        "embedded-cid-cff-gid",
+        "embedded-type1",
+        "embedded-type1-matrix",
+        "embedded-cid-truetype-vertical",
+        "embedded-cid-variable-codes",
+        "embedded-cid-notdef",
+    ] {
+        check_program_vector(name)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn glyph_name_known_answers() -> Result<()> {
+    for value in expected("glyph-name-forms")? {
+        let row = rows(&value)?;
+        let name = row[0]
+            .as_string()
+            .ok_or_else(|| Error::syntax("invalid glyph name oracle"))?;
+        assert_eq!(
+            encoding::unicode(name).as_deref(),
+            text(&row[1]),
+            "{name:?}"
+        );
     }
     Ok(())
 }
