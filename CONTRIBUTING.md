@@ -43,6 +43,13 @@ user and cannot be redistributed; a locally supplied copy is registered with
 kept outside the repository. Cite clause and table numbers and paraphrase;
 never copy its text into the repository.
 
+The other format standards the codecs, fonts and cryptography follow (JBIG2,
+JPEG 2000, JPEG, fax, zlib/DEFLATE, PNG, TIFF, MD5, SHA-2, AES, Type 1, CFF,
+Type 2 charstrings, CMaps and the Adobe Glyph List) are freely published but
+not ours to redistribute: `python3 tools/references.py fetch` downloads them
+into `$PAGURA_REFERENCES_DIR` and records their hashes in
+`references/lock.json`. The same citation rules apply.
+
 ## Rust quality bar
 
 Idiomatic Rust is the bar. `cargo clippy -- -D warnings` with the workspace

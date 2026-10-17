@@ -19,10 +19,17 @@ tools/check.py` passes, and `docs/STATUS.md` records the evidence.
 
 ## Current focus
 
-- **M2/M3/M4:** text and fonts, images and codecs, shadings and patterns, and
-  annotation appearances, so that real-world pages render.
-- **M1:** the remaining open failures in other projects' bug-reproduction
-  suites (`docs/scoreboard/`).
+- **Specification verification:** every requirement registry is being checked
+  against the primary standards (ISO 32000-2 and the format standards in the
+  private reference cache); discrepancies become fixtures with independent
+  expectations. A registry whose `scope` does not state this is unverified.
+- **M3/M4 painting:** fonts, text and image decoding exist; the renderer does
+  not paint glyphs or images yet, which blocks most real-world pages
+  (`operator.BT` and image XObjects lead the failure histogram).
+- **M1:** files whose catalog opens but whose page tree fails, and the
+  remaining open failures in other projects' bug-reproduction suites.
+- **Robustness:** a short, routine coverage-guided fuzz run with every finding
+  replayed as a regression test on stable Rust.
 - **Benchmarks:** the conversion track on real documents against PDFium,
   MuPDF, pdf.js, Poppler, hayro and CoreGraphics.
 

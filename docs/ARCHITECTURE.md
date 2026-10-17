@@ -3,18 +3,14 @@
 ## Crates and dependency direction
 
 ```
-pagura-host (WASI command, ADR 0005)      pagura (facade + CLI)
-        └──────────────► pagura ◄────────────┘
-                           │
-        ┌──────────────────┼───────────────────┬──────────────┐
-        ▼                  ▼                   ▼              ▼
-  pagura-render ──► pagura-raster        pagura-write   (re-exports)
-        │                  │                   │
-        ▼                  │                   │
-  pagura-document ──► pagura-codec             │
-        │       └───► pagura-crypto            │
-        ▼                  ▼                   ▼
-                     pagura-core ◄─────────────┘
+pagura-host      ──► pagura (facade and CLI)
+pagura           ──► pagura-render, pagura-write, pagura-document, pagura-raster
+pagura-render    ──► pagura-text, pagura-image, pagura-document, pagura-raster
+pagura-text      ──► pagura-font, pagura-document, pagura-raster
+pagura-image     ──► pagura-document, pagura-codec
+pagura-font      ──► pagura-raster
+pagura-document  ──► pagura-codec, pagura-crypto
+every crate      ──► pagura-core
 ```
 
 Dependencies point downward only and are fixed in the crate manifests.
@@ -26,6 +22,9 @@ Dependencies point downward only and are fixed in the crate manifests.
 | `pagura-crypto` | MD5, SHA-2, RC4, AES; the standard security handler from plain parameters | the object model beyond `ObjectId` |
 | `pagura-document` | immutable source bytes, cross-reference data and revisions, lazily parsed and cached objects, decoded streams, typed page tree, recovery | content streams, pixels |
 | `pagura-raster` | geometry, paths, flattening, exact-area fill, stroking, masks, `Pixmap` | PDF |
+| `pagura-font` | font programs (TrueType/OpenType, CFF/CFF2, Type 1) as outlines, advances, encodings and cmaps | PDF dictionaries |
+| `pagura-text` | PDF font dictionaries, encodings, widths, CMaps and ToUnicode; shown strings to positioned glyphs | content streams, pixels |
+| `pagura-image` | image XObjects and inline images; JPEG, CCITT, JBIG2 and JPEG 2000 decoding to samples | painting, colour conversion |
 | `pagura-render` | content interpretation into a display list in PDF terms; page-to-device transform; tiles; painting through `pagura-raster` | file structure |
 | `pagura-write` | deterministic serialization | parsing |
 | `pagura` | the public facade and the `pagura` CLI | — |
@@ -33,8 +32,8 @@ Dependencies point downward only and are fixed in the crate manifests.
 | `pagura-testkit` | test-only fixture access and assertions (std only) | product code |
 
 Add a crate only for a substantial, independently testable responsibility
-with a clear dependency direction (fonts, images and colour will each get one
-in M3–M5).
+with a clear dependency direction. Colour management (ICC) is the next
+candidate; until then it lives in `pagura-render`.
 
 ## Invariants
 
@@ -42,7 +41,8 @@ in M3–M5).
 2. Object references are document-relative, generation-aware identities. A
    reference to an undefined object resolves to null (clause 7.3.10).
 3. Every traversal has an explicit budget; every decoder enforces an output
-   cap while decoding.
+   cap while decoding; the storage a document retains in its caches has an
+   aggregate budget (`Limits::document_bytes`, ADR 0012).
 4. A rendering error cannot become a successful partial page.
 5. Unsupported behaviour is an `Unsupported(Feature)` error with a stable tag;
    repairs are `Diagnostic`s with stable `Repair` tags (ADR 0003).
