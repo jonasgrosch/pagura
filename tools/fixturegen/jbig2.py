@@ -401,7 +401,7 @@ def text_pixels(encoder,symbols,placements,width,height,strips=1,offset=0,operat
                 integer(encoder,"refine-x",dx);integer(encoder,"refine-y",dy)
                 refinement_pixels(encoder,refined,glyph,refine_template,dw//2+dx,dh//2+dy)
                 glyph=refined
-        draw_x,draw_y=(y-(len(glyph[0])-1 if corner>=2 else 0),x) if transposed else (x,y-(len(glyph)-1 if corner%2==0 else 0))
+        draw_x,draw_y=reference_origin(x,y,glyph,transposed,corner)
         for gy,row in enumerate(glyph):
             for gx,b in enumerate(row):
                 if 0<=draw_x+gx<width and 0<=draw_y+gy<height:
@@ -426,6 +426,10 @@ def _text_region(symbols,placements,width,height,strips=1,offset=0,operator=0,de
 # Generic and symbol vectors share the fixture driver entry point.
 
 def cases():
+    yield from unknown_length_edge_cases()
+    yield from text_layout_edge_cases()
+    yield from stripe_identity_cases()
+    yield from profiles_grammar_cases()
     yield from empty_text_cases()
     yield from mmr_reference_cases()
     yield from page_reference_crop_cases()
@@ -855,7 +859,7 @@ def huffman_text(symbols,width=19,height=12,fs=6,ds=8,dt=11,corner=1,transposed=
         if strips>1:bits+=format(within,f"0{strips.bit_length()-1}b")
         bits+=format(index,f"0{id_size}b")
         # S advances on the coding axis; T anchors the selected corner.
-        x,y=(within-(len(glyph[0])-1 if corner>=2 else 0),s) if transposed else (s,within-(len(glyph)-1 if corner%2==0 else 0))
+        x,y=reference_origin(s,within,glyph,transposed,corner)
         for gy,row in enumerate(glyph):
             for gx,value in enumerate(row):
                 if 0<=x+gx<width and 0<=y+gy<height:rows[y+gy][x+gx]|=value
@@ -1224,3 +1228,148 @@ def empty_text_cases():
         header=struct.pack('>IIIIBHHI',7,4,0,0,0,0x11+(default<<9),0,0)
         coded=header+ids+bits_bytes(huffman_word(11,1))
         yield vector(f'huffman-empty-text-default{default}',page+_segment(2,6,1,coded,refs=(0,)),rows,globals=globals,requirement='jbig2-huffman-text')
+
+
+def reference_origin(s,t,glyph,transposed,corner):
+    """Literal reference-corner steps of 6.4.5, before geometric clipping."""
+    width,height=len(glyph[0]),len(glyph)
+    right,bottom=corner in (2,3),corner in (0,2)
+    # Step vi updates the S coordinate before selecting the reference corner.
+    if not transposed and right: s+=width-1
+    if transposed and bottom: s+=height-1
+    anchor_x,anchor_y=(t,s) if transposed else (s,t)
+    # Step viii anchors the selected pixel of the unrotated symbol bitmap.
+    return anchor_x-(width-1 if right else 0),anchor_y-(height-1 if bottom else 0)
+
+
+def unknown_segment(number,rows,payload,declared=None,x=0,y=0):
+    declared=len(rows) if declared is None else declared
+    body=struct.pack('>IIIIB',len(rows[0]),declared,x,y,0)+payload
+    if payload[0]&1: body+=bytes(2)
+    body+=struct.pack('>I',len(rows))
+    header=_segment(number,38,1,b'')
+    return header[:-4]+bytes([255])*4+body
+
+
+def unknown_length_edge_cases():
+    # A following segment proves that framing includes the four-byte count,
+    # but excludes bytes belonging to the next header and coded bitmap.
+    rows=[[1,0,1,0,0],[1,0,1,0,0],[0]*5]
+    tail=[[0,1,0,1,1]]
+    for template in range(4):
+        for typical in (False,True):
+            payload=arithmetic(rows,template,typical)
+            data=_segment(1,48,1,_page_info(5,5))+unknown_segment(2,rows,payload,0xffffffff,y=1)
+            data+=_segment(3,38,1,region(tail,mmr(tail),y=4))
+            expected=[[0]*5]+rows+tail
+            yield vector(f'unknown-length-arithmetic-t{template}-prediction{int(typical)}-followed',data,expected,requirement='jbig2-unknown-length')
+    # FF AC is also a legal causal AT pair; it is not coded data or its end.
+    payload=arithmetic(rows,2,adaptive=((-1,-84),))
+    data=_segment(1,48,1,_page_info(5,3))+unknown_segment(2,rows,payload)
+    yield vector('unknown-length-arithmetic-marker-in-adaptive-header',data,rows,requirement='jbig2-unknown-length')
+    for width in range(1,9):
+        pixels=[[int((x+y)%3==0) for x in range(width)] for y in range(3)]
+        data=_segment(1,48,1,_page_info(width,4))+unknown_segment(2,pixels,mmr(pixels),4)
+        tail=[[1]*width]
+        data+=_segment(3,38,1,region(tail,arithmetic(tail,3),y=3))
+        yield vector(f'unknown-length-mmr-width{width}-followed',data,pixels+tail,requirement='jbig2-unknown-length')
+    page=_segment(1,48,1,_page_info(5,3))
+    arithmetic_data=unknown_segment(2,rows,arithmetic(rows,2))
+    mmr_data=unknown_segment(2,rows,mmr(rows))
+    for name,data in (
+        ('row-count-exceeds-height',unknown_segment(2,rows,arithmetic(rows,2),2)),
+        ('mmr-missing-eofb',unknown_segment(2,rows,mmr(rows,eofb=False))),
+        ('mmr-data-after-eofb',unknown_segment(2,rows,mmr(rows)+b'\x80')),
+        ('arithmetic-missing-marker',arithmetic_data[:-6]),
+        ('mmr-missing-marker',mmr_data[:-6]),
+        ('intermediate-forbidden',arithmetic_data[:4]+bytes([36])+arithmetic_data[5:]),
+        ('lossless-forbidden',arithmetic_data[:4]+bytes([39])+arithmetic_data[5:]),
+    ):
+        yield vector('unknown-length-'+name,page+data,outcome='syntax',requirement='jbig2-unknown-length')
+    for coding,data in (('arithmetic',arithmetic_data),('mmr',mmr_data)):
+        for count_bytes in range(4):
+            yield vector(f'unknown-length-{coding}-row-count-truncated{count_bytes}',page+data[:-4]+data[-4:][:count_bytes],outcome='syntax',requirement='jbig2-unknown-length')
+
+
+def text_layout_edge_cases():
+    body,symbols=dictionary([[[1,0],[0,1],[1,1]],[[1,1,0],[0,1,1]]],2)
+    globals=_segment(0,0,0,body)
+    placements=[(-1,-1,0),(4,-1,1),(-2,5,1),(6,5,0),(1,1,0)]
+    target=[[1,0,0,1],[0,1,1,0]]
+    refinements=[None,(target,0,0),None,(target,0,0),None]
+    for transposed in (False,True):
+        for corner in range(4):
+            coded,rows=_text_region(symbols,placements,10,8,strips=4,offset=-2,refinements=refinements,refine_template=1,transposed=transposed,corner=corner)
+            page=_segment(1,48,1,_page_info(10,8))
+            yield vector(f'arithmetic-layout-clipped-refined-{int(transposed)}-{corner}',page+_segment(2,6,1,coded,refs=(0,)),rows,globals=globals,requirement='jbig2-text-layout')
+            # Each layout starts at region row zero while only modifying rows
+            # below the end of stripe. This mirrors shared boundary padding.
+            positions=[(1,3,0),(5,3,1)]
+            coded,rows=_text_region(symbols,positions,10,8,transposed=transposed,corner=corner)
+            striped=_segment(1,48,1,_page_info(10,8,98,0x8008))+_segment(2,50,1,struct.pack('>I',0))
+            yield vector(f'arithmetic-layout-striped-{int(transposed)}-{corner}',striped+_segment(3,6,1,coded,refs=(0,)),rows,globals=globals,requirement='jbig2-text-layout')
+            # Negative DFS/DS and multiple strips use Tables B.6/B.8/B.12.
+            ids=bits_bytes(''.join(format(int(n==1),'04b') for n in range(35))+'00')
+            bits=huffman_word(12,1)
+            rows=[[0]*10 for _ in range(8)]
+            huffman_placements=[(-1,1,0),(4,1,1),(2,1,0),(-2,5,1),(6,5,0)]
+            previous_t,previous_s=-4,0
+            for index,(s,t,glyph_id) in enumerate(huffman_placements):
+                strip=t//4*4
+                new=index==0 or huffman_placements[index-1][1]//4!=t//4
+                if new:
+                    bits+=huffman_word(12,(strip-previous_t)//4)+huffman_word(6,s-previous_s)
+                    previous_t,previous_s=strip,s
+                else:
+                    ps,_,pid=huffman_placements[index-1]
+                    advance=len(symbols[pid]) if transposed else len(symbols[pid][0])
+                    bits+=huffman_word(8,s-ps-advance+1+2)
+                bits+=format(t%4,'02b')+str(glyph_id)
+                glyph=symbols[glyph_id]
+                ox,oy=reference_origin(s,t,glyph,transposed,corner)
+                for gy,row in enumerate(glyph):
+                    for gx,b in enumerate(row):
+                        if 0<=ox+gx<10 and 0<=oy+gy<8:rows[oy+gy][ox+gx]|=b
+                if index+1==len(huffman_placements) or huffman_placements[index+1][1]//4!=t//4:bits+=huffman_word(8,None)
+            flags=1+(corner<<4)+(64 if transposed else 0)+8+(30<<10)
+            coded=struct.pack('>IIIIBHHI',10,8,0,0,0,flags,16,len(huffman_placements))+ids+bits_bytes(bits)
+            yield vector(f'huffman-layout-clipped-{int(transposed)}-{corner}',page+_segment(2,6,1,coded,refs=(0,)),rows,globals=globals,requirement='jbig2-text-layout')
+
+
+def stripe_identity_cases():
+    for op in range(4):
+        neutral=int(op in (1,3))
+        for after in (False,True):
+            rows=[[neutral]*5 for _ in range(4)]
+            rows[2 if after else 0][2]=1-neutral
+            data=_segment(1,48,1,_page_info(5,4,98+(4 if op==1 else 0),0x8004))
+            drawing=_segment(3 if after else 2,38,1,region(rows,arithmetic(rows,2),operator=op))
+            stripe=_segment(2 if after else 3,50,1,struct.pack('>I',1))
+            data+=stripe+drawing if after else drawing+stripe
+            initial=int(op==1)
+            expected=[[(initial|b,initial&b,initial^b,1^initial^b)[op] for b in row] for row in rows]
+            yield vector(f'stripe-identity-{op}-'+('after' if after else 'before'),data,expected,requirement='jbig2-page-combination')
+    # REPLACE has no identity source value, even a white source writes pixels.
+    rows=[[0]*5 for _ in range(4)]
+    page=_segment(1,48,1,_page_info(5,4,98,0x8004))
+    drawing=_segment(3,38,1,region(rows,arithmetic(rows,2),operator=4))
+    yield vector('stripe-replace-padding-forbidden',page+_segment(2,50,1,struct.pack('>I',1))+drawing,outcome='syntax',requirement='jbig2-page-combination')
+
+
+def profiles_grammar_cases():
+    def profile(n,ids,page=0):return _segment(n,52,page,struct.pack('>I',len(ids))+b''.join(struct.pack('>I',i) for i in ids))
+    rows=[[1,0],[0,1]]
+    global_profile=profile(0,[1])
+    page=_segment(2,48,1,_page_info(2,2))
+    drawing=_segment(4,38,1,region(rows,arithmetic(rows,2)))
+    yield vector('profiles-page-superset',page+profile(3,[1,2],1)+drawing,rows,globals=global_profile,requirement='jbig2-profiles')
+    for name,globals,data in (
+        ('global-must-be-first',_segment(0,53,0,bytes.fromhex('42 00 00 00 00 00 01 01 10 49 23 81 80'))+profile(1,[1]),page),
+        ('second-global-forbidden',global_profile+profile(1,[1]),page),
+        ('duplicate-page-forbidden',global_profile,page+profile(3,[1],1)+profile(4,[1],1)),
+        ('page-omits-global',global_profile,page+profile(3,[2],1)),
+        ('truncated-count',_segment(0,52,0,b'\0\0\0'),page),
+        ('truncated-identifier',_segment(0,52,0,struct.pack('>I',1)+b'\0\0\0'),page),
+        ('trailing-data',_segment(0,52,0,struct.pack('>I',0)+b'\0'),page),
+    ):
+        yield vector('profiles-'+name,data,outcome='syntax',globals=globals,requirement='jbig2-profiles')

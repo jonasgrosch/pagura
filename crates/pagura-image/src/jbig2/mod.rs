@@ -688,9 +688,6 @@ impl State<'_> {
                 }
             }
         }
-        if immediate && page.last_stripe.is_some_and(|line| y <= line) {
-            return Err(Error::syntax("JBIG2 region revisits a completed stripe"));
-        }
         Ok(immediate)
     }
 
@@ -762,11 +759,11 @@ impl State<'_> {
                 } else {
                     page.operator
                 };
-            page.bitmap.combine(&region, x, y, operator);
-            if x < page.bitmap.width && y < page.bitmap.height {
-                page.stripe_bottom = page
-                    .stripe_bottom
-                    .max(y.saturating_add(height).min(page.bitmap.height));
+            if let Some(bottom) =
+                page.bitmap
+                    .combine_page(&region, x, y, operator, page.last_stripe)?
+            {
+                page.stripe_bottom = page.stripe_bottom.max(bottom);
             }
         }
         if immediate {

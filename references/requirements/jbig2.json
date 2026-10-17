@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "jbig2",
-  "scope": "Verified each listed requirement against the supplied ISO 32000-2:2020 sponsored EC3 7.4.7/Table 12 and the locally supplied ITU-T T.88 (02/2000) base text: segment grammar/types, generic/refinement, arithmetic coding/integers, symbols/text, retention, Huffman Tables B.1\u2013B.15 and user tables, patterns, halftones, gray planes, page flags/operators and stripes. MMR modes and run words were cross-checked against local T.6 (11/1988) and T.4 (07/2003). This is clause-level implementation review with generated and known-answer tests, not complete PDF or T.88 conformance certification. Later amendments and the 2018/2019 revisions were not reviewed; only their extended-template/colour behaviour remains pending primary-text review. Profile metadata is parsed but profile feature-set compliance is not separately validated. Two explicit compatibility cases are marked strict_valid=false: PDF-global retention across separate streams and standalone arithmetic text stopping at its declared instance count. Their acceptance is not evidence that those encodings conform to T.88.",
+  "scope": "Verified each listed requirement against the supplied ISO 32000-2:2020 sponsored EC3 7.4.7/Table 12 and the locally supplied ITU-T T.88 (02/2000) base text: segment grammar/types, generic/refinement, arithmetic coding/integers, symbols/text, retention, Huffman Tables B.1\u2013B.15 and user tables, patterns, halftones, gray planes, page flags/operators and stripes. MMR modes and run words were cross-checked against local T.6 (11/1988) and T.4 (07/2003). This is clause-level implementation review with generated and known-answer tests, not complete PDF or T.88 conformance certification. Later amendments and the 2018/2019 revisions were not reviewed; only their extended-template/colour behaviour remains pending primary-text review. Profile metadata is parsed but profile feature-set compliance is not separately validated. Two explicit compatibility cases are marked strict_valid=false: PDF-global retention across separate streams and standalone arithmetic text stopping at its declared instance count. Their acceptance is not evidence that those encodings conform to T.88. The unknown-length framing, all eight text layouts, stripe padding and profile metadata grammar were rechecked against base-text 7.2.7, 7.4.6.3\u20137.4.6.4, 6.4.5, 7.4.10 and 7.4.12. Annex F Tables F.1\u2013F.7 were read: their additional restrictions remain an implementation gap, not a pending primary-text review.",
   "requirements": [
     {
       "id": "jbig2-embedded-segments",
@@ -432,8 +432,8 @@
         "corpus/manifests/jbig2.json"
       ],
       "primary_text_review": {
-        "rule": "The page declares initial pixels, direct-region operators and auxiliary/refinement capabilities; refinement against the page uses REPLACE, and stripes constrain both preceding and subsequent drawing.",
-        "implementation_agreement": "agrees within the stated scope; PDF forbids the EOP segment; stream exhaustion closes the page and applies its final-stripe checks",
+        "rule": "The page declares initial pixels, direct-region operators and auxiliary/refinement capabilities; refinement against the page uses REPLACE, and stripes constrain both preceding and subsequent drawing. OR/XOR zero and AND/XNOR one leave page pixels untouched, including padding across a stripe boundary; REPLACE has no identity source value.",
+        "implementation_agreement": "agrees: stripe validation uses non-identity drawing operands after clipping, rather than region rectangle bounds; PDF stream exhaustion replaces the forbidden EOP marker",
         "generated_expectations_agreement": "agrees; expectations are geometric bitmaps, independent encodings or published numeric known answers",
         "verdict": "verified against the listed base-text clauses"
       },
@@ -446,11 +446,28 @@
         "jbig2/combine-clipped-4",
         "jbig2/striped-unknown-height",
         "jbig2/intermediate-default-black",
-        "jbig2/page-default-operator"
+        "jbig2/page-default-operator",
+        "jbig2/stripe-identity-0-before",
+        "jbig2/stripe-identity-0-after",
+        "jbig2/stripe-identity-1-before",
+        "jbig2/stripe-identity-1-after",
+        "jbig2/stripe-identity-2-before",
+        "jbig2/stripe-identity-2-after",
+        "jbig2/stripe-identity-3-before",
+        "jbig2/stripe-identity-3-after",
+        "jbig2/stripe-replace-padding-forbidden"
       ],
       "differential_evidence": {
         "engine": "PDFium 156.0.8076.0",
         "bitmap_vectors": [
+          "jbig2/stripe-identity-0-before",
+          "jbig2/stripe-identity-0-after",
+          "jbig2/stripe-identity-1-before",
+          "jbig2/stripe-identity-1-after",
+          "jbig2/stripe-identity-2-before",
+          "jbig2/stripe-identity-2-after",
+          "jbig2/stripe-identity-3-before",
+          "jbig2/stripe-identity-3-after",
           "jbig2/stripe-zero-maximum-first-row",
           "jbig2/combine-clipped-0",
           "jbig2/combine-clipped-1",
@@ -461,22 +478,23 @@
           "jbig2/intermediate-default-black"
         ],
         "discrepancy_vectors": [],
-        "additional_engine": {
-          "engine": "MuPDF 1.28.2",
-          "bitmap_vectors": [
-            "jbig2/combine-clipped-0",
-            "jbig2/combine-clipped-1",
-            "jbig2/combine-clipped-2",
-            "jbig2/combine-clipped-3",
-            "jbig2/combine-clipped-4",
-            "jbig2/striped-unknown-height",
-            "jbig2/intermediate-default-black"
+        "meaning": "Extracted decoded image bitmap without page resampling; compared all significant packed samples to the generator bitmap. Discrepancies remain recorded; the primary text determines expectations."
+      },
+      "realworld_evidence": {
+        "corpus": "realworld",
+        "pages_one_based": {
+          "0000372.pdf": [
+            11
           ],
-          "discrepancy_vectors": [
-            "jbig2/stripe-zero-maximum-first-row"
+          "0000857.pdf": [
+            1,
+            2,
+            3,
+            4
           ]
         },
-        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
+        "result": "Each listed page renders successfully at 72 dpi. The full significant packed image samples compare byte-for-byte with PDFium 156.0.8076.0, without page resampling. Source files were read in place.",
+        "scope": "These source pages exercise the observed modes; generated vectors cover the other layouts, exact framing and malformed inputs."
       }
     },
     {
@@ -2439,11 +2457,12 @@
       "reference": "iso32000-2",
       "clauses": [
         "ISO 32000-2:2020 7.4.7",
-        "T.88 (02/2000) 7.4.12"
+        "T.88 (02/2000) 7.4.12",
+        "T.88 (02/2000) Annex F, Tables F.1\u2013F.7"
       ],
       "status": "partial",
       "description": "Profile metadata lists bounded profile identifiers, begins globally and preserves global restrictions in the page list.",
-      "gaps": "Annex F feature-set compliance is not separately validated.",
+      "gaps": "Annex F feature-set compliance is not separately validated: entropy coding choices, allowed generic/refinement templates, skip masks, and profiles 6/7 stripe/buffer/aggregation restrictions. Unknown profile identifiers are retained as metadata, with no claim of compliance.",
       "tests": [
         "pagura-image::jbig2::tests",
         "tools/fixturegen/jbig2.py",
@@ -2453,26 +2472,288 @@
         "rule": "A global profiles segment comes first; page profiles include every globally declared identifier.",
         "implementation_agreement": "agrees for metadata syntax, ordering and identifier inclusion; feature-set compliance remains unimplemented",
         "generated_expectations_agreement": "agrees for the metadata syntax and ordering exercised",
-        "verdict": "verified metadata grammar; partial implementation of profile compliance"
+        "verdict": "verified metadata grammar, ordering and global-set inclusion; Annex F restrictions were read but their enforcement remains unimplemented"
       },
       "vector_ids": [
         "jbig2/profiles-and-optional-comment",
-        "jbig2/profiles-first-must-be-global"
+        "jbig2/profiles-first-must-be-global",
+        "jbig2/profiles-page-superset",
+        "jbig2/profiles-global-must-be-first",
+        "jbig2/profiles-second-global-forbidden",
+        "jbig2/profiles-duplicate-page-forbidden",
+        "jbig2/profiles-page-omits-global",
+        "jbig2/profiles-truncated-count",
+        "jbig2/profiles-truncated-identifier",
+        "jbig2/profiles-trailing-data"
       ],
       "differential_evidence": {
         "engine": "PDFium 156.0.8076.0",
         "bitmap_vectors": [
+          "jbig2/profiles-page-superset",
           "jbig2/profiles-and-optional-comment"
         ],
         "discrepancy_vectors": [],
+        "meaning": "Extracted decoded image bitmap without page resampling; compared all significant packed samples to the generator bitmap. Discrepancies remain recorded; the primary text determines expectations."
+      }
+    },
+    {
+      "id": "jbig2-unknown-length",
+      "reference": "iso32000-2",
+      "clauses": [
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 7.2.7",
+        "T.88 (02/2000) 7.4.6.3",
+        "T.88 (02/2000) 7.4.6.4",
+        "T.88 (02/2000) 6.2.6"
+      ],
+      "status": "implemented",
+      "description": "Only immediate generic type 38 may use length 0xFFFFFFFF. After its coding header, FF AC (arithmetic) or 00 00 (MMR) precedes a four-byte actual row count no larger than the declared height; the next segment starts after that count. MMR still requires EOFB. Input scanning, decoded rows, live bytes and pixel work remain bounded.",
+      "gaps": "",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "primary_text_review": {
+        "rule": "Only immediate generic type 38 may use length 0xFFFFFFFF. After its coding header, FF AC (arithmetic) or 00 00 (MMR) precedes a four-byte actual row count no larger than the declared height; the next segment starts after that count. MMR still requires EOFB. Input scanning, decoded rows, live bytes and pixel work remain bounded.",
+        "implementation_agreement": "agrees within the stated base-text scope",
+        "generated_expectations_agreement": "agrees; geometric expected bitmaps and malformed framing cases are constructed independently of the decoder",
+        "verdict": "verified against the listed base-text clauses"
+      },
+      "vector_ids": [
+        "jbig2/unknown-length-arithmetic-t0-prediction0-followed",
+        "jbig2/unknown-length-arithmetic-t0-prediction1-followed",
+        "jbig2/unknown-length-arithmetic-t1-prediction0-followed",
+        "jbig2/unknown-length-arithmetic-t1-prediction1-followed",
+        "jbig2/unknown-length-arithmetic-t2-prediction0-followed",
+        "jbig2/unknown-length-arithmetic-t2-prediction1-followed",
+        "jbig2/unknown-length-arithmetic-t3-prediction0-followed",
+        "jbig2/unknown-length-arithmetic-t3-prediction1-followed",
+        "jbig2/unknown-length-arithmetic-marker-in-adaptive-header",
+        "jbig2/unknown-length-mmr-width1-followed",
+        "jbig2/unknown-length-mmr-width2-followed",
+        "jbig2/unknown-length-mmr-width3-followed",
+        "jbig2/unknown-length-mmr-width4-followed",
+        "jbig2/unknown-length-mmr-width5-followed",
+        "jbig2/unknown-length-mmr-width6-followed",
+        "jbig2/unknown-length-mmr-width7-followed",
+        "jbig2/unknown-length-mmr-width8-followed",
+        "jbig2/unknown-length-row-count-exceeds-height",
+        "jbig2/unknown-length-mmr-missing-eofb",
+        "jbig2/unknown-length-mmr-data-after-eofb",
+        "jbig2/unknown-length-arithmetic-missing-marker",
+        "jbig2/unknown-length-mmr-missing-marker",
+        "jbig2/unknown-length-intermediate-forbidden",
+        "jbig2/unknown-length-lossless-forbidden",
+        "jbig2/unknown-length-arithmetic-row-count-truncated0",
+        "jbig2/unknown-length-arithmetic-row-count-truncated1",
+        "jbig2/unknown-length-arithmetic-row-count-truncated2",
+        "jbig2/unknown-length-arithmetic-row-count-truncated3",
+        "jbig2/unknown-length-mmr-row-count-truncated0",
+        "jbig2/unknown-length-mmr-row-count-truncated1",
+        "jbig2/unknown-length-mmr-row-count-truncated2",
+        "jbig2/unknown-length-mmr-row-count-truncated3",
+        "jbig2/unknown-length-arithmetic",
+        "jbig2/unknown-length-mmr"
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/unknown-length-arithmetic-marker-in-adaptive-header",
+          "jbig2/unknown-length-mmr"
+        ],
+        "discrepancy_vectors": [
+          "jbig2/unknown-length-arithmetic-t0-prediction0-followed",
+          "jbig2/unknown-length-arithmetic-t0-prediction1-followed",
+          "jbig2/unknown-length-arithmetic-t1-prediction0-followed",
+          "jbig2/unknown-length-arithmetic-t1-prediction1-followed",
+          "jbig2/unknown-length-arithmetic-t2-prediction0-followed",
+          "jbig2/unknown-length-arithmetic-t2-prediction1-followed",
+          "jbig2/unknown-length-arithmetic-t3-prediction0-followed",
+          "jbig2/unknown-length-arithmetic-t3-prediction1-followed",
+          "jbig2/unknown-length-mmr-width1-followed",
+          "jbig2/unknown-length-mmr-width2-followed",
+          "jbig2/unknown-length-mmr-width3-followed",
+          "jbig2/unknown-length-mmr-width4-followed",
+          "jbig2/unknown-length-mmr-width5-followed",
+          "jbig2/unknown-length-mmr-width6-followed",
+          "jbig2/unknown-length-mmr-width7-followed",
+          "jbig2/unknown-length-mmr-width8-followed",
+          "jbig2/unknown-length-arithmetic"
+        ],
+        "meaning": "Extracted decoded image bitmap without page resampling; compared all significant packed samples to the generator bitmap. Discrepancies remain recorded; the primary text determines expectations.",
         "additional_engine": {
           "engine": "MuPDF 1.28.2",
           "bitmap_vectors": [
-            "jbig2/profiles-and-optional-comment"
+            "jbig2/unknown-length-arithmetic-t0-prediction0-followed",
+            "jbig2/unknown-length-arithmetic-t0-prediction1-followed",
+            "jbig2/unknown-length-arithmetic-t1-prediction0-followed",
+            "jbig2/unknown-length-arithmetic-t1-prediction1-followed",
+            "jbig2/unknown-length-arithmetic-t2-prediction0-followed",
+            "jbig2/unknown-length-arithmetic-t2-prediction1-followed",
+            "jbig2/unknown-length-arithmetic-t3-prediction0-followed",
+            "jbig2/unknown-length-arithmetic-t3-prediction1-followed",
+            "jbig2/unknown-length-mmr-width1-followed",
+            "jbig2/unknown-length-mmr-width2-followed",
+            "jbig2/unknown-length-mmr-width3-followed",
+            "jbig2/unknown-length-mmr-width4-followed",
+            "jbig2/unknown-length-mmr-width5-followed",
+            "jbig2/unknown-length-mmr-width6-followed",
+            "jbig2/unknown-length-mmr-width7-followed",
+            "jbig2/unknown-length-mmr-width8-followed",
+            "jbig2/unknown-length-mmr",
+            "jbig2/unknown-length-arithmetic"
           ],
-          "discrepancy_vectors": []
+          "discrepancy_vectors": [
+            "jbig2/unknown-length-arithmetic-marker-in-adaptive-header"
+          ]
+        }
+      },
+      "realworld_evidence": {
+        "corpus": "realworld",
+        "pages_one_based": {
+          "0000033.pdf": [
+            1,
+            2
+          ],
+          "0000600.pdf": [
+            1,
+            2,
+            3
+          ]
         },
-        "meaning": "Exact significant samples from extracted images, without page resampling; discrepancies never replace primary-derived expected pixels."
+        "result": "Each listed page renders successfully at 72 dpi. The full significant packed image samples compare byte-for-byte with PDFium 156.0.8076.0, without page resampling. Source files were read in place.",
+        "scope": "These source pages exercise the observed modes; generated vectors cover the other layouts, exact framing and malformed inputs."
+      }
+    },
+    {
+      "id": "jbig2-text-layout",
+      "reference": "iso32000-2",
+      "clauses": [
+        "ISO 32000-2:2020 7.4.7",
+        "T.88 (02/2000) 6.4.5",
+        "T.88 (02/2000) 6.4.7\u20136.4.11",
+        "T.88 (02/2000) 7.4.3.1.1",
+        "T.88 (02/2000) 7.4.10"
+      ],
+      "status": "implemented",
+      "description": "Text uses the selected unrotated bitmap corner, swaps the S/T coordinate axes when TRANSPOSED is set, advances on the coding axis by the refined glyph size minus one, and clips outside the text region. Stripe boundaries forbid drawing; identity operator padding may cross them.",
+      "gaps": "",
+      "tests": [
+        "pagura-image::jbig2::tests",
+        "tools/fixturegen/jbig2.py",
+        "corpus/manifests/jbig2.json"
+      ],
+      "primary_text_review": {
+        "rule": "Text uses the selected unrotated bitmap corner, swaps the S/T coordinate axes when TRANSPOSED is set, advances on the coding axis by the refined glyph size minus one, and clips outside the text region. Stripe boundaries forbid drawing; identity operator padding may cross them.",
+        "implementation_agreement": "agrees within the stated base-text scope",
+        "generated_expectations_agreement": "agrees; geometric expected bitmaps and malformed framing cases are constructed independently of the decoder",
+        "verdict": "verified against the listed base-text clauses"
+      },
+      "vector_ids": [
+        "jbig2/arithmetic-layout-clipped-refined-0-0",
+        "jbig2/arithmetic-layout-striped-0-0",
+        "jbig2/huffman-layout-clipped-0-0",
+        "jbig2/arithmetic-layout-clipped-refined-0-1",
+        "jbig2/arithmetic-layout-striped-0-1",
+        "jbig2/huffman-layout-clipped-0-1",
+        "jbig2/arithmetic-layout-clipped-refined-0-2",
+        "jbig2/arithmetic-layout-striped-0-2",
+        "jbig2/huffman-layout-clipped-0-2",
+        "jbig2/arithmetic-layout-clipped-refined-0-3",
+        "jbig2/arithmetic-layout-striped-0-3",
+        "jbig2/huffman-layout-clipped-0-3",
+        "jbig2/arithmetic-layout-clipped-refined-1-0",
+        "jbig2/arithmetic-layout-striped-1-0",
+        "jbig2/huffman-layout-clipped-1-0",
+        "jbig2/arithmetic-layout-clipped-refined-1-1",
+        "jbig2/arithmetic-layout-striped-1-1",
+        "jbig2/huffman-layout-clipped-1-1",
+        "jbig2/arithmetic-layout-clipped-refined-1-2",
+        "jbig2/arithmetic-layout-striped-1-2",
+        "jbig2/huffman-layout-clipped-1-2",
+        "jbig2/arithmetic-layout-clipped-refined-1-3",
+        "jbig2/arithmetic-layout-striped-1-3",
+        "jbig2/huffman-layout-clipped-1-3",
+        "jbig2/arithmetic-layout-0-0",
+        "jbig2/arithmetic-layout-0-1",
+        "jbig2/arithmetic-layout-0-2",
+        "jbig2/arithmetic-layout-0-3",
+        "jbig2/arithmetic-layout-1-0",
+        "jbig2/arithmetic-layout-1-1",
+        "jbig2/arithmetic-layout-1-2",
+        "jbig2/arithmetic-layout-1-3",
+        "jbig2/huffman-layout-0-0",
+        "jbig2/huffman-layout-0-1",
+        "jbig2/huffman-layout-0-2",
+        "jbig2/huffman-layout-0-3",
+        "jbig2/huffman-layout-1-0",
+        "jbig2/huffman-layout-1-1",
+        "jbig2/huffman-layout-1-2",
+        "jbig2/huffman-layout-1-3"
+      ],
+      "differential_evidence": {
+        "engine": "PDFium 156.0.8076.0",
+        "bitmap_vectors": [
+          "jbig2/arithmetic-layout-clipped-refined-0-0",
+          "jbig2/arithmetic-layout-striped-0-0",
+          "jbig2/huffman-layout-clipped-0-0",
+          "jbig2/arithmetic-layout-clipped-refined-0-1",
+          "jbig2/arithmetic-layout-striped-0-1",
+          "jbig2/huffman-layout-clipped-0-1",
+          "jbig2/arithmetic-layout-clipped-refined-0-2",
+          "jbig2/arithmetic-layout-striped-0-2",
+          "jbig2/huffman-layout-clipped-0-2",
+          "jbig2/arithmetic-layout-clipped-refined-0-3",
+          "jbig2/arithmetic-layout-striped-0-3",
+          "jbig2/huffman-layout-clipped-0-3",
+          "jbig2/arithmetic-layout-clipped-refined-1-0",
+          "jbig2/arithmetic-layout-striped-1-0",
+          "jbig2/huffman-layout-clipped-1-0",
+          "jbig2/arithmetic-layout-clipped-refined-1-1",
+          "jbig2/arithmetic-layout-striped-1-1",
+          "jbig2/huffman-layout-clipped-1-1",
+          "jbig2/arithmetic-layout-clipped-refined-1-2",
+          "jbig2/arithmetic-layout-striped-1-2",
+          "jbig2/huffman-layout-clipped-1-2",
+          "jbig2/arithmetic-layout-clipped-refined-1-3",
+          "jbig2/arithmetic-layout-striped-1-3",
+          "jbig2/huffman-layout-clipped-1-3",
+          "jbig2/arithmetic-layout-0-0",
+          "jbig2/arithmetic-layout-0-1",
+          "jbig2/arithmetic-layout-0-2",
+          "jbig2/arithmetic-layout-0-3",
+          "jbig2/arithmetic-layout-1-0",
+          "jbig2/arithmetic-layout-1-1",
+          "jbig2/arithmetic-layout-1-2",
+          "jbig2/arithmetic-layout-1-3",
+          "jbig2/huffman-layout-0-0",
+          "jbig2/huffman-layout-0-1",
+          "jbig2/huffman-layout-0-2",
+          "jbig2/huffman-layout-0-3",
+          "jbig2/huffman-layout-1-0",
+          "jbig2/huffman-layout-1-1",
+          "jbig2/huffman-layout-1-2",
+          "jbig2/huffman-layout-1-3"
+        ],
+        "discrepancy_vectors": [],
+        "meaning": "Extracted decoded image bitmap without page resampling; compared all significant packed samples to the generator bitmap. Discrepancies remain recorded; the primary text determines expectations."
+      },
+      "realworld_evidence": {
+        "corpus": "realworld",
+        "pages_one_based": {
+          "0000372.pdf": [
+            11
+          ],
+          "0000857.pdf": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "result": "Each listed page renders successfully at 72 dpi. The full significant packed image samples compare byte-for-byte with PDFium 156.0.8076.0, without page resampling. Source files were read in place.",
+        "scope": "These source pages exercise the observed modes; generated vectors cover the other layouts, exact framing and malformed inputs."
       }
     }
   ],
@@ -2529,7 +2810,9 @@
     "Public fixture helper defaults preserve existing consumers in the image area. New JBIG2 vectors use explicit retained headers and complete strips; no image fixtures or manifests outside this area were changed.",
     "Huffman segment setup conservatively charges all 184 standard-table rows before constructing any tables, including aggregation tables, so empty segments cannot bypass the operation budget.",
     "Page-reference refinement uses a borrowed clipped view under 7.4.7.4; adjacent page samples are outside the reference bitmap and therefore zero under 6.3.5.2. This base-edition interpretation disagrees with the recorded competitor results. No claim is made about later amendments.",
-    "MMR caches each reference transition pair; b1 and b2 scans advance across each reference row at most linearly. A sparse-reference/dense-row vector exercises repeated horizontal codes before a long reference run."
+    "MMR caches each reference transition pair; b1 and b2 scans advance across each reference row at most linearly. A sparse-reference/dense-row vector exercises repeated horizontal codes before a long reference run.",
+    "Stripe checks ignore identity source operands (OR/XOR zero and AND/XNOR one), after page clipping. All other operands count as drawing even when the destination already has the same value; REPLACE always counts as drawing. This certifies untouched stripe pixels without depending on retained output values.",
+    "Unknown-length arithmetic framing parses the adaptive-template header before scanning coded data. A legal FF AC adaptive coordinate pair is header data, not the arithmetic terminator (7.4.6.3 and 7.2.7). Only actual row counts are allocated, even when the declared region height is 0xFFFFFFFF."
   ],
   "external_dependencies": [
     {
@@ -2543,10 +2826,90 @@
     "engine": "PDFium",
     "version": "156.0.8076.0",
     "method": "Extracted decoded image bitmap without page resampling; compared all significant packed samples to the generator bitmap.",
-    "successful_vectors": 341,
-    "bitmap_mismatches": 5,
-    "engine_decode_failures": 4,
+    "successful_vectors": 375,
+    "bitmap_mismatches": 9,
+    "engine_decode_failures": 16,
     "discrepancies": [
+      {
+        "id": "jbig2/unknown-length-arithmetic-t0-prediction0-followed",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-arithmetic-t0-prediction1-followed",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-arithmetic-t1-prediction0-followed",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-arithmetic-t1-prediction1-followed",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-arithmetic-t2-prediction0-followed",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-arithmetic-t2-prediction1-followed",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-arithmetic-t3-prediction0-followed",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-arithmetic-t3-prediction1-followed",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-mmr-width1-followed",
+        "result": "bitmap mismatch",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-mmr-width2-followed",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-mmr-width3-followed",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-mmr-width4-followed",
+        "result": "bitmap mismatch",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-mmr-width5-followed",
+        "result": "bitmap mismatch",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-mmr-width6-followed",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-mmr-width7-followed",
+        "result": "engine could not decode",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
+      {
+        "id": "jbig2/unknown-length-mmr-width8-followed",
+        "result": "bitmap mismatch",
+        "primary_rule": "T.88 (02/2000) 7.2.7 and 7.4.6.4 require the actual row count and continuation after the count; only actual decoded rows are bounded/allocated, without using the declared height as a row count."
+      },
       {
         "id": "jbig2/refinement-page-crop-t0-prediction0",
         "result": "bitmap mismatch",
@@ -3273,11 +3636,24 @@
         }
       ],
       "interpretation": "Primary-derived expectations are preserved. Decoder warnings or returned fallback pixels are not accepted as proof of correctness."
+    },
+    {
+      "engine": "MuPDF",
+      "version": "1.28.2",
+      "scope": "Unknown-length vectors only; other additional-engine evidence above is from the earlier full vector set.",
+      "successful_vectors": 18,
+      "discrepancies": [
+        {
+          "id": "jbig2/unknown-length-arithmetic-marker-in-adaptive-header",
+          "result": "bitmap mismatch",
+          "primary_rule": "T.88 (02/2000) 7.4.6.3 permits causal adaptive coordinates (-1,-84); their FF AC header bytes do not end coded data."
+        }
+      ]
     }
   ],
   "vector_summary": {
-    "vectors": 455,
-    "positive_bitmaps": 350,
+    "vectors": 528,
+    "positive_bitmaps": 400,
     "explicit_compatibility_vectors": [
       "jbig2/pdf-globals-cross-stream-lifetime",
       "jbig2/arithmetic-text-terminal-count"

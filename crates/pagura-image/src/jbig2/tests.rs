@@ -164,6 +164,12 @@ fn truncations_and_mutations_remain_bounded() {
         "halftone-mmr-t0-skip0-r0-op2",
         "unknown-length-arithmetic",
         "unknown-length-mmr",
+        "unknown-length-arithmetic-t0-prediction1-followed",
+        "unknown-length-mmr-width3-followed",
+        "arithmetic-layout-clipped-refined-1-2",
+        "huffman-layout-clipped-1-3",
+        "arithmetic-layout-striped-0-0",
+        "profiles-page-superset",
     ] {
         let data = fixture("jbig2", &format!("{name}.jb2"));
         let globals = fixture("jbig2", &format!("{name}.globals"));
@@ -248,4 +254,55 @@ fn huffman_table_setup_is_charged_before_construction() {
     let error = decode(&data, Some(&globals), &limits).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
     assert_eq!(error.message, "JBIG2 cumulative operations exceed budget");
+}
+
+#[test]
+fn unknown_length_allocates_actual_rows_and_keeps_following_segment() {
+    let data = fixture(
+        "jbig2",
+        "unknown-length-arithmetic-t2-prediction0-followed.jb2",
+    );
+    let expected = fixture(
+        "jbig2",
+        "unknown-length-arithmetic-t2-prediction0-followed.out",
+    );
+    // The region declares 0xFFFFFFFF rows, but contains only three. The
+    // page, region and template-2 contexts coexist; the next region adds a
+    // fourth painted row after the count without increasing the peak bytes.
+    let bytes = 5 + 3 + 1024 * size_of::<super::arithmetic::Context>();
+    let work = (25 + 15 + 5) * 18;
+    let limits = Limits {
+        pixels: 25,
+        decoded_bytes: bytes,
+        raster_work: work,
+        operations: 3,
+        objects: 3,
+        stream_bytes: data.len(),
+        file_bytes: data.len(),
+        ..Limits::default()
+    };
+    assert_eq!(decode(&data, None, &limits).unwrap().data, expected);
+    for capped in [
+        Limits {
+            decoded_bytes: bytes - 1,
+            ..limits
+        },
+        Limits {
+            raster_work: work - 1,
+            ..limits
+        },
+        Limits {
+            stream_bytes: data.len() - 1,
+            ..limits
+        },
+        Limits {
+            operations: 2,
+            ..limits
+        },
+    ] {
+        assert_eq!(
+            decode(&data, None, &capped).unwrap_err().kind,
+            ErrorKind::Limit
+        );
+    }
 }

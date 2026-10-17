@@ -5,6 +5,1904 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "jbig2/unknown-length-arithmetic-t0-prediction0-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t0-prediction0-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t0-prediction0-followed.jb2",
+          "sha256": "2da8bf1781ee466c7cbce0e60dd6ab647a5c0b50656336fb6f88955d546e91fc"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t0-prediction0-followed.out",
+          "sha256": "42da317117ca4381b3da8382623f82dbc0aaef6b6d1128454adc675d8428563a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t0-prediction0-followed.params",
+          "sha256": "6ddbc24bee4eed9a5248a79b3a742e537fe0440582eb50be3bb2093ace0c6ed3"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-arithmetic-t0-prediction1-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t0-prediction1-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t0-prediction1-followed.jb2",
+          "sha256": "94ba9591e7e0a3785fb2b7c8a5a21237bc476c411fad7f3440345b32a0fd78ae"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t0-prediction1-followed.out",
+          "sha256": "42da317117ca4381b3da8382623f82dbc0aaef6b6d1128454adc675d8428563a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t0-prediction1-followed.params",
+          "sha256": "6ddbc24bee4eed9a5248a79b3a742e537fe0440582eb50be3bb2093ace0c6ed3"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-arithmetic-t1-prediction0-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t1-prediction0-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t1-prediction0-followed.jb2",
+          "sha256": "01f09430c055304c44a89ebddda613428480b2d9514c69a940f8040693ec675d"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t1-prediction0-followed.out",
+          "sha256": "42da317117ca4381b3da8382623f82dbc0aaef6b6d1128454adc675d8428563a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t1-prediction0-followed.params",
+          "sha256": "6ddbc24bee4eed9a5248a79b3a742e537fe0440582eb50be3bb2093ace0c6ed3"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-arithmetic-t1-prediction1-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t1-prediction1-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t1-prediction1-followed.jb2",
+          "sha256": "ab726bfb0d155739e5b7ed6eebc399e2bdfd5f8ff58e61e543efbfe8d35fe0e1"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t1-prediction1-followed.out",
+          "sha256": "42da317117ca4381b3da8382623f82dbc0aaef6b6d1128454adc675d8428563a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t1-prediction1-followed.params",
+          "sha256": "6ddbc24bee4eed9a5248a79b3a742e537fe0440582eb50be3bb2093ace0c6ed3"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-arithmetic-t2-prediction0-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t2-prediction0-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t2-prediction0-followed.jb2",
+          "sha256": "3c62da4ad785483aec0da9201813986dac199b35f9e69fd441dd246fe212f23c"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t2-prediction0-followed.out",
+          "sha256": "42da317117ca4381b3da8382623f82dbc0aaef6b6d1128454adc675d8428563a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t2-prediction0-followed.params",
+          "sha256": "6ddbc24bee4eed9a5248a79b3a742e537fe0440582eb50be3bb2093ace0c6ed3"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-arithmetic-t2-prediction1-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t2-prediction1-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t2-prediction1-followed.jb2",
+          "sha256": "448c05f089ad45ced8dc6acff7cd076e8095f2ba1ed82185dcb3dc3b92e98074"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t2-prediction1-followed.out",
+          "sha256": "42da317117ca4381b3da8382623f82dbc0aaef6b6d1128454adc675d8428563a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t2-prediction1-followed.params",
+          "sha256": "6ddbc24bee4eed9a5248a79b3a742e537fe0440582eb50be3bb2093ace0c6ed3"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-arithmetic-t3-prediction0-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t3-prediction0-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t3-prediction0-followed.jb2",
+          "sha256": "f544318dc10b090b643f961e4fb7d367991842454a575b26118c82fd85c90f71"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t3-prediction0-followed.out",
+          "sha256": "42da317117ca4381b3da8382623f82dbc0aaef6b6d1128454adc675d8428563a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t3-prediction0-followed.params",
+          "sha256": "6ddbc24bee4eed9a5248a79b3a742e537fe0440582eb50be3bb2093ace0c6ed3"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-arithmetic-t3-prediction1-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t3-prediction1-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t3-prediction1-followed.jb2",
+          "sha256": "d8b4d1319c274b191182e64ee67af6d15d7c5d49164843a4cfc2bbe23da2c934"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t3-prediction1-followed.out",
+          "sha256": "42da317117ca4381b3da8382623f82dbc0aaef6b6d1128454adc675d8428563a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-t3-prediction1-followed.params",
+          "sha256": "6ddbc24bee4eed9a5248a79b3a742e537fe0440582eb50be3bb2093ace0c6ed3"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-arithmetic-marker-in-adaptive-header",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-marker-in-adaptive-header.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-marker-in-adaptive-header.jb2",
+          "sha256": "45049c55c484e89a5bc5d18ccd920ff07edc2869ea30ce513f6112f7057dd3c0"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-marker-in-adaptive-header.out",
+          "sha256": "f415bd7768fa46ec483eae7f0a0fd6bc44e13114c50a9f4c3532f9beb9dde08a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-marker-in-adaptive-header.params",
+          "sha256": "66d8ba17fafe1ffe96e04cbc620704e650001317e51eb8e2ad18816f7371b6fe"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-width1-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width1-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width1-followed.jb2",
+          "sha256": "2e4a9c904213454fd5567b14f1227dde91667ad26b56f542c87261570cab8e34"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width1-followed.out",
+          "sha256": "4853ae55317dc20c8511533dc9a3ed161021a3a3f2754e0cde5d13a8a355c6dd"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width1-followed.params",
+          "sha256": "8d3cf3d3b5397190147ed0c408d21cf258c74e41af5202cd896e7fb6765e18db"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-width2-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width2-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width2-followed.jb2",
+          "sha256": "6765fc5f2471b2c6d897d85073ce6b2d9eb038c6aa8202c044a54634565b0ba8"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width2-followed.out",
+          "sha256": "628fe11a082065f76bca713447635335d1625c85fba482b6e61b9033bcf47bca"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width2-followed.params",
+          "sha256": "406da9764b9eade063e3a15ba350f7d69e5fc3781805e27555b2093eb0f83f6e"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-width3-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width3-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width3-followed.jb2",
+          "sha256": "1ea39efe0a9c9435f1fbd44f4b361a532f6e22ec363d4f772597f1b9c0aa785f"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width3-followed.out",
+          "sha256": "bc57148e47eb6b41dba81476b724b8d648a968bf5e4dbdd3368bdf08bbedfe39"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width3-followed.params",
+          "sha256": "19d9b71621b16ebf17a60772c56e40f0e0d2291c0fbaeb6fed909152993fea8e"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-width4-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width4-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width4-followed.jb2",
+          "sha256": "fcc180deddc6c89929bde31e184ad866d152b1b381315bb6e05f61e80ef125c6"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width4-followed.out",
+          "sha256": "f9eb646724c42eaace916df1a946f4666f7c961816268236ca3447d82cd0c81a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width4-followed.params",
+          "sha256": "643ff64973d25b1c1c37a3f64fe564da99c8ca7e978f418fa8ec9346155dace9"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-width5-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width5-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width5-followed.jb2",
+          "sha256": "aad57765bab13a468bb314e6ed5a5449b3e019132732158e175fc7473d97e260"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width5-followed.out",
+          "sha256": "c85a6bf24c89b55891eb5029a6014ce6649de87c59d9c06737c3968a560e60cb"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width5-followed.params",
+          "sha256": "c7c45781cb2970a48682ab444b005c21c5b75d4883a28d8a67b2c32442074f6c"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-width6-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width6-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width6-followed.jb2",
+          "sha256": "16868216c2cd5eb93a6dee5534d4ef2ddae8dab325dcc25e93d5c8a95b10fd8a"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width6-followed.out",
+          "sha256": "7a9367b2b1c494dfdb6a9c0997c1683e573880db1a49a4ee77b686002943b631"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width6-followed.params",
+          "sha256": "ee2cf376466577bb1f8cc588cbcb2d857aff4255baa82300913e145f6a02b13f"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-width7-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width7-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width7-followed.jb2",
+          "sha256": "0b3f82bf3a538d2af8ffb3621dd7c831667f32a8c21c57702076d51fc00d94c2"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width7-followed.out",
+          "sha256": "6df7a8d81dd57282dcb51363d8f4f214afcd152f2bbbe9213dff903936c1e5a5"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width7-followed.params",
+          "sha256": "3dc0e70eea7a95fbfc1febfca6814e4ece921e82ef3c6185007a8427533de8d3"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-width8-followed",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width8-followed.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width8-followed.jb2",
+          "sha256": "a8c4d86d7f5b36643976299b47c788b8c20818e36317a835a35c5834f1d00235"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width8-followed.out",
+          "sha256": "d952d25b00136c407e2e6e10092ca9b03ba0cd39f5dcadde052cd84613f68ed1"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-width8-followed.params",
+          "sha256": "0e0f029bfe9a8c72616381d5326fdb7991276f5d2c50de7205f45e160b5ef605"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-row-count-exceeds-height",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-row-count-exceeds-height.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-row-count-exceeds-height.jb2",
+          "sha256": "3b7379cdde416d55192975a182cdf18294550824c6d8c74cf0367f05ba46ddda"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-row-count-exceeds-height.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-row-count-exceeds-height.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-missing-eofb",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-missing-eofb.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-missing-eofb.jb2",
+          "sha256": "9c1766f0d5a02e81679a7d2f3aba14ec9a3c02ecbf607a954fced7bbec1e5822"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-missing-eofb.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-missing-eofb.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-data-after-eofb",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-data-after-eofb.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-data-after-eofb.jb2",
+          "sha256": "ab968bfda2807cd9d0d0d75dcdb40cf3d47723747a8a8e84235a086e22c48763"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-data-after-eofb.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-data-after-eofb.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-arithmetic-missing-marker",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-missing-marker.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-missing-marker.jb2",
+          "sha256": "99649dcf143fa88ddf715ad93da0779f20dfdb4ffce101d0f5c00c39c5d0b2df"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-missing-marker.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-missing-marker.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-missing-marker",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-missing-marker.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-missing-marker.jb2",
+          "sha256": "45399819a487bb6dceba9ef7d993ec3c509c44fe06f69a1071dc7a0fa57be2a4"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-missing-marker.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-missing-marker.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-intermediate-forbidden",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-intermediate-forbidden.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-intermediate-forbidden.jb2",
+          "sha256": "bcb9b94bbab19fc8e3007a011c6665945d6f3ea385b470fbb081a28c3b888fe7"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-intermediate-forbidden.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-intermediate-forbidden.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-lossless-forbidden",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-lossless-forbidden.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-lossless-forbidden.jb2",
+          "sha256": "3995d0e478b9347b79a2b2b9868f75e64b169ba22b7bc11f7b5090c260083e3a"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-lossless-forbidden.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-lossless-forbidden.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-arithmetic-row-count-truncated0",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated0.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated0.jb2",
+          "sha256": "ce05772b622ea574812cd25fb27f600ab2f0a878681c7d3e43c3a6eeead39924"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated0.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated0.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-arithmetic-row-count-truncated1",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated1.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated1.jb2",
+          "sha256": "e10ce6c52174819019303d186377a68251e099fcc16d8d5a1c6e81a632d57f69"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated1.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated1.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-arithmetic-row-count-truncated2",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated2.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated2.jb2",
+          "sha256": "53b7a8b8581284ec4af5c86f08300487d33579686e7746defadffda19536bc53"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated2.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated2.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-arithmetic-row-count-truncated3",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated3.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated3.jb2",
+          "sha256": "3fff8fd98a190a3be30d9cddf6f400db8dd483df1524ac96c79dbf592251387c"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated3.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-arithmetic-row-count-truncated3.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-row-count-truncated0",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated0.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated0.jb2",
+          "sha256": "09e2296ce1cf08ce28856a79aa480a983819b57a6a3bb9663382f4c3da5865e7"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated0.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated0.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-row-count-truncated1",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated1.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated1.jb2",
+          "sha256": "2f69c5adab8c34b4a06784a023a09225ded9af4793f0932cf2993b89e3bc723f"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated1.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated1.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-row-count-truncated2",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated2.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated2.jb2",
+          "sha256": "9f09b559f55b212eaf49607c631f896e4284ffd31b649d996a0619433d275ebe"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated2.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated2.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/unknown-length-mmr-row-count-truncated3",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-unknown-length"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated3.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated3.jb2",
+          "sha256": "b6ad7e25206db77176a1ad7877b802e1541b97f01fcc58728acd72fde65af548"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated3.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/unknown-length-mmr-row-count-truncated3.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-clipped-refined-0-0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-0.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-0.jb2",
+          "sha256": "f6011887726c3e1f9373316cc6f3ba936a4bdc8ed92f6250a8a2676d4e48717a"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-0.out",
+          "sha256": "4e0750a936064652b8cb1272a64d0fcc2a561c89ad6cf72df0fc030b46264ce8"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-0.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-striped-0-0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-0.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-0.jb2",
+          "sha256": "b213079295e9e98b8bcb31d9db4d54d758b8d9b47704eb8839939e9a331a1d67"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-0.out",
+          "sha256": "cab77a9a0154c1d5cddd746ddf47559823d2a74fda6e8b1c826d1e86a7c811c7"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-0.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/huffman-layout-clipped-0-0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-0.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-0.jb2",
+          "sha256": "7644f70ad1b1eb8d2ad2afc01538216fea6bd38ec386246bf5b544ebff268e15"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-0.out",
+          "sha256": "2463dc25d627ed51fd783d728c3bf985543f8e8dd0b8d6c08417b277474a736a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-0.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-clipped-refined-0-1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-1.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-1.jb2",
+          "sha256": "245924fb7b0b86a01e1f98a9e84fb83dd884e4e037be56ab0f0de9879d7115d0"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-1.out",
+          "sha256": "f11b240589208c1657037e19bdfd69ef6bc417d5a519c25fceb42096c20a9c30"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-1.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-striped-0-1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-1.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-1.jb2",
+          "sha256": "6224ee77b613490968218535f41656fb9f8508ba98f4a8e1c7ed7150f0660e2a"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-1.out",
+          "sha256": "e5057bc838c13e254c13e740319cab18926c881783c778baa7625746b5caf512"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-1.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/huffman-layout-clipped-0-1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-1.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-1.jb2",
+          "sha256": "a2cc3596d16a11be3b09daa2f48e8687e62f9fb2487197b1a64a7247375bb1ee"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-1.out",
+          "sha256": "fc66884f5ac77c32d7501fa0e27de3ad373b3ddb7dc7d1a4a82552c654afb52c"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-1.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-clipped-refined-0-2",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-2.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-2.jb2",
+          "sha256": "8ba0507f77725934bb8233ce7e26b50cd9eef2239396fe6462381742bd75c167"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-2.out",
+          "sha256": "4e0750a936064652b8cb1272a64d0fcc2a561c89ad6cf72df0fc030b46264ce8"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-2.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-striped-0-2",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-2.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-2.jb2",
+          "sha256": "4d181ccd159f9d62d79a59e5c80e9dfe3e5785bdd68062140d2989dbde0181af"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-2.out",
+          "sha256": "cab77a9a0154c1d5cddd746ddf47559823d2a74fda6e8b1c826d1e86a7c811c7"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-2.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/huffman-layout-clipped-0-2",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-2.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-2.jb2",
+          "sha256": "814a91bf19b77b92e38ad6ccec355b3e222ea45e1faae329f371dcebbaf1dff7"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-2.out",
+          "sha256": "2463dc25d627ed51fd783d728c3bf985543f8e8dd0b8d6c08417b277474a736a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-2.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-clipped-refined-0-3",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-3.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-3.jb2",
+          "sha256": "6f79bbdd3dfcb0f003eddb01cb7665826fe4e9b5287962a695bf393efdef303c"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-3.out",
+          "sha256": "f11b240589208c1657037e19bdfd69ef6bc417d5a519c25fceb42096c20a9c30"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-0-3.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-striped-0-3",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-3.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-3.jb2",
+          "sha256": "7327f076c9fd2d1188b2d0e592e73fe4a998284467a3c094e89cc3cbee5605ae"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-3.out",
+          "sha256": "e5057bc838c13e254c13e740319cab18926c881783c778baa7625746b5caf512"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-0-3.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/huffman-layout-clipped-0-3",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-3.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-3.jb2",
+          "sha256": "48d851c5e5507a9ab8e6f23a1e5ca5845dc994cafdf794a8ce088f86f31f4a67"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-3.out",
+          "sha256": "fc66884f5ac77c32d7501fa0e27de3ad373b3ddb7dc7d1a4a82552c654afb52c"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-0-3.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-clipped-refined-1-0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-0.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-0.jb2",
+          "sha256": "b1254a1a40835dda093fcdb2d61f090d7e4030ae980ac54bf4c8b070b98dbfad"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-0.out",
+          "sha256": "7883f2626043d16f892b59531272bb0e8169797fbeaedd21db24fe43f5bb2c1d"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-0.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-striped-1-0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-0.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-0.jb2",
+          "sha256": "330307afd0fd0344312eab28d1213b47e9b1cef5904292908d54f30ef1290265"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-0.out",
+          "sha256": "1b25bdeb3d243e4b7d93382aec573ba6131903d3673640ca7b34826886e66335"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-0.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/huffman-layout-clipped-1-0",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-0.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-0.jb2",
+          "sha256": "ce57bb76dcde9e82297196a8e3d314d0ed25fd27db486abe503f056016ce03ca"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-0.out",
+          "sha256": "57025a81ae3c627b32af28c4eacff64fc48411fe12ead1129ae08174ef11b773"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-0.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-clipped-refined-1-1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-1.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-1.jb2",
+          "sha256": "c580fa6ece420a98a260e70e1d4b26d018ea66969f980b459e4bec13b85fb7f5"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-1.out",
+          "sha256": "7883f2626043d16f892b59531272bb0e8169797fbeaedd21db24fe43f5bb2c1d"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-1.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-striped-1-1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-1.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-1.jb2",
+          "sha256": "34cc502f77d0db9d17dea0733ff1ce8a5d02e5f9512430a71d7e96cea6a2b46c"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-1.out",
+          "sha256": "1b25bdeb3d243e4b7d93382aec573ba6131903d3673640ca7b34826886e66335"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-1.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/huffman-layout-clipped-1-1",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-1.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-1.jb2",
+          "sha256": "ef0015d83120184893bfa0f52785ffd776cb5a1aea48da9c90d678c417722127"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-1.out",
+          "sha256": "57025a81ae3c627b32af28c4eacff64fc48411fe12ead1129ae08174ef11b773"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-1.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-clipped-refined-1-2",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-2.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-2.jb2",
+          "sha256": "11d83efc329eb52f98eae5e8ef69881781987cb8ad2747ba1ce1c89bdf7fe94b"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-2.out",
+          "sha256": "cbc4ca9e513c7192858aaa373166675b3277821aac88905d2c3adb998c1d86c6"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-2.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-striped-1-2",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-2.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-2.jb2",
+          "sha256": "248c049b1724eccb0d2c58e51693daddec7bcd3869aed4bf466a5d415d6cc3e2"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-2.out",
+          "sha256": "0e0d193b93bba2c78ae434e33e8b6cc479a080c0e6bbe0231fb4ad9debf7898c"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-2.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/huffman-layout-clipped-1-2",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-2.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-2.jb2",
+          "sha256": "a9a6ccca86d8d53d8f9ac7317ca9f1112270c25c3f5602379f950c3c6c192db9"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-2.out",
+          "sha256": "d0bd462e0ed90578007b556a10735c6ff1501c45cd79e2f69b1fa22d224ab21c"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-2.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-clipped-refined-1-3",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-3.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-3.jb2",
+          "sha256": "953ae597c3f570756ecc7433aa82024f14efc87991ccaaa3a6ef417613eff44a"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-3.out",
+          "sha256": "cbc4ca9e513c7192858aaa373166675b3277821aac88905d2c3adb998c1d86c6"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-clipped-refined-1-3.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/arithmetic-layout-striped-1-3",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-3.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-3.jb2",
+          "sha256": "c83c8225103e237abbf7ed5e9ab57a8b4f8dd204098efbc64c2f480de7d832ac"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-3.out",
+          "sha256": "0e0d193b93bba2c78ae434e33e8b6cc479a080c0e6bbe0231fb4ad9debf7898c"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/arithmetic-layout-striped-1-3.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/huffman-layout-clipped-1-3",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-text-layout"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-3.globals",
+          "sha256": "4b363586b00daeb659725d9c89d3473277f03f18737362c61c620ba353565f9e"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-3.jb2",
+          "sha256": "a284bd996d4c60f33bb96baa9baabf182de84f431d8084e7cdb06f269a5a1b33"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-3.out",
+          "sha256": "d0bd462e0ed90578007b556a10735c6ff1501c45cd79e2f69b1fa22d224ab21c"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/huffman-layout-clipped-1-3.params",
+          "sha256": "226ecc133c6cfadde34bc9fbee56684fe43984ff65abd28ff8fa681799ef32d0"
+        }
+      }
+    },
+    {
+      "id": "jbig2/stripe-identity-0-before",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-page-combination"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/stripe-identity-0-before.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/stripe-identity-0-before.jb2",
+          "sha256": "e7a39e835f3403f7d8d2ae4bf6415a15fd9f8401c9271c1b8932670ae49b3191"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/stripe-identity-0-before.out",
+          "sha256": "8d71b3faab8201459ad37ef499beb336ba88bdcfa0f51ee6f0a46ec3192d750a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/stripe-identity-0-before.params",
+          "sha256": "c7c45781cb2970a48682ab444b005c21c5b75d4883a28d8a67b2c32442074f6c"
+        }
+      }
+    },
+    {
+      "id": "jbig2/stripe-identity-0-after",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-page-combination"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/stripe-identity-0-after.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/stripe-identity-0-after.jb2",
+          "sha256": "53372525d94ff4a279aeb7c1c6fa003b282171b5001abc45b2e09ce4f3acc237"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/stripe-identity-0-after.out",
+          "sha256": "4383af4fd372332676db3e050000c22438deb3f8352a00aa8c8d652b7298d96f"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/stripe-identity-0-after.params",
+          "sha256": "c7c45781cb2970a48682ab444b005c21c5b75d4883a28d8a67b2c32442074f6c"
+        }
+      }
+    },
+    {
+      "id": "jbig2/stripe-identity-1-before",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-page-combination"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/stripe-identity-1-before.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/stripe-identity-1-before.jb2",
+          "sha256": "79f3529797dc71aed2ba0f2a2ae2833669990de41a63465ca62a5aa7e5105a16"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/stripe-identity-1-before.out",
+          "sha256": "dbb8bd9f9f836ba2d0b533da8684e0ca0c798a946071f5e344d75c837b8174ec"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/stripe-identity-1-before.params",
+          "sha256": "c7c45781cb2970a48682ab444b005c21c5b75d4883a28d8a67b2c32442074f6c"
+        }
+      }
+    },
+    {
+      "id": "jbig2/stripe-identity-1-after",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-page-combination"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/stripe-identity-1-after.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/stripe-identity-1-after.jb2",
+          "sha256": "f1b4c0be3e098572de4b0a751a22a304a33b89920cf066fc43c37985a9fe451a"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/stripe-identity-1-after.out",
+          "sha256": "36a8ad373a3ff3e15e22ede858546387b111fe5e3a8b73dd1e89f553d4ee5f33"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/stripe-identity-1-after.params",
+          "sha256": "c7c45781cb2970a48682ab444b005c21c5b75d4883a28d8a67b2c32442074f6c"
+        }
+      }
+    },
+    {
+      "id": "jbig2/stripe-identity-2-before",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-page-combination"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/stripe-identity-2-before.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/stripe-identity-2-before.jb2",
+          "sha256": "0468e1bc3df6737a6943ceb09c172d2b3bd7bf7d6e07686a73932d76067f071f"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/stripe-identity-2-before.out",
+          "sha256": "8d71b3faab8201459ad37ef499beb336ba88bdcfa0f51ee6f0a46ec3192d750a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/stripe-identity-2-before.params",
+          "sha256": "c7c45781cb2970a48682ab444b005c21c5b75d4883a28d8a67b2c32442074f6c"
+        }
+      }
+    },
+    {
+      "id": "jbig2/stripe-identity-2-after",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-page-combination"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/stripe-identity-2-after.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/stripe-identity-2-after.jb2",
+          "sha256": "2cf9705782c95275ea84f13a7c8d042e6530ceb0fadf490ac89f64d299ebb5ec"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/stripe-identity-2-after.out",
+          "sha256": "4383af4fd372332676db3e050000c22438deb3f8352a00aa8c8d652b7298d96f"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/stripe-identity-2-after.params",
+          "sha256": "c7c45781cb2970a48682ab444b005c21c5b75d4883a28d8a67b2c32442074f6c"
+        }
+      }
+    },
+    {
+      "id": "jbig2/stripe-identity-3-before",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-page-combination"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/stripe-identity-3-before.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/stripe-identity-3-before.jb2",
+          "sha256": "c739ff301412b2a30acdfb97ba3a62cd60ddeef61c8baad51bd20cd350e37a66"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/stripe-identity-3-before.out",
+          "sha256": "8d71b3faab8201459ad37ef499beb336ba88bdcfa0f51ee6f0a46ec3192d750a"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/stripe-identity-3-before.params",
+          "sha256": "c7c45781cb2970a48682ab444b005c21c5b75d4883a28d8a67b2c32442074f6c"
+        }
+      }
+    },
+    {
+      "id": "jbig2/stripe-identity-3-after",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-page-combination"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/stripe-identity-3-after.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/stripe-identity-3-after.jb2",
+          "sha256": "6b67348b9a406278ec59a599b7788b0ea30d498bb1a8fabb7f9f2196a1f045c5"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/stripe-identity-3-after.out",
+          "sha256": "4383af4fd372332676db3e050000c22438deb3f8352a00aa8c8d652b7298d96f"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/stripe-identity-3-after.params",
+          "sha256": "c7c45781cb2970a48682ab444b005c21c5b75d4883a28d8a67b2c32442074f6c"
+        }
+      }
+    },
+    {
+      "id": "jbig2/stripe-replace-padding-forbidden",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-page-combination"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/stripe-replace-padding-forbidden.globals",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/stripe-replace-padding-forbidden.jb2",
+          "sha256": "6829e6b17f354800e42344513ed1fdc6cf5e9930a758c4369f05a7df9b0b3411"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/stripe-replace-padding-forbidden.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/stripe-replace-padding-forbidden.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/profiles-page-superset",
+      "kind": "vector",
+      "description": "Independent T.88 encoding and geometric bitmap",
+      "requirements": [
+        "jbig2-profiles"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/profiles-page-superset.globals",
+          "sha256": "5fff66909e1caa40a38678574fcd30db65c320eef0d13bc42ceac8677dc9087d"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/profiles-page-superset.jb2",
+          "sha256": "697212cf0450bcb526fbb1c312241d975067cbe24d6338b4cb23449eb26790ba"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/profiles-page-superset.out",
+          "sha256": "607b306244cab5c6e8670d7525e1af04304b5d2c3a8a1ad791cb01de20e22117"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/profiles-page-superset.params",
+          "sha256": "985ab3b3a3985601e388216ed713c47d7789253d449288baad5b7d31937c085b"
+        }
+      }
+    },
+    {
+      "id": "jbig2/profiles-global-must-be-first",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-profiles"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/profiles-global-must-be-first.globals",
+          "sha256": "4222242fb0e6b5ee0ec4b36dd30d5dedc525caeb774d30510d634c568b08700f"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/profiles-global-must-be-first.jb2",
+          "sha256": "62a39ce51cb02610e9e3ebb86d805cdee4393c66e9a52f1c30867e5b118424a0"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/profiles-global-must-be-first.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/profiles-global-must-be-first.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/profiles-second-global-forbidden",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-profiles"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/profiles-second-global-forbidden.globals",
+          "sha256": "4ffc374d11adc5d6b8f273d83c71eb6bace1264a833ab7c42b912f94a51cf25f"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/profiles-second-global-forbidden.jb2",
+          "sha256": "62a39ce51cb02610e9e3ebb86d805cdee4393c66e9a52f1c30867e5b118424a0"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/profiles-second-global-forbidden.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/profiles-second-global-forbidden.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/profiles-duplicate-page-forbidden",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-profiles"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/profiles-duplicate-page-forbidden.globals",
+          "sha256": "5fff66909e1caa40a38678574fcd30db65c320eef0d13bc42ceac8677dc9087d"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/profiles-duplicate-page-forbidden.jb2",
+          "sha256": "15c59d2401ee3febba8f7408a3592434195dde853df7cf5d705d9e3bef31e85e"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/profiles-duplicate-page-forbidden.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/profiles-duplicate-page-forbidden.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/profiles-page-omits-global",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-profiles"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/profiles-page-omits-global.globals",
+          "sha256": "5fff66909e1caa40a38678574fcd30db65c320eef0d13bc42ceac8677dc9087d"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/profiles-page-omits-global.jb2",
+          "sha256": "2541e40033b7128760a8fe03b6e4a1fa7e7f914d01934e6f3c08b5bec6d04c73"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/profiles-page-omits-global.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/profiles-page-omits-global.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/profiles-truncated-count",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-profiles"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/profiles-truncated-count.globals",
+          "sha256": "a0e33e2165986ed2192f54bed730d0afadb84cc0fb0492537c861a5f16c92066"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/profiles-truncated-count.jb2",
+          "sha256": "62a39ce51cb02610e9e3ebb86d805cdee4393c66e9a52f1c30867e5b118424a0"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/profiles-truncated-count.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/profiles-truncated-count.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/profiles-truncated-identifier",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-profiles"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/profiles-truncated-identifier.globals",
+          "sha256": "689f9f3c9b91a3dc7db5f29a7ab398e487eb5bc18654afff267da28cc8a894d0"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/profiles-truncated-identifier.jb2",
+          "sha256": "62a39ce51cb02610e9e3ebb86d805cdee4393c66e9a52f1c30867e5b118424a0"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/profiles-truncated-identifier.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/profiles-truncated-identifier.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
+      "id": "jbig2/profiles-trailing-data",
+      "kind": "vector",
+      "description": "Malformed or explicitly unsupported embedded stream",
+      "requirements": [
+        "jbig2-profiles"
+      ],
+      "files": {
+        ".globals": {
+          "path": "corpus/generated/jbig2/profiles-trailing-data.globals",
+          "sha256": "223d6400285af20a41532a5f0ca01ddb75435b653545bf4e35a57511d04bb5e7"
+        },
+        ".jb2": {
+          "path": "corpus/generated/jbig2/profiles-trailing-data.jb2",
+          "sha256": "62a39ce51cb02610e9e3ebb86d805cdee4393c66e9a52f1c30867e5b118424a0"
+        },
+        ".out": {
+          "path": "corpus/generated/jbig2/profiles-trailing-data.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/jbig2/profiles-trailing-data.params",
+          "sha256": "071497452f4f44214d2c2d891ab62d64d31b8a2d99c8be739701767c6bcabc55"
+        }
+      }
+    },
+    {
       "id": "jbig2/arithmetic-empty-text-default0",
       "kind": "vector",
       "description": "Independent T.88 encoding and geometric bitmap",

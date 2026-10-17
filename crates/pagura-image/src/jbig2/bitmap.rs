@@ -102,13 +102,32 @@ impl Bitmap {
         }
     }
 
-    pub(super) fn combine(&mut self, other: &Self, x: u32, y: u32, op: u8) {
+    /// T.88 7.4.10 constrains drawing, rather than the region rectangle.
+    /// Identity operands (OR/XOR zero, AND/XNOR one) do not write pixels;
+    /// padding containing them may cross a completed stripe boundary.
+    /// The returned exclusive bottom row covers every non-identity operand.
+    pub(super) fn combine_page(
+        &mut self,
+        other: &Self,
+        x: u32,
+        y: u32,
+        op: u8,
+        completed: Option<u32>,
+    ) -> Result<Option<u32>> {
+        let mut bottom = None;
         let width = other.width.min(self.width.saturating_sub(x));
         let height = other.height.min(self.height.saturating_sub(y));
         for dy in 0..height {
             for dx in 0..width {
-                let a = self.pixel(i64::from(x + dx), i64::from(y + dy));
                 let b = other.pixel(i64::from(dx), i64::from(dy));
+                if matches!((op, b), (0 | 2, 0) | (1 | 3, 1)) {
+                    continue;
+                }
+                if completed.is_some_and(|line| y + dy <= line) {
+                    return Err(Error::syntax("JBIG2 region revisits a completed stripe"));
+                }
+                bottom = Some(y + dy + 1);
+                let a = self.pixel(i64::from(x + dx), i64::from(y + dy));
                 self.set(
                     x + dx,
                     y + dy,
@@ -122,5 +141,6 @@ impl Bitmap {
                 );
             }
         }
+        Ok(bottom)
     }
 }

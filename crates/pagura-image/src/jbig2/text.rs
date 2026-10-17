@@ -162,14 +162,7 @@ impl State {
                 if count == instances && !config.complete_last_strip {
                     break;
                 }
-                s = add(
-                    s,
-                    i64::from(if config.transposed {
-                        glyph.height
-                    } else {
-                        glyph.width
-                    }) - 1,
-                )?;
+                s = add(s, config.advance(glyph))?;
                 let Some(delta) = self.delta_s.decode(decoder)? else {
                     break;
                 };
@@ -308,6 +301,10 @@ impl Config {
             complete_last_strip: false,
         }
     }
+    /// 6.4.5 steps 3 c) vi–x: a right/bottom corner on the S axis
+    /// advances CURS before placement, cancelling that corner's subtraction.
+    /// The other corners advance it afterwards. Thus S always denotes the
+    /// leading pixel here, and every corner advances by the coding-axis size.
     pub(super) fn origin(&self, s: i64, t: i64, glyph: &Bitmap) -> Result<(i64, i64)> {
         if self.transposed {
             Ok((
