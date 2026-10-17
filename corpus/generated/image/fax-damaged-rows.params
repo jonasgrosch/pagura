@@ -1,0 +1,8 @@
+kind=ccitt
+outcome=repair
+k=0
+width=8
+height=4
+eob=1
+eol=1
+damaged=2

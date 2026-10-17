@@ -1,0 +1,86 @@
+{
+  "schema": 2,
+  "area": "image",
+  "scope": "ISO clauses verified against the local ISO 32000-2:2020 EC3 text; independent JPEG and fax format encoders. No conformance claim beyond exercised cases.",
+  "requirements": [
+    {
+      "id": "image-samples",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.3",
+        "8.9.5"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors"
+      ],
+      "gaps": "Broader corpus coverage remains."
+    },
+    {
+      "id": "image-dictionaries",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.5",
+        "8.9.6"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors"
+      ],
+      "gaps": "Mask streams are retained by object identity for painting. Embedded JPX alpha cannot be represented by DecodedImage and remains Unsupported."
+    },
+    {
+      "id": "image-inline",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.7"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors"
+      ],
+      "gaps": "Legacy Flate/LZW boundary search has a sixteen-candidate work cap. Unfiltered resource colour spaces without Length need a resource-aware boundary API. Inline filter repairs require a document diagnostic sink."
+    },
+    {
+      "id": "image-dct",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.8",
+        "ITU-T T.81 Annex F",
+        "ITU-T T.81 Annex G"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors"
+      ],
+      "gaps": "12-bit precision, arithmetic/lossless/hierarchical coding unsupported; nearest chroma expansion."
+    },
+    {
+      "id": "image-ccitt",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.6",
+        "ITU-T T.4",
+        "ITU-T T.6"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors"
+      ],
+      "gaps": "T.6 extension mode unsupported. Damaged-row recovery is available through decode_with_diagnostics; document image decoding remains strict until a document diagnostic sink is public."
+    },
+    {
+      "id": "image-limits",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "ADR 0010"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::image_and_codec_budgets_precede_allocations",
+        "pagura-image tests::truncated_and_mutated_codecs_never_invent_samples"
+      ],
+      "gaps": "Broader corpus coverage remains."
+    }
+  ]
+}

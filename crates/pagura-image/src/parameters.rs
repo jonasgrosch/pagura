@@ -1,0 +1,218 @@
+//! Image dictionary validation (ISO 32000-2, 8.9.5, Tables 87–88).
+use crate::{DecodedImage, ImageKind, Samples};
+use pagura_core::{Dictionary, Error, Limits, Result, Value};
+use pagura_document::Document;
+
+pub(crate) fn resolved_dictionary(document: &Document, dict: &Dictionary) -> Result<Dictionary> {
+    dict.iter()
+        .map(|(key, value)| {
+            let resolved = if matches!(
+                key.as_bytes(),
+                b"Width"
+                    | b"Height"
+                    | b"BitsPerComponent"
+                    | b"ColorSpace"
+                    | b"ImageMask"
+                    | b"Decode"
+                    | b"Interpolate"
+                    | b"SMaskInData"
+            ) {
+                document.resolve(value)?
+            } else {
+                value
+            };
+            Ok((key.clone(), resolved.clone()))
+        })
+        .collect()
+}
+
+pub(crate) fn integer(dict: &Dictionary, key: &[u8], default: i64) -> Result<i64> {
+    match dict.get(key) {
+        None | Some(Value::Null) => Ok(default),
+        Some(Value::Integer(value)) => Ok(*value),
+        _ => Err(Error::syntax("image parameter must be an integer")),
+    }
+}
+
+pub(crate) fn boolean(dict: &Dictionary, key: &[u8], default: bool) -> Result<bool> {
+    match dict.get(key) {
+        None | Some(Value::Null) => Ok(default),
+        Some(Value::Boolean(value)) => Ok(*value),
+        _ => Err(Error::syntax("image parameter must be a boolean")),
+    }
+}
+
+pub(crate) fn dimensions(dict: &Dictionary) -> Result<(u32, u32)> {
+    let dimension = |key| {
+        let value = integer(dict, key, 0)?;
+        if value <= 0 {
+            return Err(Error::syntax("invalid image dimensions"));
+        }
+        u32::try_from(value)
+            .map_err(|_| Error::limit("image dimensions exceed addressable samples"))
+    };
+    Ok((dimension(b"Width")?, dimension(b"Height")?))
+}
+
+pub(crate) fn budget(
+    width: u32,
+    height: u32,
+    components: u8,
+    bits: u8,
+    limits: &Limits,
+) -> Result<usize> {
+    let pixels = u64::from(width) * u64::from(height);
+    let count = pixels
+        .checked_mul(u64::from(components))
+        .and_then(|v| usize::try_from(v).ok())
+        .ok_or(Error::limit("image sample size overflow"))?;
+    if pixels > limits.pixels as u64
+        || count
+            .checked_mul(if bits > 8 { 2 } else { 1 })
+            .is_none_or(|bytes| bytes > limits.decoded_bytes)
+    {
+        return Err(Error::limit("image sample budget exceeded"));
+    }
+    Ok(count)
+}
+
+pub(crate) fn components(space: &Value) -> Result<u8> {
+    if let Some(name) = space.as_name() {
+        return match name.as_bytes() {
+            b"DeviceGray" | b"CalGray" => Ok(1),
+            b"DeviceRGB" | b"CalRGB" | b"Lab" => Ok(3),
+            b"DeviceCMYK" => Ok(4),
+            _ => Err(Error::syntax("unknown image colour space")),
+        };
+    }
+    let array = space
+        .as_array()
+        .ok_or(Error::syntax("invalid image colour space"))?;
+    match array
+        .first()
+        .and_then(Value::as_name)
+        .map(pagura_core::Name::as_bytes)
+    {
+        Some(b"Indexed" | b"Separation" | b"CalGray") => Ok(1),
+        Some(b"CalRGB" | b"Lab") => Ok(3),
+        Some(b"DeviceN") => array
+            .get(1)
+            .and_then(Value::as_array)
+            .and_then(|names| u8::try_from(names.len()).ok())
+            .filter(|&n| n > 0)
+            .ok_or(Error::syntax("invalid DeviceN components")),
+        Some(b"ICCBased") => Err(Error::syntax("unresolved ICC profile")),
+        Some(b"Pattern") => Err(Error::syntax("Pattern is not an image colour space")),
+        _ => Err(Error::syntax("invalid image colour space family")),
+    }
+}
+
+pub(crate) fn resolve_space(document: &Document, space: &Value) -> Result<(Value, u8)> {
+    let space = document.resolve(space)?;
+    if let Some(array) = space.as_array() {
+        let family = array
+            .first()
+            .and_then(Value::as_name)
+            .ok_or(Error::syntax("invalid colour space"))?;
+        if family == b"ICCBased" {
+            let profile = array.get(1).ok_or(Error::syntax("missing ICC profile"))?;
+            let dict = document.resolve_dictionary(profile)?;
+            let n = u8::try_from(integer(dict, b"N", 0)?)
+                .ok()
+                .filter(|n| matches!(n, 1 | 3 | 4))
+                .ok_or(Error::syntax("invalid ICC component count"))?;
+            return Ok((space.clone(), n));
+        }
+    }
+    Ok((space.clone(), components(space)?))
+}
+
+pub(crate) fn unpack(
+    data: &[u8],
+    width: u32,
+    height: u32,
+    components: u8,
+    bits: u8,
+    limits: &Limits,
+) -> Result<Samples> {
+    let count = budget(width, height, components, bits, limits)?;
+    let row_values = usize::try_from(u64::from(width) * u64::from(components))
+        .map_err(|_| Error::limit("image row overflow"))?;
+    let row_bytes = row_values
+        .checked_mul(usize::from(bits))
+        .and_then(|v| v.checked_add(7))
+        .map(|v| v / 8)
+        .ok_or(Error::limit("image row overflow"))?;
+    let length = row_bytes
+        .checked_mul(height as usize)
+        .ok_or(Error::limit("image size overflow"))?;
+    if data.len() != length {
+        return Err(Error::syntax("image data length disagrees with dimensions"));
+    }
+    if bits == 16 {
+        return Ok(Samples::Words(
+            data.as_chunks::<2>()
+                .0
+                .iter()
+                .map(|v| u16::from_be_bytes([v[0], v[1]]))
+                .collect(),
+        ));
+    }
+    let mut values = Vec::with_capacity(count);
+    let mask = 255 >> (8 - bits);
+    for row in data.chunks_exact(row_bytes) {
+        for index in 0..row_values {
+            let bit = index * usize::from(bits);
+            values.push((row[bit / 8] >> (8 - usize::from(bits) - bit % 8)) & mask);
+        }
+    }
+    Ok(Samples::Bytes(values))
+}
+
+pub(crate) fn finish(
+    document: &Document,
+    dict: &Dictionary,
+    mut image: DecodedImage,
+) -> Result<DecodedImage> {
+    let stencil = boolean(dict, b"ImageMask", false)?;
+    if let Some(value) = dict.get(b"Decode").filter(|v| !v.is_null()) {
+        let decode = document
+            .resolve(value)?
+            .as_array()
+            .ok_or(Error::syntax("Decode must be an array"))?;
+        if decode.len() != usize::from(image.components) * 2 {
+            return Err(Error::syntax("invalid Decode length"));
+        }
+        image.decode = Some(
+            decode
+                .iter()
+                .map(|v| {
+                    document
+                        .resolve(v)?
+                        .as_number()
+                        .filter(|v| v.is_finite())
+                        .ok_or(Error::syntax("invalid Decode value"))
+                })
+                .collect::<Result<_>>()?,
+        );
+    }
+    image.interpolate = boolean(dict, b"Interpolate", false)?;
+    if stencil {
+        if image.bits_per_component != 1
+            || dict.get(b"ColorSpace").is_some_and(|v| !v.is_null())
+            || dict.get(b"Mask").is_some_and(|v| !v.is_null())
+            || dict.get(b"SMask").is_some_and(|v| !v.is_null())
+        {
+            return Err(Error::syntax("invalid stencil image dictionary"));
+        }
+        let inverted = match image.decode.as_deref() {
+            None | Some([0.0, 1.0]) => false,
+            Some([1.0, 0.0]) => true,
+            _ => return Err(Error::syntax("invalid stencil Decode")),
+        };
+        image.kind = ImageKind::Stencil { inverted };
+        return Ok(image);
+    }
+    image.mask = crate::mask::read(document, dict, image.components, image.bits_per_component)?;
+    Ok(image)
+}

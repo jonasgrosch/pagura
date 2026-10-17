@@ -1,10 +1,13 @@
-//! Baseline, extended and progressive JPEG decoding (ITU-T T.81) for
-//! `DCTDecode` (clause 7.4.8).
-
-use pagura_core::{Error, Feature, Limits, Result};
-
-/// Placeholder tag while the decoder is under construction.
-const PENDING: Feature = Feature::new("filter.DCTDecode");
+//! Huffman sequential and progressive JPEG (ITU-T T.81, Annexes B, F and G),
+//! used by ISO 32000-2 clause 7.4.8. Samples use a separable floating-point
+//! IDCT; independently encoded fixtures allow an absolute error of one level.
+mod entropy;
+mod frame;
+mod scan;
+mod transform;
+use entropy::Huffman;
+use frame::Frame;
+use pagura_core::{Error, Limits, Position, Result};
 
 /// A decoded JPEG image.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,16 +22,199 @@ pub struct DctImage {
     pub samples: Vec<u8>,
 }
 
-/// Decodes a JPEG stream. `color_transform` is `/ColorTransform` from the
-/// filter's parameters (clause 7.4.8, Table 13), if present.
+struct Decoder {
+    frame: Option<Frame>,
+    quant: [Option<[u16; 64]>; 4],
+    huffman: [Option<Huffman>; 8],
+    restart: usize,
+    adobe: Option<u8>,
+    work: usize,
+}
+
+/// Decodes 8-bit baseline, extended sequential or progressive Huffman JPEG.
+/// APP14 takes precedence over `color_transform` (Table 13). Chroma uses
+/// nearest-neighbour expansion; no smoothing is applied to the encoded data.
 ///
 /// # Errors
-///
-/// Returns syntax errors for corrupt data and limit errors beyond `limits`.
+/// Returns positioned syntax/limit errors, or stable Unsupported tags for
+/// arithmetic coding, non-8-bit precision and other unsupported processes.
 pub fn decode(data: &[u8], color_transform: Option<i64>, limits: &Limits) -> Result<DctImage> {
-    let _ = (data, color_transform, limits);
-    Err(Error::unsupported(
-        PENDING,
-        "DCT decoding is not implemented yet",
-    ))
+    if data.len() > limits.stream_bytes {
+        return Err(Error::limit("JPEG input budget exceeded").at(Position::Buffer(0)));
+    }
+    if color_transform.is_some_and(|v| !matches!(v, 0 | 1)) {
+        return Err(Error::syntax("invalid DCT ColorTransform").at(Position::Buffer(0)));
+    }
+    decode_inner(data, color_transform, limits).map_err(|e| e.at(Position::Buffer(0)))
+}
+
+fn decode_inner(data: &[u8], color_transform: Option<i64>, limits: &Limits) -> Result<DctImage> {
+    if data.get(..2) != Some(&[255, 216]) {
+        return Err(Error::syntax("missing JPEG SOI"));
+    }
+    let mut decoder = Decoder {
+        frame: None,
+        quant: [None; 4],
+        huffman: std::array::from_fn(|_| None),
+        restart: 0,
+        adobe: None,
+        work: 0,
+    };
+    let mut offset = 2;
+    loop {
+        let at = offset;
+        let marker = marker(data, &mut offset)?;
+        if marker == 0xd9 {
+            let frame = decoder.frame.ok_or(Error::syntax("JPEG has no frame"))?;
+            return transform::output(&frame, decoder.adobe, color_transform, limits);
+        }
+        if matches!(marker, 0xd0..=0xd8 | 0x01) {
+            return Err(Error::syntax("unexpected JPEG standalone marker").at(Position::Buffer(at)));
+        }
+        let payload = segment(data, &mut offset)?;
+        let result = match marker {
+            0xc0..=0xc2 => {
+                if decoder.frame.is_some() {
+                    return Err(Error::syntax("multiple JPEG frames").at(Position::Buffer(at)));
+                }
+                decoder.frame = Some(Frame::parse(payload, marker, limits)?);
+                Ok(())
+            }
+            0xc9..=0xcf => Err(Error::unsupported(
+                crate::features::JPEG_ARITHMETIC,
+                "arithmetic JPEG coding is unsupported",
+            )),
+            0xc3 | 0xc5..=0xc7 | 0xde | 0xdf => Err(Error::unsupported(
+                crate::features::JPEG_PROCESS,
+                "JPEG lossless or hierarchical process is unsupported",
+            )),
+            0xdb => quant_tables(payload, &mut decoder.quant),
+            0xc4 => entropy::tables(payload, &mut decoder.huffman),
+            0xdd if payload.len() == 2 => {
+                decoder.restart = usize::from(u16::from_be_bytes([payload[0], payload[1]]));
+                Ok(())
+            }
+            0xda => {
+                offset = decoder.scan(payload, data, offset, limits)?;
+                Ok(())
+            }
+            0xee if payload.starts_with(b"Adobe") => {
+                if payload.len() != 12 || payload[11] > 2 {
+                    return Err(Error::syntax("invalid Adobe JPEG marker").at(Position::Buffer(at)));
+                }
+                decoder.adobe = Some(payload[11]);
+                Ok(())
+            }
+            0xe0..=0xef | 0xfe => Ok(()),
+            _ => Err(Error::syntax("invalid or unsupported JPEG marker")),
+        };
+        result.map_err(|e| e.at(Position::Buffer(at)))?;
+    }
+}
+
+fn quant_tables(mut payload: &[u8], tables: &mut [Option<[u16; 64]>; 4]) -> Result<()> {
+    while let Some((&info, rest)) = payload.split_first() {
+        let precision = info >> 4;
+        let table = tables
+            .get_mut(usize::from(info & 15))
+            .ok_or(Error::syntax("invalid JPEG quantization table index"))?;
+        if precision > 1 {
+            return Err(Error::syntax("invalid JPEG quantization precision"));
+        }
+        let length = 64 * (usize::from(precision) + 1);
+        let values = rest
+            .get(..length)
+            .ok_or(Error::syntax("truncated JPEG quantization table"))?;
+        let mut quant = [0; 64];
+        for (i, q) in quant.iter_mut().enumerate() {
+            *q = if precision == 0 {
+                u16::from(values[i])
+            } else {
+                u16::from_be_bytes([values[2 * i], values[2 * i + 1]])
+            };
+            if *q == 0 {
+                return Err(Error::syntax("zero JPEG quantizer"));
+            }
+        }
+        *table = Some(quant);
+        payload = &rest[length..];
+    }
+    Ok(())
+}
+
+fn marker(data: &[u8], offset: &mut usize) -> Result<u8> {
+    if data.get(*offset) != Some(&255) {
+        return Err(Error::syntax("expected JPEG marker").at(Position::Buffer(*offset)));
+    }
+    while data.get(*offset) == Some(&255) {
+        *offset += 1;
+    }
+    let value = *data
+        .get(*offset)
+        .ok_or(Error::syntax("truncated JPEG marker").at(Position::Buffer(*offset)))?;
+    *offset += 1;
+    if value == 0 {
+        return Err(
+            Error::syntax("stuffed byte outside JPEG scan").at(Position::Buffer(*offset - 1))
+        );
+    }
+    Ok(value)
+}
+
+fn segment<'a>(data: &'a [u8], offset: &mut usize) -> Result<&'a [u8]> {
+    let length_bytes = data
+        .get(*offset..)
+        .and_then(|d| d.get(..2))
+        .ok_or(Error::syntax("truncated JPEG segment"))?;
+    let length = usize::from(u16::from_be_bytes([length_bytes[0], length_bytes[1]]));
+    let end = offset
+        .checked_add(length)
+        .filter(|&v| v <= data.len())
+        .ok_or(Error::syntax("truncated JPEG segment"))?;
+    if length < 2 {
+        return Err(Error::syntax("invalid JPEG segment length"));
+    }
+    let payload = &data[*offset + 2..end];
+    *offset = end;
+    Ok(payload)
+}
+
+/// Locates the JPEG EOI without interpreting pixels; segment lengths protect
+/// marker-like bytes in APP payloads, and scan stuffing protects entropy data.
+pub(crate) fn data_length(data: &[u8]) -> Result<usize> {
+    if data.get(..2) != Some(&[255, 216]) {
+        return Err(Error::syntax("missing JPEG SOI"));
+    }
+    let mut offset = 2;
+    let mut scan = false;
+    loop {
+        if scan {
+            loop {
+                let byte = *data
+                    .get(offset)
+                    .ok_or(Error::syntax("truncated inline JPEG scan"))?;
+                if byte != 255 {
+                    offset += 1;
+                    continue;
+                }
+                if matches!(data.get(offset + 1), Some(0 | 0xd0..=0xd7)) {
+                    offset += 2;
+                    continue;
+                }
+                break;
+            }
+        }
+        let code = marker(data, &mut offset)?;
+        if code == 0xd9 {
+            return Ok(offset);
+        }
+        if scan && matches!(code, 0xd0..=0xd7) {
+            continue;
+        }
+        if matches!(code, 0xd0..=0xd8 | 0x01) {
+            return Err(Error::syntax("unexpected inline JPEG marker"));
+        }
+        segment(data, &mut offset)?;
+        scan = code == 0xda;
+    }
 }

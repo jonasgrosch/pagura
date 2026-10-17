@@ -9,15 +9,17 @@
 
 pub mod ccitt;
 pub mod dct;
+pub mod features;
 pub mod jbig2;
 pub mod jpx;
 
-use pagura_core::{Dictionary, Error, Feature, ObjectId, Result, Value};
+use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
 use pagura_document::{Document, IndirectObject};
 
-/// Placeholder tag while image decoding is under construction. Must not
-/// survive the implementation.
-const PENDING: Feature = Feature::new("image.pending");
+mod dispatch;
+mod inline;
+mod mask;
+mod parameters;
 
 /// How an image's samples are interpreted.
 #[derive(Debug, Clone, PartialEq)]
@@ -115,11 +117,47 @@ pub struct DecodedImage {
 /// `Unsupported` for codecs or features not implemented, and limit errors
 /// when the image exceeds [`pagura_core::Limits`] (pixels, decoded bytes).
 pub fn decode_xobject(document: &Document, image: &IndirectObject) -> Result<DecodedImage> {
-    let _ = (document, image);
-    Err(Error::unsupported(
-        PENDING,
-        "image XObjects are not implemented yet",
-    ))
+    (|| {
+        let dictionary = image
+            .dictionary()
+            .ok_or(Error::syntax("image is not a dictionary"))?;
+        for (key, expected) in [
+            (b"Type".as_slice(), b"XObject".as_slice()),
+            (b"Subtype", b"Image"),
+        ] {
+            if let Some(value) = dictionary.get(key).filter(|v| !v.is_null())
+                && document
+                    .resolve(value)?
+                    .as_name()
+                    .is_none_or(|n| n != expected)
+            {
+                return Err(Error::syntax("invalid image XObject type"));
+            }
+        }
+        let dictionary = parameters::resolved_dictionary(document, dictionary)?;
+        let (width, height) = parameters::dimensions(&dictionary)?;
+        parameters::budget(width, height, 1, 1, &document.limits())?;
+        let stream = document.image_stream(image)?;
+        dispatch::decode(document, &dictionary, &stream.data, stream.codec.as_ref())
+    })()
+    .map_err(|error: Error| {
+        let position = match error.position {
+            pagura_core::Position::Buffer(offset) => pagura_core::Position::Stream {
+                object: image.id(),
+                offset,
+            },
+            pagura_core::Position::Unknown => match image.source() {
+                pagura_document::ObjectSource::File(range) => {
+                    pagura_core::Position::File(range.start)
+                }
+                pagura_document::ObjectSource::Compressed { .. } => pagura_core::Position::Unknown,
+            },
+            position => position,
+        };
+        let mut error = error.in_object(image.id());
+        error.position = position;
+        error
+    })
 }
 
 /// Decodes an inline image (`BI … ID … EI`, clause 8.9.7) given its
@@ -134,11 +172,8 @@ pub fn decode_inline(
     dictionary: &Dictionary,
     data: &[u8],
 ) -> Result<DecodedImage> {
-    let _ = (document, resources, dictionary, data);
-    Err(Error::unsupported(
-        PENDING,
-        "inline images are not implemented yet",
-    ))
+    inline::decode(document, resources, dictionary, data)
+        .map_err(|error| error.at(pagura_core::Position::Buffer(0)))
 }
 
 /// The length of an inline image's data starting right after `ID` and its
@@ -150,9 +185,9 @@ pub fn decode_inline(
 ///
 /// Returns a syntax error if the end cannot be determined.
 pub fn inline_data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usize> {
-    let _ = (dictionary, content);
-    Err(Error::unsupported(
-        PENDING,
-        "inline images are not implemented yet",
-    ))
+    inline::data_length(dictionary, content)
+        .map_err(|error| error.at(pagura_core::Position::Buffer(0)))
 }
+
+#[cfg(test)]
+mod tests;
