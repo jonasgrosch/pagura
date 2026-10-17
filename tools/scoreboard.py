@@ -168,12 +168,14 @@ def main() -> int:
     if not paths:
         print(f"no PDF files below {arguments.corpus}", file=sys.stderr)
         return 2
-    with ThreadPoolExecutor(max_workers=arguments.jobs) as pool:
-        results = list(pool.map(lambda path: scan(path, arguments), paths))
-    hashes = [sha256(path) for path in paths]
+    # The source revision is read before scanning: a long run must not label its
+    # results with commits made while it ran.
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, cwd=ROOT).stdout.strip()
     dirty = subprocess.run(["git", "status", "--porcelain", "--", "crates"], capture_output=True, text=True, cwd=ROOT).stdout
     commit += "-dirty" if dirty.strip() else ""
+    with ThreadPoolExecutor(max_workers=arguments.jobs) as pool:
+        results = list(pool.map(lambda path: scan(path, arguments), paths))
+    hashes = [sha256(path) for path in paths]
     report = {
         "schema": 1, "name": arguments.name, "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "commit": commit, "binary_sha256": sha256(BINARY), "dpi": arguments.dpi, "max_pages": arguments.max_pages,

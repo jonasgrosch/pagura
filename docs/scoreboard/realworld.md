@@ -1,19 +1,19 @@
 # Scoreboard: realworld
 
-Recorded 2026-10-17T18:44:40+00:00 at commit `21e75c4`; binary SHA-256 `16bbc42e2162f09c…`;
+Recorded 2026-10-17T21:24:24+00:00 at commit `0451af7`; binary SHA-256 `58eba42660d3bda1…`;
 corpus digest `9c0e0b1e40f8a5cf…` over 1000 files. Pages scanned at 72 dpi.
 
 | Metric | Value |
 |---|---:|
 | Not PDF (no `%PDF-` in the first 1024 bytes) | 2 |
-| PDF files opened, pages enumerated | 996 / 998 (99.8%) |
-| … strictly, every scanned page compiling | 921 |
-| … only with repairs | 75 |
+| PDF files opened, pages enumerated | 992 / 998 (99.4%) |
+| … strictly, every scanned page compiling | 892 |
+| … only with repairs | 100 |
 | Failed to open | 1 |
 | Opened, but the page tree failed | 1 |
 | Crashes | 0 |
-| Timeouts | 0 |
-| Pages rendered | 18 / 16248 (0.1%) |
+| Timeouts (60 s CPU budget) | 4 |
+| Pages rendered | 3097 / 14044 (22.1%) |
 
 | Open failure | Count |
 |---|---:|
@@ -25,32 +25,33 @@ corpus digest `9c0e0b1e40f8a5cf…` over 1000 files. Pages scanned at 72 dpi.
 
 | Page failure | Count |
 |---|---:|
-| `operator.BT` | 11921 |
-| `image.xobject` | 2555 |
-| `annotation.appearance` | 723 |
-| `transparency.group-colorspace` | 328 |
-| `operator.TL` | 176 |
-| `pattern.colorspace` | 130 |
-| `transparency.CA` | 97 |
-| `extgstate.HT` | 89 |
-| `transparency.ca` | 36 |
-| `operator.Tf` | 30 |
-| `transparency.BM` | 26 |
-| `shading.paint` | 26 |
-| `image.inline` | 23 |
-| `syntax` | 21 |
-| `operator.Tr` | 20 |
-| `transparency.SMask` | 12 |
-| `extgstate.unknown` | 8 |
-| `colorspace.special-ink` | 4 |
-| `raster.stroke-adjustment-geometry` | 4 |
-| `operator.Tz` | 1 |
+| `syntax` | 6987 |
+| `font.non-embedded` | 2860 |
+| `filter.JPXDecode` | 424 |
+| `transparency.group-colorspace` | 237 |
+| `font.predefined-cmap` | 211 |
+| `colorspace.ICCBased` | 61 |
+| `raster.stroke-adjustment-geometry` | 55 |
+| `font.cmap-program` | 21 |
+| `colorspace.special-ink` | 20 |
+| `pattern.tiling` | 11 |
+| `annotation.appearance` | 11 |
+| `transparency.overprint` | 10 |
+| `limit` | 9 |
+| `extgstate.unknown` | 9 |
+| `shading.mesh` | 8 |
+| `font.type1-postscript` | 8 |
+| `pattern.colorspace` | 2 |
+| `annotation.flags` | 2 |
+| `transparency.transfer` | 1 |
 
 | Repair | Count |
 |---|---:|
-| `xref.offset-corrected` | 384 |
-| `filter.trailing-data` | 342 |
+| `xref.offset-corrected` | 794 |
+| `filter.trailing-data` | 499 |
 | `xref.stream-boundary` | 143 |
+| `font.stream-lengths` | 49 |
+| `filter.truncated` | 31 |
 | `stream.eol` | 16 |
 | `xref.rebuilt` | 15 |
 | `syntax.duplicate-key` | 8 |
@@ -59,5 +60,6 @@ corpus digest `9c0e0b1e40f8a5cf…` over 1000 files. Pages scanned at 72 dpi.
 | `file.header-offset` | 4 |
 | `security.hash-padding` | 1 |
 | `security.permissions-unsigned` | 1 |
+| `syntax.name-escape` | 1 |
 
 Raw report: `benchmarks/results/local/scoreboard-realworld.json` (not committed).

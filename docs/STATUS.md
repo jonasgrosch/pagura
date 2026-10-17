@@ -24,20 +24,23 @@ primary standards.
 
 ## Evidence (scoreboards in `docs/scoreboard/`)
 
-| Corpus | PDFs | Open, pages enumerated | Strictly | Crashes / timeouts |
-|---|---:|---:|---:|---:|
-| realworld (SafeDocs Common Crawl zip 0000) | 998 | 99.8% | 921 | 0 / 0 |
-| adversarial (SafeDocs UNSAFE, mutated) | 1,416 | 99.2% | 1,191 | 0 / 0 |
-| veraPDF | 2,906 | 100.0% | 2,890 | 0 / 0 |
-| pdf.js test PDFs | 996 | 97.3% | 734 | 0 / 0 |
-| qpdf test PDFs | 701 | 93.3% | 590 | 0 / 0 |
-| PDFium test PDFs | 336 | 83.6% | 207 | 0 / 0 |
-| PDFBox test PDFs | 174 | 94.3% | 156 | 0 / 0 |
-| Poppler test PDFs | 83 | 94.0% | 74 | 0 / 0 |
-| PDF Differences | 37 | 75.7% | 27 | 0 / 0 |
-| PDF 2.0 examples | 7 | 100.0% | 6 | 0 / 0 |
+Each file gets 60 seconds of CPU time, so machine load does not turn into
+timeouts; four real-world files exceed it and are being profiled.
 
-Generated fixtures: 269 PDF cases with independent expectations pass
+| Corpus | PDFs | Open, pages enumerated | Strictly | Pages rendered | Crashes / timeouts |
+|---|---:|---:|---:|---:|---:|
+| realworld (SafeDocs Common Crawl zip 0000) | 998 | 99.4% | 892 | 22.1% (3097/14044) | 0 / 4 |
+| adversarial (SafeDocs UNSAFE, mutated) | 1,416 | 99.9% | 1,116 | 25.7% (1025/3996) | 0 / 0 |
+| veraPDF | 2,906 | 100.0% | 2,884 | 92.7% (11999/12948) | 0 / 0 |
+| pdf.js test PDFs | 996 | 97.8% | 694 | 37.3% (685/1836) | 0 / 0 |
+| qpdf test PDFs | 701 | 95.7% | 582 | 3.4% (131/3817) | 0 / 0 |
+| PDFium test PDFs | 336 | 90.8% | 185 | 39.1% (148/379) | 0 / 0 |
+| PDFBox test PDFs | 174 | 94.8% | 148 | 24.8% (76/307) | 0 / 0 |
+| Poppler test PDFs | 83 | 95.2% | 67 | 58.3% (56/96) | 0 / 0 |
+| PDF Differences | 37 | 75.7% | 26 | 23.3% (10/43) | 0 / 0 |
+| PDF 2.0 examples | 7 | 100.0% | 6 | 12.5% (1/8) | 0 / 0 |
+
+Generated fixtures: 612 PDF cases with independent expectations pass
 (`tools/conformance.py`), plus 337 codec, 97 crypto and 19 raster vectors in
 crate tests.
 

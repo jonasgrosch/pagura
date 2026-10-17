@@ -1,6 +1,6 @@
 # Scoreboard: pdf20
 
-Recorded 2026-10-17T18:45:01+00:00 at commit `21e75c4`; binary SHA-256 `16bbc42e2162f09c…`;
+Recorded 2026-10-17T21:28:12+00:00 at commit `0451af7`; binary SHA-256 `58eba42660d3bda1…`;
 corpus digest `d64185ac2dfd4ccd…` over 7 files. Pages scanned at 72 dpi.
 
 | Metric | Value |
@@ -12,14 +12,12 @@ corpus digest `d64185ac2dfd4ccd…` over 7 files. Pages scanned at 72 dpi.
 | Failed to open | 0 |
 | Opened, but the page tree failed | 0 |
 | Crashes | 0 |
-| Timeouts | 0 |
-| Pages rendered | 0 / 8 (0.0%) |
+| Timeouts (60 s CPU budget) | 0 |
+| Pages rendered | 1 / 8 (12.5%) |
 
 | Page failure | Count |
 |---|---:|
-| `operator.BT` | 4 |
-| `image.xobject` | 2 |
-| `annotation.appearance` | 1 |
+| `font.non-embedded` | 6 |
 | `extgstate.unknown` | 1 |
 
 | Repair | Count |
