@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "crypto",
-  "scope": "Independently implemented from remembered published algorithms. No standards cache was available; ISO 32000-2 full-text clause/table locators await verification. Published known-answer vectors are checked independently in Rust and Python. Encrypted PDFs await W2 integration.",
+  "scope": "Checked the standard-security-handler algorithm steps, parameter rules and related serialization locators against the locally supplied ISO 32000-2:2020 sponsored EC3 text, clauses 7.6, 7.3, 7.5.5 and Table D.3. This verifies the PDF-level composition of primitives, not their external standards. Full SASLprep, host-codepage conversion, R5 extension provenance, crypt-filter text conflicts and document integration remain explicitly qualified below; no complete PDF conformance claim is made.",
   "requirements": [
     {
       "id": "crypto-hash-vectors",
@@ -16,7 +16,9 @@
         "tools/fixturegen/crypto.py self_check",
         "corpus/manifests/crypto.json"
       ],
-      "gaps": ""
+      "gaps": "RFC 1321 and FIPS 180-4 are unavailable locally; the cited sections and known-answer values have not been rechecked against those texts.",
+      "verification": "pending-primary-text",
+      "known_answer_coverage": "Seven RFC-1321-attributed MD5 messages; SHA-256/384/512 empty, abc, multi-block and million-a values; streaming splits; Python hashlib padding-boundary comparisons for lengths 0 through 261."
     },
     {
       "id": "crypto-cipher-vectors",
@@ -32,14 +34,16 @@
         "tools/fixturegen/crypto.py self_check",
         "corpus/manifests/crypto.json"
       ],
-      "gaps": ""
+      "gaps": "FIPS 197, SP 800-38A and RFC 6229 are unavailable locally; external primitive locators and attributed vectors remain pending primary-source verification.",
+      "verification": "pending-primary-text",
+      "known_answer_coverage": "AES-128/256 Appendix-C-attributed block encryption/decryption; four-block CBC-128/256 SP-800-38A-attributed vectors; seven RFC-6229-attributed RC4 key sizes and offsets 0,16,256 for the 40-bit key; invalid padding and streaming checks. Python AES/RC4 self-checks use the same fixed attributed values."
     },
     {
       "id": "security-r2",
-      "reference": "iso32000-2",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.6",
-        "Algorithms 1\u20137"
+        "Algorithms 1–7"
       ],
       "status": "implemented",
       "tests": [
@@ -51,10 +55,10 @@
     },
     {
       "id": "security-r3",
-      "reference": "iso32000-2",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.6",
-        "Algorithms 1\u20137"
+        "Algorithms 1–7"
       ],
       "status": "implemented",
       "tests": [
@@ -66,10 +70,10 @@
     },
     {
       "id": "security-r4",
-      "reference": "iso32000-2",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.6",
-        "Algorithms 1\u20137"
+        "Algorithms 1–7"
       ],
       "status": "partial",
       "tests": [
@@ -77,14 +81,14 @@
         "tools/fixturegen/crypto.py self_check",
         "corpus/manifests/crypto.json"
       ],
-      "gaps": "Document-layer crypt filter selection belongs to W2."
+      "gaps": "Document-layer dictionary and crypt-filter discrepancies are listed under integration_findings; Table 25 Length wording is internally inconsistent."
     },
     {
       "id": "security-r5-extension",
       "reference": "adobe-pdf17-extension-level3",
       "clauses": [
         "Adobe Supplement to ISO 32000-1, extension level 3",
-        "Algorithms 2.A, 11\u201313"
+        "Algorithms 2.A, 11–13"
       ],
       "status": "implemented",
       "tests": [
@@ -93,15 +97,16 @@
         "corpus/manifests/crypto.json",
         "standard::modern::tests independent Algorithm 13 outcome vectors"
       ],
-      "gaps": "Extension support is intentional; not a claim that revision 5 is normative PDF 2.0.",
-      "permissions_policy": "Password-authenticated keys report Validated or Inconsistent(PermissionsCheck); the document caller owns strict/reported-repair policy. Structural errors remain Syntax."
+      "gaps": "Table 21 prohibits R=5 in conforming PDF 2.0. Compatibility support remains separate; the Adobe extension text is unavailable locally.",
+      "permissions_policy": "Password-authenticated keys report Validated or Inconsistent(PermissionsCheck); the document caller owns strict/reported-repair policy. Structural errors remain Syntax.",
+      "verification": "unverified-extension"
     },
     {
       "id": "security-r6",
-      "reference": "iso32000-2",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "7.6",
-        "Algorithms 2.A, 2.B, 11\u201313"
+        "Algorithms 2.A, 2.B, 11–13"
       ],
       "status": "partial",
       "tests": [
@@ -110,8 +115,988 @@
         "corpus/manifests/crypto.json",
         "standard::modern::tests independent Algorithm 13 outcome vectors"
       ],
-      "gaps": "Non-ASCII passwords require SASLprep and return security.saslprep; document integration belongs to W2.",
+      "gaps": "Only printable ASCII preprocessing is supported; other input returns security.saslprep before truncation. RFC 4013/3454 are not locally verified. Document-layer findings remain open.",
       "permissions_policy": "Password-authenticated keys report Validated or Inconsistent(PermissionsCheck); the document caller owns strict/reported-repair policy. Structural errors remain Syntax."
+    },
+    {
+      "id": "security-dictionary-integration",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.6.2",
+        "7.6.4.1",
+        "7.6.4.2",
+        "7.6.6",
+        "7.5.5 Tables 15,20,21,25,26"
+      ],
+      "status": "partial",
+      "tests": [
+        "crypto/dictionary-* vector inputs and explicit API expectations"
+      ],
+      "gaps": "Integration findings below are not fixes to the document crate and are not counted as conformance successes."
     }
-  ]
+  ],
+  "primary_text": {
+    "reference": "iso32000-2-full-text",
+    "edition": "ISO 32000-2:2020, sponsored edition with Errata Collection 3",
+    "local_file": "ISO_32000-2_sponsored_EC3.pdf",
+    "method": "Read the accompanying local extraction; locators and original paraphrases only. No licensed text is redistributed."
+  },
+  "audit_steps": [
+    {
+      "id": "application",
+      "locator": "7.6.2",
+      "paraphrase": "Encrypt only strings and stored stream bytes, excluding IDs, encryption entries, nested stream strings and hexadecimal signature contents.",
+      "implementation": "Crypto operates only on supplied bytes; document selection is separate.",
+      "vectors": "Existing encrypted-page and integration inputs cover selection; signature representation is not exhaustively tested.",
+      "verdict": "partial"
+    },
+    {
+      "id": "filter",
+      "locator": "7.6.2 Table 20 Filter/SubFilter",
+      "paraphrase": "Use the named handler and any declared interoperable format.",
+      "implementation": "Standard supported; other handlers explicitly unsupported.",
+      "vectors": "Existing Standard fixtures; no public-key support claim.",
+      "verdict": "partial"
+    },
+    {
+      "id": "version",
+      "locator": "7.6.2 Table 20 V/Length",
+      "paraphrase": "V fixes 40/128/256-bit keys for 1/4/5; only V=2/3 uses a configurable 40–128-bit length.",
+      "implementation": "Fixed V=4 to 16 bytes; V=0 is invalid, V=3 is explicitly unsupported.",
+      "vectors": "r4-key7, r4-fixed-key-{5,15}; existing legacy/modern keys.",
+      "verdict": "fixed"
+    },
+    {
+      "id": "filter-dictionary",
+      "locator": "7.6.2 Table 20 CF",
+      "paraphrase": "Resolve named filters but ignore entries shadowing standard filter names.",
+      "implementation": "Document rejects an Identity shadow.",
+      "vectors": "dictionary-identity-shadow",
+      "verdict": "document-discrepancy"
+    },
+    {
+      "id": "default-filters",
+      "locator": "7.6.2 Table 20 StmF/StrF/EFF",
+      "paraphrase": "Streams and strings default to Identity; EFF defaults to the stream filter, unless explicitly overridden.",
+      "implementation": "Default selection agrees; event and metadata exceptions have separate findings.",
+      "vectors": "Existing R4 Identity/string/stream fixtures.",
+      "verdict": "verified"
+    },
+    {
+      "id": "direct-encryption-strings",
+      "locator": "7.6.2 after Table 20",
+      "paraphrase": "Encryption-dictionary strings must be direct and common encryption entries remain clear.",
+      "implementation": "O/U/key strings are read directly; no recursion or object-key operation applies to them.",
+      "vectors": "Existing fixed byte-string dictionaries.",
+      "verdict": "verified"
+    },
+    {
+      "id": "revision",
+      "locator": "7.6.4.2 Table 21 R",
+      "paraphrase": "R=2/3 correspond to legacy version/permission selection, R=4 to V=4 and R=6 to V=5; R=5 is nonconforming.",
+      "implementation": "Enforces version pairing and the Table-21 V=1 R2/R3 selection using Table-22 revision-3-only bits 9,11,12; bit 10 remains ignored. R5 is an explicitly separate extension.",
+      "vectors": "r2-revision-permissions and r3-version1-permissions reject inconsistent selection; r3-version1 remains valid.",
+      "verdict": "fixed-with-unverified-extension"
+    },
+    {
+      "id": "password-entry-lengths",
+      "locator": "7.6.4.2 Table 21 O/U/OE/UE/Perms",
+      "paraphrase": "Legacy O/U are 32 bytes; R6 O/U are 48, encrypted keys 32 and Perms 16.",
+      "implementation": "Exact structural lengths checked before slicing or authentication.",
+      "vectors": "Malformed-parameter tests and all fixed parameter sets.",
+      "verdict": "verified"
+    },
+    {
+      "id": "permissions-integer",
+      "locator": "7.6.4.2 Table 21 P; Table 22",
+      "paraphrase": "Use the raw 32-bit permission representation for cryptographic input; access interpretation is separate.",
+      "implementation": "to_le_bytes preserves the signed value bit pattern without masking.",
+      "vectors": "r3-permissions-* demonstrates unchanged raw bits in hashes.",
+      "verdict": "verified"
+    },
+    {
+      "id": "metadata",
+      "locator": "7.6.4.2 Table 21 EncryptMetadata; 7.6.4.3.2(f)",
+      "paraphrase": "The optional flag defaults true, matters only for V=4/5 and excludes document-level XMP metadata only.",
+      "implementation": "Hash suffix agrees; document stream selection exempts too many metadata streams and applies the flag to V=1.",
+      "vectors": "dictionary-other-metadata, dictionary-legacy-metadata",
+      "verdict": "document-discrepancy"
+    },
+    {
+      "id": "permission-bits-1–2",
+      "locator": "7.6.4.2 Table 22 bits 1–2",
+      "paraphrase": "Writers clear the two low reserved bits; readers do not interpret them as access grants.",
+      "implementation": "Crypto preserves every raw bit; granting operations belongs to the caller.",
+      "vectors": "Raw-bit vectors cover reserved-low/high and bit 10; per-operation enforcement is outside this API.",
+      "verdict": "verified-byte-contract"
+    },
+    {
+      "id": "permission-bits-3",
+      "locator": "7.6.4.2 Table 22 bits 3",
+      "paraphrase": "Printing is controlled here; later revisions combine this with the high-quality print flag.",
+      "implementation": "Crypto preserves every raw bit; granting operations belongs to the caller.",
+      "vectors": "Raw-bit vectors cover reserved-low/high and bit 10; per-operation enforcement is outside this API.",
+      "verdict": "verified-byte-contract"
+    },
+    {
+      "id": "permission-bits-4",
+      "locator": "7.6.4.2 Table 22 bits 4",
+      "paraphrase": "This controls general modification apart from the separately controlled operations.",
+      "implementation": "Crypto preserves every raw bit; granting operations belongs to the caller.",
+      "vectors": "Raw-bit vectors cover reserved-low/high and bit 10; per-operation enforcement is outside this API.",
+      "verdict": "verified-byte-contract"
+    },
+    {
+      "id": "permission-bits-5",
+      "locator": "7.6.4.2 Table 22 bits 5",
+      "paraphrase": "This controls extraction, while assistive access should not be blocked by this flag.",
+      "implementation": "Crypto preserves every raw bit; granting operations belongs to the caller.",
+      "vectors": "Raw-bit vectors cover reserved-low/high and bit 10; per-operation enforcement is outside this API.",
+      "verdict": "verified-byte-contract"
+    },
+    {
+      "id": "permission-bits-6",
+      "locator": "7.6.4.2 Table 22 bits 6",
+      "paraphrase": "This controls annotation/form changes, with additional permission for form creation.",
+      "implementation": "Crypto preserves every raw bit; granting operations belongs to the caller.",
+      "vectors": "Raw-bit vectors cover reserved-low/high and bit 10; per-operation enforcement is outside this API.",
+      "verdict": "verified-byte-contract"
+    },
+    {
+      "id": "permission-bits-7–8",
+      "locator": "7.6.4.2 Table 22 bits 7–8",
+      "paraphrase": "Writers set these reserved bits; readers ignore their access meaning.",
+      "implementation": "Crypto preserves every raw bit; granting operations belongs to the caller.",
+      "vectors": "Raw-bit vectors cover reserved-low/high and bit 10; per-operation enforcement is outside this API.",
+      "verdict": "verified-byte-contract"
+    },
+    {
+      "id": "permission-bits-9",
+      "locator": "7.6.4.2 Table 22 bits 9",
+      "paraphrase": "Later revisions use this for filling existing forms independently of annotation permission.",
+      "implementation": "Crypto preserves every raw bit; granting operations belongs to the caller.",
+      "vectors": "Raw-bit vectors cover reserved-low/high and bit 10; per-operation enforcement is outside this API.",
+      "verdict": "verified-byte-contract"
+    },
+    {
+      "id": "permission-bits-10",
+      "locator": "7.6.4.2 Table 22 bits 10",
+      "paraphrase": "Readers ignore this obsolete accessibility restriction; writers set it for compatibility.",
+      "implementation": "Crypto preserves every raw bit; granting operations belongs to the caller.",
+      "vectors": "Raw-bit vectors cover reserved-low/high and bit 10; per-operation enforcement is outside this API.",
+      "verdict": "verified-byte-contract"
+    },
+    {
+      "id": "permission-bits-11",
+      "locator": "7.6.4.2 Table 22 bits 11",
+      "paraphrase": "Later revisions use this for document assembly independently of general modification.",
+      "implementation": "Crypto preserves every raw bit; granting operations belongs to the caller.",
+      "vectors": "Raw-bit vectors cover reserved-low/high and bit 10; per-operation enforcement is outside this API.",
+      "verdict": "verified-byte-contract"
+    },
+    {
+      "id": "permission-bits-12",
+      "locator": "7.6.4.2 Table 22 bits 12",
+      "paraphrase": "Later revisions use this with the print flag to allow high-quality printing.",
+      "implementation": "Crypto preserves every raw bit; granting operations belongs to the caller.",
+      "vectors": "Raw-bit vectors cover reserved-low/high and bit 10; per-operation enforcement is outside this API.",
+      "verdict": "verified-byte-contract"
+    },
+    {
+      "id": "permission-bits-13–32",
+      "locator": "7.6.4.2 Table 22 bits 13–32",
+      "paraphrase": "For later revisions writers set these reserved high bits; readers ignore their access meaning.",
+      "implementation": "Crypto preserves every raw bit; granting operations belongs to the caller.",
+      "vectors": "Raw-bit vectors cover reserved-low/high and bit 10; per-operation enforcement is outside this API.",
+      "verdict": "verified-byte-contract"
+    },
+    {
+      "id": "algorithm-1-a",
+      "locator": "7.6.3.2 Algorithm 1(a)",
+      "paraphrase": "Use the containing indirect object identity for direct strings.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-1-b",
+      "locator": "7.6.3.2 Algorithm 1(b)",
+      "paraphrase": "Append object low 24 bits and generation low 16 bits, little-endian; add the AES salt for AESV2.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-1-c",
+      "locator": "7.6.3.2 Algorithm 1(c)",
+      "paraphrase": "Hash the extended key with MD5.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-1-d",
+      "locator": "7.6.3.2 Algorithm 1(d)",
+      "paraphrase": "Use at most n+5 digest bytes, capped at 16, and a prepended 16-byte IV for AES CBC.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-1.A-a",
+      "locator": "7.6.3.3 Algorithm 1.A(a)",
+      "paraphrase": "Use the unchanged 32-byte file key and a prepended 16-byte AES-CBC IV.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2-a",
+      "locator": "7.6.4.3.2 Algorithm 2(a)",
+      "paraphrase": "Convert host text to PDFDocEncoding, then truncate/pad to 32 bytes.",
+      "implementation": "Byte API requires caller-prepared PDFDocEncoding; padding/truncation agrees, host-codepage conversion is not implemented here.",
+      "vectors": "r3-pdfdocencoding-euro confirms byte 0xa0; undefined legacy bytes remain accepted as compatibility input.",
+      "verdict": "partial-preprocessing"
+    },
+    {
+      "id": "algorithm-2-b",
+      "locator": "7.6.4.3.2 Algorithm 2(b)",
+      "paraphrase": "Start MD5 with the padded password.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2-c",
+      "locator": "7.6.4.3.2 Algorithm 2(c)",
+      "paraphrase": "Append the owner entry.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2-d",
+      "locator": "7.6.4.3.2 Algorithm 2(d)",
+      "paraphrase": "Append all four raw permission bytes in little-endian order.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2-e",
+      "locator": "7.6.4.3.2 Algorithm 2(e)",
+      "paraphrase": "Append the first trailer identifier.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2-f",
+      "locator": "7.6.4.3.2 Algorithm 2(f)",
+      "paraphrase": "For R4 clear document metadata, append four 0xff bytes.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2-g",
+      "locator": "7.6.4.3.2 Algorithm 2(g)",
+      "paraphrase": "Finish that MD5 digest.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2-h",
+      "locator": "7.6.4.3.2 Algorithm 2(h)",
+      "paraphrase": "For R3/R4 rehash the first n digest bytes 50 times.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2-i",
+      "locator": "7.6.4.3.2 Algorithm 2(i)",
+      "paraphrase": "Take five final bytes for R2 or the configured n bytes for R3/R4.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2.A-a",
+      "locator": "7.6.4.3.3 Algorithm 2.A(a)",
+      "paraphrase": "Prepare Unicode with the required SASLprep profile before UTF-8 conversion.",
+      "implementation": "Printable ASCII only; control/non-ASCII input returns security.saslprep before truncation.",
+      "vectors": "r6-saslprep-* confirms explicit unsupported outcomes.",
+      "verdict": "partial-preprocessing"
+    },
+    {
+      "id": "algorithm-2.A-b",
+      "locator": "7.6.4.3.3 Algorithm 2.A(b)",
+      "paraphrase": "Take at most the first 127 encoded bytes, without character-boundary rounding.",
+      "implementation": "agrees",
+      "vectors": "Existing 130-byte ASCII passwords verify byte truncation; non-ASCII cut points remain outside the implemented subset.",
+      "verdict": "verified-subset"
+    },
+    {
+      "id": "algorithm-2.A-c",
+      "locator": "7.6.4.3.3 Algorithm 2.A(c)",
+      "paraphrase": "Validate the owner hash using its validation salt and all 48 user-entry bytes first.",
+      "implementation": "Fixed R6 to owner-first validation.",
+      "vectors": "r6-owner-precedence covers a shared user/owner password.",
+      "verdict": "fixed"
+    },
+    {
+      "id": "algorithm-2.A-d",
+      "locator": "7.6.4.3.3 Algorithm 2.A(d)",
+      "paraphrase": "Use owner key salt plus U to derive the AES-256 key that unwraps OE with a zero CBC IV and no padding.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2.A-e",
+      "locator": "7.6.4.3.3 Algorithm 2.A(e)",
+      "paraphrase": "Use user key salt to derive the AES-256 key that unwraps UE with a zero CBC IV and no padding.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2.A-f",
+      "locator": "7.6.4.3.3 Algorithm 2.A(f)",
+      "paraphrase": "Decrypt Perms with file-key ECB and compare the marker and little-endian permissions.",
+      "implementation": "Returns Validated or Inconsistent(check); recovery belongs to the document caller.",
+      "vectors": "r5/r6-perms-* covers every check, multiple failures and random-tail independence.",
+      "verdict": "verified-checks-policy-choice"
+    },
+    {
+      "id": "algorithm-2.B-initial",
+      "locator": "7.6.4.3.4 Algorithm 2.B(initial)",
+      "paraphrase": "Seed K with SHA-256 of password, salt and owner-only U data.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2.B-a",
+      "locator": "7.6.4.3.4 Algorithm 2.B(a)",
+      "paraphrase": "Repeat password, current K and owner-only U 64 times.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2.B-b",
+      "locator": "7.6.4.3.4 Algorithm 2.B(b)",
+      "paraphrase": "Encrypt the repeated buffer with AES-128-CBC using K halves as key and IV, without padding.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2.B-c",
+      "locator": "7.6.4.3.4 Algorithm 2.B(c)",
+      "paraphrase": "Reduce the first 16 encrypted bytes as a big-endian integer modulo three to choose SHA-256/384/512.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2.B-d",
+      "locator": "7.6.4.3.4 Algorithm 2.B(d)",
+      "paraphrase": "Hash all encrypted bytes to obtain the next variable-length K.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2.B-e",
+      "locator": "7.6.4.3.4 Algorithm 2.B(e)",
+      "paraphrase": "After rounds 0–63, compare the last encrypted byte with the next round number minus 32.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-2.B-f",
+      "locator": "7.6.4.3.4 Algorithm 2.B(f)",
+      "paraphrase": "Continue until that comparison permits termination, then retain the first 32 K bytes.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-3-a",
+      "locator": "7.6.4.4.2 Algorithm 3(a)",
+      "paraphrase": "Pad the owner password, substituting the user password if no owner password was supplied.",
+      "implementation": "Python encryption-side generation agrees; Rust uses the corresponding owner-authentication inverse. The text's Algorithm-2(b) padding reference is resolved to the explicit padding definition at Algorithm-2(a); this locator conflict is documented separately.",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified-operation-with-cross-reference-conflict"
+    },
+    {
+      "id": "algorithm-3-b",
+      "locator": "7.6.4.4.2 Algorithm 3(b)",
+      "paraphrase": "MD5 the padded owner password.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-3-c",
+      "locator": "7.6.4.4.2 Algorithm 3(c)",
+      "paraphrase": "For R3/R4 perform 50 full-digest MD5 iterations.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-3-d",
+      "locator": "7.6.4.4.2 Algorithm 3(d)",
+      "paraphrase": "Use five or n digest bytes as the owner RC4 key.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-3-e",
+      "locator": "7.6.4.4.2 Algorithm 3(e)",
+      "paraphrase": "Pad the user password.",
+      "implementation": "Python encryption-side generation agrees; Rust uses the corresponding owner-authentication inverse. The text's Algorithm-2(b) padding reference is resolved to the explicit padding definition at Algorithm-2(a); this locator conflict is documented separately.",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified-operation-with-cross-reference-conflict"
+    },
+    {
+      "id": "algorithm-3-f",
+      "locator": "7.6.4.4.2 Algorithm 3(f)",
+      "paraphrase": "Encrypt the padded user bytes with the owner RC4 key.",
+      "implementation": "Python encryption-side generation agrees; Rust uses the corresponding owner-authentication inverse.",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-3-g",
+      "locator": "7.6.4.4.2 Algorithm 3(g)",
+      "paraphrase": "For R3/R4 apply another 19 RC4 passes with the key XORed by counters 1–19.",
+      "implementation": "Python encryption-side generation agrees; Rust uses the corresponding owner-authentication inverse.",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-3-h",
+      "locator": "7.6.4.4.2 Algorithm 3(h)",
+      "paraphrase": "Store the result as O.",
+      "implementation": "Python encryption-side generation agrees; Rust uses the corresponding owner-authentication inverse.",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-4-a",
+      "locator": "7.6.4.4.3 Algorithm 4(a)",
+      "paraphrase": "Derive the legacy file key from the user password.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-4-b",
+      "locator": "7.6.4.4.3 Algorithm 4(b)",
+      "paraphrase": "RC4-encrypt the full padding string with that key.",
+      "implementation": "agrees The text's Algorithm-2(b) padding reference is resolved to the explicit padding definition at Algorithm-2(a); this locator conflict is documented separately.",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified-operation-with-cross-reference-conflict"
+    },
+    {
+      "id": "algorithm-4-c",
+      "locator": "7.6.4.4.3 Algorithm 4(c)",
+      "paraphrase": "Store the 32-byte result as U.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-5-a",
+      "locator": "7.6.4.4.4 Algorithm 5(a)",
+      "paraphrase": "Derive the file key from the user password.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-5-b",
+      "locator": "7.6.4.4.4 Algorithm 5(b)",
+      "paraphrase": "Start MD5 with the fixed padding bytes.",
+      "implementation": "agrees The text's Algorithm-2(b) padding reference is resolved to the explicit padding definition at Algorithm-2(a); this locator conflict is documented separately.",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified-operation-with-cross-reference-conflict"
+    },
+    {
+      "id": "algorithm-5-c",
+      "locator": "7.6.4.4.4 Algorithm 5(c)",
+      "paraphrase": "Hash the first identifier next and finish the digest.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-5-d",
+      "locator": "7.6.4.4.4 Algorithm 5(d)",
+      "paraphrase": "RC4-encrypt the 16-byte digest.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-5-e",
+      "locator": "7.6.4.4.4 Algorithm 5(e)",
+      "paraphrase": "Apply 19 more RC4 passes using counter-XORed keys.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-5-f",
+      "locator": "7.6.4.4.4 Algorithm 5(f)",
+      "paraphrase": "Append any 16 padding bytes to make the stored U entry 32 bytes.",
+      "implementation": "agrees",
+      "vectors": "r3-user-hash-tail confirms arbitrary trailing bytes are ignored by authentication.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-6-a",
+      "locator": "7.6.4.4.5 Algorithm 6(a)",
+      "paraphrase": "Recompute the relevant U validation bytes from the candidate user password.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-6-b",
+      "locator": "7.6.4.4.5 Algorithm 6(b)",
+      "paraphrase": "Compare all 32 bytes for R2 but only the first 16 for R3/R4, retaining the derived key on success.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-7-a",
+      "locator": "7.6.4.4.6 Algorithm 7(a)",
+      "paraphrase": "Derive the owner RC4 key using Algorithm 3(a–d).",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-7-b",
+      "locator": "7.6.4.4.6 Algorithm 7(b)",
+      "paraphrase": "Decrypt O once for R2 or with XOR counters 19 down to 0 for R3/R4.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-7-c",
+      "locator": "7.6.4.4.6 Algorithm 7(c)",
+      "paraphrase": "Authenticate the recovered user bytes and grant owner authority on success.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-8-a",
+      "locator": "7.6.4.4.7 Algorithm 8(a)",
+      "paraphrase": "Build U from a password/validation-salt hash and two independent eight-byte salts.",
+      "implementation": "Reader-side inverse agrees; no product encryption writer is provided.",
+      "vectors": "Python encryption-side math agrees; fixed test-only keys/salts/IVs/tails do not establish random-source quality.",
+      "verdict": "verified-math-only"
+    },
+    {
+      "id": "algorithm-8-b",
+      "locator": "7.6.4.4.7 Algorithm 8(b)",
+      "paraphrase": "Wrap the file key with a password/key-salt hash using zero-IV unpadded AES-256-CBC for UE.",
+      "implementation": "Reader-side inverse agrees; no product encryption writer is provided.",
+      "vectors": "Python encryption-side math agrees; fixed test-only keys/salts/IVs/tails do not establish random-source quality.",
+      "verdict": "verified-math-only"
+    },
+    {
+      "id": "algorithm-9-a",
+      "locator": "7.6.4.4.8 Algorithm 9(a)",
+      "paraphrase": "Build O using owner validation salt and the complete U entry, followed by both owner salts.",
+      "implementation": "Reader-side inverse agrees; no product encryption writer is provided.",
+      "vectors": "Python encryption-side math agrees; fixed test-only keys/salts/IVs/tails do not establish random-source quality.",
+      "verdict": "verified-math-only"
+    },
+    {
+      "id": "algorithm-9-b",
+      "locator": "7.6.4.4.8 Algorithm 9(b)",
+      "paraphrase": "Wrap the file key with the owner key-salt hash including U, using zero-IV unpadded AES-256-CBC for OE.",
+      "implementation": "Reader-side inverse agrees; no product encryption writer is provided.",
+      "vectors": "Python encryption-side math agrees; fixed test-only keys/salts/IVs/tails do not establish random-source quality.",
+      "verdict": "verified-math-only"
+    },
+    {
+      "id": "algorithm-10-a",
+      "locator": "7.6.4.4.9 Algorithm 10(a)",
+      "paraphrase": "Extend the permission word with 32 upper one-bits.",
+      "implementation": "Reader-side inverse agrees; no product encryption writer is provided.",
+      "vectors": "Python encryption-side math agrees; fixed test-only keys/salts/IVs/tails do not establish random-source quality.",
+      "verdict": "verified-math-only"
+    },
+    {
+      "id": "algorithm-10-b",
+      "locator": "7.6.4.4.9 Algorithm 10(b)",
+      "paraphrase": "Store those eight permission bytes little-endian.",
+      "implementation": "Reader-side inverse agrees; no product encryption writer is provided.",
+      "vectors": "Python encryption-side math agrees; fixed test-only keys/salts/IVs/tails do not establish random-source quality.",
+      "verdict": "verified-math-only"
+    },
+    {
+      "id": "algorithm-10-c",
+      "locator": "7.6.4.4.9 Algorithm 10(c)",
+      "paraphrase": "Store the metadata T/F flag at byte 8.",
+      "implementation": "Reader-side inverse agrees; no product encryption writer is provided.",
+      "vectors": "Python encryption-side math agrees; fixed test-only keys/salts/IVs/tails do not establish random-source quality.",
+      "verdict": "verified-math-only"
+    },
+    {
+      "id": "algorithm-10-d",
+      "locator": "7.6.4.4.9 Algorithm 10(d)",
+      "paraphrase": "Store the three-byte marker at bytes 9–11.",
+      "implementation": "Reader-side inverse agrees; no product encryption writer is provided.",
+      "vectors": "Python encryption-side math agrees; fixed test-only keys/salts/IVs/tails do not establish random-source quality.",
+      "verdict": "verified-math-only"
+    },
+    {
+      "id": "algorithm-10-e",
+      "locator": "7.6.4.4.9 Algorithm 10(e)",
+      "paraphrase": "Fill the ignored final four bytes with random data.",
+      "implementation": "Reader-side inverse agrees; no product encryption writer is provided.",
+      "vectors": "Python encryption-side math agrees; fixed test-only keys/salts/IVs/tails do not establish random-source quality.",
+      "verdict": "verified-math-only"
+    },
+    {
+      "id": "algorithm-10-f",
+      "locator": "7.6.4.4.9 Algorithm 10(f)",
+      "paraphrase": "Encrypt the block with file-key AES-256-ECB as Perms.",
+      "implementation": "Reader-side inverse agrees; no product encryption writer is provided.",
+      "vectors": "Python encryption-side math agrees; fixed test-only keys/salts/IVs/tails do not establish random-source quality.",
+      "verdict": "verified-math-only"
+    },
+    {
+      "id": "algorithm-11-a",
+      "locator": "7.6.4.4.10 Algorithm 11(a)",
+      "paraphrase": "Compare the R6 password/validation-salt hash with the first 32 U bytes.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-12-a",
+      "locator": "7.6.4.4.11 Algorithm 12(a)",
+      "paraphrase": "Compare the R6 password/owner-salt/U hash with the first 32 O bytes.",
+      "implementation": "agrees",
+      "vectors": "Existing encryption-side parameter, key and ciphertext vectors agree.",
+      "verdict": "verified"
+    },
+    {
+      "id": "algorithm-13-a",
+      "locator": "7.6.4.4.12 Algorithm 13(a)",
+      "paraphrase": "ECB-decrypt Perms, verify its marker and compare permissions plus the metadata flag.",
+      "implementation": "Returns Validated or Inconsistent(check); recovery belongs to the document caller.",
+      "vectors": "r5/r6-perms-* covers every check, multiple failures and random-tail independence.",
+      "verdict": "verified-checks-policy-choice"
+    },
+    {
+      "id": "padding",
+      "locator": "7.6.3.1",
+      "paraphrase": "AES data adds a full padding block even for aligned/empty plaintext and validates every removed padding byte.",
+      "implementation": "AES unpadding and ciphertext framing agree.",
+      "vectors": "Every AES vector has sizes 0,1,15,16,17,31,32; malformed padding tests.",
+      "verdict": "verified"
+    },
+    {
+      "id": "filter-order",
+      "locator": "7.6.3.3 after Algorithm 1.A",
+      "paraphrase": "Decrypt stored bytes before stream filters and decode string escapes before decryption.",
+      "implementation": "Document stream path decrypts before the codec chain; parsed byte strings reach crypto.",
+      "vectors": "Existing encrypted-page and stream integration tests.",
+      "verdict": "verified"
+    },
+    {
+      "id": "crypt-override",
+      "locator": "7.6.6; 7.4.10",
+      "paraphrase": "An explicit Crypt filter selects a named filter, defaulting to Identity, instead of StmF.",
+      "implementation": "Document stream selection supports overrides.",
+      "vectors": "Existing document crypt-filter tests.",
+      "verdict": "verified"
+    },
+    {
+      "id": "crypt-type",
+      "locator": "7.6.6 Table 25 Type",
+      "paraphrase": "If present, the filter dictionary Type must be CryptFilter.",
+      "implementation": "Document does not validate Type.",
+      "vectors": "dictionary-crypt-filter-type",
+      "verdict": "document-discrepancy"
+    },
+    {
+      "id": "crypt-none",
+      "locator": "7.6.6 Table 25 CFM None",
+      "paraphrase": "None delegates decryption to the security handler; it does not mean Identity.",
+      "implementation": "Document currently maps None directly to Identity.",
+      "vectors": "dictionary-cfm-none",
+      "verdict": "document-discrepancy"
+    },
+    {
+      "id": "crypt-v2",
+      "locator": "7.6.6 Table 25 CFM V2",
+      "paraphrase": "RC4 uses Algorithm 1.",
+      "implementation": "Crypto agrees.",
+      "vectors": "Existing R4 RC4 vectors.",
+      "verdict": "verified"
+    },
+    {
+      "id": "crypt-aesv2",
+      "locator": "7.6.6 Table 25 CFM AESV2",
+      "paraphrase": "AES-128 uses Algorithm 1 and a prefixed random CBC IV.",
+      "implementation": "Crypto agrees.",
+      "vectors": "Existing AESV2 object vectors.",
+      "verdict": "verified"
+    },
+    {
+      "id": "crypt-aesv3",
+      "locator": "7.6.6 Table 25 CFM AESV3",
+      "paraphrase": "AES-256 uses Algorithm 1.A and CBC data padding.",
+      "implementation": "Crypto agrees.",
+      "vectors": "Existing AESV3 object vectors.",
+      "verdict": "verified"
+    },
+    {
+      "id": "crypt-event",
+      "locator": "7.6.6 Table 25 AuthEvent",
+      "paraphrase": "Treat filters selected by StmF or StrF as DocOpen even when another event is specified.",
+      "implementation": "Document rejects EFOpen on those selectors.",
+      "vectors": "dictionary-auth-event-default",
+      "verdict": "document-discrepancy"
+    },
+    {
+      "id": "crypt-length-required",
+      "locator": "7.6.6 Table 25 Length",
+      "paraphrase": "Each crypt-filter dictionary requires a Length entry.",
+      "implementation": "Document accepts omission.",
+      "vectors": "dictionary-crypt-filter-no-length",
+      "verdict": "document-discrepancy"
+    },
+    {
+      "id": "crypt-length-units",
+      "locator": "7.6.6 Table 25 Length",
+      "paraphrase": "The same entry describes standard-handler bytes but later demands AES values of 128/256.",
+      "implementation": "Uses standard-handler byte units (16/32); this is a documented interpretation of contradictory text.",
+      "vectors": "AES fixtures use bytes; the contradictory sentence is not claimed verified.",
+      "verdict": "text-conflict-choice"
+    },
+    {
+      "id": "crypt-identity",
+      "locator": "7.6.6 Table 26 Identity",
+      "paraphrase": "Identity passes bytes through unchanged.",
+      "implementation": "Crypto agrees; shadow lookup is a separate document defect.",
+      "vectors": "Identity decrypt test and R4 Identity-string PDFs.",
+      "verdict": "verified"
+    },
+    {
+      "id": "standard-filter-support",
+      "locator": "7.6.4.1",
+      "paraphrase": "The standard handler limits crypt-filter support to Identity/StdCF and the stated cipher and event combinations.",
+      "implementation": "Document accepts arbitrary names; None is separately reported.",
+      "vectors": "dictionary-standard-filter-name",
+      "verdict": "document-discrepancy"
+    },
+    {
+      "id": "identifier",
+      "locator": "7.5.5 Table 15 ID",
+      "paraphrase": "Encrypted files need two direct unencrypted identifiers, each at least 16 bytes, including V=5 files.",
+      "implementation": "Document accepts absent/incomplete/short IDs for V=5.",
+      "vectors": "dictionary-id-{absent,one,short}",
+      "verdict": "document-discrepancy"
+    }
+  ],
+  "documented_choices": [
+    {
+      "locator": "7.6.6 Table 25 Length",
+      "choice": "Use the entry's standard-handler-specific byte unit (AESV2=16, AESV3=32) despite its conflicting later 128/256 wording.",
+      "verdict": "text-conflict-choice"
+    },
+    {
+      "locator": "7.6.6 introductory V sentence vs Table 20 V=5",
+      "choice": "Allow crypt filters for V=4 and V=5; the introductory V=4-only sentence is stale relative to its own V=5 entries.",
+      "verdict": "text-conflict-choice"
+    },
+    {
+      "locator": "7.6.4.1 revision-4-or-5 sentence vs its later revision-6 cipher sentence",
+      "choice": "Apply crypt-filter support to R6 too, following Table 20/21 and the explicit AESV3 sentence.",
+      "verdict": "text-conflict-choice"
+    },
+    {
+      "locator": "7.6.4.3.3(f); 7.6.4.4.12(a)",
+      "choice": "Report a Perms disagreement through Inconsistent rather than choosing recovery in crypto. Also check reserved upper bytes from Algorithm 10; first failure order is permissions/reserved/metadata/marker.",
+      "verdict": "policy-choice-not-normatively-verified"
+    },
+    {
+      "locator": "7.6.4.4.5–7.6.4.4.6",
+      "choice": "Legacy authentication remains user-first if the same bytes match both passwords; these algorithms do not specify an invocation order.",
+      "verdict": "policy-choice-not-normatively-verified"
+    },
+    {
+      "locator": "7.6.4.4.2(a,e); 7.6.4.4.3(b); 7.6.4.4.4(b) vs 7.6.4.3.2(a,b)",
+      "choice": "Follow the explicitly described password padding operation and the padding string in Algorithm 2(a); the cross-references pointing at Algorithm 2(b), which is the MD5 initialization step, are inconsistent.",
+      "verdict": "cross-reference-conflict-choice"
+    }
+  ],
+  "integration_findings": [
+    {
+      "id": "identity-shadow",
+      "paths": [
+        "crates/pagura-document/src/security.rs"
+      ],
+      "locator": "7.6.2 Table 20 CF",
+      "discrepancy": "Rejects an Identity redefinition instead of ignoring it.",
+      "reproducer": "crypto/dictionary-identity-shadow",
+      "expected": "strict open should succeed and default streams decrypt",
+      "observed": "Strict open returns Syntax: CF must not redefine Identity."
+    },
+    {
+      "id": "auth-event-default",
+      "paths": [
+        "crates/pagura-document/src/security.rs"
+      ],
+      "locator": "7.6.6 Table 25 AuthEvent",
+      "discrepancy": "Rejects a selected EFOpen filter instead of treating StmF/StrF use as DocOpen.",
+      "reproducer": "crypto/dictionary-auth-event-default",
+      "expected": "strict open should use DocOpen",
+      "observed": "Strict open returns Syntax: EFOpen crypt filter used outside an embedded file."
+    },
+    {
+      "id": "v4-no-length",
+      "paths": [
+        "crates/pagura-document/src/security.rs"
+      ],
+      "locator": "7.6.2 Table 20 V/Length",
+      "discrepancy": "Absent V=4 Length defaults to 40 rather than the fixed 128-bit file key.",
+      "reproducer": "crypto/dictionary-v4-no-length",
+      "expected": "strict open should use 16-byte key",
+      "observed": "Strict open returns Unsupported(security.crypt-length) because the defaulted 40-bit file key disagrees with the 16-byte crypt filter."
+    },
+    {
+      "id": "crypt-type",
+      "paths": [
+        "crates/pagura-document/src/security.rs"
+      ],
+      "locator": "7.6.6 Table 25 Type",
+      "discrepancy": "Does not validate the optional crypt-filter Type.",
+      "reproducer": "crypto/dictionary-crypt-filter-type",
+      "expected": "strict syntax error",
+      "observed": "Strict open succeeds without diagnostics and the stream decrypts."
+    },
+    {
+      "id": "crypt-length",
+      "paths": [
+        "crates/pagura-document/src/security.rs"
+      ],
+      "locator": "7.6.6 Table 25 Length",
+      "discrepancy": "Accepts a missing required crypt-filter Length.",
+      "reproducer": "crypto/dictionary-crypt-filter-no-length",
+      "expected": "strict syntax error",
+      "observed": "Strict open succeeds without diagnostics and the stream decrypts."
+    },
+    {
+      "id": "standard-name",
+      "paths": [
+        "crates/pagura-document/src/security.rs"
+      ],
+      "locator": "7.6.4.1",
+      "discrepancy": "Accepts crypt-filter names beyond the stated standard-handler support.",
+      "reproducer": "crypto/dictionary-standard-filter-name",
+      "expected": "reject or explicitly report nonconforming extension support",
+      "observed": "Strict open succeeds without diagnostics and the stream decrypts."
+    },
+    {
+      "id": "cfm-none",
+      "paths": [
+        "crates/pagura-document/src/security.rs"
+      ],
+      "locator": "7.6.6 Table 25 CFM None",
+      "discrepancy": "Treats security-handler delegation as unprocessed Identity data.",
+      "reproducer": "crypto/dictionary-cfm-none",
+      "expected": "unsupported or rejected for the Standard handler, not silent Identity",
+      "observed": "Strict open succeeds without diagnostics and the plaintext input passes through unchanged."
+    },
+    {
+      "id": "other-metadata",
+      "paths": [
+        "crates/pagura-document/src/security.rs"
+      ],
+      "locator": "7.6.4.2 Table 21 EncryptMetadata; 7.6.4.3.2(f) Note 1",
+      "discrepancy": "Skips every Type Metadata stream instead of only document-level XMP.",
+      "reproducer": "crypto/dictionary-other-metadata",
+      "expected": "stream_data(7 0) equals .expected",
+      "observed": "Strict open succeeds without diagnostics, but stream_data(7 0) differs from the independent plaintext."
+    },
+    {
+      "id": "legacy-metadata",
+      "paths": [
+        "crates/pagura-document/src/security.rs"
+      ],
+      "locator": "7.6.4.2 Table 21 EncryptMetadata",
+      "discrepancy": "Applies an inapplicable EncryptMetadata false flag to V=1 stream selection.",
+      "reproducer": "crypto/dictionary-legacy-metadata",
+      "expected": "stream_data(6 0) equals .expected",
+      "observed": "Strict open succeeds without diagnostics, but stream_data(6 0) differs from the independent plaintext."
+    },
+    {
+      "id": "perms-report",
+      "paths": [
+        "crates/pagura-document/src/security.rs"
+      ],
+      "locator": "7.6.4.3.3(f); 7.6.4.4.12(a); ADR 0003",
+      "discrepancy": "Drops the authenticated key's Inconsistent status without a strict rejection or diagnostic.",
+      "reproducer": "crypto/dictionary-perms-mismatch",
+      "expected": "strict rejection or explicit reported recovery",
+      "observed": "Strict and Repair open both succeed with zero diagnostics although the crypto key reports a permissions mismatch."
+    },
+    {
+      "id": "identifier",
+      "paths": [
+        "crates/pagura-document/src/security.rs"
+      ],
+      "locator": "7.5.5 Table 15 ID",
+      "discrepancy": "Accepts missing or malformed required IDs for V=5 files.",
+      "reproducer": "crypto/dictionary-id-{absent,one,short}",
+      "expected": "strict syntax error",
+      "observed": "All three V=5 inputs (absent ID, one element, one-byte identifiers) open strictly without diagnostics and decrypt their streams."
+    },
+    {
+      "id": "legacy-text-encoding",
+      "paths": [
+        "crates/pagura/src/main.rs",
+        "crates/pagura-document/src/security.rs"
+      ],
+      "locator": "7.6.4.3.2(a); 7.6.4.4.1; Table D.3 row U+20AC",
+      "discrepancy": "The CLI text flag is converted directly to UTF-8 bytes, and document authentication forwards them unchanged. Legacy authentication requires PDFDocEncoding; raw byte API callers can already supply it.",
+      "reproducer": "crypto/r3-pdfdocencoding-euro.pdf",
+      "expected": "The text password U+20AC is converted to its PDFDocEncoding byte before authenticating R3; prepared byte API succeeds.",
+      "observed": "Prepared PDFDocEncoding bytes open through Document successfully; UTF-8 bytes fail with Password. The release CLI text password U+20AC also reports Password."
+    }
+  ],
+  "recovery_review": {
+    "path": "crates/pagura-document/src/security_repair.rs",
+    "locators": [
+      "7.3.4.2",
+      "7.6.4.2 Table 21",
+      "ADR 0003"
+    ],
+    "verdict": "documented-recovery-choice",
+    "note": "Literal EOL preservation, zero hash-padding removal and unsigned-P reinterpretation are reported repairs rather than normative parsing rules. No additional discrepancy was identified in that file; they are not marked verified standard behaviour."
+  },
+  "corrected_oracles": {
+    "crypto/r4-key7": "The former successful-authentication expectation allowed an invalid 56-bit V=4 file key. Table 20 requires 128 bits, so this is now a syntax-rejection vector. R3 five- and seven-byte vectors continue to check the variable-length derivation math."
+  }
 }

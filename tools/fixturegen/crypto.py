@@ -230,7 +230,7 @@ def encryption_dictionary(p, method, identity_strings):
     return result + b">>"
 
 
-def encrypted_pdf(p, key, method, identity_strings=False):
+def encrypted_objects(p, key, method, identity_strings=False):
     # Object 3 exercises string decryption; object 4 exercises stream decryption.
     title = encrypt(key, "Identity" if identity_strings else method, 3, b"fixture title")
     extension = b" /Extensions << /ADBE << /BaseVersion /1.7 /ExtensionLevel 3 >> >>" if p["revision"] == 5 else b""
@@ -242,6 +242,11 @@ def encrypted_pdf(p, key, method, identity_strings=False):
         encryption_dictionary(p, method, identity_strings),
         stream(encrypt(key, method, 6, b"<metadata>fixture</metadata>") if p["encrypt_metadata"] else b"<metadata>fixture</metadata>", b"/Type /Metadata /Subtype /XML "),
     ]
+    return objects
+
+
+def encrypted_pdf(p, key, method, identity_strings=False):
+    objects = encrypted_objects(p, key, method, identity_strings)
     pdf = document(objects, b"/Encrypt 5 0 R /ID [" + hex_string(ID) + b" " + hex_string(ID) + b"] ")
     # Same-width header replacement preserves every independently computed xref offset.
     return pdf.replace(b"%PDF-1.7", b"%PDF-2.0", 1) if p["revision"] == 6 else pdf
@@ -299,7 +304,10 @@ def cases():
     # Extra key lengths exercise Algorithm 2's n-byte iteration and Algorithm 1's min(n+5,16).
     for revision, length in [(3, 5), (3, 7), (4, 7)]:
         p, key = parameters(revision, b"short-key-user", b"short-key-owner", length=length)
-        yield vector(f"r{revision}-key{length}", p, key, b"short-key-user", b"short-key-owner", "V2")
+        if revision == 4:
+            yield invalid_parameter_vector(f"r{revision}-key{length}", p, b"short-key-user", "syntax")
+        else:
+            yield vector(f"r{revision}-key{length}", p, key, b"short-key-user", b"short-key-owner", "V2")
     # Password truncation and legacy arbitrary byte passwords.
     for revision, user, owner in [(2, bytes(range(128, 168)), b"long-owner"*5),
                                    (3, b"user"*40, b"owner"*40),
@@ -340,3 +348,122 @@ def cases():
                 block[offset] ^= 1
             p = {**base, "encrypted_permissions": AES(key).block(block)}
             yield vector(f"r{revision}-perms-{name}", p, key, user, owner, "AESV3", validation)
+
+    yield from parameter_edge_cases()
+    yield from integration_examples()
+
+
+def params_bytes(p):
+    return "".join(f"{field}={value.hex() if isinstance(value, bytes) else int(value)}\n"
+                   for field, value in p.items()).encode()
+
+
+def invalid_parameter_vector(name, p, password, error):
+    return Vector(name, {".params": params_bytes(p), ".password": password, ".error": error.encode()},
+                  (f"security-r{p['revision']}",), "Parameter rejection independent of cipher output",
+                  extra={"authentication_error": error})
+
+
+def parameter_edge_cases():
+    # Table 21 selects R2/R3 for V=1 using the later-revision access bits.
+    p, _ = parameters(2, b"", b"owner-secret", permissions=-260)
+    yield invalid_parameter_vector("r2-revision-permissions", p, b"", "syntax")
+    p, _ = parameters(3, b"", b"owner-secret", length=5)
+    p["version"] = 1
+    yield invalid_parameter_vector("r3-version1-permissions", p, b"", "syntax")
+    # Table 20 fixes V=4 to 128 bits even when its crypt method is RC4.
+    p, _ = parameters(4, b"", b"owner-secret")
+    for length in [5, 15]:
+        yield invalid_parameter_vector(f"r4-fixed-key-{length}", {**p, "key_length": length}, b"", "syntax")
+    # Algorithm 2.A(c) checks O first: equal passwords grant owner authority.
+    p, key = parameters(6, b"same-password", b"same-password")
+    case = vector("r6-owner-precedence", p, key, b"same-password", b"same-password", "AESV3")
+    yield Vector(case.name, {**case.files, ".authority": b"owner"}, case.requirements,
+                 "Algorithm 2.A(c): shared user/owner password has owner authority")
+    p, _ = parameters(6, b"", b"owner-secret")
+    # The unimplemented preparation path must run before byte truncation.
+    for name, password in [("ascii-control", b"\x7f"), ("control-after-truncation", b"a"*127+b"\x00"),
+                           ("unicode", "café".encode())]:
+        yield invalid_parameter_vector("r6-saslprep-"+name, p, password, "unsupported:security.saslprep")
+    # Fixed PDFDocEncoding bytes, not UTF-8: U+20AC is byte 0xa0 (Table D.3).
+    p, key = parameters(3, b"\xa0", b"owner-secret")
+    case = vector("r3-pdfdocencoding-euro", p, key, b"\xa0", b"owner-secret", "V2")
+    yield Vector(case.name, {**case.files, ".pdf": encrypted_pdf(p, key, "V2")}, case.requirements,
+                 "U+20AC uses PDFDocEncoding byte 0xa0; Unicode text interfaces must convert before hashing",
+                 extra={"text_password_codepoint": "U+20AC", "prepared_encoding": "PDFDocEncoding"})
+    # Readers preserve raw permission bits in the digest; reserved bits do not
+    # become access rights (7.6.4.2, Table 22). These are reader inputs, not
+    # examples of conforming permission generation.
+    for name, permissions in [("reserved-low", -3), ("reserved-high", 0x0cfc), ("accessibility-clear", -516)]:
+        p, key = parameters(3, b"", b"owner-secret", permissions=permissions)
+        yield vector("r3-permissions-"+name, p, key, b"", b"owner-secret", "V2")
+    # Algorithm 5(f)'s trailing U bytes are arbitrary, not part of validation.
+    p, key = parameters(3, b"", b"owner-secret")
+    p["user_hash"] = p["user_hash"][:16]+bytes(range(16))
+    yield vector("r3-user-hash-tail", p, key, b"", b"owner-secret", "V2")
+
+
+def integration_examples():
+    """Small dictionary/stream inputs with explicit document-layer expectations.
+
+    They are vectors, not conformance successes: the expectation describes the
+    affected API operation and remains separate from observed engine behaviour.
+    """
+    requirement = ("security-dictionary-integration",)
+    p, key = parameters(4, b"", b"owner-secret")
+    base = encrypted_objects(p, key, "AESV2")
+    changes = [
+        ("identity-shadow", lambda d: d.replace(b"/CF <<", b"/CF << /Identity 7 ", 1),
+         "open and render without processing the shadow Identity entry"),
+        ("auth-event-default", lambda d: d.replace(b"/AuthEvent /DocOpen", b"/AuthEvent /EFOpen"),
+         "StmF/StrF use DocOpen despite EFOpen; open and render"),
+        ("v4-no-length", lambda d: d.replace(b"/Length 128 ", b"", 1),
+         "use the fixed 128-bit V=4 file key; open and render"),
+        ("crypt-filter-type", lambda d: d.replace(b"/CFM /AESV2", b"/Type /Wrong /CFM /AESV2"),
+         "reject the crypt filter Type in strict mode"),
+        ("crypt-filter-no-length", lambda d: d.replace(b"/Length 16 ", b"", 1),
+         "reject the missing required crypt-filter Length in strict mode"),
+        ("standard-filter-name", lambda d: d.replace(b"StdCF", b"OtherCF"),
+         "report or reject a filter name outside standard-handler support"),
+    ]
+    def packed(objects, trailer=None, modern=False):
+        trailer = (b"/Encrypt 5 0 R /ID ["+hex_string(ID)+b" "+hex_string(ID)+b"] ") if trailer is None else trailer
+        data = document(objects, trailer)
+        return data.replace(b"%PDF-1.7", b"%PDF-2.0", 1) if modern else data
+    for name, change, expected in changes:
+        objects = list(base); objects[4] = change(objects[4])
+        yield Vector("dictionary-"+name, {".pdf": packed(objects)}, requirement, expected,
+                     extra={"operation": "Document::open with strict recovery", "expectation": expected})
+    # None delegates to the security handler; it is not the Identity name.
+    objects = encrypted_objects(p, key, "Identity")
+    objects[4] = encryption_dictionary(p, "V2", False).replace(b"/CFM /V2", b"/CFM /None")
+    yield Vector("dictionary-cfm-none", {".pdf": packed(objects)}, requirement,
+                 "None requires handler dispatch; Standard must not silently map it to Identity",
+                 extra={"operation": "Document::open with strict recovery", "expectation": "unsupported or rejected Standard CFM None"})
+    # Only the catalog's document-level metadata is excluded, not every object
+    # whose Type happens to be Metadata (Table 21, Algorithm 2(f)).
+    p, key = parameters(4, b"", b"owner-secret", metadata=False)
+    objects = encrypted_objects(p, key, "AESV2")
+    objects[0] = objects[0].replace(b" >>", b" /OtherMetadata 7 0 R >>", 1)
+    plain = b"private metadata"
+    objects.append(stream(encrypt(key, "AESV2", 7, plain), b"/Type /Metadata /Subtype /XML "))
+    yield Vector("dictionary-other-metadata", {".pdf": packed(objects), ".expected": plain}, requirement,
+                 "Only document-level metadata is exempt; object 7 still decrypts",
+                 extra={"operation": "stream_data(object 7 0)", "expectation": "bytes equal .expected"})
+    p, key = parameters(2, b"", b"owner-secret")
+    objects = encrypted_objects(p, key, "V2")
+    objects[4] = objects[4][:-2]+b" /EncryptMetadata false >>"
+    yield Vector("dictionary-legacy-metadata", {".pdf": packed(objects), ".expected": b"<metadata>fixture</metadata>"}, requirement,
+                 "EncryptMetadata is meaningful only for V=4/5; object 6 still decrypts for V=1",
+                 extra={"operation": "stream_data(object 6 0)", "expectation": "bytes equal .expected"})
+    p, key = parameters(6, b"", b"owner-secret")
+    objects = encrypted_objects({**p, "permissions": p["permissions"] ^ 4}, key, "AESV3")
+    yield Vector("dictionary-perms-mismatch", {".pdf": packed(objects, modern=True)}, requirement,
+                 "An authenticated permissions disagreement must not disappear at the document boundary",
+                 extra={"operation": "strict and repair Document::open", "expectation": "strict rejection or explicit reported recovery, never silent success"})
+    objects = encrypted_objects(p, key, "AESV3")
+    for name, trailer in [("absent", b"/Encrypt 5 0 R "), ("one", b"/Encrypt 5 0 R /ID ["+hex_string(ID)+b"] "),
+                          ("short", b"/Encrypt 5 0 R /ID [<00> <00>] ")]:
+        yield Vector("dictionary-id-"+name, {".pdf": packed(objects, trailer, modern=True)}, requirement,
+                     "Table 15 requires two direct identifiers of at least 16 bytes for encrypted files",
+                     extra={"operation": "Document::open with strict recovery", "expectation": "syntax error for malformed required ID"})

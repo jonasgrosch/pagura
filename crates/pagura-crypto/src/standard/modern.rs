@@ -74,27 +74,33 @@ fn modern_hash(revision: u8, password: &[u8], salt: &[u8], user: &[u8]) -> Resul
         .map_err(|_| Error::syntax("invalid revision 6 hash"))
 }
 pub(super) fn authenticate(params: &SecurityParams, password: &[u8]) -> Result<FileKey> {
-    if params.revision == 6 && !password.is_ascii() {
+    if params.revision == 6 && !password.iter().all(|byte| (0x20..=0x7e).contains(byte)) {
         return Err(Error::unsupported(
             SASLPREP,
-            "non-ASCII revision 6 passwords require SASLprep",
+            "revision 6 password requires unimplemented SASLprep processing",
         ));
     }
     let password = &password[..password.len().min(127)];
-    for (authority, entry, user, encrypted) in [
-        (
-            Authority::User,
-            params.user_hash.as_slice(),
-            &[][..],
-            &params.user_encrypted_key,
-        ),
-        (
-            Authority::Owner,
-            params.owner_hash.as_slice(),
-            params.user_hash.as_slice(),
-            &params.owner_encrypted_key,
-        ),
-    ] {
+    let user = (
+        Authority::User,
+        params.user_hash.as_slice(),
+        &[][..],
+        &params.user_encrypted_key,
+    );
+    let owner = (
+        Authority::Owner,
+        params.owner_hash.as_slice(),
+        params.user_hash.as_slice(),
+        &params.owner_encrypted_key,
+    );
+    // Algorithm 2.A(c) gives the owner check precedence for revision 6.
+    // Revision 5 is a separately supported, unverified extension.
+    let candidates = if params.revision == 6 {
+        [owner, user]
+    } else {
+        [user, owner]
+    };
+    for (authority, entry, user, encrypted) in candidates {
         let validation = modern_hash(params.revision, password, &entry[32..40], user)?;
         if !equal(&validation, &entry[..32]) {
             continue;

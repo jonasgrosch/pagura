@@ -1,4 +1,4 @@
-//! The standard security handler (ISO 32000-2 clauses 7.6.4–7.6.5).
+//! The standard security handler (ISO 32000-2 clause 7.6.4).
 //!
 //! The document layer reads the `/Encrypt` dictionary and the first
 //! `/ID` element into [`SecurityParams`], calls [`authenticate`] once, and
@@ -11,7 +11,7 @@ use crate::{Aes, Rc4};
 mod legacy;
 mod modern;
 
-/// Tag for passwords that need SASLprep (non-ASCII revision 6 passwords).
+/// Tag for revision 6 passwords outside the implemented printable ASCII subset.
 pub const SASLPREP: Feature = Feature::new("security.saslprep");
 
 /// Stable feature tags for unsupported security algorithms.
@@ -31,7 +31,7 @@ pub mod features {
 pub enum PermissionsValidation {
     /// Revisions 2–4 have no authenticated `/Perms` entry.
     NotApplicable,
-    /// Algorithm 13 verified `/P`, `/EncryptMetadata`, reserved bytes and `adb`.
+    /// Algorithm 13 checks passed; the reserved bytes from Algorithm 10 also match.
     Validated,
     /// The password authenticated, but this check of decrypted `/Perms` failed.
     ///
@@ -62,7 +62,8 @@ pub struct SecurityParams {
     pub version: u8,
     /// `/R`: the handler revision, 2–6.
     pub revision: u8,
-    /// File key length in bytes: `/Length` / 8 for V2–V4, 32 for V5.
+    /// File key length in bytes: 5 for V1, `/Length` / 8 for V2,
+    /// 16 for V4 and 32 for V5 (clause 7.6.2, Table 20).
     pub key_length: usize,
     /// `/O`: owner password hash.
     pub owner_hash: Vec<u8>,
@@ -72,7 +73,9 @@ pub struct SecurityParams {
     pub owner_encrypted_key: Option<Vec<u8>>,
     /// `/UE`: encrypted file key for the user password (revisions 5 and 6).
     pub user_encrypted_key: Option<Vec<u8>>,
-    /// `/P`: permission flags as a signed 32-bit integer.
+    /// `/P`: raw permission bits in signed two's-complement form (Table 22).
+    /// Reserved bits are preserved for hashing; readers ignore them when
+    /// interpreting access rights (clause 7.6.4.2).
     pub permissions: i32,
     /// `/Perms`: encrypted permissions (revisions 5 and 6).
     pub encrypted_permissions: Option<Vec<u8>>,
@@ -85,7 +88,9 @@ pub struct SecurityParams {
 /// The cipher a crypt filter applies (clause 7.6.6, `/CFM`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CryptMethod {
-    /// `/None` or the `Identity` filter: data is not encrypted.
+    /// The standard `Identity` filter: pass bytes through (Table 26).
+    /// A crypt filter with `/CFM /None` instead delegates to its handler; it
+    /// must not be mapped here merely because of that method name (Table 25).
     Identity,
     /// `/V2`: RC4 with a per-object key.
     Rc4,
@@ -204,13 +209,16 @@ impl FileKey {
     }
 }
 
-/// Authenticates `password` as the user password, then as the owner
-/// password (Algorithms 6 and 7, or 11 and 12 for revision 6), and derives
+/// Authenticates a prepared `password` (Algorithms 6/7 or 11/12), and derives
 /// the file key. Revision 5 is supported as the Adobe extension algorithm.
 ///
-/// Legacy passwords are byte strings truncated/padded to 32 bytes. For revision
-/// 6, ASCII input passes unchanged; non-ASCII input needs SASLprep and is
-/// explicitly unsupported. Modern prepared passwords are truncated to 127 bytes.
+/// For revisions 2–4 the caller must supply PDFDocEncoding bytes, after host
+/// codepage conversion (7.6.4.3.2(a)); this byte API does not interpret UTF-8 as
+/// legacy text. The bytes are truncated/padded to 32 bytes. Revision 6 supports
+/// printable ASCII only: other input requires SASLprep and returns `Unsupported`
+/// before truncation. UTF-8 truncation is by bytes, to 127 (7.6.4.3.3(a–b)).
+/// Revision 6 tries the owner entry first as Algorithm 2.A(c) requires; legacy
+/// revisions and the unverified revision 5 extension retain user-first order.
 /// Successful R5/R6 authentication also checks Algorithm 13. A mismatch in
 /// decrypted `/Perms` still returns the authenticated key, with
 /// [`PermissionsValidation::Inconsistent`] identifying the first failed check.
@@ -255,13 +263,18 @@ fn validate_params(params: &SecurityParams) -> Result<()> {
             "encryption version 3 is unpublished",
         ));
     }
+    // Table 21's R selector refers to the revision-3-only permissions in
+    // Table 22 (bits 9, 11 and 12). Obsolete bit 10 is ignored by readers.
+    let later_mask = (1u32 << 8) | (1 << 10) | (1 << 11);
+    let permission_bits = u32::from_le_bytes(params.permissions.to_le_bytes());
+    let later_restrictions = permission_bits & later_mask != later_mask;
     let valid = match params.revision {
-        2 => params.version == 1 && params.key_length == 5,
+        2 => params.version == 1 && params.key_length == 5 && !later_restrictions,
         3 => {
-            (params.version == 1 && params.key_length == 5)
+            (params.version == 1 && params.key_length == 5 && later_restrictions)
                 || (params.version == 2 && (5..=16).contains(&params.key_length))
         }
-        4 => params.version == 4 && (5..=16).contains(&params.key_length),
+        4 => params.version == 4 && params.key_length == 16,
         _ => params.version == 5 && params.key_length == 32,
     };
     if !valid {
@@ -394,7 +407,6 @@ mod tests {
             "r3-version1",
             "r3-key5",
             "r3-key7",
-            "r4-key7",
             "r2-long-password",
             "r3-long-password",
             "r5-long-password",
@@ -443,6 +455,62 @@ mod tests {
                 "{name}"
             );
         }
+    }
+    #[test]
+    fn dictionary_and_preprocessing_rejections_match_independent_oracles() {
+        for name in [
+            "r4-key7",
+            "r2-revision-permissions",
+            "r3-version1-permissions",
+            "r4-fixed-key-5",
+            "r4-fixed-key-15",
+            "r6-saslprep-ascii-control",
+            "r6-saslprep-control-after-truncation",
+            "r6-saslprep-unicode",
+        ] {
+            let parameters = params(name);
+            let password = fixture("crypto", &format!("{name}.password"));
+            let expected = fixture("crypto", &format!("{name}.error"));
+            let error = authenticate(&parameters, &password).unwrap_err();
+            if expected == b"syntax" {
+                assert_eq!(error.kind, ErrorKind::Syntax, "{name}");
+            } else {
+                assert_eq!(error.kind, ErrorKind::Unsupported(SASLPREP), "{name}");
+            }
+        }
+    }
+    #[test]
+    fn pdfdocencoding_and_raw_permission_bits_match_independent_oracles() {
+        for name in [
+            "r3-pdfdocencoding-euro",
+            "r3-permissions-reserved-low",
+            "r3-permissions-reserved-high",
+            "r3-permissions-accessibility-clear",
+            "r3-user-hash-tail",
+        ] {
+            let parameters = params(name);
+            for (suffix, authority) in [("user", Authority::User), ("owner", Authority::Owner)] {
+                let password = fixture("crypto", &format!("{name}.{suffix}"));
+                let key = authenticate(&parameters, &password).unwrap();
+                assert_eq!(key.authority(), authority, "{name}");
+                assert!(
+                    key.key == fixture("crypto", &format!("{name}.key")),
+                    "file key oracle mismatch: {name}"
+                );
+            }
+        }
+    }
+    #[test]
+    fn revision6_shared_password_has_owner_authority() {
+        let name = "r6-owner-precedence";
+        let parameters = params(name);
+        let password = fixture("crypto", &format!("{name}.user"));
+        let key = authenticate(&parameters, &password).unwrap();
+        assert_eq!(key.authority(), Authority::Owner);
+        assert!(
+            key.key == fixture("crypto", &format!("{name}.key")),
+            "file key oracle mismatch"
+        );
     }
     #[test]
     fn user_authentication_takes_precedence() {

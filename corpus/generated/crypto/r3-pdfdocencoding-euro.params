@@ -1,0 +1,8 @@
+version=2
+revision=3
+key_length=16
+permissions=-4
+encrypt_metadata=1
+document_id=00112233445566778899aabbccddeeff
+owner_hash=19acf62f4b5e6a87ae09ec39c092e11e5d7e4322c7bea9cb6fe2c7c126227b3d
+user_hash=050302a213ef143da9ff34d44bce4aac00000000000000000000000000000000

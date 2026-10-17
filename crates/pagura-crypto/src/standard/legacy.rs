@@ -39,7 +39,7 @@ fn pad_password(password: &[u8]) -> [u8; 32] {
     padded[count..].copy_from_slice(&PADDING[..32 - count]);
     padded
 }
-// Algorithm 2, clause 7.6.3.3 in PDF 1.7; clause 7.6.4 in ISO 32000-2.
+// ISO 32000-2 7.6.4.3.2, Algorithm 2(a–i). The caller supplies PDFDocEncoding.
 fn legacy_file_key(params: &SecurityParams, password: &[u8]) -> Vec<u8> {
     let mut hash = Md5::new();
     hash.update(&pad_password(password));

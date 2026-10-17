@@ -1,20 +1,234 @@
 {
   "schema": 2,
   "area": "write",
-  "scope": "Clause locators refer to Adobe PDF32000_2008 (ISO 32000-1) until ISO 32000-2 full text is acquired and reviewed.",
+  "scope": "Serialization and classic-file-structure rules were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text, clauses 7.3 and 7.5. The builder intentionally emits unencrypted PDF 1.7, not a conforming PDF 2.0 file: it has neither a 2.0 version declaration nor the file identifier required for that version. Incremental updates, object/xref stream writing and document-level schemas are not verified or implemented.",
   "requirements": [
     {
       "id": "deterministic-writing",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
-        "7.3",
-        "7.5"
+        "7.3.2",
+        "7.3.3",
+        "7.3.4.3",
+        "7.3.5",
+        "7.3.6",
+        "7.3.7",
+        "7.3.8.1",
+        "7.3.8.2 Table 5",
+        "7.3.9",
+        "7.3.10",
+        "7.5.1",
+        "7.5.2",
+        "7.5.3",
+        "7.5.4",
+        "7.5.5 Table 15"
       ],
       "status": "partial",
       "tests": [
-        "pagura/tests/write.rs"
+        "pagura/tests/write.rs",
+        "pagura-write unit tests: exact serialized bytes, names, generations, stream length, sparse xref limits and free chain"
       ],
-      "gaps": "incremental editing, signature preservation, cross-engine corpus"
+      "gaps": "PDF 2.0 header/ID generation, incremental updates, object/xref stream output, encryption writing, signature preservation and cross-engine validation. Generic serialization does not validate every dictionary schema."
+    }
+  ],
+  "primary_text": {
+    "reference": "iso32000-2-full-text",
+    "edition": "ISO 32000-2:2020, sponsored edition with Errata Collection 3",
+    "local_file": "ISO_32000-2_sponsored_EC3.pdf",
+    "method": "Read the local text extraction; retain only locators and original paraphrases."
+  },
+  "audit_steps": [
+    {
+      "id": "boolean",
+      "locator": "7.3.2",
+      "paraphrase": "Serialize the two boolean values using the corresponding PDF keywords.",
+      "verdict": "verified",
+      "implementation": "Uses canonical lowercase tokens.",
+      "tests": "exact_serialized_values_have_standard_syntax"
+    },
+    {
+      "id": "numbers",
+      "locator": "7.3.3",
+      "paraphrase": "Write decimal integers and finite decimal reals, without exponent or radix notation.",
+      "verdict": "verified",
+      "implementation": "Rejects non-finite values and emits real syntax with a decimal point; implementation range is i64/f64.",
+      "tests": "exact_serialized_values_have_standard_syntax; invalid_numeric_values_fail_before_success"
+    },
+    {
+      "id": "byte-strings",
+      "locator": "7.3.4.3",
+      "paraphrase": "Serialize arbitrary bytes as pairs of hex digits enclosed by string delimiters.",
+      "verdict": "verified",
+      "implementation": "Uppercase hex has exactly two digits per byte, including zero; empty strings are supported.",
+      "tests": "exact_serialized_values_have_standard_syntax"
+    },
+    {
+      "id": "names",
+      "locator": "7.3.5",
+      "paraphrase": "Names exclude NUL and escape delimiter/whitespace/hash bytes, while empty names remain valid.",
+      "verdict": "fixed",
+      "implementation": "Rejects NUL in values and dictionary keys; serialization delegates to the core Name spelling.",
+      "tests": "names_exclude_nul_in_values_and_keys; exact_serialized_values_have_standard_syntax"
+    },
+    {
+      "id": "arrays",
+      "locator": "7.3.6",
+      "paraphrase": "Write a delimited sequence of values, including empty or nested arrays.",
+      "verdict": "verified",
+      "implementation": "Brackets and separating spaces are emitted recursively within budgets.",
+      "tests": "exact_serialized_values_have_standard_syntax; cross-crate writer reopen tests"
+    },
+    {
+      "id": "dictionaries",
+      "locator": "7.3.7",
+      "paraphrase": "Use unique direct name keys and value pairs; entry order is semantically irrelevant.",
+      "verdict": "verified-serialization-only",
+      "implementation": "Core Dictionary guarantees uniqueness and ordered iteration; keys are now validated. Dictionary-specific schemas are outside this serializer.",
+      "tests": "dictionary_entries_keep_insertion_order; names_exclude_nul_in_values_and_keys"
+    },
+    {
+      "id": "null",
+      "locator": "7.3.9; 7.3.7",
+      "paraphrase": "Emit null explicitly; consumers treat a null dictionary entry as absent.",
+      "verdict": "verified",
+      "implementation": "Writes the null keyword without inventing a distinct absent value.",
+      "tests": "exact_serialized_values_have_standard_syntax"
+    },
+    {
+      "id": "stream-objects",
+      "locator": "7.3.8.1",
+      "paraphrase": "Streams are indirect objects with a direct dictionary and an LF or CRLF after stream.",
+      "verdict": "verified",
+      "implementation": "Builder writes every stream as an indirect object, requires a dictionary, and uses LF separators.",
+      "tests": "streams_use_stored_length_and_exclude_separator_eol"
+    },
+    {
+      "id": "stream-length",
+      "locator": "7.3.8.2 Table 5 Length",
+      "paraphrase": "Count only stored data bytes, excluding the separator before endstream; filters require already encoded bytes.",
+      "verdict": "verified",
+      "implementation": "Overwrites Length from the provided stored bytes; clarified that callers encode data for declared filters.",
+      "tests": "streams_use_stored_length_and_exclude_separator_eol"
+    },
+    {
+      "id": "stream-budget",
+      "locator": "7.3.8.2; Limits stream_bytes",
+      "paraphrase": "Bound stream size before serialization while preserving exact stored bytes.",
+      "verdict": "fixed",
+      "implementation": "Checks stream_bytes and annotates the object on rejection. This resource policy is additional to the format.",
+      "tests": "streams_use_stored_length_and_exclude_separator_eol"
+    },
+    {
+      "id": "indirect-identity",
+      "locator": "7.3.10",
+      "paraphrase": "New files use positive object numbers and generation zero, with matching indirect-reference syntax.",
+      "verdict": "fixed",
+      "implementation": "Rejects nonzero generations during insertion and keeps unique object numbers.",
+      "tests": "new_documents_require_zero_generations; duplicate_ids_and_dangling_references_fail"
+    },
+    {
+      "id": "undefined-reference",
+      "locator": "7.3.9; 7.3.10",
+      "paraphrase": "Readers treat an undefined reference as null; this does not require a builder to create dangling references.",
+      "verdict": "documented-choice",
+      "implementation": "Builder deliberately rejects missing references rather than writing them; stricter construction policy is not claimed a normative requirement.",
+      "tests": "duplicate_ids_and_dangling_references_fail"
+    },
+    {
+      "id": "file-components",
+      "locator": "7.5.1",
+      "paraphrase": "A basic new file contains a header, indirect-object body, cross-reference section and trailer.",
+      "verdict": "verified",
+      "implementation": "Emits all four components deterministically.",
+      "tests": "xref_entries_free_chain_and_trailer_match_independent_offsets; cross-crate writer reopen tests"
+    },
+    {
+      "id": "header-version",
+      "locator": "7.5.2",
+      "paraphrase": "A file claiming PDF 2.0 conformance declares version 2.0 and follows its required trailer metadata rules.",
+      "verdict": "documented-compatibility-choice",
+      "implementation": "Builder intentionally declares PDF 1.7, so it is not advertised as a PDF 2.0-conforming writer.",
+      "tests": "xref_entries_free_chain_and_trailer_match_independent_offsets"
+    },
+    {
+      "id": "binary-comment",
+      "locator": "7.5.2",
+      "paraphrase": "The header is followed by a comment with at least four high-bit bytes when binary data is possible.",
+      "verdict": "verified",
+      "implementation": "Writes a binary comment after the LF-terminated version line; offsets start at the initial percent byte.",
+      "tests": "xref_entries_free_chain_and_trailer_match_independent_offsets"
+    },
+    {
+      "id": "body",
+      "locator": "7.5.3; 7.3.10",
+      "paraphrase": "The body contains the independently numbered indirect object definitions.",
+      "verdict": "verified",
+      "implementation": "Ascending object number is deterministic policy, not a format requirement.",
+      "tests": "deterministic_writer_handles_sparse_ids_and_reopens"
+    },
+    {
+      "id": "xref-section",
+      "locator": "7.5.4",
+      "paraphrase": "An initial classic xref section has one contiguous subsection beginning at zero.",
+      "verdict": "verified",
+      "implementation": "Writes one subsection and covers every hole through the largest object number.",
+      "tests": "xref_entries_free_chain_and_trailer_match_independent_offsets"
+    },
+    {
+      "id": "xref-width",
+      "locator": "7.5.4",
+      "paraphrase": "Each classic xref row is 20 bytes with a ten-digit position, five-digit generation, status and valid line ending.",
+      "verdict": "fixed",
+      "implementation": "Writes SP-LF rows and rejects positions beyond ten decimal digits.",
+      "tests": "xref_entries_free_chain_and_trailer_match_independent_offsets"
+    },
+    {
+      "id": "xref-free-chain",
+      "locator": "7.5.4",
+      "paraphrase": "Object zero is free with generation 65535; unused entries form a chain returning to zero.",
+      "verdict": "verified",
+      "implementation": "Links holes in ascending order with initial generations zero.",
+      "tests": "xref_entries_free_chain_and_trailer_match_independent_offsets"
+    },
+    {
+      "id": "xref-range",
+      "locator": "7.5.4; 7.5.5 Table 15 Size",
+      "paraphrase": "The xref covers zero through the highest object number, and Size is one above that maximum.",
+      "verdict": "fixed",
+      "implementation": "Checked range arithmetic and object/file budgets prevent overflow or an unbounded sparse scan.",
+      "tests": "sparse_cross_reference_ranges_are_bounded_before_serializing"
+    },
+    {
+      "id": "trailer-root",
+      "locator": "7.5.5 Table 15 Root",
+      "paraphrase": "Root is an indirect reference to the catalog dictionary, not a stream.",
+      "verdict": "fixed",
+      "implementation": "Requires an existing catalog dictionary and rejects a stream masquerading as it.",
+      "tests": "trailer_root_is_a_dictionary_not_a_stream"
+    },
+    {
+      "id": "trailer-tail",
+      "locator": "7.5.5",
+      "paraphrase": "startxref gives the xref byte position and the last content line is the end marker.",
+      "verdict": "verified",
+      "implementation": "Uses the recorded offset, direct Size and Root, and an LF-terminated end marker.",
+      "tests": "xref_entries_free_chain_and_trailer_match_independent_offsets"
+    },
+    {
+      "id": "trailer-optional-entries",
+      "locator": "7.5.5 Table 15 Encrypt/Info/Prev/ID",
+      "paraphrase": "Encryption, version and update state determine which trailer entries are required.",
+      "verdict": "verified-legacy-subset",
+      "implementation": "Current output is new unencrypted PDF 1.7: Encrypt, Info, Prev and ID are omitted. A future 2.0 writer must add a two-string ID.",
+      "tests": "xref_entries_free_chain_and_trailer_match_independent_offsets"
+    },
+    {
+      "id": "advanced-file-structures",
+      "locator": "7.5.6; 7.5.7; 7.5.8",
+      "paraphrase": "Updates, compressed object storage and cross-reference streams have additional formats.",
+      "verdict": "not-implemented",
+      "implementation": "Builder only produces a fresh classic table; no claim covers these optional structures.",
+      "tests": "No output path for these structures."
     }
   ]
 }

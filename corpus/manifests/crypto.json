@@ -2129,40 +2129,25 @@
     {
       "id": "crypto/r4-key7",
       "kind": "vector",
-      "description": "Independent encryption-side authentication, file-key and object-key oracle",
+      "description": "Parameter rejection independent of cipher output",
       "requirements": [
         "security-r4"
       ],
       "files": {
-        ".cipher": {
-          "path": "corpus/generated/crypto/r4-key7.cipher",
-          "sha256": "b4905736f1d816ac2f59e98217f676be8894924beab9bcbc3d985c66591468e8"
-        },
-        ".key": {
-          "path": "corpus/generated/crypto/r4-key7.key",
-          "sha256": "ac84eebfec8145fdbfd65c4e491ea81d9e30770533292b1bdefe599a4a4673d4"
-        },
-        ".method": {
-          "path": "corpus/generated/crypto/r4-key7.method",
-          "sha256": "47cfe5eb8ada0e7492d86a6b47dc93e354c32af4a3cf489e0c65067cb48277d9"
-        },
-        ".owner": {
-          "path": "corpus/generated/crypto/r4-key7.owner",
-          "sha256": "761768670a4a141ba9889205a748a87948c714050712227780ebb7335230ddb7"
+        ".error": {
+          "path": "corpus/generated/crypto/r4-key7.error",
+          "sha256": "93b8edb0066d58b98bcf1f5e223a186f231ab09ae359ceb2e771fa381c5f9dc5"
         },
         ".params": {
           "path": "corpus/generated/crypto/r4-key7.params",
           "sha256": "0afebc06540ddee50d88857c3ebb355fab7bd437ac4ed88ff240d1e8dbcdd355"
         },
-        ".plain": {
-          "path": "corpus/generated/crypto/r4-key7.plain",
-          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
-        },
-        ".user": {
-          "path": "corpus/generated/crypto/r4-key7.user",
+        ".password": {
+          "path": "corpus/generated/crypto/r4-key7.password",
           "sha256": "649d4afbb711dfbeb8203be6da68bafaf27e022c0e56a75d1e6b6e662a93c109"
         }
-      }
+      },
+      "authentication_error": "syntax"
     },
     {
       "id": "crypto/r2-long-password",
@@ -3507,6 +3492,649 @@
         }
       },
       "permissions_validation": "validated"
+    },
+    {
+      "id": "crypto/r2-revision-permissions",
+      "kind": "vector",
+      "description": "Parameter rejection independent of cipher output",
+      "requirements": [
+        "security-r2"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/crypto/r2-revision-permissions.error",
+          "sha256": "93b8edb0066d58b98bcf1f5e223a186f231ab09ae359ceb2e771fa381c5f9dc5"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r2-revision-permissions.params",
+          "sha256": "6f3707013252266e79b53c32acc7abee7e3c71b1a5331bb9e3e69cc17dfe1437"
+        },
+        ".password": {
+          "path": "corpus/generated/crypto/r2-revision-permissions.password",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "authentication_error": "syntax"
+    },
+    {
+      "id": "crypto/r3-version1-permissions",
+      "kind": "vector",
+      "description": "Parameter rejection independent of cipher output",
+      "requirements": [
+        "security-r3"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/crypto/r3-version1-permissions.error",
+          "sha256": "93b8edb0066d58b98bcf1f5e223a186f231ab09ae359ceb2e771fa381c5f9dc5"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r3-version1-permissions.params",
+          "sha256": "76bfa92167825ff0f7c32064eda4270a57e79e6b6185c7721510ac6ef02cca25"
+        },
+        ".password": {
+          "path": "corpus/generated/crypto/r3-version1-permissions.password",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "authentication_error": "syntax"
+    },
+    {
+      "id": "crypto/r4-fixed-key-5",
+      "kind": "vector",
+      "description": "Parameter rejection independent of cipher output",
+      "requirements": [
+        "security-r4"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/crypto/r4-fixed-key-5.error",
+          "sha256": "93b8edb0066d58b98bcf1f5e223a186f231ab09ae359ceb2e771fa381c5f9dc5"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r4-fixed-key-5.params",
+          "sha256": "fa54d06d854a28c5c224b7c9f93ef4c4e288ea6ecbba6223817fdbfa51c10596"
+        },
+        ".password": {
+          "path": "corpus/generated/crypto/r4-fixed-key-5.password",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "authentication_error": "syntax"
+    },
+    {
+      "id": "crypto/r4-fixed-key-15",
+      "kind": "vector",
+      "description": "Parameter rejection independent of cipher output",
+      "requirements": [
+        "security-r4"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/crypto/r4-fixed-key-15.error",
+          "sha256": "93b8edb0066d58b98bcf1f5e223a186f231ab09ae359ceb2e771fa381c5f9dc5"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r4-fixed-key-15.params",
+          "sha256": "e737341cd83a31e14be7b2f67de691f5fb25dd536003ecf9dea2e69abb21a67e"
+        },
+        ".password": {
+          "path": "corpus/generated/crypto/r4-fixed-key-15.password",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "authentication_error": "syntax"
+    },
+    {
+      "id": "crypto/r6-owner-precedence",
+      "kind": "vector",
+      "description": "Algorithm 2.A(c): shared user/owner password has owner authority",
+      "requirements": [
+        "security-r6"
+      ],
+      "files": {
+        ".authority": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.authority",
+          "sha256": "4c1029697ee358715d3a14a2add817c4b01651440de808371f78165ac90dc581"
+        },
+        ".cipher": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.cipher",
+          "sha256": "f688fe16a0eb99f2f8ff4c37703019d66a550d3589df91167a1fc436f1634063"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.key",
+          "sha256": "d068889eaf507b151119826cf644507bec7f2b82401238dda89955015e448891"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.method",
+          "sha256": "a392beca2d548d42aaf5dfde0f515a7b9e2df4e1209a9d10079b2da7092ca0ce"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.owner",
+          "sha256": "c610a28bf1105e347ce17736bd9bd19201f027f79d339f01e0cd01d86f8fb74e"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.params",
+          "sha256": "2f2b826822c04ae023a2eec5a9c941f30233b84bf566bae2076f6eecec2edff2"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".size0": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.size0",
+          "sha256": "e21cecc2e9ade65cc959427ba33588043ab627a46e681b716ebb7d03e3f65743"
+        },
+        ".size1": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.size1",
+          "sha256": "8a50009b5ff32ab36e1a437803820497b64d320c6b562e1bd4b46c755055bc66"
+        },
+        ".size15": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.size15",
+          "sha256": "8232c714c88cb01d8e00d6c53374c4809e42746fcea701bf22aee655575de043"
+        },
+        ".size16": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.size16",
+          "sha256": "c7347ee96662b3e65d5234ed58a70ca8e690579a2f57c8efec917ee3de9eea59"
+        },
+        ".size17": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.size17",
+          "sha256": "98e729acce2d407155be653cd9dfad27b03458dfbdb5c033950152b3bc5b264b"
+        },
+        ".size31": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.size31",
+          "sha256": "41cbdf37470bd1fedd1c653f4856a9d79ddcceb7560f993c25f4f848ed5e2c2b"
+        },
+        ".size32": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.size32",
+          "sha256": "b56648da7c598772e12a35d52008ac22c832724d365965bd1d6583a663890d33"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r6-owner-precedence.user",
+          "sha256": "c610a28bf1105e347ce17736bd9bd19201f027f79d339f01e0cd01d86f8fb74e"
+        }
+      }
+    },
+    {
+      "id": "crypto/r6-saslprep-ascii-control",
+      "kind": "vector",
+      "description": "Parameter rejection independent of cipher output",
+      "requirements": [
+        "security-r6"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/crypto/r6-saslprep-ascii-control.error",
+          "sha256": "aa029a3d184a40491c90a2e041034de5d495959a9f8b58b513915a3bab5635cc"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-saslprep-ascii-control.params",
+          "sha256": "c83242835de9ae8234b081a5bbad3fe1850adf4713595da853b0f2838da365ba"
+        },
+        ".password": {
+          "path": "corpus/generated/crypto/r6-saslprep-ascii-control.password",
+          "sha256": "620bfdaa346b088fb49998d92f19a7eaf6bfc2fb0aee015753966da1028cb731"
+        }
+      },
+      "authentication_error": "unsupported:security.saslprep"
+    },
+    {
+      "id": "crypto/r6-saslprep-control-after-truncation",
+      "kind": "vector",
+      "description": "Parameter rejection independent of cipher output",
+      "requirements": [
+        "security-r6"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/crypto/r6-saslprep-control-after-truncation.error",
+          "sha256": "aa029a3d184a40491c90a2e041034de5d495959a9f8b58b513915a3bab5635cc"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-saslprep-control-after-truncation.params",
+          "sha256": "c83242835de9ae8234b081a5bbad3fe1850adf4713595da853b0f2838da365ba"
+        },
+        ".password": {
+          "path": "corpus/generated/crypto/r6-saslprep-control-after-truncation.password",
+          "sha256": "85bbe7d0b3f0e83383685b3dba9ad582998e0ab4864866e1549f4be0b2acd8d8"
+        }
+      },
+      "authentication_error": "unsupported:security.saslprep"
+    },
+    {
+      "id": "crypto/r6-saslprep-unicode",
+      "kind": "vector",
+      "description": "Parameter rejection independent of cipher output",
+      "requirements": [
+        "security-r6"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode.error",
+          "sha256": "aa029a3d184a40491c90a2e041034de5d495959a9f8b58b513915a3bab5635cc"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode.params",
+          "sha256": "c83242835de9ae8234b081a5bbad3fe1850adf4713595da853b0f2838da365ba"
+        },
+        ".password": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode.password",
+          "sha256": "850f7dc43910ff890f8879c0ed26fe697c93a067ad93a7d50f466a7028a9bf4e"
+        }
+      },
+      "authentication_error": "unsupported:security.saslprep"
+    },
+    {
+      "id": "crypto/r3-pdfdocencoding-euro",
+      "kind": "vector",
+      "description": "U+20AC uses PDFDocEncoding byte 0xa0; Unicode text interfaces must convert before hashing",
+      "requirements": [
+        "security-r3"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/crypto/r3-pdfdocencoding-euro.cipher",
+          "sha256": "fe427bdac4ced910c590194022dc32451418bdc2c2c3ec78542055897e10df86"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r3-pdfdocencoding-euro.key",
+          "sha256": "3c6c92d2593fc36b13221f513efe2255d965723868a765560bca4c139e30b451"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r3-pdfdocencoding-euro.method",
+          "sha256": "47cfe5eb8ada0e7492d86a6b47dc93e354c32af4a3cf489e0c65067cb48277d9"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r3-pdfdocencoding-euro.owner",
+          "sha256": "03f99ad2bb8f470ab4a6b65dd51dca8f63c4a36d52a66b22d706c14dbfec5983"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r3-pdfdocencoding-euro.params",
+          "sha256": "ed5d4afc04141e949d73eb97392ba0b891919b0363465385c742cbc008c15109"
+        },
+        ".pdf": {
+          "path": "corpus/generated/crypto/r3-pdfdocencoding-euro.pdf",
+          "sha256": "6826a3108e8781435e619567be9387c5f4ff7334a72e65b0c5f110a946b5730e"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r3-pdfdocencoding-euro.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r3-pdfdocencoding-euro.user",
+          "sha256": "c19a797fa1fd590cd2e5b42d1cf5f246e29b91684e2f87404b81dc345c7a56a0"
+        }
+      },
+      "text_password_codepoint": "U+20AC",
+      "prepared_encoding": "PDFDocEncoding"
+    },
+    {
+      "id": "crypto/r3-permissions-reserved-low",
+      "kind": "vector",
+      "description": "Independent encryption-side authentication, file-key and object-key oracle",
+      "requirements": [
+        "security-r3"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/crypto/r3-permissions-reserved-low.cipher",
+          "sha256": "dfaaaf94fa5ef985e11b7bcd84492c13aef2682f6550d9957417918968e4d3cb"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r3-permissions-reserved-low.key",
+          "sha256": "1e17806747fa277c0fbfb515f4a74cde34644fe4174c091be199892056122934"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r3-permissions-reserved-low.method",
+          "sha256": "47cfe5eb8ada0e7492d86a6b47dc93e354c32af4a3cf489e0c65067cb48277d9"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r3-permissions-reserved-low.owner",
+          "sha256": "03f99ad2bb8f470ab4a6b65dd51dca8f63c4a36d52a66b22d706c14dbfec5983"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r3-permissions-reserved-low.params",
+          "sha256": "0d953ae523359cf9b7183f152481d9abad3460c810bb85c0b3a1e7e56ce5833f"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r3-permissions-reserved-low.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r3-permissions-reserved-low.user",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "crypto/r3-permissions-reserved-high",
+      "kind": "vector",
+      "description": "Independent encryption-side authentication, file-key and object-key oracle",
+      "requirements": [
+        "security-r3"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/crypto/r3-permissions-reserved-high.cipher",
+          "sha256": "975390792ecba4812c2f95e34648cf1a23c68d7463d6880d260d44f8525ce0da"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r3-permissions-reserved-high.key",
+          "sha256": "6398319e19a67492dc6b004974a8f89ecc7c6cc77adc5ba39bb4e4052258c27f"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r3-permissions-reserved-high.method",
+          "sha256": "47cfe5eb8ada0e7492d86a6b47dc93e354c32af4a3cf489e0c65067cb48277d9"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r3-permissions-reserved-high.owner",
+          "sha256": "03f99ad2bb8f470ab4a6b65dd51dca8f63c4a36d52a66b22d706c14dbfec5983"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r3-permissions-reserved-high.params",
+          "sha256": "faecb5e7cab37c19ed0db615d74a1706fb9abd8e827351b6717f5c51ac5d46a3"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r3-permissions-reserved-high.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r3-permissions-reserved-high.user",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "crypto/r3-permissions-accessibility-clear",
+      "kind": "vector",
+      "description": "Independent encryption-side authentication, file-key and object-key oracle",
+      "requirements": [
+        "security-r3"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/crypto/r3-permissions-accessibility-clear.cipher",
+          "sha256": "2ec6e1f7e24a6e73ebc7efb14798923ee84c83050a4b321e667d36f85efdb5ec"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r3-permissions-accessibility-clear.key",
+          "sha256": "f4a1032ec57c593981982ed1cfcbd945fde328caa6475849448b7033e36bab9c"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r3-permissions-accessibility-clear.method",
+          "sha256": "47cfe5eb8ada0e7492d86a6b47dc93e354c32af4a3cf489e0c65067cb48277d9"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r3-permissions-accessibility-clear.owner",
+          "sha256": "03f99ad2bb8f470ab4a6b65dd51dca8f63c4a36d52a66b22d706c14dbfec5983"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r3-permissions-accessibility-clear.params",
+          "sha256": "8b876fa6f97d391b64e305ec82d5568660dc6cf8eedc80c2fed4e78d6a9a8b9a"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r3-permissions-accessibility-clear.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r3-permissions-accessibility-clear.user",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "crypto/r3-user-hash-tail",
+      "kind": "vector",
+      "description": "Independent encryption-side authentication, file-key and object-key oracle",
+      "requirements": [
+        "security-r3"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/crypto/r3-user-hash-tail.cipher",
+          "sha256": "6f2166a5097c77069ca4369cfbe8d5a3f0269223c752417b7da4cb6c40e65803"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r3-user-hash-tail.key",
+          "sha256": "0f4a7f7b3accb85acf9fc198496e6e25f88b5804c288877a1cb9c9e8f4f33bbb"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r3-user-hash-tail.method",
+          "sha256": "47cfe5eb8ada0e7492d86a6b47dc93e354c32af4a3cf489e0c65067cb48277d9"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r3-user-hash-tail.owner",
+          "sha256": "03f99ad2bb8f470ab4a6b65dd51dca8f63c4a36d52a66b22d706c14dbfec5983"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r3-user-hash-tail.params",
+          "sha256": "ccb64f58a56d639823f9cc92659a7e1fb811415754eadc856b92be1090fa8fb6"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r3-user-hash-tail.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r3-user-hash-tail.user",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "crypto/dictionary-identity-shadow",
+      "kind": "vector",
+      "description": "open and render without processing the shadow Identity entry",
+      "requirements": [
+        "security-dictionary-integration"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/crypto/dictionary-identity-shadow.pdf",
+          "sha256": "31ffa005d2d10089db5eea3a35ad4e0d8204a7e88af8ad9bfb2862382935938e"
+        }
+      },
+      "operation": "Document::open with strict recovery",
+      "expectation": "open and render without processing the shadow Identity entry"
+    },
+    {
+      "id": "crypto/dictionary-auth-event-default",
+      "kind": "vector",
+      "description": "StmF/StrF use DocOpen despite EFOpen; open and render",
+      "requirements": [
+        "security-dictionary-integration"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/crypto/dictionary-auth-event-default.pdf",
+          "sha256": "aba273a5fecf5bc4278a92f2c9b0e2ae50cc081f928f3e6c627f95ae373d9ca9"
+        }
+      },
+      "operation": "Document::open with strict recovery",
+      "expectation": "StmF/StrF use DocOpen despite EFOpen; open and render"
+    },
+    {
+      "id": "crypto/dictionary-v4-no-length",
+      "kind": "vector",
+      "description": "use the fixed 128-bit V=4 file key; open and render",
+      "requirements": [
+        "security-dictionary-integration"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/crypto/dictionary-v4-no-length.pdf",
+          "sha256": "0626ae05d55aaeccfb4d5af4542da897237ec1badd32c31e97868d2a0b35f18f"
+        }
+      },
+      "operation": "Document::open with strict recovery",
+      "expectation": "use the fixed 128-bit V=4 file key; open and render"
+    },
+    {
+      "id": "crypto/dictionary-crypt-filter-type",
+      "kind": "vector",
+      "description": "reject the crypt filter Type in strict mode",
+      "requirements": [
+        "security-dictionary-integration"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/crypto/dictionary-crypt-filter-type.pdf",
+          "sha256": "a4027e34effc6b1d4eff90a8b52cb00a674f75f1e0a6af1bcedcb21ac758c8b7"
+        }
+      },
+      "operation": "Document::open with strict recovery",
+      "expectation": "reject the crypt filter Type in strict mode"
+    },
+    {
+      "id": "crypto/dictionary-crypt-filter-no-length",
+      "kind": "vector",
+      "description": "reject the missing required crypt-filter Length in strict mode",
+      "requirements": [
+        "security-dictionary-integration"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/crypto/dictionary-crypt-filter-no-length.pdf",
+          "sha256": "bec9024b97c96616a964073397a735ff43cbac0e7cea5abcb4fdd3961835a7a3"
+        }
+      },
+      "operation": "Document::open with strict recovery",
+      "expectation": "reject the missing required crypt-filter Length in strict mode"
+    },
+    {
+      "id": "crypto/dictionary-standard-filter-name",
+      "kind": "vector",
+      "description": "report or reject a filter name outside standard-handler support",
+      "requirements": [
+        "security-dictionary-integration"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/crypto/dictionary-standard-filter-name.pdf",
+          "sha256": "6b0e7b1a7728db59579f10efcfdd5e0dbfdaa2c6d05210dc04e49039adbc6971"
+        }
+      },
+      "operation": "Document::open with strict recovery",
+      "expectation": "report or reject a filter name outside standard-handler support"
+    },
+    {
+      "id": "crypto/dictionary-cfm-none",
+      "kind": "vector",
+      "description": "None requires handler dispatch; Standard must not silently map it to Identity",
+      "requirements": [
+        "security-dictionary-integration"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/crypto/dictionary-cfm-none.pdf",
+          "sha256": "b7f290f969f2314f67af1c5d20089e0ba9cea01bbe88f1af4a484ea1f4b20b9c"
+        }
+      },
+      "operation": "Document::open with strict recovery",
+      "expectation": "unsupported or rejected Standard CFM None"
+    },
+    {
+      "id": "crypto/dictionary-other-metadata",
+      "kind": "vector",
+      "description": "Only document-level metadata is exempt; object 7 still decrypts",
+      "requirements": [
+        "security-dictionary-integration"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/crypto/dictionary-other-metadata.expected",
+          "sha256": "5067765e056ed5cdf93f890561b9b220118c1fe001d26ab219a1597123241a63"
+        },
+        ".pdf": {
+          "path": "corpus/generated/crypto/dictionary-other-metadata.pdf",
+          "sha256": "530905fe731d747e6057fff13a05839d72a63615e1c0312a20fce3eda4f16044"
+        }
+      },
+      "operation": "stream_data(object 7 0)",
+      "expectation": "bytes equal .expected"
+    },
+    {
+      "id": "crypto/dictionary-legacy-metadata",
+      "kind": "vector",
+      "description": "EncryptMetadata is meaningful only for V=4/5; object 6 still decrypts for V=1",
+      "requirements": [
+        "security-dictionary-integration"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/crypto/dictionary-legacy-metadata.expected",
+          "sha256": "61b0e0f4ebad63b2c9099926d20131d2b60f8f35cba72dc0478705ca9ae3401a"
+        },
+        ".pdf": {
+          "path": "corpus/generated/crypto/dictionary-legacy-metadata.pdf",
+          "sha256": "1ab2a04a37c3e79036d433f490af75311c8fd691371665f604093e45b0a0f166"
+        }
+      },
+      "operation": "stream_data(object 6 0)",
+      "expectation": "bytes equal .expected"
+    },
+    {
+      "id": "crypto/dictionary-perms-mismatch",
+      "kind": "vector",
+      "description": "An authenticated permissions disagreement must not disappear at the document boundary",
+      "requirements": [
+        "security-dictionary-integration"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/crypto/dictionary-perms-mismatch.pdf",
+          "sha256": "0bfb2ba634239de34bf668726b78b2b78388807bd25d287455d3623c38ec1225"
+        }
+      },
+      "operation": "strict and repair Document::open",
+      "expectation": "strict rejection or explicit reported recovery, never silent success"
+    },
+    {
+      "id": "crypto/dictionary-id-absent",
+      "kind": "vector",
+      "description": "Table 15 requires two direct identifiers of at least 16 bytes for encrypted files",
+      "requirements": [
+        "security-dictionary-integration"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/crypto/dictionary-id-absent.pdf",
+          "sha256": "d2b3a047f775224dac7ebb5fd1603b3ca02c5620a19fe41da3f47adc3484ba63"
+        }
+      },
+      "operation": "Document::open with strict recovery",
+      "expectation": "syntax error for malformed required ID"
+    },
+    {
+      "id": "crypto/dictionary-id-one",
+      "kind": "vector",
+      "description": "Table 15 requires two direct identifiers of at least 16 bytes for encrypted files",
+      "requirements": [
+        "security-dictionary-integration"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/crypto/dictionary-id-one.pdf",
+          "sha256": "4d7a27e4e5ef2ee0be937da9edb1237182bb8742ebcf1c4fdb1ef4f078a9e7fa"
+        }
+      },
+      "operation": "Document::open with strict recovery",
+      "expectation": "syntax error for malformed required ID"
+    },
+    {
+      "id": "crypto/dictionary-id-short",
+      "kind": "vector",
+      "description": "Table 15 requires two direct identifiers of at least 16 bytes for encrypted files",
+      "requirements": [
+        "security-dictionary-integration"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/crypto/dictionary-id-short.pdf",
+          "sha256": "80f804861c441e33c71496d9f84426e1a3e05053a21deb59ca1998f4249af3cf"
+        }
+      },
+      "operation": "Document::open with strict recovery",
+      "expectation": "syntax error for malformed required ID"
     }
   ]
 }
