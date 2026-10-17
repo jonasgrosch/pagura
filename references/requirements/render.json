@@ -1,35 +1,39 @@
 {
   "schema": 2,
   "area": "render",
-  "scope": "Clause locators refer to Adobe PDF32000_2008 (ISO 32000-1) until ISO 32000-2 full text is acquired and reviewed.",
+  "scope": "Page coordinates, graphics state, paths, device colours and Contents arrays checked against the local ISO 32000-2:2020 sponsored EC3 text. The vector API also exercises clause 11 transparency, 8.7 analytic shadings and shading patterns, 12.5 annotation appearances and 10.6 continuous-tone halftone bypass. This is not a conformance certification.",
   "requirements": [
     {
       "id": "opaque-rectangle-rendering",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.3",
-        "8.4",
-        "8.5.2",
-        "8.5.3",
+        "8.3.2.3",
+        "8.3.4",
+        "8.4.1",
+        "8.5.2.1",
+        "8.5.3.1",
         "8.6.4"
       ],
-      "status": "restricted subset",
+      "status": "vector pipeline with independent device-colour and state oracles",
       "tests": [
         "pagura/tests/render.rs"
       ],
-      "gaps": "general paths, antialiasing, strokes, clipping, transparency and colour management"
+      "gaps": "text and images; calibrated group blending; meshes and tiling patterns",
+      "rule": "Page coordinates, initial state, rectangle construction, painting and device colours follow Tables 51, 52, 58 and 59."
     },
     {
       "id": "content-stream-array",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
+        "7.7.3.3",
         "7.8.2"
       ],
       "status": "implemented",
       "tests": [
         "classic/content-array-split"
       ],
-      "gaps": ""
+      "gaps": "",
+      "rule": "Contents-array streams form one lexical sequence with separating whitespace; boundaries may occur between tokens, including within an operation, as specified in Table 31."
     }
   ]
 }

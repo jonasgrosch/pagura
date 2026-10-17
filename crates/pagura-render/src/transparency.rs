@@ -4,8 +4,8 @@ use crate::blend::{BlendMode, lum};
 use crate::color::{Color, Space};
 use crate::display::Command;
 use crate::functions::Function;
+use crate::icc::ColorContext;
 use pagura_core::{Dictionary, Error, Result};
-use pagura_document::Document;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -122,6 +122,13 @@ impl Model {
         conversion: &Conversion,
         work: &mut usize,
     ) -> Result<[f64; 4]> {
+        if let Space::Icc {
+            base,
+            profile: None,
+        } = space
+        {
+            return self.source(base, components, conversion, work);
+        }
         if let Space::Tint { base, function, .. } = space {
             let input: Vec<_> = components.iter().map(|v| v.clamp(0.0, 1.0)).collect();
             return self.source(
@@ -209,7 +216,7 @@ pub(crate) struct Attributes {
 }
 impl Attributes {
     pub(crate) fn parse(
-        document: &Document,
+        document: &ColorContext<'_>,
         dictionary: &Dictionary,
         resources: &Dictionary,
     ) -> Result<Option<Self>> {
@@ -236,15 +243,17 @@ impl Attributes {
         };
         let model = d
             .get(b"CS")
-            .map(|v| match crate::color::blending(document, resources, v)? {
-                Space::Gray => Ok(Model::Gray),
-                Space::Rgb => Ok(Model::Rgb),
-                Space::Cmyk => Ok(Model::Cmyk),
-                _ => Err(Error::unsupported(
-                    crate::features::TRANSPARENCY_GROUP_COLORSPACE,
-                    "calibrated group blending is not implemented",
-                )),
-            })
+            .map(
+                |v| match crate::color::blending(document, resources, v)?.blending_fallback() {
+                    Space::Gray => Ok(Model::Gray),
+                    Space::Rgb => Ok(Model::Rgb),
+                    Space::Cmyk => Ok(Model::Cmyk),
+                    _ => Err(Error::unsupported(
+                        crate::features::TRANSPARENCY_GROUP_COLORSPACE,
+                        "calibrated group blending is not implemented",
+                    )),
+                },
+            )
             .transpose()?;
         Ok(Some(Self {
             model,

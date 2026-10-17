@@ -17,6 +17,81 @@ fn open(name: &str) -> Document {
 }
 
 const RENDER: &[&str] = &[
+    "stroke-adjusted-open-oblique",
+    "dash-hairline-anisotropic-expanded",
+    "dash-width-anisotropic-expanded",
+    "icc-rgb-columns",
+    "stitch-endpoint-encode-0",
+    "stitch-endpoint-encode-1",
+    "intent-RelativeColorimetric",
+    "intent-AbsoluteColorimetric",
+    "parameter-cap-low",
+    "parameter-cap-high",
+    "parameter-alpha-high",
+    "marked-OC-other",
+    "dash-width-expanded",
+    "dash-hairline-rotated-expanded",
+    "dash-width-rotated-expanded",
+    "dash-hairline-oblique",
+    "dash-phase-large-negative",
+    "parameter-width-clipped",
+    "parameter-miter-clipped",
+    "parameter-flatness-high",
+    "parameter-flatness-negative",
+    "intent-unknown",
+    "point-fill",
+    "point-clip",
+    "stroke-closed-point",
+    "stroke-closed-duplicates",
+    "stroke-square-point",
+    "stroke-open-point",
+    "stroke-adjusted-open-point",
+    "space-array-DeviceGray",
+    "space-array-DeviceRGB",
+    "space-array-DeviceCMYK",
+    "default-underlying-indexed",
+    "default-underlying-tint",
+    "stitch-endpoint-0",
+    "stitch-endpoint-1",
+    "membership-missing",
+    "membership-empty",
+    "membership-null",
+    "membership-intent-AnyOn",
+    "membership-intent-AllOn",
+    "membership-intent-AnyOff",
+    "membership-intent-AllOff",
+    "form-hidden-body",
+    "icc-initial-zero",
+    "icc-1-identity",
+    "icc-1-gamma",
+    "icc-1-sampled",
+    "icc-1-param0",
+    "icc-1-param1",
+    "icc-1-param2",
+    "icc-1-param3",
+    "icc-1-param4",
+    "icc-3-identity",
+    "icc-3-gamma",
+    "icc-3-sampled",
+    "icc-3-param0",
+    "icc-3-param1",
+    "icc-3-param2",
+    "icc-3-param3",
+    "icc-3-param4",
+    "dash-hairline-scaled",
+    "dash-hairline-expanded",
+    "dash-hairline-rotated",
+    "dash-hairline-anisotropic",
+    "dash-width-scaled",
+    "dash-width-rotated",
+    "dash-width-anisotropic",
+    "dash-phase-negative",
+    "dash-phase-normalized",
+    "dash-phase-cycle",
+    "dash-odd-negative",
+    "dash-odd-normalized",
+    "dash-odd-cycle",
+    "dash-empty-negative",
     "form-empty-group",
     "alpha-accumulation",
     "group-incoming-alpha",
@@ -190,18 +265,26 @@ fn independent_content_pixels() {
         for (i, (&a, &e)) in actual.iter().zip(&expected).enumerate() {
             assert!(
                 a.abs_diff(e)
-                    <= u8::from(
-                        name.starts_with("fractional")
-                            || name.starts_with("cie-")
-                            || name == "annotation-sheared"
-                            || name.starts_with("shading-")
-                            || name.starts_with("pattern-")
-                            || name.starts_with("blend-")
-                            || name.starts_with("group-")
-                            || name.starts_with("soft-")
-                            || name.starts_with("function-")
-                            || name == "decimal-stroke-half-tie"
-                    ),
+                    <= if name.starts_with("stroke-closed-") {
+                        3
+                    } else {
+                        u8::from(
+                            name.starts_with("dash-")
+                                || name.starts_with("fractional")
+                                || name.starts_with("icc-")
+                                || name.starts_with("default-underlying-")
+                                || name.starts_with("stroke-closed-")
+                                || name.starts_with("cie-")
+                                || name == "annotation-sheared"
+                                || name.starts_with("shading-")
+                                || name.starts_with("pattern-")
+                                || name.starts_with("blend-")
+                                || name.starts_with("group-")
+                                || name.starts_with("soft-")
+                                || name.starts_with("function-")
+                                || name == "decimal-stroke-half-tie",
+                        )
+                    },
                 "{name} byte {i}: {a} vs {e}"
             );
         }
@@ -427,7 +510,6 @@ fn malformed_content_and_form_cycles_are_precise_errors() {
         "syntax-TJ",
         "syntax-pending-clip",
         "syntax-reference",
-        "syntax-negative-width",
         "syntax-zero-dash",
     ] {
         let document = open(name);
@@ -566,4 +648,68 @@ fn empty_group_has_no_painted_marks() {
     let list = compile_page(&document, document.page(0).unwrap()).unwrap();
     assert_eq!(list.len(), 0);
     assert!(list.is_empty());
+}
+
+#[test]
+fn equivalent_dash_spaces_and_phases_match_exactly() {
+    for (a, b) in [
+        ("dash-hairline-scaled", "dash-hairline-expanded"),
+        ("dash-width-scaled", "dash-width-expanded"),
+        ("dash-hairline-rotated", "dash-hairline-rotated-expanded"),
+        ("dash-width-rotated", "dash-width-rotated-expanded"),
+        (
+            "dash-hairline-anisotropic",
+            "dash-hairline-anisotropic-expanded",
+        ),
+        ("dash-width-anisotropic", "dash-width-anisotropic-expanded"),
+        ("dash-phase-negative", "dash-phase-normalized"),
+        ("dash-phase-negative", "dash-phase-cycle"),
+        ("dash-phase-negative", "dash-phase-large-negative"),
+        ("dash-odd-negative", "dash-odd-normalized"),
+        ("dash-odd-negative", "dash-odd-cycle"),
+    ] {
+        let render = |name| {
+            let d = open(name);
+            compile_page(&d, d.page(0).unwrap())
+                .unwrap()
+                .render(&RenderOptions::default())
+                .unwrap()
+        };
+        assert_eq!(render(a).data(), render(b).data(), "{a} vs {b}");
+    }
+}
+
+#[test]
+fn required_path_colour_and_configuration_validation() {
+    for name in [
+        "path-undefined-stroke",
+        "path-undefined-close-stroke",
+        "path-undefined-fill",
+        "path-undefined-fill-alias",
+        "path-undefined-parity-fill",
+        "path-undefined-fill-stroke",
+        "path-undefined-parity-fill-stroke",
+        "path-undefined-close-fill-stroke",
+        "path-undefined-close-parity-fill-stroke",
+        "path-undefined-end",
+        "path-construction-after-clip",
+        "default-illegal-indexed",
+        "default-illegal-Lab",
+        "space-nested-alias",
+        "indexed-excess",
+        "tint-simple-operator",
+        "DeviceN-forbidden-All",
+        "DeviceN-All-after-None",
+        "function-domain-negative",
+        "function-domain-fractional",
+        "configuration-invalid-base-off",
+        "configuration-invalid-intent-empty",
+        "icc-simple-operator",
+        "icc-invalid-data",
+    ] {
+        let d = open(name);
+        let error = compile_page(&d, d.page(0).unwrap()).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax, "{name}: {error}");
+        assert!(error.object.is_some(), "{name}: {error}");
+    }
 }

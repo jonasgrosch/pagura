@@ -6,8 +6,8 @@
 
 use crate::color::{self, Space};
 use crate::functions::Function;
+use crate::icc::ColorContext;
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
-use pagura_document::Document;
 use pagura_raster::{Point, Transform};
 
 #[derive(Debug)]
@@ -48,7 +48,7 @@ enum Functions {
 
 impl Shading {
     pub(crate) fn parse(
-        document: &Document,
+        document: &ColorContext<'_>,
         resources: &Dictionary,
         value: &Value,
     ) -> Result<Self> {
@@ -79,7 +79,9 @@ impl Shading {
         }
         let components = space.components();
         if components > 32 {
-            return Err(Error::limit("shading component count exceeds PDF limit"));
+            return Err(Error::limit(
+                "shading component count exceeds implementation limit (Annex C)",
+            ));
         }
         let bbox = d
             .get(b"BBox")
@@ -207,7 +209,11 @@ impl Shading {
     }
 }
 
-fn geometry(document: &Document, d: &Dictionary, kind: i64) -> Result<(Geometry, Vec<[f64; 2]>)> {
+fn geometry(
+    document: &ColorContext<'_>,
+    d: &Dictionary,
+    kind: i64,
+) -> Result<(Geometry, Vec<[f64; 2]>)> {
     if kind == 1 {
         let domain = optional_numbers(document, d, b"Domain", [0.0, 1.0, 0.0, 1.0])?;
         if domain[0] >= domain[1] || domain[2] >= domain[3] {
@@ -277,7 +283,7 @@ fn geometry(document: &Document, d: &Dictionary, kind: i64) -> Result<(Geometry,
 }
 impl Functions {
     fn parse(
-        document: &Document,
+        document: &ColorContext<'_>,
         value: &Value,
         domain: &[[f64; 2]],
         outputs: usize,
@@ -334,7 +340,10 @@ fn roots(a: f64, b: f64, c: f64) -> [f64; 2] {
         [q / a, c / q]
     }
 }
-pub(crate) fn numbers<const N: usize>(document: &Document, value: &Value) -> Result<[f64; N]> {
+pub(crate) fn numbers<const N: usize>(
+    document: &ColorContext<'_>,
+    value: &Value,
+) -> Result<[f64; N]> {
     let values = document
         .resolve(value)?
         .as_array()
@@ -355,7 +364,7 @@ pub(crate) fn numbers<const N: usize>(document: &Document, value: &Value) -> Res
     Ok(out)
 }
 fn optional_numbers<const N: usize>(
-    document: &Document,
+    document: &ColorContext<'_>,
     d: &Dictionary,
     key: &[u8],
     default: [f64; N],

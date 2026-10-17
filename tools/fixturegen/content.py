@@ -48,18 +48,18 @@ def form_pdf(content=b"1 0 0 rg -2 -2 8 8 re f", extra=b"", form_resources=b"<< 
 
 
 def icc_case(name, count, alternate, command, key=b"ICC"):
-    # An unsupported ICC profile is deliberately opaque to the renderer. The
-    # required PDF stream shape and N/Alternate drive the permitted fallback.
+    # A synthetic later-version header exercises PDF's alternate rule.
+    # ICC tag definitions await primary-text review; these are not vendor bytes.
     pdf = document([
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /" + key + b" [/ICCBased 5 0 R] >> >> /Contents 4 0 R >>",
-        stream(command), stream(b"unsupported-profile", b"/N %d " % count + alternate),
+        stream(command), stream(icc_profile(count, version=5), b"/N %d " % count + alternate),
     ])
-    return Case(name, pdf, RENDER, ("content-colour",), "ICC stream Alternate/N fallback; profile bytes are not interpreted", oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]), extra={"api":"compile_page"})
+    return Case(name, pdf, RENDER, ("content-colour",), "ICC stream Alternate/N fallback for a synthetic later-version profile; primary ICC-text review pending", oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]), extra={"api":"compile_page"})
 
 
-def optional_pdf(content, ocmd=b"<< /Type /OCMD /OCGs [5 0 R 6 0 R] /P /AnyOn >>", configuration=b"/BaseState /OFF /ON [5 0 R]", usage_on=b"", usage_off=b""):
+def optional_pdf(content, ocmd=b"<< /Type /OCMD /OCGs [5 0 R 6 0 R] /P /AnyOn >>", configuration=b"/BaseState /ON /OFF [6 0 R]", usage_on=b"", usage_off=b""):
     return document([
         b"<< /Type /Catalog /Pages 2 0 R /OCProperties << /OCGs [5 0 R 6 0 R] /D << " + configuration + b" >> >> >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
@@ -81,8 +81,8 @@ def cases():
     yield render("fill-stroke-close", b"1 0 0 rg 0 G 2 w 2 2 m 6 2 l 6 6 l 2 6 l b", [((1,1,6,6),BLACK), ((3,3,2,2),RED)])
     yield render("cmyk", b"0 1 1 0 k 0 0 4 8 re f 1 1 0 0 K 2 w 5 1 m 5 7 l S", [((0,0,4,8),RED), ((4,1,2,6),BLUE)], requirements=("content-colour",))
     yield render("indexed", b"/Palette cs 1 scn 0 0 8 8 re f", [((0,0,8,8),RED)], resources=b"<< /ColorSpace << /Palette [/Indexed /DeviceRGB 1 <000000ff0000>] >> >>", requirements=("content-colour",))
-    yield icc_case("icc-alternate", 3, b"/Alternate /DeviceRGB", b"/ICC cs 1 0 0 sc 0 0 8 8 re f")
-    yield icc_case("icc-default", 4, b"", b"/ICC cs 0 1 1 0 sc 0 0 8 8 re f")
+    yield icc_case("icc-alternate", 3, b"/Alternate /DeviceRGB", b"/ICC cs 1 0 0 scn 0 0 8 8 re f")
+    yield icc_case("icc-default", 4, b"", b"/ICC cs 0 1 1 0 scn 0 0 8 8 re f")
     yield icc_case("default-space", 3, b"", b"1 0 0 rg 0 0 8 8 re f", key=b"DefaultRGB")
     yield render("compound-operands-split", [b"/Span << /Text (arbitrary) /Array [true false", b"null /Name <ff>] >> BDC 0 0 4 4 re f EMC"], [((0,0,4,4),BLACK)], requirements=("content-lexical-sequence",))
     yield render("compatibility", b"BX (opaque operands) /Name 2 future-op EX 0 0 4 4 re f", [((0,0,4,4),BLACK)], requirements=("content-explicit-operators",))
@@ -133,8 +133,11 @@ def cases():
     yield from transparency_cases()
     yield from shading_cases()
     yield from mask_geometry_cases()
+    yield from dash_space_cases()
+    yield from standard_semantics_cases()
+    yield from icc_cases()
     yield from invalid_compositing_cases()
-    for name, command in [("syntax-unknown", b"future"), ("syntax-arity", b"1 q"), ("syntax-type", b"(bad) w"), ("syntax-Q", b"Q"), ("syntax-q-unclosed", b"q"), ("syntax-l", b"1 1 l"), ("syntax-TJ", b"[/Bad] TJ"), ("syntax-pending-clip", b"W"), ("syntax-reference", b"4 0 R"), ("syntax-negative-width", b"-1 w"), ("syntax-zero-dash", b"[0 0] 0 d"), ("transfer", b"/GS gs")]:
+    for name, command in [("syntax-unknown", b"future"), ("syntax-arity", b"1 q"), ("syntax-type", b"(bad) w"), ("syntax-Q", b"Q"), ("syntax-q-unclosed", b"q"), ("syntax-l", b"1 1 l"), ("syntax-TJ", b"[/Bad] TJ"), ("syntax-pending-clip", b"W"), ("syntax-reference", b"4 0 R"), ("syntax-zero-dash", b"[0 0] 0 d"), ("transfer", b"/GS gs")]:
         yield Case(name, single_page([command], media_box=b"[0 0 8 8]" if name=="transfer" else b"[0 0 64 64]", resources=b"<< /ExtGState << /GS << /TR [] >> >> >>" if name=="transfer" else b"<< >>"), OPEN, ("content-explicit-operators",), "Valid file with malformed page content", extra={"api":"compile_page", "render_error":"Syntax"})
     yield Case("recursive-form", form_pdf(content=b"/Self Do", form_resources=b"<< /XObject << /Self 5 0 R >> >>"), OPEN, ("content-forms",), "Recursive form must return Cycle", extra={"api":"compile_page", "render_error":"Cycle"})
     yield render("annotation-no-normal", b"", page_extra=b"/Annots [<< /Subtype /Widget /Rect [0 0 0 0] >>]")
@@ -147,7 +150,7 @@ def cases():
     yield Case("icc-rgb-group", document([
         b"<< /Type /Catalog /Pages 2 0 R >>", b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Group << /S /Transparency /CS [/ICCBased 5 0 R] >> /Contents 4 0 R >>",
-        stream(b"1 0 0 rg 0 0 8 8 re f"), stream(b"unsupported-profile", b"/N 3 /Alternate /DeviceRGB"),
+        stream(b"1 0 0 rg 0 0 8 8 re f"), stream(icc_profile(3, version=5), b"/N 3 /Alternate /DeviceRGB"),
     ]), RENDER, ("content-opaque-groups",), "RGB ICC alternate is the device blend space", oracle=opaque_rectangles(8,8,[((0,0,8,8),RED)]))
     for space in (b"DeviceGray", b"DeviceCMYK"):
         yield render("group-"+space.decode(), b"", page_extra=b"/Group << /S /Transparency /CS /"+space+b" >>")
@@ -236,7 +239,7 @@ def function_cases():
             b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C '+space+b' >> >> /Contents 4 0 R >>',stream(command),function,
         ])
     def strips(name,space,function,values,colours):
-        command=b'/C cs '+b' '.join((' '.join(map(str,v))+f' sc {i} 0 1 8 re f').encode() for i,v in enumerate(values))
+        command=b'/C cs '+b' '.join((' '.join(map(str,v))+f' scn {i} 0 1 8 re f').encode() for i,v in enumerate(values))
         pdf=function_pdf(space,function,command)
         return Case(name,pdf,RENDER,('content-functions',),'Independent numeric tint-transform oracle',oracle=opaque_rectangles(8,8,[((i,0,1,8),c) for i,c in enumerate(colours)]),extra={'tolerance':1})
     def byte(x): return int(min(1,max(0,x))*255+.5)
@@ -268,7 +271,7 @@ def function_cases():
         ('function-truncated',stream(b'\xff',sampled+b'/Size [2]'),b'/C cs','Syntax'),
         ('function-cycle',b'<< /FunctionType 3 /Domain [0 1] /Functions [5 0 R] /Bounds [] /Encode [0 1] >>',b'/C cs','Cycle'),
         ('function-dimension',b'<< /FunctionType 2 /Domain [0 1 0 1] /N 1 >>',b'/C cs','Syntax'),
-        ('function-undefined',b'<< /FunctionType 2 /Domain [0 1] /N -1 >>',b'/C cs 0 sc 0 0 8 8 re f','Syntax'),
+        ('function-undefined',b'<< /FunctionType 2 /Domain [0 1] /N -1 >>',b'/C cs 0 scn 0 0 8 8 re f','Syntax'),
         ('function-host-action',stream(b'{ pop (secret) file }',b'/FunctionType 4 /Domain [0 1] /Range [0 1]'),b'/C cs','Syntax'),
     ]:
         yield Case(name,function_pdf(gray,function,command),OPEN,('content-functions',),'Independent invalid function contract',extra={'render_error':error})
@@ -287,12 +290,12 @@ def usage_cases():
     command=b'/OC /On BDC 1 0 0 rg 0 0 8 8 re f EMC /OC /Off BDC 0 0 1 rg 0 0 4 4 re f EMC'
     usage_on=b'/Usage << /View << /ViewState /OFF >> >> '
     usage_off=b'/Usage << /View << /ViewState /ON >> >> '
-    configuration=b'/BaseState /OFF /ON [5 0 R] /AS [<< /Event /View /OCGs [5 0 R 6 0 R] /Category [/View] >>]'
+    configuration=b'/BaseState /ON /OFF [6 0 R] /AS [<< /Event /View /OCGs [5 0 R 6 0 R] /Category [/View] >>]'
     yield Case('usage-View',optional_pdf(command,configuration=configuration,usage_on=usage_on,usage_off=usage_off),RENDER,('content-usage',),'View usage overrides explicit initial ON/OFF',oracle=opaque_rectangles(8,8,[((0,0,4,4),BLUE)]))
     for name,configuration,usage,visible in [
-        ('usage-Print-ignored',b'/BaseState /OFF /ON [5 0 R] /AS [<< /Event /Print /OCGs [5 0 R] /Category [/View] >>]',usage_on,True),
-        ('usage-no-OCGs',b'/BaseState /OFF /ON [5 0 R] /AS [<< /Event /View /Category [/View] >>]',usage_on,True),
-        ('usage-Zoom-on',b'/BaseState /OFF /AS [<< /Event /View /OCGs [5 0 R] /Category [/Zoom] >>]',b'/Usage << /Zoom << /min 1 /max 2 >> >> ',True),
+        ('usage-Print-ignored',b'/BaseState /ON /OFF [6 0 R] /AS [<< /Event /Print /OCGs [5 0 R] /Category [/View] >>]',usage_on,True),
+        ('usage-no-OCGs',b'/BaseState /ON /OFF [6 0 R] /AS [<< /Event /View /Category [/View] >>]',usage_on,True),
+        ('usage-Zoom-on',b'/BaseState /ON /OFF [5 0 R 6 0 R] /AS [<< /Event /View /OCGs [5 0 R] /Category [/Zoom] >>]',b'/Usage << /Zoom << /min 1 /max 2 >> >> ',True),
         ('usage-Zoom-off',b'/BaseState /ON /AS [<< /Event /View /OCGs [5 0 R] /Category [/Zoom] >>]',b'/Usage << /Zoom << /max 1 >> >> ',False),
         ('usage-conjunction',b'/BaseState /ON /AS [<< /Event /View /OCGs [5 0 R] /Category [/View] >> << /Event /View /OCGs [5 0 R] /Category [/Zoom] >>]',b'/Usage << /View << /ViewState /ON >> /Zoom << /min 2 >> >> ',False),
     ]:
@@ -526,3 +529,233 @@ def invalid_compositing_cases():
     ]:
         pdf=single_page([b'/S sh'],media_box=b'[0 0 8 8]',resources=b'<< /Shading << /S << /ColorSpace /DeviceGray '+definition+b' >> >> >>')
         yield Case(name,pdf,OPEN,('content-shadings',),'Required radius and function-domain invariants',extra={'render_error':'Syntax'})
+
+
+def dash_space_cases():
+    """User-distance intervals, transformed pen geometry and rational pixel areas.
+
+    Coverage and final half-up quantization are project policy; user-space dash
+    distances, phase parity and per-subpath restart follow 8.4.3.6 / Table 55.
+    """
+    from math import hypot
+    from .raster import clipped_area
+    def intervals(array, phase, length):
+        if not array:return [(F(0),length)]
+        pattern=list(map(F,array))*2;period=sum(pattern);phase=F(phase)%period
+        prefix=[F(0)]
+        for v in pattern:prefix.append(prefix[-1]+v)
+        return [(max(F(0),k*period+prefix[i]-phase),min(length,k*period+prefix[i+1]-phase))
+                for k in range(-1,int(length//period)+2) for i in range(0,len(pattern),2)
+                if max(F(0),k*period+prefix[i]-phase)<min(length,k*period+prefix[i+1]-phase)]
+    def oracle(matrix, lines, width, array, phase, height):
+        a,b,c,d,e,f=map(F,matrix)
+        transform=lambda p:(a*p[0]+c*p[1]+e,b*p[0]+d*p[1]+f)
+        polygons=[]
+        for start,end in lines:
+            start,end=tuple(map(F,start)),tuple(map(F,end));dx=end[0]-start[0];dy=end[1]-start[1]
+            length=F(hypot(dx,dy));direction=(dx/length,dy/length)
+            for low,high in intervals(array,phase,length):
+                p=tuple(v+low*t for v,t in zip(start,direction));q=tuple(v+high*t for v,t in zip(start,direction))
+                if width:
+                    n=(-direction[1]*F(width)/2,direction[0]*F(width)/2)
+                    polygon=[transform((p[0]+n[0],p[1]+n[1])),transform((q[0]+n[0],q[1]+n[1])),transform((q[0]-n[0],q[1]-n[1])),transform((p[0]-n[0],p[1]-n[1]))]
+                else:
+                    p,q=transform(p),transform(q);size=F(hypot(q[0]-p[0],q[1]-p[1]));n=(-(q[1]-p[1])/size/2,(q[0]-p[0])/size/2)
+                    polygon=[(p[0]+n[0],p[1]+n[1]),(q[0]+n[0],q[1]+n[1]),(q[0]-n[0],q[1]-n[1]),(p[0]-n[0],p[1]-n[1])]
+                polygons.append(polygon)
+        pixels=bytearray()
+        for row in range(height):
+            for x in range(32):
+                alpha=int(min(F(1),sum(clipped_area(p,x,height-1-row) for p in polygons))*255+F(1,2));pixels.extend([255-alpha]*3)
+        return f'P6\n32 {height}\n255\n'.encode()+pixels
+    entries=[
+        ('dash-hairline-scaled',(2,0,0,2,0,0),[((1,4),(15,4))],0,[2,2],0,16),
+        ('dash-hairline-expanded',(1,0,0,1,0,0),[((2,8),(30,8))],0,[4,4],0,16),
+        ('dash-hairline-rotated',(0,2,-2,0,24,0),[((1,4),(15,4))],0,[2,2],0,32),
+        ('dash-hairline-anisotropic',(2,0,0,1,0,0),[((1,4),(15,4)),((3,8),(3,15))],0,[2,2],0,16),
+        ('dash-width-scaled',(2,0,0,2,0,0),[((1,4),(15,4))],1,[2,2],0,16),
+        ('dash-width-expanded',(1,0,0,1,0,0),[((2,8),(30,8))],2,[4,4],0,16),
+        ('dash-hairline-rotated-expanded',(1,0,0,1,0,0),[((16,2),(16,30))],0,[4,4],0,32),
+        ('dash-width-rotated-expanded',(1,0,0,1,0,0),[((16,2),(16,30))],2,[4,4],0,32),
+        ('dash-hairline-oblique',(2,0,0,1,0,0),[((1,1),(10,13))],0,[2,2],0,16),
+        ('dash-width-rotated',(0,2,-2,0,24,0),[((1,4),(15,4))],1,[2,2],0,32),
+        ('dash-width-anisotropic',(2,0,0,1,0,0),[((1,4),(15,4)),((3,8),(3,15))],1,[2,2],0,16),
+    ]
+    for phase,label in [(-1,'negative'),(9,'normalized'),(14,'cycle'),(-10000000001,'large-negative')]:
+        entries.append(('dash-phase-'+label,(1,0,0,1,0,0),[((1,8),(30,8))],2,[3,2],phase,16))
+    for phase,label in [(-2,'negative'),(10,'normalized'),(22,'cycle')]:
+        entries.append(('dash-odd-'+label,(1,0,0,1,0,0),[((1,8),(30,8))],2,[2,1,3],phase,16))
+    entries.append(('dash-empty-negative',(1,0,0,1,0,0),[((1,8),(30,8))],2,[],-1000000000,16))
+    for name,matrix,lines,width,array,phase,height in entries:
+        contents=(' '.join(map(str,matrix))+' cm '+str(width)+' w ['+' '.join(map(str,array))+'] '+str(phase)+' d '+ ' '.join(f'{p[0]} {p[1]} m {q[0]} {q[1]} l S' for p,q in lines)).encode()
+        pdf=single_page([contents],media_box=f'[0 0 32 {height}]'.encode())
+        expected=oracle(matrix,lines,width,array,phase,height)
+        yield Case(name,pdf,RENDER,('raster-dashes',),'Independent user-space dash intervals and transformed stroke coverage',oracle=expected,extra={'tolerance':1})
+        if name.endswith('-anisotropic'):
+            w1,w2=(0,0) if width==0 else (1,2)
+            baked=f'{w1} w [4 4] 0 d 2 4 m 30 4 l S {w2} w [2 2] 0 d 6 8 m 6 15 l S'.encode()
+            yield Case(name+'-expanded',single_page([baked],media_box=b'[0 0 32 16]'),RENDER,('raster-dashes',),'Equivalent anisotropic geometry has different dash spacing and pen width along each axis',oracle=expected,extra={'tolerance':1})
+
+
+ICC_D50=(.9642,1,.8249)
+ICC_RGB_MATRIX=(.4360747,.2225045,.0139322,.3850649,.7168786,.0971045,.1430804,.0606169,.7141733)
+
+
+def icc_fixed(value):
+    return int(F(value)*65536+F(1,2)) if value>=0 else -int(-F(value)*65536+F(1,2))
+
+
+def icc_curve(kind, values):
+    import struct
+    if kind=='sampled':return b'curv'+bytes(4)+struct.pack('>I',len(values))+b''.join(struct.pack('>H',v) for v in values)
+    if kind=='gamma':return b'curv'+bytes(4)+struct.pack('>IH',1,int(values[0]*256+.5))
+    if kind=='identity':return b'curv'+bytes(4)+bytes(4)
+    return b'para'+bytes(4)+struct.pack('>HH',kind,0)+b''.join(struct.pack('>i',icc_fixed(v)) for v in values)
+
+
+def icc_profile(count=3, version=4, curve=None, lut=None):
+    """Construct tag-defined ICC matrix/TRC data; primary ICC-text review pending.
+
+    Version 2.1 uses text/desc metadata; version 4.3 uses mluc. All data is
+    independently authored. A version-5 header exercises PDF's later-version
+    fallback; it is not a claim of ICCmax conformance.
+    """
+    import struct
+    curve=curve or icc_curve('gamma',(2.2,))
+    xyz=lambda v:b'XYZ '+bytes(4)+b''.join(struct.pack('>i',icc_fixed(x)) for x in v)
+    def mluc(value):
+        data=value.encode('utf-16-be')
+        return b'mluc'+bytes(4)+struct.pack('>II',1,12)+b'enUS'+struct.pack('>II',len(data),28)+data
+    tags={b'wtpt':xyz(ICC_D50),b'cprt':mluc('Public domain test data'),b'desc':mluc('Independent matrix profile')}
+    if version==2:
+        text=b'Independent matrix profile\0'
+        tags[b'desc']=b'desc'+bytes(4)+struct.pack('>I',len(text))+text+bytes(4+4+2+1+67)
+        tags[b'cprt']=b'text'+bytes(4)+b'Public domain test data\0'
+    if count==3:
+        for i,prefix in enumerate((b'r',b'g',b'b')):
+            tags[prefix+b'XYZ']=xyz(ICC_RGB_MATRIX[i*3:i*3+3]);tags[prefix+b'TRC']=curve[i] if isinstance(curve,(tuple,list)) else curve
+    elif count==1:tags[b'kTRC']=curve
+    if lut is not None:
+        name=lut
+        matrix=b''.join(struct.pack('>i',65536 if i in (0,4,8) else 0) for i in range(9))
+        if lut==b'mft1':data=lut+bytes(4)+bytes([count,3,2,0])+matrix+bytes(range(256))*count+bytes(2**count*3)+bytes(range(256))*3
+        elif lut==b'mft2':data=lut+bytes(4)+bytes([count,3,2,0])+matrix+struct.pack('>HH',2,2)+struct.pack('>HH',0,65535)*count+bytes(2**count*3*2)+struct.pack('>HH',0,65535)*3
+        else:
+            # ICC v4 multi-process-element offsets, identity B curves and CLUT.
+            inputs,outputs=(3,count) if lut==b'mBA ' else (count,3)
+            curves=icc_curve('identity',())*3
+            data=lut+bytes(4)+bytes([inputs,outputs,0,0])+struct.pack('>IIIII',32,0,0,32+len(curves),0)+curves+bytes([2]*inputs+[0]*(16-inputs))+bytes([2,0,0,0])+bytes(2**inputs*outputs*2)
+        tags[b'B2A0' if lut==b'mBA ' else b'A2B0']=data
+    header=bytearray(128);header[8:12]=bytes([version,0x10 if version==2 else 0x30,0,0]);header[12:16]=b'prtr' if count==4 else b'mntr';header[16:20]={1:b'GRAY',3:b'RGB ',4:b'CMYK'}[count];header[20:24]=b'XYZ ';header[24:36]=struct.pack('>6H',2026,10,17,12,0,0);header[36:40]=b'acsp';header[68:80]=b''.join(struct.pack('>i',icc_fixed(v)) for v in ICC_D50)
+    start=132+12*len(tags);entries=bytearray();payload=bytearray()
+    for signature, data in sorted(tags.items()):
+        entries+=signature+struct.pack('>II',start+len(payload),len(data));payload+=data;payload+=bytes(-len(payload)%4)
+    result=header+struct.pack('>I',len(tags))+entries+payload;result[0:4]=struct.pack('>I',len(result));return bytes(result)
+
+
+def icc_cases():
+    from bisect import bisect_right
+    def pdf(profile,count=3,command=b'/C cs .5 .5 .5 scn 0 0 8 8 re f',alternate=b'/DeviceRGB'):
+        return document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/ICCBased 5 0 R] >> >> /Contents 4 0 R >>',stream(command),stream(profile,b'/N '+str(count).encode()+b' /Alternate '+alternate)])
+    values=[0,.02,.04,.1,.25,.5,.75,1]
+    samples=tuple(int((i/16)**2.2*65535+.5) for i in range(17))
+    definitions=[('identity','identity',()),('gamma','gamma',(2.2,)),('sampled','sampled',samples),('param0',0,(2.2,)),('param1',1,(2,1,-.1)),('param2',2,(2,1,-.1,.05)),('param3',3,(2,1,0,.2,.2)),('param4',4,(2.4,1/1.055,.055/1.055,1/12.92,.04045,0,0))]
+    for name,kind,parameters in definitions:
+        def evaluate(x):
+            if kind=='identity':return x
+            if kind=='gamma':return x**(int(parameters[0]*256+.5)/256)
+            if kind=='sampled':
+                knots=[i/(len(parameters)-1) for i in range(len(parameters))];j=min(len(knots)-2,bisect_right(knots,x)-1);t=(x-knots[j])/(knots[j+1]-knots[j]);return ((1-t)*parameters[j]+t*parameters[j+1])/65535
+            p=[icc_fixed(v)/65536 for v in parameters]+[0]*7;g,a,b,c,d,e,f=p[:7]
+            if kind==0:return x**g
+            if kind in (1,2):return (max(0,a*x+b)**g)+(c if kind==2 else 0)
+            return (a*x+b)**g+(e if kind==4 else 0) if x>=d else c*x+(f if kind==4 else 0)
+        for count in (1,3):
+            curve=icc_curve(kind,parameters);profile=icc_profile(count,version=2 if kind in ('identity','gamma','sampled') else 4,curve=curve)
+            command=b'/C cs '+b' '.join((' '.join([str(v)]*count)+f' scn {i} 0 1 8 re f').encode() for i,v in enumerate(values))
+            colours=[cie_rgb('CalGray',(evaluate(v),),white=ICC_D50) if count==1 else cie_rgb('CalRGB',(evaluate(v),)*3,white=ICC_D50,matrix=tuple(icc_fixed(v)/65536 for v in ICC_RGB_MATRIX)) for v in values]
+            yield Case(f'icc-{count}-{name}',pdf(profile,count,command,b'/DeviceGray' if count==1 else b'[/Lab << /WhitePoint [.9642 1 .8249] >>]'),RENDER,('content-icc-matrix',),'Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle pending primary-text review',oracle=opaque_rectangles(8,8,[((i,0,1,8),c) for i,c in enumerate(colours)]),extra={'tolerance':1})
+    rgb_values=[(0,0,0),(1,1,1),(1,0,0),(0,1,0),(0,0,1),(.25,.5,.75),(.6,.2,.3),(.08,.04,.02)]
+    gammas=(1.8,2.2,2.4)
+    profile=icc_profile(3,version=2,curve=[icc_curve('gamma',(g,)) for g in gammas])
+    command=b'/C cs '+b' '.join((' '.join(map(str,v))+f' scn {i} 0 1 8 re f').encode() for i,v in enumerate(rgb_values))
+    colours=[cie_rgb('CalRGB',tuple(x**(int(g*256+.5)/256) for x,g in zip(v,gammas)),white=ICC_D50,matrix=tuple(icc_fixed(v)/65536 for v in ICC_RGB_MATRIX)) for v in rgb_values]
+    yield Case('icc-rgb-columns',pdf(profile,command=command),RENDER,('content-icc-matrix',),'Independent unequal per-channel TRCs and PCS matrix columns; primary ICC-text review pending',oracle=opaque_rectangles(8,8,[((i,0,1,8),c) for i,c in enumerate(colours)]),extra={'tolerance':1})
+    yield Case('icc-initial-zero',pdf(icc_profile(4,version=5),4,b'/C cs 0 0 8 8 re f',b'/DeviceCMYK'),RENDER,('content-icc-matrix',),'Later-version fallback retains ICCBased all-zero initialization, rather than DeviceCMYK black',oracle=opaque_rectangles(8,8,[]))
+    yield Case('icc-simple-operator',pdf(icc_profile(),command=b'/C cs .5 .5 .5 sc'),OPEN,('content-icc-matrix',),'ICCBased retains the SCN/scn applicability rule of Table 73',extra={'render_error':'Syntax'})
+    yield Case('icc-invalid-data',pdf(b'not a profile'),OPEN,('content-icc-matrix',),'Non-profile data cannot establish ICC fallback',extra={'render_error':'Syntax'})
+    for kind in (b'mft1',b'mft2',b'mAB ',b'mBA '):
+        yield Case('icc-lut-'+kind.decode().strip(),pdf(icc_profile(4,lut=kind),4,b'/C cs 0 0 0 0 scn 0 0 8 8 re f',b'/DeviceCMYK'),UNSUPPORTED,('content-icc-matrix',),'Tag-defined LUT profile requires explicit processing rather than alternate substitution; primary ICC review pending',feature='colorspace.ICCBased')
+
+
+def standard_semantics_cases():
+    def invalid(name,command,resources=b'<< >>',page_extra=b'',requirement='content-vector-pipeline'):
+        return Case(name,single_page([command],media_box=b'[0 0 8 8]',resources=resources,page_extra=page_extra),OPEN,(requirement,),'Required syntax and source-family constraints',extra={'render_error':'Syntax'})
+    for op in ('S','s','f','F','f*','B','B*','b','b*','n'):
+        yield invalid('path-undefined-'+{'S':'stroke','s':'close-stroke','f':'fill','F':'fill-alias','f*':'parity-fill','B':'fill-stroke','B*':'parity-fill-stroke','b':'close-fill-stroke','b*':'close-parity-fill-stroke','n':'end'}[op],op.encode())
+    yield invalid('path-construction-after-clip',b'0 0 4 4 re W 5 5 l n')
+    for name,command in [('parameter-width-clipped',b'-1 w 1 4.5 m 7 4.5 l S'),('parameter-miter-clipped',b'.5 M 0 0 8 8 re f'),('parameter-flatness-high',b'101 i 0 0 8 8 re f'),('parameter-flatness-negative',b'-1 i 0 0 8 8 re f'),('intent-unknown',b'/CustomIntent ri 0 0 8 8 re f')]:
+        geometry=[((1,4,6,1),BLACK)] if name=='parameter-width-clipped' else [((0,0,8,8),BLACK)]
+        yield render(name,command,geometry)
+    for name,command,geometry in [
+        ('parameter-cap-low',b'-10 J 2 w 2 4 m 6 4 l S',[((2,3,4,2),BLACK)]),
+        ('parameter-cap-high',b'10 J 2 w 2 4 m 6 4 l S',[((1,3,6,2),BLACK)]),
+        ('parameter-alpha-high',b'/G gs 1 0 0 rg 0 0 8 8 re f',[((0,0,8,8),RED)]),
+    ]:
+        yield render(name,command,geometry,resources=b'<< /ExtGState << /G << /ca 2 /CA -1 /SM -5 >> >> >>')
+    for suffix in ('f','W n 0 0 8 8 re f'):
+        yield render('point-'+('fill' if suffix=='f' else 'clip'),b'4.25 4.25 m h '+suffix.encode(),[((4,4,1,1),BLACK)],requirements=('raster-degenerate',))
+    from .raster import sampled
+    dot=sampled('circle', '',lambda x,y:(x-4)**2+(y-4)**2<=2.25).files['.pgm'].split(b'\n',3)[-1]
+    disk=b'P6\n8 8\n255\n'+bytes(c for alpha in dot for c in [255-alpha]*3)
+    for name,tail,cap,adjust,painted in [('stroke-closed-point',b'h S',1,False,True),('stroke-closed-duplicates',b'4 4 l h S',1,False,True),('stroke-square-point',b'4 4 l S',2,False,False),('stroke-open-point',b'S',1,False,False),('stroke-adjusted-open-point',b'S',1,True,False)]:
+        command=(b'/G gs ' if adjust else b'')+f'3 w {cap} J 4 4 m '.encode()+tail
+        yield Case(name,single_page([command],media_box=b'[0 0 8 8]',resources=b'<< /ExtGState << /G << /SA true >> >> >>'),RENDER,('raster-strokes',),'8.5.3.2 degenerate and trailing open subpaths, with project-policy circle coverage',oracle=disk if painted else opaque_rectangles(8,8,[]),extra={'tolerance':3 if painted else 0})
+    yield render('stroke-adjusted-open-oblique',b'1 1 -1 1 4 0 cm /G gs 3 w 1 J 4 4 m S',resources=b'<< /ExtGState << /G << /SA true >> >> >>',requirements=('raster-strokes',))
+    for family,command,colour in [('DeviceGray',b'.25 sc',(64,)*3),('DeviceRGB',b'1 0 0 sc',RED),('DeviceCMYK',b'0 1 1 0 sc',RED)]:
+        yield render('space-array-'+family,b'/C cs '+command+b' 0 0 8 8 re f',[((0,0,8,8),colour)],resources=b'<< /ColorSpace << /C [/'+family.encode()+b'] >> >>',requirements=('content-colour',))
+    cal=b'[/CalGray << /WhitePoint [.95047 1 1.08883] /Gamma 2 >>]'
+    tint=b'[/Separation /Spot /DeviceGray << /FunctionType 2 /Domain [0 1] /N 1 >>]'
+    for name,space,value in [('indexed',b'[/Indexed /DeviceGray 0 <80>]',0),('tint',tint,.5)]:
+        colour=cie_rgb('CalGray',(128/255 if name=='indexed' else .5,),white=(.95047,1,1.08883),gamma=2)
+        yield render('default-underlying-'+name,f'/C cs {value} scn 0 0 8 8 re f'.encode(),[((0,0,8,8),colour)],resources=b'<< /ColorSpace << /DefaultGray '+cal+b' /C '+space+b' >> >>',requirements=('content-colour',))
+    for name,command,resources in [
+        ('default-illegal-indexed',b'0 g',b'<< /ColorSpace << /DefaultGray [/Indexed /DeviceRGB 0 <ff0000>] >> >>'),
+        ('default-illegal-Lab',b'0 0 0 rg',b'<< /ColorSpace << /DefaultRGB [/Lab << /WhitePoint [.9642 1 .8249] >>] >> >>'),
+        ('space-nested-alias',b'/C cs',b'<< /ColorSpace << /C [/Indexed /Base 0 <ff0000>] /Base /DeviceRGB >> >>'),
+        ('indexed-excess',b'/C cs',b'<< /ColorSpace << /C [/Indexed /DeviceRGB 0 <ff000000>] >> >>'),
+        ('tint-simple-operator',b'/C cs .5 sc',b'<< /ColorSpace << /C '+tint+b' >> >>'),
+        ('DeviceN-forbidden-All',b'/C cs',b'<< /ColorSpace << /C [/DeviceN [/All] /DeviceGray << /FunctionType 2 /Domain [0 1] /N 1 >>] >> >>'),
+    ]:yield invalid(name,command,resources,requirement='content-colour')
+    for exponent,domain,label in [(-1,b'[0 1]','negative'),(.5,b'[-1 1]','fractional')]:
+        space=b'[/Separation /Spot /DeviceGray << /FunctionType 2 /Domain '+domain+b' /N '+str(exponent).encode()+b' >>]'
+        yield invalid('function-domain-'+label,b'/C cs .5 scn',b'<< /ColorSpace << /C '+space+b' >> >>',requirement='content-functions')
+    for boundary in (0,1):
+        values=(0,.001,.25,.5,.75,.999,1,2)
+        function=b'<< /FunctionType 3 /Domain [0 1] /Functions [<< /FunctionType 2 /Domain [0 1] /C0 [1] /C1 [1] /N 1 >> << /FunctionType 2 /Domain [0 1] /C0 [0] /C1 [0] /N 1 >>] /Bounds ['+str(boundary).encode()+b'] /Encode [0 1 0 1] >>'
+        contents=b'/C cs '+b' '.join(f'{v} scn {i} 0 1 8 re f'.encode() for i,v in enumerate(values))
+        geometry=[((i,0,1,8),(255,)*3 if (v==0 if boundary==0 else v<1) else BLACK) for i,v in enumerate(values)]
+        yield render('stitch-endpoint-'+str(boundary),contents,geometry,resources=b'<< /ColorSpace << /C [/Separation /Spot /DeviceGray '+function+b'] >> >>',requirements=('content-functions',))
+    for boundary in (0,1):
+        values=(0,.001,.25,.5,.75,.999,1,2)
+        function=b'<< /FunctionType 3 /Domain [0 1] /Functions [<< /FunctionType 2 /Domain [0 1] /N 1 >> << /FunctionType 2 /Domain [0 1] /N 1 >>] /Bounds ['+str(boundary).encode()+b'] /Encode [.25 .75 .5 1] >>'
+        contents=b'/C cs '+b' '.join(f'{v} scn {i} 0 1 8 re f'.encode() for i,v in enumerate(values))
+        mapped=[(.25 if v==0 else .5+.5*min(1,v)) if boundary==0 else (.25+.5*v if v<1 else .5) for v in values]
+        yield render('stitch-endpoint-encode-'+str(boundary),contents,[((i,0,1,8),(int(v*255+.5),)*3) for i,v in enumerate(mapped)],resources=b'<< /ColorSpace << /C [/Separation /Spot /DeviceGray '+function+b'] >> >>',requirements=('content-functions',))
+    for intent in ('RelativeColorimetric','AbsoluteColorimetric'):
+        yield render('intent-'+intent,('/'+intent+' ri /C cs 1 sc 0 0 8 8 re f').encode(),resources=b'<< /ColorSpace << /C [/CalGray << /WhitePoint [.96422 1 .82521] >>] >> >>',requirements=('content-cie',))
+    for names,kind in [(b'[/None /None]',UNSUPPORTED),(b'[/None /All]',OPEN)]:
+        name='DeviceN-duplicate-None' if kind==UNSUPPORTED else 'DeviceN-All-after-None'
+        pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/DeviceN '+names+b' /DeviceGray 5 0 R] >> >> /Contents 4 0 R >>',stream(b'/C cs'),stream(b'{ pop pop 0 }',b'/FunctionType 4 /Domain [0 1 0 1] /Range [0 1]')])
+        yield Case(name,pdf,kind,('content-colour',),'None may repeat but All is forbidden even after a None colourant',feature='colorspace.special-ink' if kind==UNSUPPORTED else None,extra={} if kind==UNSUPPORTED else {'render_error':'Syntax'})
+    for label,ocmd in [('missing',b'<< /Type /OCMD >>'),('empty',b'<< /Type /OCMD /OCGs [] /P /AllOff >>'),('null',b'<< /Type /OCMD /OCGs [null 99 0 R] >>')]:
+        pdf=optional_pdf(b'/OC /Members BDC 0 0 8 8 re f EMC',ocmd=ocmd)
+        yield Case('membership-'+label,pdf,RENDER,('content-optional',),'Empty effective OCG lists impose no visibility restriction',oracle=opaque_rectangles(8,8,[((0,0,8,8),BLACK)]))
+    for policy,visible in [('AnyOn',False),('AllOn',False),('AnyOff',True),('AllOff',True)]:
+        pdf=optional_pdf(b'/OC /Members BDC 0 0 8 8 re f EMC',ocmd=b'<< /Type /OCMD /OCGs [5 0 R 6 0 R] /P /'+policy.encode()+b' >>',configuration=b'/BaseState /ON /OFF [5 0 R]',usage_off=b'/Intent /Design')
+        yield Case('membership-intent-'+policy,pdf,RENDER,('content-optional',),'Nonmatching intents are removed before membership aggregation',oracle=opaque_rectangles(8,8,[((0,0,8,8),BLACK)] if visible else []))
+    for name,config in [('base-off',b'/BaseState /OFF'),('intent-empty',b'/Intent []')]:
+        yield Case('configuration-invalid-'+name,optional_pdf(b'',configuration=config),OPEN,('content-optional',),'Default configuration constraints from Table 99',extra={'render_error':'Syntax'})
+    yield render('marked-OC-other',b'/OC << /Other 1 >> BDC 0 0 8 8 re f EMC',[((0,0,8,8),BLACK)],requirements=('content-optional',))
+    hidden=document([b'<< /Type /Catalog /Pages 2 0 R /OCProperties << /OCGs [6 0 R] /D << /BaseState /ON /OFF [6 0 R] >> >> >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /XObject << /F 5 0 R >> >> /Contents 4 0 R >>',stream(b'/F Do'),stream(b'BT ET',b'/Type /XObject /Subtype /Form /BBox [0 0 8 8] /Resources << >> /OC 6 0 R'),b'<< /Type /OCG /Name (hidden) >>'])
+    yield Case('form-hidden-body',hidden,RENDER,('content-forms',),'An invisible form skips its entire body, including unsupported text operators',oracle=opaque_rectangles(8,8,[]))

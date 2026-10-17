@@ -85,6 +85,9 @@ impl Cie {
             adaptation,
         })
     }
+    pub(crate) fn is_lab(&self) -> bool {
+        matches!(self.definition, Definition::Lab(_))
+    }
     pub(crate) fn components(&self) -> usize {
         match self.definition {
             Definition::Gray(_) => 1,
@@ -111,22 +114,7 @@ impl Cie {
             }
         };
         let xyz = map(self.adaptation, xyz);
-        let rgb = map(
-            [
-                [3.240_454_2, -1.537_138_5, -0.498_531_4],
-                [-0.969_266, 1.876_010_8, 0.041_556],
-                [0.055_643_4, -0.204_025_9, 1.057_225_2],
-            ],
-            xyz,
-        );
-        rgb.map(|v| {
-            let v = v.clamp(0.0, 1.0);
-            if v <= 0.003_130_8 {
-                12.92 * v
-            } else {
-                1.055 * v.powf(1.0 / 2.4) - 0.055
-            }
-        })
+        xyz_to_srgb(xyz)
     }
     pub(crate) fn decode_lookup(&self, bytes: &[u8]) -> Vec<f64> {
         let n = |i: usize| f64::from(bytes.get(i).copied().unwrap_or(0)) / 255.0;
@@ -194,10 +182,10 @@ fn lab_inverse(v: f64) -> f64 {
         (108.0 / 841.0) * (v - 4.0 / 29.0)
     }
 }
-fn map(matrix: [[f64; 3]; 3], value: [f64; 3]) -> [f64; 3] {
+pub(crate) fn map(matrix: [[f64; 3]; 3], value: [f64; 3]) -> [f64; 3] {
     matrix.map(|row| row.into_iter().zip(value).map(|(a, b)| a * b).sum())
 }
-fn adaptation(white: [f64; 3]) -> Result<[[f64; 3]; 3]> {
+pub(crate) fn adaptation(white: [f64; 3]) -> Result<[[f64; 3]; 3]> {
     let bradford = [
         [0.8951, 0.2664, -0.1614],
         [-0.7502, 1.7135, 0.0367],
@@ -227,4 +215,23 @@ fn adaptation(white: [f64; 3]) -> Result<[[f64; 3]; 3]> {
         }
     }
     Ok(result)
+}
+
+pub(crate) fn xyz_to_srgb(xyz: [f64; 3]) -> [f64; 3] {
+    let rgb = map(
+        [
+            [3.240_454_2, -1.537_138_5, -0.498_531_4],
+            [-0.969_266, 1.876_010_8, 0.041_556],
+            [0.055_643_4, -0.204_025_9, 1.057_225_2],
+        ],
+        xyz,
+    );
+    rgb.map(|v| {
+        let v = v.clamp(0.0, 1.0);
+        if v <= 0.003_130_8 {
+            12.92 * v
+        } else {
+            1.055 * v.powf(1.0 / 2.4) - 0.055
+        }
+    })
 }

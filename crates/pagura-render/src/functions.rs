@@ -112,7 +112,7 @@ impl Function {
                     .as_deref()
                     .ok_or(Error::syntax("sampled function requires Range"))?,
             )?),
-            2 => exponential(document, dictionary, inputs, outputs)?,
+            2 => exponential(document, dictionary, inputs, outputs, &domain)?,
             3 => {
                 if inputs != 1 {
                     return Err(Error::syntax("stitching function requires one input"));
@@ -135,7 +135,8 @@ impl Function {
                 let [min, max] = *domain
                     .first()
                     .ok_or(Error::syntax("missing function domain"))?;
-                if bounds.iter().any(|&v| v <= min || v >= max)
+                if (values.len() > 1 && min == max)
+                    || bounds.iter().any(|&v| v < min || v > max)
                     || bounds.windows(2).any(|v| v[0] >= v[1])
                 {
                     return Err(Error::syntax(
@@ -271,7 +272,14 @@ impl Function {
                     .first()
                     .copied()
                     .ok_or(Error::syntax("missing function input"))?;
-                let index = bounds.partition_point(|&b| x >= b);
+                // The first degenerate interval owns its endpoint (7.10.4).
+                let index = if bounds.first() == Some(&x)
+                    && self.domain.first().is_some_and(|d| d[0] == x)
+                {
+                    0
+                } else {
+                    bounds.partition_point(|&b| x >= b)
+                };
                 let domain = *self
                     .domain
                     .first()
@@ -337,6 +345,7 @@ fn exponential(
     dictionary: &Dictionary,
     inputs: usize,
     outputs: usize,
+    domain: &[[f64; 2]],
 ) -> Result<Body> {
     if inputs != 1 {
         return Err(Error::syntax("exponential function requires one input"));
@@ -349,6 +358,14 @@ fn exponential(
         .transpose()?
         .and_then(Value::as_number)
         .ok_or(Error::syntax("exponential function has no N"))?;
+    let [min, max] = *domain
+        .first()
+        .ok_or(Error::syntax("missing function domain"))?;
+    if (power.fract() != 0.0 && min < 0.0) || (power < 0.0 && min <= 0.0 && max >= 0.0) {
+        return Err(Error::syntax(
+            "exponential domain includes undefined inputs",
+        ));
+    }
     if low.len() != outputs || high.len() != outputs {
         return Err(Error::syntax("wrong exponential function output dimension"));
     }

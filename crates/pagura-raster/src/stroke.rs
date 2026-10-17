@@ -8,6 +8,37 @@ use crate::flatten::{TOLERANCE, bounded, flatten};
 use crate::{LineCap, LineJoin, Path, PathBuilder, Point, Stroke, Transform};
 use pagura_core::{Error, Limits, Result};
 
+/// A dash retains its tangent even when its length is zero (8.5.3.2).
+pub(crate) struct Run {
+    pub(crate) points: Vec<Point>,
+    pub(crate) closed: bool,
+    tangent: Point,
+}
+impl Run {
+    pub(crate) fn transformed(mut self, transform: Transform) -> Self {
+        for point in &mut self.points {
+            *point = *point * transform;
+        }
+        // Scale the linear part before normalization to avoid overflow even
+        // when a large finite CTM maps a very small user-space segment.
+        let scale = transform
+            .a
+            .abs()
+            .max(transform.b.abs())
+            .max(transform.c.abs())
+            .max(transform.d.abs());
+        if scale > 0.0 {
+            let x = (transform.a / scale) * self.tangent.x + (transform.c / scale) * self.tangent.y;
+            let y = (transform.b / scale) * self.tangent.x + (transform.d / scale) * self.tangent.y;
+            let length = x.hypot(y);
+            if length > 0.0 {
+                self.tangent = Point::new(x / length, y / length);
+            }
+        }
+        self
+    }
+}
+
 pub(crate) fn outline(
     path: &Path,
     transform: Transform,
@@ -21,38 +52,40 @@ pub(crate) fn outline(
     if !transform.is_finite() {
         return Err(Error::invalid_argument("path transform is not finite"));
     }
-    let (path, transform, width) = if stroke.width == 0.0 {
-        (path.transformed(transform), Transform::IDENTITY, 1.0)
+    // Dash distances belong to user space even for a device-width hairline
+    // (8.4.3.6). Flatten with a device-space error bound, split there, and only
+    // then transform each run before constructing the hairline pen.
+    let contours = flatten(path, transform, limits)?;
+    let hairline = stroke.width == 0.0;
+    let pen_transform = if hairline {
+        Transform::IDENTITY
     } else {
-        (path.clone(), transform, stroke.width)
+        transform
     };
-    let contours = flatten(&path, transform, limits)?;
+    let width = if hairline { 1.0 } else { stroke.width };
     let mut builder = PathBuilder::new();
     let radius = width * 0.5;
-    let stretch = transform.a.hypot(transform.b) + transform.c.hypot(transform.d);
+    let stretch = pen_transform.a.hypot(pen_transform.b) + pen_transform.c.hypot(pen_transform.d);
     let tolerance = if stretch == 0.0 {
         TOLERANCE
     } else {
         TOLERANCE / stretch
     };
     for contour in contours {
-        if contour.points.len() < 2 {
+        if !contour.strokeable(stroke.cap) {
             continue;
         }
         let runs = dash(contour.points, contour.closed, stroke, limits)?;
-        for (points, closed) in runs {
-            draw(
-                &mut builder,
-                &points,
-                closed,
-                radius,
-                tolerance,
-                stroke,
-                limits,
-            )?;
+        for run in runs {
+            let run = if hairline {
+                run.transformed(transform)
+            } else {
+                run
+            };
+            draw(&mut builder, &run, radius, tolerance, stroke, limits)?;
         }
     }
-    Ok((builder.finish(), transform))
+    Ok((builder.finish(), pen_transform))
 }
 
 pub(crate) fn validate(stroke: &Stroke, limits: &Limits) -> Result<()> {
@@ -61,7 +94,6 @@ pub(crate) fn validate(stroke: &Stroke, limits: &Limits) -> Result<()> {
         || !stroke.miter_limit.is_finite()
         || stroke.miter_limit < 1.0
         || !stroke.dash_phase.is_finite()
-        || stroke.dash_phase < 0.0
         || stroke.dash_array.iter().any(|&n| !n.is_finite() || n < 0.0)
     {
         return Err(Error::invalid_argument("invalid stroke parameters"));
@@ -80,9 +112,13 @@ pub(crate) fn dash(
     closed: bool,
     stroke: &Stroke,
     limits: &Limits,
-) -> Result<Vec<(Vec<Point>, bool)>> {
+) -> Result<Vec<Run>> {
     if stroke.dash_array.is_empty() {
-        return Ok(vec![(points, closed)]);
+        return Ok(vec![Run {
+            points,
+            closed,
+            tangent: Point::new(1.0, 0.0),
+        }]);
     }
     if closed && let Some(&first) = points.first() {
         points.push(first);
@@ -90,22 +126,17 @@ pub(crate) fn dash(
     let cycle_count = stroke
         .dash_array
         .len()
-        .checked_mul(if stroke.dash_array.len().is_multiple_of(2) {
-            1
-        } else {
-            2
-        })
+        .checked_mul(2)
         .ok_or(Error::limit("dash cycle size overflow"))?;
-    let length = stroke.dash_array.iter().sum::<f64>()
-        * if cycle_count == stroke.dash_array.len() {
-            1.0
-        } else {
-            2.0
-        };
+    let length = 2.0 * stroke.dash_array.iter().sum::<f64>();
     if !length.is_finite() {
         return Err(Error::limit("dash cycle exceeds numeric range"));
     }
-    let mut phase = stroke.dash_phase % length;
+    // Twice the array sum restores both the length and on/off parity, including
+    // odd arrays (8.4.3.6). Euclidean reduction handles large negative phases
+    // without repeated increments. An empty array returned before this step.
+    let phase = stroke.dash_phase.rem_euclid(length);
+    let mut phase = if phase == length { 0.0 } else { phase };
     let mut index = 0;
     while phase > 0.0 && phase >= dash_length(stroke, index) {
         phase -= dash_length(stroke, index);
@@ -116,6 +147,7 @@ pub(crate) fn dash(
     let mut result = Vec::new();
     let mut run = Vec::new();
     let mut work = 0;
+    let mut tangent = Point::new(1.0, 0.0);
     for pair in points.windows(2) {
         let [a, b] = [pair[0], pair[1]];
         let distance = (b.x - a.x).hypot(b.y - a.y);
@@ -125,6 +157,7 @@ pub(crate) fn dash(
             }
             continue;
         }
+        tangent = Point::new((b.x - a.x) / distance, (b.y - a.y) / distance);
         let mut offset = 0.0;
         while offset < distance || remaining == 0.0 {
             crate::coverage::charge(&mut work, 1, limits.raster_work)?;
@@ -152,7 +185,11 @@ pub(crate) fn dash(
             remaining -= step;
             if remaining == 0.0 {
                 if index % 2 == 0 && !run.is_empty() {
-                    result.push((std::mem::take(&mut run), false));
+                    result.push(Run {
+                        points: std::mem::take(&mut run),
+                        closed: false,
+                        tangent,
+                    });
                 }
                 index = (index + 1) % cycle_count;
                 remaining = dash_length(stroke, index);
@@ -160,27 +197,34 @@ pub(crate) fn dash(
         }
     }
     if !run.is_empty() {
-        result.push((run, false));
+        result.push(Run {
+            points: run,
+            closed: false,
+            tangent,
+        });
     }
-    // Join the runs that meet at the closing vertex. A dash crossing the
-    // seam has a join there, not two caps. An uninterrupted contour is closed.
+    join_seam(&mut result, &points, closed && initial_on);
+    Ok(result)
+}
+
+fn join_seam(result: &mut Vec<Run>, points: &[Point], closed: bool) {
+    // A dash crossing the closing vertex has a join, not a pair of caps.
     let seam = points.first();
-    let starts_at_seam = result.first().and_then(|(run, _)| run.first()) == seam;
-    let ends_at_seam = result.last().and_then(|(run, _)| run.last()) == seam;
-    if closed && initial_on && starts_at_seam && ends_at_seam && !result.is_empty() {
+    let starts = result.first().and_then(|run| run.points.first()) == seam;
+    let ends = result.last().and_then(|run| run.points.last()) == seam;
+    if closed && starts && ends && !result.is_empty() {
         if result.len() == 1 {
-            if let Some((run, closed)) = result.first_mut() {
-                *closed = true;
-                run.pop();
+            if let Some(run) = result.first_mut() {
+                run.closed = true;
+                run.points.pop();
             }
-        } else if let Some((mut tail, _)) = result.pop()
-            && let Some((head, _)) = result.first_mut()
+        } else if let Some(mut tail) = result.pop()
+            && let Some(head) = result.first_mut()
         {
-            tail.extend(head.iter().skip(1).copied());
+            tail.points.extend(head.points.iter().skip(1).copied());
             *head = tail;
         }
     }
-    Ok(result)
 }
 
 fn dash_length(stroke: &Stroke, index: usize) -> f64 {
@@ -193,15 +237,15 @@ fn dash_length(stroke: &Stroke, index: usize) -> f64 {
 
 pub(crate) fn draw(
     out: &mut PathBuilder,
-    input: &[Point],
-    closed: bool,
+    run: &Run,
     radius: f64,
     tolerance: f64,
     stroke: &Stroke,
     limits: &Limits,
 ) -> Result<()> {
+    let closed = run.closed;
     let mut points = Vec::new();
-    for &point in input {
+    for &point in &run.points {
         if points.last() != Some(&point) {
             points.push(point);
         }
@@ -210,11 +254,11 @@ pub(crate) fn draw(
         points.pop();
     }
     if points.len() < 2 {
-        if !closed && let Some(&point) = points.first() {
+        if let Some(&point) = points.first() {
             cap(
                 out,
                 point,
-                Point::new(1.0, 0.0),
+                run.tangent,
                 radius,
                 tolerance,
                 stroke.cap,
@@ -223,7 +267,7 @@ pub(crate) fn draw(
             cap(
                 out,
                 point,
-                Point::new(-1.0, 0.0),
+                Point::new(-run.tangent.x, -run.tangent.y),
                 radius,
                 tolerance,
                 stroke.cap,
@@ -446,4 +490,59 @@ fn add(a: Point, b: Point) -> Point {
 }
 fn sub(a: Point, b: Point) -> Point {
     Point::new(a.x - b.x, a.y - b.y)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn table_55_run_sequences() {
+        // Explicit on intervals derived from Table 55, independent of dash().
+        type Example<'a> = (&'a [f64], f64, f64, &'a [(f64, f64)]);
+        let examples: &[Example<'_>] = &[
+            (&[], 0.0, 12.0, &[(0.0, 12.0)]),
+            (&[3.0], 0.0, 12.0, &[(0.0, 3.0), (6.0, 9.0)]),
+            (&[2.0], 1.0, 9.0, &[(0.0, 1.0), (3.0, 5.0), (7.0, 9.0)]),
+            (&[2.0, 1.0], 0.0, 8.0, &[(0.0, 2.0), (3.0, 5.0), (6.0, 8.0)]),
+            (&[3.0, 5.0], 6.0, 18.0, &[(2.0, 5.0), (10.0, 13.0)]),
+            (
+                &[2.0, 3.0],
+                11.0,
+                16.0,
+                &[(0.0, 1.0), (4.0, 6.0), (9.0, 11.0), (14.0, 16.0)],
+            ),
+            (
+                &[2.0, 1.0, 3.0],
+                0.0,
+                14.0,
+                &[(0.0, 2.0), (3.0, 6.0), (8.0, 9.0), (12.0, 14.0)],
+            ),
+            (
+                &[2.0, 1.0, 3.0],
+                -2.0,
+                14.0,
+                &[(2.0, 4.0), (5.0, 8.0), (10.0, 11.0)],
+            ),
+        ];
+        for &(array, phase, length, expected) in examples {
+            let stroke = Stroke {
+                dash_array: array.to_vec(),
+                dash_phase: phase,
+                ..Stroke::default()
+            };
+            let runs = dash(
+                vec![Point::new(0.0, 0.0), Point::new(length, 0.0)],
+                false,
+                &stroke,
+                &Limits::default(),
+            )
+            .unwrap();
+            let actual: Vec<_> = runs
+                .iter()
+                .map(|run| (run.points.first().unwrap().x, run.points.last().unwrap().x))
+                .collect();
+            assert_eq!(actual, expected, "{array:?} {phase}");
+        }
+    }
 }

@@ -18,6 +18,10 @@ pub(crate) fn outline(
     limits: &Limits,
 ) -> Result<(Path, Transform)> {
     crate::stroke::validate(stroke, limits)?;
+    let contours = flatten(path, transform, limits)?;
+    if !contours.iter().any(|c| c.strokeable(stroke.cap)) {
+        return Ok((PathBuilder::new().finish(), Transform::IDENTITY));
+    }
     let axis =
         (transform.b == 0.0 && transform.c == 0.0) || (transform.a == 0.0 && transform.d == 0.0);
     if !axis || !transform.is_finite() {
@@ -37,7 +41,10 @@ pub(crate) fn outline(
     }
     let pen = Transform::scale(wx, wy);
     let mut out = PathBuilder::new();
-    for contour in flatten(path, transform, limits)? {
+    for contour in contours {
+        if !contour.strokeable(stroke.cap) {
+            continue;
+        }
         if contour
             .points
             .windows(2)
@@ -52,28 +59,19 @@ pub(crate) fn outline(
         {
             return Err(unsupported());
         }
-        for (run, closed) in crate::stroke::dash(contour.points, contour.closed, stroke, limits)? {
-            let device: Vec<_> = run.into_iter().map(|p| p * transform).collect();
+        for run in crate::stroke::dash(contour.points, contour.closed, stroke, limits)? {
+            let mut run = run.transformed(transform);
+            let device = &run.points;
             let mut fitted: Vec<_> = device
                 .iter()
                 .map(|p| Point::new(snap(p.x, wx), snap(p.y, wy)))
                 .collect();
-            if !closed && stroke.cap == LineCap::Butt {
-                butt_endpoints(&device, &mut fitted);
+            if !run.closed && stroke.cap == LineCap::Butt {
+                butt_endpoints(device, &mut fitted);
             }
-            for point in &mut fitted {
-                point.x /= wx;
-                point.y /= wy;
-            }
-            crate::stroke::draw(
-                &mut out,
-                &fitted,
-                closed,
-                0.5,
-                TOLERANCE / (wx + wy),
-                stroke,
-                limits,
-            )?;
+            run.points = fitted;
+            let run = run.transformed(Transform::scale(1.0 / wx, 1.0 / wy));
+            crate::stroke::draw(&mut out, &run, 0.5, TOLERANCE / (wx + wy), stroke, limits)?;
         }
     }
     Ok((out.finish(), pen))

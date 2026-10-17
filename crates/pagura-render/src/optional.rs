@@ -8,10 +8,20 @@ use std::collections::{BTreeMap, BTreeSet};
 #[derive(Debug, Default)]
 pub(crate) struct Visibility {
     groups: BTreeMap<ObjectId, bool>,
+    applicable: BTreeSet<ObjectId>,
 }
 
 impl Visibility {
     pub(crate) fn new(document: &Document) -> Result<Self> {
+        Self::read(document).map_err(|error| {
+            document
+                .trailer()
+                .get(b"Root")
+                .and_then(Value::as_reference)
+                .map_or(error.clone(), |id| error.in_object(id))
+        })
+    }
+    fn read(document: &Document) -> Result<Self> {
         let Some(properties) = document.catalog()?.get(b"OCProperties") else {
             return Ok(Self::default());
         };
@@ -20,11 +30,7 @@ impl Visibility {
             .get(b"D")
             .ok_or(Error::syntax("OCProperties has no default configuration"))?;
         let configuration = document.resolve_dictionary(configuration)?;
-        let base = match name(document, configuration, b"BaseState")? {
-            None | Some(b"ON" | b"Unchanged") => true,
-            Some(b"OFF") => false,
-            _ => return Err(Error::syntax("invalid optional content BaseState")),
-        };
+        validate_default(document, configuration)?;
         let values = properties
             .get(b"OCGs")
             .map(|v| document.resolve(v))
@@ -35,6 +41,7 @@ impl Visibility {
             return Err(Error::limit("optional group count budget exceeded"));
         }
         let mut groups = BTreeMap::new();
+        let mut applicable = BTreeSet::new();
         for value in values {
             let id = value
                 .as_reference()
@@ -43,7 +50,10 @@ impl Visibility {
             if !dictionary.is_name(b"Type", b"OCG") {
                 return Err(Error::syntax("invalid optional content group"));
             }
-            if groups.insert(id, base).is_some() {
+            if view_intent(document, dictionary)? {
+                applicable.insert(id);
+            }
+            if groups.insert(id, true).is_some() {
                 return Err(Error::syntax("duplicate optional content group"));
             }
         }
@@ -62,13 +72,13 @@ impl Visibility {
             }
             *group = state;
         }
-        let mut visibility = Self { groups };
+        let mut visibility = Self { groups, applicable };
         visibility.apply_usage(document, configuration)?;
         Ok(visibility)
     }
 
     /// View is the engine's initial viewing event. Export/Print applications
-    /// do not override it. Missing OCGs means no affected groups (Table 103).
+    /// do not override it. Missing OCGs means no affected groups (Table 101).
     /// Recommendations are ANDed across all matching AS entries (8.11.4.4).
     fn apply_usage(&mut self, document: &Document, configuration: &Dictionary) -> Result<()> {
         let Some(applications) = configuration.get(b"AS") else {
@@ -147,6 +157,21 @@ impl Visibility {
         Ok(())
     }
 
+    /// Other applications may use the OC tag without optional-content meaning
+    /// (8.11.3.2). XObject/annotation OC entries still use the strict entry point.
+    pub(crate) fn marked(&self, document: &Document, value: &Value) -> Result<bool> {
+        let d = document.resolve_dictionary(value)?;
+        if d.is_name(b"Type", b"OCMD")
+            || (d.is_name(b"Type", b"OCG")
+                && value
+                    .as_reference()
+                    .is_some_and(|id| self.groups.contains_key(&id)))
+        {
+            self.visible(document, value)
+        } else {
+            Ok(true)
+        }
+    }
     pub(crate) fn visible(&self, document: &Document, value: &Value) -> Result<bool> {
         let dictionary = document.resolve_dictionary(value)?;
         match dictionary
@@ -157,10 +182,7 @@ impl Visibility {
                 let id = value
                     .as_reference()
                     .ok_or(Error::syntax("OCG must be indirect"))?;
-                self.groups
-                    .get(&id)
-                    .copied()
-                    .ok_or(Error::syntax("undefined optional content group"))
+                Ok(self.group(document, &Value::Reference(id))?.unwrap_or(true))
             }
             Some(b"OCMD") => self.membership(document, dictionary),
             _ => Err(Error::syntax("optional content must be OCG or OCMD")),
@@ -170,24 +192,33 @@ impl Visibility {
     fn membership(&self, document: &Document, dictionary: &Dictionary) -> Result<bool> {
         let mut work = 0;
         if let Some(expression) = dictionary.get(b"VE") {
-            return self.expression(document, expression, 0, &mut work);
+            return Ok(self
+                .expression(document, expression, 0, &mut work)?
+                .unwrap_or(true));
         }
-        let members = dictionary
-            .get(b"OCGs")
-            .ok_or(Error::syntax("OCMD has no OCGs or VE"))?;
+        let Some(members) = dictionary.get(b"OCGs") else {
+            return Ok(true);
+        };
         let resolved = document.resolve(members)?;
         let members = resolved
             .as_array()
             .unwrap_or_else(|| std::slice::from_ref(members));
-        if members.is_empty() {
-            return Err(Error::syntax("OCMD has empty OCGs"));
-        }
+        let mut count = 0;
         let mut any_on = false;
         let mut all_on = true;
         for member in members {
-            let state = self.group(document, member)?;
+            if matches!(document.resolve(member)?, Value::Null) {
+                continue;
+            }
+            let Some(state) = self.group(document, member)? else {
+                continue;
+            };
+            count += 1;
             any_on |= state;
             all_on &= state;
+        }
+        if count == 0 {
+            return Ok(true);
         }
         match name(document, dictionary, b"P")? {
             None | Some(b"AnyOn") => Ok(any_on),
@@ -204,7 +235,7 @@ impl Visibility {
         value: &Value,
         depth: usize,
         work: &mut usize,
-    ) -> Result<bool> {
+    ) -> Result<Option<bool>> {
         if depth >= document.limits().depth || *work >= document.limits().value_nodes {
             return Err(Error::limit("optional expression budget exceeded"));
         }
@@ -223,34 +254,46 @@ impl Visibility {
         if arguments.is_empty() || (operator == b"Not" && arguments.len() != 1) {
             return Err(Error::syntax("wrong visibility expression arity"));
         }
+        let mut count = 0;
         let mut any = false;
         let mut all = true;
         // Evaluate all branches: malformed/unsupported input cannot hide behind
         // short-circuit evaluation in an expression that happens to be false.
         for argument in arguments {
-            let state = self.expression(document, argument, depth + 1, work)?;
+            let Some(state) = self.expression(document, argument, depth + 1, work)? else {
+                continue;
+            };
+            count += 1;
             any |= state;
             all &= state;
         }
+        if !matches!(operator.as_bytes(), b"And" | b"Or" | b"Not") {
+            return Err(Error::syntax("unknown visibility expression operator"));
+        }
+        if count == 0 {
+            return Ok(None);
+        }
         match operator.as_bytes() {
-            b"And" => Ok(all),
-            b"Or" => Ok(any),
-            b"Not" => Ok(!any),
+            b"And" => Ok(Some(all)),
+            b"Or" => Ok(Some(any)),
+            b"Not" => Ok(Some(!any)),
             _ => Err(Error::syntax("unknown visibility expression operator")),
         }
     }
 
-    fn group(&self, document: &Document, value: &Value) -> Result<bool> {
+    fn group(&self, document: &Document, value: &Value) -> Result<Option<bool>> {
         let id = value.as_reference().ok_or(Error::syntax(
             "visibility expression requires an OCG reference",
         ))?;
         if !document.resolve_dictionary(value)?.is_name(b"Type", b"OCG") {
             return Err(Error::syntax("visibility expression member is not OCG"));
         }
-        self.groups
+        let state = self
+            .groups
             .get(&id)
             .copied()
-            .ok_or(Error::syntax("undefined optional content group"))
+            .ok_or(Error::syntax("undefined optional content group"))?;
+        Ok(self.applicable.contains(&id).then_some(state))
     }
 }
 
@@ -340,4 +383,39 @@ fn usage_state(
         None if category == b"Print" => Ok(None),
         _ => Err(Error::syntax("missing or invalid usage state")),
     }
+}
+
+fn validate_default(document: &Document, config: &Dictionary) -> Result<()> {
+    // Default configuration constraints are stricter than other configurations
+    // (8.11.4.3, Table 99); OFF arrays still choose initially hidden groups.
+    if name(document, config, b"BaseState")?.is_some_and(|v| v != b"ON") {
+        return Err(Error::syntax("default BaseState must be ON"));
+    }
+    if let Some(intent) = config.get(b"Intent")
+        && document
+            .resolve(intent)?
+            .as_name()
+            .is_none_or(|v| v != b"View")
+    {
+        return Err(Error::syntax("default Intent must be View"));
+    }
+    Ok(())
+}
+fn view_intent(document: &Document, group: &Dictionary) -> Result<bool> {
+    let Some(intent) = group.get(b"Intent") else {
+        return Ok(true);
+    };
+    let intent = document.resolve(intent)?;
+    let values = intent
+        .as_array()
+        .unwrap_or_else(|| std::slice::from_ref(intent));
+    let mut applies = false;
+    for value in values {
+        let intent = document
+            .resolve(value)?
+            .as_name()
+            .ok_or(Error::syntax("OCG intent must be a name"))?;
+        applies |= intent == b"View";
+    }
+    Ok(applies)
 }

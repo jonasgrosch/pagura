@@ -1,69 +1,103 @@
 {
   "schema": 2,
   "area": "content",
-  "scope": "Tests exercise the vector pipeline and the stable render API; behaviour was checked against ISO 32000-1 (Adobe PDF 1.7) and ISO 32000-2.",
+  "scope": "Content interpretation, colour, functions, forms, optional content and page transforms checked against the local ISO 32000-2:2020 sponsored EC3 text. Implemented transparency in clause 11, analytic shadings and shading patterns in 8.7, annotation appearances in 12.5 and continuous-tone halftone bypass in 10.6 are covered by independent fixtures. Exact-area bytes, Bradford adaptation, sRGB output and rounding are project policy. ICC tag processing awaits primary ICC-text review.",
   "requirements": [
     {
       "id": "content-vector-pipeline",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.4",
-        "8.5"
+        "8.4.1",
+        "8.4.2",
+        "8.5.2",
+        "8.5.3",
+        "8.5.4"
       ],
       "status": "integrated stable render API",
       "tests": [
         "content/compound-path",
         "content/clip-after-paint",
-        "content/stroke-nonuniform"
+        "content/stroke-nonuniform",
+        "content/path-undefined-stroke",
+        "content/path-construction-after-clip",
+        "content/parameter-width-clipped",
+        "content/parameter-miter-clipped",
+        "content/parameter-flatness-high"
       ],
-      "gaps": "text, images and general stroke adjustment remain incomplete"
+      "gaps": "text, images and general stroke adjustment remain incomplete",
+      "rule": "Graphics-state changes, construction, painting and clipping follow Tables 51, 52 and 58 through 60; the current path is separate from saved graphics state."
     },
     {
       "id": "content-lexical-sequence",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
+        "7.7.3.3",
         "7.8.2"
       ],
       "status": "implemented",
       "tests": [
         "content/compound-operands-split"
       ],
-      "gaps": "inline images unsupported"
+      "gaps": "inline images unsupported",
+      "rule": "Operands immediately precede their operator, contain no indirect references, and may span Contents-array elements between lexical tokens."
     },
     {
       "id": "content-explicit-operators",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
+        "7.8.2",
+        "8.4.4",
+        "8.5.2",
+        "8.5.3",
+        "8.5.4",
+        "8.6.8",
         "Annex A"
       ],
-      "status": "recognized and validated",
+      "status": "all 73 Annex A operators recognized with positioned operand and path-state validation",
       "tests": [
         "content/compatibility",
         "content/text",
         "pagura-render/src/tests.rs"
       ],
-      "gaps": "text, images, Type3, mesh shadings and tiling patterns unsupported"
+      "gaps": "text, images and Type3; mesh shadings and tiling patterns; legacy image.inline tag retained",
+      "rule": "Annex A lists content operators; their defining tables govern operands, while Table 33 permits unknown operators only inside compatibility sections."
     },
     {
       "id": "content-colour",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.6",
+        "8.6.4",
         "8.6.5.5",
-        "10.4"
+        "8.6.5.6",
+        "8.6.6.3",
+        "8.6.6.4",
+        "8.6.6.5",
+        "8.6.8",
+        "10.4.2.2",
+        "10.4.2.5"
       ],
-      "status": "device, ICC fallback, Indexed, CalGray/CalRGB/Lab, tint alternates",
+      "status": "device, Indexed, CalGray/CalRGB/Lab, tint alternates and source ICC matrix/TRC",
       "tests": [
         "content/cmyk",
         "content/indexed",
         "content/icc-alternate",
-        "content/default-space"
+        "content/default-space",
+        "content/space-array-DeviceRGB",
+        "content/default-underlying-indexed",
+        "content/default-underlying-tint",
+        "content/default-illegal-Lab",
+        "content/space-nested-alias",
+        "content/indexed-excess",
+        "content/tint-simple-operator",
+        "content/DeviceN-forbidden-All",
+        "content/DeviceN-duplicate-None"
       ],
-      "gaps": "ICC profile transforms and nondefault input ranges; nonzero CIE black points; special colourants"
+      "gaps": "ICC LUTs, nondefault ICC ranges, special colourants and nonzero calibrated BlackPoint",
+      "rule": "Device conversion, default remapping, Indexed lookup, tint alternates and colour selection follow their source-space rules; ICC profile handling is constrained by Tables 65 and 66."
     },
     {
       "id": "content-opaque-groups",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "11.3",
         "11.4"
@@ -76,13 +110,16 @@
         "content/rgb-form-group",
         "content/icc-rgb-group"
       ],
-      "gaps": "calibrated blending spaces, subtractive overprint and transfer-region selection"
+      "gaps": "calibrated blending spaces, subtractive overprint and transfer-region selection",
+      "rule": "Opaque Normal non-knockout RGB composition is associative under 11.3 and 11.4; remaining groups retain their isolated backdrop, shape, alpha and colour-space semantics."
     },
     {
       "id": "content-page-transform",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.3.2"
+        "7.7.3.3",
+        "8.3.2.3",
+        "8.3.4"
       ],
       "status": "implemented",
       "tests": [
@@ -92,13 +129,17 @@
         "content/crop",
         "content/user-unit"
       ],
-      "gaps": ""
+      "gaps": "",
+      "rule": "CropBox bounds visible user space, Rotate acts clockwise in multiples of 90 degrees, and UserUnit scales both axes in multiples of 1/72 inch; see Table 31."
     },
     {
       "id": "content-fractional",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.5.3"
+        "8.4.3.2",
+        "8.5.3.3",
+        "8.5.4",
+        "10.7.4"
       ],
       "status": "exact rectangle pixel overlaps",
       "tests": [
@@ -107,26 +148,34 @@
         "content/fractional-clip-intersection",
         "content/decimal-stroke-half-tie"
       ],
-      "gaps": ""
+      "gaps": "",
+      "rule": "Fractional coordinates retain their geometric meaning through stroking, filling and clipping; exact overlap integration and rounding are project policies."
     },
     {
       "id": "content-forms",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.10"
+        "8.10.1",
+        "8.10.2"
       ],
       "status": "implemented",
       "tests": [
         "content/form",
-        "content/form-resources"
+        "content/form-resources",
+        "content/form-hidden-body"
       ],
-      "gaps": "image XObjects unsupported"
+      "gaps": "image XObjects unsupported",
+      "rule": "Form invocation saves state, concatenates Matrix, clips to BBox, executes with applicable resources and restores state; Table 93 also specifies optional-content skipping."
     },
     {
       "id": "content-optional",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.11"
+        "8.11.2.2",
+        "8.11.2.3",
+        "8.11.3.2",
+        "8.11.3.3",
+        "8.11.4.3"
       ],
       "status": "default configuration, membership expressions and View usage applications",
       "tests": [
@@ -135,9 +184,15 @@
         "content/optional-AllOn",
         "content/optional-AnyOff",
         "content/optional-AllOff",
-        "content/optional-expression"
+        "content/optional-expression",
+        "content/membership-intent-AllOff",
+        "content/membership-null",
+        "content/configuration-invalid-base-off",
+        "content/configuration-invalid-intent-empty",
+        "content/marked-OC-other"
       ],
-      "gaps": "viewer-specific user/language context"
+      "gaps": "viewer-specific user/language context",
+      "rule": "Membership policies and expressions combine applicable groups, intent controls applicability, and configuration and nesting control visibility; see Tables 97 through 99."
     },
     {
       "id": "content-cie",
@@ -145,7 +200,8 @@
       "clauses": [
         "8.6.5.2",
         "8.6.5.3",
-        "8.6.5.4"
+        "8.6.5.4",
+        "10.3"
       ],
       "status": "CalGray, CalRGB and Lab; Bradford white adaptation to D65, sRGB output",
       "tests": [
@@ -156,18 +212,21 @@
         "content/cie-CalRGB",
         "content/cie-CalRGB-matrix"
       ],
-      "gaps": "nonzero BlackPoint unsupported"
+      "gaps": "nonzero BlackPoint unsupported",
+      "rule": "CalGray, CalRGB and Lab use the component ranges and XYZ equations of Tables 62 through 64. Bradford white adaptation, relative-colorimetric fallback, sRGB output and rounding are project device policy."
     },
     {
       "id": "content-functions",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
+        "7.10.1",
         "7.10.2",
         "7.10.3",
         "7.10.4",
         "7.10.5",
         "8.6.6.4",
-        "8.6.6.5"
+        "8.6.6.5",
+        "10.5"
       ],
       "status": "sampled, exponential, stitching, calculator; tint alternates and transfer functions",
       "tests": [
@@ -185,13 +244,20 @@
         "content/function-undefined",
         "content/function-host-action",
         "content/function-order3",
-        "content/transfer-array"
+        "content/transfer-array",
+        "content/stitch-endpoint-0",
+        "content/stitch-endpoint-1",
+        "content/stitch-endpoint-encode-0",
+        "content/stitch-endpoint-encode-1",
+        "content/function-domain-negative",
+        "content/function-domain-fractional"
       ],
-      "gaps": "sampled cubic interpolation with size >=4; special None/All colourants; transfer-region selection under transparency"
+      "gaps": "sampled cubic interpolation with size >=4; special None/All colourants; transfer-region selection under transparency",
+      "rule": "Functions clip inputs and outputs to declared bounds and follow their type-specific definitions; transfer functions operate after conversion to the output device space."
     },
     {
       "id": "content-usage",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "8.11.4.4",
         "8.11.4.5"
@@ -205,7 +271,8 @@
         "content/usage-Zoom-off",
         "content/usage-conjunction"
       ],
-      "gaps": "user/language/creator-specific categories require explicit viewer context"
+      "gaps": "user/language/creator-specific categories require explicit viewer context",
+      "rule": "Usage applications combine recommendations across applicable categories and entries; Zoom includes its minimum and excludes its maximum; see Tables 100 and 101."
     },
     {
       "id": "content-annotations",
@@ -300,6 +367,27 @@
         "content/pattern-background"
       ],
       "gaps": "mesh shadings, tiling patterns, pattern ExtGState; degenerate BBox scan conversion"
+    },
+    {
+      "id": "content-icc-matrix",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.6.5.5",
+        "8.6.8",
+        "10.3"
+      ],
+      "rule": "Supported embedded source profiles are processed rather than replaced by Alternate. ICCBased source components initialize to zero; only later unsupported profile versions use an alternate. ICC v2.0\u20132.4 and v4.0\u20134.3 Gray/RGB matrix/TRC tag definitions, including parametric and sampled curves, are implemented with independent formula oracles pending primary ICC-text review. Bradford PCS-D50 adaptation, relative-colorimetric fallback and sRGB output are project policy.",
+      "status": "source matrix/TRC processing; tag definitions pending primary ICC-text review",
+      "tests": [
+        "content/icc-3-param4",
+        "content/icc-1-sampled",
+        "content/icc-initial-zero",
+        "content/icc-lut-mft1",
+        "content/icc-invalid-data",
+        "content/icc-rgb-columns",
+        "pagura-render/src/icc.rs"
+      ],
+      "gaps": "LUT profiles; calibrated group inverse transforms; nondefault ranges; primary ICC specification not locally available"
     }
   ]
 }

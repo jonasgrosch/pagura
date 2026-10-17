@@ -10,7 +10,7 @@ impl Compiler<'_> {
         match word {
             b"w" => self.state.stroke.width = number(v, 0)?.max(0.0),
             b"J" => {
-                self.state.stroke.cap = match integer(v, 0)? {
+                self.state.stroke.cap = match integer(v, 0)?.clamp(0, 2) {
                     0 => LineCap::Butt,
                     1 => LineCap::Round,
                     2 => LineCap::ProjectingSquare,
@@ -18,7 +18,7 @@ impl Compiler<'_> {
                 }
             }
             b"j" => {
-                self.state.stroke.join = match integer(v, 0)? {
+                self.state.stroke.join = match integer(v, 0)?.clamp(0, 2) {
                     0 => LineJoin::Miter,
                     1 => LineJoin::Round,
                     2 => LineJoin::Bevel,
@@ -26,18 +26,10 @@ impl Compiler<'_> {
                 }
             }
             b"M" => {
-                let n = number(v, 0)?;
-                if n < 1.0 {
-                    return Err(Error::syntax("miter limit must be at least one"));
-                }
-                self.state.stroke.miter_limit = n;
+                self.state.stroke.miter_limit = number(v, 0)?.max(1.0);
             }
             b"i" => {
-                let n = number(v, 0)?;
-                if !(0.0..=100.0).contains(&n) {
-                    return Err(Error::syntax("flatness outside range"));
-                }
-                self.state.flatness = n;
+                self.state.flatness = number(v, 0)?.clamp(0.0, 100.0);
             }
             b"ri" => {
                 self.state.intent =
@@ -60,21 +52,16 @@ impl Compiler<'_> {
                     return Err(Error::syntax("dash array is all zero"));
                 }
                 let phase = number(v, 1)?;
-                if phase < 0.0 {
-                    return Err(Error::syntax("negative dash phase"));
-                }
                 self.state.stroke.dash_array = dash;
                 self.state.stroke.dash_phase = phase;
             }
             _ => return Err(Error::syntax("invalid graphics parameter")),
         }
-        if word == b"w" && number(v, 0)? < 0.0 {
-            return Err(Error::syntax("negative line width"));
-        }
         Ok(())
     }
 
     pub(super) fn color(&mut self, word: &[u8], v: &[Value], resources: &Dictionary) -> Result<()> {
+        let context = crate::icc::ColorContext::new(self.document, &self.profiles);
         let stroking = matches!(word, b"G" | b"RG" | b"K" | b"CS" | b"SC" | b"SCN");
         let color = if stroking {
             &mut self.state.stroke_color
@@ -87,7 +74,7 @@ impl Compiler<'_> {
                     .first()
                     .and_then(Value::as_name)
                     .ok_or(Error::syntax("colour space name expected"))?;
-                *color = Color::new(color::named(self.document, resources, name.as_bytes())?);
+                *color = Color::new(color::named(&context, resources, name.as_bytes())?);
             }
             b"g" | b"G" | b"rg" | b"RG" | b"k" | b"K" => {
                 let name = match word {
@@ -95,13 +82,16 @@ impl Compiler<'_> {
                     b"rg" | b"RG" => b"DeviceRGB",
                     _ => b"DeviceCMYK",
                 };
-                *color = Color::new(color::named(self.document, resources, name)?);
+                *color = Color::new(color::named(&context, resources, name)?);
                 color.set(v)?;
             }
             b"SCN" | b"scn" => {
-                color.select_pattern(self.document, resources, v, self.initial_ctm)?;
+                color.select_pattern(&context, resources, v, self.initial_ctm)?;
             }
-            _ => color.set(v)?,
+            _ => {
+                color.validate_simple_operator()?;
+                color.set(v)?;
+            }
         }
         Ok(())
     }
@@ -210,10 +200,8 @@ impl Compiler<'_> {
             b"CA" | b"ca" => {
                 let alpha = value
                     .as_number()
-                    .ok_or(Error::syntax("alpha must be numeric"))?;
-                if !(0.0..=1.0).contains(&alpha) {
-                    return Err(Error::syntax("alpha outside unit interval"));
-                }
+                    .ok_or(Error::syntax("alpha must be numeric"))?
+                    .clamp(0.0, 1.0);
                 if key == b"CA" {
                     self.state.stroke_alpha = alpha;
                 } else {
@@ -255,7 +243,7 @@ impl Compiler<'_> {
             }
             b"Font" => return Err(unsupported(features::EXTGSTATE_FONT)),
             // 10.4.2: black generation and undercolour removal are used when
-            // converting RGB to CMYK. Our RGB output never makes that conversion.
+            // converting RGB to CMYK; conversion functions are retained by extgstate.
             b"BG" | b"BG2" | b"UCR" | b"UCR2" => {
                 let default = matches!(key, b"BG2" | b"UCR2")
                     && value.as_name().is_some_and(|n| n == b"Default");
@@ -277,12 +265,9 @@ impl Compiler<'_> {
             // Smoothness is a device-dependent approximation hint (8.4.5).
             // Exact geometry uses no shading approximation and may ignore it.
             b"SM" => {
-                let smoothness = value
+                value
                     .as_number()
                     .ok_or(Error::syntax("SM must be numeric"))?;
-                if !(0.0..=1.0).contains(&smoothness) {
-                    return Err(Error::syntax("SM outside unit interval"));
-                }
             }
             // Text knockout affects glyph compositing only (11.7.4.3). Text
             // operators remain explicitly unsupported, so it cannot affect vectors.

@@ -1,8 +1,8 @@
 //! Shading patterns anchored to their parent stream's initial user space (8.7.2).
 
+use crate::icc::ColorContext;
 use crate::shading::{Shading, numbers};
 use pagura_core::{Dictionary, Error, Result, Value};
-use pagura_document::Document;
 use pagura_raster::Transform;
 use std::sync::Arc;
 
@@ -13,7 +13,7 @@ pub(crate) struct Pattern {
 }
 impl Pattern {
     pub(crate) fn parse(
-        document: &Document,
+        document: &ColorContext<'_>,
         resources: &Dictionary,
         name: &[u8],
         initial: Transform,

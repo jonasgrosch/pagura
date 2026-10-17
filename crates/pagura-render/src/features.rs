@@ -145,3 +145,6 @@ pub const SHADING_BOUNDS: Feature = Feature::new("shading.degenerate-bounds");
 pub const PATTERN_TILING: Feature = Feature::new("pattern.tiling");
 /// Temporary graphics parameters in a shading pattern.
 pub const PATTERN_STATE: Feature = Feature::new("pattern.ExtGState");
+
+/// ICC profile processing outside the supported matrix/TRC subset.
+pub const COLORSPACE_ICC: Feature = Feature::new("colorspace.ICCBased");

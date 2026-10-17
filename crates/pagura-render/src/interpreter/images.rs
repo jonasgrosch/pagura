@@ -186,10 +186,11 @@ impl Compiler<'_> {
         }))
     }
     fn image_space(&self, decoded: &DecodedImage, resources: &Dictionary) -> Result<Option<Space>> {
+        let context = crate::icc::ColorContext::new(self.document, &self.profiles);
         let space = match &decoded.kind {
             ImageKind::Color {
                 color_space: Some(value),
-            } => Some(color::blending(self.document, resources, value)?),
+            } => Some(color::blending(&context, resources, value)?),
             ImageKind::EmbeddedColor { color } => {
                 let name: &[u8] = match (color, decoded.components) {
                     (pagura_image::jpx::JpxColor::Enumerated(16), 3) => b"DeviceRGB",
@@ -201,7 +202,7 @@ impl Compiler<'_> {
                         ));
                     }
                 };
-                Some(color::named(self.document, resources, name)?)
+                Some(color::named(&context, resources, name)?)
             }
             ImageKind::Stencil { .. } => None,
             ImageKind::Color { color_space: None } => {

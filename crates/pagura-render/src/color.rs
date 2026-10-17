@@ -1,8 +1,8 @@
 //! Source-space colours and device conversions (8.6 and 10.4).
 
 use crate::features;
+use crate::icc::ColorContext;
 use pagura_core::{Dictionary, Error, Feature, Result, Value};
-use pagura_document::Document;
 use pagura_raster::Rgba8;
 use std::sync::Arc;
 
@@ -13,6 +13,10 @@ pub(crate) enum Space {
     Rgb,
     Cmyk,
     Cie(Arc<crate::cie::Cie>),
+    Icc {
+        base: Arc<Self>,
+        profile: Option<Arc<crate::icc::Profile>>,
+    },
     Tint {
         inputs: usize,
         base: Arc<Self>,
@@ -56,6 +60,19 @@ impl Color {
         };
         Self::Solid { space, components }
     }
+    pub(crate) fn validate_simple_operator(&self) -> Result<()> {
+        // Table 73: SC/sc do not select special tint or ICCBased colours.
+        if matches!(
+            self,
+            Self::Solid {
+                space: Space::Tint { .. } | Space::Icc { .. },
+                ..
+            }
+        ) {
+            return Err(Error::syntax("colour space requires SCN or scn"));
+        }
+        Ok(())
+    }
     pub(crate) fn set(&mut self, values: &[Value]) -> Result<()> {
         let Self::Solid { space, components } = self else {
             return Err(Error::syntax("pattern requires SCN or scn"));
@@ -74,7 +91,7 @@ impl Color {
     }
     pub(crate) fn select_pattern(
         &mut self,
-        document: &Document,
+        document: &ColorContext<'_>,
         resources: &Dictionary,
         values: &[Value],
         initial: pagura_raster::Transform,
@@ -118,6 +135,16 @@ impl Color {
 }
 
 impl Space {
+    pub(crate) fn blending_fallback(self) -> Self {
+        if let Self::Icc {
+            base,
+            profile: None,
+        } = &self
+        {
+            return base.as_ref().clone();
+        }
+        self
+    }
     pub(crate) fn components(&self) -> usize {
         match self {
             Self::Pattern(base) => base.as_ref().map_or(0, |b| b.components()),
@@ -125,6 +152,7 @@ impl Space {
             Self::Rgb => 3,
             Self::Cmyk => 4,
             Self::Cie(cie) => cie.components(),
+            Self::Icc { base, .. } => base.components(),
             Self::Tint { inputs, .. } => *inputs,
         }
     }
@@ -146,6 +174,9 @@ impl Space {
                 ])
             }
             Self::Cie(cie) => Ok(cie.convert(c)),
+            Self::Icc { base, profile } => profile
+                .as_ref()
+                .map_or_else(|| base.convert(c), |p| p.convert(c)),
             Self::Tint { base, function, .. } => {
                 let tint: Vec<_> = c.iter().map(|v| v.clamp(0.0, 1.0)).collect();
                 base.convert(&function.evaluate(&tint)?)
@@ -177,12 +208,16 @@ impl Space {
     }
 }
 
-pub(crate) fn named(document: &Document, resources: &Dictionary, name: &[u8]) -> Result<Space> {
+pub(crate) fn named(
+    document: &ColorContext<'_>,
+    resources: &Dictionary,
+    name: &[u8],
+) -> Result<Space> {
     resolve(document, resources, &Value::name(name), 0, true)
 }
 
 pub(crate) fn blending(
-    document: &Document,
+    document: &ColorContext<'_>,
     resources: &Dictionary,
     value: &Value,
 ) -> Result<Space> {
@@ -190,7 +225,7 @@ pub(crate) fn blending(
 }
 
 fn resolve(
-    document: &Document,
+    document: &ColorContext<'_>,
     resources: &Dictionary,
     value: &Value,
     depth: usize,
@@ -217,9 +252,12 @@ fn resolve(
             if let Some(device) = device {
                 if defaults && let Some(value) = spaces.and_then(|d| d.get(default)) {
                     let alternate = resolve(document, resources, value, depth + 1, false)?;
-                    if matches!(alternate, Space::Pattern(_))
-                        || alternate.components() != device.components()
+                    if matches!(alternate, Space::Pattern(_) | Space::Indexed { .. })
+                        || matches!(&alternate, Space::Cie(cie) if cie.is_lab())
                     {
+                        return Err(Error::syntax("invalid default colour space family"));
+                    }
+                    if alternate.components() != device.components() {
                         return Err(Error::syntax(
                             "default colour space has wrong component count",
                         ));
@@ -234,29 +272,38 @@ fn resolve(
                     "colour space is not implemented",
                 ));
             }
+            if depth != 0 {
+                return Err(Error::syntax(
+                    "nested colour space requires an explicit definition",
+                ));
+            }
             let value = spaces
                 .and_then(|d| d.get(name.as_bytes()))
                 .ok_or(Error::syntax("undefined colour space resource"))?;
             resolve(document, resources, value, depth + 1, defaults)
         }
-        Value::Array(values) => array_space(document, resources, values, depth),
+        Value::Array(values) => array_space(document, resources, values, depth, defaults),
         _ => Err(Error::syntax("invalid colour space")),
     }
 }
 
 fn array_space(
-    document: &Document,
+    document: &ColorContext<'_>,
     resources: &Dictionary,
     values: &[Value],
     depth: usize,
+    defaults: bool,
 ) -> Result<Space> {
     let family = values
         .first()
         .and_then(Value::as_name)
         .ok_or(Error::syntax("colour space array has no family"))?;
     match (family.as_bytes(), values) {
+        (b"DeviceGray" | b"DeviceRGB" | b"DeviceCMYK", [_]) => {
+            resolve(document, resources, &values[0], depth, defaults)
+        }
         (b"Pattern", [_, base]) => {
-            let base = resolve(document, resources, base, depth + 1, false)?;
+            let base = resolve(document, resources, base, depth + 1, defaults)?;
             if matches!(base, Space::Pattern(_)) {
                 return Err(Error::syntax("nested Pattern colour space"));
             }
@@ -274,14 +321,21 @@ fn array_space(
                     "special colourant semantics are not implemented",
                 ));
             }
-            tint_space(document, resources, base, function, 1, depth)
+            tint_space(document, resources, base, function, 1, (depth, defaults))
         }
         (b"DeviceN", [_, names, base, function] | [_, names, base, function, _]) => {
             if let Some(attributes) = values.get(4) {
                 document.resolve_dictionary(attributes)?;
             }
             let count = device_n_components(document, names)?;
-            tint_space(document, resources, base, function, count, depth)
+            tint_space(
+                document,
+                resources,
+                base,
+                function,
+                count,
+                (depth, defaults),
+            )
         }
         (b"ICCBased", [_, profile]) => icc_space(document, resources, profile, depth),
         (b"CalGray" | b"CalRGB" | b"Lab", [_, parameters]) => {
@@ -293,7 +347,7 @@ fn array_space(
             )?)))
         }
         (b"Indexed", [_, base, high, lookup]) => {
-            let base = resolve(document, resources, base, depth + 1, false)?;
+            let base = resolve(document, resources, base, depth + 1, defaults)?;
             if matches!(base, Space::Indexed { .. } | Space::Pattern(_)) {
                 return Err(Error::syntax("Indexed base cannot be Indexed"));
             }
@@ -320,8 +374,8 @@ fn array_space(
                     .to_vec()
             };
             let required = (usize::from(high) + 1) * base.components();
-            if lookup.len() < required {
-                return Err(Error::syntax("Indexed lookup is too short"));
+            if lookup.len() != required {
+                return Err(Error::syntax("Indexed lookup has wrong length"));
             }
             Ok(Space::Indexed {
                 base: Arc::new(base),
@@ -340,43 +394,52 @@ fn array_space(
     }
 }
 
-fn device_n_components(document: &Document, names: &Value) -> Result<usize> {
+fn device_n_components(document: &ColorContext<'_>, names: &Value) -> Result<usize> {
     let names = document
         .resolve(names)?
         .as_array()
         .filter(|n| !n.is_empty())
         .ok_or(Error::syntax("DeviceN requires colourant names"))?;
+    // 32 is this renderer's implementation budget, not a format maximum;
+    // Annex C / Table C.1 discusses practical processor limits.
     if names.len() > 32 {
-        return Err(Error::limit("DeviceN component count exceeds PDF limit"));
+        return Err(Error::limit(
+            "DeviceN component count exceeds implementation limit (Annex C)",
+        ));
     }
     let mut seen = std::collections::BTreeSet::new();
+    let mut has_none = false;
     for name in names {
         let name = document
             .resolve(name)?
             .as_name()
             .ok_or(Error::syntax("DeviceN colourant must be a name"))?;
-        if !seen.insert(name.as_bytes()) {
+        if name == b"All" {
+            return Err(Error::syntax("All is forbidden in DeviceN"));
+        }
+        if name != b"None" && !seen.insert(name.as_bytes()) {
             return Err(Error::syntax("duplicate DeviceN colourant"));
         }
-        if matches!(name.as_bytes(), b"None" | b"All") {
-            return Err(Error::unsupported(
-                features::COLORSPACE_SPECIAL_INK,
-                "special colourant semantics are not implemented",
-            ));
-        }
+        has_none |= name == b"None";
+    }
+    if has_none {
+        return Err(Error::unsupported(
+            features::COLORSPACE_SPECIAL_INK,
+            "special colourant semantics are not implemented",
+        ));
     }
     Ok(names.len())
 }
 
 fn tint_space(
-    document: &Document,
+    document: &ColorContext<'_>,
     resources: &Dictionary,
     base: &Value,
     function: &Value,
     inputs: usize,
-    depth: usize,
+    (depth, defaults): (usize, bool),
 ) -> Result<Space> {
-    let base = resolve(document, resources, base, depth + 1, false)?;
+    let base = resolve(document, resources, base, depth + 1, defaults)?;
     if matches!(
         base,
         Space::Indexed { .. } | Space::Tint { .. } | Space::Pattern(_)
@@ -393,7 +456,7 @@ fn tint_space(
 }
 
 fn icc_space(
-    document: &Document,
+    document: &ColorContext<'_>,
     resources: &Dictionary,
     profile: &Value,
     depth: usize,
@@ -450,16 +513,26 @@ fn icc_space(
             }
         }
     }
-    // 8.6.5.5 permits Alternate when the profile is unsupported.
-    let alternate = dictionary
-        .get(b"Alternate")
-        .map(|v| resolve(document, resources, v, depth + 1, false))
-        .transpose()?
-        .unwrap_or(default);
-    if alternate.components() != usize::try_from(count).unwrap_or(0) {
+    let profile = document.profile(id, default.components())?;
+    // Only later, unsupported profile versions may use Alternate (8.6.5.5).
+    // Keep ICCBased identity even then: its initial components are all zero.
+    let base = if profile.is_some() {
+        default
+    } else {
+        dictionary
+            .get(b"Alternate")
+            .map(|v| resolve(document, resources, v, depth + 1, false))
+            .transpose()?
+            .unwrap_or(default)
+    };
+    if matches!(base, Space::Pattern(_)) || base.components() != usize::try_from(count).unwrap_or(0)
+    {
         return Err(Error::syntax("ICC alternate has wrong component count"));
     }
-    Ok(alternate)
+    Ok(Space::Icc {
+        base: Arc::new(base),
+        profile,
+    })
 }
 
 fn unsupported(name: &[u8]) -> Option<Feature> {

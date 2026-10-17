@@ -402,8 +402,31 @@ fn edges(
     let top = f64::from(origin.1);
     let bottom = top + f64::from(size.1);
     for (group, shape) in shapes.iter().enumerate() {
-        for contour in flatten(&shape.path, shape.transform, limits)? {
-            let mut points = contour.points.into_iter().map(|p| p * shape.transform);
+        let contours = flatten(&shape.path, shape.transform, limits)?;
+        let count = contours.len();
+        for (i, contour) in contours.into_iter().enumerate() {
+            if i + 1 == count && !contour.closed && contour.points.len() == 1 {
+                continue;
+            }
+            let mut transformed: Vec<_> = contour
+                .points
+                .into_iter()
+                .map(|p| p * shape.transform)
+                .collect();
+            if let Some(&point) = transformed.first()
+                && contour.degenerate
+            {
+                // 8.5.3.3.1: a degenerate filled subpath encloses its device pixel.
+                // Device choice at integral boundaries: the half-open floor cell.
+                let (x, y) = (point.x.floor(), point.y.floor());
+                transformed = vec![
+                    Point::new(x, y),
+                    Point::new(x + 1.0, y),
+                    Point::new(x + 1.0, y + 1.0),
+                    Point::new(x, y + 1.0),
+                ];
+            }
+            let mut points = transformed.into_iter();
             let Some(first) = points.next() else { continue };
             let mut previous = first;
             for next in points.chain(std::iter::once(first)) {

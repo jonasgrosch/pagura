@@ -7,6 +7,9 @@ use super::{
 
 impl Compiler<'_> {
     pub(super) fn construct(&mut self, word: &[u8], v: &[Value]) -> Result<()> {
+        if self.pending_clip.is_some() {
+            return Err(Error::syntax("construction follows clipping operator"));
+        }
         let p = |i| point(v, i).map(|p| p * self.state.ctm);
         match word {
             b"m" => {
@@ -72,6 +75,9 @@ impl Compiler<'_> {
     }
 
     pub(super) fn paint(&mut self, word: &[u8]) -> Result<()> {
+        if self.path.is_empty() {
+            return Err(Error::syntax("painting requires a current path"));
+        }
         if matches!(word, b"s" | b"b" | b"b*") {
             self.path.close();
         }

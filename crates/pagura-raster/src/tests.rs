@@ -138,6 +138,7 @@ fn independent_exact_polygon_oracles() {
         "overlap-nonzero",
         "overlap-evenodd",
         "square-dot",
+        "zero-square-oblique",
         "join-miter",
         "join-bevel",
         "miter-limit",

@@ -40,11 +40,12 @@ impl Compiler<'_> {
             Some(b"Form") => {}
             _ => return Err(unsupported(features::XOBJECT_SUBTYPE)),
         }
-        let visible = dictionary
-            .get(b"OC")
-            .map(|v| self.visibility.visible(self.document, v))
-            .transpose()?
-            .unwrap_or(true);
+        // Table 93 (8.10.2): skip an invisible form in its entirety.
+        if let Some(oc) = dictionary.get(b"OC")
+            && !self.visibility.visible(self.document, oc)?
+        {
+            return Ok(());
+        }
         if let Some(kind) = dictionary.get(b"FormType")
             && self.document.resolve(kind)?.as_integer() != Some(1)
         {
@@ -69,15 +70,15 @@ impl Compiler<'_> {
             })
             .transpose()?
             .unwrap_or(Transform::IDENTITY);
-        let mut child = self.form_context(id, visible, matrix, bbox)?;
+        let mut child = self.form_context(id, matrix, bbox)?;
         let bounds = child.state.clip.as_ref().map(|c| Arc::clone(&c.path));
         let resources = dictionary
             .get(b"Resources")
             .map(|v| self.document.resolve_dictionary(v))
             .transpose()?
             .unwrap_or(resources);
-        let attributes =
-            crate::transparency::Attributes::parse(self.document, dictionary, resources)?;
+        let context = crate::icc::ColorContext::new(self.document, &self.profiles);
+        let attributes = crate::transparency::Attributes::parse(&context, dictionary, resources)?;
         if attributes.is_some() {
             child.state.composite = crate::transparency::Composite {
                 alpha: 1.0,
@@ -119,15 +120,8 @@ impl Compiler<'_> {
         }
         Ok(())
     }
-    pub(super) fn form_context(
-        &self,
-        id: ObjectId,
-        visible: bool,
-        matrix: Transform,
-        bbox: Rect,
-    ) -> Result<Self> {
+    pub(super) fn form_context(&self, id: ObjectId, matrix: Transform, bbox: Rect) -> Result<Self> {
         let mut child = self.detached();
-        child.visible &= visible;
         child.forms.push(id);
         child.state.ctm = matrix.then(child.state.ctm);
         if !child.state.ctm.is_finite() {
@@ -145,6 +139,7 @@ impl Compiler<'_> {
     pub(super) fn detached(&self) -> Self {
         Self {
             document: self.document,
+            profiles: std::rc::Rc::clone(&self.profiles),
             list: DisplayList {
                 commands: Vec::new(),
                 crop: self.list.crop,

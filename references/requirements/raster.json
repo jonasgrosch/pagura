@@ -1,13 +1,14 @@
 {
   "schema": 2,
   "area": "raster",
-  "scope": "Independently derived geometry; ISO 32000-2 locators not verified against the unavailable full text.",
+  "scope": "Geometry, fill, stroke, user-space dashes and stroke adjustment checked against the local ISO 32000-2:2020 sponsored EC3 text. Exact-area antialiasing, flattening tolerance, half-open pixel boundaries and channel rounding are project policy. General zero-area scan conversion and minimum visible coverage remain unresolved.",
   "requirements": [
     {
       "id": "raster-exact-area",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.5.3.3"
+        "8.5.3.3",
+        "10.7.4"
       ],
       "status": "signed cell-area and cover sweep; exact crossing-block integration",
       "tests": [
@@ -33,31 +34,35 @@
         "raster/crossing-set-14",
         "raster/crossing-set-15"
       ],
-      "gaps": "crossing-block/partial-row fallback remains superlinear in worst case; caller raster_work bounds it"
+      "gaps": "crossing-block/partial-row fallback remains superlinear in worst case; caller raster_work bounds it",
+      "rule": "Nonzero and even-odd rules determine the filled region before scan conversion; exact-area antialiasing and 8-bit rounding are project policies."
     },
     {
       "id": "raster-curves",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
-        "8.5.2.2"
+        "8.5.2.2",
+        "10.7.2"
       ],
       "status": "adaptive device-space flattening at 1/256 pixel",
       "tests": [
         "raster/cubic"
       ],
-      "gaps": "subdivision limits reject extreme curves"
+      "gaps": "subdivision limits reject extreme curves",
+      "rule": "Cubic B\u00e9zier geometry follows the specified control points; device-space approximation is subject to flatness tolerance."
     },
     {
       "id": "raster-strokes",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
         "8.4.3.2",
         "8.4.3.3",
         "8.4.3.4",
         "8.4.3.5",
-        "8.4.3.6"
+        "8.4.3.6",
+        "8.5.3.2"
       ],
-      "status": "implemented",
+      "status": "user-space outlines, degenerate subpath classification and shared user-space dashing",
       "tests": [
         "raster/cap-butt",
         "raster/cap-round",
@@ -71,22 +76,69 @@
         "raster/dash-odd-phase",
         "raster/closed-dash-seam",
         "raster/zero-on-dash",
-        "raster/square-dot"
+        "raster/square-dot",
+        "raster/zero-square-oblique"
       ],
-      "gaps": "Broader curve-stroke offset, curved-dash and extreme-coordinate independent vectors remain"
+      "gaps": "Broader curve-stroke offset, curved-dash and extreme-coordinate independent vectors remain",
+      "rule": "Width, caps, joins, miter limits and degenerate subpaths determine stroke geometry; cap and join styles are defined in Tables 53 and 54. Dashes restart per subpath and retain user-space distances."
     },
     {
       "id": "raster-stroke-adjustment",
-      "reference": "adobe-pdf17",
+      "reference": "iso32000-2-full-text",
       "clauses": [
-        "10.6.5"
+        "10.7.5"
       ],
       "status": "orthogonal grid fitting with user-space dashes and rounded device pen diameters",
       "tests": [
         "content/stroke-adjust-horizontal",
         "content/stroke-adjust-vertical"
       ],
-      "gaps": "curved/oblique fitting explicitly unsupported"
+      "gaps": "curved/oblique fitting explicitly unsupported",
+      "rule": "Automatic stroke adjustment fits thickness to device pixels, normally within half a pixel of the requested width, with sub-half-pixel widths rendered as single-pixel lines."
+    },
+    {
+      "id": "raster-dashes",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.4.3.6"
+      ],
+      "rule": "Dash array and phase measure user-space distance; negative phases are reduced by twice the array sum. Odd arrays reverse parity on each repetition. Each subpath restarts the pattern; empty arrays paint a solid line. Table 55 supplies exact run-sequence examples. Exact-area coverage and rounding are project policy.",
+      "status": "user-space splitting before device hairline construction; Euclidean phase normalization",
+      "tests": [
+        "content/dash-hairline-scaled",
+        "content/dash-hairline-expanded",
+        "content/dash-hairline-rotated",
+        "content/dash-hairline-anisotropic",
+        "content/dash-phase-negative",
+        "content/dash-phase-normalized",
+        "content/dash-phase-cycle",
+        "content/dash-odd-negative",
+        "pagura-raster/src/stroke.rs",
+        "content/dash-hairline-oblique",
+        "content/dash-phase-large-negative",
+        "content/dash-width-anisotropic"
+      ],
+      "gaps": "curve flattening is bounded by the device-space approximation policy"
+    },
+    {
+      "id": "raster-degenerate",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.5.3.2",
+        "8.5.3.3.1",
+        "8.5.4",
+        "10.7.4"
+      ],
+      "rule": "A closed point or repeated coincident points stroke only with round caps; a trailing open move does not paint. A degenerate filled subpath encloses its device pixel and clipping uses that filled region. Half-open floor-cell ownership and antialias bytes are project policy.",
+      "status": "point subpaths implemented for fills, clips and strokes",
+      "tests": [
+        "content/point-fill",
+        "content/point-clip",
+        "content/stroke-closed-point",
+        "content/stroke-square-point",
+        "content/stroke-adjusted-open-point"
+      ],
+      "gaps": "general collinear zero-area boundaries and minimum nonzero coverage need a scan-conversion policy decision"
     }
   ]
 }

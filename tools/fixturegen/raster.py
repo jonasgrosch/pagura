@@ -40,12 +40,12 @@ def pgm(areas):
     return b"P5\n8 8\n255\n" + bytes(max(0, min(255, int(a * 255 + F(1, 2)))) for a in areas)
 
 
-def polygon_case(name, points, path=None):
+def polygon_case(name, points, path=None, requirement="raster-exact-area"):
     if path is None:
         path = "m %s %s\n" % tuple(map(float, points[0])) + "".join("l %s %s\n" % tuple(map(float, p)) for p in points[1:]) + "h\n"
     return Vector(name, {".path": path.encode(), ".pgm": pgm(
         clipped_area(points, x, y) for y in range(SIZE) for x in range(SIZE))},
-        ("raster-exact-area",), "Rational polygon/pixel intersection area", extra={"tolerance": 1})
+        (requirement,), "Project-policy rational polygon/pixel intersection area", extra={"tolerance": 1})
 
 
 def sampled(name, path, predicate, requirement="raster-strokes"):
@@ -86,11 +86,11 @@ def cases():
                 return 1 <= x <= 7 and 3 <= y <= 5
             return (x - min(6, max(2, x)))**2 + (y - 4)**2 <= 1
         yield sampled("cap-" + cap, f"stroke 2 {cap} miter 10\nm 2 4\nl 6 4\n", hit)
-    yield polygon_case("square-dot", [(2.5,2.5),(5.5,2.5),(5.5,5.5),(2.5,5.5)], "stroke 3 square miter 10\nm 4 4\nl 4 4\n")
+    yield polygon_case("square-dot", [], "stroke 3 square miter 10\nm 4 4\nl 4 4\n", "raster-strokes")
     miter = [(1,6),(3,6),(3,3),(6,3),(6,1),(1,1)]
     bevel = [(1,6),(3,6),(3,3),(6,3),(6,1),(2,1),(1,2)]
     for name, join, limit, outline in [("join-miter", "miter", 10, miter), ("join-bevel", "bevel", 10, bevel), ("miter-limit", "miter", 1, bevel)]:
-        yield polygon_case(name, outline, f"stroke 2 butt {join} {limit}\nm 2 6\nl 2 2\nl 6 2\n")
+        yield polygon_case(name, outline, f"stroke 2 butt {join} {limit}\nm 2 6\nl 2 2\nl 6 2\n", "raster-strokes")
     yield sampled("join-round", "stroke 2 butt round 10\nm 2 6\nl 2 2\nl 6 2\n",
                   lambda x,y: (1<=x<=3 and 2<=y<=6) or (2<=x<=6 and 1<=y<=3) or (x<=2 and y<=2 and (x-2)**2+(y-2)**2<=1))
     # Odd arrays repeat twice. Phase 1 in [2,1,1] yields on intervals
@@ -104,6 +104,8 @@ def cases():
         ("raster-strokes",), "An on-dash ending exactly at a closed seam keeps its join", extra={"tolerance":1})
     yield sampled("zero-on-dash", "stroke 1 round miter 10\ndash 0 0 1\nm 1 4\nl 7 4\n",
                   lambda x,y: any((x-c)**2+(y-4)**2 <= .25 for c in range(1,8)))
+    diamonds=[[(c-1,c),(c,c+1),(c+1,c),(c,c-1)] for c in (1,3,5,7)]
+    yield Vector('zero-square-oblique',{'.path':b'stroke 1.4142135623730951 square miter 10\ndash 0 0 2.8284271247461903\nm 1 1\nl 7.5 7.5\n','.pgm':pgm(sum(clipped_area(p,x,y) for p in diamonds) for y in range(8) for x in range(8))},('raster-strokes',),'Zero-length dash square caps retain the oblique underlying tangent; rational diamond areas',extra={'tolerance':1})
     yield sampled("round-dot", "stroke 3 round miter 10\nm 4 4\nl 4 4\n", lambda x,y: (x-4)**2+(y-4)**2 <= 2.25)
     # Closed cubic y=1+3t(1-t), x=1+6t; no circular-arc approximation.
     yield sampled("cubic", "m 1 1\nc 3 2 5 2 7 1\nh\n",

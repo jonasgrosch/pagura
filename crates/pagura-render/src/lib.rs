@@ -12,6 +12,7 @@ mod color;
 mod compositor;
 mod display;
 mod functions;
+mod icc;
 mod interpreter;
 mod operators;
 mod optional;

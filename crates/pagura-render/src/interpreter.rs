@@ -71,6 +71,7 @@ impl Default for Graphics {
 
 struct Compiler<'a> {
     document: &'a Document,
+    profiles: std::rc::Rc<crate::icc::Cache>,
     list: DisplayList,
     state: Graphics,
     saved: Vec<Graphics>,
@@ -92,6 +93,7 @@ impl<'a> Compiler<'a> {
     fn new(document: &'a Document, page: &Page) -> Result<Self> {
         Ok(Self {
             document,
+            profiles: std::rc::Rc::default(),
             list: DisplayList::new(page, document.limits()),
             state: Graphics::default(),
             saved: Vec::new(),
@@ -114,17 +116,11 @@ impl<'a> Compiler<'a> {
         self.paint_charge(page.resources().retained_bytes(), 0)?;
         self.state.text.cache.borrow_mut().page_resources =
             Some(Arc::new(page.resources().clone()));
-        self.list.group = crate::transparency::Attributes::parse(
-            self.document,
-            page.dictionary(),
-            page.resources(),
-        )?
-        .unwrap_or_default();
-        self.state.fill = Color::new(color::named(
-            self.document,
-            page.resources(),
-            b"DeviceGray",
-        )?);
+        let context = crate::icc::ColorContext::new(self.document, &self.profiles);
+        self.list.group =
+            crate::transparency::Attributes::parse(&context, page.dictionary(), page.resources())?
+                .unwrap_or_default();
+        self.state.fill = Color::new(color::named(&context, page.resources(), b"DeviceGray")?);
         self.state.stroke_color = self.state.fill.clone();
         let streams = self.document.content_streams(page)?;
         self.sequence(&streams, page.resources())?;
@@ -306,7 +302,7 @@ impl<'a> Compiler<'a> {
                     } else {
                         properties
                     };
-                    visible = self.visibility.visible(self.document, properties)?;
+                    visible = self.visibility.marked(self.document, properties)?;
                 }
                 self.marked.push(self.visible);
                 self.visible &= visible;
@@ -397,13 +393,13 @@ fn rendering_intent(value: &Value) -> Result<Vec<u8>> {
     let name = value
         .as_name()
         .ok_or(Error::syntax("rendering intent must be a name"))?;
-    if !matches!(
-        name.as_bytes(),
-        b"AbsoluteColorimetric" | b"RelativeColorimetric" | b"Saturation" | b"Perceptual"
-    ) {
-        return Err(Error::syntax("invalid rendering intent"));
-    }
-    Ok(name.as_bytes().to_vec())
+    // Only relative colorimetry is implemented. Table 69 (8.6.5.8) permits
+    // falling back to RelativeColorimetric for unsupported or unknown intents.
+    Ok(if name == b"RelativeColorimetric" {
+        name.as_bytes().to_vec()
+    } else {
+        b"RelativeColorimetric".to_vec()
+    })
 }
 
 fn resource<'a>(

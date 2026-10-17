@@ -50,8 +50,10 @@ pub(crate) fn region(
     }
     let x0 = coordinate(min.x.floor(), origin.0, right);
     let y0 = coordinate(min.y.floor(), origin.1, bottom);
-    let x1 = coordinate(max.x.ceil(), origin.0, right);
-    let y1 = coordinate(max.y.ceil(), origin.1, bottom);
+    // Include the floor cell even at an integral maximum: a true point subpath
+    // encloses a device pixel under 8.5.3.3.1. Ordinary bounds remain conservative.
+    let x1 = coordinate(max.x.floor() + 1.0, origin.0, right);
+    let y1 = coordinate(max.y.floor() + 1.0, origin.1, bottom);
     Ok(if x0 < x1 && y0 < y1 {
         Some((x0, y0, x1 - x0, y1 - y0))
     } else {

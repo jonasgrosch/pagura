@@ -7,7 +7,7 @@
     {
       "id": "raster/triangle",
       "kind": "vector",
-      "description": "Rational polygon/pixel intersection area",
+      "description": "Project-policy rational polygon/pixel intersection area",
       "requirements": [
         "raster-exact-area"
       ],
@@ -26,7 +26,7 @@
     {
       "id": "raster/concave",
       "kind": "vector",
-      "description": "Rational polygon/pixel intersection area",
+      "description": "Project-policy rational polygon/pixel intersection area",
       "requirements": [
         "raster-exact-area"
       ],
@@ -45,7 +45,7 @@
     {
       "id": "raster/fractional-rectangle",
       "kind": "vector",
-      "description": "Rational polygon/pixel intersection area",
+      "description": "Project-policy rational polygon/pixel intersection area",
       "requirements": [
         "raster-exact-area"
       ],
@@ -181,9 +181,9 @@
     {
       "id": "raster/square-dot",
       "kind": "vector",
-      "description": "Rational polygon/pixel intersection area",
+      "description": "Project-policy rational polygon/pixel intersection area",
       "requirements": [
-        "raster-exact-area"
+        "raster-strokes"
       ],
       "files": {
         ".path": {
@@ -192,7 +192,7 @@
         },
         ".pgm": {
           "path": "corpus/generated/raster/square-dot.pgm",
-          "sha256": "397ba07aa8a465109da6effdd0a9ca214f7fa15bed6968c4bbb7e39cea8c822f"
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
         }
       },
       "tolerance": 1
@@ -200,9 +200,9 @@
     {
       "id": "raster/join-miter",
       "kind": "vector",
-      "description": "Rational polygon/pixel intersection area",
+      "description": "Project-policy rational polygon/pixel intersection area",
       "requirements": [
-        "raster-exact-area"
+        "raster-strokes"
       ],
       "files": {
         ".path": {
@@ -219,9 +219,9 @@
     {
       "id": "raster/join-bevel",
       "kind": "vector",
-      "description": "Rational polygon/pixel intersection area",
+      "description": "Project-policy rational polygon/pixel intersection area",
       "requirements": [
-        "raster-exact-area"
+        "raster-strokes"
       ],
       "files": {
         ".path": {
@@ -238,9 +238,9 @@
     {
       "id": "raster/miter-limit",
       "kind": "vector",
-      "description": "Rational polygon/pixel intersection area",
+      "description": "Project-policy rational polygon/pixel intersection area",
       "requirements": [
-        "raster-exact-area"
+        "raster-strokes"
       ],
       "files": {
         ".path": {
@@ -332,6 +332,25 @@
       },
       "tolerance": 3,
       "sample_rate": 128
+    },
+    {
+      "id": "raster/zero-square-oblique",
+      "kind": "vector",
+      "description": "Zero-length dash square caps retain the oblique underlying tangent; rational diamond areas",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/zero-square-oblique.path",
+          "sha256": "bb02023f88a15b03c78f91ccef491c98d411fa9a328f09b1621bcd45aa562a48"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/zero-square-oblique.pgm",
+          "sha256": "48ef57541fe9623e5e981836b01b655f6e560b85bdb50351dbbbd10403ebdab9"
+        }
+      },
+      "tolerance": 1
     },
     {
       "id": "raster/round-dot",
