@@ -22,3 +22,9 @@ pub mod standard;
 pub use aes::Aes;
 pub use hash::{Md5, Sha256, Sha384, Sha512, md5, sha256, sha384, sha512};
 pub use rc4::Rc4;
+
+/// Unicode data copyright and permission notice for the SASLprep tables.
+#[must_use]
+pub const fn unicode_notice() -> &'static str {
+    include_str!("../../../data/unicode/LICENSE")
+}

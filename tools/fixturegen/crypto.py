@@ -709,16 +709,15 @@ def saslprep_examples():
     lines = [encoded(text)+" "+saslprep_output_status(text) for text in outputs]
     yield Vector("saslprep-output-checks", {".cases": ("\n".join(lines)+"\n").encode()},
                  ("security-saslprep",), "Prohibition table boundaries, stored-string unassigned points, mixed bidi and endpoint rules; validation stage only, no normalization claim")
-    # Complete preparation tests use only mapped ASCII, or explicitly require
-    # the current Unsupported outcome. Positive NFKC-dependent cases are separate.
+    # Complete profile: mapping, version-pinned NFKC, then output validation.
     lines = []
     for text in ["", "user", "USER", "I\u00adX", "\u00a0", "\u200b", "x\u1680y", "\x07", "\x7f",
                  "a"*127+"\x00", "\u00aa", "\u2168", "\u00e9", "\u0221"]:
-        result = saslprep_mapping(text)
-        status = "unsupported" if not result.isascii() else saslprep_output_status(result)
+        result = ucd_3_2_0.normalize("NFKC", saslprep_mapping(text))
+        status = saslprep_output_status(result)
         lines.append(encoded(text)+" "+status+" "+(encoded(result) if status == "ok" else "-"))
     yield Vector("saslprep-supported-subset", {".cases": ("\n".join(lines)+"\n").encode()},
-                 ("security-saslprep",), "Complete preparation for mapped ASCII; explicit unsupported normalization for all other Unicode")
+                 ("security-saslprep",), "Complete preparation including compatibility normalization, prohibition and unassigned code points")
     for name, source in [("mapping-removal", "I\u00adX"), ("mapping-space", "I\u00a0X"),
                          ("mapping-empty", "\u200b"), ("mapping-before-truncation", "a"*126+"\u200bb")]:
         prepared = saslprep_mapping(source)
@@ -733,11 +732,7 @@ def saslprep_examples():
 
 
 def saslprep_normalization_examples():
-    """Prepared Unicode 3.2 NFKC oracles, deliberately OUTSIDE cases()/manifest.
-
-    Enable these only when the production Unicode 3.2 normalization data exists.
-    Python ucd_3_2_0 supplies expectations; it never supplies production tables.
-    """
+    """Python ucd_3_2_0 expectations, independent of production tables."""
     from unicodedata import ucd_3_2_0
     examples = [("feminine-ordinal", "\u00aa"), ("roman-nine", "\u2168"),
                 ("already-normalized", "\u00e9"), ("angstrom", "\u212b"),
@@ -749,7 +744,57 @@ def saslprep_normalization_examples():
         assert saslprep_output_status(normalized) == "ok"
         yield Vector("saslprep-nfkc-"+name, {".input": text.encode(), ".normalized": normalized.encode(),
                      ".truncated": normalized.encode()[:127]}, ("security-saslprep",),
-                     "Unicode 3.2 NFKC expectation from ucd_3_2_0; not active until normalization data is available")
+                     "Unicode 3.2 NFKC and byte truncation expectations from ucd_3_2_0")
+
+
+def saslprep_generated_examples():
+    """End-to-end profile oracle: Python stringprep plus its Unicode 3.2 NFKC."""
+    from pathlib import Path
+    import random
+    from unicodedata import ucd_3_2_0
+    root = Path(__file__).resolve().parents[2]
+    inputs = ["", "ASCII", "\u05d0", "\u05d01\u05d1", "\u05d0a\u05d1", "1\u05d0",
+              "\u06271\u0628", "\u0221", "\U0001f600", "\u1d2c", "\x00", "\x7f",
+              "\ue000", "\uffff", "\u0340", "\u200b", "\u00a0"]
+    for line in (root / "data/unicode/UnicodeData-3.2.0-normalization.txt").read_text().splitlines():
+        if line and not line.startswith("#"):
+            inputs.append(chr(int(line.split(";", 1)[0], 16)))
+    # Reversed combining classes, stable ties, blocking, initial nonstarters,
+    # algorithmic Hangul and both compatibility and canonical recursion.
+    inputs += ["A" + "\u0301\u0323" * 4096, "\u0315\u0300" * 4096,
+               "a\u0305\u0301", "\u1100\u1161\u11a8", "\ufdfa", "\u1e9b\u0323"]
+    rng = random.Random(32000)
+    pool = list("abcABC012 ") + ["\u0301", "\u0323", "\u0315", "\u0340", "\u05d0", "\u0627",
+            "\u05d1", "\u0628", "\u00a0", "\u00ad", "\u200b", "\u0221", "\U0001f600",
+            "\x00", "\ue000", "\ufb03", "\u212b", "\u2168", "\u00e9", "\u1100", "\u1161"]
+    inputs += ["".join(rng.choices(pool, k=rng.randrange(1, 20))) for _ in range(2048)]
+    lines = []
+    for text in inputs:
+        normalized = ucd_3_2_0.normalize("NFKC", saslprep_mapping(text))
+        status = saslprep_output_status(normalized)
+        lines.append((text.encode().hex() or "-") + " " + status + " "
+                     + ((normalized.encode().hex() or "-") if status == "ok" else "-"))
+    yield Vector("saslprep-generated-passwords", {".cases": ("\n".join(lines)+"\n").encode()},
+                 ("security-saslprep",), "Complete profile against stringprep and ucd_3_2_0: all normalization-data scalars, seeded mixtures, bidi, unassigned and long combining runs")
+    corrections = [0xf951, 0x2f868, 0x2f874, 0x2f91f, 0x2f95f, 0x2f9bf]
+    lines = [f"{code:x} " + " ".join(f"{ord(ch):x}" for ch in ucd_3_2_0.normalize("NFKC", chr(code)))
+             for code in corrections]
+    yield Vector("nfkc32-corrections", {".cases": ("\n".join(lines)+"\n").encode()},
+                 ("security-saslprep",), "RFC 3454 section 4 Unicode 3.2: F951 correction applies; five later corrections do not; ucd_3_2_0 agrees")
+    passwords = [
+        ("unicode-passwords", "café", "Owne\u0301r-\u2168"),
+        ("bidi-passwords", "\u05d0\u05d1\u00a0\u05d21\u05d3", "\u06271\u0628"),
+        ("normalized-boundary", "\u00e9"*64, "\u03a9"*64),
+        ("correction-passwords", "\uf951", "\U0002f868"),
+    ]
+    for name, user, owner in passwords:
+        prepared = [ucd_3_2_0.normalize("NFKC", saslprep_mapping(text)) for text in (user, owner)]
+        assert all(saslprep_output_status(text) == "ok" for text in prepared)
+        user_bytes, owner_bytes = [text.encode()[:127] for text in prepared]
+        p, key = parameters(6, user_bytes, owner_bytes)
+        case = vector("r6-saslprep-"+name, p, key, user.encode(), owner.encode(), "AESV3")
+        yield Vector(case.name, {**case.files, ".prepared-user": user_bytes, ".prepared-owner": owner_bytes},
+                     case.requirements+("security-saslprep",), "Independent R6 encryptor authenticates non-ASCII user and owner after complete Unicode 3.2 SASLprep and byte truncation")
 
 
 def cases():
@@ -757,6 +802,8 @@ def cases():
     yield from primitive_examples()
     yield from mode_examples()
     yield from saslprep_examples()
+    yield from saslprep_normalization_examples()
+    yield from saslprep_generated_examples()
     data = bytes(range(256)) + bytes(range(5))
     lines = [f"{length} " + " ".join(hash(data[:length]).hexdigest() for hash in (md5, sha256, sha384, sha512))
              for length in range(len(data)+1)]
@@ -869,10 +916,10 @@ def parameter_edge_cases():
                  "Algorithm 2.A(c): shared user/owner password has owner authority")
     p, _ = parameters(6, b"", b"owner-secret")
     # Preparation and validation run before byte truncation. ASCII controls
-    # are prohibited passwords; non-ASCII normalization is explicitly unsupported.
+    # are prohibited passwords; valid non-ASCII still needs to match the entry.
     for name, password, error in [("ascii-control", b"\x7f", "password"),
                                   ("control-after-truncation", b"a"*127+b"\x00", "password"),
-                                  ("unicode", "café".encode(), "unsupported:security.saslprep")]:
+                                  ("unicode", "café".encode(), "password")]:
         yield invalid_parameter_vector("r6-saslprep-"+name, p, password, error)
     # Fixed PDFDocEncoding bytes, not UTF-8: U+20AC is byte 0xa0 (Table D.3).
     p, key = parameters(3, b"\xa0", b"owner-secret")

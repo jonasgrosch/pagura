@@ -95,18 +95,10 @@ fn preparation_uses_mapping_then_explicit_normalization_then_validation() {
         let result = prepare(&input);
         match fields[1] {
             "ok" => assert_eq!(result.unwrap(), text(fields[2]), "case {index}"),
-            "prohibited" => {
-                assert_eq!(
-                    result.unwrap_err().kind,
-                    ErrorKind::Password,
-                    "case {index}"
-                );
+            "prohibited" | "unassigned" | "bidi" => {
+                let error = result.unwrap_err();
+                assert_eq!(error.kind, ErrorKind::Password, "case {index}");
             }
-            "unsupported" => assert_eq!(
-                result.unwrap_err().kind,
-                ErrorKind::Unsupported(super::super::SASLPREP),
-                "case {index}"
-            ),
             _ => unreachable!(),
         }
     }
@@ -117,4 +109,32 @@ fn preparation_uses_mapping_then_explicit_normalization_then_validation() {
         validate_output("a\u{0221}").unwrap_err().position,
         Position::Buffer(1)
     );
+}
+
+#[test]
+fn generated_passwords_match_complete_independent_profile() {
+    let data = fixture("crypto", "saslprep-generated-passwords.cases");
+    let mut counts = [0; 4];
+    for (index, line) in std::str::from_utf8(&data).unwrap().lines().enumerate() {
+        let fields: Vec<_> = line.split_whitespace().collect();
+        let input = text(fields[0]);
+        let result = prepare(&input);
+        if fields[1] == "ok" {
+            assert_eq!(result.unwrap(), text(fields[2]), "case {index}");
+            counts[0] += 1;
+        } else {
+            let error = result.unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Password, "case {index}");
+            let (slot, message) = match fields[1] {
+                "prohibited" => (1, "password contains a SASLprep-prohibited code point"),
+                "unassigned" => (2, "password contains an unassigned Unicode 3.2 code point"),
+                "bidi" => (3, "password violates the SASLprep bidirectional rule"),
+                _ => unreachable!(),
+            };
+            assert_eq!(error.message, message, "case {index}");
+            counts[slot] += 1;
+        }
+    }
+    assert!(counts.iter().all(|&count| count > 0));
+    println!("Independent profile cases (ok/prohibited/unassigned/bidi): {counts:?}");
 }

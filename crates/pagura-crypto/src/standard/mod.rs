@@ -12,7 +12,7 @@ mod legacy;
 mod modern;
 mod saslprep;
 
-/// Tag for revision 6 passwords requiring unavailable Unicode 3.2 normalization data.
+/// Retained compatibility tag; complete revision 6 SASLprep no longer emits it.
 pub const SASLPREP: Feature = Feature::new("security.saslprep");
 
 /// Stable feature tags for unsupported security algorithms.
@@ -217,11 +217,10 @@ impl FileKey {
 /// codepage conversion (7.6.4.3.2(a)); this byte API does not interpret UTF-8 as
 /// legacy text. The bytes are truncated/padded to 32 bytes. Revision 6 accepts
 /// UTF-8, applies SASLprep mapping, normalization, output and bidi checks, then
-/// truncates the prepared UTF-8 to 127 bytes (7.6.4.3.3(a–b)). Only mapped ASCII
-/// can currently pass normalization; other Unicode returns `Unsupported` with
-/// [`SASLPREP`] before truncation, including Unicode already in NFKC. ASCII
-/// controls are rejected as invalid passwords. Stored-string unassigned-code
-/// point restrictions also apply to authentication input (RFC 3454 section 7).
+/// truncates the prepared UTF-8 to 127 bytes (7.6.4.3.3(a–b)). NFKC uses Unicode
+/// 3.2.0, including its normalization correction, without later-version changes.
+/// Prohibited output and stored-string unassigned code points are rejected;
+/// the latter restriction also applies to authentication (RFC 3454 section 7).
 /// Revision 6 tries the owner entry first as Algorithm 2.A(c) requires; legacy
 /// revisions and the unverified revision 5 extension retain user-first order.
 /// Successful R5/R6 authentication also checks Algorithm 13. A mismatch in
@@ -389,6 +388,34 @@ mod tests {
         }
     }
     #[test]
+    fn non_ascii_user_and_owner_authenticate_after_complete_saslprep() {
+        for name in [
+            "r6-saslprep-unicode-passwords",
+            "r6-saslprep-bidi-passwords",
+            "r6-saslprep-normalized-boundary",
+            "r6-saslprep-correction-passwords",
+        ] {
+            let parameters = params(name);
+            let expected = fixture("crypto", &format!("{name}.key"));
+            for (suffix, authority) in [("user", Authority::User), ("owner", Authority::Owner)] {
+                let password = fixture("crypto", &format!("{name}.{suffix}"));
+                let prepared = saslprep::prepare(std::str::from_utf8(&password).unwrap()).unwrap();
+                assert_eq!(
+                    &prepared.as_bytes()[..prepared.len().min(127)],
+                    fixture("crypto", &format!("{name}.prepared-{suffix}")),
+                    "{name}, {suffix}"
+                );
+                let key = authenticate(&parameters, &password).unwrap();
+                assert_eq!(key.authority(), authority, "{name}, {suffix}");
+                assert!(key.key == expected, "{name}, {suffix} key mismatch");
+                assert_eq!(
+                    key.permissions_validation(),
+                    PermissionsValidation::Validated
+                );
+            }
+        }
+    }
+    #[test]
     fn independent_handler_oracles_all_revisions_and_authorities() {
         for name in [
             "r2-rc4-40-empty",
@@ -484,7 +511,7 @@ mod tests {
             } else if expected == b"password" {
                 assert_eq!(error.kind, ErrorKind::Password, "{name}");
             } else {
-                assert_eq!(error.kind, ErrorKind::Unsupported(SASLPREP), "{name}");
+                panic!("unknown expected rejection for {name}");
             }
         }
     }
@@ -594,8 +621,8 @@ mod tests {
         assert_eq!(
             authenticate(&modern, "\u{00e9}".as_bytes())
                 .unwrap_err()
-                .feature(),
-            Some(SASLPREP)
+                .kind,
+            ErrorKind::Password
         );
     }
     #[test]

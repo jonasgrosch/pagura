@@ -1,8 +1,7 @@
 //! RFC 4013 over RFC 3454, Unicode 3.2, for ISO 32000-2 7.6.4.3.3(a).
 //!
 //! Mapping precedes NFKC; output checks precede bidi checks (RFC 3454 section 2).
-//! Until normalization data is available, only mapped ASCII is known to be
-//! normalized. Other input returns the existing explicit unsupported feature.
+//! Normalization uses the bundled Unicode 3.2 data, including algorithmic Hangul.
 use pagura_core::{Error, Position, Result};
 use std::borrow::Cow;
 

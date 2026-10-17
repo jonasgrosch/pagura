@@ -483,14 +483,14 @@
     {
       "id": "crypto/saslprep-supported-subset",
       "kind": "vector",
-      "description": "Complete preparation for mapped ASCII; explicit unsupported normalization for all other Unicode",
+      "description": "Complete preparation including compatibility normalization, prohibition and unassigned code points",
       "requirements": [
         "security-saslprep"
       ],
       "files": {
         ".cases": {
           "path": "corpus/generated/crypto/saslprep-supported-subset.cases",
-          "sha256": "125ae89adb6894f947afb25481da826347b61e5a82903cba42fcd70216509d0d"
+          "sha256": "27be843d930c3477f3a6dceae6ca44c45208a4ee10cc4811295da18b3acfeba7"
         }
       }
     },
@@ -823,6 +823,554 @@
         }
       },
       "authentication_error": "password"
+    },
+    {
+      "id": "crypto/saslprep-nfkc-feminine-ordinal",
+      "kind": "vector",
+      "description": "Unicode 3.2 NFKC and byte truncation expectations from ucd_3_2_0",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-feminine-ordinal.input",
+          "sha256": "c8682ecf9b051ec4f7269dbc968e7357313638d6cc5e17f392cadbe56975bd01"
+        },
+        ".normalized": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-feminine-ordinal.normalized",
+          "sha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+        },
+        ".truncated": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-feminine-ordinal.truncated",
+          "sha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+        }
+      }
+    },
+    {
+      "id": "crypto/saslprep-nfkc-roman-nine",
+      "kind": "vector",
+      "description": "Unicode 3.2 NFKC and byte truncation expectations from ucd_3_2_0",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-roman-nine.input",
+          "sha256": "e53f4f5370986c7d725ce5d246b45a70aca2753884587b520992383555bf7910"
+        },
+        ".normalized": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-roman-nine.normalized",
+          "sha256": "5eb1f0f9433a0b6f61dd40a6c4369a77cbeaa0a98402d5b4f1add182dd7f4e23"
+        },
+        ".truncated": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-roman-nine.truncated",
+          "sha256": "5eb1f0f9433a0b6f61dd40a6c4369a77cbeaa0a98402d5b4f1add182dd7f4e23"
+        }
+      }
+    },
+    {
+      "id": "crypto/saslprep-nfkc-already-normalized",
+      "kind": "vector",
+      "description": "Unicode 3.2 NFKC and byte truncation expectations from ucd_3_2_0",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-already-normalized.input",
+          "sha256": "4a99557e4033c3539de2eb65472017cad5f9557f7a0625a09f1c3f6e2ba69c4c"
+        },
+        ".normalized": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-already-normalized.normalized",
+          "sha256": "4a99557e4033c3539de2eb65472017cad5f9557f7a0625a09f1c3f6e2ba69c4c"
+        },
+        ".truncated": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-already-normalized.truncated",
+          "sha256": "4a99557e4033c3539de2eb65472017cad5f9557f7a0625a09f1c3f6e2ba69c4c"
+        }
+      }
+    },
+    {
+      "id": "crypto/saslprep-nfkc-angstrom",
+      "kind": "vector",
+      "description": "Unicode 3.2 NFKC and byte truncation expectations from ucd_3_2_0",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-angstrom.input",
+          "sha256": "4fb63b480753ec805996e42514121ab3d8bd1c422e99c767cbf8cf2db8ac34d3"
+        },
+        ".normalized": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-angstrom.normalized",
+          "sha256": "0a94dc9d420d1142d6b71de60f9bf7e2f345a4d62c9f141b091539769ddf3075"
+        },
+        ".truncated": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-angstrom.truncated",
+          "sha256": "0a94dc9d420d1142d6b71de60f9bf7e2f345a4d62c9f141b091539769ddf3075"
+        }
+      }
+    },
+    {
+      "id": "crypto/saslprep-nfkc-canonical-reorder",
+      "kind": "vector",
+      "description": "Unicode 3.2 NFKC and byte truncation expectations from ucd_3_2_0",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-canonical-reorder.input",
+          "sha256": "0ccc9a950ceeb4458b413334e062d9fbdf05a6f96516815b7b11b55f09c4facc"
+        },
+        ".normalized": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-canonical-reorder.normalized",
+          "sha256": "c692b2a36ca8876c2e0aa77f96b5dc0fb1e4bd3e3b60f00bf125909976979612"
+        },
+        ".truncated": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-canonical-reorder.truncated",
+          "sha256": "c692b2a36ca8876c2e0aa77f96b5dc0fb1e4bd3e3b60f00bf125909976979612"
+        }
+      }
+    },
+    {
+      "id": "crypto/saslprep-nfkc-hangul-composition",
+      "kind": "vector",
+      "description": "Unicode 3.2 NFKC and byte truncation expectations from ucd_3_2_0",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-hangul-composition.input",
+          "sha256": "a0d2271e0fe8929d025eb859cde49251ba70c86abb76123f03f8d8eda1c98939"
+        },
+        ".normalized": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-hangul-composition.normalized",
+          "sha256": "64ee5293d31bc58b72d76ae9a86a902e90442428e29f24f4ecb257ba841cdd36"
+        },
+        ".truncated": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-hangul-composition.truncated",
+          "sha256": "64ee5293d31bc58b72d76ae9a86a902e90442428e29f24f4ecb257ba841cdd36"
+        }
+      }
+    },
+    {
+      "id": "crypto/saslprep-nfkc-unicode32-correction",
+      "kind": "vector",
+      "description": "Unicode 3.2 NFKC and byte truncation expectations from ucd_3_2_0",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-unicode32-correction.input",
+          "sha256": "3598e65aedf9e6e8f6f05b61f2ad89a5ba57a3ec1d6beed51f6dda3f8c9c8148"
+        },
+        ".normalized": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-unicode32-correction.normalized",
+          "sha256": "4c0dcde6f4ebe9722ef0be49f75ac32ac75cac46cb7d99bedf40eae8ab827c8f"
+        },
+        ".truncated": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-unicode32-correction.truncated",
+          "sha256": "4c0dcde6f4ebe9722ef0be49f75ac32ac75cac46cb7d99bedf40eae8ab827c8f"
+        }
+      }
+    },
+    {
+      "id": "crypto/saslprep-nfkc-expansion-before-truncation",
+      "kind": "vector",
+      "description": "Unicode 3.2 NFKC and byte truncation expectations from ucd_3_2_0",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-expansion-before-truncation.input",
+          "sha256": "968fa47361c93b3e029d4cc0581494e4ac6b2c1b1474c12d40d77282c86dab0e"
+        },
+        ".normalized": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-expansion-before-truncation.normalized",
+          "sha256": "a39e7137d248acd5a5277b9e492eb2a909235c69faf24eda6baea545aa3c19dc"
+        },
+        ".truncated": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-expansion-before-truncation.truncated",
+          "sha256": "fa16593f4872baf2528e8a2216bcc1c7b657e5580da98fdc17f4c81242cba73a"
+        }
+      }
+    },
+    {
+      "id": "crypto/saslprep-nfkc-utf8-byte-truncation",
+      "kind": "vector",
+      "description": "Unicode 3.2 NFKC and byte truncation expectations from ucd_3_2_0",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-utf8-byte-truncation.input",
+          "sha256": "845836d7e680de9961df321148f8cb5e8a7da92aba65f5b05b817c3b58256bd5"
+        },
+        ".normalized": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-utf8-byte-truncation.normalized",
+          "sha256": "845836d7e680de9961df321148f8cb5e8a7da92aba65f5b05b817c3b58256bd5"
+        },
+        ".truncated": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-utf8-byte-truncation.truncated",
+          "sha256": "a605faf1d3a66fa1ed0f298e047412d5d8919160eef1f19bf4c334ff7821f78f"
+        }
+      }
+    },
+    {
+      "id": "crypto/saslprep-nfkc-normalization-before-prohibition",
+      "kind": "vector",
+      "description": "Unicode 3.2 NFKC and byte truncation expectations from ucd_3_2_0",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-normalization-before-prohibition.input",
+          "sha256": "480e9547ed3aec71447bb0055bf6057fe6c0fa12de8a18e89bbf4a7397dc8f8d"
+        },
+        ".normalized": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-normalization-before-prohibition.normalized",
+          "sha256": "1cadf684f78b966768c729e93e1195521dfe5fef905910fe81363b3a6760eb34"
+        },
+        ".truncated": {
+          "path": "corpus/generated/crypto/saslprep-nfkc-normalization-before-prohibition.truncated",
+          "sha256": "1cadf684f78b966768c729e93e1195521dfe5fef905910fe81363b3a6760eb34"
+        }
+      }
+    },
+    {
+      "id": "crypto/saslprep-generated-passwords",
+      "kind": "vector",
+      "description": "Complete profile against stringprep and ucd_3_2_0: all normalization-data scalars, seeded mixtures, bidi, unassigned and long combining runs",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".cases": {
+          "path": "corpus/generated/crypto/saslprep-generated-passwords.cases",
+          "sha256": "4db1812f5e46898bd01fef124959eb1e8fcdfc48c22e83ee7c0a96d31b26cdc9"
+        }
+      }
+    },
+    {
+      "id": "crypto/nfkc32-corrections",
+      "kind": "vector",
+      "description": "RFC 3454 section 4 Unicode 3.2: F951 correction applies; five later corrections do not; ucd_3_2_0 agrees",
+      "requirements": [
+        "security-saslprep"
+      ],
+      "files": {
+        ".cases": {
+          "path": "corpus/generated/crypto/nfkc32-corrections.cases",
+          "sha256": "b6d486c59debae434cce96bbbdf7cac6e91984028c69c873cd9b783643db4433"
+        }
+      }
+    },
+    {
+      "id": "crypto/r6-saslprep-unicode-passwords",
+      "kind": "vector",
+      "description": "Independent R6 encryptor authenticates non-ASCII user and owner after complete Unicode 3.2 SASLprep and byte truncation",
+      "requirements": [
+        "security-r6",
+        "security-saslprep"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.cipher",
+          "sha256": "195a5aaae9e243f49c582e9904970feb02861eacfa13fa777f6de0836e8dc00c"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.key",
+          "sha256": "90e28e75a2b8236171a8f5614674da16d489d39a89cbcd2270a44a8bb76a45d1"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.method",
+          "sha256": "a392beca2d548d42aaf5dfde0f515a7b9e2df4e1209a9d10079b2da7092ca0ce"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.owner",
+          "sha256": "2521eab7886f6543d9f07ac2b9f3f0b2d5b261c06567162eea533499cf65f7fc"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.params",
+          "sha256": "80b93c1311a6b1eeda03b3ad8459d8eaee15d293bc4cf43e8b9e9acbda21d969"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".prepared-owner": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.prepared-owner",
+          "sha256": "ed4b79072cb4d37743fa11605f1a8fcf421cd69f5ee593c7a2056a024f3b4c75"
+        },
+        ".prepared-user": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.prepared-user",
+          "sha256": "850f7dc43910ff890f8879c0ed26fe697c93a067ad93a7d50f466a7028a9bf4e"
+        },
+        ".size0": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.size0",
+          "sha256": "6b86ee6af41ec764d0ee06adc33aed0730394aee1eb8b83f6f4182d6c2e581df"
+        },
+        ".size1": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.size1",
+          "sha256": "0df5cc53c12b8913fd70c370fcec0b7cbd9dd2bb0b80fcb90cb64f05ed3e4c8b"
+        },
+        ".size15": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.size15",
+          "sha256": "f9dfaad38b0d11445927106ccdffe8382d9baf120b99ca635a4f8cf9e52e8fc7"
+        },
+        ".size16": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.size16",
+          "sha256": "d14309c25700df1c8d98d51d2f819e6f6359407a02296c3360388169f3ea8ab4"
+        },
+        ".size17": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.size17",
+          "sha256": "efb205af0cdc2c8b00a62d576a3fda046ef2e3512afa9b00bb2af21e520b53d6"
+        },
+        ".size31": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.size31",
+          "sha256": "5a4044866afb36da8d867e229a383455505a2a35b207ad384f1954c3c54888a8"
+        },
+        ".size32": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.size32",
+          "sha256": "9d1728b6282b6cc4820c4bdbbf1fa6196cdcafa1f44c7fe832a948d0de992106"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r6-saslprep-unicode-passwords.user",
+          "sha256": "850f7dc43910ff890f8879c0ed26fe697c93a067ad93a7d50f466a7028a9bf4e"
+        }
+      }
+    },
+    {
+      "id": "crypto/r6-saslprep-bidi-passwords",
+      "kind": "vector",
+      "description": "Independent R6 encryptor authenticates non-ASCII user and owner after complete Unicode 3.2 SASLprep and byte truncation",
+      "requirements": [
+        "security-r6",
+        "security-saslprep"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.cipher",
+          "sha256": "02b8237067c7005c83839ffebb84ba6dd0138a8b5c94e0ab39cdcf28743c7553"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.key",
+          "sha256": "5e544d6c6f9ee10e2bffa05341dfea4c9dd4d82a50a4e682c2d4efc18a2d063e"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.method",
+          "sha256": "a392beca2d548d42aaf5dfde0f515a7b9e2df4e1209a9d10079b2da7092ca0ce"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.owner",
+          "sha256": "1aa9e450647c09dc871d1547c0c0bc7a9bf60ba60a66dd601d9cc986018d7758"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.params",
+          "sha256": "65c0b4d2a39b6dae42d4eddb90c91d697b7481428ad383aa1f088973ebe823f9"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".prepared-owner": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.prepared-owner",
+          "sha256": "1aa9e450647c09dc871d1547c0c0bc7a9bf60ba60a66dd601d9cc986018d7758"
+        },
+        ".prepared-user": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.prepared-user",
+          "sha256": "ec830c20c68485b83af0096a51b7f5f18723588946154d8f7dd34c0d64639698"
+        },
+        ".size0": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.size0",
+          "sha256": "55778df9657d0b5af36302e5fc489c715497f946683a665a60ef7ef9782ee92f"
+        },
+        ".size1": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.size1",
+          "sha256": "75b9db0d62550a4229806d26b488d5285286358231c954d534319c338fe79ad3"
+        },
+        ".size15": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.size15",
+          "sha256": "7b8e05a4467f842e7dd20cbb02d81eb0e92ba339ab4e44fe9566b0368d784099"
+        },
+        ".size16": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.size16",
+          "sha256": "2facb5b727a13dc4928feee3a423570d1d8a6f4796a2086e7fdedd81dac11877"
+        },
+        ".size17": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.size17",
+          "sha256": "ec687eae1ab329bed6850d03ccdf4d1d866ae32495751494236599ad9a4c983a"
+        },
+        ".size31": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.size31",
+          "sha256": "8d9c7d42e11bc94e6541d1c9fcbcee36c8404e4621a95f0fe243d443338c05ca"
+        },
+        ".size32": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.size32",
+          "sha256": "b799194fb391cba6f75337be50183dcd5930cc739d3b71becac7c7bb00eafcb1"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r6-saslprep-bidi-passwords.user",
+          "sha256": "fa4a93efc38a5c98ec7d1f247cc1b19c4dbb8458f20addf64a22574b58baf476"
+        }
+      }
+    },
+    {
+      "id": "crypto/r6-saslprep-normalized-boundary",
+      "kind": "vector",
+      "description": "Independent R6 encryptor authenticates non-ASCII user and owner after complete Unicode 3.2 SASLprep and byte truncation",
+      "requirements": [
+        "security-r6",
+        "security-saslprep"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.cipher",
+          "sha256": "79f695094dd643c68bb6dd7ff100dc7c8bf9764ab6437085bf0c229481270507"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.key",
+          "sha256": "b6bb6be9b883bfba6c2452bd47d2636e5c148e20b534297125aa8fc29133bb4b"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.method",
+          "sha256": "a392beca2d548d42aaf5dfde0f515a7b9e2df4e1209a9d10079b2da7092ca0ce"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.owner",
+          "sha256": "c6bb3af72048cb8367132759116491023e1644ba0bbc9c039eed0426672e573c"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.params",
+          "sha256": "52aec49e5e7fdbad8ce299af241e902049ebaa6312a6c3f0ccb2a5042f2ec842"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".prepared-owner": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.prepared-owner",
+          "sha256": "fc1f596c688f99c99fc44a97d09d30193ac13dfa7b60e2225904b19466af2e2e"
+        },
+        ".prepared-user": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.prepared-user",
+          "sha256": "a605faf1d3a66fa1ed0f298e047412d5d8919160eef1f19bf4c334ff7821f78f"
+        },
+        ".size0": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.size0",
+          "sha256": "e6ca2c40c56b06d69154d0cb6ded73c773b2c208962ae1dff4410226ed46bda3"
+        },
+        ".size1": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.size1",
+          "sha256": "80ce202e930395febfac4d348d26acd79f1a076a2efac8902d9a9df3fc172bda"
+        },
+        ".size15": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.size15",
+          "sha256": "91e6b5786794789809384081ff659069b9411d4a87972dd189b47f2d21de9d1b"
+        },
+        ".size16": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.size16",
+          "sha256": "91d3f48819bc0af00fdce3f311021cb38e57e3f4b49ddb0b80278e8af195b6a1"
+        },
+        ".size17": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.size17",
+          "sha256": "f222099b8c391c6bdd92b97674b6ca228e9473d97465edb8e6d56a5c2a1d2491"
+        },
+        ".size31": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.size31",
+          "sha256": "f4530c042fcf261be0e224b417dc093e1cc7aaae8800da4915dedc58e3e0105e"
+        },
+        ".size32": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.size32",
+          "sha256": "4af71bc9138de06da58a4f9dd8ac84c663bdc50d12d5bd1a035173e3dd73a5bb"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r6-saslprep-normalized-boundary.user",
+          "sha256": "845836d7e680de9961df321148f8cb5e8a7da92aba65f5b05b817c3b58256bd5"
+        }
+      }
+    },
+    {
+      "id": "crypto/r6-saslprep-correction-passwords",
+      "kind": "vector",
+      "description": "Independent R6 encryptor authenticates non-ASCII user and owner after complete Unicode 3.2 SASLprep and byte truncation",
+      "requirements": [
+        "security-r6",
+        "security-saslprep"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.cipher",
+          "sha256": "b288dda06b53bfe6ae5639e132af2523e1d195e0c4a7566f90791169c8258fd8"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.key",
+          "sha256": "aea3ddc3a7c93d2c7f1e1ae1a3f2390b076974bed2ac7bc66ebd3b6d607fee05"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.method",
+          "sha256": "a392beca2d548d42aaf5dfde0f515a7b9e2df4e1209a9d10079b2da7092ca0ce"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.owner",
+          "sha256": "3598e65aedf9e6e8f6f05b61f2ad89a5ba57a3ec1d6beed51f6dda3f8c9c8148"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.params",
+          "sha256": "49129b9586be1fd4bcc713572855583bcd8a298807a5502fdbeb5fe45856b465"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".prepared-owner": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.prepared-owner",
+          "sha256": "4c0dcde6f4ebe9722ef0be49f75ac32ac75cac46cb7d99bedf40eae8ab827c8f"
+        },
+        ".prepared-user": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.prepared-user",
+          "sha256": "769b9ea019c7f000cc3c528d4418ed821d7f172ff8ce35e227b686e9139e73ca"
+        },
+        ".size0": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.size0",
+          "sha256": "a86d93b9fa6b2f110983fa64d784b363a1a3965c78b2ed8bfc52efd82d1f25ec"
+        },
+        ".size1": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.size1",
+          "sha256": "6b068b719c77cf0471b4f2a7e0c9f51468fb718c43d11314bd83b47446d5180f"
+        },
+        ".size15": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.size15",
+          "sha256": "e5922dc74f3827a40bc340d948d557176b27c6ea68017c35b6fdfe4ab1976f99"
+        },
+        ".size16": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.size16",
+          "sha256": "046f23a93706287414b02219912ac532f6a365fd793d471934d5b5019e868dab"
+        },
+        ".size17": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.size17",
+          "sha256": "854d726073ce72b17e2780332efc887e4bc3bad1d37490456c9ec427b9d51d30"
+        },
+        ".size31": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.size31",
+          "sha256": "184ccc10f79efe9a3a200105ddd0c00e2cac9b5143c519754b4be703466102ba"
+        },
+        ".size32": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.size32",
+          "sha256": "8b6eb737ec2f846c50435d9bf845329ed35d3400bc683f81ee13ca894d0ffef2"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r6-saslprep-correction-passwords.user",
+          "sha256": "cb1344426c657c71d46c784ac88bb314371c1d225990796b5a305834c354e08a"
+        }
+      }
     },
     {
       "id": "crypto/hash-padding-boundaries",
@@ -4531,7 +5079,7 @@
       "files": {
         ".error": {
           "path": "corpus/generated/crypto/r6-saslprep-unicode.error",
-          "sha256": "aa029a3d184a40491c90a2e041034de5d495959a9f8b58b513915a3bab5635cc"
+          "sha256": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"
         },
         ".params": {
           "path": "corpus/generated/crypto/r6-saslprep-unicode.params",
@@ -4542,7 +5090,7 @@
           "sha256": "850f7dc43910ff890f8879c0ed26fe697c93a067ad93a7d50f466a7028a9bf4e"
         }
       },
-      "authentication_error": "unsupported:security.saslprep"
+      "authentication_error": "password"
     },
     {
       "id": "crypto/r3-pdfdocencoding-euro",

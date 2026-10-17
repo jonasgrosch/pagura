@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "crypto",
-  "scope": "Verified byte-oriented MD5 against RFC 1321, SHA-256/384/512 against FIPS 180-4, AES-128/256 against FIPS 197-upd1, and CBC encryption/decryption against SP 800-38A section 6.2 and Appendices F.2.1/F.2.2/F.2.5/F.2.6. RC4 samples are checked against informational RFC 6229 section 2; this is vector evidence, not a normative cipher specification. The ISO 32000-2:2020 sponsored EC3 audit includes Algorithm 2.A SASLprep mapping, output, bidi and unassigned rules verified against RFC 4013 over RFC 3454 Unicode 3.2 tables, generated from the appendices and exhaustively compared with Python stringprep. Unicode 3.2 NFKC implementation remains pending its data: only mapped ASCII passes the explicit normalization boundary. Other genuine qualifications remain: separately linked NIST examples are not locally supplied, R5 extension provenance is unverified, and the documented crypt-filter text conflicts, host-codepage conversion and document integration findings are outside this claim. No complete PDF conformance or side-channel certification is made.",
+  "scope": "Verified byte-oriented MD5 against RFC 1321, SHA-256/384/512 against FIPS 180-4, AES-128/256 against FIPS 197-upd1, and CBC encryption/decryption against SP 800-38A section 6.2 and Appendices F.2.1/F.2.2/F.2.5/F.2.6. RC4 samples are checked against informational RFC 6229 section 2; this is vector evidence, not a normative cipher specification. The ISO 32000-2:2020 sponsored EC3 audit includes Algorithm 2.A SASLprep mapping, output, bidi and unassigned rules verified against RFC 4013 over RFC 3454 Unicode 3.2 tables, generated from the appendices and exhaustively compared with Python stringprep. Unicode 3.2.0 NFKC is implemented from the pinned bundled normalization data, with algorithmic Hangul, and checked against every NFKC relation in NormalizationTest-3.2.0.txt (16,992 rows; 84,960 relations). Complete SASLprep is independently checked with Python stringprep and unicodedata.ucd_3_2_0, including non-ASCII R6 user and owner authentication. RFC 3454 section 4 and its section 8.1 citation to UAX #15 revision 22 fix normalization to Unicode 3.2.0; only corrections present in that version apply. Other genuine qualifications remain: separately linked NIST examples are not locally supplied, R5 extension provenance is unverified, and the documented crypt-filter text conflicts, host-codepage conversion and document integration findings are outside this claim. No complete PDF conformance or side-channel certification is made.",
   "requirements": [
     {
       "id": "crypto-hash-vectors",
@@ -113,9 +113,10 @@
         "pagura-crypto unit tests",
         "tools/fixturegen/crypto.py self_check",
         "corpus/manifests/crypto.json",
-        "standard::modern::tests independent Algorithm 13 outcome vectors"
+        "standard::modern::tests independent Algorithm 13 outcome vectors",
+        "standard::tests non-ASCII user and owner authentication with independent encryptor vectors"
       ],
-      "gaps": "Unicode 3.2 NFKC data is not yet supplied. SASLprep maps B.1 to nothing and C.1.2 to ASCII space, but only mapped ASCII can currently pass normalization; other Unicode explicitly returns security.saslprep before truncation. Prohibition, stored-string A.1 rejection and bidi validation are implemented and independently tested as stages; full non-ASCII preparation is not claimed. Document-layer findings remain open.",
+      "gaps": "Document-layer findings remain outside this implementation; see integration_findings. Complete Unicode 3.2 SASLprep is implemented in the crypto API.",
       "permissions_policy": "Password-authenticated keys report Validated or Inconsistent(PermissionsCheck); the document caller owns strict/reported-repair policy. Structural errors remain Syntax."
     },
     {
@@ -140,17 +141,22 @@
       "clauses": [
         "ISO 32000-2:2020 7.6.4.3.3(a-b)",
         "RFC 4013 sections 2.1-2.5 and 3",
-        "RFC 3454 sections 2-7, Appendices A.1, B.1, C.1.2, C.2.1-C.9, D.1-D.2"
+        "RFC 3454 sections 2-7, Appendices A.1, B.1, C.1.2, C.2.1-C.9, D.1-D.2",
+        "RFC 3454 section 8.1 citing UAX #15 revision 22 (Unicode 3.2.0); bundled Unicode 3.2 normalization data and conformance test"
       ],
-      "status": "partial",
-      "verification": "profile-and-table-rules-verified-normalization-data-pending",
+      "status": "implemented",
+      "verification": "verified-version-pinned-data-full-nfkc-conformance-and-independent-profile-oracles",
       "tests": [
         "pagura-crypto standard::saslprep tests",
         "pagura-crypto mapped-password authentication tests",
         "tools/fixturegen/crypto.py saslprep_examples",
-        "crates/pagura-crypto/tools/generate_stringprep.py --rfc PATH --check"
+        "crates/pagura-crypto/tools/generate_stringprep.py --rfc PATH --check",
+        "tools/fixturegen/unicode32.py --check",
+        "standard::saslprep::normalization::tests every_official_unicode32_nfkc_relation",
+        "crypto/saslprep-generated-passwords and nfkc32-corrections",
+        "crypto/r6-saslprep-{unicode-passwords,bidi-passwords,normalized-boundary,correction-passwords}"
       ],
-      "gaps": "Unicode 3.2 NFKC normalization awaits approved source data. Positive NFKC-dependent examples are prepared in saslprep_normalization_examples() but are deliberately excluded from cases() and the manifest; no ignored or skipped Rust tests are added."
+      "gaps": "No pending normalization implementation or data. B.1/C.1.2 overlap and authentication-query A.1 policy remain explicit choices, as documented in saslprep_decisions."
     }
   ],
   "primary_text": {
@@ -444,17 +450,17 @@
       "id": "algorithm-2.A-a",
       "locator": "7.6.4.3.3 Algorithm 2.A(a)",
       "paraphrase": "Prepare Unicode with the required SASLprep profile before UTF-8 conversion.",
-      "implementation": "UTF-8 is validated, then B.1/C.1.2 mapping, explicit Unicode 3.2 NFKC boundary, output restrictions and bidi checks run in the required order. Only mapped ASCII passes normalization until its Unicode data is available. ASCII controls and invalid UTF-8 now fail as Password; other Unicode remains explicitly unsupported.",
-      "vectors": "saslprep-* stage oracles; r6-saslprep-mapping-* authenticated-key oracles; rejection before truncation. NFKC-dependent positive cases remain outside the manifest.",
-      "verdict": "partial-preprocessing"
+      "implementation": "UTF-8 validation, B.1/C.1.2 mapping, complete Unicode 3.2 NFKC, output restrictions and bidi checks precede byte truncation. Prohibited, unassigned and invalid UTF-8 input fail as Password with fixed messages. No unsupported normalization branch remains.",
+      "vectors": "All prior stage oracles, ten activated NFKC examples, generated full-profile cases and four independent non-ASCII user/owner authentication vectors agree.",
+      "verdict": "verified-with-documented-profile-choices"
     },
     {
       "id": "algorithm-2.A-b",
       "locator": "7.6.4.3.3 Algorithm 2.A(b)",
       "paraphrase": "Take at most the first 127 encoded bytes, without character-boundary rounding.",
       "implementation": "agrees",
-      "vectors": "Existing long ASCII password vectors, r6-saslprep-mapping-before-truncation, and invalid UTF-8/control input beyond byte 127 verify full preparation before truncation. Non-ASCII normalized cut points await normalization data.",
-      "verdict": "verified-subset"
+      "vectors": "Long ASCII and mapping-before-truncation vectors; compatibility expansion before truncation; non-ASCII prepared UTF-8 truncated inside a multibyte scalar for both user and owner; invalid UTF-8/control input after byte 127 rejected before truncation.",
+      "verdict": "verified"
     },
     {
       "id": "algorithm-2.A-c",
@@ -1338,35 +1344,35 @@
     },
     {
       "id": "normalization",
-      "locator": "RFC 4013 section 2.2; RFC 3454 section 4; ISO 32000-2 7.6.4.3.3(a-b)",
+      "locator": "RFC 4013 section 2.2; RFC 3454 section 4; ISO 32000-2 7.6.4.3.3(a-b); RFC 3454 section 8.1 (UAX #15 revision 22, Unicode 3.2.0); bundled NormalizationTest-3.2.0.txt Parts 0-2",
       "paraphrase": "Normalize the complete mapped string with Unicode 3.2 NFKC before output checks, UTF-8 encoding and byte truncation.",
-      "implementation": "standard::saslprep::normalization::nfkc32(input: Cow<'_, str>) -> Result<Cow<'_, str>> currently accepts ASCII only; every other scalar returns Unsupported(security.saslprep), even when it is already NFKC. No current-Unicode normalization substitutes for Unicode 3.2.",
-      "vectors": "Mapped ASCII and explicit unsupported outcomes are active; ten ucd_3_2_0 oracle examples are prepared outside the manifest.",
-      "verdict": "pending-unicode32-normalization-data"
+      "implementation": "nfkc32(input: Cow<str>) -> Result<Cow<str>> uses generated recursively expanded compatibility decompositions, stable counting sort by combining class, canonical pair composition with Full_Composition_Exclusion, and algorithmic Hangul. Quick-check Yes preserves ownership without allocation; scratch buffers grow fallibly. Static tables only; no runtime files or current-Unicode properties. Counting sort keeps arbitrary nonstarter runs linear.",
+      "vectors": "Every bundled conformance row: Part 0 = 23, Part 1 = 16,315, Part 2 = 654; no Part 3 is present in this version. All five columns normalize to column 4: 84,960 relations plus idempotence. Ten activated Python oracles and six correction/version cases agree.",
+      "verdict": "verified-all-bundled-nfkc-relations"
     },
     {
       "id": "prohibited-output",
       "locator": "RFC 4013 section 2.3; RFC 3454 section 5 and Appendices C.1.2, C.2.1, C.2.2, C.3-C.9",
       "paraphrase": "Reject output containing any character selected by the profile's prohibition tables.",
       "implementation": "Combined generated membership masks include every required C table. Rust str cannot contain surrogate scalars; malformed UTF-8 fails before preparation. Errors use Password and a byte position, never input text.",
-      "vectors": "Every table membership, prohibition range boundaries, ASCII controls including byte 127 and later, and malformed UTF-8. Validator tests are independent stages and need no normalization implementation.",
-      "verdict": "verified-stage"
+      "vectors": "Every table membership, prohibition range boundaries, ASCII controls including byte 127 and later, and malformed UTF-8. Validator tests are independent stages and need no normalization implementation. Also exercised after mapping and NFKC by the complete generated-password oracle.",
+      "verdict": "verified-stages-and-complete-profile"
     },
     {
       "id": "bidirectional",
       "locator": "RFC 4013 section 2.4; RFC 3454 section 6, Appendices D.1-D.2 and C.8",
       "paraphrase": "When RandAL occurs, exclude LCat and require RandAL at both ends; prohibit the C.8 display-control set.",
       "implementation": "Single pass accumulates the two directional classes and endpoint membership; C.8 is included in the prohibited mask. No Unicode version supplied by Rust is consulted.",
-      "vectors": "Pure RTL, RTL with internal digits, mixed RTL/Latin and invalid leading/trailing digits; all D.1/D.2 memberships compared with stringprep.",
-      "verdict": "verified-stage"
+      "vectors": "Pure RTL, RTL with internal digits, mixed RTL/Latin and invalid leading/trailing digits; all D.1/D.2 memberships compared with stringprep. Also exercised after mapping and NFKC by the complete generated-password oracle.",
+      "verdict": "verified-stages-and-complete-profile"
     },
     {
       "id": "unassigned",
       "locator": "RFC 4013 section 2.5; RFC 3454 section 7 and Appendix A.1",
       "paraphrase": "Stored strings exclude Unicode 3.2 unassigned code points; queries may also reject them.",
-      "implementation": "The output validator always rejects A.1, applying the permitted stricter query policy to authentication as well. Unknown non-ASCII normalization remains unsupported before this stage.",
-      "vectors": "All A.1 memberships, U+0221 and code points assigned only in newer Unicode versions are checked against Python stringprep.",
-      "verdict": "verified-stage"
+      "implementation": "After complete Unicode 3.2 normalization, always reject A.1, applying the permitted stricter query policy to authentication as well.",
+      "vectors": "All A.1 memberships, U+0221 and code points assigned only in newer Unicode versions are checked against Python stringprep. Also exercised after mapping and NFKC by the complete generated-password oracle.",
+      "verdict": "verified-stages-and-complete-profile"
     },
     {
       "id": "generated-tables",
@@ -1380,11 +1386,11 @@
   "saslprep_decisions": {
     "mapping_overlap": "U+200B is in B.1 and C.1.2. B.1 removal takes precedence, matching the independent oracle; this explicit choice is not claimed as a separately ordered rule in RFC 4013.",
     "unassigned_policy": "Use stored-string A.1 rejection for authentication queries too; RFC 3454 section 7 permits queries to reject unassigned code points.",
-    "normalization_limit": "Mapped ASCII is provably unchanged by NFKC and can proceed. All other mapped Unicode is conservatively unsupported until the approved Unicode 3.2 normalization data exists. Mapping, normalization and validation always precede the 127-byte truncation.",
     "errors": "Invalid UTF-8, prohibited output, unassigned output and bidi violations use Password, not document Syntax. Positions identify bytes in the relevant password buffer; fixed messages never embed password/key data.",
     "reproduction": "python3 crates/pagura-crypto/tools/generate_stringprep.py --rfc ~/.cache/pagura-references/text/rfc3454.txt --check",
-    "oracle": "Python standard-library stringprep predicates and unicodedata.ucd_3_2_0 (Unicode 3.2.0). The latter is used only for deferred test expectations, never to generate production normalization tables.",
-    "deferred_vector_ids": [
+    "oracle": "Python standard-library stringprep plus unicodedata.ucd_3_2_0 (Unicode 3.2.0) supplies independent complete-profile and normalization fixture expectations, never production normalization tables.",
+    "normalization": "The complete mapped string is normalized and validated before 127-byte truncation. Unicode 3.2 data is generated reproducibly by python3 tools/fixturegen/unicode32.py; --check runs as a Rust unit test. Production tables are generated only from bundled files, never from Python normalization.",
+    "activated_vector_ids": [
       "crypto/saslprep-nfkc-feminine-ordinal",
       "crypto/saslprep-nfkc-roman-nine",
       "crypto/saslprep-nfkc-already-normalized",
@@ -1394,7 +1400,52 @@
       "crypto/saslprep-nfkc-unicode32-correction",
       "crypto/saslprep-nfkc-expansion-before-truncation",
       "crypto/saslprep-nfkc-utf8-byte-truncation",
-      "crypto/saslprep-nfkc-normalization-before-prohibition"
-    ]
+      "crypto/saslprep-nfkc-normalization-before-prohibition",
+      "crypto/nfkc32-corrections",
+      "crypto/saslprep-generated-passwords",
+      "crypto/r6-saslprep-unicode-passwords",
+      "crypto/r6-saslprep-bidi-passwords",
+      "crypto/r6-saslprep-normalized-boundary",
+      "crypto/r6-saslprep-correction-passwords"
+    ],
+    "normalization_corrections": {
+      "source": "RFC 3454 section 4 requires normalization of the profile Unicode version; section 8.1 explicitly cites UAX #15 version 3.2.0 revision 22 (tr15-22.html). The annex itself is not separately bundled; the pinned 3.2.0 normalization data, corrections and complete conformance corpus supply algorithm data and evidence.",
+      "decision": "Apply F951 -> 964B from NormalizationCorrections-3.2.0.txt (introduced in 3.2.0 and already in UnicodeData). Do not apply corrections introduced after 3.2.0: retain 2F868 -> 2136A, 2F874 -> 5F33, 2F91F -> 43AB, 2F95F -> 7AAE and 2F9BF -> 4D57, as the bundled data and conformance rows require.",
+      "second_oracle": "Python unicodedata.ucd_3_2_0 agrees on F951 and all five retained mappings; current unicodedata.normalize differs on the latter five and is deliberately not used.",
+      "generator_check": "The generator validates correction version and corrected decomposition, and checks Full_Composition_Exclusion against explicit exclusions plus canonical singletons and nonstarter decompositions."
+    },
+    "unicode_notice": "Generated normalization source embeds the complete Unicode License V3 copyright and permission notice. pagura_crypto::unicode_notice() includes data/unicode/LICENSE for licence-listing callers.",
+    "normalization_evidence": {
+      "conformance_rows": {
+        "Part 0": 23,
+        "Part 1": 16315,
+        "Part 2": 654,
+        "Part 3": 0
+      },
+      "part_3": "Absent from the bundled Unicode 3.2.0 file, not skipped.",
+      "nfkc_relations": 84960,
+      "additional_idempotence_checks": 84960,
+      "independent_profile_cases": {
+        "total": 7537,
+        "accepted": 5760,
+        "prohibited": 676,
+        "unassigned": 703,
+        "bidi": 398
+      },
+      "normalization_table_payload_bytes": 68967,
+      "table_counts": {
+        "decompositions": 5143,
+        "utf8_pool_bytes": 13087,
+        "combining_ranges": 163,
+        "compositions": 917,
+        "quick_check_ranges": 222
+      },
+      "release_wasi_host_bytes": {
+        "before": 1958721,
+        "after": 2034668,
+        "increase": 75947
+      },
+      "size_method": "Same locked offline release build of pagura-host for wasm32-wasip1 before and after this implementation. The whole-file increase includes normalizer code as well as tables; 68,967 is the separate static table payload computed using Rust size_of_val and the UTF-8 pool length. No performance certification."
+    }
   }
 }
