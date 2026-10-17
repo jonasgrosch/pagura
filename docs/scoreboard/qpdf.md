@@ -1,19 +1,19 @@
 # Scoreboard: qpdf
 
-Recorded 2026-10-17T21:28:01+00:00 at commit `0451af7`; binary SHA-256 `58eba42660d3bda1…`;
+Recorded 2026-10-17T22:29:20+00:00 at commit `c38e654`; binary SHA-256 `40ac06f4a363b57c…`;
 corpus digest `580f302df3467dc9…` over 717 files. Pages scanned at 72 dpi.
 
 | Metric | Value |
 |---|---:|
 | Not PDF (no `%PDF-` in the first 1024 bytes) | 16 |
 | PDF files opened, pages enumerated | 671 / 701 (95.7%) |
-| … strictly, every scanned page compiling | 582 |
-| … only with repairs | 89 |
+| … strictly, every scanned page compiling | 578 |
+| … only with repairs | 93 |
 | Failed to open | 29 |
 | Opened, but the page tree failed | 1 |
 | Crashes | 0 |
 | Timeouts (60 s CPU budget) | 0 |
-| Pages rendered | 131 / 3817 (3.4%) |
+| Pages rendered | 159 / 3817 (4.2%) |
 
 | Open failure | Count |
 |---|---:|
@@ -27,15 +27,15 @@ corpus digest `580f302df3467dc9…` over 717 files. Pages scanned at 72 dpi.
 
 | Page failure | Count |
 |---|---:|
-| `font.non-embedded` | 3524 |
-| `syntax` | 147 |
-| `annotation.flags` | 4 |
+| `font.non-embedded` | 3580 |
+| `syntax` | 60 |
+| `annotation.appearance` | 8 |
 | `missing-object` | 2 |
-| `annotation.appearance` | 2 |
 | `predictor.dimensions` | 2 |
 | `limit` | 2 |
 | `cycle` | 1 |
 | `transparency.group` | 1 |
+| `xobject.subtype` | 1 |
 | `filter.unknown` | 1 |
 
 | Repair | Count |
@@ -44,6 +44,7 @@ corpus digest `580f302df3467dc9…` over 717 files. Pages scanned at 72 dpi.
 | `xref.rebuilt` | 52 |
 | `object.end-missing` | 16 |
 | `trailer.reconstructed` | 14 |
+| `image.data-short` | 13 |
 | `xref.stream-boundary` | 12 |
 | `syntax.name-escape` | 11 |
 | `security.hash-padding` | 4 |
@@ -51,11 +52,12 @@ corpus digest `580f302df3467dc9…` over 717 files. Pages scanned at 72 dpi.
 | `syntax.duplicate-key` | 3 |
 | `syntax.key-solidus` | 3 |
 | `pages.repeated-node` | 3 |
+| `filter.truncated` | 3 |
+| `security.crypt-filter-event` | 3 |
 | `pages.media-box` | 3 |
 | `object.stream-self-entry` | 2 |
 | `pages.parent-mismatch` | 2 |
 | `filter.raw-deflate` | 2 |
-| `filter.truncated` | 2 |
 | `pages.type-missing` | 2 |
 | `security.key-length` | 1 |
 | `xref.offset-corrected` | 1 |
@@ -68,6 +70,7 @@ corpus digest `580f302df3467dc9…` over 717 files. Pages scanned at 72 dpi.
 | `catalog.object-number` | 1 |
 | `file.header-offset` | 1 |
 | `pages.count-mismatch` | 1 |
+| `security.crypt-filter-length` | 1 |
 | `pages.cycle` | 1 |
 | `stream.eol` | 1 |
 

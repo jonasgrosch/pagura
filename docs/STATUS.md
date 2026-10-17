@@ -25,22 +25,23 @@ primary standards.
 ## Evidence (scoreboards in `docs/scoreboard/`)
 
 Each file gets 60 seconds of CPU time, so machine load does not turn into
-timeouts; four real-world files exceed it and are being profiled.
+timeouts. Real-world files that exceed it now render all their pages too slowly;
+painting dominates their time and is being optimized.
 
 | Corpus | PDFs | Open, pages enumerated | Strictly | Pages rendered | Crashes / timeouts |
 |---|---:|---:|---:|---:|---:|
-| realworld (SafeDocs Common Crawl zip 0000) | 998 | 99.4% | 892 | 22.1% (3097/14044) | 0 / 4 |
-| adversarial (SafeDocs UNSAFE, mutated) | 1,416 | 99.9% | 1,116 | 25.7% (1025/3996) | 0 / 0 |
-| veraPDF | 2,906 | 100.0% | 2,884 | 92.7% (11999/12948) | 0 / 0 |
-| pdf.js test PDFs | 996 | 97.8% | 694 | 37.3% (685/1836) | 0 / 0 |
-| qpdf test PDFs | 701 | 95.7% | 582 | 3.4% (131/3817) | 0 / 0 |
-| PDFium test PDFs | 336 | 90.8% | 185 | 39.1% (148/379) | 0 / 0 |
-| PDFBox test PDFs | 174 | 94.8% | 148 | 24.8% (76/307) | 0 / 0 |
-| Poppler test PDFs | 83 | 95.2% | 67 | 58.3% (56/96) | 0 / 0 |
-| PDF Differences | 37 | 75.7% | 26 | 23.3% (10/43) | 0 / 0 |
+| realworld (SafeDocs Common Crawl zip 0000) | 998 | 98.8% | 705 | 53.1% (6476/12204) | 0 / 10 |
+| adversarial (SafeDocs UNSAFE, mutated) | 1,416 | 99.9% | 963 | 49.8% (1989/3997) | 0 / 0 |
+| veraPDF | 2,906 | 100.0% | 2,633 | 97.9% (12681/12948) | 0 / 0 |
+| pdf.js test PDFs | 996 | 98.0% | 635 | 60.7% (1115/1838) | 0 / 0 |
+| qpdf test PDFs | 701 | 95.7% | 578 | 4.2% (159/3817) | 0 / 0 |
+| PDFium test PDFs | 336 | 90.8% | 184 | 44.9% (170/379) | 0 / 0 |
+| PDFBox test PDFs | 174 | 94.8% | 138 | 36.2% (111/307) | 0 / 0 |
+| Poppler test PDFs | 83 | 95.2% | 65 | 70.8% (68/96) | 0 / 0 |
+| PDF Differences | 37 | 75.7% | 24 | 23.3% (10/43) | 0 / 0 |
 | PDF 2.0 examples | 7 | 100.0% | 6 | 12.5% (1/8) | 0 / 0 |
 
-Generated fixtures: 612 PDF cases with independent expectations pass
+Generated fixtures: 851 PDF cases with independent expectations pass
 (`tools/conformance.py`), plus 337 codec, 97 crypto and 19 raster vectors in
 crate tests.
 
