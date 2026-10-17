@@ -21,6 +21,7 @@ struct Private {
     matrix: Transform,
     parse_work: usize,
     vsindex: usize,
+    random_seed: u32,
 }
 
 #[derive(Debug)]
@@ -89,14 +90,23 @@ pub(super) fn index(r: &mut Read<'_>, limits: &Limits, cff2: bool) -> Result<Vec
 
 impl Cff {
     pub fn parse(data: &[u8], range: Range<usize>, limits: &Limits) -> Result<Self> {
-        let header = header(data, range.clone(), limits)?;
         let Header {
             top,
             strings: string_ranges,
             global,
             cff2,
-        } = header;
+        } = header(data, range.clone(), limits)?;
         let table = Read::new(&data[range.clone()], range.start);
+        if !cff2 {
+            top.check(false, string_ranges.len())?;
+        }
+        if top.has(0x0c14) {
+            return Err(pagura_core::Error::unsupported(
+                crate::features::FORMAT,
+                "synthetic CFF font is not supported",
+            )
+            .at(pagura_core::Position::Buffer(range.start)));
+        }
         let mut charstrings = table.tail(top.offset(17, None)?)?;
         let glyphs = index(&mut charstrings, limits, cff2)?;
         if glyphs.is_empty() {
@@ -128,6 +138,9 @@ impl Cff {
             let glyph =
                 GlyphId(u32::try_from(i).map_err(|_| bad(range.start, "glyph count overflow"))?);
             if let Some(cids) = &mut cids {
+                if f64::from(sid) >= top.number(0x0c22, 8720.0)? {
+                    return Err(bad(range.start, "CID outside CFF CIDCount"));
+                }
                 if cids.insert(u32::from(sid), glyph).is_some() {
                     return Err(bad(range.start, "duplicate CFF CID"));
                 }
@@ -153,6 +166,7 @@ impl Cff {
         let context = Context {
             cff2,
             variations: &variations,
+            strings: string_ranges.len(),
         };
         let (private, select) =
             dictionaries(table, &top, data, glyphs.len(), cid, context, limits)?;
@@ -209,7 +223,11 @@ fn private_dict(
     context: Context<'_>,
     matrix: Transform,
 ) -> Result<Private> {
-    let pair = top.values(18).unwrap_or(&[0.0, 0.0]);
+    let pair = match top.values(18) {
+        Some(pair) => pair,
+        None if context.cff2 => &[0.0, 0.0],
+        None => return Err(bad(table.base, "missing CFF Private DICT")),
+    };
     if pair.len() != 2 {
         return Err(bad(table.base, "invalid CFF Private operands"));
     }
@@ -224,6 +242,9 @@ fn private_dict(
     } else {
         dict::parse(bytes, limits)?
     };
+    if !context.cff2 {
+        private.check(true, 0)?;
+    }
     let subrs = if private.has(19) {
         index(
             &mut table.tail(
@@ -246,6 +267,7 @@ fn private_dict(
         matrix,
         parse_work,
         vsindex: private.offset(22, Some(0))?,
+        random_seed: random_seed(private.number(0x0c13, 0.0)?),
     })
 }
 
@@ -316,7 +338,7 @@ fn header(data: &[u8], range: Range<usize>, limits: &Limits) -> Result<Header> {
         }
         r = r.tail(header)?;
         let at = r.at();
-        let top = dict::parse(Read::new(r.take(size)?, at), limits)?;
+        let top = dict::parse_cff2(Read::new(r.take(size)?, at), limits)?;
         (top, Vec::new(), index(&mut r, limits, true)?)
     } else {
         let offset_size = r.u8()?;
@@ -366,7 +388,13 @@ fn dictionaries(
         for font in fonts {
             cap(font.len(), remaining.operations, font.start)?;
             remaining.operations = remaining.operations.saturating_sub(font.len());
-            let dict = dict::parse(Read::new(&data[font.clone()], font.start), limits)?;
+            let dict = if cff2 { dict::parse_cff2 } else { dict::parse }(
+                Read::new(&data[font.clone()], font.start),
+                limits,
+            )?;
+            if !cff2 {
+                dict.check(false, context.strings)?;
+            }
             if cff2 && dict.has(0x0c07) {
                 // Secondary outline readers disagree for this unreviewed
                 // CFF2 combination. Keep it explicit until primary review.
@@ -395,6 +423,7 @@ fn dictionaries(
                 glyphs,
                 private.len(),
                 limits,
+                cff2,
             )?
         };
         (private, select)
@@ -417,4 +446,17 @@ fn dictionaries(
 struct Context<'a> {
     cff2: bool,
     variations: &'a [Vec<f64>],
+    strings: usize,
+}
+
+// TN 5176 defines an initial seed, not a generator algorithm. Fold the numeric
+// representation so arbitrary finite DICT numbers have reproducible seeds.
+fn random_seed(value: f64) -> u32 {
+    let bits = value.to_bits().to_be_bytes();
+    u32::from_be_bytes([
+        bits[0] ^ bits[4],
+        bits[1] ^ bits[5],
+        bits[2] ^ bits[6],
+        bits[3] ^ bits[7],
+    ])
 }

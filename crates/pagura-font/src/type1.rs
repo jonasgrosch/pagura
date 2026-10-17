@@ -47,6 +47,7 @@ impl Type1 {
             matrix,
             encoding,
             start,
+            encrypted,
         } = cleartext(&flat, limits)?;
         let cipher = flat
             .get(start..)
@@ -56,7 +57,11 @@ impl Type1 {
         } else {
             eexec_bytes(cipher, limits)?
         };
-        let plain = decrypt(&cipher, 55665, 4, start)?;
+        let plain = if encrypted {
+            decrypt(&cipher, 55665, 4, start)?
+        } else {
+            cipher
+        };
         let mut r = Tokens::new(&plain, limits);
         let mut len_iv = Some(4);
         let mut subrs = Vec::new();
@@ -64,8 +69,15 @@ impl Type1 {
         let mut names = BTreeMap::new();
         let mut glyphs = Vec::new();
         let mut closed = false;
+        let mut have_chars = false;
         while let Some(token) = r.next()? {
             match token {
+                b"hires" | b"FontDirectory" => {
+                    return Err(unsupported(
+                        r.pos,
+                        "hybrid or synthetic Type 1 font is not supported",
+                    ));
+                }
                 b"/lenIV" => {
                     let token = r.required()?;
                     if token == b"-1" {
@@ -82,31 +94,11 @@ impl Type1 {
                     subrs = subroutines(&mut r, len_iv, limits)?;
                 }
                 b"/CharStrings" => {
-                    let count = r.integer()?;
-                    cap(count, limits.objects.min(limits.value_nodes), r.pos)?;
-                    while let Some(token) = r.next()? {
-                        if token == b"end" {
-                            break;
-                        }
-                        if let Some(name) = token.strip_prefix(b"/") {
-                            cap(
-                                glyphs.len().saturating_add(subrs.len()).saturating_add(1),
-                                limits.objects.min(limits.value_nodes),
-                                r.pos,
-                            )?;
-                            cap(name.len(), limits.string_bytes, r.pos)?;
-                            let program = r.binary()?;
-                            let glyph = GlyphId(
-                                u32::try_from(glyphs.len())
-                                    .map_err(|_| bad(r.pos, "Type 1 glyph count overflow"))?,
-                            );
-                            if names.insert(Name::new(name), glyph).is_some() {
-                                return Err(bad(r.pos, "duplicate Type 1 glyph name"));
-                            }
-                            glyphs.push(char_bytes(program, len_iv, r.pos)?);
-                            r.required()?;
-                        }
+                    if have_chars {
+                        return Err(bad(r.pos, "invalid Type 1 dictionary organization"));
                     }
+                    have_chars = true;
+                    charstrings(&mut r, len_iv, limits, subrs.len(), &mut glyphs, &mut names)?;
                 }
                 b"closefile" => {
                     closed = true;
@@ -254,16 +246,28 @@ struct Clear {
     matrix: Transform,
     encoding: Box<[Option<Name>; 256]>,
     start: usize,
+    encrypted: bool,
 }
 fn cleartext(flat: &[u8], limits: &Limits) -> Result<Clear> {
+    if !flat.starts_with(b"%!") {
+        return Err(bad(0, "missing Type 1 header"));
+    }
     let mut clear = Tokens::new(flat, limits);
-    let mut matrix = Transform::scale(0.001, 0.001);
+    let mut matrix = None;
+    let mut font_type = false;
+    let mut encrypted = false;
     let mut encoding = Box::new(std::array::from_fn(|_| None));
     let mut encoded = false;
     let mut custom_encoding = false;
     while let Some(token) = clear.next()? {
         match token {
-            b"/FontMatrix" => matrix = clear.matrix()?,
+            b"/FontMatrix" => matrix = Some(clear.matrix()?),
+            b"/FontType" => {
+                if clear.integer()? != 1 {
+                    return Err(bad(clear.pos, "invalid Type 1 FontType"));
+                }
+                font_type = true;
+            }
             b"/Encoding" => {
                 let next = clear.required()?;
                 if next == b"StandardEncoding" {
@@ -301,9 +305,19 @@ fn cleartext(flat: &[u8], limits: &Limits) -> Result<Clear> {
                 }
             }
             b"def" | b"readonly" if custom_encoding => custom_encoding = false,
-            b"eexec" => break,
+            b"/Private" => {
+                clear.pos -= token.len();
+                break;
+            }
+            b"eexec" => {
+                encrypted = true;
+                break;
+            }
             _ => {}
         }
+    }
+    if !font_type {
+        return Err(bad(clear.pos, "Type 1 font has no FontType"));
     }
     if !encoded {
         return Err(bad(clear.pos, "Type 1 font has no encoding"));
@@ -315,9 +329,10 @@ fn cleartext(flat: &[u8], limits: &Limits) -> Result<Clear> {
         start += 1;
     }
     Ok(Clear {
-        matrix,
+        matrix: matrix.ok_or_else(|| bad(0, "missing Type 1 FontMatrix"))?,
         encoding,
         start,
+        encrypted,
     })
 }
 
@@ -332,6 +347,8 @@ fn subroutines(r: &mut Tokens<'_>, len_iv: Option<usize>, limits: &Limits) -> Re
         r.pos,
     )?;
     let mut subrs = vec![Vec::new(); count];
+    let mut assigned = vec![false; count];
+    let mut assignments = 0;
     if r.required()? != b"array" {
         return Err(bad(r.pos, "invalid Type 1 Subrs array"));
     }
@@ -343,6 +360,11 @@ fn subroutines(r: &mut Tokens<'_>, len_iv: Option<usize>, limits: &Limits) -> Re
         let slot = subrs
             .get_mut(index)
             .ok_or_else(|| bad(r.pos, "Type 1 Subrs index out of range"))?;
+        if assigned[index] {
+            return Err(bad(r.pos, "duplicate Type 1 subroutine"));
+        }
+        assigned[index] = true;
+        assignments += 1;
         *slot = program;
         match r.required()? {
             b"NP" | b"|-" | b"put" => {}
@@ -359,5 +381,45 @@ fn subroutines(r: &mut Tokens<'_>, len_iv: Option<usize>, limits: &Limits) -> Re
             }
         }
     }
+    if assignments != count {
+        return Err(bad(r.pos, "incomplete Type 1 Subrs array"));
+    }
     Ok(subrs)
+}
+
+fn charstrings(
+    r: &mut Tokens<'_>,
+    len_iv: Option<usize>,
+    limits: &Limits,
+    subr_count: usize,
+    glyphs: &mut Vec<Vec<u8>>,
+    names: &mut BTreeMap<Name, GlyphId>,
+) -> Result<()> {
+    let count = r.integer()?;
+    cap(count, limits.objects.min(limits.value_nodes), r.pos)?;
+    while let Some(token) = r.next()? {
+        if token == b"end" {
+            break;
+        }
+        if let Some(name) = token.strip_prefix(b"/") {
+            cap(
+                glyphs.len().saturating_add(subr_count).saturating_add(1),
+                limits.objects.min(limits.value_nodes),
+                r.pos,
+            )?;
+            cap(name.len(), limits.string_bytes, r.pos)?;
+            let program = r.binary()?;
+            let glyph = GlyphId(
+                u32::try_from(glyphs.len())
+                    .map_err(|_| bad(r.pos, "Type 1 glyph count overflow"))?,
+            );
+            if names.insert(Name::new(name), glyph).is_some() {
+                return Err(bad(r.pos, "duplicate Type 1 glyph name"));
+            }
+            cap(glyphs.len() + 1, count, r.pos)?;
+            glyphs.push(char_bytes(program, len_iv, r.pos)?);
+            r.required()?;
+        }
+    }
+    Ok(())
 }

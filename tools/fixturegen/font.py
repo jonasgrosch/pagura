@@ -1,8 +1,8 @@
 """Small independently written font programs and analytic glyph-space oracles.
 
 PDF program constraints are checked against local ISO 32000-2 clause 9.9
-and 9.6.5.4. External binary-layout interpretations remain pending primary-text
-review of OpenType and Adobe TN 5176/5177. No engine is used to construct expected outlines.
+and 9.6.5.4. Type 1 chapters 6-8 and TN 5176/5177 define the
+charstring and CFF vectors below. OpenType/TrueType layouts await primary review. No engine is used to construct expected outlines.
 """
 import struct
 from .model import Vector
@@ -137,7 +137,7 @@ def offset(n):
     return b"\x1d"+u32(n)
 
 
-def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, font_set=False, line_count=0):
+def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, font_set=False, line_count=0, conforming=False):
     end = b"" if cff2 else b"\x0e"
     rect_subr = operands(100,0,0,200,-100,0)+b"\x05"+(b"" if cff2 else b"\x0b")
     rect = operands(0,0)+b"\x15"+number(-107)+b"\x0a"+end
@@ -163,6 +163,8 @@ def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, 
             rect = operands(0,0)+b"\x15"+(operands(1,0)+b"\x05")*line_count+end
     if variant == "branching":
         rect = operands(0,0)+b"\x15"+number(-107)+b"\x0a"+end
+    if variant == "width-seac":
+        seac = operands(25,30,200,65,194)+end
     glyphs = [end, rect, curve, seac, accent]
     if hostile == "recursive":
         rect_subr = number(-107)+b"\x0a\x0b"
@@ -191,26 +193,29 @@ def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, 
         private_extra = operands(*([0]*514))+b"\x06"
     subrs = [rect_subr]
     if variant == "branching":
-        subrs = [(number(i+1-107)+b"\x0a")*2+b"\x0b" for i in range(23)]
+        subrs = [(number(i+1-107)+b"\x0a")*2+b"\x0b" for i in range(9)]
         subrs.append(operands(1,0)+b"\x05\x0b")
-    widths = b"" if cff2 else offset(600)+b"\x14"+offset(100 if variant == "hints" else 0)+b"\x15"
+    widths = b"" if cff2 else offset(600)+b"\x14"+offset(100 if variant in ("hints","width-seac") else 0)+b"\x15"
     private_size = len(widths)+len(private_extra)+6
     private = widths+private_extra+offset(private_size)+b"\x13"+index(subrs,cff2)
-    custom_strings = index([b"curve", b"Aacute"], False)
+    custom_strings = index([b"curve", b"Aacute"]+([b"Adobe",b"Identity"] if cid and conforming else []), False)
     charset = b"\x00"+b"".join(u16(n) for n in ([17,42,65,88] if cid else [34,391,392,125]))
     # The acute SID is 125; its StandardEncoding character code is 194.
     enc = b"\x00\x04\x41\x42\xc1\xc2"
     fdselect = b"\x03"+u16(1)+u16(0)+b"\x00"+u16(5)
     def top(chars, chars_set, encoding, private_at, fdarray_at, fdselect_at, vstore_at=0):
-        result = offset(chars)+b"\x11"
+        result = operands(393,394,0)+b"\x0c\x1e" if cid and conforming else b""
+        result += offset(chars)+b"\x11"
         if not cff2:
-            result += offset(chars_set)+b"\x0f"+offset(encoding)+b"\x10"
-        if cid:
+            result += offset(chars_set)+b"\x0f"+(b"" if cid and conforming else offset(encoding)+b"\x10")
+        if cid and not conforming:
             result += operands(0,0,0)+b"\x0c\x1e"
         if cid or cff2:
             result += offset(fdarray_at)+b"\x0c\x24"+offset(fdselect_at)+b"\x0c\x25"
         else:
             result += offset(private_size)+offset(private_at)+b"\x12"
+        if variant == "cid-count":
+            result += operands(1)+b"\x0c\x22"
         if variable:
             result += offset(vstore_at)+b"\x18"
         return result
@@ -272,7 +277,7 @@ def encrypt(data, seed):
     return bytes(result)
 
 
-def type1_font(pfb=False, hex_eexec=False, len_iv=4, hostile=None, variant=None):
+def type1_font(pfb=False, hex_eexec=False, len_iv=4, hostile=None, variant=None, program=None, custom_subrs=None, conforming=False):
     def enc_char(data):
         return data if len_iv == -1 else encrypt(bytes(len_iv)+data,4330)
     def char(*values, op):
@@ -281,27 +286,49 @@ def type1_font(pfb=False, hex_eexec=False, len_iv=4, hostile=None, variant=None)
     subr = (char(100,0,op=b"\x05")+char(0,200,op=b"\x05")
             +char(-100,0,op=b"\x05")+b"\x0b")
     if hostile == "recursive":
-        subr = char(0,op=b"\x0a")+b"\x0b"
-    rect = width+char(0,0,op=b"\x15")+char(0,op=b"\x0a")+b"\x09\x0e"
+        subr = char(5 if conforming else 0,op=b"\x0a")+b"\x0b"
+    rect = width+char(0,0,op=b"\x15")+char(5 if conforming else 0,op=b"\x0a")+b"\x09\x0e"
     if variant == "hint-replacement":
-        rect = width+char(0,0,op=b"\x15")+char(0,1,3,op=b"\x0c\x10")+b"\x0c\x11\x0a\x0e"
+        rect = width+char(0,0,op=b"\x15")+char(4,1,3,op=b"\x0c\x10")+b"\x0c\x11\x0a"+char(5,op=b"\x0a")+b"\x0e"
     curve = width+char(0,0,op=b"\x15")+char(0,200,100,0,200,-200,op=b"\x08")+b"\x0e"
     accent = width+char(0,0,op=b"\x15")+char(20,40,op=b"\x05")+b"\x0e"
     seac = width+char(0,30,200,65,194,op=b"\x0c\x06")
     # OtherSubrs 1/2/0 record the reference point and six cubic points.
     flex = width+char(0,0,op=b"\x15")+char(0,1,op=b"\x0c\x10")
-    for x,y in [(0,0),(10,0),(10,10),(10,-10),(10,0),(10,-10),(10,10)]:
+    flex_points = [(30,0),(-20,0),(10,10),(10,0),(10,0),(10,-10),(10,0)] if conforming else [(0,0),(10,0),(10,10),(10,-10),(10,0),(10,-10),(10,10)]
+    for x,y in flex_points:
         flex += char(x,y,op=b"\x15")+char(0,2,op=b"\x0c\x10")
     flex += char(50,60,0,3,0,op=b"\x0c\x10")+b"\x0c\x11\x0c\x11\x0c\x21\x0e"
+    if program is not None:
+        rect = program
+    if custom_subrs is not None:
+        flex = width+b"\x0e"
     if hostile == "stack":
         rect = number(0)*25+b"\x0e"
+    if variant == "seac-trailing":
+        seac += operands(0)
+    if variant == "seac-bearings":
+        rect = char(40,600,op=b"\x0d")+(operands(0,0)+b"\x15")+char(5 if conforming else 0,op=b"\x0a")+b"\x0e"
+        accent = char(10,600,op=b"\x0d")+(operands(0,0)+b"\x15")+char(20,40,op=b"\x05")+b"\x0e"
+        seac = char(40,600,op=b"\x0d")+char(10,30,200,65,194,op=b"\x0c\x06")
     glyphs = [(b".notdef",width+b"\x0e"),(b"A",rect),(b"curve",curve),
               (b"Aacute",seac),(b"acute",accent),(b"flex",flex)]
     if variant == "missing-notdef":
         glyphs = glyphs[1:]
-    plain = f"/lenIV {len_iv} def\n/Subrs 1 array\n".encode()
-    encrypted_subr = enc_char(subr)
-    plain += b"dup 0 "+str(len(encrypted_subr)).encode()+b" RD "+encrypted_subr+b" NP\n"
+    subrs = [subr]
+    if conforming or variant == "hint-replacement":
+        subrs = [char(3,0,op=b"\x0c\x10")+b"\x0c\x11\x0c\x11\x0c\x21\x0b",
+                 char(0,1,op=b"\x0c\x10")+b"\x0b", char(0,2,op=b"\x0c\x10")+b"\x0b",
+                 b"\x0b", char(0,10,op=b"\x01")+b"\x0b", subr]
+    if custom_subrs is not None:
+        subrs = custom_subrs
+    plain = b"/Private 16 dict dup begin\n/BlueShift 11 def\n" if conforming else b""
+    if variant != "default-leniv":
+        plain += f"/lenIV {len_iv} def\n".encode()
+    plain += f"/Subrs {len(subrs)} array\n".encode()
+    for i, subroutine in enumerate(subrs):
+        encrypted_subr = enc_char(subroutine)
+        plain += f"dup {i} {len(encrypted_subr)} RD ".encode()+encrypted_subr+b" NP\n"
     plain += b"/CharStrings 6 dict dup begin\n"
     for name, program in glyphs:
         program = enc_char(program)
@@ -314,6 +341,20 @@ def type1_font(pfb=False, hex_eexec=False, len_iv=4, hostile=None, variant=None)
         clear = clear.replace(b"/FontMatrix ", b"/Comment { (an escaped brace }) % another }\n } def\n/FontMatrix\x00")
     if variant == "paint-type":
         clear = clear.replace(b"/FontType 1 def",b"/FontType 1 def /PaintType 2 def")
+    if variant == "matrix-procedure":
+        clear = clear.replace(b"[0.001 0 0 0.001 0 0]", b"{0.001 0 0 0.001 0 0}")
+    if variant == "unencrypted":
+        return clear.replace(b"currentfile eexec\n",b"")+plain
+    if variant == "missing-fonttype":
+        clear = clear.replace(b"/FontType 1 def\n",b"")
+    if variant == "missing-matrix":
+        clear = clear.replace(b"/FontMatrix [0.001 0 0 0.001 0 0] def\n",b"")
+    if variant == "missing-header":
+        clear = clear[clear.index(b"\n")+1:]
+    if variant == "subrs-incomplete":
+        plain = plain.replace(f"/Subrs {len(subrs)} array".encode(), f"/Subrs {len(subrs)+1} array".encode())
+    if variant == "dict-count":
+        plain = plain.replace(b"/CharStrings 6 dict",b"/CharStrings 1 dict")
     cipher = encrypt(bytes(4)+plain,55665)
     if hex_eexec:
         cipher = cipher.hex().encode()+b"\n"
@@ -346,7 +387,7 @@ def cases():
     ]:
         yield vector(name, data, expected, "font-bounds")
     for cid, cff2, name in [(False,False,"cff"),(True,False,"cff-cid"),(False,True,"cff2")]:
-        data = cff_font(cid, cff2)
+        data = cff_font(cid, cff2,conforming=True)
         expected = "count 5\nmatrix 0.001 0 0 0.001 0 0\n"
         if cid:
             expected += "cid 17 1\ncid 88 4\nis-cid 1\n"
@@ -358,9 +399,9 @@ def cases():
         if cff2:
             data = truetype(cff=data, cff2=True)
         yield vector(name, data, expected, "font-cff", "opentype" if cff2 else "cff")
-    yield vector("opentype-cff", truetype(cff=cff_font()), "count 5\nadvance 1 600\noutline 1\n"+RECT, "font-cff", "opentype")
+    yield vector("opentype-cff", truetype(cff=cff_font(conforming=True)), "count 5\nadvance 1 600\noutline 1\n"+RECT, "font-cff", "opentype")
     for hostile in ("recursive", "stack", "mask", "seac-cycle"):
-        yield vector("cff-"+hostile, cff_font(hostile=hostile), "outline-error 1\n", "font-bounds", "cff")
+        yield vector("cff-"+hostile, cff_font(conforming=True,hostile=hostile), "outline-error 1\n", "font-bounds", "cff")
     yield vector("cff-index-overflow", b"\x01\x00\x04\x04\xff\xff\x04\xff\xff\xff\xff", "parse-error\n", "font-bounds", "cff")
 
     for name, options in [("type1-pfa", {}), ("type1-pfb", {"pfb": True}),
@@ -368,18 +409,18 @@ def cases():
         expected = "count 6\nmatrix 0.001 0 0 0.001 0 0\nname A 1\nname acute 4\nencoding 65 A\nadvance 1 600\n"
         expected += "outline 1\n"+RECT+"outline 2\n"+QUAD
         expected += "outline 3\n"+RECT+"m 30 200\nl 50 240\nh\n"
-        expected += "outline 5\nm 0 0\nc 10 0 20 10 30 0\nc 40 0 50 -10 60 0\nh\n"
-        yield vector(name,type1_font(**options),expected,"font-type1","type1")
+        expected += "outline 5\nm 0 0\nc 10 0 20 10 30 10\nc 40 10 50 0 60 0\nh\n"
+        yield vector(name,type1_font(conforming=True,**options),expected,"font-type1","type1")
     for hostile in ("recursive", "stack"):
-        yield vector("type1-"+hostile,type1_font(hostile=hostile),"outline-error 1\n","font-bounds","type1")
-    yield vector("type1-truncated-pfb",type1_font(pfb=True)[:-5],"parse-error\n","font-bounds","type1")
+        yield vector("type1-"+hostile,type1_font(conforming=True,hostile=hostile),"outline-error 1\n","font-bounds","type1")
+    yield vector("type1-truncated-pfb",type1_font(conforming=True,pfb=True)[:-5],"parse-error\n","font-bounds","type1")
 
-    yield vector("cff2-default-blend",truetype(cff=cff_font(cff2=True,variable=True),cff2=True),
+    yield vector("cff2-default-blend",truetype(cff=cff_font(conforming=True,cff2=True,variable=True),cff2=True),
                  "count 5\noutline 1\nm 0 0\nl 130 0\nl 130 200\nl 0 200\nh\n", "font-cff", "opentype")
 
     for variant in ("hints", "global", "flex", "arithmetic"):
         outline = "m 0 0\nc 10 0 20 10 30 10\nc 40 10 50 0 60 0\nh\n" if variant == "flex" else RECT
-        yield vector("cff-"+variant,cff_font(variant=variant),
+        yield vector("cff-"+variant,cff_font(conforming=True,variant=variant),
                      f"count 5\nadvance 1 {120 if variant == 'hints' else 600}\noutline 1\n"+outline,"font-cff","cff")
     compressed = i16(1)+bytes(8)+u16(3)+u16(0)+bytes([0x31,0x33,0x35,0x23,100,100,200])
     repeated = i16(1)+bytes(8)+u16(2)+u16(0)+bytes([0x39,2])
@@ -394,14 +435,14 @@ def cases():
         yield vector(name,truetype(table_overrides={tag:data}),"parse-error\n","font-bounds")
 
     for variant in ("hint-replacement", "custom-encoding"):
-        yield vector("type1-"+variant,type1_font(variant=variant),"count 6\nname A 1\nencoding 65 A\nadvance 1 600\noutline 1\n"+RECT,"font-type1","type1")
+        yield vector("type1-"+variant,type1_font(conforming=True,variant=variant),"count 6\nname A 1\nencoding 65 A\nadvance 1 600\noutline 1\n"+RECT,"font-type1","type1")
     yield vector("truetype-implied-points",truetype(glyph_override=simple([(0,100,False),(100,100,False),(100,0,True),(0,0,False)])),
                  "outline 1\nm 0 50\nc 0 83.33333333333333 16.66666666666667 100 50 100\nc 83.33333333333333 100 100 66.66666666666667 100 0\nc 33.33333333333333 0 0 16.66666666666667 0 50\nh\n", "font-truetype")
 
-    yield vector("cff-cid-fd-array",cff_font(cid=True,variant="fd-array"),
+    yield vector("cff-cid-fd-array",cff_font(conforming=True,cid=True,variant="fd-array"),
                  "count 5\nis-cid 1\ncid 17 1\nadvance 1 1400\nadvance 2 600\noutline 1\nm 0 0\nl 200 0\nl 200 400\nl 0 400\nh\noutline 2\n"+QUAD,"font-cff","cff")
 
-    yield vector("type1-lexical",type1_font(variant="lexical"),"count 6\nname A 1\noutline 1\n"+RECT,"font-type1","type1")
+    yield vector("type1-lexical",type1_font(conforming=True,variant="lexical"),"count 6\nname A 1\noutline 1\n"+RECT,"font-type1","type1")
 
     # ISO 32000-2, 9.6.5.4 identifies each subtable by both directory IDs.
     subs = []
@@ -413,9 +454,9 @@ def cases():
                  "has unicode 1\nhas full 1\nhas platform0 1\nhas mac 0\ncode unicode 65 1\ncode full 65 2\ncode platform0 65 3\n","font-truetype")
     # Table 124 requires CFF and cmap for OpenType CFF; glyf's tables
     # are a different branch of the table and are not required here.
-    yield vector("opentype-cff-pdf-minimum",sfnt({b"CFF ":cff_font(),b"cmap":cmap(4)},otto=True),
+    yield vector("opentype-cff-pdf-minimum",sfnt({b"CFF ":cff_font(conforming=True),b"cmap":cmap(4)},otto=True),
                  "count 5\nadvance 1 600\noutline 1\n"+RECT,"font-cff","opentype")
-    yield vector("opentype-cff-missing-cmap",sfnt({b"CFF ":cff_font()},otto=True),"parse-error\n","font-cff","opentype")
+    yield vector("opentype-cff-missing-cmap",sfnt({b"CFF ":cff_font(conforming=True)},otto=True),"parse-error\n","font-cff","opentype")
     for missing in (b"glyf",b"head",b"hhea",b"hmtx",b"loca",b"maxp"):
         # Rebuild the independent writer's table records with one omitted.
         original = truetype()
@@ -429,9 +470,9 @@ def cases():
     yield vector("vertical-tables-ignored",truetype(table_overrides={b"vhea":b"invalid",b"vmtx":b"invalid"}),
                  "advance 1 600\noutline 1\n"+RECT,"font-truetype")
 
-    yield vector("cff-multiple-fonts",cff_font(font_set=True),"parse-error\n","font-cff","cff")
-    yield vector("type1-missing-notdef",type1_font(variant="missing-notdef"),"parse-error\n","font-type1","type1")
-    yield vector("type1-paint-type-ignored",type1_font(variant="paint-type"),"outline 1\n"+RECT,"font-type1","type1")
+    yield vector("cff-multiple-fonts",cff_font(conforming=True,font_set=True),"parse-error\n","font-cff","cff")
+    yield vector("type1-missing-notdef",type1_font(conforming=True,variant="missing-notdef"),"parse-error\n","font-type1","type1")
+    yield vector("type1-paint-type-ignored",type1_font(conforming=True,variant="paint-type"),"outline 1\n"+RECT,"font-type1","type1")
     yield vector("truetype-cid-no-cmap",truetype(omit_tables=(b"cmap",)),"has unicode 0\noutline 1\n"+RECT,"font-truetype")
 
     yield vector("cff-standard-sids",metadata_font(),
@@ -454,36 +495,38 @@ def cases():
     for fmt, mal in [(2,"key"),(2,"offset"),(10,"count"),(13,"overlap")]:
         yield vector(f"cmap{fmt}-invalid-{mal}",truetype(table_overrides={b"cmap":extended_cmap(fmt,mal)}),"parse-error\n","font-bounds")
 
-    yield vector("cff2-fdselect4",truetype(cff=cff_font(cff2=True,variant="fd4"),cff2=True),
+    yield vector("cff2-fdselect4",truetype(cff=cff_font(conforming=True,cff2=True,variant="fd4"),cff2=True),
                  "count 5\noutline 1\nm 0 0\nl 200 0\nl 200 400\nl 0 400\nh\noutline 2\n"+QUAD,"font-cff","opentype")
-    yield vector("cff2-private-blend",truetype(cff=cff_font(cff2=True,variable=True,variant="private-blend"),cff2=True),
+    yield vector("cff2-private-blend",truetype(cff=cff_font(conforming=True,cff2=True,variable=True,variant="private-blend"),cff2=True),
                  "outline 1\nm 0 0\nl 130 0\nl 130 200\nl 0 200\nh\n","font-cff","opentype")
     for hostile in ("fd-index","fd-sentinel","fd-order"):
-        yield vector("cff2-"+hostile,truetype(cff=cff_font(cff2=True,variant="fd4",hostile=hostile),cff2=True),"parse-error\n","font-bounds","opentype")
+        yield vector("cff2-"+hostile,truetype(cff=cff_font(conforming=True,cff2=True,variant="fd4",hostile=hostile),cff2=True),"parse-error\n","font-bounds","opentype")
     for hostile in ("dict-underflow","dict-vsindex","dict-stack"):
-        yield vector("cff2-"+hostile,truetype(cff=cff_font(cff2=True,variable=True,hostile=hostile),cff2=True),"parse-error\n","font-bounds","opentype")
+        yield vector("cff2-"+hostile,truetype(cff=cff_font(conforming=True,cff2=True,variable=True,hostile=hostile),cff2=True),"parse-error\n","font-bounds","opentype")
 
     for n in (64,128,256):
         for subr in (False,True):
             variant = "linear-subr" if subr else "linear"
             expected = f"budget 1 {(6 if subr else 3)*n+4} {n+2}\noutline 1\nm 0 0\n"
             expected += "".join(f"l {x} 0\n" for x in range(1,n+1))+"h\n"
-            yield vector(f"cff-{variant}-{n}",cff_font(variant=variant,line_count=n),expected,"font-bounds","cff")
-    yield vector("cff-branching-subrs",cff_font(variant="branching"),"budget-error 1 2000\n","font-bounds","cff")
+            yield vector(f"cff-{variant}-{n}",cff_font(conforming=True,variant=variant,line_count=n),expected,"font-bounds","cff")
+    yield vector("cff-branching-subrs",cff_font(conforming=True,variant="branching"),"budget-error 1 2000\n","font-bounds","cff")
 
-    yield vector("cff2-fdselect4-wide",truetype(cff=cff_font(cff2=True,variant="fd4-wide"),cff2=True),
+    yield vector("cff2-fdselect4-wide",truetype(cff=cff_font(conforming=True,cff2=True,variant="fd4-wide"),cff2=True),
                  "count 5\noutline 1\nm 0 0\nl 200 0\nl 200 400\nl 0 400\nh\n","font-cff","opentype")
 
-    yield vector("cff2-private-blend-override",truetype(cff=cff_font(cff2=True,variable=True,variant="private-blend-override"),cff2=True),
+    yield vector("cff2-private-blend-override",truetype(cff=cff_font(conforming=True,cff2=True,variable=True,variant="private-blend-override"),cff2=True),
                  "outline 1\nm 0 0\nl 130 0\nl 130 200\nl 0 200\nh\n","font-cff","opentype")
 
-    yield vector("cff2-font-dict-matrix",truetype(cff=cff_font(cff2=True,variant="fd-matrix"),cff2=True),
+    yield vector("cff2-font-dict-matrix",truetype(cff=cff_font(conforming=True,cff2=True,variant="fd-matrix"),cff2=True),
                  "unsupported font.format\n","font-cff","opentype")
-    yield vector("cff-nonfinite",cff_font(hostile="nonfinite"),"outline-error 1\n","font-bounds","cff")
+    yield from specification_cases()
+
+    yield vector("cff-nonfinite",cff_font(conforming=True,hostile="nonfinite"),"outline-error 1\n","font-bounds","cff")
 
 
 def metadata_font(charset_kind=0, encoding_kind=0, charset_format=0):
-    """CFF metadata fixtures; external table definitions await primary review."""
+    """CFF metadata vectors from TN 5176 sections 10-13 and appendices A-C."""
     if charset_kind == 0:
         sids = list(range(391))
     elif charset_kind == 1:
@@ -505,11 +548,11 @@ def metadata_font(charset_kind=0, encoding_kind=0, charset_format=0):
     if encoding_kind <= 1:
         enc = b""
     elif encoding_kind == 2:
-        enc = b"\x81\x01\x41\x03\x01\x50"+u16(391)
+        enc = b"\x81\x01\x41\x04\x01\x50"+u16(391)
     else:
-        enc = b"\x80\x02\x41\x42\x01\x5a"+u16(391)
+        enc = b"\x80\x05\x41\x42\x43\x44\x45\x01\x5a"+u16(391)
     def top(chars_at,charset_at,enc_at):
-        return offset(chars_at)+b"\x11"+offset(charset_kind if charset_kind in (1,2) else charset_at)+b"\x0f"+offset(encoding_kind if encoding_kind <= 1 else enc_at)+b"\x10"
+        return offset(chars_at)+b"\x11"+offset(charset_kind if charset_kind in (1,2) else charset_at)+b"\x0f"+offset(encoding_kind if encoding_kind <= 1 else enc_at)+b"\x10"+operands(0,0)+b"\x12"
     names = index([b"Metadata"])
     strings = index([b"custom"] if charset_kind == 3 else [])
     at = 4+len(names)+len(index([top(0,0,0)]))+len(strings)+len(index([]))
@@ -551,3 +594,214 @@ def extended_cmap(fmt, malformed=None):
         assert len(uvs) == 30
         return u16(0)+u16(2)+u16(3)+u16(1)+u32(20)+u16(0)+u16(5)+u32(20+len(base))+base+uvs
     return u16(0)+u16(1)+u16(platform)+u16(encoding)+u32(12)+sub
+
+
+def reviewed_cff(program, subrs=(), global_subrs=(), private=b"", top=b"", omit_private=False, header_size=4):
+    """Two-glyph CFF, authored from TN 5176 sections 4-16, not an engine."""
+    names, strings, globals_ = index([b"Reviewed"]), index([]), index(global_subrs)
+    # FontMatrix/charset/Encoding defaults deliberately omitted.
+    def dictionary(chars_at, private_at, size):
+        result = top+offset(chars_at)+b"\x11"
+        if not omit_private:
+            result += offset(size)+offset(private_at)+b"\x12"
+        return result
+    extra = private
+    if subrs:
+        extra += offset(len(private)+6)+b"\x13"
+    chars = index([b"\x0e", program])
+    dummy = dictionary(0,0,len(extra))
+    at = header_size+len(names)+len(index([dummy]))+len(strings)+len(globals_)
+    return (bytes([1,0,header_size,4])+bytes(header_size-4)+names
+            +index([dictionary(at,at+len(chars),len(extra))])+strings+globals_+chars
+            +extra+(index(subrs) if subrs else b""))
+
+
+def specification_cases():
+    """Primary-text rules: Type 1 chapters 6-8; TN 5176; TN 5177 §3/4, B/C."""
+    end, move = b"\x0e", operands(0,0)+b"\x15"
+    line = operands(12,0)+b"\x05"
+    def cff(name, program, expected, **options):
+        return vector("review-cff-"+name, reviewed_cff(program,**options), expected, "font-cff", "cff")
+    def t1(name, program=None, expected="outline 1\nm 0 0\nl 12 0\nh\n", **options):
+        return vector("review-type1-"+name, type1_font(program=program,conforming=True,**options), expected, "font-type1", "type1")
+    width = operands(0,600)+b"\x0d"
+    tmove = width+move
+    small = "outline 1\nm 0 0\nl 12 0\nh\n"
+    # Width may occur before any of the first stack-clearing operators (§4.1 Note 4).
+    for name, first, args in [("rmoveto",21,(0,0)),("hmoveto",22,(0,)),("vmoveto",4,(0,)),
+                               ("hstem",1,(0,10)),("vstem",3,(0,10)),("hstemhm",18,(0,10)),("vstemhm",23,(0,10))]:
+        program = operands(25,*args)+bytes([first])+(b"" if first in (4,21,22) else move)+line+end
+        yield cff("width-"+name,program,"advance 1 125\n"+small,private=operands(100)+b"\x15")
+    yield cff("width-endchar",operands(25)+end,"advance 1 125\noutline 1\n",private=operands(100)+b"\x15")
+    yield cff("width-default",move+line+end,"advance 1 77\n"+small,private=operands(77)+b"\x14")
+    yield cff("dotsection",move+b"\x0c\x00"+line+end,small)
+    yield cff("roll-zero",move+operands(0,4)+b"\x0c\x1e"+line+end,small)
+    yield cff("index-negative",move+operands(6,-1)+b"\x0c\x1d\x0c\x0a"+operands(0)+b"\x05"+end,small)
+    yield cff("index-outside",move+operands(6,1)+b"\x0c\x1d"+end,"outline-error 1\n")
+    # Each path operator has independently chosen unit coordinates and analytic cubics.
+    draws = [
+        ("rlineto",5,(1,2,3,4),"l 1 2\nl 4 6\n"),
+        ("hlineto",6,(1,2,3),"l 1 0\nl 1 2\nl 4 2\n"),
+        ("vlineto",7,(1,2,3),"l 0 1\nl 2 1\nl 2 4\n"),
+        ("rrcurveto",8,(1,2,3,4,5,6),"c 1 2 4 6 9 12\n"),
+        ("rcurveline",24,(1,2,3,4,5,6,7,8),"c 1 2 4 6 9 12\nl 16 20\n"),
+        ("rlinecurve",25,(1,2,3,4,5,6,7,8),"l 1 2\nc 4 6 9 12 16 20\n"),
+        ("vvcurveto",26,(1,2,3,4,5,6,7,8,9),"c 1 2 4 6 4 11\nc 4 17 11 25 11 34\n"),
+        ("hhcurveto",27,(1,2,3,4,5,6,7,8,9),"c 2 1 5 5 10 5\nc 16 5 23 13 32 13\n"),
+        ("hvcurveto",31,(1,2,3,4,5,6,7,8,9),"c 1 0 3 3 3 7\nc 3 12 9 19 17 28\n"),
+        ("vhcurveto",30,(1,2,3,4,5,6,7,8,9),"c 0 1 2 4 6 4\nc 11 4 17 11 26 19\n"),
+    ]
+    for name, op, args, path in draws:
+        yield cff(name,move+operands(*args)+bytes([op])+end,"outline 1\nm 0 0\n"+path+"h\n")
+    flexes = [
+        ("flex",35,(1,2,3,4,5,6,7,8,9,10,11,12,50),"c 1 2 4 6 9 12\nc 16 20 25 30 36 42\n"),
+        ("hflex",34,(1,2,3,4,5,6,7),"c 1 0 3 3 7 3\nc 12 3 18 0 25 0\n"),
+        ("hflex1",36,(1,2,3,4,5,6,7,8,9),"c 1 2 4 6 9 6\nc 15 6 22 14 31 0\n"),
+        ("flex1-x",37,(1,2,3,4,5,6,7,8,9,10,11),"c 1 2 4 6 9 12\nc 16 20 25 30 0 41\n"),
+        ("flex1-y",37,(2,1,4,3,6,5,8,7,10,9,11),"c 2 1 6 4 12 9\nc 20 16 30 25 41 0\n"),
+    ]
+    for name, op, args, path in flexes:
+        yield cff(name,move+operands(*args)+bytes([12,op])+end,"outline 1\nm 0 0\n"+path+"h\n")
+    # Arithmetic/storage/conditionals are tested by the resulting line length.
+    for name, args, op, result in [
+        ("abs",(-12,),9,12),("add",(5,7),10,12),("sub",(19,7),11,12),
+        ("div",(25,2),12,12.5),("neg",(-12,),14,12),("mul",(3,4),24,12),
+        ("sqrt",(144,),26,12),("and",(2,3),3,1),("or",(0,3),4,1),
+        ("not",(0,),5,1),("eq",(3,3),15,1),("ifelse",(12,9,2,3),22,12)]:
+        yield cff(name,move+operands(*args)+bytes([12,op])+operands(0)+b"\x05"+end,
+                  f"outline 1\nm 0 0\nl {result} 0\nh\n")
+    for name, expression in [
+        ("drop",operands(12,99)+b"\x0c\x12"),
+        ("dup",operands(6)+b"\x0c\x1b\x0c\x0a"),
+        ("exch",operands(9,12)+b"\x0c\x1c\x0c\x12"),
+        ("roll",operands(7,12,3,3,-1)+b"\x0c\x1e\x0c\x12\x0c\x12"),
+        ("transient",operands(12,31)+b"\x0c\x14"+operands(31)+b"\x0c\x15")]:
+        yield cff(name,move+expression+operands(0)+b"\x05"+end,small)
+    for n in (1239,1240,33899,33900):
+        bias = 107 if n<1240 else 1131 if n<33900 else 32768
+        for global_ in (False,True):
+            subrs = [b"\x0b"]*(n-1)+[line+b"\x0b"]
+            program = move+number(n-1-bias)+bytes([29 if global_ else 10])+end
+            options = {"global_subrs" if global_ else "subrs":subrs}
+            yield cff(f"bias-{'global' if global_ else 'local'}-{n}",program,small,**options)
+    for n in (10,11):
+        subrs = [number(i+1-107)+b"\x0a\x0b" for i in range(n-1)]+[line+b"\x0b"]
+        yield cff(f"nesting-{n}",move+number(-107)+b"\x0a"+end,small if n==10 else "outline-error 1\n",subrs=subrs)
+        tsubrs = [number(i+1)+b"\x0a\x0b" for i in range(n-1)]+[line+b"\x0b"]
+        yield t1(f"nesting-{n}",tmove+operands(0)+b"\x0a"+end,small if n==10 else "outline-error 1\n",custom_subrs=tsubrs)
+    for n in (48,49):
+        program=move+operands(*([1]*n))+b"\x06"+end
+        path="outline 1\nm 0 0\n"+"".join(f"l {(i+1)//2} {i//2}\n" for i in range(1,n+1))+"h\n"
+        yield cff(f"stack-{n}",program,path if n==48 else "outline-error 1\n")
+        yield cff(f"dict-stack-{n}",move+line+end,small if n==48 else "parse-error\n",top=operands(*range(n))+b"\x0e")
+    for n in (96,97):
+        hints=b"".join(operands(10+2*i,1)+b"\x12" for i in range(n))
+        mask=bytes([255])*(n//8)+(bytes([128]) if n%8 else b"")
+        yield cff(f"stems-{n}",hints+b"\x13"+mask+move+line+end,small if n==96 else "outline-error 1\n")
+    for name, prefix in [("mask-padding",operands(0,10)+b"\x12\x13\x81"),
+                         ("mask-no-stems",b"\x13"),("late-stems",move+operands(0,10)+b"\x12"),
+                         ("hint-order",operands(0,10)+b"\x03"+operands(0,10)+b"\x01")]:
+        yield cff(name,prefix+move+line+end,"outline-error 1\n")
+    yield cff("mask-implicit-vstem",operands(25,0,10)+b"\x12"+operands(0,10)+b"\x14\xc0\x13\x80"+move+line+end,
+              "advance 1 125\n"+small,private=operands(100)+b"\x15")
+    for n in (65535,65536):
+        # 3 move bytes + 3 line bytes + endchar; pad with two-byte no-ops.
+        program=move+line+b"\x0c\x00"*((n-7)//2)+end
+        if len(program)<n: program=move+line+operands(0)+b"\x0c\x12"+program[8:]
+        assert len(program)==n
+        yield cff(f"length-{n}",program,small if n==65535 else "outline-error 1\n")
+    yield cff("private-required",move+line+end,"parse-error\n",omit_private=True)
+    yield cff("header-extension",move+line+end,small,header_size=8)
+    yield cff("reserved-dict",move+line+end,"parse-error\n",top=operands(1)+b"\x16")
+    yield cff("wrong-dict-domain",move+line+end,"parse-error\n",top=operands(1)+b"\x14")
+    yield cff("blue-order",move+line+end,"parse-error\n",private=operands(0,10)+b"\x07")
+    # Type 1 fallback returns arg1 then arg2, and results expire at the next command.
+    yield t1("othersubr-fallback",tmove+operands(12,0,2,99)+b"\x0c\x10\x0c\x11\x0c\x11\x05"+end)
+    yield t1("othersubr-stale",tmove+operands(12,1,99)+b"\x0c\x10"+operands(3)+b"\x06\x0c\x11"+end,"outline-error 1\n")
+    yield t1("div",tmove+operands(25,2)+b"\x0c\x0c"+operands(0)+b"\x05"+end,"outline 1\nm 0 0\nl 12.5 0\nh\n")
+    for variant in ("default-leniv","matrix-procedure","unencrypted"):
+        yield t1(variant,variant=variant,expected="advance 1 600\noutline 1\n"+RECT)
+    # Type 1 6.4: closepath leaves the charstring current point at its old endpoint.
+    yield t1("closepoint",tmove+line+b"\x09"+operands(2,3)+b"\x15"+line+end,
+             "outline 1\nm 0 0\nl 12 0\nh\nm 14 3\nl 26 3\nh\n")
+    yield t1("width-first",move+width+end,"outline-error 1\n")
+
+    for name, op, args, path in [
+        ("hlineto",6,(12,),"l 12 0\n"),("vlineto",7,(12,),"l 0 12\n"),
+        ("hvcurveto",31,(1,2,3,4),"c 1 0 3 3 3 7\n"),
+        ("vhcurveto",30,(1,2,3,4),"c 0 1 2 4 6 4\n")]:
+        yield t1(name,tmove+operands(*args)+bytes([op])+end,"outline 1\nm 0 0\n"+path+"h\n")
+    for name, op, args, point in [("hmoveto",22,(12,),"12 0"),("vmoveto",4,(12,),"0 12")]:
+        x,y=map(int,point.split())
+        yield t1(name,width+operands(*args)+bytes([op])+line+end,f"outline 1\nm {point}\nl {x+12} {y}\nh\n")
+    yield t1("sbw",operands(3,4,600,0)+b"\x0c\x07"+move+line+end,"advance 1 600\noutline 1\nm 3 4\nl 15 4\nh\n")
+    for name, op, args in [("hstem",b"\x01",(0,10)),("vstem",b"\x03",(0,10)),
+                            ("hstem3",b"\x0c\x02",(0,10,20,10,40,10)),
+                            ("vstem3",b"\x0c\x01",(0,10,20,10,40,10)),("dotsection",b"\x0c\x00",())]:
+        yield t1(name,width+operands(*args)+op+move+line+end)
+    for n in (24,25):
+        args=(12,0)+tuple(0 for _ in range(n-4))
+        program=tmove+operands(*args,len(args),99)+b"\x0c\x10\x0c\x11\x0c\x11\x05"+end
+        yield t1(f"stack-{n}",program,small if n==24 else "outline-error 1\n")
+    for seed in (0,7):
+        bits=struct.unpack(">Q",struct.pack(">d",float(seed)))[0]
+        state=(bits>>32)^(bits&0xffffffff)
+        first=((state*1664525+1013904223)&0xffffffff)
+        second=((first*1664525+1013904223)&0xffffffff)
+        x,y=(first+1)/2**32,(second+1)/2**32
+        yield cff(f"random-{seed}",move+b"\x0c\x17\x0c\x17\x05"+end,
+                  f"outline 1\nm 0 0\nl {x} {y}\nh\n",private=operands(seed)+b"\x0c\x13")
+    # The fifth argument to endchar is a width; seac component names use
+    # StandardEncoding even when the font's own code vector differs (Appendix C).
+    yield vector("review-cff-seac-nested",cff_font(hostile="seac-cycle",conforming=True),"outline-error 3\n","font-cff","cff")
+    yield cff("trailing-endchar",end+operands(0),"outline-error 1\n")
+    yield t1("trailing-endchar",width+end+operands(0),"outline-error 1\n")
+
+    yield t1("seac-bearings",variant="seac-bearings",expected="outline 3\nm 40 0\nl 140 0\nl 140 200\nl 40 200\nh\nm 40 200\nl 60 240\nh\n")
+    yield t1("seac-nested",width+operands(0,30,200,65,194)+b"\x0c\x06","outline-error 3\n")
+    yield vector("review-cff-cid-format4",cff_font(cid=True,variant="fd4",conforming=True),"parse-error\n","font-cff","cff")
+    yield cff("hint-empty",b"\x01"+move+line+end,"outline-error 1\n")
+    for name, encoding in [("supplement-unencoded",b"\x80\x01\x41\x01\x5a"+u16(391)),
+                           ("empty-encoding-format",b"\x02\x00")]:
+        data=metadata_font(3,3)
+        original=b"\x80\x05\x41\x42\x43\x44\x45\x01\x5a"+u16(391)
+        assert data.endswith(original)
+        yield vector("review-cff-"+name,data[:-len(original)]+encoding,"parse-error\n","font-cff","cff")
+
+    for variant in ("missing-fonttype","missing-matrix","missing-header","subrs-incomplete","dict-count"):
+        yield t1(variant,variant=variant,expected="parse-error\n")
+    # Type 1 6.2 uses signed integers for byte 255, unlike Type 2 16.16.
+    yield t1("long-div",tmove+b"\xff"+struct.pack(">i",100000)+operands(100)+b"\x0c\x0c"+operands(0)+b"\x05"+end,
+             "outline 1\nm 0 0\nl 1000 0\nh\n")
+
+    yield cff("fixed",move+b"\xff"+struct.pack(">i",98304)+operands(0)+b"\x05"+end,
+              "outline 1\nm 0 0\nl 1.5 0\nh\n")
+    yield cff("real",move+line+end,"advance 1 0.125\n"+small,private=b"\x1e\x0a\x12\x5f\x14")
+    yield cff("real-padding",move+line+end,"parse-error\n",private=b"\x1e\x10\xf0\x14")
+    for len_iv in (0,1):
+        yield t1(f"leniv-{len_iv}",len_iv=len_iv,expected="advance 1 600\noutline 1\n"+RECT)
+
+    for op,name in [(19,"hintmask"),(20,"cntrmask")]:
+        yield cff("width-"+name,operands(25,0,10)+bytes([op,128])+move+line+end,
+                  "advance 1 125\n"+small,private=operands(100)+b"\x15")
+    yield vector("review-cff-width-seac",cff_font(variant="width-seac",conforming=True),
+                 "advance 3 125\noutline 3\n"+RECT+"m 30 200\nl 50 240\nh\n","font-cff","cff")
+    yield cff("flex1-equal",move+operands(1,1,1,1,1,1,1,1,1,1,2)+b"\x0c\x25"+end,
+              "outline 1\nm 0 0\nc 1 1 2 2 3 3\nc 4 4 5 5 0 7\nh\n")
+
+    yield t1("seac-trailing",variant="seac-trailing",expected="outline-error 3\n")
+    for n in (65535,65536):
+        padding=n-4-len(tmove+line+end)
+        # dotsection changes only hints; one stem declaration handles odd size.
+        prefix = operands(0,10)+b"\x01" if padding % 2 else b""
+        program=width+prefix+b"\x0c\x00"*((padding-len(prefix))//2)+move+line+end
+        assert len(program)+4==n
+        yield t1(f"length-{n}",program,small if n==65535 else "parse-error\n")
+
+    yield vector("review-cff-cid-count",cff_font(cid=True,variant="cid-count",conforming=True),
+                 "parse-error\n","font-cff","cff")
+
+    yield t1("close-line",tmove+line+b"\x09"+line+end,
+             "outline 1\nm 0 0\nl 12 0\nh\nm 12 0\nl 24 0\nh\n")
+    yield t1("setcurrentpoint",tmove+line+operands(3,4,2,99)+b"\x0c\x10\x0c\x11\x0c\x11\x0c\x21"+line+end,
+             "outline 1\nm 0 0\nl 12 0\nl 15 4\nh\n")

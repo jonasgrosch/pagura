@@ -189,7 +189,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/cff-cid.font",
-          "sha256": "8f8afe2e6b38f973a11aed2103a7de8f055b2ee90c55f2a17a6fc359b1654c92"
+          "sha256": "164c670a2bbe2f95c947d2547f53c2d00dfde079559f27ea5a98f706c8d1f2f4"
         }
       },
       "format": "cff"
@@ -337,11 +337,11 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/type1-pfa.expect",
-          "sha256": "753ab830fbf6e9ff87c2d763c136869b94b8888c1eaee41c067ff4cc8728f87a"
+          "sha256": "889650b5718c75f703ee7bbc650f43cfb0d0d0e315bb1300ef97e02c22035169"
         },
         ".font": {
           "path": "corpus/generated/font/type1-pfa.font",
-          "sha256": "f9989782193799bbd40a3f186cceb110a30dd310b03ec978b387a9ff1de4941f"
+          "sha256": "06ea3c7882eefbc0f6a6be5cbdde974263a7e07f36193abad66644a5e17efd81"
         }
       },
       "format": "type1"
@@ -356,11 +356,11 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/type1-pfb.expect",
-          "sha256": "753ab830fbf6e9ff87c2d763c136869b94b8888c1eaee41c067ff4cc8728f87a"
+          "sha256": "889650b5718c75f703ee7bbc650f43cfb0d0d0e315bb1300ef97e02c22035169"
         },
         ".font": {
           "path": "corpus/generated/font/type1-pfb.font",
-          "sha256": "7f9c32a16748cedfa607b72ff3c31b81846dca375d168107e0d6e7a53ce12f36"
+          "sha256": "49f0a1b9e278bb593cdfc3c7fe7540e7c78e66bc9a33c3571c24448ed087959a"
         }
       },
       "format": "type1"
@@ -375,11 +375,11 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/type1-hex.expect",
-          "sha256": "753ab830fbf6e9ff87c2d763c136869b94b8888c1eaee41c067ff4cc8728f87a"
+          "sha256": "889650b5718c75f703ee7bbc650f43cfb0d0d0e315bb1300ef97e02c22035169"
         },
         ".font": {
           "path": "corpus/generated/font/type1-hex.font",
-          "sha256": "d4b3fa272a49a133b1e124c042b493c4eda31a8e7e75e4c65d7f6f75cb7198e3"
+          "sha256": "0250bb2918949bb1843ee2074391fa8697876c1f64e0392ac1b9d9bacc08c23b"
         }
       },
       "format": "type1"
@@ -394,11 +394,11 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/type1-leniv.expect",
-          "sha256": "753ab830fbf6e9ff87c2d763c136869b94b8888c1eaee41c067ff4cc8728f87a"
+          "sha256": "889650b5718c75f703ee7bbc650f43cfb0d0d0e315bb1300ef97e02c22035169"
         },
         ".font": {
           "path": "corpus/generated/font/type1-leniv.font",
-          "sha256": "e147a48de2dbb1a787e0d08a388d22e108c1968d96aa4743f1be1ad39ccfbebe"
+          "sha256": "d34c6777e94c7d90d9bf1656e9581a4749d7365a15bf9f89669aad37f8dbe28b"
         }
       },
       "format": "type1"
@@ -417,7 +417,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/type1-recursive.font",
-          "sha256": "aeaa8772dfa930df49654e76dfcc01cc63379fa84aaf9deb41d58342077bfc64"
+          "sha256": "618f9d27e64a4a96f7d72892dcb33ace917dcd81ca99e109c072a1fd186acb59"
         }
       },
       "format": "type1"
@@ -436,7 +436,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/type1-stack.font",
-          "sha256": "44db4ef638bb4ab88736076d57f686f1e2671489505787c5ff41e8c55510a000"
+          "sha256": "bfbce9b2de0192c4b07101ceaa0970e1ce4838db6e2ab45145ac8fbf95f6d7a6"
         }
       },
       "format": "type1"
@@ -455,7 +455,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/type1-truncated-pfb.font",
-          "sha256": "3214938c63fdd740829cb0be0ef9e085c43ca09b163eb2c83f51dd0ad3c251f5"
+          "sha256": "f928db47d252e1f40ca323fb35cf62ce92c8e73bab637e3e58b4d0d9bfd1d21d"
         }
       },
       "format": "type1"
@@ -683,7 +683,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/type1-hint-replacement.font",
-          "sha256": "6d0668c0d049ef0cbfec7bef365880dd23957bbf4f5e519ed884fcf0376dae72"
+          "sha256": "fc06a50ef8e5ed16b60c65e1367f073670442f4ffe57475f430e2fdd227a1794"
         }
       },
       "format": "type1"
@@ -702,7 +702,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/type1-custom-encoding.font",
-          "sha256": "195f0885510c071381e2473e2d91ea8f4fa2582993826cadda75509865031949"
+          "sha256": "50cfcb70be3e5b12407d35226b8e5ce1c75ed6836f11af09b885c28168a870d3"
         }
       },
       "format": "type1"
@@ -740,7 +740,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/cff-cid-fd-array.font",
-          "sha256": "183560fcacc12961a68226ef875a86daacd00730d12640503b8a317d9f7aeb1f"
+          "sha256": "11c0302e3ed1ec657914d00207510aca018d35d1b0e3a56fe3f2ddccb4178123"
         }
       },
       "format": "cff"
@@ -759,7 +759,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/type1-lexical.font",
-          "sha256": "0c0e9cc7041165fb9bb5fc3fdaaf57a1f91c24f4d694bbbb25212f28e0774b52"
+          "sha256": "a8cfb55abe5c332168e91e47a93f9b3b6a42efe67dd77827c34efa822c98b32f"
         }
       },
       "format": "type1"
@@ -987,7 +987,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/type1-missing-notdef.font",
-          "sha256": "781ccd2bf7833c9f91adceaf88a6b018da0c158451f0f607333f4229d4443a31"
+          "sha256": "f9dbcbe9378ea78fbd0d74ae196ab0584ef90236f1fc0798bbf9f43501779966"
         }
       },
       "format": "type1"
@@ -1006,7 +1006,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/type1-paint-type-ignored.font",
-          "sha256": "c2976d4dc7e12e55eac8d82c22306d79b65603afa099b062862bba7c782c73c3"
+          "sha256": "d771ddb4da5e66d0d29da5e668890f6ab209028f645f2cd22a4ab9c545a456ff"
         }
       },
       "format": "type1"
@@ -1044,7 +1044,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/cff-standard-sids.font",
-          "sha256": "7084fb5bd912f71f01c5a29acc858721bf0a6fd8827b3a365b29ede79364cbd6"
+          "sha256": "1e28b1089f5096eddfa7b0c925b2156d00a2cf9806509584be1ad9a639938c85"
         }
       },
       "format": "cff"
@@ -1063,7 +1063,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/cff-expert-charset.font",
-          "sha256": "9b607b358df8b00a82e29efadb93f36d71213f3025e3cd8ecb1669d916b02030"
+          "sha256": "f98c79102bb95b95d409a25358b1f4a409186076da0325b58f48fb5b44449e5e"
         }
       },
       "format": "cff"
@@ -1082,7 +1082,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/cff-expert-subset.font",
-          "sha256": "7bb884d927cf7f07337c0cace07f72c98b7af16d603178121eb4c1a27701f746"
+          "sha256": "9feac867963fa7cc584b4a73df682a11efe05bdf87b13f1260a93edc441921dc"
         }
       },
       "format": "cff"
@@ -1101,7 +1101,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/cff-custom-charset0.font",
-          "sha256": "e3ccd758e9621b910a2fac0b8fed4d7edcd2f2a3a6120150c8032b78f4490d55"
+          "sha256": "3c229c760b2ba2c080faddb7441fb0836f98d912757d3adb61473f669d1e3c74"
         }
       },
       "format": "cff"
@@ -1120,7 +1120,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/cff-custom-charset1.font",
-          "sha256": "c6c4d9801b97267b1f4e2d1187d22a4a2105e9f70f3b773fb9c3b3d609b57b01"
+          "sha256": "c2abccbdb1789c13e50aaf9ed9851d05337ca9d0496e412e6e59b8618e8c6acf"
         }
       },
       "format": "cff"
@@ -1139,7 +1139,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/cff-custom-charset2.font",
-          "sha256": "88da6c59c2edaf937b44e5b3f45279439d85769f5c89167a85822bc4a72b6efb"
+          "sha256": "c103a225a5629476603bf2ffac7a4b084b8dfba487f62a2cbca6dd11bb7e6c29"
         }
       },
       "format": "cff"
@@ -1158,7 +1158,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/cff-custom-encoding0-supplement.font",
-          "sha256": "1fc8b6505f09b05fe44ed4d8399109e7a80cd812953fd52b02a0ad7e1db6c193"
+          "sha256": "50d04a8937e7aaa9bb29e3119a207ed2f63c271700ae601ad0aa927686be9e10"
         }
       },
       "format": "cff"
@@ -1595,7 +1595,7 @@
         },
         ".font": {
           "path": "corpus/generated/font/cff-branching-subrs.font",
-          "sha256": "220ddb9481436bffb172957b18ebf923b32b6bff36d1267b3e7170d3bfd89652"
+          "sha256": "46a07cc0dd87296e88b68a8de2f53c1188e44f4ef1fe77ce4437dc8fcdc3041f"
         }
       },
       "format": "cff"
@@ -1656,6 +1656,2457 @@
         }
       },
       "format": "opentype"
+    },
+    {
+      "id": "font/review-cff-width-rmoveto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-width-rmoveto.expect",
+          "sha256": "40b07cf6f98d295275457d720e29150fb98ee28535baa046d218c644d0fd5c79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-width-rmoveto.font",
+          "sha256": "0bfe138c78e8df04dfe2700fedef799f402793163b44e783222e20903e78f191"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-width-hmoveto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-width-hmoveto.expect",
+          "sha256": "40b07cf6f98d295275457d720e29150fb98ee28535baa046d218c644d0fd5c79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-width-hmoveto.font",
+          "sha256": "4badba3d5d60d528ebc200f411e37890c541b98cceaac31f86ed547212214fdc"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-width-vmoveto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-width-vmoveto.expect",
+          "sha256": "40b07cf6f98d295275457d720e29150fb98ee28535baa046d218c644d0fd5c79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-width-vmoveto.font",
+          "sha256": "ed25b279d3809d71a20bf28ad02c959c68bca8bab1f924fc0cc3b0576fb69b83"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-width-hstem",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-width-hstem.expect",
+          "sha256": "40b07cf6f98d295275457d720e29150fb98ee28535baa046d218c644d0fd5c79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-width-hstem.font",
+          "sha256": "6825885bbe01c345038d787103dac5513bda223dee902ae74cdb36aef078f534"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-width-vstem",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-width-vstem.expect",
+          "sha256": "40b07cf6f98d295275457d720e29150fb98ee28535baa046d218c644d0fd5c79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-width-vstem.font",
+          "sha256": "b1e1c5120a207d38ec606e7913da7843512388252b660ca09d48f932ce4c151f"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-width-hstemhm",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-width-hstemhm.expect",
+          "sha256": "40b07cf6f98d295275457d720e29150fb98ee28535baa046d218c644d0fd5c79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-width-hstemhm.font",
+          "sha256": "9f30c0b069e5d03a9a3e6b301a7b0537a76d25501d305099c8ec0516d6ac2aa3"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-width-vstemhm",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-width-vstemhm.expect",
+          "sha256": "40b07cf6f98d295275457d720e29150fb98ee28535baa046d218c644d0fd5c79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-width-vstemhm.font",
+          "sha256": "c4c5dce0d6d32e0cf5b6a5610d181ba569257967c5cddd061b725ca7a6329cb7"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-width-endchar",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-width-endchar.expect",
+          "sha256": "1a7bc800a019cb3b16138799c38fe438c736482e83dce0d88aa693762a685ef0"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-width-endchar.font",
+          "sha256": "b119e4e91d8863ebbbf4d71af24e0f16db145682b1fea765097a3c81b7552578"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-width-default",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-width-default.expect",
+          "sha256": "ffc9c7c00487272e07d674d1b4c1b3d4b43523508f15733baa71efa8c3dc0203"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-width-default.font",
+          "sha256": "980921d0d50be0db3b8357291ceeb8e394763afec1bf9031f4b963a2a90db81c"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-dotsection",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-dotsection.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-dotsection.font",
+          "sha256": "c6835700be62f2bb4894e04991d826dcd88375a0ea64a4aeae72b611975d03b9"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-roll-zero",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-roll-zero.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-roll-zero.font",
+          "sha256": "4751139bc2bbb787571ee2db4087284aed2c575d8b786ea22ec9fe45a9675070"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-index-negative",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-index-negative.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-index-negative.font",
+          "sha256": "761acceb3a0e92ffb84e4adc3dd824b45b43bc1525d4b375b0c35339a7f6d2c1"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-index-outside",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-index-outside.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-index-outside.font",
+          "sha256": "f8f4854c1d77c04fd01ae7aac3cf31308ae701281e4d65115c713c8e1c68fa27"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-rlineto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-rlineto.expect",
+          "sha256": "567b4d20235ab0eac6b0499245e1aa4f8d40d4265a46cfedcda2054001d8d847"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-rlineto.font",
+          "sha256": "5715e1b208aea0808dbf4a1d14fcd186469d712f6b42c0015fcc3e951462b5c8"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-hlineto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-hlineto.expect",
+          "sha256": "bc35325101d2bd7c3316cf272768910d44081d7252efd5f8361d845f71e20e7d"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-hlineto.font",
+          "sha256": "240f376b6f55ef9191b328ba70211ead32cb68cebb90fe56cd38ba4caf44a0c4"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-vlineto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-vlineto.expect",
+          "sha256": "79b6ed61c3df05350f557a59bef7173ac29bdf66e82c675f0d1d04dbda660772"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-vlineto.font",
+          "sha256": "9b295c9e04e9557edf02e757ea47f66a320f97143c31fba1e25e7df27f7a29c2"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-rrcurveto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-rrcurveto.expect",
+          "sha256": "8a81e833e34e9383f9f983f801da5381c536e91c8103f20140453115e2c2d44a"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-rrcurveto.font",
+          "sha256": "9d6c09c77116adc80a8da0fd60cb66549b8e949a2bb46e5f18c3f4d7dca76383"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-rcurveline",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-rcurveline.expect",
+          "sha256": "d37bf1aea6c2469e14923caa75561500d3d6c2b47721f37bedd1f00b21589506"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-rcurveline.font",
+          "sha256": "3d253634d01f503fb5f97d224e3009d7ffbfb61241c7ee4d788c32187a7ed908"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-rlinecurve",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-rlinecurve.expect",
+          "sha256": "7681039120deae442a9524352e08c8bc217bed651c390424dfc24fcf1b633ada"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-rlinecurve.font",
+          "sha256": "ad6f4cbbbb926012b4ecd383a44b9dd876c28e204a90af47542fd7401162f078"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-vvcurveto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-vvcurveto.expect",
+          "sha256": "6a8da1e34eb2a97b9b3601071a714dbd295cedf119e171aa35793809930013c6"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-vvcurveto.font",
+          "sha256": "5e9de1831c828e1f5d63554e2fdf5b573a84e0c7f66c4c312f2797c43363a037"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-hhcurveto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-hhcurveto.expect",
+          "sha256": "d8c45a449e9f4ce34d7677420c686c4274959346993ec616acf3eaf5730fa18e"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-hhcurveto.font",
+          "sha256": "59509db06ceab4517b3ef6f2095d539ca7de6a310c74ab41d13783119ed356a5"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-hvcurveto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-hvcurveto.expect",
+          "sha256": "33610b0dbfe930a46853dd7ceee079a15f05e0313cf8d788f607a4c31ca0211a"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-hvcurveto.font",
+          "sha256": "321ce86c2908aaec8d30e30cd28e636cf268fc1daf321a5b4a839be0677dd62c"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-vhcurveto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-vhcurveto.expect",
+          "sha256": "f05b586598fadf7ea5c8b6ad9e834364e27f99c61f78a6172cfe6b128e845055"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-vhcurveto.font",
+          "sha256": "ab669b8f2468d81a8a83f7c17a5ded560c098e9e185e228570df2719440a7655"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-flex",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-flex.expect",
+          "sha256": "592383aa5b96312f73554d2baca8868b59dda04b6f1a8b29fc92b01243af42ac"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-flex.font",
+          "sha256": "6462683156b79f8216a98c562cdf0b3eef1721a3dbf0c3afd05d513f6754c292"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-hflex",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-hflex.expect",
+          "sha256": "402593e6d004e9db08b59d3ba87a660740734d3ba0ac9c2cd07de01ccf72346c"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-hflex.font",
+          "sha256": "01ff985d147915516594fea106387ce7f0f4a6b15f3ee0d73cbc072a0af3b3d1"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-hflex1",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-hflex1.expect",
+          "sha256": "0ec1fffc300c98476ee6b3c051b2400567f13b7178303396a335dd1ac1200cc7"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-hflex1.font",
+          "sha256": "e187eb72a7152809e3f726927b5064eaad95d44f4c0f383a5c8fc2b14fe439ee"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-flex1-x",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-flex1-x.expect",
+          "sha256": "fd08dbe83cd14960e0ab0c912190304833f2e2ead852657b9de42c82b62f1119"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-flex1-x.font",
+          "sha256": "8cbdf9c7a78dd494795cb0b32fe482590f3344a795affb769eee50ef6eaf5487"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-flex1-y",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-flex1-y.expect",
+          "sha256": "8e6cbb4d3e46d201ff4f5c13570b4731a0a808a655eb480ffc6efb0b95b31508"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-flex1-y.font",
+          "sha256": "7e2fe26c238e83effee8739bf24205f5d44d813e80aeca338975e3f2bbd9a0b6"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-abs",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-abs.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-abs.font",
+          "sha256": "91da0f21d245fab681a1c6406e6d5d9393249adb45ae1d62f732192ca09ec20c"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-add",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-add.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-add.font",
+          "sha256": "d3aa0c3ef25173171a5460f2060614f35803dc316a4f4acea1a517cc7c4de97b"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-sub",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-sub.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-sub.font",
+          "sha256": "bf700e114706276744002d6adb8c018ae2beba5210d919ee26832a4c59813306"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-div",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-div.expect",
+          "sha256": "23b6e8122dae6dae78af7b7e92a039138db3366385cb5ff315655a488b41afc2"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-div.font",
+          "sha256": "85b1faf690bb3e68b8ad3c5465e4da5d68a020eb4292848e392e86bbc536f536"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-neg",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-neg.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-neg.font",
+          "sha256": "0b6531116f3383d22581b3c635ee008c08225ab32be2d4a1cb5cd80bea05d406"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-mul",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-mul.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-mul.font",
+          "sha256": "f134fa9d38a0b915a44c50e85914e83378e914a6b13c3ac168a9f3060b446b3e"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-sqrt",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-sqrt.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-sqrt.font",
+          "sha256": "58c35dc97a1859dc0d0a8c1da5a236d8a1e6d8a24540d5f439d5238e17cc545d"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-and",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-and.expect",
+          "sha256": "dc7ae585eef88f8ab887c1cfb0fdc4122b9286db07b19fba491d665374a57472"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-and.font",
+          "sha256": "9ec29ee6307e429f86ff101ab1f9741054c6a361f512c480e70b14ae51e1565c"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-or",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-or.expect",
+          "sha256": "dc7ae585eef88f8ab887c1cfb0fdc4122b9286db07b19fba491d665374a57472"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-or.font",
+          "sha256": "ac3b9629815add12277d033fa64e48f6ad1ec25b12b879a20142ca33bd999695"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-not",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-not.expect",
+          "sha256": "dc7ae585eef88f8ab887c1cfb0fdc4122b9286db07b19fba491d665374a57472"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-not.font",
+          "sha256": "80c391b587d73ea0290aad51e92a43f1e7db3ae7a120f418152471223e49e725"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-eq",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-eq.expect",
+          "sha256": "dc7ae585eef88f8ab887c1cfb0fdc4122b9286db07b19fba491d665374a57472"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-eq.font",
+          "sha256": "9a44e530cea5b16f9252f13c482fb2238ea9eb445f827cecf7080f14a46ad843"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-ifelse",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-ifelse.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-ifelse.font",
+          "sha256": "1c6bfb8605999f27be0e028ac3aa3f34c7afc872ec942344648f09164e339e45"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-drop",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-drop.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-drop.font",
+          "sha256": "debcb5639fc6dbc6f6743962395e40a067baa259fd702a369c8d2aadd8e70db8"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-dup",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-dup.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-dup.font",
+          "sha256": "34cb3c4b0c01ca2486052b7738f6ea2b0194f521f81c2dcc4bba79a4191dfdb5"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-exch",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-exch.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-exch.font",
+          "sha256": "00a8fb02d12f2c5d8dcecd6e3e825a35413362fc370f8cb371c05be5a86d2d22"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-roll",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-roll.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-roll.font",
+          "sha256": "c0fd3af1f3004e3d5eac48ff171e17e3cdc8bbebf44d01a9a6ce788082b9f00f"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-transient",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-transient.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-transient.font",
+          "sha256": "fbf623b2e864b63f7cced6ab1900d4bb4350f0890de5689c292a259b6935802a"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-bias-local-1239",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-bias-local-1239.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-bias-local-1239.font",
+          "sha256": "39263425fac8339b1c8a66f86e2dadd49c6eb4b211b1df73b707e2611e334268"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-bias-global-1239",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-bias-global-1239.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-bias-global-1239.font",
+          "sha256": "85626650b38b5e81e2114e53ced95d429f994d2dec64c4763346a54379e7709b"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-bias-local-1240",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-bias-local-1240.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-bias-local-1240.font",
+          "sha256": "d14bfa837b6b423bdfd16edeb7b5620c067ee8d6f9d71756c8a0ede9ba40f788"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-bias-global-1240",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-bias-global-1240.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-bias-global-1240.font",
+          "sha256": "c6128246444ee25f563e2db8b652915672e7fa1823d8260019e3dcfbb57c54c2"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-bias-local-33899",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-bias-local-33899.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-bias-local-33899.font",
+          "sha256": "1e506fd20059a47f1c09541d7ff8056ca00f521dd65d9c4e5cef8e4ccfb64ed2"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-bias-global-33899",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-bias-global-33899.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-bias-global-33899.font",
+          "sha256": "9aa6acd9e87f4cfc74771774b0aa7af26eeba9cc98c266426e9aa7d3ca895f47"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-bias-local-33900",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-bias-local-33900.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-bias-local-33900.font",
+          "sha256": "d2db5f548ad2d89edc2e7ac3482302f4e1df1cb713d551d04526bbde77d9d4d9"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-bias-global-33900",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-bias-global-33900.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-bias-global-33900.font",
+          "sha256": "2f234f9de3c7f93589eccd394465240c9ef072d899291230d3b83701bb21473f"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-nesting-10",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-nesting-10.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-nesting-10.font",
+          "sha256": "f51bfe5dcfd79bc630e0f477194991e40eacfeb745f341dd91075ed5c61038e5"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-type1-nesting-10",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-nesting-10.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-nesting-10.font",
+          "sha256": "3f617129899d1d1326d32bba6f95dda0e49ab7a8e0a0f3078ec28c728da470b3"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-cff-nesting-11",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-nesting-11.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-nesting-11.font",
+          "sha256": "a63f18826bcc2ed156c7784df6d7788fafcac97a3a3cb6259ce252b8dd63a72b"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-type1-nesting-11",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-nesting-11.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-nesting-11.font",
+          "sha256": "59f14afee4be4ee587b8da0e5db1d2c1b1645616b1064a1a249153919d4d9bc2"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-cff-stack-48",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-stack-48.expect",
+          "sha256": "2fc32c6941c61cd98c32dd5b44418ea7b3ddf83ef2cc37342fa359d77d173cfb"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-stack-48.font",
+          "sha256": "6daf2cba975201b11980f48b84f7aa601571778c3bedeed94a84b42b9b17c480"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-dict-stack-48",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-dict-stack-48.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-dict-stack-48.font",
+          "sha256": "764201e8ea23bb9f17296b8d111aa891a95812015da94a66475f3088abb4cb37"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-stack-49",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-stack-49.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-stack-49.font",
+          "sha256": "b2e51b8dd6efdbd9ed253a8c1242bceee66e8a4696fe83c37515fa8f78a27c36"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-dict-stack-49",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-dict-stack-49.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-dict-stack-49.font",
+          "sha256": "777f85b3c0bbcacf3fd1170ce578d1416389caa32473473762cf8832ff480740"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-stems-96",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-stems-96.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-stems-96.font",
+          "sha256": "5ba11c39c93515672b3b2cad3e19d628be97b8a4e99ce42051f4202110a52445"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-stems-97",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-stems-97.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-stems-97.font",
+          "sha256": "e04773bc96fa19ad3d6900132d7564494ef543328be1cfa1e2aa1030a2552c61"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-mask-padding",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-mask-padding.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-mask-padding.font",
+          "sha256": "5e166ded9053d6f77d44a85d54851ffd06412144a04b45cfcead145575d8752a"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-mask-no-stems",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-mask-no-stems.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-mask-no-stems.font",
+          "sha256": "90d88d5eafb492565608265fa0733abb036c990a1651b0f8de1e8b9ac0fae341"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-late-stems",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-late-stems.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-late-stems.font",
+          "sha256": "b96c1008cc0aac3e0d59020e2e162ca566eb066673d84b3a26e287b11eb293c1"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-hint-order",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-hint-order.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-hint-order.font",
+          "sha256": "d74f22dd4ec40c2833325e9eaf3249fced7dff58bbb608803d43de06c16e16a3"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-mask-implicit-vstem",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-mask-implicit-vstem.expect",
+          "sha256": "40b07cf6f98d295275457d720e29150fb98ee28535baa046d218c644d0fd5c79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-mask-implicit-vstem.font",
+          "sha256": "7ea93e14b95c757e5d86c1cf387e88bf1bea9c3622aef1f9bf9c37477476f45b"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-length-65535",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-length-65535.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-length-65535.font",
+          "sha256": "c3b3fe8ac099b434e104eeeaa44beb65aa3b9cfa1e7daf21996b962d1ab77af9"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-length-65536",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-length-65536.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-length-65536.font",
+          "sha256": "91c74ec622a57a7409f1c9e2cb182165a36ba00c14e9edca325f524e7911d19d"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-private-required",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-private-required.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-private-required.font",
+          "sha256": "92098237583925d9ca1e3e1cd597e185798b975b8e22058a4babd24dfe4373a1"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-header-extension",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-header-extension.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-header-extension.font",
+          "sha256": "d21ac7fa80e86fdae87daac3a1e2805920c917215849ed011ab2c529dcedbedd"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-reserved-dict",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-reserved-dict.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-reserved-dict.font",
+          "sha256": "ae3b3e1ccc381d90b2aebcb73667a1c3c60028421f881eb04d5b69bbea623e30"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-wrong-dict-domain",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-wrong-dict-domain.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-wrong-dict-domain.font",
+          "sha256": "fc6216e26f654c2bafdf4c8cb8bce9a2940fdfca1d3fb2e18bd9e15d57ff466c"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-blue-order",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-blue-order.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-blue-order.font",
+          "sha256": "e2fe713536339afb5f5b1f5de094a4d4310d131c0f0eceb75d6b92820396f87a"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-type1-othersubr-fallback",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-othersubr-fallback.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-othersubr-fallback.font",
+          "sha256": "982bf95c4585dccbc9b2d4ff0c0058b4a912a50d349ae247e594cfba11731b70"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-othersubr-stale",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-othersubr-stale.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-othersubr-stale.font",
+          "sha256": "d1eda767996215ec508facddcd48edd20ba6fe5ba124f6e23ad034169ca4fd64"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-div",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-div.expect",
+          "sha256": "23b6e8122dae6dae78af7b7e92a039138db3366385cb5ff315655a488b41afc2"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-div.font",
+          "sha256": "53e6f3aad7263c2ccc837d01b5963977344ce870b5bf513199dccfbdf56c0424"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-default-leniv",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-default-leniv.expect",
+          "sha256": "f0aeaa5f6bc99690e1ca193fcdfc564fbd5e2a831747474feede42036c9ff1ec"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-default-leniv.font",
+          "sha256": "bb39edf62ca0844d6ab95223b8e61fdd3ffa1757bd0f21214cb8915d53e678ce"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-matrix-procedure",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-matrix-procedure.expect",
+          "sha256": "f0aeaa5f6bc99690e1ca193fcdfc564fbd5e2a831747474feede42036c9ff1ec"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-matrix-procedure.font",
+          "sha256": "5bc7059f4a899ecfba1483e1a7cd6a19d540269035d698cc1d21f8cdf3cf1f89"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-unencrypted",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-unencrypted.expect",
+          "sha256": "f0aeaa5f6bc99690e1ca193fcdfc564fbd5e2a831747474feede42036c9ff1ec"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-unencrypted.font",
+          "sha256": "a2855a76103c22346e3fd28db870350c42caaa572459883c1efffffa141dfd4d"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-closepoint",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-closepoint.expect",
+          "sha256": "b8fe32fc9ca7b2565ceb2cae1c0b253ccc7fef2afcb3dc1bb90203960afb0d99"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-closepoint.font",
+          "sha256": "48c5d6239a90d169014a20119c9d82394339a0eb17aa41890eb17766f847dfe9"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-width-first",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-width-first.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-width-first.font",
+          "sha256": "6ac805297b2bbf2ced2bff3866ba6456d46ef94e38941c2653b6706b75aedf3a"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-hlineto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-hlineto.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-hlineto.font",
+          "sha256": "40942e6602d07fd0c3a0471853ae8f494f67b7be4f66e2b5a632e7eeb2637393"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-vlineto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-vlineto.expect",
+          "sha256": "f157dd7fbcbcbdbe1bf01fba82affd141c57b64880e06093312ec1f5f9304b8c"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-vlineto.font",
+          "sha256": "2983879e0aded5df300aea1ffe6651858cfaca440a71dfa90a014a755bda229d"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-hvcurveto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-hvcurveto.expect",
+          "sha256": "476f8b9010954a8aa9756f1a8f639c085d8b3743d9ce152b066de0921334d75b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-hvcurveto.font",
+          "sha256": "548c8fa272c44a33a17d2abe21b5446fb8b743f8474f0e8bb16e7bf6ac7c8c2d"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-vhcurveto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-vhcurveto.expect",
+          "sha256": "0891b9aaadfff3b24a4a835658a51b7f0d51dbf2057ac2f48da6338ad856cc6e"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-vhcurveto.font",
+          "sha256": "692da1ec260ec80e316e8ae673d46af3876a57edd2739898206b3419311d12b0"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-hmoveto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-hmoveto.expect",
+          "sha256": "d2257b70df475360fa7469f79fc3fda5f79782931025402a973f1a7b3c7d51ac"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-hmoveto.font",
+          "sha256": "fbfaccfec637d11d2f24f33ba39a499d64165d94f09326e429e9f7362e287484"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-vmoveto",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-vmoveto.expect",
+          "sha256": "b173fcb6154adfba565ae740a1791f7a577305948f3bbcc41022455b9ff9cf26"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-vmoveto.font",
+          "sha256": "83bb0f362c3afce1c3327729b3785f4547513d1b3ab013a3954262a1e62628c6"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-sbw",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-sbw.expect",
+          "sha256": "5f8a06037a35dedff8dfa6140816d7a52e272f610c5c3fcae7ae8e13ce5cb527"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-sbw.font",
+          "sha256": "e46251275cd92bdf1a4c332c21ec9ec76bb3bb56b1028fda723171e9a34807c0"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-hstem",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-hstem.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-hstem.font",
+          "sha256": "352c2906d3f896ee0b293e812db6892be1e8eac5bd89423dd46b7453bcc43682"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-vstem",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-vstem.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-vstem.font",
+          "sha256": "6bf6718c918e6e62601b6d5e18a23392d67cf763e904058b77c714820e035e70"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-hstem3",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-hstem3.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-hstem3.font",
+          "sha256": "0bb9c16911c40842e5265a336ea2cf1d654e830867c932126d57277ecca25362"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-vstem3",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-vstem3.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-vstem3.font",
+          "sha256": "415302986d2a6fb70dacc48f3d306d282ffbee868bfcc0b0bcee33ac3120243f"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-dotsection",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-dotsection.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-dotsection.font",
+          "sha256": "da27f88908d9aa44b518f46ddf72c8d1ce70c111a1544051e52b8588888c0c34"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-stack-24",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-stack-24.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-stack-24.font",
+          "sha256": "e1c4e4c6b52e85d724dcc5b1b9b88a229fccf00bb767a93c2f85dd79efe5bd2c"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-stack-25",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-stack-25.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-stack-25.font",
+          "sha256": "cc9209a669ff3b9009ebdaacbbd80860b1f4c00a5633f4efe13d66fd078c9c7c"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-cff-random-0",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-random-0.expect",
+          "sha256": "6aa68990f143e62ac4e16c573f7ef1e0b64e45e6109596cf4b35b3735af91cfb"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-random-0.font",
+          "sha256": "d1fc34632594b8eaa9d6362b499790922791cb81b4aba8bed20ba4a2e598866f"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-random-7",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-random-7.expect",
+          "sha256": "0da7c7a6d99c4aec4cd0fcbc20f1707f79e02e3ad00ec4e040f2b9f9a50f8c8c"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-random-7.font",
+          "sha256": "e86c236e678c33d424a87a124bf2163fdbb463c7d53e00443aeda50086b095e9"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-seac-nested",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-seac-nested.expect",
+          "sha256": "8a2af8ff2a991db711c8e715a5dfd7af560e8a34b4fa64624690de43898d2049"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-seac-nested.font",
+          "sha256": "bcafd341e4eca6616e031e93efaa1e73bc05b7c9cc5aee86cd5bfa29a814e27a"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-trailing-endchar",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-trailing-endchar.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-trailing-endchar.font",
+          "sha256": "1f18d192875c83e02583ee51f35736d0fdf4574f04e1f08ee76448512bdeee5b"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-type1-trailing-endchar",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-trailing-endchar.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-trailing-endchar.font",
+          "sha256": "f3818ea72a7c041c82f46afbe46dba01fe48ab252cad9f754ee890042d6beaf7"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-seac-bearings",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-seac-bearings.expect",
+          "sha256": "89cbc31091c898c622674e66a9559793e596f64ed903ff11af3a606b41882989"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-seac-bearings.font",
+          "sha256": "59edc72fd322eab541130ac4cf409f26e8d54f8b72742d52360e62e55449cf80"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-seac-nested",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-seac-nested.expect",
+          "sha256": "8a2af8ff2a991db711c8e715a5dfd7af560e8a34b4fa64624690de43898d2049"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-seac-nested.font",
+          "sha256": "8b58d938e1e596cae1c22bee68e9423489bf6e27cdd6ee79c441a0b72d7b5107"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-cff-cid-format4",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-cid-format4.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-cid-format4.font",
+          "sha256": "712dc0441411e2c0a2ef7564558fd9c05b9adb51421ad9c069b77f44b43bf7fa"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-hint-empty",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-hint-empty.expect",
+          "sha256": "dfed2f6ba1a848ec9f12ccc7440dad2010307e150ad6a46c1cc4d1c50e2f516b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-hint-empty.font",
+          "sha256": "cff30029149f31a65113dd9fd887a8002ea0fa5f2ce353df186d1b297057e1cf"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-supplement-unencoded",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-supplement-unencoded.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-supplement-unencoded.font",
+          "sha256": "71cedfd80d82d960bac6118b64cea5a4aca77966d28186b74b59b27d54bc0726"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-empty-encoding-format",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-empty-encoding-format.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-empty-encoding-format.font",
+          "sha256": "2b1b55e25521f006eb3aeec557ecc3584382a5c7f40579f34c0d221c5245176e"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-type1-missing-fonttype",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-missing-fonttype.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-missing-fonttype.font",
+          "sha256": "b326b77bf7976b694d5cd3f054d4e542392ed5b1bb0c47882023c38552ad3272"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-missing-matrix",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-missing-matrix.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-missing-matrix.font",
+          "sha256": "80e2db0c4ff15027eb2ed5288bcc8086b39d0a4d7c3e545937a9e52a06314e25"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-missing-header",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-missing-header.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-missing-header.font",
+          "sha256": "043265f0e62c19e892d7f12062e49145b5e831ac1a9165a87035688520d5ff7d"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-subrs-incomplete",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-subrs-incomplete.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-subrs-incomplete.font",
+          "sha256": "ce030bd52bcfb73148b18bf0922fd94bc64d4d67fd81e80226ce09fb385b8c44"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-dict-count",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-dict-count.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-dict-count.font",
+          "sha256": "fd9feb4bfe11e92a7d87e9d74ea3c79bf5b6c2d2b2bc21f18397a3fc8542df93"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-long-div",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-long-div.expect",
+          "sha256": "843fdab72f6866ee27e6f9318e6fde3e8f59a8beaf6f06708d62b67181f054fb"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-long-div.font",
+          "sha256": "685cb119e3e7518e18ec7bd8ee607ceac60e8faefc1b2eec7edba8fca499cc0c"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-cff-fixed",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-fixed.expect",
+          "sha256": "9f1ae3ae86d96b4efb238a08f67d81a6fc56ee54bf7fa98aef4b1c4d13f5e5ca"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-fixed.font",
+          "sha256": "615989a082315139877c4d095c3212ca7b7119413b223d77ebb4bfe7dee37647"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-real",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-real.expect",
+          "sha256": "1b5554eec1d725cac489b91898951c35a67a5e8b56fa457dac10598dc8800eb3"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-real.font",
+          "sha256": "7800827e4d3ee1dd56c39b87cbd92f0cd3a400673ab34c936c60145ea56779ed"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-real-padding",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-real-padding.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-real-padding.font",
+          "sha256": "47b23adeec0c6cc0ce066fa478a8b6859181c2f351e2596b3265b94bd6bd2d67"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-type1-leniv-0",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-leniv-0.expect",
+          "sha256": "f0aeaa5f6bc99690e1ca193fcdfc564fbd5e2a831747474feede42036c9ff1ec"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-leniv-0.font",
+          "sha256": "79e1ab73f4afc21d957f857a3f5954ee1cebca834b442147061ba6f559a91399"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-leniv-1",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-leniv-1.expect",
+          "sha256": "f0aeaa5f6bc99690e1ca193fcdfc564fbd5e2a831747474feede42036c9ff1ec"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-leniv-1.font",
+          "sha256": "f3ef52b99fee5794017de5fa6a9cfbff06bff5fa1a777af5bd071f3cb01f48d9"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-cff-width-hintmask",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-width-hintmask.expect",
+          "sha256": "40b07cf6f98d295275457d720e29150fb98ee28535baa046d218c644d0fd5c79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-width-hintmask.font",
+          "sha256": "7d656072e80224468451a8ef939efd8a0d148f4bb868361fb1bd597e4ad56451"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-width-cntrmask",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-width-cntrmask.expect",
+          "sha256": "40b07cf6f98d295275457d720e29150fb98ee28535baa046d218c644d0fd5c79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-width-cntrmask.font",
+          "sha256": "4b71c7a44a521ded4d8b0bbbc68cc22476ad46cd4898a4fcb4c22739d700d4e8"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-width-seac",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-width-seac.expect",
+          "sha256": "c0b65b9163929124225b00367347ce930bf1650990569b8a5ab8ef436d22b242"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-width-seac.font",
+          "sha256": "f3bedb4f3e119a1174c6a6c344d379bf75af799ff6c539683eac1900d7c47103"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-cff-flex1-equal",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-flex1-equal.expect",
+          "sha256": "a3edbc9018d7e199082bb42204d153a5c176101a905af46f37b6797cc68f2512"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-flex1-equal.font",
+          "sha256": "97ca6bbc5e6b36383cd392fd3e7674f851db5e6a05ed52f192a6f4757f097704"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-type1-seac-trailing",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-seac-trailing.expect",
+          "sha256": "8a2af8ff2a991db711c8e715a5dfd7af560e8a34b4fa64624690de43898d2049"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-seac-trailing.font",
+          "sha256": "f38c863955724d550bdb76909c820238662cf98fc417408a6b3ae72adf31ee9a"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-length-65535",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-length-65535.expect",
+          "sha256": "e23c7995f82e83cf5e7d7a0914284fa30a78322a56882fd22eedce3a009df9dc"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-length-65535.font",
+          "sha256": "fbfbf76964fedc487fa17bd317277116ca050bfa16741f0b3a7a70af420e7118"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-length-65536",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-length-65536.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-length-65536.font",
+          "sha256": "207e70be72e29f986063197c8cca6b08cb03e298d3c77affd011dcad42d28253"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-cff-cid-count",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-cff"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-cff-cid-count.expect",
+          "sha256": "6a87abd76e0e00800e21ce308c2ad8e517d35d914d2ea859bf5204ffc46a0e79"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-cff-cid-count.font",
+          "sha256": "b0d0cb12fb7debb35a5e61a8b910c30f13b72c9e5d9f4877c0ac0a0f70ee5936"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/review-type1-close-line",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-close-line.expect",
+          "sha256": "2e36bc551c50d4a2fc98a9570df25bdcb60f467a933be28c25636ee42158499f"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-close-line.font",
+          "sha256": "db1de9052dca1e4a67a828d0bb861fa15ba0f341ec523156b92da0a45dc9462e"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/review-type1-setcurrentpoint",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-type1"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/review-type1-setcurrentpoint.expect",
+          "sha256": "44bbf8717027ee36f7d3974d88393b3074c4e7e9dfcd47ea04c834d93b1a03c6"
+        },
+        ".font": {
+          "path": "corpus/generated/font/review-type1-setcurrentpoint.font",
+          "sha256": "979fa885c824435c76da4f0dc48c03302d52d9af05de6dc77f96e640caf756d1"
+        }
+      },
+      "format": "type1"
     },
     {
       "id": "font/cff-nonfinite",

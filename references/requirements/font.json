@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "font",
-  "scope": "Verified only the PDF program constraints against local ISO 32000-2:2020 sponsored EC3 text: 9.6.3, 9.6.5.1/2/4, 9.7.4.1/2/3, 9.9.1/2, Tables 124/125. Binary layouts, algorithms and numeric format limits in Type 1 (including Supplement 5015), CFF 5176, Type 2 5177, TrueType Reference Manual and OpenType/ISO 14496-22:2019 remain pending primary-text review. Project resource budgets are not ISO requirements; independently written generators alone are not specification verification.",
+  "scope": "Reviewed the supported font-program behavior against the local Adobe Type 1 Font Format (chapters 2, 3, 5-8 and 10), TN 5176 CFF (sections 2-19, appendices A-C/F/H), TN 5177 Type 2 (sections 2-4, appendices A-C), and TN 5014 CIDFont (sections 2.3/2.4, 3.2 and 4.1/4.2). The itemized verdicts below distinguish corrected behavior, agreement, unhinted outline policy and incomplete structural validation; this is not full PostScript or font conformance certification. The previous PDF-side review remains ISO 32000-2:2020 sponsored EC3, 9.6.3, 9.6.5.1/2/4, 9.7.4.1/2/3, 9.9.1/2 and Tables 124/125. Only unavailable primary texts remain pending: OpenType/ISO 14496-22 and TrueType Reference Manual (including CFF2), TN 5015 Type 1 supplements including lenIV -1, and TN 5040 PFB packaging. Project budgets are separate from format limits.",
   "requirements": [
     {
       "id": "font-truetype",
@@ -49,7 +49,7 @@
           "TrueType Reference Manual: table layouts, quadratics, composites, cmap and post binary formats, instruction dependencies",
           "OpenType / ISO/IEC 14496-22:2019: sfnt layouts, cmap identities beyond PDF-selected encodings, newer cmap formats"
         ],
-        "external_status": "pending primary-text review",
+        "external_status": "pending primary-text review of TrueType and OpenType",
         "evidence": "ISO-derived PDF constraints plus analytic binary fixtures. Secondary read-fonts 0.41.0 comparison agrees on 26 cmap 10/13 code queries. Its mapping API does not implement format 2; no differential claim for format 2 or a primary-format known-answer dataset.",
         "choices": "Platform 0 and (3,10) are exposed separately; supplementary Unicode mappings never impersonate PDF (3,1). Format 14 is unused because 9.6.5.4 selects by a single mapped value, while 9.7.4.2 uses explicit CIDs/GIDs. Legacy component offsets use unscaled translation; external semantics pending."
       }
@@ -62,7 +62,7 @@
         "9.7.4.2",
         "9.9.1"
       ],
-      "status": "CFF/CID CFF, all 391 standard SIDs, ISOAdobe/Expert/ExpertSubset and custom charsets, Standard/Expert/custom encodings, FDSelect 0/3/4, default CFF2 charstring and Private DICT blends; external definitions pending primary review",
+      "status": "Primary-reviewed CFF1 and Type 2: header, INDEX, DICT domains/defaults, SIDs, encodings, charsets, FDSelect 0/3, CID lookup and all Type 2 operators; CFF2 remains pending OpenType.",
       "tests": [
         "font/cff",
         "font/cff-cid",
@@ -88,9 +88,98 @@
         "font/cff2-private-blend",
         "font/cff2-fdselect4-wide",
         "font/cff2-private-blend-override",
-        "font/cff2-font-dict-matrix"
+        "font/cff2-font-dict-matrix",
+        "font/review-cff-width-rmoveto",
+        "font/review-cff-width-hmoveto",
+        "font/review-cff-width-vmoveto",
+        "font/review-cff-width-hstem",
+        "font/review-cff-width-vstem",
+        "font/review-cff-width-hstemhm",
+        "font/review-cff-width-vstemhm",
+        "font/review-cff-width-endchar",
+        "font/review-cff-width-default",
+        "font/review-cff-dotsection",
+        "font/review-cff-roll-zero",
+        "font/review-cff-index-negative",
+        "font/review-cff-index-outside",
+        "font/review-cff-rlineto",
+        "font/review-cff-hlineto",
+        "font/review-cff-vlineto",
+        "font/review-cff-rrcurveto",
+        "font/review-cff-rcurveline",
+        "font/review-cff-rlinecurve",
+        "font/review-cff-vvcurveto",
+        "font/review-cff-hhcurveto",
+        "font/review-cff-hvcurveto",
+        "font/review-cff-vhcurveto",
+        "font/review-cff-flex",
+        "font/review-cff-hflex",
+        "font/review-cff-hflex1",
+        "font/review-cff-flex1-x",
+        "font/review-cff-flex1-y",
+        "font/review-cff-abs",
+        "font/review-cff-add",
+        "font/review-cff-sub",
+        "font/review-cff-div",
+        "font/review-cff-neg",
+        "font/review-cff-mul",
+        "font/review-cff-sqrt",
+        "font/review-cff-and",
+        "font/review-cff-or",
+        "font/review-cff-not",
+        "font/review-cff-eq",
+        "font/review-cff-ifelse",
+        "font/review-cff-drop",
+        "font/review-cff-dup",
+        "font/review-cff-exch",
+        "font/review-cff-roll",
+        "font/review-cff-transient",
+        "font/review-cff-bias-local-1239",
+        "font/review-cff-bias-global-1239",
+        "font/review-cff-bias-local-1240",
+        "font/review-cff-bias-global-1240",
+        "font/review-cff-bias-local-33899",
+        "font/review-cff-bias-global-33899",
+        "font/review-cff-bias-local-33900",
+        "font/review-cff-bias-global-33900",
+        "font/review-cff-nesting-10",
+        "font/review-cff-nesting-11",
+        "font/review-cff-stack-48",
+        "font/review-cff-dict-stack-48",
+        "font/review-cff-stack-49",
+        "font/review-cff-dict-stack-49",
+        "font/review-cff-stems-96",
+        "font/review-cff-stems-97",
+        "font/review-cff-mask-padding",
+        "font/review-cff-mask-no-stems",
+        "font/review-cff-late-stems",
+        "font/review-cff-hint-order",
+        "font/review-cff-mask-implicit-vstem",
+        "font/review-cff-length-65535",
+        "font/review-cff-length-65536",
+        "font/review-cff-private-required",
+        "font/review-cff-header-extension",
+        "font/review-cff-reserved-dict",
+        "font/review-cff-wrong-dict-domain",
+        "font/review-cff-blue-order",
+        "font/review-cff-random-0",
+        "font/review-cff-random-7",
+        "font/review-cff-seac-nested",
+        "font/review-cff-trailing-endchar",
+        "font/review-cff-cid-format4",
+        "font/review-cff-hint-empty",
+        "font/review-cff-supplement-unencoded",
+        "font/review-cff-empty-encoding-format",
+        "font/review-cff-fixed",
+        "font/review-cff-real",
+        "font/review-cff-real-padding",
+        "font/review-cff-width-hintmask",
+        "font/review-cff-width-cntrmask",
+        "font/review-cff-width-seac",
+        "font/review-cff-flex1-equal",
+        "font/review-cff-cid-count"
       ],
-      "gaps": "Nondefault variations, CFF2 Font DICT matrices and arbitrary PostScript are unsupported. All low-level CFF/Type 2/CFF2 definitions remain pending primary-text review despite analytic and secondary evidence.",
+      "gaps": "Known structural-validation gaps: redundant CID Encoding, predefined CID charsets, ROS ordering/metadata and complete FD DICT domains are not all rejected. Nondefault variations, CFF2 Font DICT matrices, synthetic CFF, CFF CharstringType 1 and standalone TN 5014 CIDFont programs are unsupported.",
       "tables": [
         "124",
         "125"
@@ -101,16 +190,771 @@
         "verdict": "corrected: OpenType CFF was incorrectly required to contain the glyf branch metrics/header tables; PDF-minimum CFF+cmap fonts now agree with the text",
         "implementation": "Rejects multiple CFF fonts, resolves nonidentity charset CIDs, requires cmap for OpenType CFF, and uses charstring advances when optional hmtx/hhea are absent.",
         "expectations": "Single-font, nonidentity CID, minimal OpenType and missing-cmap cases agree with ISO; INDEX/DICT/charstring binary encodings and CFF2 are not verified by ISO.",
-        "outside": "PdfFont::load must validate FontFile3 subtype/dictionary compatibility, omit CFF Length1/2/3 entries, and retain direct-GID selection for non-CID CFF as already implemented.",
+        "outside": "Integrated pagura-text::program checks subtype compatibility and forbidden CFF Length entries. To strengthen CID structural rejection without breaking shared vectors, update tools/fixturegen/text.py callers of cff_font to conforming=True and regenerate its font-binding PDFs/manifests.",
         "pending": [
-          "Adobe Technical Note 5176: INDEX, DICT, charsets, predefined encodings and SID tables, FDArray/FDSelect",
-          "Adobe Technical Note 5177: Type 2 operators, widths, flex, seac, subroutines and stack limits",
-          "OpenType / ISO/IEC 14496-22:2019: CFF2, variation stores and blend semantics"
+          "OpenType / ISO/IEC 14496-22: CFF2 header/INDEX/DICT, FDSelect 4, variation stores, Private/charstring blends and Font DICT matrices"
         ],
-        "external_status": "pending primary-text review",
-        "evidence": "Secondary read-fonts 0.41.0 comparison: 668 glyph-name mappings and 1792 code mappings across the seven metadata fixtures agree, with undefined entries normalized against GID 0; the gap at ExpertEncoding code 92 was corrected following that comparison. Analytic fixtures exercise FDSelect 4 and Private DICT blends; no external known-answer dataset or primary-format verification. Secondary skrifa 0.46.2 agrees on bounds and curve counts of six default CFF2 glyphs: static, charstring blend, inherited/overridden Private DICT blends, FDSelect 4 and FD index 256. Font DICT matrix behavior disagreed and is explicitly unsupported; these comparisons are not primary-text verification.",
-        "choices": "CFF2 uses default normalized coordinates only; Private DICT vsindex initializes charstring variation selection, which a charstring vsindex can override (secondary skrifa 0.46.2 agreement, pending primary review). CFF2 Font DICT matrices return explicit Unsupported after a secondary disagreement. Random is deterministic 0.5 and flex retains curves; external semantics remain pending."
-      }
+        "external_status": "TN 5176/5177 and applicable TN 5014 reviewed; CFF2 pending primary-text review",
+        "evidence": "Secondary read-fonts 0.41.0 comparison: 668 glyph-name mappings and 1792 code mappings across the seven metadata fixtures agree, with undefined entries normalized against GID 0; the gap at ExpertEncoding code 92 was corrected following that comparison. Analytic fixtures exercise FDSelect 4 and Private DICT blends; no external known-answer dataset or primary-format verification. Secondary skrifa 0.46.2 agrees on bounds and curve counts of six default CFF2 glyphs: static, charstring blend, inherited/overridden Private DICT blends, FDSelect 4 and FD index 256. Font DICT matrix behavior disagreed and is explicitly unsupported; these comparisons are not primary-text verification. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions. Primary review now confirms the 391 standard strings, both full 256-code encodings and both Expert charset orders. Type 2 operators, limits and analytic expectations were checked against TN 5177; this supersedes the earlier pending status for those definitions.",
+        "choices": "Unhinted API retains flex curves, skips hint placement and ignores allowed embedded PostScript. Type 2 random uses a per-glyph 32-bit LCG seeded from folded initialRandomSeed bits, returning (state+1)/2^32; the texts specify seed and range but not the algorithm. Uninitialized transient reads use zero (undefined by TN 5177), invalid index ranges and nonfinite arithmetic fail, zero-element roll is a no-op. CFF2 default-instance interpretation and Font DICT matrix restrictions retain the earlier secondary evidence and pending status."
+      },
+      "format_verification": [
+        {
+          "item": "header",
+          "primary_text": "Adobe TN 5176, CFF v1.0, 4 December 2003 (local adobe-tn5176-cff.txt)",
+          "locator": "2-3; 6, Table 8",
+          "rule": "Read big-endian fields, accept understood major versions, locate Name INDEX through hdrSize and require offSize 1-4.",
+          "verdict": "agrees; adds extension-header vector. CFF2 header rules stay pending OpenType.",
+          "implementation": "agrees; adds extension-header vector. CFF2 header rules stay pending OpenType.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-header-extension",
+            "font/cff-index-overflow"
+          ]
+        },
+        {
+          "item": "INDEX",
+          "primary_text": "Adobe TN 5176, CFF v1.0, 4 December 2003 (local adobe-tn5176-cff.txt)",
+          "locator": "5, Table 7; 7-8; 14; 16",
+          "rule": "Read count, sized one-based offsets and the object data; empty INDEX has only the count, and Name/Top DICT counts correspond.",
+          "verdict": "agrees, with the PDF single-font restriction retained; malformed extents and offsets fail.",
+          "implementation": "agrees, with the PDF single-font restriction retained; malformed extents and offsets fail.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/cff",
+            "font/cff-cid",
+            "font/cff-multiple-fonts",
+            "font/cff-index-overflow",
+            "font/review-cff-length-65535"
+          ]
+        },
+        {
+          "item": "DICT number encoding and operand stack",
+          "primary_text": "Adobe TN 5176, CFF v1.0, 4 December 2003 (local adobe-tn5176-cff.txt)",
+          "locator": "4, Tables 3-6; Appendix H",
+          "rule": "Decode integer and nibble real operands, pad a leading real terminator nibble with f and limit each CFF1 operator to 48 operands.",
+          "verdict": "corrected: CFF1 no longer uses CFF2 stack 513, reserved operators and invalid real padding fail.",
+          "implementation": "corrected: CFF1 no longer uses CFF2 stack 513, reserved operators and invalid real padding fail.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-dict-stack-48",
+            "font/review-cff-dict-stack-49",
+            "font/review-cff-real",
+            "font/review-cff-real-padding",
+            "font/review-cff-reserved-dict"
+          ]
+        },
+        {
+          "item": "Top/Private DICT entries and defaults",
+          "primary_text": "Adobe TN 5176, CFF v1.0, 4 December 2003 (local adobe-tn5176-cff.txt)",
+          "locator": "9, Tables 9-10; 15, Table 23; 17; Appendix F/H",
+          "rule": "Use the operator domain and arity, default charset/encoding zero, CharstringType two, matrix .001, widths zero; Private is required even when zero length.",
+          "verdict": "corrected: validate entry domains/arity/booleans/SID references and require Private. Hint, naming and printer metadata do not alter unhinted paths; synthetic CFF is explicitly unsupported.",
+          "implementation": "OtherBlues follows BlueValues and FamilyOtherBlues follows FamilyBlues. Subrs is relative to Private. All Table 9/10/23 operator codes were compared with the dispatch/validation code. Metadata defaults (isFixedPitch 0, ItalicAngle 0, UnderlinePosition -100, UnderlineThickness 50, PaintType 0, FontBBox zeros, StrokeWidth 0; BlueScale .039625, BlueShift 7, BlueFuzz 1, ForceBold false, LanguageGroup 0, ExpansionFactor .06; CIDFontVersion/Revision/Type 0 and CIDCount 8720) have no exposed effect in this unhinted API. initialRandomSeed defaults to zero and seeds the documented generator. Embedded PostScript is ignored as Appendix F permits.",
+          "expectations": "Metadata-only defaults are a reviewed scope boundary, not assertions of PostScript execution or hint validation.",
+          "vectors": [
+            "font/review-cff-private-required",
+            "font/review-cff-wrong-dict-domain",
+            "font/review-cff-blue-order",
+            "font/review-cff-width-default",
+            "font/review-cff-width-endchar"
+          ]
+        },
+        {
+          "item": "charsets",
+          "primary_text": "Adobe TN 5176, CFF v1.0, 4 December 2003 (local adobe-tn5176-cff.txt)",
+          "locator": "11; 13, Tables 17-22; Appendix C",
+          "rule": "GID zero is .notdef; custom 0/1/2 charsets map later glyphs to unique SIDs or CIDs, while predefined charsets use matching prefixes.",
+          "verdict": "agrees for supported mappings: all ISOAdobe/Expert/ExpertSubset orders agree with the text.",
+          "implementation": "agrees for supported mappings: all ISOAdobe/Expert/ExpertSubset orders agree with the text.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/cff-standard-sids",
+            "font/cff-expert-charset",
+            "font/cff-expert-subset",
+            "font/cff-custom-charset0",
+            "font/cff-custom-charset1",
+            "font/cff-custom-charset2"
+          ]
+        },
+        {
+          "item": "encodings",
+          "primary_text": "Adobe TN 5176, CFF v1.0, 4 December 2003 (local adobe-tn5176-cff.txt)",
+          "locator": "12, Tables 11-16; Appendix B",
+          "rule": "Predefined encodings map codes to SIDs; custom encodings map sequential GIDs, and supplements only add codes for glyphs already encoded in the main table.",
+          "verdict": "corrected: supplements cannot introduce previously unencoded glyphs; invalid zero-count format identifiers also fail. Both predefined 256-code tables agree.",
+          "implementation": "corrected: supplements cannot introduce previously unencoded glyphs; invalid zero-count format identifiers also fail. Both predefined 256-code tables agree.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/cff-custom-encoding0-supplement",
+            "font/cff-custom-charset1",
+            "font/review-cff-supplement-unencoded",
+            "font/review-cff-empty-encoding-format",
+            "font/cff-expert-charset"
+          ]
+        },
+        {
+          "item": "standard strings",
+          "primary_text": "Adobe TN 5176, CFF v1.0, 4 December 2003 (local adobe-tn5176-cff.txt)",
+          "locator": "3, Table 2; 10; Appendix A",
+          "rule": "SIDs 0-390 name the standard strings; subsequent SIDs index String INDEX, and 65000 upward are reserved for implementations.",
+          "verdict": "agrees: compared all 391 names with primary text; reserved glyph SIDs are rejected.",
+          "implementation": "agrees: compared all 391 names with primary text; reserved glyph SIDs are rejected.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/cff-standard-sids",
+            "font/cff-expert-charset",
+            "font/cff-expert-subset"
+          ]
+        },
+        {
+          "item": "FDSelect 0/3",
+          "primary_text": "Adobe TN 5176, CFF v1.0, 4 December 2003 (local adobe-tn5176-cff.txt)",
+          "locator": "18-19, Tables 27-29",
+          "rule": "Format 0 selects each glyph directly; format 3 starts at GID zero, uses ascending first-GID ranges and ends at the glyph-count sentinel.",
+          "verdict": "agrees; format 4 is now accepted only in CFF2, whose definition remains pending OpenType.",
+          "implementation": "agrees; format 4 is now accepted only in CFF2, whose definition remains pending OpenType.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/cff-cid",
+            "font/cff-cid-fd-array",
+            "font/review-cff-cid-format4"
+          ]
+        },
+        {
+          "item": "CID-keyed font selection",
+          "primary_text": "Adobe TN 5176, CFF v1.0, 4 December 2003 (local adobe-tn5176-cff.txt); Adobe TN 5014, 11 June 1993 (local adobe-tn5014-cidfont.txt)",
+          "locator": "TN 5176 9/Table 10, 18-19; TN 5014 2.3-2.4, 3.2 FDArray, 4.1-4.2",
+          "rule": "CIDs identify glyphs independently of CMap encoding; each glyph selects a nonempty FDArray entry and its Private dictionary, and CID zero is .notdef.",
+          "verdict": "agrees for lookup and FD selection; incomplete structural validation is a known limit, not pending review.",
+          "implementation": "CFF charset values are CIDs, built-in encoding is absent from the public result, and FDSelect indexes are checked. The parser scans the complete Top DICT rather than relying on ROS-first classification. It currently does not reject redundant CID Encoding entries, predefined CID charsets, or all ROS metadata restrictions. Legacy shared CID fixture defaults still carry redundant Encoding and noncanonical ROS placement; font-owned cases use conforming=True.",
+          "expectations": "Nonidentity CID and FD cases derive from the primary rules; broader legacy dictionary-rejection coverage requires text-owned fixture migration. Bare TN 5014 CIDFont StartData/CIDMap programs are not implemented by the CFF reader.",
+          "vectors": [
+            "font/cff-cid",
+            "font/cff-cid-fd-array",
+            "font/review-cff-cid-count"
+          ]
+        },
+        {
+          "item": "Type 2 rlineto",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1",
+          "rule": "Apply relative coordinate groups, implicit horizontal/vertical components and optional first/last displacements to construct the specified lines or cubics.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-rlineto"
+          ]
+        },
+        {
+          "item": "Type 2 hlineto",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1",
+          "rule": "Apply relative coordinate groups, implicit horizontal/vertical components and optional first/last displacements to construct the specified lines or cubics.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-hlineto"
+          ]
+        },
+        {
+          "item": "Type 2 vlineto",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1",
+          "rule": "Apply relative coordinate groups, implicit horizontal/vertical components and optional first/last displacements to construct the specified lines or cubics.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-vlineto"
+          ]
+        },
+        {
+          "item": "Type 2 rrcurveto",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1",
+          "rule": "Apply relative coordinate groups, implicit horizontal/vertical components and optional first/last displacements to construct the specified lines or cubics.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-rrcurveto"
+          ]
+        },
+        {
+          "item": "Type 2 rcurveline",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1",
+          "rule": "Apply relative coordinate groups, implicit horizontal/vertical components and optional first/last displacements to construct the specified lines or cubics.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-rcurveline"
+          ]
+        },
+        {
+          "item": "Type 2 rlinecurve",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1",
+          "rule": "Apply relative coordinate groups, implicit horizontal/vertical components and optional first/last displacements to construct the specified lines or cubics.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-rlinecurve"
+          ]
+        },
+        {
+          "item": "Type 2 vvcurveto",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1",
+          "rule": "Apply relative coordinate groups, implicit horizontal/vertical components and optional first/last displacements to construct the specified lines or cubics.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-vvcurveto"
+          ]
+        },
+        {
+          "item": "Type 2 hhcurveto",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1",
+          "rule": "Apply relative coordinate groups, implicit horizontal/vertical components and optional first/last displacements to construct the specified lines or cubics.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-hhcurveto"
+          ]
+        },
+        {
+          "item": "Type 2 hvcurveto",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1",
+          "rule": "Apply relative coordinate groups, implicit horizontal/vertical components and optional first/last displacements to construct the specified lines or cubics.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-hvcurveto"
+          ]
+        },
+        {
+          "item": "Type 2 vhcurveto",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1",
+          "rule": "Apply relative coordinate groups, implicit horizontal/vertical components and optional first/last displacements to construct the specified lines or cubics.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-vhcurveto"
+          ]
+        },
+        {
+          "item": "Type 2 flex",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1",
+          "rule": "Apply relative coordinate groups, implicit horizontal/vertical components and optional first/last displacements to construct the specified lines or cubics.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-flex"
+          ]
+        },
+        {
+          "item": "Type 2 hflex",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1",
+          "rule": "Apply relative coordinate groups, implicit horizontal/vertical components and optional first/last displacements to construct the specified lines or cubics.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-hflex"
+          ]
+        },
+        {
+          "item": "Type 2 hflex1",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1",
+          "rule": "Apply relative coordinate groups, implicit horizontal/vertical components and optional first/last displacements to construct the specified lines or cubics.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-hflex1"
+          ]
+        },
+        {
+          "item": "Type 2 flex1",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1",
+          "rule": "Choose the final displacement axis using abs(sum dx) > abs(sum dy), restoring the other axis to its starting coordinate.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-flex1-x",
+            "font/review-cff-flex1-y",
+            "font/review-cff-flex1-equal"
+          ]
+        },
+        {
+          "item": "Type 2 rmoveto",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1, Note 4",
+          "rule": "Detect an optional first width, close any open contour and move relative to the previous current point.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-width-rmoveto"
+          ]
+        },
+        {
+          "item": "Type 2 hmoveto",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1, Note 4",
+          "rule": "Detect an optional first width, close any open contour and move relative to the previous current point.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-width-hmoveto"
+          ]
+        },
+        {
+          "item": "Type 2 vmoveto",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.1, Note 4",
+          "rule": "Detect an optional first width, close any open contour and move relative to the previous current point.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-width-vmoveto"
+          ]
+        },
+        {
+          "item": "Type 2 hstem",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "3.1; 4.3",
+          "rule": "Consume width/stem pairs before path construction and add their count to the shared hint list.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-width-hstem"
+          ]
+        },
+        {
+          "item": "Type 2 vstem",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "3.1; 4.3",
+          "rule": "Consume width/stem pairs before path construction and add their count to the shared hint list.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-width-vstem"
+          ]
+        },
+        {
+          "item": "Type 2 hstemhm",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "3.1; 4.3",
+          "rule": "Consume width/stem pairs before path construction and add their count to the shared hint list.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-width-hstemhm"
+          ]
+        },
+        {
+          "item": "Type 2 vstemhm",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "3.1; 4.3",
+          "rule": "Consume width/stem pairs before path construction and add their count to the shared hint list.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-width-vstemhm"
+          ]
+        },
+        {
+          "item": "Type 2 hintmask",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "2.1; 3.1; 4.3",
+          "rule": "Read exactly ceil(stem count/8) mask bytes, require stems, zero unused bits and permit the initial implicit vstem operands.",
+          "verdict": "corrected; implementation and independent expectation agree",
+          "implementation": "corrected; implementation and independent expectation agree",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-mask-implicit-vstem"
+          ]
+        },
+        {
+          "item": "Type 2 cntrmask",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "2.1; 3.1; 4.3",
+          "rule": "Read exactly ceil(stem count/8) mask bytes, require stems, zero unused bits and permit the initial implicit vstem operands.",
+          "verdict": "corrected; implementation and independent expectation agree",
+          "implementation": "corrected; implementation and independent expectation agree",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-mask-implicit-vstem"
+          ]
+        },
+        {
+          "item": "Type 2 abs",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.4",
+          "rule": "Consume the specified top operands, preserve lower operands and push the arithmetic or stack result.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-abs"
+          ]
+        },
+        {
+          "item": "Type 2 add",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.4",
+          "rule": "Consume the specified top operands, preserve lower operands and push the arithmetic or stack result.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-add"
+          ]
+        },
+        {
+          "item": "Type 2 sub",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.4",
+          "rule": "Consume the specified top operands, preserve lower operands and push the arithmetic or stack result.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-sub"
+          ]
+        },
+        {
+          "item": "Type 2 div",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.4",
+          "rule": "Consume the specified top operands, preserve lower operands and push the arithmetic or stack result.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-div"
+          ]
+        },
+        {
+          "item": "Type 2 neg",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.4",
+          "rule": "Consume the specified top operands, preserve lower operands and push the arithmetic or stack result.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-neg"
+          ]
+        },
+        {
+          "item": "Type 2 mul",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.4",
+          "rule": "Consume the specified top operands, preserve lower operands and push the arithmetic or stack result.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-mul"
+          ]
+        },
+        {
+          "item": "Type 2 sqrt",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.4",
+          "rule": "Consume the specified top operands, preserve lower operands and push the arithmetic or stack result.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-sqrt"
+          ]
+        },
+        {
+          "item": "Type 2 drop",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.4",
+          "rule": "Consume the specified top operands, preserve lower operands and push the arithmetic or stack result.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-drop"
+          ]
+        },
+        {
+          "item": "Type 2 exch",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.4",
+          "rule": "Consume the specified top operands, preserve lower operands and push the arithmetic or stack result.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-exch"
+          ]
+        },
+        {
+          "item": "Type 2 index",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.4",
+          "rule": "Consume the specified top operands, preserve lower operands and push the arithmetic or stack result.",
+          "verdict": "corrected; implementation and independent expectation agree",
+          "implementation": "corrected; implementation and independent expectation agree",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-index-negative"
+          ]
+        },
+        {
+          "item": "Type 2 roll",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.4",
+          "rule": "Consume the specified top operands, preserve lower operands and push the arithmetic or stack result.",
+          "verdict": "corrected; implementation and independent expectation agree",
+          "implementation": "corrected; implementation and independent expectation agree",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-roll"
+          ]
+        },
+        {
+          "item": "Type 2 dup",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.4",
+          "rule": "Consume the specified top operands, preserve lower operands and push the arithmetic or stack result.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-dup"
+          ]
+        },
+        {
+          "item": "Type 2 put",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.5",
+          "rule": "Store or retrieve a value in the glyph-local 32-element transient array.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-transient"
+          ]
+        },
+        {
+          "item": "Type 2 get",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.5",
+          "rule": "Store or retrieve a value in the glyph-local 32-element transient array.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-transient"
+          ]
+        },
+        {
+          "item": "Type 2 and",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.6",
+          "rule": "Produce Boolean 0/1 or choose s1 when v1 <= v2, otherwise s2.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-and"
+          ]
+        },
+        {
+          "item": "Type 2 or",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.6",
+          "rule": "Produce Boolean 0/1 or choose s1 when v1 <= v2, otherwise s2.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-or"
+          ]
+        },
+        {
+          "item": "Type 2 not",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.6",
+          "rule": "Produce Boolean 0/1 or choose s1 when v1 <= v2, otherwise s2.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-not"
+          ]
+        },
+        {
+          "item": "Type 2 eq",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.6",
+          "rule": "Produce Boolean 0/1 or choose s1 when v1 <= v2, otherwise s2.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-eq"
+          ]
+        },
+        {
+          "item": "Type 2 ifelse",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.6",
+          "rule": "Produce Boolean 0/1 or choose s1 when v1 <= v2, otherwise s2.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-ifelse"
+          ]
+        },
+        {
+          "item": "Type 2 callsubr",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "2.3; 4.7",
+          "rule": "Share the operand stack while calling the biased local/global subroutine and resume the caller on return.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-bias-local-33900"
+          ]
+        },
+        {
+          "item": "Type 2 callgsubr",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "2.3; 4.7",
+          "rule": "Share the operand stack while calling the biased local/global subroutine and resume the caller on return.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-bias-global-33900"
+          ]
+        },
+        {
+          "item": "Type 2 return",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "2.3; 4.7",
+          "rule": "Share the operand stack while calling the biased local/global subroutine and resume the caller on return.",
+          "verdict": "agrees for unhinted outlines; independent expectation agrees",
+          "implementation": "agrees for unhinted outlines; independent expectation agrees",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-bias-local-33900"
+          ]
+        },
+        {
+          "item": "Type 2 random",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.4; TN 5176 15/Table 23",
+          "rule": "Return a per-character pseudo-random value greater than zero and at most one.",
+          "verdict": "corrected; implementation and independent expectation agree",
+          "implementation": "corrected; implementation and independent expectation agree",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-random-7"
+          ]
+        },
+        {
+          "item": "Type 2 endchar",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "4.2; Appendix C",
+          "rule": "Finish the glyph, detect a first width and support nonnested StandardEncoding components; reject trailing data.",
+          "verdict": "corrected; implementation and independent expectation agree",
+          "implementation": "corrected; implementation and independent expectation agree",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-trailing-endchar"
+          ]
+        },
+        {
+          "item": "Type 2 dotsection",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "Appendix C",
+          "rule": "Accept the obsolete operator as a no-op.",
+          "verdict": "corrected; implementation and independent expectation agree",
+          "implementation": "corrected; implementation and independent expectation agree",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-dotsection"
+          ]
+        },
+        {
+          "item": "Type 2 width rule",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt); Adobe TN 5176, CFF v1.0, 4 December 2003 (local adobe-tn5176-cff.txt)",
+          "locator": "TN 5177 3.1, 4.1 Note 4, 4.2 Notes 6-8; TN 5176 15/Table 23",
+          "rule": "Only the first stack-clearing operator may consume a leading width, interpreted as nominalWidthX plus the operand; absent widths use defaultWidthX.",
+          "verdict": "agrees; added all seven first stem/move operators and empty/default-width glyphs.",
+          "implementation": "agrees; added all seven first stem/move operators and empty/default-width glyphs.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-width-rmoveto",
+            "font/review-cff-width-hstem",
+            "font/review-cff-width-vstem",
+            "font/review-cff-width-hstemhm",
+            "font/review-cff-width-vstemhm",
+            "font/review-cff-width-endchar",
+            "font/review-cff-width-default",
+            "font/review-cff-mask-implicit-vstem",
+            "font/review-cff-width-hintmask",
+            "font/review-cff-width-cntrmask",
+            "font/review-cff-width-seac"
+          ]
+        },
+        {
+          "item": "Type 2 subroutine bias",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt); Adobe TN 5176, CFF v1.0, 4 December 2003 (local adobe-tn5176-cff.txt)",
+          "locator": "TN 5177 4.7; TN 5176 16, Tables 24-26",
+          "rule": "Use bias 107 below 1240 subrs, 1131 below 33900, and 32768 thereafter, independently for local/global arrays.",
+          "verdict": "agrees; added boundary vectors for both subroutine arrays.",
+          "implementation": "agrees; added boundary vectors for both subroutine arrays.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-bias-local-1239",
+            "font/review-cff-bias-local-1240",
+            "font/review-cff-bias-local-33899",
+            "font/review-cff-bias-local-33900",
+            "font/review-cff-bias-global-1239",
+            "font/review-cff-bias-global-1240",
+            "font/review-cff-bias-global-33899",
+            "font/review-cff-bias-global-33900"
+          ]
+        }
+      ]
     },
     {
       "id": "font-type1",
@@ -121,7 +965,7 @@
         "9.9.1",
         "9.9.2"
       ],
-      "status": "Type 1 PFA/PFB framing, eexec and charstring ciphers, subroutines, flex and seac",
+      "status": "Primary-reviewed Type 1 ciphers, static extraction and all chapter 6 charstring operators, standard flex/hint replacement and OtherSubr fallback; structural validation remains limited.",
       "tests": [
         "font/type1-pfa",
         "font/type1-pfb",
@@ -131,9 +975,49 @@
         "font/type1-custom-encoding",
         "font/type1-lexical",
         "font/type1-missing-notdef",
-        "font/type1-paint-type-ignored"
+        "font/type1-paint-type-ignored",
+        "font/review-type1-nesting-10",
+        "font/review-type1-nesting-11",
+        "font/review-type1-othersubr-fallback",
+        "font/review-type1-othersubr-stale",
+        "font/review-type1-div",
+        "font/review-type1-default-leniv",
+        "font/review-type1-matrix-procedure",
+        "font/review-type1-unencrypted",
+        "font/review-type1-closepoint",
+        "font/review-type1-width-first",
+        "font/review-type1-hlineto",
+        "font/review-type1-vlineto",
+        "font/review-type1-hvcurveto",
+        "font/review-type1-vhcurveto",
+        "font/review-type1-hmoveto",
+        "font/review-type1-vmoveto",
+        "font/review-type1-sbw",
+        "font/review-type1-hstem",
+        "font/review-type1-vstem",
+        "font/review-type1-hstem3",
+        "font/review-type1-vstem3",
+        "font/review-type1-dotsection",
+        "font/review-type1-stack-24",
+        "font/review-type1-stack-25",
+        "font/review-type1-trailing-endchar",
+        "font/review-type1-seac-bearings",
+        "font/review-type1-seac-nested",
+        "font/review-type1-missing-fonttype",
+        "font/review-type1-missing-matrix",
+        "font/review-type1-missing-header",
+        "font/review-type1-subrs-incomplete",
+        "font/review-type1-dict-count",
+        "font/review-type1-long-div",
+        "font/review-type1-leniv-0",
+        "font/review-type1-leniv-1",
+        "font/review-type1-seac-trailing",
+        "font/review-type1-length-65535",
+        "font/review-type1-length-65536",
+        "font/review-type1-close-line",
+        "font/review-type1-setcurrentpoint"
       ],
-      "gaps": "Static dictionary extraction; computed PostScript dictionaries and custom OtherSubrs are unsupported.",
+      "gaps": "Static extraction is not complete PostScript execution or structural validation. Hybrid/synthetic programs and nonhorizontal sbw advances are explicitly unsupported. PFB packaging and lenIV -1 require the unavailable TN 5040/5015.",
       "tables": [
         "124",
         "125"
@@ -144,20 +1028,401 @@
         "verdict": "agrees at the generic program layer; PDF embedding restrictions require caller enforcement",
         "implementation": "Requires .notdef and an encoding; returns the same geometry regardless of PaintType; supports standalone PFA hex and PFB as generic reader extensions.",
         "expectations": "Missing-.notdef rejection and PaintType-invariant outline follow the ISO text; hex/PFB successes are standalone-format tests, not valid-PDF claims.",
-        "outside": "PdfFont::load/program must validate FontFile Length1/2/3 boundaries and binary-only eexec; enforce subset naming and encoding fallback to .notdef at the PDF dictionary layer.",
+        "outside": "PDF embedding remains in pagura-text::program: integrated code checks segment-length sums and subtype compatibility; binary-only eexec and exact Length1/2/3 boundaries still need separate enforcement. Text generator callers can adopt conforming=True and regenerate text-owned fixtures before tightening full dictionary placement validation.",
         "pending": [
-          "Adobe Type 1 Font Format: PFA/PFB framing, ciphers, static dictionaries, charstrings, flex and hint replacement",
-          "Adobe Technical Note 5015, Type 1 Font Format Supplement: supplemented Type 1 programs"
+          "TN 5015 Type 1 Font Format Supplement: lenIV -1 and supplemented programs",
+          "TN 5040 Supporting Downloadable PostScript Fonts: PFB segment packaging"
         ],
-        "external_status": "pending primary-text review",
-        "evidence": "Analytic outlines and independently authored binary fixtures only; no differential run or external known-answer dataset has been used."
-      }
+        "external_status": "Type 1 book reviewed; only TN 5015/5040 pending primary-text review",
+        "evidence": "Primary-text comparison and independent analytic vectors, including ciphers with omitted/default and zero/one lenIV. No external known-answer dataset or differential result for Type 1.",
+        "choices": "Unhinted glyph-space API retains flex curves. seac follows the explicit origin wording of 3.1/6.4: component paths already contain their sidebearings, so adx/ady translates the accent origin without subtracting asb again; asb is checked against the accent bearing. Finite arithmetic is required. Unknown OtherSubrs use the mandatory no-PostScript fallback."
+      },
+      "format_verification": [
+        {
+          "item": "program structure",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "2.2-2.4; 10.1-10.3",
+          "rule": "Extract explicit font/Private/CharStrings values, static arrays and binary RD entries; FontType is 1 and a matrix and encoding are required.",
+          "verdict": "corrected, limited to static extraction: require header/FontType/matrix, enforce CharStrings capacity and complete unique Subrs assignments, accept numeric procedure-form matrices and unencrypted dictionaries.",
+          "implementation": "The static extractor does not execute or validate PostScript dictionary construction, definefont, RD/ND definitions or required-key placement. Hybrid/synthetic detection is explicitly unsupported; this is a known capability limit, not pending review.",
+          "expectations": "Font-owned vectors now place /Private explicitly; shared writer defaults retain their byte contract for the text fixtures, which still contain abbreviated static dictionaries. No claim that those abbreviations are executable conforming PostScript.",
+          "vectors": [
+            "font/review-type1-missing-header",
+            "font/review-type1-missing-fonttype",
+            "font/review-type1-missing-matrix",
+            "font/review-type1-subrs-incomplete",
+            "font/review-type1-dict-count",
+            "font/review-type1-matrix-procedure",
+            "font/review-type1-unencrypted"
+          ]
+        },
+        {
+          "item": "eexec and charstring decryption",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "7.1-7.3; 5.12",
+          "rule": "Update a 16-bit cipher state using ciphertext, factors 52845/22719 and seeds 55665/4330; discard four eexec bytes and lenIV charstring bytes, default four.",
+          "verdict": "agrees: cipher arithmetic and seeds were correct; added omitted-lenIV and explicit 0/1 coverage.",
+          "implementation": "agrees: cipher arithmetic and seeds were correct; added omitted-lenIV and explicit 0/1 coverage.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/type1-pfa",
+            "font/type1-hex",
+            "font/type1-pfb",
+            "font/review-type1-default-leniv",
+            "font/review-type1-leniv-0",
+            "font/review-type1-leniv-1"
+          ]
+        },
+        {
+          "item": "hsbw",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "sbx,wx set the sidebearing/current point and horizontal advance, once before outline commands.",
+          "verdict": "corrected; implementation and generated expectation agree",
+          "implementation": "corrected; implementation and generated expectation agree",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-width-first"
+          ]
+        },
+        {
+          "item": "sbw",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "sbx,sby,wx,wy set the bearing and advance; nonhorizontal advances are explicitly unsupported by this API.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-sbw"
+          ]
+        },
+        {
+          "item": "endchar",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Terminate the character after a width and without further charstring data.",
+          "verdict": "corrected; implementation and generated expectation agree",
+          "implementation": "corrected; implementation and generated expectation agree",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-trailing-endchar"
+          ]
+        },
+        {
+          "item": "closepath",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Close the subpath while preserving the charstring current point for later relative moves.",
+          "verdict": "corrected; implementation and independent expectations agree",
+          "implementation": "Keep the charstring current point on closepath; relative lines and curves can resume at the retained point through a new path contour.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-closepoint",
+            "font/review-type1-close-line",
+            "font/review-type1-setcurrentpoint"
+          ]
+        },
+        {
+          "item": "rmoveto",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Move relative to the current point by a coordinate pair.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/type1-pfa"
+          ]
+        },
+        {
+          "item": "hmoveto",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Move horizontally by the supplied displacement.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-hmoveto"
+          ]
+        },
+        {
+          "item": "vmoveto",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Move vertically by the supplied displacement.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-vmoveto"
+          ]
+        },
+        {
+          "item": "rlineto",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Append one relative line using two operands.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/type1-pfa"
+          ]
+        },
+        {
+          "item": "hlineto",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Append one horizontal line.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-hlineto"
+          ]
+        },
+        {
+          "item": "vlineto",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Append one vertical line.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-vlineto"
+          ]
+        },
+        {
+          "item": "rrcurveto",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Append a cubic using three successive relative coordinate pairs.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/type1-pfa"
+          ]
+        },
+        {
+          "item": "hvcurveto",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Append a cubic with horizontal then vertical end tangents.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-hvcurveto"
+          ]
+        },
+        {
+          "item": "vhcurveto",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Append a cubic with vertical then horizontal end tangents.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-vhcurveto"
+          ]
+        },
+        {
+          "item": "hstem",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Consume two horizontal stem operands without altering the unhinted path.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-hstem"
+          ]
+        },
+        {
+          "item": "vstem",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Consume two vertical stem operands without altering the unhinted path.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-vstem"
+          ]
+        },
+        {
+          "item": "hstem3",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Consume three horizontal stem pairs without altering the unhinted path.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-hstem3"
+          ]
+        },
+        {
+          "item": "vstem3",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Consume three vertical stem pairs without altering the unhinted path.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-vstem3"
+          ]
+        },
+        {
+          "item": "dotsection",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Consume no operands and affect hints alone.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-dotsection"
+          ]
+        },
+        {
+          "item": "div",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Replace two numbers by their quotient; byte 255 encodes a signed integer, not Type 2 fixed point.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-long-div"
+          ]
+        },
+        {
+          "item": "callsubr",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Call the unbiased Subrs entry and share operands, at most ten calls deep.",
+          "verdict": "corrected; implementation and generated expectation agree",
+          "implementation": "corrected; implementation and generated expectation agree",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-nesting-10"
+          ]
+        },
+        {
+          "item": "return",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Resume the calling subroutine context; a root return is invalid.",
+          "verdict": "agrees for unhinted outlines",
+          "implementation": "agrees for unhinted outlines",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-nesting-10"
+          ]
+        },
+        {
+          "item": "callothersubr",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Transfer the specified arguments to OtherSubrs, using standard semantics or the non-PostScript argument fallback.",
+          "verdict": "corrected; implementation and generated expectation agree",
+          "implementation": "corrected; implementation and generated expectation agree",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-othersubr-fallback"
+          ]
+        },
+        {
+          "item": "pop",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Retrieve OtherSubrs results immediately; later commands discard unused results.",
+          "verdict": "corrected; implementation and generated expectation agree",
+          "implementation": "corrected; implementation and generated expectation agree",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-othersubr-stale"
+          ]
+        },
+        {
+          "item": "setcurrentpoint",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4",
+          "rule": "Restore absolute coordinates from OtherSubrs without drawing a move.",
+          "verdict": "agrees; independent expectation agrees",
+          "implementation": "Update the charstring coordinate reference without emitting a path move; following relative commands use that reference to compute their endpoints.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/type1-pfa",
+            "font/review-type1-close-line",
+            "font/review-type1-setcurrentpoint"
+          ]
+        },
+        {
+          "item": "seac",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1-6.4; 3.1; TN 5177 Appendix C",
+          "rule": "Select component names through StandardEncoding and place the accent origin at adx,ady, checking component bearing/advance consistency.",
+          "verdict": "corrected; implementation and generated expectation agree",
+          "implementation": "corrected; implementation and generated expectation agree",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-seac-bearings"
+          ]
+        },
+        {
+          "item": "OtherSubrs 0/1/2 and flex",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "8; 8.3-8.4",
+          "rule": "Start flex, record a reference plus six curve points, emit two cubics, and return the absolute endpoint for pop/pop/setcurrentpoint.",
+          "verdict": "agrees at the unhinted API: retain the two curves; corrected vectors to use a horizontal shallow double curve with aligned joining controls.",
+          "implementation": "agrees at the unhinted API: retain the two curves; corrected vectors to use a horizontal shallow double curve with aligned joining controls.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/type1-pfa",
+            "font/type1-hex",
+            "font/type1-pfb"
+          ]
+        },
+        {
+          "item": "OtherSubr 3 and hint replacement",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "8.1; 8.4",
+          "rule": "Return the replacement hint subroutine number; the replacement subroutine contains hints and reserved Subrs 0-3 retain their specified roles.",
+          "verdict": "agrees for unhinted output; corrected the fixture that had used a drawing subroutine as hint replacement.",
+          "implementation": "agrees for unhinted output; corrected the fixture that had used a drawing subroutine as hint replacement.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/type1-hint-replacement"
+          ]
+        },
+        {
+          "item": "unrecognized OtherSubrs",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "8, page 69",
+          "rule": "Without a PostScript interpreter, successive pops return arg1, arg2 and so forth, discarding unused arguments.",
+          "verdict": "corrected: replaces Unsupported with bounded argument-order fallback; malformed standard 0-3 calls still fail.",
+          "implementation": "corrected: replaces Unsupported with bounded argument-order fallback; malformed standard 0-3 calls still fail.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-othersubr-fallback",
+            "font/review-type1-othersubr-stale"
+          ]
+        }
+      ]
     },
     {
       "id": "font-bounds",
       "reference": "project-policy",
       "clauses": [],
-      "status": "Bounded parsers and outlines; exact linear operator/segment budgets, branching-subroutine exhaustion, prefix and expanded format mutation tests",
+      "status": "Project budgets plus reviewed Type 1/Type 2 stack/depth/size limits; bounded mutation and linear executed-token/segment work.",
       "tests": [
         "font/truncated-directory",
         "font/recursive-component",
@@ -204,12 +1469,81 @@
         "expectations": "Hostile vectors and mutation tests assert project budgets and failure positions, independently of any ISO numeric limit.",
         "outside": "No shared API change required; dedicated font fuzz target remains future work.",
         "pending": [
-          "Adobe Type 1 Font Format: normative Type 1 operand stack limits",
-          "Adobe Technical Note 5177 and OpenType CFF2: normative operand/subroutine limits"
+          "OpenType CFF2: stack, subroutine and charstring limits"
         ],
-        "external_status": "pending primary-text review",
-        "evidence": "Project-policy fixtures measure exact operation/segment budgets for 64/128/256-line glyphs with and without subroutines; branching recursion and mutation tests exercise shared exhaustion. No claim that ISO 9.9 specifies numeric budgets."
-      }
+        "external_status": "Type 1/TN 5176/TN 5177 limits reviewed; CFF2 pending primary-text review",
+        "evidence": "Project-policy fixtures measure exact operation/segment budgets for 64/128/256-line glyphs with and without subroutines; branching recursion and mutation tests exercise shared exhaustion. No claim that ISO 9.9 specifies numeric budgets. Appendix B limits now have exact boundary vectors; Type 1 and CFF1 stack/depth limits have separate boundaries. Appendix B limits now have exact boundary vectors; Type 1 and CFF1 stack/depth limits have separate boundaries. Appendix B limits now have exact boundary vectors; Type 1 and CFF1 stack/depth limits have separate boundaries. Appendix B limits now have exact boundary vectors; Type 1 and CFF1 stack/depth limits have separate boundaries."
+      },
+      "format_verification": [
+        {
+          "item": "Type 1 limits",
+          "primary_text": "Adobe Type 1 Font Format (local adobe-type1.txt)",
+          "locator": "6.1; 6.4 callsubr; 8; 10",
+          "rule": "Use at most 24 operands, ten subroutine calls and 65535-byte tokens/charstrings.",
+          "verdict": "corrected: calls now use min(Limits.depth,10), operand stack min(value_nodes,24), RD lengths min(decoded_bytes,65535) and token lengths min(string_bytes,65535).",
+          "implementation": "corrected: calls now use min(Limits.depth,10), operand stack min(value_nodes,24), RD lengths min(decoded_bytes,65535) and token lengths min(string_bytes,65535).",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-type1-stack-24",
+            "font/review-type1-stack-25",
+            "font/review-type1-nesting-10",
+            "font/review-type1-nesting-11",
+            "font/review-type1-length-65535",
+            "font/review-type1-length-65536"
+          ]
+        },
+        {
+          "item": "CFF1 DICT limits",
+          "primary_text": "Adobe TN 5176, CFF v1.0, 4 December 2003 (local adobe-tn5176-cff.txt)",
+          "locator": "4; 5/Table 7",
+          "rule": "At most 48 operands precede a CFF1 DICT operator, and INDEX count is an unsigned 16-bit field.",
+          "verdict": "corrected: 48 replaces the CFF2 ceiling of 513; project values/objects/bytes/operations may impose lower bounds.",
+          "implementation": "corrected: 48 replaces the CFF2 ceiling of 513; project values/objects/bytes/operations may impose lower bounds.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-dict-stack-48",
+            "font/review-cff-dict-stack-49"
+          ]
+        },
+        {
+          "item": "Type 2 limits",
+          "primary_text": "Adobe TN 5177, 16 March 2000 (local adobe-tn5177-type2.txt)",
+          "locator": "Appendix B",
+          "rule": "Limit operands to 48, total stems to 96, subroutine nesting to ten, each charstring to 65535 bytes, subr arrays to 65536 entries and transient storage to 32 slots.",
+          "verdict": "corrected nesting and charstring length; stack/stem/transient caps already agree. CFF1 INDEX Card16 can represent only 65535 entries despite the interpreter appendix upper bound 65536.",
+          "implementation": "corrected nesting and charstring length; stack/stem/transient caps already agree. CFF1 INDEX Card16 can represent only 65535 entries despite the interpreter appendix upper bound 65536.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/review-cff-stack-48",
+            "font/review-cff-stack-49",
+            "font/review-cff-stems-96",
+            "font/review-cff-stems-97",
+            "font/review-cff-nesting-10",
+            "font/review-cff-nesting-11",
+            "font/review-cff-length-65535",
+            "font/review-cff-length-65536",
+            "font/review-cff-transient"
+          ]
+        },
+        {
+          "item": "expanded work",
+          "primary_text": "ADR 0009; project Limits",
+          "locator": "project policy, independent of the format ceilings",
+          "rule": "Charge each executed token and emitted/copied segment to shared glyph work, including subroutine and composite expansion.",
+          "verdict": "agrees; branching fixture now stays within the normative ten-call depth so it actually exercises operation-budget exhaustion.",
+          "implementation": "agrees; branching fixture now stays within the normative ten-call depth so it actually exercises operation-budget exhaustion.",
+          "expectations": "Independent generated vectors agree with this rule.",
+          "vectors": [
+            "font/cff-linear-64",
+            "font/cff-linear-128",
+            "font/cff-linear-256",
+            "font/cff-linear-subr-64",
+            "font/cff-linear-subr-128",
+            "font/cff-linear-subr-256",
+            "font/cff-branching-subrs"
+          ]
+        }
+      ]
     }
   ]
 }

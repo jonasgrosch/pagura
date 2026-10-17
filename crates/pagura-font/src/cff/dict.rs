@@ -1,14 +1,19 @@
-//! Checked CFF DICT evaluation; TN 5176 and CFF2 primary review pending.
+//! CFF DICT evaluation (TN 5176 section 4); CFF2 extensions await primary review.
 use crate::read::{Read, bad, cap};
 use pagura_core::{Limits, Result};
 use pagura_raster::Transform;
 use std::collections::BTreeMap;
+
+mod validation;
 
 pub(super) struct Dict {
     entries: BTreeMap<u16, Vec<f64>>,
     at: usize,
 }
 impl Dict {
+    pub(super) fn check(&self, private: bool, strings: usize) -> Result<()> {
+        self.validate(private, strings)
+    }
     pub fn values(&self, op: u16) -> Option<&[f64]> {
         self.entries.get(&op).map(Vec::as_slice)
     }
@@ -71,7 +76,7 @@ fn real_number(r: &mut Read<'_>) -> Result<f64> {
     let mut text = String::new();
     loop {
         let byte = r.u8()?;
-        for nibble in [byte >> 4, byte & 15] {
+        for (i, nibble) in [byte >> 4, byte & 15].into_iter().enumerate() {
             cap(text.len(), 64, r.at())?;
             match nibble {
                 0..=9 => text.push(char::from(b'0' + nibble)),
@@ -80,6 +85,9 @@ fn real_number(r: &mut Read<'_>) -> Result<f64> {
                 12 => text.push_str("E-"),
                 14 => text.push('-'),
                 15 => {
+                    if i == 0 && byte & 15 != 15 {
+                        return Err(bad(r.at() - 1, "invalid CFF real padding"));
+                    }
                     return text
                         .parse::<f64>()
                         .ok()
@@ -92,14 +100,23 @@ fn real_number(r: &mut Read<'_>) -> Result<f64> {
     }
 }
 pub(super) fn parse(r: Read<'_>, limits: &Limits) -> Result<Dict> {
-    parse_inner(r, limits, None)
+    parse_inner(r, limits, None, false)
 }
 
 pub(super) fn parse_private(r: Read<'_>, limits: &Limits, variations: &[Vec<f64>]) -> Result<Dict> {
-    parse_inner(r, limits, Some(variations))
+    parse_inner(r, limits, Some(variations), true)
 }
 
-fn parse_inner(mut r: Read<'_>, limits: &Limits, variations: Option<&[Vec<f64>]>) -> Result<Dict> {
+pub(super) fn parse_cff2(r: Read<'_>, limits: &Limits) -> Result<Dict> {
+    parse_inner(r, limits, None, true)
+}
+
+fn parse_inner(
+    mut r: Read<'_>,
+    limits: &Limits,
+    variations: Option<&[Vec<f64>]>,
+    cff2: bool,
+) -> Result<Dict> {
     let mut entries = BTreeMap::new();
     let mut stack = Vec::new();
     let mut work = 0;
@@ -109,7 +126,11 @@ fn parse_inner(mut r: Read<'_>, limits: &Limits, variations: Option<&[Vec<f64>]>
         cap(work, limits.operations, r.at())?;
         let byte = r.u8()?;
         if byte >= 28 {
-            cap(stack.len() + 1, 513.min(limits.value_nodes), r.at())?;
+            cap(
+                stack.len() + 1,
+                if cff2 { 513 } else { 48 }.min(limits.value_nodes),
+                r.at(),
+            )?;
             stack.push(number(&mut r, byte, true)?);
         } else {
             let op = if byte == 12 {
@@ -134,6 +155,12 @@ fn parse_inner(mut r: Read<'_>, limits: &Limits, variations: Option<&[Vec<f64>]>
                     blend(&mut stack, vsindex, variations, r.at())?;
                     continue;
                 }
+            }
+            if !cff2 && matches!(op, 22..=27) {
+                return Err(bad(r.at(), "reserved CFF DICT operator"));
+            }
+            if matches!(op, 7 | 9) && !entries.contains_key(&(op - 1)) {
+                return Err(bad(r.at(), "CFF blue arrays out of order"));
             }
             if entries.insert(op, std::mem::take(&mut stack)).is_some() {
                 return Err(bad(r.at(), "duplicate CFF DICT operator"));

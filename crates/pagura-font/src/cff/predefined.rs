@@ -1,4 +1,4 @@
-//! Canonical CFF identifiers, pending primary-text review of TN 5176.
+//! CFF identifiers checked against TN 5176 appendices A-C.
 //!
 //! These are format data, not glyph outlines or executable font programs.
 
@@ -41,8 +41,7 @@ pub(super) fn expert_sid(code: u8) -> Option<u16> {
         87 => 109,
         88 => 110,
         89..=91 => u16::from(code) + 178,
-        // The unused slot at 92 also agrees with read-fonts 0.41.0's
-        // behavior; this secondary check does not replace TN 5176 review.
+        // TN 5176 Appendix B leaves code 92 unencoded.
         93..=126 => u16::from(code) + 177,
         161..=163 => u16::from(code) + 143,
         166..=170 => u16::from(code) + 141,

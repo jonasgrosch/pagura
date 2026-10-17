@@ -36,6 +36,19 @@ struct State {
     hints: usize,
     seac: Option<[f64; 4]>,
     vsindex: usize,
+    hint_phase: HintPhase,
+    random: u32,
+}
+// TN 5177 section 3.1 orders declarations before masks and path construction.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum HintPhase {
+    Horizontal,
+    HorizontalMask,
+    Vertical,
+    VerticalMask,
+    Counter,
+    Mask,
+    Path,
 }
 #[derive(PartialEq)]
 enum Flow {
@@ -78,6 +91,8 @@ fn load(
         open: false,
         width: None,
         hints: 0,
+        hint_phase: HintPhase::Horizontal,
+        random: private.random_seed,
         seac: None,
         // Inherited selection agrees with skrifa 0.46.2; CFF2's primary
         // text remains pending review (see the requirement registry).
@@ -94,6 +109,9 @@ fn load(
     )?;
     state.close(work, range.start)?;
     if let Some([dx, dy, base, accent]) = state.seac {
+        if depth != 0 {
+            return Err(bad(range.start, "nested seac composite"));
+        }
         if font.cids.is_some() {
             return Err(bad(range.start, "seac in CID-keyed CFF"));
         }
@@ -233,7 +251,14 @@ fn run(
     state: &mut State,
     work: &mut Work<'_>,
 ) -> Result<Flow> {
-    cap(depth, work.limits.depth.min(64), r.at())?;
+    cap(
+        depth,
+        work.limits.depth.min(if font.cff2 { 64 } else { 10 }),
+        r.at(),
+    )?;
+    if !font.cff2 {
+        cap(r.data.len(), 65535, r.at())?;
+    }
     while r.pos < r.data.len() {
         let at = r.at();
         work.operation(at)?;
@@ -283,6 +308,9 @@ fn run(
                     work,
                 )? == Flow::End
                 {
+                    if r.pos != r.data.len() {
+                        return Err(bad(r.at(), "data after charstring end"));
+                    }
                     return Ok(Flow::End);
                 }
             }
@@ -294,14 +322,7 @@ fn run(
             }
             12 => escape(r.u8()?, state, work, at)?,
             14 if !font.cff2 => {
-                state.width(private, matches!(state.stack.len(), 1 | 5), at)?;
-                match state.stack.as_slice() {
-                    [] => {}
-                    [dx, dy, base, accent] => state.seac = Some([*dx, *dy, *base, *accent]),
-                    _ => return Err(bad(at, "invalid endchar operands")),
-                }
-                state.stack.clear();
-                return Ok(Flow::End);
+                return finish(private, state, &r, at);
             }
             15 if font.cff2 => {
                 state.count(1, at)?;
@@ -441,6 +462,7 @@ fn draw(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
 
 fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
     match op {
+        0 => {} // TN 5177 Appendix C: deprecated dotsection is a no-op.
         3 | 4 | 10 | 11 | 12 | 15 | 24 => {
             let b = s.pop(at)?;
             let a = s.pop(at)?;
@@ -489,7 +511,11 @@ fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
             let a = s.pop(at)?;
             s.stack.push(if v1 <= v2 { a } else { b });
         }
-        23 => s.stack.push(0.5), // An allowed deterministic value in the specified (0, 1] range.
+        23 => {
+            // TN 5177 4.4 specifies (0,1]; the algorithm is implementation policy.
+            s.random = s.random.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            s.stack.push((f64::from(s.random) + 1.0) / 4_294_967_296.0);
+        }
         27 => {
             let a = s.pop(at)?;
             s.stack.extend([a, a]);
@@ -502,7 +528,9 @@ fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
         29 => {
             let index = s.pop(at)?.max(0.0);
             let index = dict::integer(index, at)?;
-            let index = index.min(s.stack.len().saturating_sub(1));
+            if index >= s.stack.len() {
+                return Err(bad(at, "charstring index outside stack"));
+            }
             let value = *s
                 .stack
                 .iter()
@@ -514,12 +542,11 @@ fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
         30 => {
             let shift = s.pop(at)?;
             let count = dict::integer(s.pop(at)?, at)?;
-            if count == 0
-                || count > s.stack.len()
-                || shift.fract() != 0.0
-                || shift.abs() > f64::from(i32::MAX)
-            {
+            if count > s.stack.len() || shift.fract() != 0.0 || shift.abs() > f64::from(i32::MAX) {
                 return Err(bad(at, "invalid charstring roll"));
+            }
+            if count == 0 {
+                return Ok(());
             }
             let rotation = dict::integer(shift.rem_euclid(count as f64), at)?;
             let start = s.stack.len() - count;
@@ -577,11 +604,41 @@ fn hints(
     if !state.stack.len().is_multiple_of(2) {
         return Err(bad(at, "odd charstring hint operands"));
     }
+    let mask = matches!(byte, 19 | 20);
+    let phase = match byte {
+        1 => HintPhase::Horizontal,
+        18 => HintPhase::HorizontalMask,
+        3 => HintPhase::Vertical,
+        23 => HintPhase::VerticalMask,
+        20 => HintPhase::Counter,
+        _ => HintPhase::Mask,
+    };
+    if !cff2 {
+        if (!mask || byte == 20) && phase < state.hint_phase
+            || state.hint_phase >= HintPhase::Counter && !state.stack.is_empty()
+        {
+            return Err(bad(at, "charstring hints out of order"));
+        }
+        state.hint_phase = state.hint_phase.max(phase);
+    }
+    if !mask && state.stack.is_empty() {
+        return Err(bad(at, "charstring stem operator without operands"));
+    }
     state.hints += state.stack.len() / 2;
     cap(state.hints, 96, at)?;
     state.stack.clear();
-    if matches!(byte, 19 | 20) {
-        r.skip(state.hints.div_ceil(8))?;
+    if mask {
+        if state.hints == 0 {
+            return Err(bad(at, "charstring mask without stems"));
+        }
+        let bytes = r.take(state.hints.div_ceil(8))?;
+        let unused = (8 - state.hints % 8) % 8;
+        if bytes
+            .last()
+            .is_some_and(|last| last & ((1 << unused) - 1) != 0)
+        {
+            return Err(bad(r.at() - 1, "nonzero charstring mask padding"));
+        }
     }
     Ok(())
 }
@@ -606,6 +663,21 @@ fn move_operator(
         _ => (state.stack[0], state.stack[1]),
     };
     state.stack.clear();
+    state.hint_phase = HintPhase::Path;
     state.moveto(dx, dy, work, at)?;
     Ok(())
+}
+
+fn finish(private: &Private, state: &mut State, r: &Read<'_>, at: usize) -> Result<Flow> {
+    state.width(private, matches!(state.stack.len(), 1 | 5), at)?;
+    match state.stack.as_slice() {
+        [] => {}
+        [dx, dy, base, accent] => state.seac = Some([*dx, *dy, *base, *accent]),
+        _ => return Err(bad(at, "invalid endchar operands")),
+    }
+    state.stack.clear();
+    if r.pos != r.data.len() {
+        return Err(bad(r.at(), "data after charstring endchar"));
+    }
+    Ok(Flow::End)
 }

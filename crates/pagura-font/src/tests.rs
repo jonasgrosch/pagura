@@ -273,6 +273,10 @@ fn truncated_prefixes_never_panic() {
         ("cff2", FontFormat::OpenType),
         ("type1-pfa", FontFormat::Type1),
         ("type1-pfb", FontFormat::Type1),
+        ("review-cff-mask-implicit-vstem", FontFormat::Cff),
+        ("review-cff-dict-stack-48", FontFormat::Cff),
+        ("review-type1-othersubr-fallback", FontFormat::Type1),
+        ("review-type1-seac-bearings", FontFormat::Type1),
     ] {
         let bytes = pagura_testkit::fixture("font", &format!("{name}.font"));
         for length in 0..bytes.len() {
@@ -353,6 +357,10 @@ fn mutated_programs_respect_small_budgets() {
         ("cff2-default-blend", FontFormat::OpenType),
         ("truetype-cmap4", FontFormat::TrueType),
         ("type1-pfb", FontFormat::Type1),
+        ("review-cff-mask-implicit-vstem", FontFormat::Cff),
+        ("review-cff-dict-stack-48", FontFormat::Cff),
+        ("review-type1-othersubr-fallback", FontFormat::Type1),
+        ("review-type1-seac-bearings", FontFormat::Type1),
     ] {
         let bytes = pagura_testkit::fixture("font", &format!("{name}.font"));
         for index in (0..bytes.len()).step_by(3) {
@@ -553,4 +561,157 @@ fn expected_parse(
         return None;
     }
     Some(parsed.unwrap_or_else(|e| panic!("{name}: {e}")))
+}
+
+#[test]
+fn primary_text_cff_vectors_0() {
+    for name in [
+        "review-cff-width-rmoveto",
+        "review-cff-width-hmoveto",
+        "review-cff-width-vmoveto",
+        "review-cff-width-hstem",
+        "review-cff-width-vstem",
+        "review-cff-width-hstemhm",
+        "review-cff-width-vstemhm",
+        "review-cff-width-endchar",
+        "review-cff-width-default",
+        "review-cff-dotsection",
+        "review-cff-roll-zero",
+        "review-cff-index-negative",
+        "review-cff-index-outside",
+        "review-cff-rlineto",
+        "review-cff-hlineto",
+        "review-cff-vlineto",
+        "review-cff-rrcurveto",
+        "review-cff-rcurveline",
+        "review-cff-rlinecurve",
+        "review-cff-vvcurveto",
+        "review-cff-hhcurveto",
+        "review-cff-hvcurveto",
+        "review-cff-vhcurveto",
+        "review-cff-flex",
+        "review-cff-hflex",
+        "review-cff-hflex1",
+        "review-cff-flex1-x",
+        "review-cff-flex1-y",
+        "review-cff-abs",
+        "review-cff-add",
+        "review-cff-sub",
+        "review-cff-div",
+        "review-cff-neg",
+        "review-cff-mul",
+        "review-cff-sqrt",
+        "review-cff-and",
+        "review-cff-or",
+        "review-cff-not",
+        "review-cff-eq",
+        "review-cff-ifelse",
+        "review-cff-drop",
+        "review-cff-dup",
+        "review-cff-exch",
+        "review-cff-roll",
+        "review-cff-transient",
+        "review-cff-bias-local-1239",
+        "review-cff-bias-global-1239",
+        "review-cff-bias-local-1240",
+        "review-cff-bias-global-1240",
+        "review-cff-bias-local-33899",
+        "review-cff-bias-global-33899",
+        "review-cff-bias-local-33900",
+        "review-cff-bias-global-33900",
+        "review-cff-nesting-10",
+        "review-cff-nesting-11",
+        "review-cff-stack-48",
+        "review-cff-dict-stack-48",
+        "review-cff-stack-49",
+        "review-cff-dict-stack-49",
+        "review-cff-stems-96",
+    ] {
+        vector(name, FontFormat::Cff);
+    }
+}
+
+#[test]
+fn primary_text_cff_vectors_1() {
+    for name in [
+        "review-cff-stems-97",
+        "review-cff-mask-padding",
+        "review-cff-mask-no-stems",
+        "review-cff-late-stems",
+        "review-cff-hint-order",
+        "review-cff-mask-implicit-vstem",
+        "review-cff-length-65535",
+        "review-cff-length-65536",
+        "review-cff-private-required",
+        "review-cff-header-extension",
+        "review-cff-reserved-dict",
+        "review-cff-wrong-dict-domain",
+        "review-cff-blue-order",
+        "review-cff-random-0",
+        "review-cff-random-7",
+        "review-cff-seac-nested",
+        "review-cff-trailing-endchar",
+        "review-cff-cid-format4",
+        "review-cff-hint-empty",
+        "review-cff-supplement-unencoded",
+        "review-cff-empty-encoding-format",
+        "review-cff-fixed",
+        "review-cff-real",
+        "review-cff-real-padding",
+        "review-cff-width-hintmask",
+        "review-cff-width-cntrmask",
+        "review-cff-cid-count",
+        "review-cff-width-seac",
+        "review-cff-flex1-equal",
+    ] {
+        vector(name, FontFormat::Cff);
+    }
+}
+
+#[test]
+fn primary_text_type1_vectors_0() {
+    for name in [
+        "review-type1-nesting-10",
+        "review-type1-nesting-11",
+        "review-type1-othersubr-fallback",
+        "review-type1-othersubr-stale",
+        "review-type1-div",
+        "review-type1-default-leniv",
+        "review-type1-matrix-procedure",
+        "review-type1-unencrypted",
+        "review-type1-closepoint",
+        "review-type1-close-line",
+        "review-type1-setcurrentpoint",
+        "review-type1-width-first",
+        "review-type1-hlineto",
+        "review-type1-vlineto",
+        "review-type1-hvcurveto",
+        "review-type1-vhcurveto",
+        "review-type1-hmoveto",
+        "review-type1-vmoveto",
+        "review-type1-sbw",
+        "review-type1-hstem",
+        "review-type1-vstem",
+        "review-type1-hstem3",
+        "review-type1-vstem3",
+        "review-type1-dotsection",
+        "review-type1-stack-24",
+        "review-type1-stack-25",
+        "review-type1-trailing-endchar",
+        "review-type1-seac-bearings",
+        "review-type1-seac-nested",
+        "review-type1-missing-fonttype",
+        "review-type1-missing-matrix",
+        "review-type1-missing-header",
+        "review-type1-subrs-incomplete",
+        "review-type1-dict-count",
+        "review-type1-long-div",
+        "review-type1-leniv-0",
+        "review-type1-leniv-1",
+        "review-type1-seac-trailing",
+        "review-type1-length-65535",
+        "review-type1-length-65536",
+    ] {
+        vector(name, FontFormat::Type1);
+    }
 }

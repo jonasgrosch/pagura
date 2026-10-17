@@ -43,6 +43,9 @@ pub(super) fn sid(
     data: &[u8],
     limits: &Limits,
 ) -> Result<Name> {
+    if sid >= 65000 {
+        return Err(bad(0, "reserved CFF SID"));
+    }
     if sid < 391 {
         let value = if sid < 229 {
             ISO_ADOBE.split_ascii_whitespace().nth(usize::from(sid))
@@ -92,6 +95,9 @@ pub(super) fn encoding(
     let mut r = table.tail(offset)?;
     let format = r.u8()?;
     let count = usize::from(r.u8()?);
+    if !matches!(format & 127, 0 | 1) {
+        return Err(bad(r.at(), "invalid CFF encoding format"));
+    }
     let mut gid = 1;
     for _ in 0..count {
         let first = r.u8()?;
@@ -119,7 +125,7 @@ pub(super) fn encoding(
         for _ in 0..supplements {
             let code = usize::from(r.u8()?);
             let sid = r.u16()?;
-            if !charset.contains(&sid) || result[code].is_some() {
+            if !charset[1..gid].contains(&sid) || result[code].is_some() {
                 return Err(bad(r.at(), "invalid CFF encoding supplement"));
             }
             result[code] = Some(self::sid(sid, strings, data, limits)?);

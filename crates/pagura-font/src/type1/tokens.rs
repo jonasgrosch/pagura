@@ -53,7 +53,7 @@ impl<'a> Tokens<'a> {
                     self.pos += 1;
                 }
             }
-            cap(self.pos - start, self.limits.string_bytes, start)?;
+            cap(self.pos - start, self.limits.string_bytes.min(65535), start)?;
             return Ok(Some(&self.data[start..self.pos]));
         }
     }
@@ -110,7 +110,7 @@ impl<'a> Tokens<'a> {
     }
     pub fn binary(&mut self) -> Result<&'a [u8]> {
         let size = self.integer()?;
-        cap(size, self.limits.decoded_bytes, self.pos)?;
+        cap(size, self.limits.decoded_bytes.min(65535), self.pos)?;
         if !matches!(self.required()?, b"RD" | b"-|") {
             return Err(super::unsupported(
                 self.pos,
@@ -133,12 +133,20 @@ impl<'a> Tokens<'a> {
         Ok(bytes)
     }
     pub fn matrix(&mut self) -> Result<Transform> {
-        if self.required()? != b"[" {
+        while self.data.get(self.pos).is_some_and(|b| white(*b)) {
+            self.pos += 1;
+        }
+        let close = if self.data.get(self.pos) == Some(&b'{') {
+            self.pos += 1;
+            b"}".as_slice()
+        } else if self.required()? == b"[" {
+            b"]".as_slice()
+        } else {
             return Err(super::unsupported(
                 self.pos,
                 "computed Type 1 FontMatrix is not implemented",
             ));
-        }
+        };
         let mut numbers = [0.0; 6];
         for n in &mut numbers {
             *n = std::str::from_utf8(self.required()?)
@@ -147,7 +155,7 @@ impl<'a> Tokens<'a> {
                 .filter(|n| n.is_finite())
                 .ok_or_else(|| bad(self.pos, "invalid Type 1 matrix number"))?;
         }
-        if self.required()? != b"]" {
+        if self.required()? != close {
             return Err(bad(self.pos, "invalid Type 1 matrix size"));
         }
         let [a, b, c, d, e, f] = numbers;

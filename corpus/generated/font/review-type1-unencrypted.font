@@ -1,0 +1,24 @@
+%!PS-AdobeFont-1.0: Fixture 1.0
+/FontType 1 def
+/FontMatrix [0.001 0 0 0.001 0 0] def
+/Encoding StandardEncoding def
+/Private 16 dict dup begin
+/BlueShift 11 def
+/lenIV 4 def
+/Subrs 6 array
+dup 0 15 RD ¿1p|=-“D\âR NP
+dup 1 9 RD ¿1py¼öUz NP
+dup 2 9 RD ¿1py½Äi NP
+dup 3 5 RD ¿1pù NP
+dup 4 8 RD ¿1py¥o NP
+dup 5 15 RD ¿1pŠ.†´ÓŠŸèd NP
+/CharStrings 6 dict dup begin
+/.notdef 9 RD ¿1pyÈK’[ ND
+/A 15 RD ¿1pyÈK’ŞõAÖ"ı ND
+/curve 22 RD ¿1pyÈK’ŞõZòˆë”Ó6İ ND
+/Aacute 17 RD ¿1pyÈK’Ş×#W>Šd ND
+/acute 15 RD ¿1pyÈK’ŞõNë÷} ND
+/flex 78 RD ¿1pyÈK’ŞõZ‰%Êó'ß“÷¾N|´vL	‡q•ujê5ûÕ¤|¼P‡½‰¿_…4²ê
+¨¾(w\3:–L·dğ[ØLO©k|tüoÆj ND
+end
+currentfile closefile

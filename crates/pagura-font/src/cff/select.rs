@@ -1,4 +1,4 @@
-//! FDSelect formats 0, 3 and 4; external layouts pending primary-text review.
+//! FDSelect 0/3 (TN 5176 section 19); format 4 awaits OpenType primary review.
 use crate::read::{Read, bad, cap};
 use pagura_core::{Limits, Result};
 
@@ -7,6 +7,7 @@ pub(super) fn parse(
     glyphs: usize,
     fonts: usize,
     limits: &Limits,
+    cff2: bool,
 ) -> Result<Vec<usize>> {
     cap(
         glyphs,
@@ -23,7 +24,7 @@ pub(super) fn parse(
                 result.push(usize::from(r.u8()?));
             }
         }
-        3 | 4 => ranges(&mut r, format, glyphs, &mut result, limits)?,
+        3 | 4 if format == 3 || cff2 => ranges(&mut r, format, glyphs, &mut result, limits)?,
         _ => return Err(bad(r.at(), "invalid FDSelect format")),
     }
     if result.iter().any(|&fd| fd >= fonts) {

@@ -28,6 +28,7 @@ struct State {
     path: PathBuilder,
     point: Point,
     width: Option<f64>,
+    bearing: Point,
     open: bool,
     seac: Option<[f64; 5]>,
     flex: Option<Vec<Point>>,
@@ -39,7 +40,7 @@ enum Flow {
 }
 
 pub(super) fn glyph(font: &Type1, glyph: GlyphId, limits: &Limits) -> Result<(Path, f64)> {
-    load(
+    let (path, width, _) = load(
         font,
         glyph,
         0,
@@ -48,9 +49,15 @@ pub(super) fn glyph(font: &Type1, glyph: GlyphId, limits: &Limits) -> Result<(Pa
             operations: 0,
             segments: 0,
         },
-    )
+    )?;
+    Ok((path, width))
 }
-fn load(font: &Type1, glyph: GlyphId, depth: usize, work: &mut Work<'_>) -> Result<(Path, f64)> {
+fn load(
+    font: &Type1,
+    glyph: GlyphId,
+    depth: usize,
+    work: &mut Work<'_>,
+) -> Result<(Path, f64, Point)> {
     cap(depth, work.limits.depth.min(64), 0)?;
     let index = usize::try_from(glyph.0).map_err(|_| bad(0, "glyph index overflow"))?;
     let bytes = font
@@ -63,6 +70,7 @@ fn load(font: &Type1, glyph: GlyphId, depth: usize, work: &mut Work<'_>) -> Resu
         path: PathBuilder::new(),
         point: Point::default(),
         width: None,
+        bearing: Point::default(),
         open: false,
         seac: None,
         flex: None,
@@ -73,9 +81,12 @@ fn load(font: &Type1, glyph: GlyphId, depth: usize, work: &mut Work<'_>) -> Resu
     }
     s.close(work, bytes.len())?;
     if let Some([asb, dx, dy, base, accent]) = s.seac {
-        for (code, transform) in [
-            (base, Transform::IDENTITY),
-            (accent, Transform::translate(dx - asb, dy)),
+        if depth != 0 {
+            return Err(bad(0, "nested Type 1 seac composite"));
+        }
+        for (code, transform, is_base) in [
+            (base, Transform::IDENTITY, true),
+            (accent, Transform::translate(dx, dy), false),
         ] {
             let code =
                 u8::try_from(integer(code, 0)?).map_err(|_| bad(0, "invalid Type 1 seac code"))?;
@@ -84,7 +95,12 @@ fn load(font: &Type1, glyph: GlyphId, depth: usize, work: &mut Work<'_>) -> Resu
             let glyph = font
                 .name(name.as_bytes())
                 .ok_or_else(|| bad(0, "missing Type 1 seac component"))?;
-            let (path, _) = load(font, glyph, depth + 1, work)?;
+            let (path, width, bearing) = load(font, glyph, depth + 1, work)?;
+            if is_base && (Some(width) != s.width || bearing != s.bearing)
+                || !is_base && bearing.x != asb
+            {
+                return Err(bad(0, "inconsistent Type 1 seac metrics"));
+            }
             for &segment in path.segments() {
                 work.segment(0)?;
                 match segment {
@@ -112,6 +128,7 @@ fn load(font: &Type1, glyph: GlyphId, depth: usize, work: &mut Work<'_>) -> Resu
         s.path.finish(),
         s.width
             .ok_or_else(|| bad(0, "Type 1 charstring has no width"))?,
+        s.bearing,
     ))
 }
 #[expect(
@@ -164,10 +181,22 @@ impl State {
         }
         Ok(())
     }
-    fn line(&mut self, dx: f64, dy: f64, w: &mut Work<'_>, at: usize) -> Result<()> {
-        if !self.open || self.flex.is_some() {
-            return Err(bad(at, "Type 1 line without an open contour"));
+    // Type 1 6.4 keeps the charstring current point across closepath.
+    // PathBuilder uses PDF close semantics, so a resumed contour must
+    // explicitly begin at the retained Type 1 point.
+    fn resume(&mut self, w: &mut Work<'_>, at: usize) -> Result<()> {
+        if self.flex.is_some() || self.path.current_point().is_none() {
+            return Err(bad(at, "Type 1 drawing without a current path"));
         }
+        if !self.open {
+            w.segment(at)?;
+            self.path.move_to(self.point);
+            self.open = true;
+        }
+        Ok(())
+    }
+    fn line(&mut self, dx: f64, dy: f64, w: &mut Work<'_>, at: usize) -> Result<()> {
+        self.resume(w, at)?;
         let p = self.relative(dx, dy, at)?;
         w.segment(at)?;
         self.path
@@ -176,9 +205,7 @@ impl State {
         Ok(())
     }
     fn curve(&mut self, d: &[f64], w: &mut Work<'_>, at: usize) -> Result<()> {
-        if !self.open || self.flex.is_some() {
-            return Err(bad(at, "Type 1 curve without an open contour"));
-        }
+        self.resume(w, at)?;
         let a = self.relative(d[0], d[1], at)?;
         let b = self.relative(d[2], d[3], at)?;
         let c = self.relative(d[4], d[5], at)?;
@@ -196,7 +223,7 @@ fn run(
     s: &mut State,
     w: &mut Work<'_>,
 ) -> Result<Flow> {
-    cap(depth, w.limits.depth.min(64), r.at())?;
+    cap(depth, w.limits.depth.min(10), r.at())?;
     while r.pos < r.data.len() {
         let at = r.at();
         w.operations = w.operations.saturating_add(1);
@@ -212,6 +239,12 @@ fn run(
             };
             s.stack.push(n);
             continue;
+        }
+        if s.width.is_none() && !matches!(byte, 10 | 12 | 13) {
+            return Err(bad(at, "Type 1 width must precede outline operators"));
+        }
+        if byte != 12 || r.data.get(r.pos) != Some(&17) {
+            s.results.clear();
         }
         match byte {
             1 | 3 => {
@@ -240,6 +273,9 @@ fn run(
                     .get(index)
                     .ok_or_else(|| bad(at, "Type 1 subroutine index out of range"))?;
                 if run(font, Read::new(bytes, 0), depth + 1, s, w)? == Flow::End {
+                    if r.pos != r.data.len() {
+                        return Err(bad(r.at(), "data after Type 1 character end"));
+                    }
                     return Ok(Flow::End);
                 }
             }
@@ -251,6 +287,9 @@ fn run(
             }
             12 => {
                 if escape(r.u8()?, s, w, at)? {
+                    if r.pos != r.data.len() {
+                        return Err(bad(r.at(), "data after Type 1 seac"));
+                    }
                     return Ok(Flow::End);
                 }
             }
@@ -260,11 +299,15 @@ fn run(
                     return Err(bad(at, "duplicate Type 1 width"));
                 }
                 s.point = Point::new(s.stack[0], 0.0);
+                s.bearing = s.point;
                 s.width = Some(s.stack[1]);
                 s.stack.clear();
             }
             14 => {
                 s.count(0, at)?;
+                if r.pos != r.data.len() {
+                    return Err(bad(r.at(), "data after Type 1 endchar"));
+                }
                 return Ok(Flow::End);
             }
             _ => return Err(bad(at, "invalid Type 1 charstring operator")),
@@ -292,6 +335,9 @@ fn draw(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
     Ok(())
 }
 fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<bool> {
+    if s.width.is_none() && !matches!(op, 7 | 12) {
+        return Err(bad(at, "Type 1 width must be the first command"));
+    }
     match op {
         0 => s.count(0, at)?, // dotsection affects hints only.
         1 | 2 => {
@@ -316,6 +362,7 @@ fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<bool> {
                 ));
             }
             s.point = Point::new(s.stack[0], s.stack[1]);
+            s.bearing = s.point;
             s.width = Some(s.stack[2]);
             s.stack.clear();
         }
@@ -384,12 +431,8 @@ fn othersubr(s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
         (3, [_]) => {
             s.results.extend(args);
         } // Hint replacement returns the subroutine number.
-        _ => {
-            return Err(unsupported(
-                at,
-                "Type 1 OtherSubrs procedure is not implemented",
-            ));
-        }
+        (0..=3, _) => return Err(bad(at, "invalid standard Type 1 OtherSubr arguments")),
+        _ => s.results.extend(args.into_iter().rev()), // Type 1 chapter 8 fallback, arg1 first.
     }
     cap(s.results.len(), 24.min(w.limits.value_nodes), at)
 }
