@@ -51,6 +51,7 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   replace unusable glyphs with empty paths; page callers still need to forward
   these diagnostics.
 - `syntax.duplicate-key`: the last value of a repeated key wins.
+- `image.data-short`, `image.data-excess` (8.9.3, 8.9.5.1): zero-fill missing packed bytes or ignore the excess suffix; `jpeg.entropy-padding` (T.81 B.1.1.5, E.1.4): ignore non-one unused entropy bits; `jpeg.adobe-marker` (7.4.8, Table 13): use the known APP14 prefix and ignore its extension (Adobe TN 5116 review pending); `ccitt.eob-padding` (Table 11; T.6 2.4.1.1-2): ignore up to seven zero fill bits before a byte-aligned Group 4 EOFB; `ccitt.damaged-row` (Table 11): substitute the preceding good row or white within the declared tolerance.
 - `filter.truncated`, `filter.checksum-mismatch`, `filter.trailing-data`,
   `filter.raw-deflate`: damaged filter data yields the bytes decoded so far.
 - `filter.lzw-full-table`, `filter.lzw-padding`: an LZW encoder that fills its

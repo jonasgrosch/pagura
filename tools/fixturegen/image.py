@@ -437,6 +437,8 @@ def cases():
     yield from dictionary_cases()
     yield from iso_review_cases()
     yield from image_codec_cases()
+    yield from tolerance_cases()
+    yield from jpx_options_cases()
     for name, options in [
         ("jpeg-baseline-gray", {}), ("jpeg-extended", dict(extended=True)),
         ("jpeg-baseline-rgb", dict(n=3)), ("jpeg-rgb-direct", dict(n=3, transform=0)),
@@ -653,3 +655,168 @@ def image_codec_cases():
         yield image_pdf_vector(f"jbig2-globals-{'chain' if filtered else 'direct'}",encoded,[1-v for row in rows for v in row],dictionary,requirement="image-jbig2",width=width,height=height,bits=1,space="DeviceGray",globals=globals)
     for codec in (b"JBIG2Decode",b"JPXDecode",b"Crypt"):
         yield Vector("inline-forbidden-"+codec.decode(), {".dict": b"<< /W 1 /H 1 /BPC 8 /CS /G /F /"+codec+b" >>", ".in": b"", ".out": b"", ".params": b"kind=inline\noutcome=syntax\n"}, ("image-inline",), "ISO 32000-2 8.9.7 forbids this inline filter")
+
+
+def tolerance_cases():
+    # ISO 8.9.3 defines byte-padded rows; 8.9.5.1 requires consistent data.
+    # Zero-byte fill and discarding the suffix are reported reader policies.
+    for bits in (1, 2, 4, 8, 16):
+        width, height = 3, 2
+        wire = Wire()
+        for y in range(height):
+            for x in range(width):
+                wire.put(((y*width+x)*37+11) % (1 << bits), bits)
+            wire.align()
+        original = wire.bytes()
+        stride = (width*bits+7)//8
+        for suffix, data, repair in [('short', original[:-1], 'image.data-short'),
+                                     ('excess', original+b'\xaa\xff', 'image.data-excess')]:
+            padded = (data[:stride*height]+bytes(stride*height))[:stride*height]
+            expected = [((int.from_bytes(padded[y*stride:(y+1)*stride], 'big') >>
+                         (8*stride-(x+1)*bits)) & ((1 << bits)-1))
+                        for y in range(height) for x in range(width)]
+            yield image_pdf_vector(f'image-data-{suffix}-{bits}', data, expected,
+                b'/ColorSpace /DeviceGray /BitsPerComponent %d' % bits,
+                requirement='image-length-repairs', width=width, height=height,
+                bits=bits, outcome='repair', repair=repair, space='DeviceGray')
+    yield image_pdf_vector('image-data-empty', b'', [0]*6,
+        b'/ColorSpace /DeviceGray /BitsPerComponent 8', requirement='image-length-repairs',
+        width=3, height=2, outcome='repair', repair='image.data-short', space='DeviceGray')
+
+    # T.81 B.2.4.2/C: a one-symbol DC=0 table and AC EOB table encode
+    # constant level-shifted zero coefficients. The inverse DCT is exactly 128.
+    def constant_jpeg(n=1, padding=1, restart=False, progressive=False, extension=b'', adobe=False):
+        width = 16 if restart else 1
+        result = b'\xff\xd8'
+        if adobe:
+            result += segment(0xee, b'Adobe'+struct.pack('>HHH',100,0,0)+b'\0'+extension)
+        result += segment(0xdb, b'\0'+bytes([1])*64)
+        result += segment(0xc2 if progressive else 0xc0, bytes([8])+struct.pack('>HHB',1,width,n)+b''.join(bytes([i+1,17,0]) for i in range(n)))
+        table = bytes([1]+[0]*15)+b'\0'
+        result += segment(0xc4,b'\0'+table+b'\x10'+table)
+        if restart:
+            result += segment(0xdd,b'\0\1')
+        scans = [(0,0),(1,63)] if progressive else [(0,63)]
+        for start,end in scans:
+            result += segment(0xda,bytes([n])+b''.join(bytes([i+1,0]) for i in range(n))+bytes([start,end,0]))
+            entropy = '0'*(n if progressive else 2*n)
+            byte = int(entropy+str(padding)*(-len(entropy)%8),2)
+            result += bytes([byte])
+            if restart:
+                result += b'\xff\xd0'+bytes([byte])
+        return result+b'\xff\xd9', [128]*(width*n)
+
+    for suffix, options in [('scan',{}),('restart',dict(restart=True)),('progressive',dict(progressive=True))]:
+        encoded, expected = constant_jpeg(padding=0,**options)
+        yield image_pdf_vector('jpeg-padding-'+suffix,encoded,expected,
+            b'/Filter /DCTDecode /ColorSpace /DeviceGray /BitsPerComponent 8',
+            requirement='image-jpeg-repairs',width=16 if options.get('restart') else 1,height=1,
+            outcome='repair',repair='jpeg.entropy-padding',space='DeviceGray')
+    encoded, expected = constant_jpeg(n=3,adobe=True,extension=b'\x03\0\x15\x04')
+    yield image_pdf_vector('jpeg-adobe-extension',encoded,expected,
+        b'/Filter /DCTDecode /ColorSpace /DeviceRGB /BitsPerComponent 8 /DecodeParms << /ColorTransform 99 >>',
+        requirement='image-jpeg-repairs',width=1,height=1,components=3,
+        outcome='repair',repair='jpeg.adobe-marker',space='DeviceRGB')
+    repeated = encoded[:2]+segment(0xee,b'Adobe'+struct.pack('>HHH',100,0,0)+b'\0extra')*8+encoded[2:]
+    yield image_pdf_vector('jpeg-adobe-extensions-repeated',repeated,expected,
+        b'/Filter /DCTDecode /ColorSpace /DeviceRGB /BitsPerComponent 8',
+        requirement='image-jpeg-repairs',width=1,height=1,components=3,
+        outcome='repair',repair='jpeg.adobe-marker',space='DeviceRGB')
+    for suffix, marker in [('short',b'Adobe\0'),('transform',b'Adobe'+bytes(6)+b'\3')]:
+        normal, _ = constant_jpeg()
+        yield image_pdf_vector('jpeg-adobe-invalid-'+suffix,normal[:2]+segment(0xee,marker)+normal[2:],[],
+            b'/Filter /DCTDecode /ColorSpace /DeviceGray /BitsPerComponent 8',
+            requirement='image-jpeg-repairs',width=1,height=1,outcome='syntax')
+
+    # T.6 2.4.1.1-2 places zero octet fill after EOFB. These encoders
+    # instead put seven zeros between the sole V(0) white row and EOFB.
+    yield image_pdf_vector('fax-padding-before-eofb',bytes.fromhex('80001001'),[1],
+        b'/Filter /CCITTFaxDecode /ColorSpace /DeviceGray /BitsPerComponent 1 /DecodeParms << /Columns 1 /K -1 >>',
+        requirement='image-fax-repairs',width=1,height=1,bits=1,outcome='repair',
+        repair='ccitt.eob-padding',space='DeviceGray')
+    wire = Wire()
+    for row in ('00001111',None,None,'00001111'):
+        wire.code('000000000001')
+        if row is None:
+            wire.code('0000000000000')
+        else:
+            run(wire,4,False); run(wire,4,True)
+    wire.code('000000000001'*6)
+    expected = [int(v) for row in ['11110000','11110000','11111111','11110000'] for v in row]
+    yield image_pdf_vector('fax-damaged-rows-pdf',wire.bytes(),expected,
+        b'/Filter /CCITTFaxDecode /ColorSpace /DeviceGray /BitsPerComponent 1 /DecodeParms << /Columns 8 /K 0 /EndOfLine true /DamagedRowsBeforeError 2 >>',
+        requirement='image-fax-repairs',width=8,height=4,bits=1,outcome='repair',
+        repair='ccitt.damaged-row',reports=2,space='DeviceGray')
+
+    # Inline filters must send diagnostics to the same document sink.
+    for name,dictionary,data,expected,repair in [
+        ('inline-short',b'<< /W 3 /H 1 /BPC 8 /CS /G /L 2 >>',b'\x0c\x1a',bytes([12,26,0]),'image.data-short'),
+        ('inline-checksum',b'<< /W 2 /H 1 /BPC 8 /CS /G /F /Fl /L 10 >>',zlib.compress(bytes([12,26]))[:-1]+bytes([0]),bytes([12,26]),'filter.checksum-mismatch'),
+    ]:
+        yield Vector(name,{'.dict':dictionary,'.in':data,'.out':expected,
+            '.params':f'kind=inline\noutcome=repair\nrepair={repair}\n'.encode()},
+            ('image-inline',),name.replace('-',' '))
+
+
+def jpx_options_cases():
+    from .jpx import codestream, jp2, box, marker
+    width,height = 3,2
+    planes = [[10+c*40+i for i in range(width*height)] for c in range(3)]
+    expected = [v for pixel in zip(*planes) for v in pixel]
+    base = jp2(codestream(planes,width,height),width,height,3)
+    original = box(b'colr',b'\1\0\0'+struct.pack('>I',16))
+    for name, replacement, dictionary in [
+        ('jpx-overrides-vendor-colour',box(b'colr',b'\4\0\0vend'),b'/ColorSpace /DeviceRGB'),
+        ('jpx-overrides-ciejab',box(b'colr',b'\1\0\0'+struct.pack('>I',19)),b'/ColorSpace /DeviceRGB'),
+        ('jpx-overrides-colour-priority',box(b'colr',b'\1\x80\x7f'+struct.pack('>I',17)),b'/ColorSpace /DeviceRGB'),
+        # T.800 I.5.3.3 ignores PREC/APPROX in JP2. JPX ranking needs
+        # the distinct Part 2 container contract and is not asserted here.
+        ('jpx-jp2-ignores-priority',box(b'colr',b'\1\x80\x7f'+struct.pack('>I',16)),b''),
+    ]:
+        yield image_pdf_vector(name,base.replace(original,replacement,1),expected,
+            b'/Filter /JPXDecode '+dictionary,requirement='image-jpx',width=width,height=height,
+            components=3,space='DeviceRGB')
+
+    alpha = [0,32,64,128,192,255]
+    shuffled = [alpha,planes[2],planes[0],planes[1]]
+    defs = struct.pack('>H',4)+b''.join(struct.pack('>HHH',*r) for r in [(0,2,0),(1,0,3),(2,0,1),(3,0,2)])
+    for mode in (0,2):
+        encoded = jp2(codestream(shuffled,width,height),width,height,4,extra=box(b'cdef',defs))
+        yield image_pdf_vector(f'jpx-premultiplied-mode-{mode}',encoded,expected,
+            b'/Filter /JPXDecode /ColorSpace /DeviceRGB /SMaskInData %d' % mode,
+            requirement='image-jpx',width=width,height=height,components=3,space='DeviceRGB',
+            mask='embedded' if mode else 'none',alpha=alpha if mode else None,alpha_bits=8,premultiplied=int(mode==2))
+    defs = struct.pack('>H',5)+b''.join(struct.pack('>HHH',*r) for r in [(0,0,1),(1,0,2),(2,0,3),(3,1,1),(4,1,2)])
+    encoded = jp2(codestream(planes+[alpha,alpha],width,height),width,height,5,extra=box(b'cdef',defs))
+    yield image_pdf_vector('jpx-ignored-per-colour-opacity',encoded,expected,
+        b'/Filter /JPXDecode /ColorSpace /DeviceRGB /SMaskInData 0',requirement='image-jpx',
+        width=width,height=height,components=3,space='DeviceRGB')
+
+    # T.800 B.2 equations B-1/B-2 and G.4 give each component's grid.
+    # Expansion uses a constant sample on its step-wide rectangle, with
+    # border replication before the first sample. This is a resampling choice.
+    origin, extent = (3,5),(11,12)
+    steps = [(1,1),(2,3),(3,2),(2,2)]
+    payloads, components, geometries = [],[],[]
+    for c,(dx,dy) in enumerate(steps):
+        start = tuple((v+d-1)//d for v,d in zip(origin,(dx,dy)))
+        end = tuple((v+d-1)//d for v,d in zip(extent,(dx,dy)))
+        w,h = (end[i]-start[i] for i in range(2))
+        values = [(c*37+i*13)%256 for i in range(w*h)]
+        raw = codestream([values],w,h,origin=start)
+        payloads.append(raw[raw.index(b'\xff\x93')+2:-2])
+        components.append(values)
+        geometries.append((dx,dy,start[0]*dx,start[1]*dy,w,h))
+    siz = struct.pack('>H8IH',0,*extent,*origin,8,7,*origin,4)+b''.join(bytes([7,dx,dy]) for dx,dy in steps)
+    header_source = codestream([[128]],1,1)
+    coding = header_source[header_source.index(b'\xff\x52'):header_source.index(b'\xff\x90')]
+    payload = b''.join(payloads)
+    raw = b'\xff\x4f'+marker(0x51,siz)+coding+marker(0x90,struct.pack('>HIBB',0,14+len(payload),0,1))+b'\xff\x93'+payload+b'\xff\xd9'
+    defs = struct.pack('>H',4)+b''.join(struct.pack('>HHH',*r) for r in [(0,0,1),(1,0,2),(2,0,3),(3,1,0)])
+    encoded = jp2(raw,8,7,4,extra=box(b'cdef',defs))
+    expanded = []
+    for values,(dx,dy,x0,y0,w,h) in zip(components,geometries):
+        expanded.append([values[min(h-1,max(0,(origin[1]+y-y0)//dy))*w+min(w-1,max(0,(origin[0]+x-x0)//dx))] for y in range(7) for x in range(8)])
+    yield image_pdf_vector('jpx-reference-grid-alpha',encoded,[v for pixel in zip(*expanded[:3]) for v in pixel],
+        b'/Filter /JPXDecode /SMaskInData 1',requirement='image-jpx-placement',width=8,height=7,
+        components=3,space='DeviceRGB',mask='embedded',alpha=expanded[3],alpha_bits=8)

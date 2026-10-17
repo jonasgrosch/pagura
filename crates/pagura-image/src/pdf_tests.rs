@@ -1,6 +1,6 @@
 //! PDF image/filter integration oracles, calculated by the fixture generator.
 use crate::{DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples, jpx, jpx_image};
-use pagura_core::{ErrorKind, Limits, ObjectId, Value};
+use pagura_core::{ErrorKind, Limits, ObjectId, Position, Recovery, Value};
 use pagura_document::{Document, OpenOptions};
 use pagura_testkit::fixture;
 use std::collections::BTreeMap;
@@ -16,11 +16,20 @@ fn values(bytes: &[u8]) -> Vec<u16> {
 pub(super) fn vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8]) {
     let document = Document::open(
         fixture("image", &format!("{name}.pdf")),
-        &OpenOptions::default(),
+        &OpenOptions {
+            recovery: if params["outcome"] == "repair" {
+                Recovery::Repair
+            } else {
+                Recovery::Strict
+            },
+            ..OpenOptions::default()
+        },
     )
     .unwrap();
     let result = crate::decode_xobject(&document, document.object(ObjectId::new(3, 0)).unwrap());
-    if params["outcome"] != "valid" {
+    if params["outcome"] == "repair" {
+        assert_repairs(name, params, &document);
+    } else if params["outcome"] != "valid" {
         let error = result.unwrap_err();
         match params["outcome"].as_str() {
             "syntax" => assert_eq!(error.kind, ErrorKind::Syntax, "{name}: {error}"),
@@ -82,7 +91,10 @@ pub(super) fn vector(name: &str, params: &BTreeMap<String, String>, expected: &[
             alpha.bits_per_component,
             params["alpha_bits"].parse().unwrap()
         );
-        assert!(!alpha.premultiplied);
+        assert_eq!(
+            alpha.premultiplied,
+            params.get("premultiplied").is_some_and(|v| v == "1")
+        );
         assert_samples(
             &alpha.samples,
             &values(&fixture("image", &format!("{name}.alpha"))),
@@ -150,7 +162,7 @@ fn alpha_precision_premultiplication_and_live_storage_are_preserved() {
         alpha: Some(1),
     };
     let mut image = empty();
-    jpx_image::adapt(decoded.clone(), 2, &mut image, &Limits::default()).unwrap();
+    jpx_image::adapt(placed(decoded.clone()), 2, &mut image, &Limits::default()).unwrap();
     assert_eq!(image.bits_per_component, 3);
     assert_eq!(
         image.mask,
@@ -162,20 +174,25 @@ fn alpha_precision_premultiplication_and_live_storage_are_preserved() {
     );
     // Decoded planes, interleaved colour, opacity and both component lists
     // must fit simultaneously; the last byte still protects real storage.
-    let live =
-        8 + 2 + 4 + 2 * (size_of::<jpx::JpxComponent>() + size_of::<&jpx::JpxComponent>() + 1);
+    let live = 8
+        + 2
+        + 4
+        + 2 * (size_of::<jpx::JpxComponent>()
+            + size_of::<jpx::ComponentGeometry>()
+            + 2 * size_of::<&jpx::JpxComponent>()
+            + 1);
     let limits = Limits {
         decoded_bytes: live - 1,
         ..Limits::default()
     };
     assert_eq!(
-        jpx_image::adapt(decoded.clone(), 2, &mut empty(), &limits)
+        jpx_image::adapt(placed(decoded.clone()), 2, &mut empty(), &limits)
             .unwrap_err()
             .kind,
         ErrorKind::Limit
     );
     jpx_image::adapt(
-        decoded,
+        placed(decoded),
         2,
         &mut empty(),
         &Limits {
@@ -211,7 +228,137 @@ fn unused_opacity_layout_is_ignored() {
         alpha: Some(1),
     };
     let mut image = empty();
-    jpx_image::adapt(decoded, 0, &mut image, &Limits::default()).unwrap();
+    jpx_image::adapt(placed(decoded), 0, &mut image, &Limits::default()).unwrap();
     assert_eq!(image.samples, Samples::Bytes(vec![12, 26]));
     assert_eq!(image.mask, MaskKind::None);
+}
+
+fn placed(image: jpx::JpxImage) -> jpx::Decoded {
+    jpx::Decoded {
+        component_geometry: vec![
+            jpx::ComponentGeometry {
+                step: [1, 1],
+                origin: [0, 0]
+            };
+            image.components.len()
+        ],
+        reference_origin: [0, 0],
+        opacity: None,
+        image,
+    }
+}
+
+fn assert_repairs(name: &str, params: &BTreeMap<String, String>, document: &Document) {
+    let strict = Document::open(
+        fixture("image", &format!("{name}.pdf")),
+        &OpenOptions {
+            recovery: Recovery::Strict,
+            ..OpenOptions::default()
+        },
+    )
+    .unwrap();
+    let error =
+        crate::decode_xobject(&strict, strict.object(ObjectId::new(3, 0)).unwrap()).unwrap_err();
+    assert_eq!(error.repair.unwrap().as_str(), params["repair"], "{name}");
+    assert_eq!(error.object, Some(ObjectId::new(3, 0)), "{name}");
+    assert!(matches!(error.position, Position::Stream { .. }), "{name}");
+    assert!(strict.diagnostics().is_empty(), "{name}");
+    let reports = document.diagnostics();
+    assert_eq!(
+        reports.len(),
+        params.get("reports").map_or(1, |n| n.parse().unwrap()),
+        "{name}"
+    );
+    for report in &reports {
+        assert_eq!(report.repair.as_str(), params["repair"], "{name}");
+        assert_eq!(report.object, Some(ObjectId::new(3, 0)), "{name}");
+        assert!(matches!(report.position, Position::Stream { .. }), "{name}");
+    }
+    // A second use of the same XObject must not duplicate reports.
+    crate::decode_xobject(document, document.object(ObjectId::new(3, 0)).unwrap()).unwrap();
+    assert_eq!(document.diagnostics(), reports, "{name}");
+}
+
+#[test]
+fn jpeg_reports_are_bounded_per_decode_and_do_not_authorize_strict_repairs() {
+    let document = Document::open(
+        fixture("image", "jpeg-padding-progressive.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let stream = document
+        .image_stream(document.object(ObjectId::new(3, 0)).unwrap())
+        .unwrap();
+    let mut diagnostics = pagura_core::Diagnostics::new(Recovery::Repair);
+    for _ in 0..2 {
+        let image = crate::dct::decode_with_diagnostics(
+            &stream.data,
+            None,
+            &Limits::default(),
+            &mut diagnostics,
+        )
+        .unwrap();
+        assert_eq!(image.samples, [128]);
+    }
+    // Multiple repaired boundaries in each progressive JPEG produce one
+    // record; a second decode still obtains its own permission and evidence.
+    assert_eq!(diagnostics.as_slice().len(), 2);
+    let mut strict = pagura_core::Diagnostics::new(Recovery::Strict);
+    strict.extend(diagnostics.take());
+    let error =
+        crate::dct::decode_with_diagnostics(&stream.data, None, &Limits::default(), &mut strict)
+            .unwrap_err();
+    assert_eq!(error.repair, Some(crate::dct::tags::ENTROPY_PADDING));
+}
+
+#[test]
+fn retained_jpx_metadata_capacity_counts_against_the_adapter_budget() {
+    for geometry in [false, true] {
+        let mut decoded = placed(jpx::JpxImage {
+            width: 2,
+            height: 1,
+            components: vec![jpx::JpxComponent {
+                bits: 8,
+                signed: false,
+                width: 2,
+                height: 1,
+                samples: vec![12, 26],
+            }],
+            color: jpx::JpxColor::Enumerated(17),
+            alpha: None,
+        });
+        if geometry {
+            decoded.component_geometry.reserve_exact(127);
+        } else {
+            decoded.image.components.reserve_exact(127);
+        }
+        let error = jpx_image::adapt(
+            decoded,
+            0,
+            &mut empty(),
+            &Limits {
+                decoded_bytes: 1024,
+                ..Limits::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
+    }
+}
+
+#[test]
+fn zero_byte_fill_preserves_the_high_byte_of_an_incomplete_word() {
+    let mut diagnostics = pagura_core::Diagnostics::new(Recovery::Repair);
+    let samples = crate::parameters::unpack_with_diagnostics(
+        &[0x12, 0x34, 0xab],
+        2,
+        1,
+        1,
+        16,
+        &Limits::default(),
+        &mut diagnostics,
+    )
+    .unwrap();
+    assert_eq!(samples, Samples::Words(vec![0x1234, 0xab00]));
+    assert_eq!(diagnostics.as_slice()[0].repair, crate::tags::DATA_SHORT);
 }

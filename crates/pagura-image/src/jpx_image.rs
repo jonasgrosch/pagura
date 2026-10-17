@@ -19,16 +19,32 @@ pub(crate) fn decode(
             "PDF JPXDecode requires a full JPEG 2000 container",
         ));
     }
-    let decoded = jpx::decode(data, limits)?;
+    let options = jpx::Options {
+        ignore_color: !matches!(image.kind, ImageKind::Color { color_space: None }),
+        ignore_opacity: mode == 0,
+    };
+    let mut decoded = jpx::decode_with_options(data, limits, &options)?;
+    if mode == 0 {
+        super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
+    }
     adapt(decoded, mode, image, limits)
 }
 
 pub(crate) fn adapt(
-    decoded: jpx::JpxImage,
+    placement: jpx::Decoded,
     mode: i64,
     image: &mut DecodedImage,
     limits: &Limits,
 ) -> Result<()> {
+    let jpx::Decoded {
+        image: decoded,
+        reference_origin,
+        component_geometry,
+        ..
+    } = placement;
+    if component_geometry.len() != decoded.components.len() {
+        return Err(Error::syntax("invalid JPX component geometry count"));
+    }
     if decoded.width != image.width || decoded.height != image.height {
         return Err(Error::syntax(
             "JPX dimensions disagree with image dictionary",
@@ -43,16 +59,19 @@ pub(crate) fn adapt(
     if mode != 0 && decoded.alpha.is_none() {
         return Err(Error::syntax("SMaskInData requires an opacity channel"));
     }
-    if storage_bytes(&decoded, 0, 8, 0)? > limits.decoded_bytes {
+    if storage_bytes(&decoded, component_geometry.capacity(), 0, 8, 0)? > limits.decoded_bytes {
         return Err(Error::limit("JPX component adapter budget exceeded"));
     }
-    let components: Vec<_> = decoded
-        .components
-        .iter()
-        .enumerate()
-        .filter(|(index, _)| Some(*index) != decoded.alpha)
-        .map(|(_, c)| c)
-        .collect();
+    let mut components = Vec::with_capacity(decoded.components.len());
+    components.extend(
+        decoded
+            .components
+            .iter()
+            .zip(&component_geometry)
+            .enumerate()
+            .filter(|(index, _)| Some(*index) != decoded.alpha)
+            .map(|(_, pair)| pair),
+    );
     let first = components
         .first()
         .ok_or(Error::syntax("JPX has no colour components"))?;
@@ -64,26 +83,23 @@ pub(crate) fn adapt(
         ));
     }
     let pixels = parameters::budget(image.width, image.height, 1, 1, limits)?;
-    for component in &components {
-        validate_component(component, image.width, image.height, pixels)?;
-    }
-    if mode != 0
-        && let Some(alpha) = decoded
-            .alpha
-            .and_then(|index| decoded.components.get(index))
-    {
-        validate_component(alpha, image.width, image.height, pixels)?;
-    }
-    let mixed = components.iter().any(|c| c.bits != first.bits);
-    let precision = if mixed { 16 } else { first.bits };
+    validate_planes(&decoded, &component_geometry, reference_origin, mode)?;
+    let mixed = components.iter().any(|c| c.0.bits != first.0.bits);
+    let precision = if mixed { 16 } else { first.0.bits };
     let values = parameters::budget(image.width, image.height, count, precision, limits)?;
-    let storage = storage_bytes(&decoded, values, precision, mode)?;
+    let storage = storage_bytes(
+        &decoded,
+        component_geometry.capacity(),
+        values,
+        precision,
+        mode,
+    )?;
     if storage > limits.decoded_bytes {
         return Err(Error::limit("JPX adapter sample budget exceeded"));
     }
     image.components = count;
-    image.bits_per_component = if mixed { 0 } else { first.bits };
-    image.samples = interleave(&components, values, mixed)?;
+    image.bits_per_component = if mixed { 0 } else { first.0.bits };
+    image.samples = interleave(&components, values, mixed, image.width, reference_origin)?;
     if mode != 0 {
         let opacity = decoded
             .alpha
@@ -91,7 +107,13 @@ pub(crate) fn adapt(
             .ok_or(Error::syntax("missing JPX opacity channel"))?;
         image.mask = MaskKind::Embedded(ImageAlpha {
             bits_per_component: opacity.bits,
-            samples: interleave(&[opacity], pixels, false)?,
+            samples: interleave(
+                &[(opacity, &component_geometry[decoded.alpha.unwrap_or(0)])],
+                pixels,
+                false,
+                image.width,
+                reference_origin,
+            )?,
             premultiplied: mode == 2,
         });
     }
@@ -101,20 +123,53 @@ pub(crate) fn adapt(
     Ok(())
 }
 
-fn validate_component(c: &jpx::JpxComponent, width: u32, height: u32, pixels: usize) -> Result<()> {
+fn validate_planes(
+    decoded: &jpx::JpxImage,
+    geometries: &[jpx::ComponentGeometry],
+    reference_origin: [u32; 2],
+    mode: i64,
+) -> Result<()> {
+    for (index, (component, geometry)) in decoded.components.iter().zip(geometries).enumerate() {
+        if mode != 0 || Some(index) != decoded.alpha {
+            validate_component(
+                component,
+                geometry,
+                decoded.width,
+                decoded.height,
+                reference_origin,
+            )?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_component(
+    c: &jpx::JpxComponent,
+    geometry: &jpx::ComponentGeometry,
+    width: u32,
+    height: u32,
+    reference_origin: [u32; 2],
+) -> Result<()> {
     if !(1..=16).contains(&c.bits) {
         return Err(Error::unsupported(
             features::JPX_SAMPLE_LAYOUT,
             "JPX precision exceeds sample representation",
         ));
     }
-    if c.width != width || c.height != height {
-        return Err(Error::unsupported(
-            features::JPX_SAMPLE_LAYOUT,
-            "JPX component subsampling requires reference-grid geometry",
-        ));
+    for (axis, extent, samples) in [(0, width, c.width), (1, height, c.height)] {
+        let step = geometry.step[axis];
+        if step == 0 || samples == 0 {
+            return Err(Error::syntax("invalid JPX sampling step"));
+        }
+        let start = u64::from(reference_origin[axis]).div_ceil(u64::from(step));
+        let end = (u64::from(reference_origin[axis]) + u64::from(extent)).div_ceil(u64::from(step));
+        if start * u64::from(step) != u64::from(geometry.origin[axis])
+            || end - start != u64::from(samples)
+        {
+            return Err(Error::syntax("inconsistent JPX component placement"));
+        }
     }
-    if c.samples.len() != pixels {
+    if u64::try_from(c.samples.len()).ok() != Some(u64::from(c.width) * u64::from(c.height)) {
         return Err(Error::syntax("invalid JPX sample count"));
     }
     let max = u16::MAX >> (16 - c.bits);
@@ -124,7 +179,13 @@ fn validate_component(c: &jpx::JpxComponent, width: u32, height: u32, pixels: us
     Ok(())
 }
 
-fn storage_bytes(decoded: &jpx::JpxImage, values: usize, bits: u8, mode: i64) -> Result<usize> {
+fn storage_bytes(
+    decoded: &jpx::JpxImage,
+    geometry_capacity: usize,
+    values: usize,
+    bits: u8,
+    mode: i64,
+) -> Result<usize> {
     let add = |a: usize, b: usize| a.checked_add(b).ok_or(Error::limit("JPX storage overflow"));
     let mut bytes = 0usize;
     for c in &decoded.components {
@@ -147,9 +208,8 @@ fn storage_bytes(decoded: &jpx::JpxImage, values: usize, bits: u8, mode: i64) ->
     {
         bytes = add(
             bytes,
-            alpha
-                .samples
-                .len()
+            usize::try_from(u64::from(decoded.width) * u64::from(decoded.height))
+                .map_err(|_| Error::limit("JPX opacity size overflow"))?
                 .checked_mul(if alpha.bits <= 8 { 1 } else { 2 })
                 .ok_or(Error::limit("JPX alpha storage overflow"))?,
         )?;
@@ -157,25 +217,62 @@ fn storage_bytes(decoded: &jpx::JpxImage, values: usize, bits: u8, mode: i64) ->
     if let jpx::JpxColor::Icc(profile) = &decoded.color {
         bytes = add(bytes, profile.len())?;
     }
-    let metadata = decoded
+    // Ignoring opacity drops its samples, but truncating the component lists
+    // retains their backing allocations. Charge their capacities until drop.
+    let component_bytes = decoded
+        .components
+        .capacity()
+        .checked_mul(size_of::<jpx::JpxComponent>())
+        .ok_or(Error::limit("JPX component storage overflow"))?;
+    let geometry_bytes = geometry_capacity
+        .checked_mul(size_of::<jpx::ComponentGeometry>())
+        .ok_or(Error::limit("JPX geometry storage overflow"))?;
+    let reference_bytes = decoded
         .components
         .len()
-        .checked_mul(size_of::<jpx::JpxComponent>() + size_of::<&jpx::JpxComponent>() + 1)
+        .checked_mul(2 * size_of::<&jpx::JpxComponent>() + 1)
         .ok_or(Error::limit("JPX component storage overflow"))?;
-    add(bytes, metadata)
+    add(
+        add(add(bytes, component_bytes)?, geometry_bytes)?,
+        reference_bytes,
+    )
 }
 
-fn interleave(components: &[&jpx::JpxComponent], count: usize, mixed: bool) -> Result<Samples> {
+fn interleave(
+    components: &[(&jpx::JpxComponent, &jpx::ComponentGeometry)],
+    count: usize,
+    mixed: bool,
+    width: u32,
+    reference_origin: [u32; 2],
+) -> Result<Samples> {
     let first = components
         .first()
-        .ok_or(Error::syntax("missing JPX components"))?;
-    let pixels = first.samples.len();
+        .ok_or(Error::syntax("missing JPX components"))?
+        .0;
+    let pixels = count / components.len();
+    let sample = |pixel: usize, c: &jpx::JpxComponent, g: &jpx::ComponentGeometry| -> Result<u16> {
+        // T.800 B.2/G.4 fix the sample positions. Piecewise-constant expansion
+        // with border replication is the chosen resampling policy; no phase
+        // reset occurs at a nonzero reference-grid origin.
+        let x = u64::from(reference_origin[0]) + (pixel % width as usize) as u64;
+        let y = u64::from(reference_origin[1]) + (pixel / width as usize) as u64;
+        let x = (x.saturating_sub(u64::from(g.origin[0])) / u64::from(g.step[0]))
+            .min(u64::from(c.width - 1));
+        let y = (y.saturating_sub(u64::from(g.origin[1])) / u64::from(g.step[1]))
+            .min(u64::from(c.height - 1));
+        let index = usize::try_from(y * u64::from(c.width) + x)
+            .map_err(|_| Error::limit("JPX sample index overflow"))?;
+        c.samples
+            .get(index)
+            .copied()
+            .ok_or(Error::syntax("invalid JPX sample index"))
+    };
     if !mixed && first.bits <= 8 {
         let mut values = Vec::with_capacity(count);
         for i in 0..pixels {
-            for c in components {
+            for &(c, g) in components {
                 values.push(
-                    u8::try_from(c.samples[i])
+                    u8::try_from(sample(i, c, g)?)
                         .map_err(|_| Error::syntax("JPX sample exceeds byte precision"))?,
                 );
             }
@@ -184,14 +281,14 @@ fn interleave(components: &[&jpx::JpxComponent], count: usize, mixed: bool) -> R
     }
     let mut values = Vec::with_capacity(count);
     for i in 0..pixels {
-        for c in components {
-            values.push(c.samples[i]);
+        for &(c, g) in components {
+            values.push(sample(i, c, g)?);
         }
     }
     if mixed {
         Ok(Samples::Mixed {
             values,
-            bits: components.iter().map(|c| c.bits).collect(),
+            bits: components.iter().map(|c| c.0.bits).collect(),
         })
     } else {
         Ok(Samples::Words(values))

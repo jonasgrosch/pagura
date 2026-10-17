@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "image",
-  "scope": "Verified the PDF image-layer rules cited below against the locally supplied ISO_32000-2_sponsored_EC3.txt (ISO 32000-2:2020 with errata collection 3): 8.9.3-8.9.7, Tables 87, 88, 90-92; 7.4.6/Table 11 and 7.4.8/Table 13. Resource budgets were checked against local ADR 0010, not an ISO conformance requirement. JPEG/fax bitstream algorithms are NOT primary-text verified: ITU-T T.81, ISO/IEC 10918, Adobe Technical Note 5116, ITU-T T.4 and T.6 are unavailable locally. Separate Python encoders establish synthetic expectations but cannot exclude a shared reading error. Also verified the PDF wrappers in 7.4.7/Table 12, 7.4.9/Table 87 and embedded-mask precedence in 11.6.4.3; ISO/IEC 14492:2019 (T.88), ISO/IEC 15444-1/-2 and ICC profile semantics remain pending primary-text review.",
+  "scope": "PDF image-layer rules reviewed against the locally supplied ISO_32000-2_sponsored_EC3.txt (ISO 32000-2:2020, errata collection 3): 8.9.3-8.9.7, Tables 87, 88, 90-92; 7.4.6/Table 11, 7.4.7/Table 12, 7.4.8/Table 13, 7.4.9 and 11.6.4.3. This revision additionally checks JPEG entropy padding and application segment framing against local itu-t81-1992.txt B.1.1.4-5, B.2.4.6/Table B.9 and E.1.4; Group 4 EOFB/padding against itu-t6-1988.txt 2.4.1.1-2; and JP2 sample placement and channel definitions against itu-t800-2019.txt B.2, G.4 and I.5.3.6. These are scoped rule reviews, not verification of the complete JPEG/fax/JPEG 2000 algorithms. Adobe Technical Note 5116, JPEG 2000 Part 2 (T.801) and ICC profile semantics remain pending primary-text review. T.81/T.4/T.6/T.88/T.800 are now locally available; unreviewed algorithms remain pending as detailed below. Resource budgets follow ADR 0010, not an ISO numerical limit.",
   "requirements": [
     {
       "id": "image-samples",
@@ -142,7 +142,7 @@
       "tests": [
         "pagura-image tests::independent_vectors"
       ],
-      "gaps": "Legacy Flate/LZW boundary search has a sixteen-candidate work cap. Unfiltered resource colour spaces without Length need a resource-aware boundary API. Inline filter repairs require a document diagnostic sink.",
+      "gaps": "Legacy Flate/LZW boundary search has a sixteen-candidate work cap. Unfiltered resource colour spaces without Length need a resource-aware boundary API. Inline filter repairs now use the document recovery mode and diagnostic sink.",
       "review": [
         {
           "locator": "8.9.7; Tables 90-92",
@@ -181,7 +181,6 @@
       "choices": [
         "Accept lengthless data as legacy input because the standalone boundary API has no PDF version; cap candidate validation at sixteen attempts and reject conflicting long/abbreviated keys."
       ],
-      "repair_hook": "When Document::report is available, forward Diagnostics from inline FilterChain decoding and CCITT decode_with_diagnostics; this change retains strict document-image repair behaviour.",
       "verdict": "ISO mismatches fixed; forbidden filters remain rejected, and legacy sizing remains a documented choice."
     },
     {
@@ -217,9 +216,9 @@
       "external_primary_text_review": [
         {
           "standard": "ITU-T T.81 / ISO/IEC 10918",
-          "status": "pending primary-text review",
-          "behaviour": "Huffman tables, scan ordering, restart intervals, progressive refinement, IDCT and colour conversion constants.",
-          "evidence": "Synthetic independently written Python encoder and calculated pixels; no external differential run or externally sourced known-answer data in this change."
+          "status": "partial primary-text review",
+          "behaviour": "B.1.1.4-5, B.2.4.6/Table B.9 and E.1.4 reviewed for marker lengths, APP payload framing and entropy padding. Huffman tables, scan ordering, restart intervals, progressive refinement, IDCT and colour conversion constants remain pending primary-text review.",
+          "evidence": "Constant-coefficient known-answer JPEGs give exactly 128; independent synthetic encoders cover broader coding. Corpus streams were inspected in place; no external differential results are claimed."
         },
         {
           "standard": "Adobe Technical Note 5116",
@@ -231,7 +230,7 @@
       "choices": [
         "Nearest-neighbour chroma expansion and one-level IDCT oracle tolerance are implementation choices, not ISO-verified JPEG accuracy claims."
       ],
-      "verdict": "ISO wrapper rules agree after fixes; JPEG/Adobe primary-text review pending."
+      "verdict": "ISO wrapper rules agree; T.81 padding/framing reviewed; other JPEG and Adobe-specific rules remain pending."
     },
     {
       "id": "image-ccitt",
@@ -245,7 +244,7 @@
       "tests": [
         "pagura-image tests::independent_vectors"
       ],
-      "gaps": "T.6 extension mode unsupported. Damaged-row recovery is available through decode_with_diagnostics; document image decoding remains strict until a document diagnostic sink is public.",
+      "gaps": "T.6 extension mode unsupported. Damaged-row recovery is available through decode_with_diagnostics; XObject and inline decoding now forward these diagnostics through Document::report.",
       "review": [
         {
           "locator": "7.4.6",
@@ -281,16 +280,15 @@
         },
         {
           "standard": "ITU-T T.6",
-          "status": "pending primary-text review",
-          "behaviour": "Group 4 modes, changing elements, EOFB and extension coding.",
+          "status": "partial primary-text review",
+          "behaviour": "T.6 2.4.1.1-2 reviewed for EOFB and pad placement. Group 4 mode tables and changing-element algorithms remain pending primary-text review.",
           "evidence": "Synthetic Python fax encoder with directly constructed bitmap expectations; no external differential run or externally sourced known-answer data in this change."
         }
       ],
       "choices": [
         "Count the damaged-row tolerance across the image; keep the standalone decoder strict and expose substitutions only through decode_with_diagnostics."
       ],
-      "repair_hook": "When Document::report is available, forward Diagnostics from inline FilterChain decoding and CCITT decode_with_diagnostics; this change retains strict document-image repair behaviour.",
-      "verdict": "ISO parameters and reported substitution agree; fax primary-text review pending."
+      "verdict": "ISO parameter and row substitution rules agree; EOFB padding reviewed against T.6; other fax algorithms remain pending."
     },
     {
       "id": "image-limits",
@@ -383,9 +381,9 @@
         {
           "locator": "7.4.9; Table 87",
           "rule": "SMaskInData zero ignores alpha; nonzero requires one all-colour opacity channel and excludes SMask; mode two denotes premultiplied colour.",
-          "verdict": "partial",
-          "evidence": "Straight-alpha PDF vectors and adapter-level premultiplied metadata tests pass; decoder cdef type 2 remains unsupported.",
-          "implementation_agreement": "partial",
+          "verdict": "fixed and exercised",
+          "evidence": "jpx-premultiplied-mode-0/2 and jpx-ignored-per-colour-opacity exercise ignored opacity and retained premultiplied values through the options API.",
+          "implementation_agreement": "fixed and exercised",
           "expectation_agreement": "Agrees for the exercised PDF-level rule at the stated boundary; the named external format rules remain pending."
         },
         {
@@ -409,15 +407,124 @@
         {
           "standard": "ISO/IEC 15444-1 / ISO/IEC 15444-2 / ICC specifications",
           "status": "pending primary-text review",
-          "behaviour": "JPEG 2000 bitstream coding, container/palette channel definitions, enumerated colour spaces and profile semantics.",
+          "behaviour": "T.800 B.2, G.4 and I.5.3.6 reviewed at the PDF adapter boundary for placement/channel classification. Part 2 (T.801) colour ranking, ICC semantics and other coding algorithms remain pending in this registry; see the separate codec registry for its review.",
           "evidence": "Integrated independently authored Python JPEG 2000 encoder, direct sample expectations and PDF wrappers; no external differential run in this change."
         }
       ],
-      "gaps": "Premultiplied cdef type 2, ignored unsupported container colour/opacity, colour precedence and subsampled reference-grid geometry require decoder/API changes; ICC and sYCC interpretation is retained for painting.",
+      "gaps": "JPX Part 2 colour ranking and fallback among multiple colour specifications need a decoder API exposing all candidates; current JP2 API returns only its authoritative first specification (T.800 I.3.3). Embedded ICC and sYCC interpretation is retained for painting; renderer support remains outside this crate. Precision above 16 bits remains unsupported.",
       "choices": [
         "Preserve embedded colour profiles and non-device enumerated spaces for painting; mixed sample precision uses a zero common-precision sentinel with per-component accessors."
       ],
-      "verdict": "PDF wrapper and straight alpha exercised; complete premultiplied/container handling blocked by decoder API gaps."
+      "verdict": "Dictionary colour overrides, JP2 enumerated/ICC metadata, ignored opacity, straight/premultiplied alpha and reference-grid placement exercised; JPX Part 2 ranking remains pending."
+    },
+    {
+      "id": "image-length-repairs",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.3",
+        "8.9.5.1; Table 87"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors"
+      ],
+      "review": [
+        {
+          "locator": "8.9.3; 8.9.5.1; Table 87",
+          "rule": "Dimensions, component count and precision determine complete byte-aligned rows; inconsistent data length is a conformance fault.",
+          "verdict": "agree with reported policy",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Independent generator computes exact samples from the stated rule and choice.",
+          "evidence": "image-data-short-1/2/4/8/16, image-data-excess-1/2/4/8/16 and image-data-empty reject strictly with stable tags and yield exact repaired samples."
+        }
+      ],
+      "choices": [
+        "image.data-short fills missing bytes with zero, including partial 16-bit words; image.data-excess ignores only the suffix. Neither allocates an intermediate padded buffer."
+      ],
+      "gaps": "Broader real-world coverage remains."
+    },
+    {
+      "id": "image-jpeg-repairs",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.8; Table 13",
+        "T.81 B.1.1.4-5",
+        "T.81 B.2.4.6; Table B.9",
+        "T.81 E.1.4"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors"
+      ],
+      "review": [
+        {
+          "locator": "7.4.8; Table 13; T.81 B.1.1.4-5; T.81 B.2.4.6; Table B.9; T.81 E.1.4",
+          "rule": "JPEG segment lengths delimit application payloads; Huffman entropy segments end with one-bit fill. PDF uses the Adobe APP14 transform ahead of ColorTransform.",
+          "verdict": "agree with reported policy",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Independent generator computes exact samples from the stated rule and choice.",
+          "evidence": "jpeg-padding-scan/restart/progressive and jpeg-adobe-extension check strict tags and exact level-128 output. jpeg-adobe-invalid-short/transform stay hard errors."
+        }
+      ],
+      "choices": [
+        "jpeg.entropy-padding ignores only unused bits at a complete scan/restart boundary; jpeg.adobe-marker uses a valid 12-byte prefix of an extended APP14 and ignores its suffix. Exact Adobe extension semantics remain pending Technical Note 5116; this is a reported compatibility choice, not primary-text verification of APP14."
+      ],
+      "gaps": "Broader real-world coverage remains."
+    },
+    {
+      "id": "image-fax-repairs",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.6; Table 11",
+        "T.6 2.4.1.1",
+        "T.6 2.4.1.2"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors"
+      ],
+      "review": [
+        {
+          "locator": "7.4.6; Table 11; T.6 2.4.1.1; T.6 2.4.1.2",
+          "rule": "Group 4 EOFB is a 24-bit terminator; optional zero fill follows it. Table 11 damaged-row substitution requires the declared tolerance and EOL resynchronization.",
+          "verdict": "agree with reported policy",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Independent generator computes exact samples from the stated rule and choice.",
+          "evidence": "fax-padding-before-eofb and fax-damaged-rows-pdf check strict tags, exact pixels, object/position context and report deduplication."
+        }
+      ],
+      "choices": [
+        "ccitt.eob-padding accepts at most seven zero bits before a byte-aligned EOFB, only at a decoded row boundary. It never skips damaged row codes. ccitt.damaged-row retains its declared-tolerance substitution."
+      ],
+      "gaps": "Broader real-world coverage remains."
+    },
+    {
+      "id": "image-jpx-placement",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9; Table 87",
+        "T.800 B.2",
+        "T.800 G.4",
+        "T.800 I.5.3.6"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors"
+      ],
+      "review": [
+        {
+          "locator": "7.4.9; Table 87; T.800 B.2; T.800 G.4; T.800 I.5.3.6",
+          "rule": "JPX component samples lie on their signalled grids; ordinary colour channels and opacity retain their independent precision and placement.",
+          "verdict": "agree at adapter boundary",
+          "implementation_agreement": "agree",
+          "expectation_agreement": "Independent generator computes exact samples from the stated rule and choice.",
+          "evidence": "jpx-reference-grid-alpha combines 1x1, 2x3, 3x2 and 2x2 grids at reference origin (3,5); jpx-premultiplied-mode-0/2 test channel reordering and opacity."
+        }
+      ],
+      "choices": [
+        "Expand samples as a piecewise-constant plane with border replication before its first sample; the standards fix positions but do not prescribe this interpolation policy."
+      ],
+      "gaps": "Broader real-world coverage remains."
     }
   ]
 }

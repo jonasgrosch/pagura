@@ -149,6 +149,26 @@ pub(crate) fn unpack(
     bits: u8,
     limits: &Limits,
 ) -> Result<Samples> {
+    unpack_with_diagnostics(
+        data,
+        width,
+        height,
+        components,
+        bits,
+        limits,
+        &mut pagura_core::Diagnostics::new(pagura_core::Recovery::Strict),
+    )
+}
+
+pub(crate) fn unpack_with_diagnostics(
+    data: &[u8],
+    width: u32,
+    height: u32,
+    components: u8,
+    bits: u8,
+    limits: &Limits,
+    diagnostics: &mut pagura_core::Diagnostics,
+) -> Result<Samples> {
     let count = budget(width, height, components, bits, limits)?;
     let row_values = usize::try_from(u64::from(width) * u64::from(components))
         .map_err(|_| Error::limit("image row overflow"))?;
@@ -161,23 +181,42 @@ pub(crate) fn unpack(
         .checked_mul(height as usize)
         .ok_or(Error::limit("image size overflow"))?;
     if data.len() != length {
-        return Err(Error::syntax("image data length disagrees with dimensions"));
+        let (tag, message) = if data.len() < length {
+            (
+                crate::tags::DATA_SHORT,
+                "short image data padded with zero bytes (8.9.3, 8.9.5.1)",
+            )
+        } else {
+            (
+                crate::tags::DATA_EXCESS,
+                "excess image data ignored (8.9.3, 8.9.5.1)",
+            )
+        };
+        diagnostics.repair(
+            pagura_core::Diagnostic::new(tag, message)
+                .at(pagura_core::Position::Buffer(data.len().min(length))),
+        )?;
     }
+    let data = &data[..data.len().min(length)];
     if bits == 16 {
         return Ok(Samples::Words(
-            data.as_chunks::<2>()
-                .0
-                .iter()
-                .map(|v| u16::from_be_bytes([v[0], v[1]]))
+            (0..count)
+                .map(|i| {
+                    u16::from_be_bytes([
+                        data.get(2 * i).copied().unwrap_or(0),
+                        data.get(2 * i + 1).copied().unwrap_or(0),
+                    ])
+                })
                 .collect(),
         ));
     }
     let mut values = Vec::with_capacity(count);
     let mask = 255 >> (8 - bits);
-    for row in data.chunks_exact(row_bytes) {
+    for y in 0..height as usize {
         for index in 0..row_values {
             let bit = index * usize::from(bits);
-            values.push((row[bit / 8] >> (8 - usize::from(bits) - bit % 8)) & mask);
+            let byte = data.get(y * row_bytes + bit / 8).copied().unwrap_or(0);
+            values.push((byte >> (8 - usize::from(bits) - bit % 8)) & mask);
         }
     }
     Ok(Samples::Bytes(values))

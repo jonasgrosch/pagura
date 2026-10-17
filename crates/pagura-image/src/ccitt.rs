@@ -166,6 +166,9 @@ pub mod tags {
     /// Substitute the previous good row, or white after a damaged row,
     /// after locating the next EOL (ISO 32000-2 Table 11).
     pub const DAMAGED_ROW: Repair = Repair::new("ccitt.damaged-row");
+    /// Accept up to seven zero fill bits before a byte-aligned Group 4 EOFB.
+    /// T.6 2.4.1.1-2 and ISO Table 11 permit padding after the EOFB instead.
+    pub const EOB_PADDING: Repair = Repair::new("ccitt.eob-padding");
 }
 
 /// Decodes packed one-bit rows, MSB first. Zero denotes black unless
@@ -237,7 +240,9 @@ fn decode_inner(
         if params.encoded_byte_align {
             bits.align()?;
         }
-        if block_end(&mut bits, params.k) {
+        if block_end(&mut bits, params.k)
+            || (params.k < 0 && padded_block_end(&mut bits, diagnostics)?)
+        {
             break;
         }
         if bits.exhausted() {
@@ -357,6 +362,27 @@ fn block_end(bits: &mut Bits<'_>, k: i64) -> bool {
         }
     }
     true
+}
+
+fn padded_block_end(bits: &mut Bits<'_>, diagnostics: &mut Diagnostics) -> Result<bool> {
+    let start = bits.at;
+    let padding = 8 - start % 8;
+    if padding == 8 || !bits.matches(&"0000000"[..padding]) {
+        return Ok(false);
+    }
+    bits.at += padding;
+    if !block_end(bits, -1) {
+        bits.at = start;
+        return Ok(false);
+    }
+    diagnostics.repair(
+        Diagnostic::new(
+            tags::EOB_PADDING,
+            "zero fill before CCITT EOFB ignored (T.6 2.4.1.1-2; Table 11)",
+        )
+        .at(Position::Buffer(start / 8)),
+    )?;
+    Ok(true)
 }
 
 fn row_1d(bits: &mut Bits<'_>, width: usize, changes: &mut Vec<usize>) -> Result<()> {

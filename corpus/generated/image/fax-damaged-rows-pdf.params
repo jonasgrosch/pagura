@@ -1,0 +1,9 @@
+kind=pdf-image
+outcome=repair
+width=8
+height=4
+components=1
+bits=1
+repair=ccitt.damaged-row
+reports=2
+space=DeviceGray

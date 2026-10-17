@@ -1,0 +1,8 @@
+kind=pdf-image
+outcome=repair
+width=3
+height=2
+components=1
+bits=8
+repair=image.data-excess
+space=DeviceGray

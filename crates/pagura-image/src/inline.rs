@@ -87,11 +87,15 @@ pub(crate) fn decode(
         return Err(Error::syntax("filter is forbidden in inline images"));
     }
     let codec = chain.split_image();
-    // Inline decoding has no document stream in which to record repairs;
-    // strict decoding preserves the reported-recovery invariant.
-    let mut diagnostics = Diagnostics::new(pagura_core::Recovery::Strict);
-    let decoded = chain.decode(data, document.limits().decoded_bytes, &mut diagnostics)?;
-    dispatch::decode(document, &dict, &decoded, codec.as_ref())
+    let mut diagnostics = Diagnostics::new(document.recovery());
+    let result = (|| {
+        let decoded = chain.decode(data, document.limits().decoded_bytes, &mut diagnostics)?;
+        dispatch::decode(document, &dict, &decoded, codec.as_ref(), &mut diagnostics)
+    })();
+    // Inline callers have the containing content-stream position; buffer
+    // positions here are relative to the supplied inline data.
+    document.report(diagnostics.take());
+    result
 }
 
 pub(crate) fn data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usize> {

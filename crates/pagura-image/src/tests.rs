@@ -184,13 +184,26 @@ fn decode_arrays_stencils_color_keys_and_inline_abbreviations() {
             Value::Array(vec![Value::Integer(12), Value::Integer(25)]),
         ),
     ]);
-    let image = crate::dispatch::decode(&document, &keyed, &[12, 26], None).unwrap();
+    let image = crate::dispatch::decode(
+        &document,
+        &keyed,
+        &[12, 26],
+        None,
+        &mut pagura_core::Diagnostics::new(Recovery::Strict),
+    )
+    .unwrap();
     assert_eq!(image.mask, MaskKind::ColorKey(vec![(12, 25)]));
     keyed.insert(Name::new(b"Decode"), Value::Array(vec![Value::Integer(0)]));
     assert_eq!(
-        crate::dispatch::decode(&document, &keyed, &[12, 26], None)
-            .unwrap_err()
-            .kind,
+        crate::dispatch::decode(
+            &document,
+            &keyed,
+            &[12, 26],
+            None,
+            &mut pagura_core::Diagnostics::new(Recovery::Strict)
+        )
+        .unwrap_err()
+        .kind,
         ErrorKind::Syntax
     );
 }
@@ -322,8 +335,26 @@ fn inline_vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8])
     } else {
         Dictionary::new()
     };
-    let result = decode_inline(&document(), &resources, dict, &data);
-    if params["outcome"] != "valid" {
+    let doc = document();
+    let result = decode_inline(&doc, &resources, dict, &data);
+    if params["outcome"] == "repair" {
+        let strict = Document::open(
+            fixture("image", "samples-1-1-raw.pdf"),
+            &OpenOptions {
+                recovery: Recovery::Strict,
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        let error = decode_inline(&strict, &resources, dict, &data).unwrap_err();
+        assert_eq!(error.repair.unwrap().as_str(), params["repair"], "{name}");
+        assert_eq!(doc.diagnostics().len(), 1, "{name}");
+        assert_eq!(
+            doc.diagnostics()[0].repair.as_str(),
+            params["repair"],
+            "{name}"
+        );
+    } else if params["outcome"] != "valid" {
         assert_eq!(result.unwrap_err().kind, ErrorKind::Syntax, "{name}");
         return;
     }

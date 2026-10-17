@@ -1,7 +1,7 @@
 //! Image codec dispatch and cross-checking of dictionary and stream metadata.
 use crate::{DecodedImage, ImageKind, MaskKind, Samples, ccitt, dct, jbig2, parameters as p};
 use pagura_codec::ImageCodec;
-use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_core::{Diagnostics, Dictionary, Error, Result, Value};
 use pagura_document::Document;
 
 type Codec = (ImageCodec, Option<Dictionary>);
@@ -11,6 +11,7 @@ pub(crate) fn decode(
     dict: &Dictionary,
     data: &[u8],
     codec: Option<&Codec>,
+    diagnostics: &mut Diagnostics,
 ) -> Result<DecodedImage> {
     let (width, height) = p::dimensions(dict)?;
     let limits = document.limits();
@@ -56,17 +57,19 @@ pub(crate) fn decode(
     match codec.map(|(codec, _)| codec) {
         None => {
             image.bits_per_component = bits;
-            image.samples = p::unpack(data, width, height, components, bits, &limits)?;
+            image.samples = p::unpack_with_diagnostics(
+                data,
+                width,
+                height,
+                components,
+                bits,
+                &limits,
+                diagnostics,
+            )?;
         }
         Some(ImageCodec::Dct) => {
-            let transform = params
-                .and_then(|dict| dict.get(b"ColorTransform"))
-                .map(|v| {
-                    v.as_integer()
-                        .ok_or(Error::syntax("invalid DCT ColorTransform"))
-                })
-                .transpose()?;
-            let decoded = dct::decode(data, transform, &limits)?;
+            let transform = color_transform(params)?;
+            let decoded = dct::decode_with_diagnostics(data, transform, &limits, diagnostics)?;
             if decoded.width != width
                 || decoded.height != height
                 || decoded.components != components
@@ -87,8 +90,9 @@ pub(crate) fn decode(
             if params.columns != width {
                 return Err(Error::syntax("CCITT Columns disagrees with image Width"));
             }
-            let decoded = ccitt::decode(data, &params, &limits)?;
-            image.samples = p::unpack(&decoded, width, height, 1, 1, &limits)?;
+            let decoded = ccitt::decode_with_diagnostics(data, &params, &limits, diagnostics)?;
+            image.samples =
+                p::unpack_with_diagnostics(&decoded, width, height, 1, 1, &limits, diagnostics)?;
         }
         Some(ImageCodec::Jbig2) => {
             if bits != 1 || components != 1 {
@@ -156,4 +160,14 @@ fn decode_jbig2(
         return Err(Error::limit("JBIG2 adapter sample budget exceeded"));
     }
     p::unpack(&inverted, width, height, 1, 1, &document.limits())
+}
+
+fn color_transform(params: Option<&Dictionary>) -> Result<Option<i64>> {
+    params
+        .and_then(|dict| dict.get(b"ColorTransform"))
+        .map(|v| {
+            v.as_integer()
+                .ok_or(Error::syntax("invalid DCT ColorTransform"))
+        })
+        .transpose()
 }

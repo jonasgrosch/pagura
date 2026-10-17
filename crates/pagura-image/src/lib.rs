@@ -16,9 +16,21 @@ pub mod jpx;
 use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
 use pagura_document::{Document, IndirectObject};
 
+/// Stable reported repairs of malformed image data (ADR 0003).
+pub mod tags {
+    use pagura_core::Repair;
+    /// Missing packed bytes become zero, including a missing low byte of a
+    /// 16-bit sample; dimensions and row padding remain authoritative (8.9.3,
+    /// 8.9.5.1). The fill value is a reader policy, not specified by ISO.
+    pub const DATA_SHORT: Repair = Repair::new("image.data-short");
+    /// Bytes beyond the declared sample rows are ignored (8.9.3, 8.9.5.1).
+    pub const DATA_EXCESS: Repair = Repair::new("image.data-excess");
+}
+
 mod dispatch;
 mod filter_rules;
 mod inline;
+mod jpx_channels;
 mod jpx_image;
 mod mask;
 mod parameters;
@@ -184,7 +196,8 @@ impl DecodedImage {
 /// `Unsupported` for codecs or features not implemented, and limit errors
 /// when the image exceeds [`pagura_core::Limits`] (pixels, decoded bytes).
 pub fn decode_xobject(document: &Document, image: &IndirectObject) -> Result<DecodedImage> {
-    (|| {
+    let mut diagnostics = pagura_core::Diagnostics::new(document.recovery());
+    let result = (|| {
         let dictionary = image
             .dictionary()
             .ok_or(Error::syntax("image is not a dictionary"))?;
@@ -209,26 +222,41 @@ pub fn decode_xobject(document: &Document, image: &IndirectObject) -> Result<Dec
         let (width, height) = parameters::dimensions(&dictionary)?;
         parameters::budget(width, height, 1, 1, &document.limits())?;
         let stream = document.image_stream(image)?;
-        dispatch::decode(document, &dictionary, &stream.data, stream.codec.as_ref())
-    })()
-    .map_err(|error: Error| {
-        let position = match error.position {
-            pagura_core::Position::Buffer(offset) => pagura_core::Position::Stream {
-                object: image.id(),
-                offset,
-            },
-            pagura_core::Position::Unknown => match image.source() {
-                pagura_document::ObjectSource::File(range) => {
-                    pagura_core::Position::File(range.start)
-                }
-                pagura_document::ObjectSource::Compressed { .. } => pagura_core::Position::Unknown,
-            },
-            position => position,
-        };
+        dispatch::decode(
+            document,
+            &dictionary,
+            &stream.data,
+            stream.codec.as_ref(),
+            &mut diagnostics,
+        )
+    })();
+    document.report(diagnostics.take().into_iter().map(|mut diagnostic| {
+        diagnostic.position = image_position(diagnostic.position, image);
+        diagnostic.in_object(image.id())
+    }));
+    result.map_err(|error: Error| {
+        let position = image_position(error.position, image);
         let mut error = error.in_object(image.id());
         error.position = position;
         error
     })
+}
+
+fn image_position(
+    position: pagura_core::Position,
+    image: &IndirectObject,
+) -> pagura_core::Position {
+    match position {
+        pagura_core::Position::Buffer(offset) => pagura_core::Position::Stream {
+            object: image.id(),
+            offset,
+        },
+        pagura_core::Position::Unknown => match image.source() {
+            pagura_document::ObjectSource::File(range) => pagura_core::Position::File(range.start),
+            pagura_document::ObjectSource::Compressed { .. } => pagura_core::Position::Unknown,
+        },
+        position => position,
+    }
 }
 
 /// Decodes an inline image (`BI … ID … EI`, clause 8.9.7) given its

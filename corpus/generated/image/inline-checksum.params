@@ -1,0 +1,3 @@
+kind=inline
+outcome=repair
+repair=filter.checksum-mismatch

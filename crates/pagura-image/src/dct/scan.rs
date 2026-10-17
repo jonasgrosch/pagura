@@ -3,7 +3,7 @@ use super::{
     Decoder,
     entropy::{Bits, Huffman},
 };
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Diagnostics, Error, Limits, Result};
 
 struct Scan {
     selected: Vec<(usize, usize, usize)>,
@@ -90,6 +90,7 @@ impl Decoder {
         data: &[u8],
         offset: usize,
         limits: &Limits,
+        diagnostics: &mut Diagnostics,
     ) -> Result<usize> {
         let frame = self
             .frame
@@ -124,7 +125,7 @@ impl Decoder {
                 if eob != 0 {
                     return Err(bits.error("JPEG EOB run crosses restart"));
                 }
-                bits.restart(sequence)?;
+                bits.restart(sequence, diagnostics, &mut self.padding_reported)?;
                 sequence = (sequence + 1) % 8;
                 predictors.fill(0);
             }
@@ -173,7 +174,7 @@ impl Decoder {
         if eob != 0 {
             return Err(bits.error("JPEG EOB run exceeds scan"));
         }
-        bits.align()?;
+        bits.align(diagnostics, &mut self.padding_reported)?;
         if data.get(bits.offset) != Some(&255) {
             return Err(bits.error("extra JPEG entropy data"));
         }

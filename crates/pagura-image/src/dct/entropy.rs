@@ -1,5 +1,5 @@
 //! T.81 canonical Huffman codes and entropy byte stuffing.
-use pagura_core::{Error, Position, Result};
+use pagura_core::{Diagnostic, Diagnostics, Error, Position, Result};
 
 pub(super) struct Huffman {
     first: [u32; 16],
@@ -115,15 +115,34 @@ impl<'a> Bits<'a> {
         }
         Ok(value)
     }
-    pub(super) fn align(&mut self) -> Result<()> {
-        if self.left > 0 && self.byte & (255 >> (8 - self.left)) != (255 >> (8 - self.left)) {
-            return Err(self.error("invalid JPEG entropy padding"));
+    pub(super) fn align(
+        &mut self,
+        diagnostics: &mut Diagnostics,
+        reported: &mut bool,
+    ) -> Result<()> {
+        if self.left > 0
+            && self.byte & (255 >> (8 - self.left)) != (255 >> (8 - self.left))
+            && !*reported
+        {
+            diagnostics.repair(
+                Diagnostic::new(
+                    super::tags::ENTROPY_PADDING,
+                    "non-one JPEG entropy padding ignored (T.81 B.1.1.5, E.1.4)",
+                )
+                .at(Position::Buffer(self.offset.saturating_sub(1))),
+            )?;
+            *reported = true;
         }
         self.left = 0;
         Ok(())
     }
-    pub(super) fn restart(&mut self, sequence: u8) -> Result<()> {
-        self.align()?;
+    pub(super) fn restart(
+        &mut self,
+        sequence: u8,
+        diagnostics: &mut Diagnostics,
+        reported: &mut bool,
+    ) -> Result<()> {
+        self.align(diagnostics, reported)?;
         if super::marker(self.data, &mut self.offset)? != 0xd0 + sequence {
             return Err(self.error("wrong JPEG restart marker"));
         }

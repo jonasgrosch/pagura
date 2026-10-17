@@ -1,0 +1,8 @@
+kind=pdf-image
+outcome=repair
+width=1
+height=1
+components=3
+bits=8
+repair=jpeg.adobe-marker
+space=DeviceRGB

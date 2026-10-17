@@ -1,0 +1,8 @@
+kind=pdf-image
+outcome=repair
+width=1
+height=1
+components=1
+bits=8
+repair=jpeg.entropy-padding
+space=DeviceGray
