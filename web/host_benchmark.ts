@@ -12,25 +12,62 @@ import { SessionClient } from './client.mjs';
 import { FrameDecoder, encodeRequest, HostError, VERSION_1_1 } from './protocol.mjs';
 import { runHost } from './worker.mjs';
 import { failureReason } from './failure.mjs';
+import type { Responses } from './client.mjs';
+import type { RequestValues, Tile } from './protocol.mjs';
 
-const median = (values) => {
+interface Doc {
+  name: string;
+  bytes: Uint8Array;
+  /** Independent PPM pixels; absent for the external document. */
+  rgb?: Uint8Array;
+  width?: number;
+  outputs: string[];
+  tileSize: number;
+  external?: boolean;
+  pages?: number;
+}
+interface Request {
+  kind: keyof Responses;
+  values?: RequestValues;
+}
+interface Reply<T = unknown> {
+  value: T;
+  ms: number;
+  wasmBytes: number;
+}
+/** The workload yields requests and receives each reply; the first reply is undefined. */
+type Driver = Generator<Request, void, Reply | undefined>;
+/** A fresh-instance timing record, or one runtime's latency and memory series. */
+interface Results {
+  start?: number;
+  firstMs?: number;
+  outcome?: string;
+  latency?: object[];
+  memory?: object[];
+}
+type Listener = (event: unknown) => void;
+
+const median = (values: number[]) => {
   const sorted = [...values].sort((a, b) => a - b);
   return sorted.length % 2
     ? sorted[(sorted.length - 1) / 2]
     : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
 };
-const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
+const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 
 /** The same request workload drives both the Node WASI and browser mailbox paths. */
-function* workload(documents, results, phase) {
+function* workload(documents: Doc[], results: Results, phase: string): Driver {
   yield { kind: 1, values: { version: VERSION_1_1 } };
-  const request = function* (kind, values) {
-    return yield { kind, values };
+  const request = function* <K extends keyof Responses>(
+    kind: K,
+    values?: RequestValues,
+  ): Generator<Request, Reply<Responses[K] | HostError>, Reply | undefined> {
+    return (yield { kind, values }) as Reply<Responses[K] | HostError>;
   };
-  const open = function* (doc) {
+  const open = function* (doc: Doc) {
     return yield* request(2, { bytes: doc.bytes, password: new Uint8Array(), recovery: 1 });
   };
-  const tile = function* (doc, document, scale, x = 0, y = 0) {
+  const tile = function* (doc: Doc, document: number, scale: number, x = 0, y = 0) {
     return yield* request(4, { document, page: 0, scale, x, y, width: doc.tileSize, height: doc.tileSize });
   };
   if (phase === 'fresh') {
@@ -39,7 +76,7 @@ function* workload(documents, results, phase) {
     assert.ok(!(opened.value instanceof Error));
     yield* request(3, { document: opened.value.document, page: 0 });
     const image = yield* tile(doc, opened.value.document, 1);
-    results.firstMs = performance.now() - results.start;
+    results.firstMs = performance.now() - results.start!;
     results.outcome = image.value instanceof Error ? String(image.value) : 'tile';
     verify(doc, image.value, 1, 0, 0);
     yield* request(6, { document: opened.value.document });
@@ -47,7 +84,13 @@ function* workload(documents, results, phase) {
   }
   if (phase === 'latency')
     for (const doc of documents) {
-      const samples = [];
+      const samples: {
+        firstMs: number;
+        outcome: string;
+        warmMs: number[];
+        zoomMs: number[];
+        [key: string]: unknown;
+      }[] = [];
       // Two discarded warmups, five measured samples, within one long-lived instance.
       for (let sample = -2; sample < 5; sample++) {
         const begin = performance.now(),
@@ -60,8 +103,8 @@ function* workload(documents, results, phase) {
         const first = yield* tile(doc, opened.value.document, 1);
         const firstMs = performance.now() - begin;
         verify(doc, first.value, 1, 0, 0);
-        const warm = [],
-          zoom = [];
+        const warm: number[] = [],
+          zoom: number[] = [];
         for (let i = 0; i < 16; i++) {
           const x = (i % 2) * doc.tileSize,
             y = (Math.floor(i / 2) % 2) * doc.tileSize;
@@ -86,7 +129,7 @@ function* workload(documents, results, phase) {
             wasmBytes: retained.wasmBytes,
           });
       }
-      results.latency.push({
+      results.latency!.push({
         document: doc.name,
         pages: doc.pages,
         tileSize: doc.tileSize,
@@ -102,14 +145,14 @@ function* workload(documents, results, phase) {
   if (phase !== 'latency')
     for (const mode of [phase]) {
       const before = yield* request(9),
-        cycles = [];
+        cycles: { wasmBytes: number; [key: string]: unknown }[] = [];
       for (let cycle = 0; cycle < 50; cycle++) {
         const doc = mode === 'same' ? documents[0] : documents[cycle % documents.length];
         const opened = yield* open(doc);
-        const rendered = yield* tile(doc, opened.value.document, 1);
+        const rendered = yield* tile(doc, (opened.value as Responses[2]).document, 1);
         verify(doc, rendered.value, 1, 0, 0);
         const retained = yield* request(9);
-        yield* request(6, { document: opened.value.document });
+        yield* request(6, { document: (opened.value as Responses[2]).document });
         const closed = yield* request(9);
         assert.deepEqual(closed.value, { sourceBytes: 0, cacheBytes: 0, documents: 0, lists: 0 });
         cycles.push({
@@ -120,17 +163,17 @@ function* workload(documents, results, phase) {
           wasmBytes: closed.wasmBytes,
         });
       }
-      results.memory.push({
+      results.memory!.push({
         mode,
         before: { ...before.value, wasmBytes: before.wasmBytes },
         cycles,
-        growthBytes: cycles.at(-1).wasmBytes - before.wasmBytes,
+        growthBytes: cycles.at(-1)!.wasmBytes - before.wasmBytes,
         medianWasmBytes: median(cycles.map((c) => c.wasmBytes)),
       });
     }
 }
 
-function verify(doc, value, scale, x, y) {
+function verify(doc: Doc, value: Tile | HostError, scale: number, x: number, y: number) {
   if (value instanceof Error) {
     assert.ok(doc.external && value instanceof HostError, String(value));
     assert.equal(value.category, 3, 'Only explicit Unsupported is a measured capability gap');
@@ -143,7 +186,7 @@ function verify(doc, value, scale, x, y) {
     for (let row = 0; row < size; row++)
       for (let col = 0; col < size; col++) {
         const at = (row * size + col) * 4,
-          expected = ((y + row) * doc.width + x + col) * 3;
+          expected = ((y + row) * doc.width! + x + col) * 3;
         for (let c = 0; c < 3; c++) assert.equal(value.rgba[at + c], doc.rgb[expected + c]);
         assert.equal(value.rgba[at + 3], 255);
       }
@@ -152,13 +195,13 @@ function verify(doc, value, scale, x, y) {
   doc.outputs.push(hash(value.rgba));
 }
 
-async function nodeWasi(module, driver) {
-  let instance,
+async function nodeWasi(module: WebAssembly.Module, driver: Driver) {
+  let instance: WebAssembly.Instance & { exports: { memory: WebAssembly.Memory } },
     current = new Uint8Array(),
     offset = 0,
-    last,
+    last: Reply | undefined,
     id = 0,
-    start,
+    start: number,
     waiting = false;
   const decoder = new FrameDecoder((frame) => {
     assert.equal(frame.id, id);
@@ -168,7 +211,7 @@ async function nodeWasi(module, driver) {
   const wasi = new WASI({ version: 'preview1', args: [], env: {}, preopens: {}, returnOnExit: true });
   const imports = {
     ...wasi.wasiImport,
-    fd_read(fd, iovs, count, result) {
+    fd_read(fd: number, iovs: number, count: number, result: number) {
       assert.equal(fd, 0);
       if (offset === current.length) {
         assert.equal(waiting, false, 'Host read before producing its previous response');
@@ -195,7 +238,7 @@ async function nodeWasi(module, driver) {
       view.setUint32(result, total, true);
       return 0;
     },
-    fd_write(fd, iovs, count, result) {
+    fd_write(fd: number, iovs: number, count: number, result: number) {
       const view = new DataView(instance.exports.memory.buffer);
       let total = 0;
       for (let i = 0; i < count; i++) {
@@ -210,23 +253,22 @@ async function nodeWasi(module, driver) {
       return 0;
     },
   };
-  instance = await WebAssembly.instantiate(module, { wasi_snapshot_preview1: imports });
+  instance = (await WebAssembly.instantiate(module, { wasi_snapshot_preview1: imports })) as typeof instance;
   assert.equal(wasi.start(instance), 0);
   decoder.finish();
 }
 
-async function shim(module, driver) {
+async function shim(module: WebAssembly.Module, driver: Driver) {
   class Thread {
-    constructor() {
-      this.listeners = new Map();
-    }
-    addEventListener(type, fn) {
+    listeners = new Map<string, Listener[]>();
+    thread?: Worker;
+    addEventListener(type: string, fn: Listener) {
       this.listeners.set(type, [...(this.listeners.get(type) ?? []), fn]);
     }
-    emit(type, value) {
+    emit(type: string, value: unknown) {
       for (const fn of this.listeners.get(type) ?? []) fn(value);
     }
-    postMessage(message) {
+    postMessage(message: { shared: ArrayBufferLike }) {
       this.thread = new Worker(new URL(import.meta.url), {
         execArgv: ['--disable-warning=ExperimentalWarning'],
         workerData: { module, shared: message.shared },
@@ -241,12 +283,12 @@ async function shim(module, driver) {
   const client = new SessionClient(new Thread());
   try {
     await client.ready;
-    let previous;
+    let previous: Reply | undefined;
     for (;;) {
       const next = driver.next(previous);
       if (next.done) break;
       const start = performance.now();
-      let value;
+      let value: unknown;
       try {
         value = await client.request(next.value.kind, next.value.values);
       } catch (error) {
@@ -265,7 +307,7 @@ async function main() {
   if (!wasmPath || !externalPath) throw new Error('Expected WASM path and external multi-page PDF path');
   const wasm = readFileSync(wasmPath),
     module = await WebAssembly.compile(wasm),
-    documents = [];
+    documents: Doc[] = [];
   for (const name of ['many-rectangles', 'two-pages', 'rectangle']) {
     const bytes = readFileSync(new URL(`../corpus/generated/classic/${name}.pdf`, import.meta.url));
     const ppm = readFileSync(new URL(`../corpus/generated/classic/${name}.ppm`, import.meta.url));
@@ -274,7 +316,7 @@ async function main() {
     documents.push({ name, bytes, rgb, width, outputs: [], tileSize: width === 512 ? 256 : 32 });
   }
   documents.push({ name: externalPath, bytes: readFileSync(externalPath), external: true, outputs: [], tileSize: 128 });
-  const report = {
+  const report: Record<string, unknown> & { runtimes: object[] } = {
     schema: 1,
     exploratory: true,
     node: process.version,
@@ -284,19 +326,19 @@ async function main() {
     documents: documents.map((d) => ({ name: d.name, bytes: d.bytes.length, sha256: hash(d.bytes) })),
     runtimes: [],
   };
-  const outputs = [];
+  const outputs: string[][][] = [];
   for (const [runtime, run] of [
     ['node-wasi', nodeWasi],
     ['browser-shim-node', shim],
-  ]) {
+  ] as const) {
     for (const d of documents) d.outputs = [];
-    const result = { runtime, fresh: [], latency: [], memory: [] };
+    const result: Results & { runtime: string; fresh: object[] } = { runtime, fresh: [], latency: [], memory: [] };
     for (const doc of documents) {
-      const samples = [];
+      const samples: { firstMs: number; outcome: string }[] = [];
       for (let sample = -2; sample < 5; sample++) {
-        const record = { start: performance.now() };
+        const record: Results = { start: performance.now() };
         await run(module, workload([doc], record, 'fresh'));
-        if (sample >= 0) samples.push({ firstMs: record.firstMs, outcome: record.outcome });
+        if (sample >= 0) samples.push({ firstMs: record.firstMs!, outcome: record.outcome! });
       }
       result.fresh.push({ document: doc.name, samples, medianMs: median(samples.map((s) => s.firstMs)) });
     }
@@ -312,9 +354,9 @@ async function main() {
 if (!isMainThread) {
   try {
     await runHost(workerData.module, workerData.shared, (message, transfer = []) =>
-      parentPort.postMessage(message, transfer),
+      parentPort!.postMessage(message, transfer),
     );
   } catch (error) {
-    parentPort.postMessage({ type: 'fatal', reason: failureReason(error), message: String(error) });
+    parentPort!.postMessage({ type: 'fatal', reason: failureReason(error), message: String(error) });
   }
 } else await main();

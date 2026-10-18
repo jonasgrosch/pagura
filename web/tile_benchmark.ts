@@ -12,6 +12,7 @@ import { createHash } from 'node:crypto';
 import { WASI } from 'node:wasi';
 import assert from 'node:assert/strict';
 import { encodeRequest, FrameDecoder } from './protocol.mjs';
+import type { Frame, Tile, TileRect } from './protocol.mjs';
 
 const [nativePath, wasmPath] = process.argv.slice(2);
 if (!nativePath || !wasmPath) throw new Error('Expected native binary and WASM binary paths');
@@ -19,7 +20,7 @@ const root = new URL('../', import.meta.url),
   pdf = readFileSync(new URL('corpus/generated/classic/many-rectangles.pdf', root));
 const ppm = readFileSync(new URL('corpus/generated/classic/many-rectangles.ppm', root));
 const rgb = ppm.subarray(Buffer.byteLength('P6\n512 512\n255\n'));
-const tiles = [];
+const tiles: TileRect[] = [];
 for (let y = 0; y < 512; y += 64) for (let x = 0; x < 512; x += 64) tiles.push({ x, y, width: 64, height: 64 });
 const input = Buffer.concat([
   encodeRequest(1, 1),
@@ -28,9 +29,9 @@ const input = Buffer.concat([
 ]);
 const module = await WebAssembly.compile(readFileSync(wasmPath));
 const scratch = mkdtempSync(join(tmpdir(), 'pagura-tiles-'));
-const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
-function verify(bytes) {
-  const frames = [],
+const digest = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
+function verify(bytes: Uint8Array) {
+  const frames: Frame[] = [],
     decoder = new FrameDecoder((frame) => frames.push(frame));
   decoder.feed(bytes);
   decoder.finish();
@@ -38,7 +39,7 @@ function verify(bytes) {
   for (const [index, tile] of tiles.entries()) {
     const frame = frames[index + 2];
     assert.equal(frame.kind, 132);
-    const rgba = frame.value.rgba;
+    const rgba = (frame.value as Tile).rgba;
     for (let y = 0; y < 64; y++)
       for (let x = 0; x < 64; x++) {
         const at = (y * 64 + x) * 4,

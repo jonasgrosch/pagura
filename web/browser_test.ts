@@ -3,7 +3,18 @@
  * The browser and tools/serve_web.py must already be running. */
 import assert from 'node:assert/strict';
 
-function loopback(value) {
+/** The parts of a CDP Runtime.evaluate result that this check reads. */
+interface EvaluateResult {
+  result?: { value?: unknown };
+  exceptionDetails?: { text: string; exception?: { description?: string } };
+}
+interface PendingCommand {
+  resolve: (value: EvaluateResult) => void;
+  reject: (error: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+function loopback(value: string) {
   const url = new URL(value);
   if (url.protocol !== 'http:' || !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))
     throw new Error('Checks require loopback HTTP URLs');
@@ -11,15 +22,15 @@ function loopback(value) {
 }
 const endpoint = loopback(process.argv[2] ?? 'http://127.0.0.1:9222/');
 const viewer = loopback(process.argv[3] ?? 'http://127.0.0.1:8000/');
-const target = await (
+const target = (await (
   await fetch(new URL('/json/new?about:blank', endpoint), { method: 'PUT', signal: AbortSignal.timeout(5000) })
-).json();
+).json()) as { id: string; webSocketDebuggerUrl: string };
 const socket = new WebSocket(target.webSocketDebuggerUrl),
-  pending = new Map(),
-  errors = [];
+  pending = new Map<number, PendingCommand>(),
+  errors: unknown[] = [];
 let id = 0;
-function command(method, params = {}) {
-  return new Promise((resolve, reject) => {
+function command(method: string, params = {}) {
+  return new Promise<EvaluateResult>((resolve, reject) => {
     const current = ++id,
       timer = setTimeout(() => {
         pending.delete(current);
@@ -52,7 +63,7 @@ socket.addEventListener('close', () => {
   pending.clear();
 });
 try {
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('CDP connection timed out')), 5000);
     socket.addEventListener(
       'open',
@@ -93,18 +104,19 @@ try {
   if (result.exceptionDetails)
     throw new Error(result.exceptionDetails.exception?.description ?? result.exceptionDetails.text);
   assert.equal(errors.length, 0, JSON.stringify(errors));
-  console.log(JSON.stringify(result.result.value, null, 2));
+  console.log(JSON.stringify(result.result!.value, null, 2));
 } finally {
   socket.close();
   await fetch(new URL(`/json/close/${target.id}`, endpoint), { signal: AbortSignal.timeout(5000) }).catch(() => {});
 }
 
+// Runs inside the viewer page via toString(), so Node's type stripping leaves plain JavaScript.
 async function checkNavigation() {
-  const $ = (id) => document.getElementById(id);
-  const check = (condition, message) => {
+  const $ = (id: string) => document.getElementById(id) as HTMLInputElement;
+  const check = (condition: unknown, message: string) => {
     if (!condition) throw new Error(message);
   };
-  const wait = async (test) => {
+  const wait = async (test: () => boolean) => {
     const deadline = performance.now() + 30000;
     while (!test()) {
       if (performance.now() > deadline)
@@ -115,14 +127,14 @@ async function checkNavigation() {
   const frames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   await wait(() => $('status')?.textContent === 'Ready — open a PDF');
   check(crossOriginIsolated, 'Viewer must be cross-origin isolated');
-  const { navigationDocument } = await import(new URL('./navigation_document.mjs', location.href));
+  const { navigationDocument } = await import(new URL('./navigation_document.mjs', location.href) as unknown as string);
   const data = new DataTransfer();
   data.items.add(new File([navigationDocument()], 'content-fits.pdf', { type: 'application/pdf' }));
   $('file').files = data.files;
   $('file').dispatchEvent(new Event('change', { bubbles: true }));
   const ready = () => $('status').textContent === 'Visible tiles rendered' && $('error').hidden;
   await wait(() => ready() && document.querySelectorAll('[role=treeitem]').length === 6);
-  const samples = [];
+  const samples: object[] = [];
   for (let index = 0; index < 6; index++) {
     const viewport = $('viewport'),
       painted = index < 3,
@@ -139,19 +151,21 @@ async function checkNavigation() {
           : availableHeight / height;
     const zoom = Math.max(0.1, Math.min(8, raw)),
       title = document.querySelectorAll('[role=treeitem]')[index].textContent;
-    document.querySelectorAll('[role=treeitem]')[index].click();
+    document.querySelectorAll<HTMLElement>('[role=treeitem]')[index].click();
     await wait(
       () =>
         ready() &&
         $('page').value === String(page + 1) &&
-        Math.abs(parseFloat(document.querySelector(`[data-page="${page}"]`)?.style.width) - 600 * zoom) < 1e-5,
+        Math.abs(
+          parseFloat(document.querySelector<HTMLElement>(`[data-page="${page}"]`)?.style.width as string) - 600 * zoom,
+        ) < 1e-5,
     );
     await frames();
     check($('page').value === String(page + 1), `Page field changed after ${title}`);
     check($('page-label').textContent === `Label: ${painted ? 'Painted' : 'Empty'}`, `Wrong label after ${title}`);
     if (painted) {
       const area = viewport.getBoundingClientRect(),
-        sheet = document.querySelector(`[data-page="${page}"]`).getBoundingClientRect();
+        sheet = document.querySelector(`[data-page="${page}"]`)!.getBoundingClientRect();
       const left = sheet.left + 60 * zoom - area.left,
         top = sheet.top + 500 * zoom - area.top;
       if (index === 0) {
@@ -171,11 +185,14 @@ async function checkNavigation() {
   $('page').dispatchEvent(new Event('change'));
   $('page').blur();
   await wait(
-    () => ready() && $('page').value === '2' && document.querySelector('[data-page="1"]')?.style.width === '600px',
+    () =>
+      ready() &&
+      $('page').value === '2' &&
+      document.querySelector<HTMLElement>('[data-page="1"]')?.style.width === '600px',
   );
   const viewport = $('viewport'),
     page = document.querySelector('[data-page="1"]');
-  viewport.scrollTop += page.getBoundingClientRect().top - viewport.getBoundingClientRect().top - 32;
+  viewport.scrollTop += page!.getBoundingClientRect().top - viewport.getBoundingClientRect().top - 32;
   await frames();
   await wait(() => ready() && $('page').value === '2');
   check($('page').value === '2', 'Previous-page strip must not replace the destination page');

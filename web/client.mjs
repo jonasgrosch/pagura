@@ -10,12 +10,12 @@ import { createInput, InputWriter } from './transport.mjs';
 
 /**
  * The part of a Worker the session uses; tests substitute worker_threads or stand-ins.
- * @typedef {object} HostWorker
- * @property {{ (type: 'message', listener: (event: { data: HostMessage }) => void): void,
- *   (type: 'error', listener: (event: { message?: string }) => void): void,
- *   (type: 'messageerror', listener: () => void): void }} addEventListener
- * @property {(message: { type: 'start', shared: ArrayBufferLike }) => void} postMessage
- * @property {() => void} terminate
+ * The event shape depends on the type: `{ data: HostMessage }` for message, `{ message?: string }` for error.
+ * @typedef {{
+ *   addEventListener(type: 'message' | 'error' | 'messageerror', listener: (event: any) => void): void,
+ *   postMessage(message: { type: 'start', shared: ArrayBufferLike }): void,
+ *   terminate(): void,
+ * }} HostWorker
  */
 /**
  * @typedef {{ cancelled: true }} Cancelled A request the client skipped because a newer one replaced it.
@@ -67,7 +67,7 @@ export class SessionClient {
     });
     // Keep worker startup failures observed even before the first request.
     this.ready.catch(() => {});
-    worker.addEventListener('message', ({ data }) => {
+    worker.addEventListener('message', (/** @type {{ data: HostMessage }} */ { data }) => {
       if (this.failure) return;
       try {
         if (data.type === 'ready') {
@@ -86,7 +86,7 @@ export class SessionClient {
         this.fail(error);
       }
     });
-    worker.addEventListener('error', (event) =>
+    worker.addEventListener('error', (/** @type {{ message?: string }} */ event) =>
       this.fail(new HostFailure('execution failure', event.message || 'Host execution failed')),
     );
     worker.addEventListener('messageerror', () => this.fail(new Error('Invalid worker message')));

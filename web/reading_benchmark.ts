@@ -11,26 +11,29 @@ import { SessionClient } from './client.mjs';
 import { runHost } from './worker.mjs';
 import { profileTextLayer } from './reading_profile.mjs';
 import { readingWorkload } from './reading_workload.mjs';
+import type { SearchResult } from './reading_protocol.mjs';
+
+type Listener = (event: unknown) => void;
 
 if (!isMainThread) {
   try {
     await runHost(workerData.module, workerData.shared, (message, transfer = []) =>
-      parentPort.postMessage(message, transfer),
+      parentPort!.postMessage(message, transfer),
     );
   } catch (error) {
-    parentPort.postMessage({ type: 'fatal', message: String(error) });
+    parentPort!.postMessage({ type: 'fatal', message: String(error) });
   }
 } else {
   const wasm = readFileSync(process.argv[2]),
     module = await WebAssembly.compile(wasm);
   class Thread {
-    constructor() {
-      this.listeners = new Map();
-    }
-    addEventListener(type, fn) {
+    listeners = new Map<string, Listener[]>();
+    thread?: Worker;
+    stopped?: Promise<number>;
+    addEventListener(type: string, fn: Listener) {
       this.listeners.set(type, [...(this.listeners.get(type) ?? []), fn]);
     }
-    postMessage(message) {
+    postMessage(message: { shared: ArrayBufferLike }) {
       this.thread = new Worker(new URL(import.meta.url), {
         workerData: { module, shared: message.shared },
         execArgv: ['--disable-warning=ExperimentalWarning'],
@@ -46,9 +49,10 @@ if (!isMainThread) {
       this.stopped = this.thread?.terminate();
     }
   }
-  const client = new SessionClient(new Thread()),
+  const thread = new Thread();
+  const client = new SessionClient(thread),
     doc = readingWorkload();
-  const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
+  const median = (values: number[]) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
   try {
     await client.hello();
     const opened = await client.open(doc.bytes);
@@ -57,13 +61,14 @@ if (!isMainThread) {
       firstTextMs = performance.now() - begin;
     // Fixed cells/explicit line moves give an independent copy/search oracle.
     assert.equal(text.text, doc.text);
-    const samples = [],
-      memory = [];
+    const samples: { milliseconds: number; matches: number }[] = [],
+      memory: object[] = [];
     for (let sample = -1; sample < 5; sample++) {
       const begin = performance.now();
       let found = 0;
       for (let page = 0; page < opened.pages; page++) {
-        const result = await client.search(opened.document, 'navigation', page, page + 1, 0, 1024, 4);
+        // No token is passed, so the request is never cancelled.
+        const result = (await client.search(opened.document, 'navigation', page, page + 1, 0, 1024, 4)) as SearchResult;
         assert.equal(result.done, true);
         assert.equal(result.matches.length, doc.lines);
         found += result.matches.length;
@@ -76,20 +81,22 @@ if (!isMainThread) {
       memory.push({ page, ...(await client.readingStats()), wasmBytes: client.wasmBytes });
     }
     class Element {
-      constructor() {
-        this.children = [];
-        this.style = {};
-      }
+      children: unknown[] = [];
+      style = {};
       setAttribute() {}
-      append(node) {
+      append(node: unknown) {
         this.children.push(node);
       }
     }
     const standIn = {
-      createElement: (name) =>
+      createElement: (name: string) =>
         name === 'canvas' ? { getContext: () => ({ measureText: () => ({ width: 0.6 }) }) } : new Element(),
     };
-    const layers = profileTextLayer(text, { crop: [0, 0, 612, 792], rotation: 0, userUnit: 1 }, standIn);
+    const layers = profileTextLayer(
+      text,
+      { crop: [0, 0, 612, 792], rotation: 0, userUnit: 1 },
+      standIn as unknown as Document,
+    );
     await client.close(opened.document);
     const afterClose = await client.readingStats();
     assert.equal(afterClose.textBytes, 0);
@@ -117,6 +124,6 @@ if (!isMainThread) {
     );
   } finally {
     client.destroy();
-    await client.worker.stopped;
+    await thread.stopped;
   }
 }

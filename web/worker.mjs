@@ -8,7 +8,7 @@ import { inputReader } from './transport.mjs';
  * @typedef {{ type: 'ready', wasmBytes?: number } | { type: 'memory', wasmBytes: number } | { type: 'drain' }
  *   | { type: 'stdout' | 'stderr', bytes: Uint8Array } | { type: 'exit', code: number }
  *   | { type: 'fatal', reason?: string, message: string }} HostMessage
- * @typedef {(message: HostMessage, transfer?: Transferable[]) => void} SendMessage
+ * @typedef {(message: HostMessage, transfer?: ArrayBuffer[]) => void} SendMessage
  * @typedef {{ memory: WebAssembly.Memory, _start(): void }} HostExports The WASI command's exports.
  */
 
