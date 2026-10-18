@@ -230,14 +230,16 @@ impl Error {
         Self::new(ErrorKind::InvalidArgument, message)
     }
 
-    /// Sets the position unless one is already known. A
-    /// [`Position::Stream`] also records its stream as the object context,
-    /// unless an inner object is already recorded.
+    /// Sets the position unless one is already known.
+    ///
+    /// The object context stays separate: inside an object stream the
+    /// position names the stream while the object is the compressed object
+    /// being parsed. Where the stream itself is the object, add
+    /// `.in_object_opt(position.object())`.
     #[must_use]
     pub const fn at(mut self, position: Position) -> Self {
         if matches!(self.position, Position::Unknown) {
             self.position = position;
-            self = self.in_object_opt(position.object());
         }
         self
     }
@@ -381,19 +383,25 @@ mod tests {
     }
 
     #[test]
-    fn stream_positions_record_their_object_unless_an_inner_one_is_known() {
+    fn stream_positions_leave_the_object_context_to_the_caller() {
         let stream = ObjectId::new(7, 0);
         let at = Position::Stream {
             object: stream,
             offset: 3,
         };
-        assert_eq!(Error::syntax("bad").at(at).object, Some(stream));
-        let inner = Error::syntax("bad").in_object(ObjectId::new(2, 0)).at(at);
-        assert_eq!(inner.object, Some(ObjectId::new(2, 0)));
-        assert_eq!(inner.position, at);
-        // A known position is kept, and so is the absence of its object.
+        assert_eq!(Error::syntax("bad").at(at).object, None);
+        assert_eq!(at.object(), Some(stream));
+        assert_eq!(Position::File(3).object(), None);
+        // A compressed object keeps its own identity inside its stream.
+        let compressed = Error::syntax("bad").at(at).in_object(ObjectId::new(2, 0));
+        assert_eq!(
+            (compressed.position, compressed.object),
+            (at, Some(ObjectId::new(2, 0)))
+        );
+        let content = Error::syntax("bad").at(at).in_object_opt(at.object());
+        assert_eq!(content.object, Some(stream));
         let placed = Error::syntax("bad").at(Position::File(1)).at(at);
-        assert_eq!((placed.position, placed.object), (Position::File(1), None));
+        assert_eq!(placed.position, Position::File(1));
     }
 
     #[test]
