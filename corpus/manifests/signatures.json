@@ -1,0 +1,1034 @@
+{
+  "schema": 2,
+  "area": "signatures",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "signatures/structure",
+      "kind": "vector",
+      "description": "Independently authored signature structure: structure",
+      "requirements": [
+        "signature-fields"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/structure.expect",
+          "sha256": "7a04aaa278b2464ee520d2719fc4a7abcc99bbe38e4ca39bf9e5ce8d4826a4d1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/structure.pdf",
+          "sha256": "8747d46462a0d120538fde75d76c50a710bca8b467943760475f81a8895df4f6"
+        }
+      }
+    },
+    {
+      "id": "signatures/gap-mismatch",
+      "kind": "vector",
+      "description": "Independently authored signature structure: gap-mismatch",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/gap-mismatch.expect",
+          "sha256": "f436eb639eaacd701cef4acdf30ba237d1cafdf73cc6019924a53dbf9b128e4f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/gap-mismatch.pdf",
+          "sha256": "07f519f230a6af8c1729f06cb33f1af3e6e678639d6f16e53cc8ff30cfbba7b1"
+        }
+      }
+    },
+    {
+      "id": "signatures/overlap",
+      "kind": "vector",
+      "description": "Independently authored signature structure: overlap",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/overlap.expect",
+          "sha256": "37ec14a1089bc879689279a75139d129896324786606a48d7cf81ed0e093a241"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/overlap.pdf",
+          "sha256": "0948a49a21600363bf606625bcdb8887137b80b6540985ef6fa8135397cf5363"
+        }
+      }
+    },
+    {
+      "id": "signatures/outside-file",
+      "kind": "vector",
+      "description": "Independently authored signature structure: outside-file",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/outside-file.expect",
+          "sha256": "b4cc4319a632035b64add59082f39b99db5147671f55ec08d07bd598940a8c2d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/outside-file.pdf",
+          "sha256": "b1737a59f2b10e4f83130406e380cf7a650d927e4dfc991131481a6a5aa8690f"
+        }
+      }
+    },
+    {
+      "id": "signatures/negative-offset",
+      "kind": "vector",
+      "description": "Independently authored signature structure: negative-offset",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/negative-offset.expect",
+          "sha256": "41387422c31c44e6af1bb667ac8a6b1e3b67a7cde9712148fe3448ade94a74ba"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/negative-offset.pdf",
+          "sha256": "e50f440817bf8747d54cb6154746dcd60b5753b36d8ebe6c59e2e364e2b8bf40"
+        }
+      }
+    },
+    {
+      "id": "signatures/negative-length",
+      "kind": "vector",
+      "description": "Independently authored signature structure: negative-length",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/negative-length.expect",
+          "sha256": "41387422c31c44e6af1bb667ac8a6b1e3b67a7cde9712148fe3448ade94a74ba"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/negative-length.pdf",
+          "sha256": "be3434ce92b7ef997af4395be2530bf42d9c9887606d866de41e561d9c4564f1"
+        }
+      }
+    },
+    {
+      "id": "signatures/nonzero-first-offset",
+      "kind": "vector",
+      "description": "Independently authored signature structure: nonzero-first-offset",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/nonzero-first-offset.expect",
+          "sha256": "b077f033ed980024741e80a29fb3c721b43acdaa102ec9b94367b79546531433"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/nonzero-first-offset.pdf",
+          "sha256": "d4864743647c7d2aa284f892aa58af1429f1d1f0e9fd6d215ac8863690c3c6e1"
+        }
+      }
+    },
+    {
+      "id": "signatures/outside-first-range",
+      "kind": "vector",
+      "description": "Independently authored signature structure: outside-first-range",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/outside-first-range.expect",
+          "sha256": "b4cc4319a632035b64add59082f39b99db5147671f55ec08d07bd598940a8c2d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/outside-first-range.pdf",
+          "sha256": "8fc71ab8aca14f0551c7ee75fa78ab29a3dc3fc8532867fedd70043445eb66a3"
+        }
+      }
+    },
+    {
+      "id": "signatures/outside-second-offset",
+      "kind": "vector",
+      "description": "Independently authored signature structure: outside-second-offset",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/outside-second-offset.expect",
+          "sha256": "b4cc4319a632035b64add59082f39b99db5147671f55ec08d07bd598940a8c2d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/outside-second-offset.pdf",
+          "sha256": "c19447d4e92b52d164afa0d4f54efa24c69f4bc1a424422734c336821125354c"
+        }
+      }
+    },
+    {
+      "id": "signatures/unsigned-tail",
+      "kind": "vector",
+      "description": "Independently authored signature structure: unsigned-tail",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/unsigned-tail.expect",
+          "sha256": "381aabf70adb12c8bd283b49c37ed5a66e468d3c51fe6341234aa23ac4abe945"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/unsigned-tail.pdf",
+          "sha256": "4e692f935704fe857c62614d9c8bf7b82f22aa2664b35a09bc63093e9d7bb448"
+        }
+      }
+    },
+    {
+      "id": "signatures/direct-value",
+      "kind": "vector",
+      "description": "Independently authored signature structure: direct-value",
+      "requirements": [
+        "signature-fields"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/direct-value.expect",
+          "sha256": "0e8841ca2f57445e252f3d6a81536ee4467298642de86255b4d9b676da712f31"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/direct-value.pdf",
+          "sha256": "7c6d51646e433daaee96b8a22130e73cb216d045bb3b8d60d90044d35d0443a4"
+        }
+      }
+    },
+    {
+      "id": "signatures/escaped-contents-name",
+      "kind": "vector",
+      "description": "Independently authored signature structure: escaped-contents-name",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/escaped-contents-name.expect",
+          "sha256": "1b223bd45fb8537a7abf877b191a6009c535bce9062e329fe9d889dc3d0aab39"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/escaped-contents-name.pdf",
+          "sha256": "df3efb90cd610b53dfacbef711c3673ffae46646ab04a2127973262f2197c243"
+        }
+      }
+    },
+    {
+      "id": "signatures/literal-contents",
+      "kind": "vector",
+      "description": "Independently authored signature structure: literal-contents",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/literal-contents.expect",
+          "sha256": "0d12f542353699f5031f6f3136a580c6698f908d695ba083d0458704441d3be1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/literal-contents.pdf",
+          "sha256": "c25b0d02894504ed201b5ca63258821bfb9bb90cc0e7a7a87c776e4cb3d717d5"
+        }
+      }
+    },
+    {
+      "id": "signatures/nested-decoy",
+      "kind": "vector",
+      "description": "Independently authored signature structure: nested-decoy",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/nested-decoy.expect",
+          "sha256": "18655afe977c2627635aee0336503a5631f2708089e912cfe8dc9b1ba2a920ad"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/nested-decoy.pdf",
+          "sha256": "173330b21fde15b19397e84471bdae00c39d7d0f41dedc865c9a9aa311e4090d"
+        }
+      }
+    },
+    {
+      "id": "signatures/metadata",
+      "kind": "vector",
+      "description": "Independently authored signature structure: metadata",
+      "requirements": [
+        "signature-fields"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/metadata.expect",
+          "sha256": "cdba7752648a08f1f2d2bad0092e14750ea98b246a9822c18d92023f1650867b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/metadata.pdf",
+          "sha256": "337976cbfd961aa7d024aeb5e96e1318ae0505702a1226139b0476f708ea04e0"
+        }
+      }
+    },
+    {
+      "id": "signatures/cades",
+      "kind": "vector",
+      "description": "Independently authored signature structure: cades",
+      "requirements": [
+        "signature-fields"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/cades.expect",
+          "sha256": "7a04aaa278b2464ee520d2719fc4a7abcc99bbe38e4ca39bf9e5ce8d4826a4d1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/cades.pdf",
+          "sha256": "dc99f5f1aaea262e5004696ff66f3e4db1f55301fc66f886ee1562c1ab884c6e"
+        }
+      }
+    },
+    {
+      "id": "signatures/timestamp",
+      "kind": "vector",
+      "description": "Independently authored signature structure: timestamp",
+      "requirements": [
+        "signature-fields"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/timestamp.expect",
+          "sha256": "1b223bd45fb8537a7abf877b191a6009c535bce9062e329fe9d889dc3d0aab39"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/timestamp.pdf",
+          "sha256": "a9e7d020972863c299a55709b4f0429b838ae76b2405558cfea9614b91e46321"
+        }
+      }
+    },
+    {
+      "id": "signatures/legacy-pkcs7-sha1",
+      "kind": "vector",
+      "description": "Independently authored signature structure: legacy-pkcs7-sha1",
+      "requirements": [
+        "signature-results"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/legacy-pkcs7-sha1.expect",
+          "sha256": "d05c3916a7176086931e42da5a3ae5a26b6e78de7a16613a60d339a7f9df76e4"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/legacy-pkcs7-sha1.pdf",
+          "sha256": "695c77e0f645217ecbaf25d0b99db79eec260300e5a842b5267b880765b94b61"
+        }
+      }
+    },
+    {
+      "id": "signatures/legacy-x509-sha1",
+      "kind": "vector",
+      "description": "Independently authored signature structure: legacy-x509-sha1",
+      "requirements": [
+        "signature-results"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/legacy-x509-sha1.expect",
+          "sha256": "974f0c81ac6df365024b6e76545429b9005b5ba421336722daa359e746c1eefa"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/legacy-x509-sha1.pdf",
+          "sha256": "250dc1f7960e1fe02259089cd4a7efd61db6dceda0e656aabb041a049eefea28"
+        }
+      }
+    },
+    {
+      "id": "signatures/unknown-subfilter",
+      "kind": "vector",
+      "description": "Independently authored signature structure: unknown-subfilter",
+      "requirements": [
+        "signature-results"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/unknown-subfilter.expect",
+          "sha256": "8702005b5e6d05c1a015b61814f18b2b2d987bbe0e0cce15538ebb1012929ab1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/unknown-subfilter.pdf",
+          "sha256": "672491be255c01a5185043a4bf5f0a16b64d5297ce82ac8b8465af4f6f4e642f"
+        }
+      }
+    },
+    {
+      "id": "signatures/xref-stream",
+      "kind": "vector",
+      "description": "Independently authored signature structure: xref-stream",
+      "requirements": [
+        "signature-revision-coverage"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/xref-stream.expect",
+          "sha256": "d8594d43865fc26122f556f4bf05edd319842a3efc8c09237c32f66131db1b60"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/xref-stream.pdf",
+          "sha256": "09af4bd43df0b8cc057f13219c4c0b40822674964632ccad7508d7fa7b8e1d41"
+        }
+      }
+    },
+    {
+      "id": "signatures/eof-no-eol",
+      "kind": "vector",
+      "description": "Independently authored signature structure: eof-no-eol",
+      "requirements": [
+        "signature-revision-coverage"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/eof-no-eol.expect",
+          "sha256": "d0905965218de3e905ec045d35b62ce3198c18d698aa061484f448904c82654f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/eof-no-eol.pdf",
+          "sha256": "f31b0adbc040212c14e985dae5b0f38a96edce34ccb497c40d8c6354f76c8ac9"
+        }
+      }
+    },
+    {
+      "id": "signatures/eof-crlf",
+      "kind": "vector",
+      "description": "Independently authored signature structure: eof-crlf",
+      "requirements": [
+        "signature-revision-coverage"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/eof-crlf.expect",
+          "sha256": "0a24f7c887759f42dd5d329a32a6889605cb23716a4987353428d4b56953614f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/eof-crlf.pdf",
+          "sha256": "c79d02a2cf095f9323d45a915d08b3f8446b5792767a0cc49f8abf04b5629a81"
+        }
+      }
+    },
+    {
+      "id": "signatures/coverage-without-final-eol",
+      "kind": "vector",
+      "description": "Independently authored signature structure: coverage-without-final-eol",
+      "requirements": [
+        "signature-revision-coverage"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/coverage-without-final-eol.expect",
+          "sha256": "d0905965218de3e905ec045d35b62ce3198c18d698aa061484f448904c82654f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/coverage-without-final-eol.pdf",
+          "sha256": "3bda9ed24a0446a8e632f03b8ed5bf30ba8b93acba2bd18ca6a4560a916fb35e"
+        }
+      }
+    },
+    {
+      "id": "signatures/not-revision-boundary",
+      "kind": "vector",
+      "description": "Independently authored signature structure: not-revision-boundary",
+      "requirements": [
+        "signature-revision-coverage"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/not-revision-boundary.expect",
+          "sha256": "1e01a7b9d8f1e375ef6db2e3aab2e693fe275b4f618a5982917594908f0e00f4"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/not-revision-boundary.pdf",
+          "sha256": "d4d4df7490fc50bdc4824d3335a58d54ce1066a493b368df4fed9ee347d05b53"
+        }
+      }
+    },
+    {
+      "id": "signatures/docmdp-1",
+      "kind": "vector",
+      "description": "Independently authored signature structure: docmdp-1",
+      "requirements": [
+        "signature-transforms"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/docmdp-1.expect",
+          "sha256": "31375b71529b27a7ab79fb0571dc0b58892bdb260544c04d62e60a3914b68a6b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/docmdp-1.pdf",
+          "sha256": "e922c61a4449e88878e9b267d76c921a2f98eb31d3bfd924d7b4a7a253699f43"
+        }
+      }
+    },
+    {
+      "id": "signatures/docmdp-2",
+      "kind": "vector",
+      "description": "Independently authored signature structure: docmdp-2",
+      "requirements": [
+        "signature-transforms"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/docmdp-2.expect",
+          "sha256": "5de499e917bdf72bf15210977885fd4cb10499d55142b4109239417ca40da775"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/docmdp-2.pdf",
+          "sha256": "d5808f3dc262f69ab32b46fdd27c75bbd00d2e207e813f81d77206280cb2907f"
+        }
+      }
+    },
+    {
+      "id": "signatures/docmdp-3",
+      "kind": "vector",
+      "description": "Independently authored signature structure: docmdp-3",
+      "requirements": [
+        "signature-transforms"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/docmdp-3.expect",
+          "sha256": "84494d7b07bc4091afb7da6e63770f82c1a7514cd334f7420500f4862c056578"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/docmdp-3.pdf",
+          "sha256": "7a5fe67ffe5653e920f37ee6598802e41b8b0532bc9d5824eb1059137e216b13"
+        }
+      }
+    },
+    {
+      "id": "signatures/docmdp-default",
+      "kind": "vector",
+      "description": "Independently authored signature structure: docmdp-default",
+      "requirements": [
+        "signature-transforms"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/docmdp-default.expect",
+          "sha256": "66df9f2c2490866848c9299ec7cc1f209c8d3432dfc6505c9e93682700f07a67"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/docmdp-default.pdf",
+          "sha256": "5822613cac8b9ad9503964eb48bf54e8edccd648fc5c6ee5366428aa741aa9d5"
+        }
+      }
+    },
+    {
+      "id": "signatures/fieldmdp",
+      "kind": "vector",
+      "description": "Independently authored signature structure: fieldmdp",
+      "requirements": [
+        "signature-transforms"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/fieldmdp.expect",
+          "sha256": "aee4de3674f8da49c7fcf6677ac1d68ef64ccf5524658e80a0427b3cf771c0b0"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/fieldmdp.pdf",
+          "sha256": "5706e72195cb6847d8df19a93e31aae68dc0aa2daf85af079c60d6c6001e035a"
+        }
+      }
+    },
+    {
+      "id": "signatures/ur-transform",
+      "kind": "vector",
+      "description": "Independently authored signature structure: ur-transform",
+      "requirements": [
+        "signature-transforms"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/ur-transform.expect",
+          "sha256": "1eb531e2d21912ccc9eb722234c72b6d7cf29b3e79c6810750471d8e62de85a1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/ur-transform.pdf",
+          "sha256": "41019cc2200b272344a15bcf1cdadf19e26b79bfc9763c7975f789117f53488c"
+        }
+      }
+    },
+    {
+      "id": "signatures/lock-all",
+      "kind": "vector",
+      "description": "Independently authored signature structure: lock-all",
+      "requirements": [
+        "signature-transforms"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/lock-all.expect",
+          "sha256": "6d0b2901dbbc017f35b24cc48772dd34ec5c568dfe4f270a1385754f07519319"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/lock-all.pdf",
+          "sha256": "877fa942ee91f9ffeefeb69173ab1b704697bcc6cde9ba0fae53cd55c81408f2"
+        }
+      }
+    },
+    {
+      "id": "signatures/lock-include",
+      "kind": "vector",
+      "description": "Independently authored signature structure: lock-include",
+      "requirements": [
+        "signature-transforms"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/lock-include.expect",
+          "sha256": "5ca3a1baab0a6cfce2d2a0c863c7f15ff0886e2e24717cb6ff0feaf5643e9c0c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/lock-include.pdf",
+          "sha256": "6d48dda506ec59cb792afc2694fdd6cdc8f0dda28fb07ce1fb656e81a37eba94"
+        }
+      }
+    },
+    {
+      "id": "signatures/lock-exclude",
+      "kind": "vector",
+      "description": "Independently authored signature structure: lock-exclude",
+      "requirements": [
+        "signature-transforms"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/lock-exclude.expect",
+          "sha256": "90d0ae664b32e9e0e4ef99395cea5822e17a06995e2dae3a8f907a5c5457bead"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/lock-exclude.pdf",
+          "sha256": "3c19f61106c3e383ef6efd84d4369e4becc80165c5d2f6f08f4b0b75022ef081"
+        }
+      }
+    },
+    {
+      "id": "signatures/lock-no-permission",
+      "kind": "vector",
+      "description": "Independently authored signature structure: lock-no-permission",
+      "requirements": [
+        "signature-transforms"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/lock-no-permission.expect",
+          "sha256": "2554b092bb4070bb0d3ea362c2c32d6044ab196db6f0ca680e294ecea639f673"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/lock-no-permission.pdf",
+          "sha256": "7e1a1dd1eae91cdcbfb63312b95c1027cd713e85506acb95b4f2f6d3b061cec5"
+        }
+      }
+    },
+    {
+      "id": "signatures/docmdp-bad-permission",
+      "kind": "vector",
+      "description": "Independently authored signature structure: docmdp-bad-permission",
+      "requirements": [
+        "signature-transforms"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/docmdp-bad-permission.expect",
+          "sha256": "4e1f4816a27f3f30c182bee7cbd6a66fc14b34feaef7e7b6a6f4810cdb558611"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/docmdp-bad-permission.pdf",
+          "sha256": "af3aa7c33982a493f8b454eca0d504c040f2e943528434257ea386d519a65c51"
+        }
+      }
+    },
+    {
+      "id": "signatures/lock-bad-action",
+      "kind": "vector",
+      "description": "Independently authored signature structure: lock-bad-action",
+      "requirements": [
+        "signature-transforms"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/lock-bad-action.expect",
+          "sha256": "4e1f4816a27f3f30c182bee7cbd6a66fc14b34feaef7e7b6a6f4810cdb558611"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/lock-bad-action.pdf",
+          "sha256": "55db2633bb092c8d7987cb023caf2e81e39adaf045cddea0b214035a42cbde71"
+        }
+      }
+    },
+    {
+      "id": "signatures/fieldmdp-missing-data",
+      "kind": "vector",
+      "description": "Independently authored signature structure: fieldmdp-missing-data",
+      "requirements": [
+        "signature-transforms"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/fieldmdp-missing-data.expect",
+          "sha256": "4e1f4816a27f3f30c182bee7cbd6a66fc14b34feaef7e7b6a6f4810cdb558611"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/fieldmdp-missing-data.pdf",
+          "sha256": "7ccc43adcb89deae3080aaea0a95f90ed0d3cc998ae90dfae7e1873a46878576"
+        }
+      }
+    },
+    {
+      "id": "signatures/unsigned-field",
+      "kind": "vector",
+      "description": "Independently authored signature structure: unsigned-field",
+      "requirements": [
+        "signature-fields"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/unsigned-field.expect",
+          "sha256": "7b26af176a5aa8b3591a0315347a86a1b99a5fea22f97030750c59a38bb0562d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/unsigned-field.pdf",
+          "sha256": "a8d8dbd293e6bc8d1366c938c85aaf5ca756e3afd431ef2627936ed4a6a23c01"
+        }
+      }
+    },
+    {
+      "id": "signatures/multiple-revisions",
+      "kind": "vector",
+      "description": "Independently authored signature structure: multiple-revisions",
+      "requirements": [
+        "signature-revision-coverage"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/multiple-revisions.expect",
+          "sha256": "24addbb4a9eceb40125352f636f4c3a06fcd9ec14c2c70f0c1559b50a05ab791"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/multiple-revisions.pdf",
+          "sha256": "6167aba8c994d9b3068e89e21db8ec10df51ce76124d92f3643760396b5eb519"
+        }
+      }
+    },
+    {
+      "id": "signatures/multiple-revisions-stream",
+      "kind": "vector",
+      "description": "Independently authored signature structure: multiple-revisions-stream",
+      "requirements": [
+        "signature-revision-coverage"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/multiple-revisions-stream.expect",
+          "sha256": "be03bcb65e09909ebf8dda5aa5c73cc4a914e04c05e8d6e6af755cb429ce6e3e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/multiple-revisions-stream.pdf",
+          "sha256": "0518a9c92dea658efd4ba40f42a08d944db7781e45b6a748578c65d148d4f80a"
+        }
+      }
+    },
+    {
+      "id": "signatures/update-after-signing",
+      "kind": "vector",
+      "description": "Independently authored signature structure: update-after-signing",
+      "requirements": [
+        "signature-revision-coverage"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/update-after-signing.expect",
+          "sha256": "57ead827d7fd430137668d5e84ffad2d50db1bdc8b44911b7e07958f6b7500f2"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/update-after-signing.pdf",
+          "sha256": "c97f689a5fd838fa168dcb0509ca5d559b4d321def623290a9dfe9d7ff164476"
+        }
+      }
+    },
+    {
+      "id": "signatures/fake-revision-marker",
+      "kind": "vector",
+      "description": "Independently authored signature structure: fake-revision-marker",
+      "requirements": [
+        "signature-revision-coverage"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/fake-revision-marker.expect",
+          "sha256": "ae82206734a687561604d60e0f9dc4c398d93818fc48b2b687e70589253c55ea"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/fake-revision-marker.pdf",
+          "sha256": "ad7667224b4064fcffa77a4c05cc337d6b013997790c7360cfbfc68fafa089b4"
+        }
+      }
+    },
+    {
+      "id": "signatures/catalog-ur3",
+      "kind": "vector",
+      "description": "Independently authored signature structure: catalog-ur3",
+      "requirements": [
+        "signature-fields"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/catalog-ur3.expect",
+          "sha256": "2b92b9d7dbcd388661fbbc6715038d3285cfd1f23511d274348ef83e3c380bda"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/catalog-ur3.pdf",
+          "sha256": "be52fac2d6c383d307292e1dba5258d0402db949709f92bd96533646951175aa"
+        }
+      }
+    },
+    {
+      "id": "signatures/duplicate-contents",
+      "kind": "vector",
+      "description": "Independently authored signature structure: duplicate-contents",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/duplicate-contents.expect",
+          "sha256": "9cf46a73f1fb0cb64b3b2973c64c544ba72c570fc836ec65d166eb4e3e0e2b4c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/duplicate-contents.pdf",
+          "sha256": "f3e35154975ff2223d3851a9b2eef4ca6f334a608ef13e00f28a17e22389593a"
+        }
+      }
+    },
+    {
+      "id": "signatures/range-count",
+      "kind": "vector",
+      "description": "Independently authored signature structure: range-count",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/range-count.expect",
+          "sha256": "c55c2e9be4bbab652f5be51f9ecd537dd8ab33c6b5cec534d9c4a462edbd4eec"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/range-count.pdf",
+          "sha256": "4e0ba74296f4bd6bf4fd8b72a54631c81f9bc769ef1ca9ce6238eeee1b06b3d3"
+        }
+      }
+    },
+    {
+      "id": "signatures/missing-range",
+      "kind": "vector",
+      "description": "Independently authored signature structure: missing-range",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/missing-range.expect",
+          "sha256": "c55c2e9be4bbab652f5be51f9ecd537dd8ab33c6b5cec534d9c4a462edbd4eec"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/missing-range.pdf",
+          "sha256": "7ec93ceb1b0a20949a8ae7f5b4f5f5c86600538cd0af32f84ee767b997e7d84e"
+        }
+      }
+    },
+    {
+      "id": "signatures/range-real",
+      "kind": "vector",
+      "description": "Independently authored signature structure: range-real",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/range-real.expect",
+          "sha256": "41387422c31c44e6af1bb667ac8a6b1e3b67a7cde9712148fe3448ade94a74ba"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/range-real.pdf",
+          "sha256": "17e13335c1772a63b1eec394ef43841f177f74d92c6b60d7cb1248eca0ec4a9c"
+        }
+      }
+    },
+    {
+      "id": "signatures/huge-tail",
+      "kind": "vector",
+      "description": "Independently authored signature structure: huge-tail",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/huge-tail.expect",
+          "sha256": "b4cc4319a632035b64add59082f39b99db5147671f55ec08d07bd598940a8c2d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/huge-tail.pdf",
+          "sha256": "b491f953c8aac10d88288223b2ba7aeb188339cb504f87aa749c8cdf67fb3003"
+        }
+      }
+    },
+    {
+      "id": "signatures/inherited-signature-value",
+      "kind": "vector",
+      "description": "Independently authored signature structure: inherited-signature-value",
+      "requirements": [
+        "signature-fields"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/inherited-signature-value.expect",
+          "sha256": "5efc35ff297886daae1ff9caff3c9dea6e723cc152b2569cf5eeba1016648c44"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/inherited-signature-value.pdf",
+          "sha256": "9b4fd6d7c0a3923f3f56f06addb08064dd85bd213e2998efe961350750522770"
+        }
+      }
+    },
+    {
+      "id": "signatures/multiple-widgets",
+      "kind": "vector",
+      "description": "Independently authored signature structure: multiple-widgets",
+      "requirements": [
+        "signature-fields"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/multiple-widgets.expect",
+          "sha256": "4e1f4816a27f3f30c182bee7cbd6a66fc14b34feaef7e7b6a6f4810cdb558611"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/multiple-widgets.pdf",
+          "sha256": "4b060f42c715c7e90ffd79b168ffa8eea9ebe8239b8fd099d866fb31ec127c19"
+        }
+      }
+    },
+    {
+      "id": "signatures/default-type",
+      "kind": "vector",
+      "description": "Independently authored signature structure: default-type",
+      "requirements": [
+        "signature-fields"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/default-type.expect",
+          "sha256": "186e9dd1c8f75606cc22ac5048e2d4c8237e1fc2df6006fe4cb291f670489613"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/default-type.pdf",
+          "sha256": "f28fdbf75e6656c084dd4bf55b2539ed9420026519ce00b9eab87f6dbc0de51d"
+        }
+      }
+    },
+    {
+      "id": "signatures/unspecified-subfilter",
+      "kind": "vector",
+      "description": "Independently authored signature structure: unspecified-subfilter",
+      "requirements": [
+        "signature-fields"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/unspecified-subfilter.expect",
+          "sha256": "a02c91637a245c0d77396565d54b46cf942a9e91f5d3317686279edfc9954e14"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/unspecified-subfilter.pdf",
+          "sha256": "0a6178f09c35437c0a31a3054d1f1952ea426ee0cf371fe66859c86cd30aac27"
+        }
+      }
+    },
+    {
+      "id": "signatures/catalog-direct-ur3",
+      "kind": "vector",
+      "description": "Independently authored signature structure: catalog-direct-ur3",
+      "requirements": [
+        "signature-fields"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/catalog-direct-ur3.expect",
+          "sha256": "69636033945763c789de5ce82862c4db0fda30aab1e20ada0791cccb280c779f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/catalog-direct-ur3.pdf",
+          "sha256": "718c5331e8c355da5e2a4c6cca190d0c1346097921c84e0305d1907d0929f0fe"
+        }
+      }
+    },
+    {
+      "id": "signatures/unconfirmed-revision-terminator",
+      "kind": "vector",
+      "description": "Independently authored signature structure: unconfirmed-revision-terminator",
+      "requirements": [
+        "signature-revision-coverage"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/unconfirmed-revision-terminator.expect",
+          "sha256": "64376560198e51d23eecf9c536818b7a60eeb2e47ef54bf94e7ea671b43593b4"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/unconfirmed-revision-terminator.pdf",
+          "sha256": "fcc69decd985986037048f34c748bcd6942a9b2832fbeff4104992b416941e25"
+        }
+      }
+    },
+    {
+      "id": "signatures/indirect-signature-entry",
+      "kind": "vector",
+      "description": "Independently authored signature structure: indirect-signature-entry",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/indirect-signature-entry.expect",
+          "sha256": "bbf03bca9923e97ac74109b8473b023402a446df3f0da8c6a84757caeaad57fc"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/indirect-signature-entry.pdf",
+          "sha256": "d969d080c4a4e55db0f1ef9fb4a8009c1cd49872ea9a26d568b1a1c776d55a15"
+        }
+      }
+    },
+    {
+      "id": "signatures/direct-field-array",
+      "kind": "vector",
+      "description": "Independently authored signature structure: direct-field-array",
+      "requirements": [
+        "signature-byte-range"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/signatures/direct-field-array.expect",
+          "sha256": "94472d6759275038d526dd3771de7b6dcaa69b6550ba9b080b28976d92fce908"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signatures/direct-field-array.pdf",
+          "sha256": "93b402bcf52bba291f87f1b6f0ea48048a2fc1807c41d0f9ce81afe11c46e6b3"
+        }
+      }
+    }
+  ]
+}

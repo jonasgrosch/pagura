@@ -1,0 +1,241 @@
+//! Borrowed PDF signature data and separate validation aspects (ADR 0015).
+use super::{ByteRange, ByteRangeError};
+use crate::Revision;
+use pagura_core::{Dictionary, Name, ObjectId, Position, Value};
+
+/// Signature encoding (Table 255). Recognition does not imply verification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum SubFilter<'a> {
+    /// Detached CMS signature.
+    Pkcs7Detached,
+    /// Detached CAdES signature.
+    CadesDetached,
+    /// RFC 3161 document timestamp token.
+    Rfc3161,
+    /// Deprecated encapsulated SHA-1 digest; weak and unsupported here.
+    Pkcs7Sha1,
+    /// Deprecated PKCS #1 encoding; unsupported here (Table 260 note a).
+    X509RsaSha1,
+    /// An unrecognized encoding, preserved as data.
+    Other(&'a Name),
+    /// No encoding specified; no handler is inferred.
+    Unspecified,
+}
+/// Document modification permission (Tables 236 and 257).
+/// DSS/timestamp exceptions in 12.8.2.2 still require modification analysis.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MdpPermission {
+    /// Permission 1.
+    NoChanges,
+    /// Permission 2 (the DocMDP default).
+    FormsAndSignatures,
+    /// Permission 3.
+    FormsSignaturesAndAnnotations,
+}
+/// Field selection (Tables 236 and 259). Names retain PDF text-string encoding.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FieldSelection<'a> {
+    /// All fields.
+    All,
+    /// Only the named fields.
+    Include(Vec<&'a [u8]>),
+    /// All fields except the named fields.
+    Exclude(Vec<&'a [u8]>),
+}
+/// Signature field lock dictionary, read as data without enforcing it (Table 236).
+#[derive(Debug, Clone, PartialEq)]
+pub struct FieldLock<'a> {
+    /// Unmodified source dictionary.
+    pub dictionary: &'a Dictionary,
+    /// Fields affected by this lock.
+    pub fields: FieldSelection<'a>,
+    /// Optional restriction; unlike DocMDP there is no default here.
+    pub permission: Option<MdpPermission>,
+}
+/// A modification transform; its presence never proves changes are permitted.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub enum Transform<'a> {
+    /// Certification signature permissions (12.8.2.2).
+    DocMdp(MdpPermission),
+    /// Locked fields (12.8.2.4).
+    FieldMdp(FieldSelection<'a>),
+    /// Deprecated usage rights (12.8.2.3), not granted or evaluated.
+    UsageRights,
+    /// Extension transform, not evaluated.
+    Other(&'a Name),
+}
+/// One Reference array entry (Table 256).
+#[derive(Debug, Clone, PartialEq)]
+pub struct SignatureReference<'a> {
+    /// Unmodified source dictionary, retaining Data, DigestMethod and extensions.
+    pub dictionary: &'a Dictionary,
+    /// Typed transform.
+    pub transform: Transform<'a>,
+    /// Unmodified transform parameters, when supplied.
+    pub parameters: Option<&'a Dictionary>,
+    /// Original Data reference; required for FieldMDP, never followed here.
+    pub data: Option<&'a Value>,
+}
+/// Signed-byte integrity. This stage never produces cryptographic success.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Integrity {
+    /// No integrity checks performed.
+    NotCheckedYet,
+    /// Exactly two source-bound ranges checked; digest and CMS not checked yet.
+    ByteRangeCheckedCryptographyNotChecked,
+    /// A byte-range structure check failed.
+    InvalidByteRange(ByteRangeError),
+}
+/// Revision coverage from the original cross-reference chain (7.5.6, 12.8.1).
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub enum RevisionCoverage<'a> {
+    /// Cannot be checked before a usable byte range is established.
+    NotCheckedYet,
+    /// A complete revision boundary matched; no authentication is implied.
+    Covered {
+        /// Index in Document::revisions(), newest first.
+        index: usize,
+        /// Covered revision from the original Prev chain.
+        revision: &'a Revision,
+        /// Later revisions, newest first; empty for the latest revision.
+        later_revisions: &'a [Revision],
+    },
+    /// The signed end does not match a confirmed revision boundary.
+    NotRevisionBoundary,
+    /// A Prev-chain revision terminator could not be confirmed from source.
+    Indeterminate,
+    /// Repaired structure is unsuitable for establishing revision coverage.
+    RepairedDocument,
+}
+/// Modification analysis is a separate stage, even without later revisions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum PermittedModifications {
+    /// DocMDP, FieldMDP and usage rights have not been evaluated.
+    NotAnalysedYet,
+}
+/// Trust must eventually be established from host-supplied anchors only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum SignerTrust {
+    /// No certificate path or host trust anchors checked.
+    NotCheckedYet,
+}
+/// Validation time is independent of the PDF's asserted signing time.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ValidationTime {
+    /// No host time/policy or timestamp token checked.
+    NotCheckedYet,
+}
+/// Revocation evidence must be validated offline against a selected time.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum RevocationStatus {
+    /// No OCSP, CRL or DSS evidence checked; never implies good status.
+    NotCheckedYet,
+}
+/// Algorithm policy, distinct from mathematical verification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum AlgorithmStatus {
+    /// The encoding is recognized, but actual CMS algorithms are unchecked.
+    NotCheckedYet,
+    /// Legacy SHA-1 encoding is weak and is not verified by this reader.
+    WeakSha1Unsupported,
+    /// Deprecated PKCS #1 encoding; its name alone does not identify the digest.
+    LegacyEncodingUnsupported,
+    /// Encoding is unknown or unspecified; no algorithm is inferred.
+    UnsupportedEncoding,
+}
+/// The independent result aspects of ADR 0015 decision 2.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SignatureResults<'a> {
+    /// Signed-byte integrity.
+    pub integrity: Integrity,
+    /// Revision coverage.
+    pub revision_coverage: RevisionCoverage<'a>,
+    /// Permission analysis.
+    pub permitted_modifications: PermittedModifications,
+    /// Signer trust.
+    pub signer_trust: SignerTrust,
+    /// Validation time and timestamp verification.
+    pub validation_time: ValidationTime,
+    /// Revocation evidence.
+    pub revocation: RevocationStatus,
+    /// Algorithm policy.
+    pub algorithms: AlgorithmStatus,
+}
+/// A signature dictionary (Table 255), with unauthenticated metadata.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Signature<'a> {
+    /// Original dictionary, including all unrecognized entries.
+    pub dictionary: &'a Dictionary,
+    /// Object containing this dictionary, when known.
+    pub object: Option<ObjectId>,
+    /// Source position.
+    pub position: Position,
+    /// Preferred handler, not loaded or executed.
+    pub filter: &'a Name,
+    /// Signature encoding.
+    pub sub_filter: SubFilter<'a>,
+    /// Decoded Contents, including zero padding (12.8.3.3.1).
+    /// This is unauthenticated data and has not been parsed as CMS.
+    pub contents: &'a [u8],
+    /// Checked source ranges, or None when structure checks failed.
+    pub byte_range: Option<ByteRange<'a>>,
+    /// Modification-detection references, in source order.
+    pub references: Vec<SignatureReference<'a>>,
+    /// Asserted M date string; never a validated signing time.
+    pub signing_time: Option<&'a [u8]>,
+    /// Asserted Name in its original PDF text-string encoding.
+    pub name: Option<&'a [u8]>,
+    /// Asserted Reason in its original PDF text-string encoding.
+    pub reason: Option<&'a [u8]>,
+    /// Asserted Location in its original PDF text-string encoding.
+    pub location: Option<&'a [u8]>,
+    /// Independent result states; no unqualified validity flag exists.
+    pub results: SignatureResults<'a>,
+}
+impl<'a> Signature<'a> {
+    /// Extracted CMS bytes for a recognized CMS encoding, including PDF zero
+    /// padding. The CMS reader must frame DER before interpreting them; trimming
+    /// trailing zero octets would corrupt legitimate DER values. This stage does
+    /// not parse CMS or establish any CMS integrity (12.8.3.3.1).
+    pub fn cms_blob(&self) -> Option<&'a [u8]> {
+        matches!(
+            self.sub_filter,
+            SubFilter::Pkcs7Detached
+                | SubFilter::CadesDetached
+                | SubFilter::Rfc3161
+                | SubFilter::Pkcs7Sha1
+        )
+        .then_some(self.contents)
+    }
+}
+/// One signature field, including unsigned fields (12.7.5.5).
+#[derive(Debug, Clone, PartialEq)]
+pub struct SignatureField<'a> {
+    /// Field identity, independent of its display name.
+    pub object: Option<ObjectId>,
+    /// Unmodified field dictionary.
+    pub dictionary: &'a Dictionary,
+    /// Qualified display name from the form model; not a unique identity.
+    pub qualified_name: String,
+    /// Optional inert Lock dictionary.
+    pub lock: Option<FieldLock<'a>>,
+    /// None for an empty field; appearances do not make a field signed.
+    pub signature: Option<Signature<'a>>,
+}
+/// The signature fields and optional catalog usage-rights signature.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Signatures<'a> {
+    /// Terminal signature fields in form preorder, including empty fields.
+    pub fields: Vec<SignatureField<'a>>,
+    /// UR3 signature, which is referenced from Perms rather than a form field.
+    pub usage_rights: Option<Signature<'a>>,
+}

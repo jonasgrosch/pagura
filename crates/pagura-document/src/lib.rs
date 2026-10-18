@@ -24,6 +24,7 @@ mod security;
 mod security_dictionary;
 mod security_padding;
 mod security_repair;
+pub mod signatures;
 mod stream;
 pub mod tags;
 mod xref;

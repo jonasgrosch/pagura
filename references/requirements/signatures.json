@@ -1,0 +1,82 @@
+{
+  "schema": 2,
+  "area": "signatures",
+  "scope": "PDF clause locators verified against the locally supplied ISO 32000-2:2020 text. Two-range coverage and strict physical source binding are verification policy; result aspects follow ADR 0015. No cryptographic validity is claimed.",
+  "requirements": [
+    {
+      "id": "signature-fields",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.7.5.5",
+        "12.8.1",
+        "Table 255"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-document signatures::tests",
+        "corpus/manifests/signatures.json"
+      ],
+      "description": "Typed fields, signature dictionaries and UR3, including empty fields and encoded metadata.",
+      "gaps": ""
+    },
+    {
+      "id": "signature-byte-range",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.8.1",
+        "Table 255",
+        "12.8.3.3.1"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-document signatures::tests",
+        "corpus/manifests/signatures.json"
+      ],
+      "description": "Two ordered in-bounds ranges exclude exactly the physical hexadecimal Contents token. Signed chunks borrow original bytes.",
+      "gaps": "Cryptographic digest and CMS verification are not implemented. Compressed signature dictionaries cannot establish a physical token binding."
+    },
+    {
+      "id": "signature-revision-coverage",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.5.6",
+        "12.8.1"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-document signatures::tests",
+        "corpus/manifests/signatures.json"
+      ],
+      "description": "Coverage matches parsed Prev-chain revision terminators and lists later revisions.",
+      "gaps": "Repaired documents are inconclusive. Unconfirmed Prev-chain revision terminators are inconclusive. Historical fields removed or replaced by later revisions are not enumerated."
+    },
+    {
+      "id": "signature-transforms",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.7.5.5",
+        "12.8.2",
+        "Tables 236, 256-259"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-document signatures::tests",
+        "corpus/manifests/signatures.json"
+      ],
+      "description": "DocMDP permissions, FieldMDP selections, UR parameters and field locks are inert data.",
+      "gaps": "Modification classification, rights enforcement and transform digest validation are not implemented."
+    },
+    {
+      "id": "signature-results",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "partial",
+      "tests": [
+        "pagura-document signatures::tests",
+        "corpus/manifests/signatures.json"
+      ],
+      "description": "Independent integrity, coverage, modification, trust, time, revocation and algorithm states follow ADR 0015 decision 2.",
+      "gaps": "No cryptographic, trust, timestamp, revocation or algorithm verification is performed; legacy encodings are unsupported; adbe.pkcs7.sha1 is weak. The adbe.x509.rsa_sha1 name alone does not identify its digest (Table 260 note a)."
+    }
+  ]
+}

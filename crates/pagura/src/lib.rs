@@ -33,6 +33,8 @@ pub use pagura_document::forms;
 /// Outlines, destinations, links, actions and page labels (12.3, 12.4, 12.5.6.5, 12.6).
 /// Actions are data: Pagura never follows a URI, opens a file or runs a script.
 pub use pagura_document::navigation;
+/// Inert PDF signature views and independent validation result states.
+pub use pagura_document::signatures;
 pub use pagura_document::{Document, IndirectObject, OpenOptions, Page, Rotation};
 pub use pagura_raster::{Pixmap, Rgba8};
 pub use pagura_render::{
@@ -119,4 +121,27 @@ pub fn data_notices() -> impl Iterator<Item = (&'static str, &'static str)> {
     return pagura_data::notices();
     #[cfg(not(feature = "bundled-data"))]
     std::iter::empty()
+}
+
+/// Inspects signature fields, byte ranges and revision coverage (12.7.5.5, 12.8).
+/// Cryptography, trust, modification analysis and revocation remain unchecked.
+///
+/// ```
+/// # fn main() -> pagura::Result<()> {
+/// # let document = pagura::Document::open(
+/// #     include_bytes!("../../../corpus/generated/signatures/structure.pdf").as_slice(),
+/// #     &pagura::OpenOptions::default(),
+/// # )?;
+/// let views = pagura::signatures(&document)?;
+/// assert_eq!(views.fields.len(), 1);
+/// let signature = views.fields[0].signature.as_ref().expect("populated field");
+/// assert_eq!(signature.results.signer_trust, pagura::signatures::SignerTrust::NotCheckedYet);
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Errors
+/// As [`Document::signatures`].
+pub fn signatures(document: &Document) -> Result<signatures::Signatures<'_>> {
+    document.signatures()
 }
