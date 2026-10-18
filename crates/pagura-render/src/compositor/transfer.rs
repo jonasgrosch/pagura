@@ -13,8 +13,8 @@ use crate::display::{ImageCommand, PathCommand};
 use crate::functions::Transfer;
 use crate::transparency::Composite;
 use crate::transparency::Group;
-use pagura_core::{Error, Limits, Result};
-use std::collections::BTreeMap;
+use pagura_core::{Error, Limits, Meter, Result};
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 pub(super) struct Regions {
@@ -28,9 +28,14 @@ pub(super) struct Regions {
 
 impl Regions {
     pub(super) fn new(commands: &[Command], limits: Limits) -> Result<Option<Self>> {
-        let mut registry = BTreeMap::new();
-        collect(commands, &mut registry, limits, 0)?;
-        let functions: Vec<_> = registry.into_values().collect();
+        let mut walk = Walk {
+            functions: BTreeMap::new(),
+            cells: BTreeSet::new(),
+            work: Meter::new(limits.traversal_work, "transfer traversal budget exceeded"),
+            depth: limits.depth,
+        };
+        walk.collect(commands, 0)?;
+        let functions: Vec<_> = walk.functions.into_values().collect();
         if functions.is_empty() {
             return Ok(None);
         }
@@ -152,56 +157,65 @@ impl Regions {
     }
 }
 
-fn collect(
-    commands: &[Command],
-    functions: &mut BTreeMap<usize, Transfer>,
-    limits: Limits,
+/// One walk over a display list that finds every transfer function. A
+/// tiling cell shared by many fills is walked once, and every visited
+/// command is charged to `traversal_work`.
+///
+/// Keys are `Arc` addresses; the display list keeps every keyed `Arc`
+/// alive for the whole walk, so no address is reused while it runs.
+struct Walk {
+    functions: BTreeMap<usize, Transfer>,
+    cells: BTreeSet<usize>,
+    work: Meter,
     depth: usize,
-) -> Result<()> {
-    if depth >= limits.depth {
-        return Err(Error::limit("transfer traversal depth exceeded"));
-    }
-    for command in commands {
-        let transfer = match command {
-            Command::Path(p) => paint_transfer(p, functions, limits, depth)?,
-            Command::Glyphs(run) => paint_transfer(&run.paint, functions, limits, depth)?,
-            Command::Image(i) => &i.transfer,
-            Command::Shading(s) => &s.transfer,
-            Command::Group(g) => {
-                collect(&g.commands, functions, limits, depth + 1)?;
-                continue;
-            }
-        };
-        if let Some(transfer) = transfer
-            && !functions.contains_key(&(Arc::as_ptr(transfer) as usize))
-        {
-            if functions.len() >= limits.value_nodes.min(limits.decoded_bytes / 128) {
-                return Err(Error::limit("transfer function selection count exceeded"));
-            }
-            functions.insert(Arc::as_ptr(transfer) as usize, Arc::clone(transfer));
-        }
-    }
-    Ok(())
 }
 
-/// A path or glyph-run paint selects its own transfer and any in its tiling cell.
-fn paint_transfer<'a>(
-    p: &'a PathCommand,
-    functions: &mut BTreeMap<usize, Transfer>,
-    limits: Limits,
-    depth: usize,
-) -> Result<&'a Option<Transfer>> {
-    if let crate::color::Color::Pattern {
-        selected: Some(pattern),
-        ..
-    } = &p.color
-        && let crate::pattern::Kind::Tiling(cell) = &pattern.kind
-    {
-        // Cell transfers require pattern-region selection. Discover
-        // them so validate rejects the outer pattern explicitly.
-        collect(&cell.commands, functions, limits, depth + 1)?;
+impl Walk {
+    fn collect(&mut self, commands: &[Command], depth: usize) -> Result<()> {
+        if depth >= self.depth {
+            return Err(Error::limit("transfer traversal depth exceeded"));
+        }
+        self.work.charge(commands.len())?;
+        for command in commands {
+            let transfer = match command {
+                Command::Path(p) => self.paint_transfer(p, depth)?,
+                Command::Glyphs(run) => self.paint_transfer(&run.paint, depth)?,
+                Command::Image(i) => &i.transfer,
+                Command::Shading(s) => &s.transfer,
+                Command::Group(g) => {
+                    self.collect(&g.commands, depth + 1)?;
+                    continue;
+                }
+            };
+            if let Some(transfer) = transfer {
+                self.functions
+                    .entry(Arc::as_ptr(transfer) as usize)
+                    .or_insert_with(|| Arc::clone(transfer));
+            }
+        }
+        Ok(())
     }
-    Ok(&p.transfer)
+
+    /// A path or glyph-run paint selects its own transfer and any in its
+    /// tiling cell.
+    fn paint_transfer<'a>(
+        &mut self,
+        p: &'a PathCommand,
+        depth: usize,
+    ) -> Result<&'a Option<Transfer>> {
+        if let crate::color::Color::Pattern {
+            selected: Some(pattern),
+            ..
+        } = &p.color
+            && let crate::pattern::Kind::Tiling(cell) = &pattern.kind
+            && self.cells.insert(Arc::as_ptr(pattern) as usize)
+        {
+            // Cell transfers require pattern-region selection. Discover
+            // them so validate rejects the outer pattern explicitly.
+            self.collect(&cell.commands, depth + 1)?;
+        }
+        Ok(&p.transfer)
+    }
 }
 
 impl Context {
@@ -387,5 +401,81 @@ mod tests {
         regions.opaque = false;
         regions.record(Some(&function), true, (7, 9), 1.0).unwrap();
         assert_eq!(regions.apply(0, [0.25; 3], &mut 0).unwrap(), [0.25; 3]);
+    }
+
+    #[test]
+    fn shared_tiling_cells_are_walked_once_within_the_traversal_budget() {
+        use crate::color::Color;
+        let mut square = pagura_raster::PathBuilder::new();
+        square.rect(0.0, 0.0, 1.0, 1.0);
+        let path = Arc::new(square.finish());
+        let document = Document::open(
+            fixture("recovery", "transfer-opaque.pdf"),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let transfer = crate::compile_page(&document, document.page(0).unwrap())
+            .unwrap()
+            .commands
+            .iter()
+            .find_map(|command| match command {
+                Command::Path(p) => p.transfer.clone(),
+                Command::Image(i) => i.transfer.clone(),
+                _ => None,
+            })
+            .expect("the fixture paints through a transfer");
+        let fill = |color, transfer: Option<Transfer>| {
+            Command::Path(PathCommand {
+                path: Arc::clone(&path),
+                mark: crate::display::Mark::Fill(pagura_raster::FillRule::NonZero),
+                clip: None,
+                color,
+                position: pagura_core::Position::Unknown,
+                transfer,
+                composite: Composite::default(),
+            })
+        };
+        let mut commands = vec![fill(Color::default(), Some(Arc::clone(&transfer)))];
+        // Each level fills twice with the cell of the level below: walking
+        // every reference would visit 2^40 cells.
+        for _ in 0..40 {
+            let pattern = Arc::new(crate::pattern::Pattern {
+                transform: pagura_raster::Transform::IDENTITY,
+                kind: crate::pattern::Kind::Tiling(crate::pattern::Tiling {
+                    id: pagura_core::ObjectId::new(1, 0),
+                    bbox: pagura_core::Rect::from_corners(0.0, 0.0, 1.0, 1.0).unwrap(),
+                    step: [1.0; 2],
+                    uncolored: false,
+                    spacing: 1,
+                    color: None,
+                    commands,
+                }),
+            });
+            commands = (0..2)
+                .map(|_| {
+                    fill(
+                        Color::Pattern {
+                            base: None,
+                            selected: Some(Arc::clone(&pattern)),
+                        },
+                        None,
+                    )
+                })
+                .collect();
+        }
+        let limits = Limits {
+            depth: 64,
+            ..Limits::default()
+        };
+        let regions = Regions::new(&commands, limits).unwrap().unwrap();
+        assert_eq!(regions.functions.len(), 1);
+        let small = Limits {
+            traversal_work: 10,
+            ..limits
+        };
+        assert_eq!(
+            Regions::new(&commands, small).err().map(|e| e.kind),
+            Some(ErrorKind::Limit)
+        );
     }
 }
