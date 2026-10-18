@@ -100,14 +100,9 @@ fn unchanged_inputs_preserve_ownership_and_notice_is_available() {
     assert_eq!(crate::unicode_notice(), notice);
 }
 
+// `tools/check.py` runs `tools/gen/unicode32.py --check` for reproducibility.
 #[test]
-fn generated_tables_reproduce_and_remain_bounded() {
-    let status = std::process::Command::new("python3")
-        .arg(workspace_root().join("tools/fixturegen/unicode32.py"))
-        .arg("--check")
-        .status()
-        .unwrap();
-    assert!(status.success());
+fn generated_tables_remain_bounded() {
     let bytes = size_of_val(tables::DECOMPOSITIONS)
         + tables::TEXT.len()
         + size_of_val(tables::COMBINING)
