@@ -30,9 +30,10 @@ impl Run {
         if scale > 0.0 {
             let x = (transform.a / scale) * self.tangent.x + (transform.c / scale) * self.tangent.y;
             let y = (transform.b / scale) * self.tangent.x + (transform.d / scale) * self.tangent.y;
-            let length = x.hypot(y);
+            let tangent = Point::new(x, y);
+            let length = tangent.length();
             if length > 0.0 {
-                self.tangent = Point::new(x / length, y / length);
+                self.tangent = tangent / length;
             }
         }
         self
@@ -150,14 +151,14 @@ pub(crate) fn dash(
     let mut tangent = Point::new(1.0, 0.0);
     for pair in points.windows(2) {
         let [a, b] = [pair[0], pair[1]];
-        let distance = (b.x - a.x).hypot(b.y - a.y);
+        let distance = (b - a).length();
         if distance == 0.0 {
             if index % 2 == 0 {
                 run.extend([a, b]);
             }
             continue;
         }
-        tangent = Point::new((b.x - a.x) / distance, (b.y - a.y) / distance);
+        tangent = (b - a) / distance;
         let mut offset = 0.0;
         while offset < distance || remaining == 0.0 {
             crate::coverage::charge(&mut work, 1, limits.raster_work)?;
@@ -169,12 +170,7 @@ pub(crate) fn dash(
             if step > 0.0 && end == offset {
                 return Err(Error::limit("dash lengths below numeric resolution"));
             }
-            let interpolate = |d: f64| {
-                Point::new(
-                    a.x + (b.x - a.x) * (d / distance),
-                    a.y + (b.y - a.y) * (d / distance),
-                )
-            };
+            let interpolate = |d: f64| a.lerp(b, d / distance);
             if index % 2 == 0 {
                 if run.is_empty() {
                     run.push(interpolate(offset));
@@ -267,7 +263,7 @@ pub(crate) fn draw(
             cap(
                 out,
                 point,
-                Point::new(-run.tangent.x, -run.tangent.y),
+                -run.tangent,
                 radius,
                 tolerance,
                 stroke.cap,
@@ -289,10 +285,9 @@ pub(crate) fn draw(
         .iter()
         .zip(points.iter().skip(1).chain(closed.then_some(&first)))
     {
-        let length = (b.x - a.x).hypot(b.y - a.y);
-        let d = Point::new((b.x - a.x) / length, (b.y - a.y) / length);
-        let n = Point::new(-d.y * radius, d.x * radius);
-        polygon(out, &[add(a, n), add(b, n), sub(b, n), sub(a, n)], limits)?;
+        let d = (b - a) / (b - a).length();
+        let n = d.perp() * radius;
+        polygon(out, &[a + n, b + n, b - n, a - n], limits)?;
         directions.push(d);
     }
     for (i, &point) in points.iter().enumerate() {
@@ -304,15 +299,7 @@ pub(crate) fn draw(
         let after = directions.get(i);
         match (before, after) {
             (Some(&a), Some(&b)) => join(out, point, [a, b], radius, tolerance, stroke, limits)?,
-            (None, Some(&d)) => cap(
-                out,
-                first,
-                Point::new(-d.x, -d.y),
-                radius,
-                tolerance,
-                stroke.cap,
-                limits,
-            )?,
+            (None, Some(&d)) => cap(out, first, -d, radius, tolerance, stroke.cap, limits)?,
             (Some(&d), None) => cap(out, last, d, radius, tolerance, stroke.cap, limits)?,
             _ => {}
         }
@@ -330,24 +317,23 @@ fn join(
     limits: &Limits,
 ) -> Result<()> {
     let [a, b] = tangents;
-    let cross = a.x * b.y - a.y * b.x;
-    if cross == 0.0 && (stroke.join != LineJoin::Round || a.x * b.x + a.y * b.y >= 0.0) {
+    let cross = a.cross(b);
+    if cross == 0.0 && (stroke.join != LineJoin::Round || a.dot(b) >= 0.0) {
         return Ok(());
     }
     let side = if cross > 0.0 { -radius } else { radius };
-    let n1 = Point::new(-a.y * side, a.x * side);
-    let n2 = Point::new(-b.y * side, b.x * side);
+    let n1 = a.perp() * side;
+    let n2 = b.perp() * side;
     if stroke.join == LineJoin::Round {
         return round_join(out, point, [n1, n2], radius, tolerance, cross, limits);
     }
-    let p1 = add(point, n1);
-    let p2 = add(point, n2);
-    let dot = a.x * b.x + a.y * b.y;
-    let denominator = 1.0 + dot;
+    let p1 = point + n1;
+    let p2 = point + n2;
+    let denominator = 1.0 + a.dot(b);
     if stroke.join == LineJoin::Miter && denominator > 0.0 {
-        let m = Point::new((n1.x + n2.x) / denominator, (n1.y + n2.y) / denominator);
-        if m.x.hypot(m.y) <= radius * stroke.miter_limit {
-            return polygon(out, &[point, p1, add(point, m), p2], limits);
+        let m = (n1 + n2) / denominator;
+        if m.length() <= radius * stroke.miter_limit {
+            return polygon(out, &[point, p1, point + m, p2], limits);
         }
     }
     polygon(out, &[point, p1, p2], limits)
@@ -381,7 +367,7 @@ fn round_join(
         reason = "integer count bounded by the u32-compatible path budget below"
     )]
     let count = count as u32;
-    let mut points = vec![point, add(point, a)];
+    let mut points = vec![point, point + a];
     for i in 1..count {
         let angle = start + angle * f64::from(i) / f64::from(count);
         points.push(Point::new(
@@ -389,7 +375,7 @@ fn round_join(
             point.y + radius * angle.sin(),
         ));
     }
-    points.push(add(point, b));
+    points.push(point + b);
     polygon(out, &points, limits)
 }
 
@@ -406,16 +392,9 @@ fn cap(
         LineCap::Butt => Ok(()),
         LineCap::Round => circle(out, point, radius, tolerance, limits),
         LineCap::ProjectingSquare => {
-            let n = Point::new(-direction.y * radius, direction.x * radius);
-            let end = add(
-                point,
-                Point::new(direction.x * radius, direction.y * radius),
-            );
-            polygon(
-                out,
-                &[add(point, n), add(end, n), sub(end, n), sub(point, n)],
-                limits,
-            )
+            let n = direction.perp() * radius;
+            let end = point + direction * radius;
+            polygon(out, &[point + n, end + n, end - n, point - n], limits)
         }
     }
 }
@@ -483,13 +462,6 @@ fn polygon(out: &mut PathBuilder, points: &[Point], limits: &Limits) -> Result<(
     }
     out.close();
     Ok(())
-}
-
-fn add(a: Point, b: Point) -> Point {
-    Point::new(a.x + b.x, a.y + b.y)
-}
-fn sub(a: Point, b: Point) -> Point {
-    Point::new(a.x - b.x, a.y - b.y)
 }
 
 #[cfg(test)]
