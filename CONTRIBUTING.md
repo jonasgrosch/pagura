@@ -92,6 +92,26 @@ in product code, no `#[allow]`) enforces part of it; review enforces the rest.
   `tools/zipcorpus.py` and `tools/corpus.py` into `$PAGURA_CORPORA_DIR`, outside
   the repository, and scored with `tools/scoreboard.py`. Never commit them.
 
+## JavaScript tooling
+
+The viewer in `web/*.mjs` is plain ES modules that the browser loads as
+committed: no package, bundler or build step. The Node-only scripts
+(`tools/host_test.ts`, `web/browser_test.ts`, the `web/*_benchmark.ts`
+measurements) are TypeScript that Node runs by stripping types. TypeScript and
+Biome are development-only tools, pinned exactly in `package.json` and locked
+in `package-lock.json` (ADR 0019); run `npm ci` once before `tools/check.py`.
+
+- Give viewer code JSDoc types; `tsc` checks them in strict mode, against
+  browser globals only for the shipped modules. A cast states in a comment the
+  invariant it relies on.
+- Node scripts use only syntax that type stripping erases: no enums,
+  namespaces or parameter properties, and `import type` for types.
+- Biome formats and lints the JavaScript and TypeScript;
+  `node node_modules/@biomejs/biome/bin/biome format --write .` applies the
+  formatting. A `biome-ignore` comment names its rule and gives the reason.
+- `tools/host_test.ts` is `node:test` cases; add new checks as named tests and
+  select them with `node --test --test-name-pattern=... tools/host_test.ts`.
+
 ## Workflow
 
 1. Start from an independent reproducer with an expected result derived from

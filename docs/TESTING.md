@@ -15,6 +15,14 @@ Each area writes `corpus/generated/<area>/` and `corpus/manifests/<area>.json`. 
 so a parser and writer cannot conceal a shared bug. Test requirement IDs live in
 `references/requirements/<area>.json`; this is a coverage ledger, not certification.
 
+`tools/host_test.ts` runs as named `node:test` cases: native/WASI byte identity
+and the browser worker shim against independent PPM and geometry oracles,
+codec bounds and WASI capability denials, fixture loading, the viewer's DOM
+harness, and the protocol 1.4 diagnostic kinds on the bundled-data host.
+`tools/check.py` runs it with `node --test` after type-checking the
+viewer and the Node scripts with `tsc` and running `biome ci` (ADR 0019); these
+need the tools that `npm ci` installs from `package-lock.json`.
+
 Imported corpora are pinned by Git revision and file hashes. Metadata records
 licenses and authoritative source. Cases with no established oracle are
 investigations, not conformance passes. The PDF Differences README screenshots

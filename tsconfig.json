@@ -1,5 +1,5 @@
 {
-  // Dev-only type checking (ADR 0017); nothing is emitted or shipped.
+  // Dev-only type checking (ADR 0019); nothing is emitted or shipped.
   // This project covers the Node-only scripts, which Node runs by stripping
   // types, and through their imports the viewer modules they exercise.
   // web/tsconfig.json checks the shipped viewer against browser globals only.

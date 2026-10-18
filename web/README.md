@@ -12,6 +12,25 @@ SharedArrayBuffer and cross-origin isolation. There is no npm package, bundler,
 CDN or build step for the HTML/CSS/JavaScript. Do not open index.html as a file
 URL: the server provides the required COOP/COEP headers.
 
+The browser loads the `.mjs` modules exactly as committed. Their types are
+JSDoc comments that the development checks verify with TypeScript, and Biome
+formats and lints them; both are dev-only tools pinned in the root
+`package-lock.json` and never served (ADR 0019). The `.ts` files in this
+directory are Node-only scripts, which Node runs by stripping types.
+
+```
+npm ci
+node node_modules/typescript/bin/tsc -p web
+node node_modules/typescript/bin/tsc -p .
+node node_modules/@biomejs/biome/bin/biome ci .
+```
+
+`npm ci` installs the pinned tools once. `tsc -p web` checks the shipped
+modules against browser globals only; `tsc -p .` checks the Node scripts and
+the modules they import, with Node types. Replacing `ci` with `format --write`
+applies the formatting. New code keeps JSDoc types under strict checking, and a cast
+states in a comment the invariant it relies on.
+
 Select a PDF or drop it onto the viewer. Pages scroll continuously. Metadata
 and pixels load as pages approach the visible region; offscreen canvases and
 page elements are discarded. Previous/next and numbered navigation scroll to a
@@ -118,10 +137,14 @@ checks on the target devices.
 ```
 cargo build --locked --offline -p pagura-host
 cargo wasm --offline
-node tools/host_test.ts
+node --test tools/host_test.ts
+node --test --test-name-pattern='viewer DOM harness' tools/host_test.ts
 ```
 
-Tests preserve native/WASI document-response identity and independent classic
+The harness is a set of named `node:test` cases using only Node built-ins;
+`--test-name-pattern` selects them. Set `PAGURA_PYTHON` to choose the
+interpreter for web/test_server.py (`tools/check.py` passes its own; the
+default is `python` on Windows and `python3` elsewhere). Tests preserve native/WASI document-response identity and independent classic
 PPM oracles, plus page-2 full/partial geometry oracles, generation skips, cache
 reuse/eviction, continuous lazy layout, navigation, fit presets, gestures,
 password retry/cancel, diagnostics and explicit failures. In-memory HTTP tests

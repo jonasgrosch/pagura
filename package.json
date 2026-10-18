@@ -1,7 +1,7 @@
 {
   "name": "pagura-dev-tooling",
   "private": true,
-  "description": "Development-only JavaScript tooling (ADR 0017). Nothing here ships: the viewer in web/ has no dependencies and no build step.",
+  "description": "Development-only JavaScript tooling (ADR 0019). Nothing here ships: the viewer in web/ has no dependencies and no build step.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
   "engines": {
