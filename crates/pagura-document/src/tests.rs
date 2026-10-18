@@ -111,11 +111,28 @@ mod structure_tests {
                 .is_none()
         );
         let catalog = document.object(ObjectId::new(1, 0)).unwrap();
+        // The first object's value starts right after the header (7.5.7).
+        let first = document
+            .object(ObjectId::new(5, 0))
+            .unwrap()
+            .dictionary()
+            .unwrap()
+            .get(b"First")
+            .and_then(Value::as_integer)
+            .unwrap();
         assert_eq!(
             catalog.source(),
             &ObjectSource::Compressed {
                 stream: 5,
-                index: 0
+                index: 0,
+                offset: usize::try_from(first).unwrap()
+            }
+        );
+        assert_eq!(
+            catalog.source().position(),
+            pagura_core::Position::Stream {
+                object: ObjectId::new(5, 0),
+                offset: usize::try_from(first).unwrap()
             }
         );
         let cached = document

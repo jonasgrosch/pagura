@@ -136,7 +136,11 @@ pub(crate) fn parse(
             ObjectId::new(number, 0),
             value,
             None,
-            ObjectSource::Compressed { stream, index },
+            ObjectSource::Compressed {
+                stream,
+                index,
+                offset: start,
+            },
         ),
         diagnostics,
     ))

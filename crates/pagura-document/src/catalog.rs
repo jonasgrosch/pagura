@@ -1,7 +1,7 @@
 //! Catalog identification and reported Type inference (7.7.2).
 
-use crate::{Document, ObjectSource, repairs};
-use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Position, Result, Value};
+use crate::{Document, repairs};
+use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Result, Value};
 
 /// Types of other standard dictionaries. A Root carrying one of them is a
 /// different object, never a catalog with a damaged Type.
@@ -65,9 +65,7 @@ pub(crate) fn validate(document: &Document) -> Result<()> {
         .and_then(Value::as_reference)
     {
         diagnostic = diagnostic.in_object(id);
-        if let ObjectSource::File(range) = document.object(id)?.source() {
-            diagnostic = diagnostic.at(Position::File(range.start));
-        }
+        diagnostic = diagnostic.at(document.object(id)?.source().position());
     }
     let mut diagnostics = Diagnostics::new(document.recovery());
     diagnostics.repair(diagnostic)?;

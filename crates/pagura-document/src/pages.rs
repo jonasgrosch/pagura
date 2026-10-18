@@ -312,10 +312,7 @@ impl<'a> Walk<'a> {
                     repairs::PAGE_TYPE,
                     "missing page-tree Type inferred from Kids or leaf attributes",
                 )
-                .at(match self.document.object(id)?.source() {
-                    crate::ObjectSource::File(range) => pagura_core::Position::File(range.start),
-                    crate::ObjectSource::Compressed { .. } => pagura_core::Position::Unknown,
-                })
+                .at(self.document.object(id)?.source().position())
                 .in_object(id),
             )?;
             branch

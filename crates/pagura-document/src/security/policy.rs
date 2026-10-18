@@ -11,12 +11,12 @@ pub(super) struct Policy {
 }
 
 impl Policy {
-    pub fn new(document: &Document, object: Option<ObjectId>) -> Self {
-        Self {
+    pub fn new(document: &Document, object: Option<ObjectId>) -> Result<Self> {
+        Ok(Self {
             diagnostics: Diagnostics::new(document.recovery()),
             object,
-            position: repair::position(document, object),
-        }
+            position: repair::position(document, object)?,
+        })
     }
 
     pub fn repair(&mut self, tag: Repair, message: &'static str) -> Result<()> {
