@@ -167,12 +167,11 @@ fn full_normal_stores_preserve_the_f64_evaluation() {
                 let opacity = 1.0;
                 let expected = (1.0 - opacity) * backdrop
                     + opacity * ((1.0 - alpha) * source + alpha * source);
-                pixel.paint(
+                frame(Backdrop::Transparent, false).paint(
+                    &mut pixel,
                     Source::new([source; 4], 1.0, 1.0),
                     &state,
-                    Pixel::default(),
-                    false,
-                    Model::Rgb,
+                    (0, 0),
                 );
                 assert_eq!(pixel.color.map(f64::to_bits), [expected.to_bits(); 4]);
                 assert_eq!([pixel.alpha, pixel.group, pixel.shape], [1.0; 3]);
@@ -291,12 +290,11 @@ fn solid_runs_preserve_unit_and_fractional_backdrop_alpha_evaluation() {
     };
     let source = Source::new(color, 1.0, 1.0);
     for (pixel, mut expected) in surface.pixels().iter().zip(backdrops) {
-        expected.paint(
+        frame(Backdrop::Transparent, false).paint(
+            &mut expected,
             source,
             &Composite::default(),
-            Pixel::default(),
-            false,
-            Model::Rgb,
+            (0, 0),
         );
         assert_eq!(bits(*pixel), bits(expected));
     }

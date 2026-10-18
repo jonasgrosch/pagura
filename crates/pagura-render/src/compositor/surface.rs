@@ -33,80 +33,6 @@ impl Pixel {
             [0.0; 4]
         }
     }
-    pub(super) fn paint(
-        &mut self,
-        source: Source,
-        state: &Composite,
-        initial: Self,
-        knockout: bool,
-        model: Model,
-    ) {
-        let Source {
-            color,
-            alpha,
-            shape,
-            preserve,
-            spot,
-        } = source;
-        let base = if knockout { initial } else { *self };
-        let opacity = if knockout && shape > 0.0 {
-            alpha / shape
-        } else {
-            alpha
-        };
-        // Compatible overprinting substitutes backdrop components (11.7.4.3).
-        // For another blend mode, this is the source of the implicit
-        // non-isolated group, before applying the requested outer blend.
-        let back = if preserve.iter().any(|&v| v) {
-            base.straight()
-        } else {
-            [0.0; 4]
-        };
-        let blend_mode = if spot
-            && matches!(
-                state.blend,
-                crate::blend::BlendMode::Difference
-                    | crate::blend::BlendMode::Exclusion
-                    | crate::blend::BlendMode::Hue
-                    | crate::blend::BlendMode::Saturation
-                    | crate::blend::BlendMode::Color
-                    | crate::blend::BlendMode::Luminosity
-            ) {
-            crate::blend::BlendMode::Normal
-        } else {
-            state.blend
-        };
-        let (color, blend) = if blend_mode == crate::blend::BlendMode::Normal {
-            (
-                color,
-                [0, 1, 2, 3].map(|i| if preserve[i] { back[i] } else { color[i] }),
-            )
-        } else {
-            let color = [0, 1, 2, 3].map(|i| {
-                if preserve[i] {
-                    (1.0 - base.alpha) * color[i] + base.alpha * back[i]
-                } else {
-                    color[i]
-                }
-            });
-            (color, blend_mode.apply(base.straight(), color, model))
-        };
-        let value = [0, 1, 2, 3].map(|i| {
-            (1.0 - opacity) * base.color[i]
-                + opacity * ((1.0 - base.alpha) * color[i] + base.alpha * blend[i])
-        });
-        let value_alpha = opacity + base.alpha * (1.0 - opacity);
-        if knockout {
-            self.color = [0, 1, 2, 3].map(|i| (1.0 - shape) * self.color[i] + shape * value[i]);
-            self.alpha = (1.0 - shape) * self.alpha + shape * value_alpha;
-            self.group = (1.0 - shape) * self.group + alpha;
-        } else {
-            self.color = value;
-            self.alpha = value_alpha;
-            self.group = alpha + self.group * (1.0 - alpha);
-        }
-        self.shape = shape + self.shape * (1.0 - shape);
-    }
 }
 #[derive(Debug, Clone, Copy)]
 pub(super) struct Source {
@@ -403,7 +329,9 @@ impl<'b> Frame<'b> {
             depth: depth + 1,
         }
     }
-    /// Composites `source` into `pixel` at device `(x, y)` of this group.
+    /// Composites `source` into `pixel` at device `(x, y)` of this group
+    /// (11.3.6). Knockout members composite with the initial backdrop and
+    /// replace prior contributions by shape (11.4.6).
     pub(super) fn paint(
         self,
         pixel: &mut Pixel,
@@ -411,13 +339,75 @@ impl<'b> Frame<'b> {
         state: &Composite,
         (x, y): (u32, u32),
     ) {
-        pixel.paint(
-            source,
-            state,
-            self.initial.pixel(x, y),
-            self.knockout,
-            self.model,
-        );
+        let Source {
+            color,
+            alpha,
+            shape,
+            preserve,
+            spot,
+        } = source;
+        let base = if self.knockout {
+            self.initial.pixel(x, y)
+        } else {
+            *pixel
+        };
+        let opacity = if self.knockout && shape > 0.0 {
+            alpha / shape
+        } else {
+            alpha
+        };
+        // Compatible overprinting substitutes backdrop components (11.7.4.3).
+        // For another blend mode, this is the source of the implicit
+        // non-isolated group, before applying the requested outer blend.
+        let back = if preserve.iter().any(|&v| v) {
+            base.straight()
+        } else {
+            [0.0; 4]
+        };
+        let blend_mode = if spot
+            && matches!(
+                state.blend,
+                crate::blend::BlendMode::Difference
+                    | crate::blend::BlendMode::Exclusion
+                    | crate::blend::BlendMode::Hue
+                    | crate::blend::BlendMode::Saturation
+                    | crate::blend::BlendMode::Color
+                    | crate::blend::BlendMode::Luminosity
+            ) {
+            crate::blend::BlendMode::Normal
+        } else {
+            state.blend
+        };
+        let (color, blend) = if blend_mode == crate::blend::BlendMode::Normal {
+            (
+                color,
+                [0, 1, 2, 3].map(|i| if preserve[i] { back[i] } else { color[i] }),
+            )
+        } else {
+            let color = [0, 1, 2, 3].map(|i| {
+                if preserve[i] {
+                    (1.0 - base.alpha) * color[i] + base.alpha * back[i]
+                } else {
+                    color[i]
+                }
+            });
+            (color, blend_mode.apply(base.straight(), color, self.model))
+        };
+        let value = [0, 1, 2, 3].map(|i| {
+            (1.0 - opacity) * base.color[i]
+                + opacity * ((1.0 - base.alpha) * color[i] + base.alpha * blend[i])
+        });
+        let value_alpha = opacity + base.alpha * (1.0 - opacity);
+        if self.knockout {
+            pixel.color = [0, 1, 2, 3].map(|i| (1.0 - shape) * pixel.color[i] + shape * value[i]);
+            pixel.alpha = (1.0 - shape) * pixel.alpha + shape * value_alpha;
+            pixel.group = (1.0 - shape) * pixel.group + alpha;
+        } else {
+            pixel.color = value;
+            pixel.alpha = value_alpha;
+            pixel.group = alpha + pixel.group * (1.0 - alpha);
+        }
+        pixel.shape = shape + pixel.shape * (1.0 - shape);
     }
 }
 

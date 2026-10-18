@@ -239,16 +239,13 @@ impl Context {
                 continue;
             }
             let result = match command {
-                Command::Glyphs(run) => self.glyphs(run, self.viewport.unwrap_or(target.tile), target, frame),
-                Command::Path(path) => self.path_in(path, self.viewport.unwrap_or(target.tile), target, frame),
-                Command::Image(image) => self.image(
-                    image,
-                    target,
-                    frame.initial,
-                    frame.model,
-                    frame.knockout,
-                    frame.depth,
-                ),
+                Command::Glyphs(run) => {
+                    self.glyphs(run, self.viewport.unwrap_or(target.tile), target, frame)
+                }
+                Command::Path(path) => {
+                    self.path_in(path, self.viewport.unwrap_or(target.tile), target, frame)
+                }
+                Command::Image(image) => self.image(image, target, frame),
                 Command::Shading(shading) => self.shading(shading, target, frame),
                 Command::Group(group) => self.view_group(group, target, frame),
             };

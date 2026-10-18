@@ -1,7 +1,7 @@
 //! Image colour, shape and opacity enter the common compositor (8.9; 11.6.5.2).
 use super::reduced::Prepared;
 use super::sampled::{Sampler, Texel};
-use super::{Backdrop, Context, Model, Source, Surface};
+use super::{Context, Frame, Model, Source, Surface, runs};
 use crate::{display::ImageCommand, interpreter::images::Image};
 use pagura_core::{Error, Result};
 use pagura_image::{ImageKind, MaskKind, Samples};
@@ -14,11 +14,9 @@ impl Context {
         &mut self,
         command: &ImageCommand,
         target: &mut Surface,
-        initial: Backdrop<'_>,
-        model: Model,
-        knockout: bool,
-        depth: usize,
+        frame: Frame<'_>,
     ) -> Result<()> {
+        let model = frame.model;
         let transform = command.transform.then(self.device);
         if !transform.is_finite() {
             return Err(Error::limit("image transform overflow"));
@@ -38,8 +36,9 @@ impl Context {
             .composite
             .mask
             .as_ref()
-            .map(|m| self.soft_mask(m, target.tile, model, depth + 1))
+            .map(|m| self.soft_mask(m, target.tile, model, frame.depth + 1))
             .transpose()?;
+        let soft = soft.as_deref().map(Vec::as_slice);
         let stencil = self.stencil_color(command, model)?;
         let template = self.image_source(command, model, stencil)?;
         let image = &command.image;
@@ -56,14 +55,10 @@ impl Context {
         let sampling_bytes = sampler.bytes() + mask_sampler.as_ref().map_or(0, Prepared::bytes);
         self.trim_raster(sampling_bytes);
         self.allocated += sampling_bytes;
-        for (row, column, coverage) in clip.spans() {
-            let y =
-                origin.1 + u32::try_from(row).map_err(|_| Error::limit("image row exceeds u32"))?;
-            for (offset, &coverage) in coverage.iter().enumerate() {
-                let column = column + offset;
-                let x = origin.0
-                    + u32::try_from(column)
-                        .map_err(|_| Error::limit("image column exceeds u32"))?;
+        for run in runs(&clip) {
+            let run = run?;
+            let y = run.y;
+            for (x, coverage) in run.pixels() {
                 let mut work = 0;
                 let maximum = self.limits.raster_work.saturating_sub(self.work);
                 let mut value = sampler.sample(x, y, &mut work, maximum, |pixel| {
@@ -84,30 +79,8 @@ impl Context {
                 }
                 self.charge(work)?;
                 let source = covered_source(value, coverage, template);
-                let index = target
-                    .index(x, y)
-                    .ok_or(Error::invalid_argument("image outside surface"))?;
-                let mask = soft
-                    .as_ref()
-                    .and_then(|m| m.get(index))
-                    .copied()
-                    .unwrap_or(1.0);
                 self.image_transfer(command, (x, y), source)?;
-                if let Some(buffer) = target.narrow_mut() {
-                    buffer.paint(index, source.apply(&command.composite, mask))?;
-                    continue;
-                }
-                target
-                    .pixels_mut()
-                    .get_mut(index)
-                    .ok_or(Error::invalid_argument("image index outside surface"))?
-                    .paint(
-                        source.apply(&command.composite, mask),
-                        &command.composite,
-                        initial.pixel(x, y),
-                        knockout,
-                        model,
-                    );
+                target.composite((x, y), source, &command.composite, soft, frame)?;
             }
         }
         self.allocated -= sampling_bytes;
