@@ -631,6 +631,24 @@
           "verdict": "verified against local primary text; substitution is explicit implementation policy"
         }
       ]
+    },
+    {
+      "id": "paint-diagnostic-kinds",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.6.2.2",
+        "9.8.1"
+      ],
+      "tables": [
+        "120"
+      ],
+      "status": "Typed repair and informational diagnostics with unchanged independent pixels",
+      "tests": [
+        "paint/bundled-diagnostic-kinds",
+        "tools/host_test.mjs testDiagnosticKinds",
+        "pagura CLI scan_separates_information_from_repairs"
+      ],
+      "gaps": "Diagnostic classification follows ADR 0003/0009; the polygon oracle follows the locked substitute and explicit PDF metrics."
     }
   ]
 }

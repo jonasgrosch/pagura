@@ -236,7 +236,7 @@ fn unusable_glyphs_report_repairs_without_losing_advances() {
     );
     let diagnostics = context.document().diagnostics();
     assert_eq!(diagnostics.len(), 1);
-    assert_eq!(diagnostics[0].repair.as_str(), "font.glyph-data");
+    assert_eq!(diagnostics[0].tag(), "font.glyph-data");
     assert!(
         matches!(diagnostics[0].position, pagura::Position::Stream { object, .. } if object == pagura::ObjectId::new(4, 0))
     );
@@ -281,7 +281,7 @@ fn cjk_substitute_matches_independent_otf_oracle() {
     assert_eq!(
         diagnostics
             .iter()
-            .map(|d| d.repair.as_str())
+            .map(pagura_core::Diagnostic::tag)
             .collect::<Vec<_>>(),
         ["font.cid-glyph-missing", "font.substituted"]
     );

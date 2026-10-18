@@ -115,7 +115,7 @@ mod tests {
                     document
                         .diagnostics()
                         .iter()
-                        .filter(|item| item.repair == tags::PAGE_TYPE)
+                        .filter(|item| item.repair() == Some(tags::PAGE_TYPE))
                         .count(),
                     2
                 );

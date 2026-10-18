@@ -226,7 +226,7 @@ fn independent_form_models_and_reported_repairs() {
                 repaired
                     .diagnostics()
                     .iter()
-                    .any(|d| d.repair.as_str() == params["repair"]),
+                    .any(|d| d.tag() == params["repair"]),
                 "{name}"
             );
         }

@@ -100,7 +100,7 @@ fn reading_drivers_pass_on_generated_fixtures() {
     // generations, and in protocol 1 (bit 4): page 0, scale 1, an 8 x 8
     // tile, a one-page search for `a` with at most four matches.
     for pdf in navigation.iter().chain(&text) {
-        for flags in [9, 24] {
+        for flags in [9, 24, 41, 105, 73, 137, 201] {
             let mut input = vec![flags, 0, 15, 0, 0, 8, 8, 1, 0, 4, 0, 1, b'a'];
             input.extend_from_slice(pdf);
             assert!(harness::run("host", &input));

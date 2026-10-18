@@ -117,15 +117,15 @@ fn assert_structured(error: &Error) {
     }
 }
 
-/// Repairs carry tags and messages, and strict mode makes none (ADR 0003).
+/// Diagnostics carry stable tags and messages; Strict never repairs (ADR 0003).
 fn assert_diagnostics(diagnostics: &[Diagnostic], recovery: Recovery) {
     assert!(
-        recovery == Recovery::Repair || diagnostics.is_empty(),
+        recovery == Recovery::Repair || diagnostics.iter().all(|item| item.repair().is_none()),
         "strict mode reported repairs: {diagnostics:?}"
     );
     for diagnostic in diagnostics {
         assert!(
-            is_tag(diagnostic.repair.as_str()) && !diagnostic.message.is_empty(),
+            is_tag(diagnostic.tag()) && !diagnostic.message.is_empty(),
             "malformed diagnostic: {diagnostic:?}"
         );
     }
@@ -141,4 +141,44 @@ fn is_tag(tag: &str) -> bool {
             && !item.is_empty()
             && item.bytes().all(|b| b.is_ascii_graphic())
     })
+}
+
+#[cfg(test)]
+mod diagnostic_tests {
+    use super::*;
+    use pagura_core::{Position, Repair};
+
+    #[test]
+    fn strict_accepts_information_and_rejects_repairs_independently_of_tags() {
+        let information = [
+            pagura_text::SUBSTITUTED,
+            pagura_text::CID_GLYPH_MISSING,
+            "test.information",
+        ]
+        .map(|tag| Diagnostic::information(tag, "provider information"));
+        assert_diagnostics(&information, Recovery::Strict);
+        for tag in [
+            "font.substituted",
+            "font.cid-glyph-missing",
+            "font.tounicode-invalid",
+            "font.tounicode-simple-codes",
+            "font.tounicode-utf16",
+            "font.tounicode-range",
+            "font.cmap-block-count",
+            "font.cmap-codespace",
+            "filter.checksum-mismatch",
+            "syntax.key-solidus",
+            "font.descriptor-weight",
+        ] {
+            let mut diagnostics = information.to_vec();
+            diagnostics
+                .push(Diagnostic::new(Repair::new(tag), "malformed input").at(Position::Buffer(7)));
+            assert_diagnostics(&diagnostics, Recovery::Repair);
+            assert!(
+                std::panic::catch_unwind(|| assert_diagnostics(&diagnostics, Recovery::Strict))
+                    .is_err(),
+                "Strict accepted {tag}"
+            );
+        }
+    }
 }

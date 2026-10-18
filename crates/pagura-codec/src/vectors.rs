@@ -165,11 +165,7 @@ fn independent_vectors_exact_errors_repairs_and_caps() {
                     assert_eq!(error.kind, ErrorKind::Limit, "{name}: {error}");
                 }
                 assert_eq!(diagnostics.as_slice().len(), 1, "{name}");
-                assert_eq!(
-                    diagnostics.as_slice()[0].repair.as_str(),
-                    params["repair"],
-                    "{name}"
-                );
+                assert_eq!(diagnostics.as_slice()[0].tag(), params["repair"], "{name}");
             }
             outcome => {
                 let error = result.unwrap_err();

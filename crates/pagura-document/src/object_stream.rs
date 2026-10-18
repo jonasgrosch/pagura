@@ -153,12 +153,11 @@ fn physical<'a>(
     if !matches!(slot.location, Location::Offset(_)) {
         if matches!(slot.location, Location::Compressed { stream, index: 0 } if stream == stream_id.number)
         {
-            return Err(Diagnostic::new(
-                tags::OBJECT_STREAM_SELF_ENTRY,
-                "object-stream self entry requires its physical stream definition",
-            )
-            .in_object(stream_id)
-            .to_error());
+            let mut error =
+                Error::syntax("object-stream self entry requires its physical stream definition")
+                    .in_object(stream_id);
+            error.repair = Some(tags::OBJECT_STREAM_SELF_ENTRY);
+            return Err(error);
         }
         return Err(Error::syntax("object streams cannot be compressed").in_object(stream_id));
     }

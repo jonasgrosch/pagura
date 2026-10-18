@@ -592,7 +592,7 @@ mod recovery_tests {
             compile_page(&repaired, repaired.page(0).unwrap()).unwrap();
             let diagnostics = repaired.diagnostics();
             assert_eq!(diagnostics.len(), 1, "{name}: {diagnostics:?}");
-            assert_eq!(diagnostics[0].repair, tag, "{name}");
+            assert_eq!(diagnostics[0].repair(), Some(tag), "{name}");
             compile_page(&repaired, repaired.page(0).unwrap()).unwrap();
             assert_eq!(repaired.diagnostics(), diagnostics, "{name}");
             assert_eq!(repaired.original_bytes(), original);

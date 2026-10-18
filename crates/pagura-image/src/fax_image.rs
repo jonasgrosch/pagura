@@ -80,7 +80,10 @@ mod tests {
         };
         let error = decode(&[], Some(&params(1024)), 1, 1, &limits, &mut reports).unwrap_err();
         assert_eq!(error.kind, ErrorKind::Limit);
-        assert_eq!(reports.as_slice()[0].repair, crate::tags::CCITT_COLUMNS);
+        assert_eq!(
+            reports.as_slice()[0].repair(),
+            Some(crate::tags::CCITT_COLUMNS)
+        );
     }
 
     #[test]

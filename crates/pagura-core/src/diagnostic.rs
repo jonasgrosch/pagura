@@ -1,4 +1,4 @@
-//! Reported repairs of malformed input (ADR 0003).
+//! Typed repair and informational diagnostics (ADR 0003).
 
 use crate::{Error, ObjectId, Position, Result};
 use std::fmt;
@@ -39,12 +39,39 @@ impl fmt::Display for Repair {
     }
 }
 
-/// One repair that was applied to malformed input.
+/// Whether a diagnostic reports repaired input or information about valid input.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum DiagnosticKind {
+    /// A bounded correction of malformed input, permitted only in Repair mode.
+    Repair(Repair),
+    /// A stable tag for information that does not imply malformed input.
+    Information(&'static str),
+}
+
+impl DiagnosticKind {
+    /// The stable `area.item` tag, independently of diagnostic kind.
+    pub const fn tag(self) -> &'static str {
+        match self {
+            Self::Repair(repair) => repair.as_str(),
+            Self::Information(tag) => tag,
+        }
+    }
+
+    /// The repair tag, or `None` for information about valid input.
+    pub const fn repair(self) -> Option<Repair> {
+        match self {
+            Self::Repair(repair) => Some(repair),
+            Self::Information(_) => None,
+        }
+    }
+}
+
+/// One reported repair or informational observation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Diagnostic {
-    /// What kind of repair.
-    pub repair: Repair,
-    /// The violated requirement, as a fixed description.
+    /// Whether this describes repaired input or information.
+    pub kind: DiagnosticKind,
+    /// A fixed description of the repair or information.
     pub message: &'static str,
     /// Where the problem was detected.
     pub position: Position,
@@ -53,14 +80,34 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
-    /// Creates a diagnostic without position or object context.
+    /// Creates a repair diagnostic without position or object context.
     pub const fn new(repair: Repair, message: &'static str) -> Self {
         Self {
-            repair,
+            kind: DiagnosticKind::Repair(repair),
             message,
             position: Position::Unknown,
             object: None,
         }
+    }
+
+    /// Creates an informational diagnostic, valid in either recovery mode.
+    pub const fn information(tag: &'static str, message: &'static str) -> Self {
+        Self {
+            kind: DiagnosticKind::Information(tag),
+            message,
+            position: Position::Unknown,
+            object: None,
+        }
+    }
+
+    /// The stable tag, independently of diagnostic kind.
+    pub const fn tag(&self) -> &'static str {
+        self.kind.tag()
+    }
+
+    /// The repair tag, or `None` for informational diagnostics.
+    pub const fn repair(&self) -> Option<Repair> {
+        self.kind.repair()
     }
 
     /// Sets the position.
@@ -77,20 +124,26 @@ impl Diagnostic {
         self
     }
 
-    /// The error this repair becomes under [`Recovery::Strict`].
-    pub fn to_error(&self) -> Error {
+    /// The error this repair becomes under [`Recovery::Strict`], or `None`
+    /// for information that must not reject valid input.
+    pub fn to_error(&self) -> Option<Error> {
+        let repair = self.repair()?;
         let mut error = Error::syntax(self.message).at(self.position);
-        error.repair = Some(self.repair);
-        match self.object {
+        error.repair = Some(repair);
+        Some(match self.object {
             Some(object) => error.in_object(object),
             None => error,
-        }
+        })
     }
 }
 
 impl fmt::Display for Diagnostic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "repaired [{}]: {}", self.repair, self.message)?;
+        let label = match self.kind {
+            DiagnosticKind::Repair(_) => "repaired",
+            DiagnosticKind::Information(_) => "information",
+        };
+        write!(f, "{label} [{}]: {}", self.tag(), self.message)?;
         if let Some(object) = self.object {
             write!(f, " (object {object})")?;
         }
@@ -101,7 +154,7 @@ impl fmt::Display for Diagnostic {
     }
 }
 
-/// A sink for repairs that enforces the [`Recovery`] mode.
+/// A diagnostic sink that enforces the [`Recovery`] mode for repairs.
 ///
 /// Code that is about to repair input calls [`Diagnostics::repair`] first;
 /// in strict mode that returns the error instead of permitting the repair.
@@ -125,37 +178,38 @@ impl Diagnostics {
         self.mode
     }
 
-    /// Records a repair, or rejects it in strict mode.
+    /// Records a diagnostic, rejecting only repairs in strict mode.
+    /// Informational diagnostics never authorize or imply a repair.
     ///
     /// # Errors
     ///
-    /// Returns the diagnostic as a syntax error under [`Recovery::Strict`].
+    /// Returns a repair diagnostic as a syntax error under [`Recovery::Strict`].
     pub fn repair(&mut self, diagnostic: Diagnostic) -> Result<()> {
-        match self.mode {
-            Recovery::Strict => Err(diagnostic.to_error()),
-            Recovery::Repair => {
-                self.items.push(diagnostic);
-                Ok(())
-            }
+        if self.mode == Recovery::Strict
+            && let Some(error) = diagnostic.to_error()
+        {
+            return Err(error);
         }
+        self.items.push(diagnostic);
+        Ok(())
     }
 
-    /// Repairs recorded so far, in the order they were applied.
+    /// Diagnostics recorded so far, in discovery order.
     pub fn as_slice(&self) -> &[Diagnostic] {
         &self.items
     }
 
-    /// Whether no repair was applied.
+    /// Whether no diagnostic has been recorded.
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
 
-    /// Moves the recorded repairs out, leaving the sink empty.
+    /// Moves the recorded diagnostics out, leaving the sink empty.
     pub fn take(&mut self) -> Vec<Diagnostic> {
         std::mem::take(&mut self.items)
     }
 
-    /// Appends repairs recorded elsewhere, e.g. by a nested parser.
+    /// Appends diagnostics already authorized elsewhere, e.g. by a nested parser.
     pub fn extend(&mut self, items: impl IntoIterator<Item = Diagnostic>) {
         self.items.extend(items);
     }
@@ -179,5 +233,32 @@ mod tests {
         let mut repair = Diagnostics::new(Recovery::Repair);
         repair.repair(diagnostic.clone()).unwrap();
         assert_eq!(repair.as_slice(), [diagnostic]);
+    }
+    #[test]
+    fn information_is_not_a_repair_in_either_recovery_mode() {
+        let information = Diagnostic::information("font.substituted", "bundled outlines")
+            .in_object(crate::ObjectId::new(7, 0))
+            .at(Position::File(12));
+        assert_eq!(
+            information.kind,
+            super::DiagnosticKind::Information("font.substituted")
+        );
+        assert_eq!(information.tag(), "font.substituted");
+        assert_eq!(information.repair(), None);
+        assert_eq!(information.to_error(), None);
+        assert_eq!(
+            information.to_string(),
+            "information [font.substituted]: bundled outlines (object 7 0) at file byte 12"
+        );
+        for mode in [Recovery::Strict, Recovery::Repair] {
+            let mut sink = Diagnostics::new(mode);
+            sink.repair(information.clone()).unwrap();
+            assert_eq!(sink.as_slice(), std::slice::from_ref(&information));
+        }
+        // Classification is carried by the kind, never inferred from a tag.
+        let repair = Diagnostic::new(Repair::new("font.substituted"), "malformed input");
+        assert_eq!(repair.kind.tag(), information.kind.tag());
+        assert_eq!(repair.kind.repair(), Some(Repair::new("font.substituted")));
+        assert!(Diagnostics::new(Recovery::Strict).repair(repair).is_err());
     }
 }

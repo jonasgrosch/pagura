@@ -22,7 +22,9 @@ impl Policy {
         // Fields in this policy share one source context. Retain one occurrence
         // per tag even when a large CF dictionary repeats the same deviation.
         if self.diagnostics.as_slice().iter().any(|item| {
-            item.repair == tag && item.object == self.object && item.position == self.position
+            item.repair() == Some(tag)
+                && item.object == self.object
+                && item.position == self.position
         }) {
             return Ok(());
         }

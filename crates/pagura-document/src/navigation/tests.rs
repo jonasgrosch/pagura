@@ -199,7 +199,7 @@ fn independent_navigation_structures_and_reported_repairs() {
             assert!(
                 doc.diagnostics()
                     .iter()
-                    .any(|d| d.repair.as_str() == params["repair"]),
+                    .any(|d| d.tag() == params["repair"]),
                 "{name}"
             );
         }

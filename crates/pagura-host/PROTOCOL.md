@@ -1,4 +1,4 @@
-# Pagura session protocol v1 through v1.3
+# Pagura session protocol v1 through v1.4
 
 ADR 0005 defines a synchronous command over stdin/stdout with the same layouts
 on native and wasm32-wasip1. This document freezes the v1 byte layout, including the refused-repair field.
@@ -16,7 +16,8 @@ bodies use the identifier from that body. There is exactly one response per
 complete valid request. Callers serialize requests; the host flushes responses.
 
 The first request is `hello(1)` for v1, `hello(65537)` (0x00010001) for v1.1,
-`hello(65538)` (0x00010002) for v1.2, or `hello(65539)` (0x00010003) for v1.3.
+`hello(65538)` (0x00010002) for v1.2, `hello(65539)` (0x00010003) for v1.3,
+or `hello(65540)` (0x00010004) for v1.4.
 Repeated hello, unsupported versions,
 non-increasing IDs, unknown kinds, invalid recovery bytes, trailing payload,
 truncation and oversized frames emit one error and **end the session**. Clean
@@ -49,8 +50,9 @@ All /Contents streams form one sequence (ISO 32000-2 7.8.2).
 Handles start at 1, increase, and are never reused, including after close.
 Handles are valid only within one session. A document is retained only after
 open and page-tree validation succeed. Open's repair mode is forwarded directly
-to the document API (ADR 0003); diagnostics snapshots contain repairs discovered
-so far, in discovery order, including repairs made during lazy rendering.
+to the document API (ADR 0003); legacy diagnostic snapshots contain repairs
+discovered so far, in discovery order, including repairs made during lazy
+rendering. Protocol 1.4 also exposes informational diagnostics (see below).
 
 ## Viewport generations (v1.1)
 
@@ -122,17 +124,34 @@ u32 lengths even when empty. Categories are 1 Syntax, 2 Limit, 3 Unsupported,
 4 MissingObject, 5 Cycle, 6 Password, 7 InvalidArgument.
 
 - `feature_tag` is nonempty only for Unsupported, carrying Error::feature().
-- `repair_tag` is optional for Syntax: it carries Error::repair when strict
-  mode rejects a repair (ADR 0003). It is empty on ordinary Syntax errors and
-  the other categories. The repair **was refused**, not applied. For example,
+- `repair_tag` carries Error::repair when strict mode rejects a repair
+  (ADR 0003), preserving the original category, feature, message and context.
+  It is empty when no repair was refused. The repair **was refused**, not
+  applied. For example,
   strict open of classic/trailing-bytes.pdf has category 1, an empty feature
   tag and repair tag `file.trailing-bytes`.
+- **Compatibility change for every protocol version:** a refused-repair tag
+  can now accompany any category (for example Limit, Cycle or Unsupported),
+  not only Syntax as the v1 text said. Clients written against v1 through
+  v1.3 must accept a nonempty `repair_tag` with any category.
 - Message, object and position retain exactly the facade Error context. Tags
   are never inferred from message text. The JS HostError exposes `tag` for
   the feature and `repair` for the refused repair (empty strings when absent).
 
-Diagnostic records describe repairs that **were applied**:
-`text repair_tag | text message | context`. Their existing layout is unchanged.
+Legacy diagnostic records describe repairs that **were applied**:
+`text repair_tag | text message | context`. Request 5 / response 133 keep this
+layout and return repairs only, including in protocol 1.4. Informational
+diagnostics never appear in this legacy view.
+
+Protocol 1.4 adds request **17 diagnostic details**, with payload `u32 handle`,
+and response **145**, with payload `u32 count` followed by `count` records:
+`u8 kind | text tag | text message | context`. Kind 0 means Repair; kind 1 means
+Information. Unknown kind bytes are invalid. Tags remain stable and the kind
+is explicit, never inferred from tag text. Strict mode rejects repairs only;
+`font.substituted` and `font.cid-glyph-missing` are information in both recovery
+modes. Information and repairs share the document's diagnostic cap and retain
+discovery order. Older negotiated versions reject request 17 with operational
+InvalidArgument and keep serving. Handles and frame budgets follow request 5.
 
 `context` is:
 
@@ -321,7 +340,8 @@ independently of its cached painting list; no text is added to display lists.
 
 ## Painted content bounds (v1.3)
 
-`hello(65539)` enables kinds 1–15 unchanged plus kind 16. Older sessions reject
+`hello(65539)` enables kinds 1–15 unchanged plus kind 16; protocol 1.4
+preserves these operations and adds typed diagnostics (request 17). Older sessions reject
 a valid kind-16 request with operational InvalidArgument and remain usable.
 
 | Kind | Request payload | Success kind | Success payload |

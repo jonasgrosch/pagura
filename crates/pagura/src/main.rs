@@ -250,19 +250,33 @@ fn repair_tags(document: &Document) -> String {
     let tags: Vec<String> = document
         .diagnostics()
         .iter()
-        .map(|diagnostic| json_string(diagnostic.repair.as_str()))
+        .filter_map(pagura_core::Diagnostic::repair)
+        .map(|repair| json_string(repair.as_str()))
         .collect();
     tags.join(",")
+}
+
+fn information_tags(document: &Document) -> String {
+    document
+        .diagnostics()
+        .iter()
+        .filter_map(|item| match item.kind {
+            pagura::DiagnosticKind::Information(tag) => Some(json_string(tag)),
+            pagura::DiagnosticKind::Repair(_) => None,
+        })
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 fn inspect(input: &str, flags: &Flags) -> CliResult {
     let document = open(input, flags)?;
     let pages = document.page_count()?;
     println!(
-        "{{\"schema\":2,\"pages\":{pages},\"objects\":{},\"bytes\":{},\"repairs\":[{}]}}",
+        "{{\"schema\":2,\"pages\":{pages},\"objects\":{},\"bytes\":{},\"repairs\":[{}],\"information\":[{}]}}",
         document.object_count(),
         document.original_bytes().len(),
-        repair_tags(&document)
+        repair_tags(&document),
+        information_tags(&document)
     );
     Ok(())
 }
@@ -452,9 +466,10 @@ fn scan(input: &str, dpi: f64, flags: &Flags) -> String {
     }
     format!(
         "{{\"schema\":1,\"strict\":{strict},\"open\":null,\"pages\":{},\"rendered\":{rendered},\
-         \"repairs\":[{}],\"failures\":[{}]}}",
+         \"repairs\":[{}],\"information\":[{}],\"failures\":[{}]}}",
         pages.map_or_else(|| "null".into(), |count| count.to_string()),
         repair_tags(context.document()),
+        information_tags(context.document()),
         failures.join(",")
     )
 }

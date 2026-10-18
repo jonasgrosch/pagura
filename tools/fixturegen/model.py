@@ -24,6 +24,7 @@ class Case:
     repairs: tuple[str, ...] = ()        # Repair tags expected in recovery mode
     strict_valid: bool = True            # whether Recovery::Strict also opens it
     extra: dict = field(default_factory=dict)
+    information: tuple[str, ...] = ()     # Informational tags in either mode
 
 
 @dataclass(frozen=True)

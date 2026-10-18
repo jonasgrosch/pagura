@@ -81,7 +81,7 @@ fn trailing_bytes_are_a_reported_repair_and_a_strict_error() {
     let document = open(bytes.clone()).unwrap();
     let diagnostics = document.diagnostics();
     assert_eq!(diagnostics.len(), 1);
-    assert_eq!(diagnostics[0].repair.as_str(), "file.trailing-bytes");
+    assert_eq!(diagnostics[0].tag(), "file.trailing-bytes");
     let error = open_strict(bytes).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Syntax);
     assert!(matches!(error.position, Position::File(_)));
@@ -112,14 +112,14 @@ fn corrupt_offsets_and_truncated_tails_are_strict_errors_and_reported_repairs() 
     );
     let repaired = open(bytes[..bytes.len() - 6].to_vec()).unwrap();
     assert_eq!(repaired.page_count().unwrap(), 1);
-    assert_eq!(repaired.diagnostics()[0].repair.as_str(), "xref.rebuilt");
+    assert_eq!(repaired.diagnostics()[0].tag(), "xref.rebuilt");
     let mut damaged = bytes;
     let marker = damaged.windows(9).rposition(|w| w == b"startxref").unwrap();
     damaged[marker + 10] = b'9';
     assert!(open_strict(damaged.clone()).is_err());
     let repaired = open(damaged).unwrap();
     assert_eq!(repaired.page_count().unwrap(), 1);
-    assert_eq!(repaired.diagnostics()[0].repair.as_str(), "xref.rebuilt");
+    assert_eq!(repaired.diagnostics()[0].tag(), "xref.rebuilt");
 }
 
 #[test]

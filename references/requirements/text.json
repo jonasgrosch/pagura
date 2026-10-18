@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "text",
-  "scope": "The rule paraphrases and exact ISO locators below were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text (ISO_32000-2_sponsored_EC3.txt): PDF string-decoding/spacing interfaces, supported font dictionaries and embedding bindings, character selection, widths/CID metrics, PDF-specific CMap rules and ToUnicode. Every code-to-name slot of Standard, MacRoman, WinAnsi, PDFDoc, Symbol and ZapfDingbats was compared with Annex D; MacExpert was also checked. This is not verification of Adobe Glyph List rules, TN5014 grammar or external font-program binary formats. Provider additions were checked against ISO 9.6.2.2/Table 109 and 9.9.2, 9.8.1-9.8.2/Tables 120-121, 9.7.5.2/Table 116 and 9.10.2, and TN5014 sections 5.1-5.4 for pinned resource inheritance. AFM values and Unicode projection choices are checked against the pinned data files, not claimed as verification of external AFM or sfnt format standards. Recovery additions were checked against ISO 9.7.4.1 Table 115, 9.7.4.2, 9.7.5.4, 9.7.6.2, 9.10.3 and TN5014 7.4. Tolerant interpretations depart from those rules as individually reported below; corpus acceptance is evidence of tolerance, not standards conformance. Round 5 rechecks the PDF TrueType routes against 9.6.5.4 and Table 113 in the same local ISO text; final-paragraph alternatives are reader policy. Retained byte accounting is ADR 0012 policy, not a numerical requirement of Annex C.1. Substitution and optional-weight handling were checked against ISO 9.6.2.1-9.6.2.2, 9.6.5.2, 9.6.5.4, 9.8.1-9.8.2/Tables 120-121 and 9.9.2 in the same local text. Sixty-six Russian AFII name-to-scalar records were compared with local adobe-glyph-list data. Short aliases and invalid-weight discard are documented policies; full external AGL/AGLFN algorithm verification is not claimed. Horizontal CID substitution and Symbol/Dingbats additions were checked against the same local ISO text: 9.6.2.2, 9.6.5.2/Table 112, 9.6.5.4, 9.7.3/Table 114, 9.7.4.2-9.7.4.3, 9.7.5 and 9.10.2-9.10.3. CFF INDEX, DICT, charset layouts and standard SIDs used by the Foxit oracle were checked against local TN5176 sections 4, 5, 8-10, 13-14 and Appendix A. Regional OTF cmap expectations are independent binary-layout oracles; primary OpenType format review remains pending. Collection projection, Unicode subtable preference, horizontal-only substitutes and coalesced coverage diagnostics are explicit provider policies. Extraction additions were checked against the same local ISO text: 7.9.2.2, 9.3, 9.4.4, 9.10, 14.6, 14.8.2.5.1/14.8.2.5.3, 14.8.2.6.2 and 14.9.3-14.9.4. Trm and replacement/reversal semantics are normative; selection cells, untagged reading order, layout thresholds, word boundaries and search equivalence are explicitly reader policy. No Unicode normalization or full case-fold standard verification is claimed. Tagged extraction additions were checked against the same local ISO text: 7.9.7, 14.7.2-14.7.5 (Tables 354-359), 14.8.2.2, 14.8.4 and 14.9.3-14.9.4. Hierarchy order, owner lookup, roles, artifacts and replacement semantics are normative; separator serialization, unsupported namespace boundaries and retained byte accounting are explicit implementation policy. Standard namespace names, default namespace selection and role-set differences were checked against 14.8.6.1-14.8.6.2 and Annex M of the same text; logical depth-first order is defined by 14.8.2.5.1. Optional null dictionary values and indirect null were checked against 7.3.9, including structure keys, replacement properties and nonstructural null MCIDs. Reported structure fallback is ADR 0003/ADR 0014 reader recovery policy, not an additional normative ISO requirement; logical-structure fault locators remain those reviewed above. Two-view additions use the same primary ISO text: 12.5.3 (annotation flags), 14.6.2, 14.7.5.2-14.7.5.3 and 14.9.3-14.9.5. Page/logical API separation, fixed logical separator thresholds and reported metadata discard are documented reader policies.",
+  "scope": "The rule paraphrases and exact ISO locators below were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text (ISO_32000-2_sponsored_EC3.txt): PDF string-decoding/spacing interfaces, supported font dictionaries and embedding bindings, character selection, widths/CID metrics, PDF-specific CMap rules and ToUnicode. Every code-to-name slot of Standard, MacRoman, WinAnsi, PDFDoc, Symbol and ZapfDingbats was compared with Annex D; MacExpert was also checked. This is not verification of Adobe Glyph List rules, TN5014 grammar or external font-program binary formats. Provider additions were checked against ISO 9.6.2.2/Table 109 and 9.9.2, 9.8.1-9.8.2/Tables 120-121, 9.7.5.2/Table 116 and 9.10.2, and TN5014 sections 5.1-5.4 for pinned resource inheritance. AFM values and Unicode projection choices are checked against the pinned data files, not claimed as verification of external AFM or sfnt format standards. Recovery additions were checked against ISO 9.7.4.1 Table 115, 9.7.4.2, 9.7.5.4, 9.7.6.2, 9.10.3 and TN5014 7.4. Tolerant interpretations depart from those rules as individually reported below; corpus acceptance is evidence of tolerance, not standards conformance. Round 5 rechecks the PDF TrueType routes against 9.6.5.4 and Table 113 in the same local ISO text; final-paragraph alternatives are reader policy. Retained byte accounting is ADR 0012 policy, not a numerical requirement of Annex C.1. Substitution and optional-weight handling were checked against ISO 9.6.2.1-9.6.2.2, 9.6.5.2, 9.6.5.4, 9.8.1-9.8.2/Tables 120-121 and 9.9.2 in the same local text. Sixty-six Russian AFII name-to-scalar records were compared with local adobe-glyph-list data. Short aliases and invalid-weight discard are documented policies; full external AGL/AGLFN algorithm verification is not claimed. Horizontal CID substitution and Symbol/Dingbats additions were checked against the same local ISO text: 9.6.2.2, 9.6.5.2/Table 112, 9.6.5.4, 9.7.3/Table 114, 9.7.4.2-9.7.4.3, 9.7.5 and 9.10.2-9.10.3. CFF INDEX, DICT, charset layouts and standard SIDs used by the Foxit oracle were checked against local TN5176 sections 4, 5, 8-10, 13-14 and Appendix A. Regional OTF cmap expectations are independent binary-layout oracles; primary OpenType format review remains pending. Collection projection, Unicode subtable preference, horizontal-only substitutes and coalesced coverage diagnostics are explicit provider policies. Extraction additions were checked against the same local ISO text: 7.9.2.2, 9.3, 9.4.4, 9.10, 14.6, 14.8.2.5.1/14.8.2.5.3, 14.8.2.6.2 and 14.9.3-14.9.4. Trm and replacement/reversal semantics are normative; selection cells, untagged reading order, layout thresholds, word boundaries and search equivalence are explicitly reader policy. No Unicode normalization or full case-fold standard verification is claimed. Tagged extraction additions were checked against the same local ISO text: 7.9.7, 14.7.2-14.7.5 (Tables 354-359), 14.8.2.2, 14.8.4 and 14.9.3-14.9.4. Hierarchy order, owner lookup, roles, artifacts and replacement semantics are normative; separator serialization, unsupported namespace boundaries and retained byte accounting are explicit implementation policy. Standard namespace names, default namespace selection and role-set differences were checked against 14.8.6.1-14.8.6.2 and Annex M of the same text; logical depth-first order is defined by 14.8.2.5.1. Optional null dictionary values and indirect null were checked against 7.3.9, including structure keys, replacement properties and nonstructural null MCIDs. Reported structure fallback is ADR 0003/ADR 0014 reader recovery policy, not an additional normative ISO requirement; logical-structure fault locators remain those reviewed above. Two-view additions use the same primary ISO text: 12.5.3 (annotation flags), 14.6.2, 14.7.5.2-14.7.5.3 and 14.9.3-14.9.5. Page/logical API separation, fixed logical separator thresholds and reported metadata discard are documented reader policies. Strict rejection of nested ToUnicode parser/filter repairs was checked against ISO 7.3.5, 7.3.7, 7.4.4 and 9.10.3, with zlib integrity from RFC 1950 section 2.2; recovery-mode classification follows ADR 0003.",
   "requirements": [
     {
       "id": "text-type3",
@@ -118,7 +118,10 @@
         "text/unicode-cid-code-length",
         "text/unicode-simple-source-length",
         "text/unicode-ignored-stream-metadata",
-        "text/unicode-inherited-ignored-name"
+        "text/unicode-inherited-ignored-name",
+        "text/tounicode-null-direct",
+        "text/tounicode-null-indirect",
+        "text/tounicode-null-undefined"
       ],
       "gaps": "The bundled provider supplies four Adobe collection Unicode projections; full AGL name data and the external naming algorithm review remain outside this subset.",
       "tables": [
@@ -126,14 +129,14 @@
       ],
       "verification": {
         "rule": "ToUnicode takes priority, uses font-consistent code lengths and UTF-16BE sequences, increments the final bfrange byte, and uses only UseCMap from the stream dictionary.",
-        "implementation": "Valid ISO ToUnicode rules agree. Strict extraction rejects malformed interpretations; painting retains the font and reports the discarded map. Repair mode preserves unambiguous Unicode as specified in text-tounicode-recovery.",
+        "implementation": "Valid ISO ToUnicode rules agree. Strict font loading rejects malformed interpretations; repair mode retains drawable glyphs and reports repairs. Repair mode preserves unambiguous Unicode as specified in text-tounicode-recovery.",
         "expectations": "agree with the ISO rules, including minimized metadata/source-length violations; glyph-name known answers do not constitute AGL verification",
         "verdict": "ISO subset agrees after corrections",
         "choices": [
           "Empty ToUnicode destinations are retained as empty sequences because ISO specifies an upper size but no nonzero lower size.",
-          "Strict extraction rejects bfrange overflow; Repair uses documented byte carry. Mismatched array lengths discard the optional map in both modes.",
+          "Strict extraction rejects bfrange overflow; Repair uses documented byte carry. Mismatched array lengths reject in Strict and discard the optional map in Repair.",
           "Unrecognized name components contribute no Unicode, and entirely unknown names return None; this external AGL algorithm remains pending primary-text review.",
-          "Malformed ToUnicode interpretations no longer reject a drawable font; see text-tounicode-recovery for strict discard and tolerant results."
+          "Malformed ToUnicode rejects font loading in Strict; see text-tounicode-recovery for exact tolerant results."
         ]
       }
     },
@@ -245,7 +248,7 @@
         "verdict": "documented capability limit",
         "choices": [
           "Without an explicit Provider, the original loading API keeps its unavailable-font/CMap errors. ADR 0009 now approves the bundled data provider; its integration is covered separately.",
-          "Malformed ToUnicode data is extraction-only and follows text-tounicode-recovery; malformed painting-critical data still rejects or requires an authorized repair."
+          "Malformed ToUnicode and painting-critical data reject in Strict or require a reported repair; see text-tounicode-recovery."
         ]
       }
     },
@@ -650,7 +653,7 @@
         "choices": [
           "Provider parsing budgets are selected at construction; caches contain only the fixed inventory and no global mutable state. A provider and its resources may be shared across documents.",
           "PdfFont::load_with accepts metrics-only resources. Width lookup succeeds but nonempty decode returns font.non-embedded when outlines are absent. PdfFont::load remains unchanged.",
-          "Substitution is permitted PDF processing, not malformed-input repair: report font.substituted even in Strict mode. Document::report deduplicates by tag/object/position; a descriptor reference supplies object context when present."
+          "Substitution is permitted PDF processing, not malformed-input repair: report font.substituted as Information even in Strict mode. Document::report deduplicates by kind/tag/object/position; a descriptor reference supplies object context when present."
         ]
       }
     },
@@ -1024,6 +1027,8 @@
         "text/repair-tounicode-limit",
         "text/repair-tounicode-object",
         "text/repair-tounicode-codespace",
+        "text/repair-tounicode-checksum",
+        "text/repair-tounicode-key-solidus",
         "text/repair-tounicode-diagnostic-cap",
         "text/unicode-surrogate",
         "text/unicode-cycle",
@@ -1041,14 +1046,14 @@
       "verification": {
         "rule": "ToUnicode controls extraction, independently of glyph selection. Sources in simple fonts use one byte, destinations use UTF-16BE, and bfrange increments may not overflow the final byte.",
         "implementation": "Normative departures are rejected with a repair tag in strict interpretation and reported before tolerant use.",
-        "expectations": "Independently authored Python fixtures give exact glyph IDs, widths, matrices and Unicode in both modes; no Rust output is used. Pixel fixtures independently calculate the same rectangle in actual rendered pages.",
+        "expectations": "Independently authored Python fixtures give strict error tags and exact repaired glyph IDs, widths, matrices and Unicode; no Rust output is used. Pixel fixtures independently calculate the same rectangle in actual rendered pages.",
         "verdict": "Normative checks and explicit repair policy agree with the independent fixtures.",
         "choices": [
-          "Reject malformed extraction interpretations under Strict, report the rejection and discard the optional map while keeping the drawable font in both recovery modes. Other Unicode fallback methods remain available.",
+          "Reject malformed extraction data at font loading under Strict, preserving the original error and refused repair tag without reporting an applied repair. Repair mode keeps drawable glyphs and other Unicode fallback methods.",
           "Repair two-byte simple-font source codes by their low byte, preserving agreeing aliases and dropping conflicting aliases.",
           "Omit invalid UTF-16 destinations atomically, including malformed surrogate sequences and odd byte counts. An invalid child definition suppresses inherited text for that source.",
           "Repair overflowing bfrange strings with big-endian byte carry. Keep valid UTF-16 results, omit invalid ones, and stop at full-string overflow without wrapping.",
-          "On other malformed, unsupported, cyclic or budget-exceeding ToUnicode data, discard the whole map and report font.tounicode-invalid. Existing parser and output budgets remain enforced."
+          "On other malformed, unsupported, cyclic or budget-exceeding ToUnicode data, Strict propagates the original error. Repair discards the whole map and reports font.tounicode-invalid or the original repair tag. Existing parser and output budgets remain enforced."
         ]
       }
     },
@@ -1078,13 +1083,13 @@
       "verification": {
         "rule": "Embedded Type2 CIDFonts require CIDToGIDMap; CMap block counts are at most 100 and codespaces compare each byte as a rectangular bound.",
         "implementation": "Normative departures are rejected with a repair tag in strict interpretation and reported before tolerant use.",
-        "expectations": "Independently authored Python fixtures give exact glyph IDs, widths, matrices and Unicode in both modes; no Rust output is used. Pixel fixtures independently calculate the same rectangle in actual rendered pages.",
+        "expectations": "Independently authored Python fixtures give strict error tags and exact repaired glyph IDs, widths, matrices and Unicode; no Rust output is used. Pixel fixtures independently calculate the same rectangle in actual rendered pages.",
         "verdict": "Normative checks and explicit repair policy agree with the independent fixtures.",
         "choices": [
           "Repair a missing CIDToGIDMap with Identity; explicit unusable maps still fail.",
           "Accept block counts above 100 only within entry and operation budgets; negative and mismatched counts remain invalid.",
           "Interpret an otherwise reversed byte bound as an integer interval, split into disjoint aligned rectangular pieces without widening it. Reversed whole intervals, conflicting codespaces and ambiguous code lengths remain errors.",
-          "Strict mode rejects these painting-critical repairs with their stable tags. ToUnicode maps inherit the extraction-only discard policy."
+          "Strict mode rejects these painting-critical repairs with their stable tags. ToUnicode maps also reject in Strict; only Repair may discard unusable maps."
         ]
       }
     },
@@ -2070,6 +2075,35 @@
           "Annotation appearance operators remain excluded from page glyph records; visible annotations can still contribute logical Alt text through OBJR."
         ]
       }
+    },
+    {
+      "id": "text-strict-repair-boundary",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.5",
+        "7.3.7",
+        "7.3.9",
+        "7.3.10",
+        "7.4.4",
+        "9.10.3"
+      ],
+      "status": "Strict font loading preserves nested parser and filter repair rejections",
+      "tests": [
+        "text/tounicode-null-direct",
+        "text/tounicode-null-indirect",
+        "text/tounicode-null-undefined",
+        "text/strict-substitution-simple",
+        "text/strict-substitution-cid",
+        "text/repair-tounicode-checksum",
+        "text/repair-tounicode-key-solidus"
+      ],
+      "gaps": "Recovery mode and typed informational substitution diagnostics are ADR 0003/ADR 0009 policy.",
+      "verification": {
+        "rule": "Dictionary keys are names; names begin with a solidus. Flate streams use the zlib wrapper, whose Adler-32 verifies decoded data (RFC 1950 section 2.2). ToUnicode uses a CMap stream; null values, including indirect and undefined references, are equivalent to an absent dictionary entry (7.3.9-7.3.10).",
+        "implementation": "Strict propagates the original nested error and repair tag through font loading; Repair reports the repair and preserves the independently authored Unicode mapping.",
+        "expectations": "Python zlib constructs a valid CMap stream and the fixture flips one checksum bit. A separate stream dictionary omits the solidus from an otherwise unused key. Both repaired maps decode A to Z with the same glyph and advance.",
+        "verdict": "Independent strict rejection and exact repaired mapping expectations; no executable output supplies expected values."
+      }
     }
   ],
   "primary_text_review": {
@@ -2148,28 +2182,28 @@
       "clauses": [
         "9.10.3"
       ],
-      "behaviour": "Discard unusable optional extraction data in both recovery modes; never change glyph selection."
+      "behaviour": "Reject unusable extraction data in Strict; discard and report it in Repair without changing glyph selection."
     },
     {
       "tag": "font.tounicode-simple-codes",
       "clauses": [
         "9.10.3"
       ],
-      "behaviour": "In repair mode use low bytes of two-byte simple-font sources; conflicting aliases have unknown Unicode. Strict discards the rejected map."
+      "behaviour": "In repair mode use low bytes of two-byte simple-font sources; conflicting aliases have unknown Unicode. Strict rejects font loading with the original error and refused repair tag."
     },
     {
       "tag": "font.tounicode-utf16",
       "clauses": [
         "9.10.3"
       ],
-      "behaviour": "In repair mode omit invalid destinations, retaining unaffected entries and blocking invalid child overrides from resurrecting parent values. Strict discards the rejected map."
+      "behaviour": "In repair mode omit invalid destinations, retaining unaffected entries and blocking invalid child overrides from resurrecting parent values. Strict rejects font loading with the original error and refused repair tag."
     },
     {
       "tag": "font.tounicode-range",
       "clauses": [
         "9.10.3"
       ],
-      "behaviour": "In repair mode increment with big-endian carry, retaining valid destinations until full-string overflow; never wrap. Strict discards the rejected map."
+      "behaviour": "In repair mode increment with big-endian carry, retaining valid destinations until full-string overflow; never wrap. Strict rejects font loading with the original error and refused repair tag."
     },
     {
       "tag": "font.cmap-block-count",

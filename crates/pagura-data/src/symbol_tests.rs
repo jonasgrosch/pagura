@@ -47,7 +47,10 @@ fn foxit_charsets_and_pdf_width_precedence() -> Result<()> {
             program.outline(*glyph)?;
         }
         assert_eq!(document.diagnostics().len(), 1);
-        assert_eq!(document.diagnostics()[0].repair, pagura_text::SUBSTITUTED);
+        assert_eq!(
+            document.diagnostics()[0].kind,
+            pagura_core::DiagnosticKind::Information(pagura_text::SUBSTITUTED)
+        );
         assert_eq!(
             document.diagnostics()[0].message,
             if name.contains("ZapfDingbats") {

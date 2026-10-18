@@ -1,5 +1,5 @@
-//! Reported text repairs (ADR 0003). ToUnicode is extraction-only: rejecting a
-//! repair discards that map, never the font's drawable glyphs (9.10.3).
+//! Reported text repairs (ADR 0003). ToUnicode only controls extraction
+//! (9.10.3); malformed maps still require permission to repair or discard.
 use pagura_core::{Diagnostic, Diagnostics, Error, ObjectId, Position, Recovery, Repair, Result};
 use pagura_document::Document;
 
@@ -62,18 +62,20 @@ impl<'a> Report<'a> {
         }
         Ok(())
     }
-    pub(crate) fn discarded(self, error: &Error, object: Option<ObjectId>) {
-        let Some(document) = self.0 else {
-            return;
-        };
+    pub(crate) fn discarded(self, error: Error, object: Option<ObjectId>) -> Result<()> {
+        // Preserve the original error kind, position and refused repair in Strict.
+        if self
+            .0
+            .is_none_or(|document| document.recovery() == Recovery::Strict)
+        {
+            return Err(error);
+        }
         let diagnostic = Diagnostic {
-            repair: error.repair.unwrap_or(TOUNICODE_INVALID),
+            kind: pagura_core::DiagnosticKind::Repair(error.repair.unwrap_or(TOUNICODE_INVALID)),
             message: "invalid ToUnicode data discarded; glyph selection is unchanged",
             position: error.position,
             object: error.object.or(object),
         };
-        // Discarding optional extraction data is permitted even in Strict mode.
-        // No rejected interpretation is applied; the tag records its rejection.
-        document.report([diagnostic]);
+        self.diagnostic(diagnostic)
     }
 }

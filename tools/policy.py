@@ -53,8 +53,8 @@ def check_fixtures() -> int:
             assert set(case["requirements"]) <= requirements, f"{case['id']}: unmapped requirement"
             if case.get("feature"):
                 assert TAG.match(case["feature"]) or OPERATOR_TAG.match(case["feature"]), f"{case['id']}: malformed feature tag"
-            for tag in case.get("repairs", []):
-                assert TAG.match(tag), f"{case['id']}: malformed repair tag"
+            for tag in [*case.get("repairs", []), *case.get("information", [])]:
+                assert TAG.match(tag), f"{case['id']}: malformed diagnostic tag"
             files = [(case["path"], case["sha256"])] if case["kind"] == "pdf" else []
             if "oracle" in case:
                 files.append((case["oracle"], case["oracle_sha256"]))

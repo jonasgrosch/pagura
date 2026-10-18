@@ -69,7 +69,12 @@ fn inspect(bytes: Arc<[u8]>, kind: &str) -> Result<Stats> {
             eprintln!("{kind}\t{}\t{}", error.kind.name(), error);
         }
     }
-    stats.repairs = doc.diagnostics().len() - before;
+    stats.repairs = doc
+        .diagnostics()
+        .iter()
+        .skip(before)
+        .filter(|item| item.repair().is_some())
+        .count();
     Ok(stats)
 }
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {

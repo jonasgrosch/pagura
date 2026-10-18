@@ -294,7 +294,7 @@ fn assert_repairs(name: &str, params: &BTreeMap<String, String>, document: &Docu
     assert_eq!(
         reports
             .iter()
-            .map(|report| report.repair.as_str())
+            .map(pagura_core::Diagnostic::tag)
             .collect::<Vec<_>>(),
         expected_tags,
         "{name}"
@@ -389,5 +389,8 @@ fn zero_byte_fill_preserves_the_high_byte_of_an_incomplete_word() {
     )
     .unwrap();
     assert_eq!(samples, Samples::Words(vec![0x1234, 0xab00]));
-    assert_eq!(diagnostics.as_slice()[0].repair, crate::tags::DATA_SHORT);
+    assert_eq!(
+        diagnostics.as_slice()[0].repair(),
+        Some(crate::tags::DATA_SHORT)
+    );
 }

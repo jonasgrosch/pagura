@@ -54,7 +54,7 @@ to the cached result does not charge again. Reservations and counter updates
 are synchronized, including rollback while other objects are being loaded.
 
 Document diagnostics retain the first 1,024 distinct identities in discovery
-order. Identity is repair tag, object and position; differing messages do not
+order. Identity is diagnostic kind/tag, object and position; differing messages do not
 create additional entries. Opening diagnostics and lazy/external diagnostics
 share this cap. `suppressed_diagnostics()` returns a saturating count of report
 occurrences omitted after the cap. Duplicates of retained identities neither
@@ -64,7 +64,7 @@ omitted identities would itself require unbounded storage.
 
 `Document::report` exposes this sink to other crates. It evaluates caller
 iterators outside the diagnostic lock. Reporting does not authorize a repair:
-callers first use `Diagnostics::repair` with the document's recovery mode
+callers repairing input first use `Diagnostics::repair` with the document's recovery mode
 (ADR 0003), so Strict mode can reject before input is repaired.
 
 ## Alternatives considered

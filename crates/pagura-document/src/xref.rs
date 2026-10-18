@@ -227,13 +227,12 @@ fn validate_identities(bytes: &[u8], table: &XrefTable, limits: Limits) -> Resul
                         && matches(offset)
                 })
             {
-                return Err(Diagnostic::new(
-                    tags::XREF_REBUILT,
-                    "cross-reference offset has no matching object header",
-                )
-                .at(Position::File(at))
-                .in_object(id)
-                .to_error());
+                let mut error =
+                    Error::syntax("cross-reference offset has no matching object header")
+                        .at(Position::File(at))
+                        .in_object(id);
+                error.repair = Some(tags::XREF_REBUILT);
+                return Err(error);
             }
         }
     }

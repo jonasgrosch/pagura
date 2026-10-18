@@ -58,6 +58,8 @@ def check(case: dict) -> list[str]:
         problems.append(f"{report['pages']} pages, expected {case['pages']}")
     if sorted(report["repairs"]) != sorted(case.get("repairs", [])):
         problems.append(f"repairs {report['repairs']}, expected {case.get('repairs', [])}")
+    if sorted(report.get("information", [])) != sorted(case.get("information", [])):
+        problems.append(f"information {report.get('information', [])}, expected {case.get('information', [])}")
     if report["strict"] != case.get("strict_valid", True):
         problems.append(f"strict open {'succeeded' if report['strict'] else 'failed'}, expected the opposite")
     if expected == "unsupported":

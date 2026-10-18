@@ -760,7 +760,7 @@ mod tests {
                         document
                             .diagnostics()
                             .iter()
-                            .any(|d| d.repair.as_str().as_bytes() == tag)
+                            .any(|d| d.tag().as_bytes() == tag)
                     );
                     assert!(text.structure_fallback().is_none());
                     check_glyphs(name, &text);
@@ -794,7 +794,7 @@ mod tests {
                 document
                     .diagnostics()
                     .iter()
-                    .all(|d| d.repair != pagura_text::repairs::STRUCTURE_FALLBACK)
+                    .all(|d| d.repair() != Some(pagura_text::repairs::STRUCTURE_FALLBACK))
             );
         }
     }
@@ -847,7 +847,7 @@ mod tests {
                     let reports = doc.diagnostics();
                     let report = reports
                         .iter()
-                        .find(|d| d.repair == pagura_text::repairs::STRUCTURE_FALLBACK)
+                        .find(|d| d.repair() == Some(pagura_text::repairs::STRUCTURE_FALLBACK))
                         .unwrap();
                     assert_eq!(report.message, error.message);
                     assert_eq!(report.position, error.position);

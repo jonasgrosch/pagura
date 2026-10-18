@@ -18,7 +18,7 @@ Dependencies point downward only and are fixed in the crate manifests.
 
 | Crate | Responsibility | Knows nothing about |
 |---|---|---|
-| `pagura-core` | `Value`, `Name`, `Dictionary`, `ObjectId`, `Rect`; bounded `syntax::Parser`; `Error`/`ErrorKind`/`Feature`/`Position`; `Diagnostic`/`Repair`/`Recovery`; `Limits` | files, revisions, rendering |
+| `pagura-core` | `Value`, `Name`, `Dictionary`, `ObjectId`, `Rect`; bounded `syntax::Parser`; `Error`/`ErrorKind`/`Feature`/`Position`; `Diagnostic`/`DiagnosticKind`/`Repair`/`Recovery`; `Limits` | files, revisions, rendering |
 | `pagura-codec` | stream filters and predictors with streaming output caps | documents, references |
 | `pagura-crypto` | MD5, SHA-2, RC4, AES; the standard security handler from plain parameters | the object model beyond `ObjectId` |
 | `pagura-document` | immutable source bytes, cross-reference data and revisions, lazily parsed and cached objects, decoded streams, typed page tree, recovery | content streams, pixels |
@@ -46,7 +46,8 @@ candidate; until then it lives in `pagura-render`.
    aggregate budget (`Limits::document_bytes`, ADR 0012).
 4. A rendering error cannot become a successful partial page.
 5. Unsupported behaviour is an `Unsupported(Feature)` error with a stable tag;
-   repairs are `Diagnostic`s with stable `Repair` tags (ADR 0003).
+   diagnostics distinguish repairs from information; only repairs carry `Repair`
+   tags and require recovery permission (ADR 0003).
 6. Unknown objects remain accessible for future preservation; typed views
    (`Page`) never replace the underlying document model.
 7. Interpretation has no host capabilities. Fonts, trust stores, network range

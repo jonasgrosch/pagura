@@ -94,16 +94,11 @@ fn check_glyphs(font: &PdfFont, name: &str, suffix: &str) -> Result<()> {
     }
     Ok(())
 }
-fn check_extraction_rejection(document: &Document, font: &PdfFont, name: &str) -> Result<()> {
-    let error = font::to_unicode_map(
-        document,
-        dictionary(document)?
-            .get(b"ToUnicode")
-            .ok_or_else(|| Error::syntax("missing extraction map"))?,
-        &font.mapping,
-    )
-    .unwrap_err();
-    let expected = tags(name)?;
+fn check_strict_rejection(document: &Document, error: &Error, name: &str) -> Result<()> {
+    let expected = fixture("text", &format!("{name}.strict.error"));
+    let expected = std::str::from_utf8(&expected)
+        .map_err(|_| Error::syntax("invalid strict tag oracle"))?
+        .trim();
     if name.starts_with("unicode-") {
         let bytes = fixture("text", &format!("{name}.error"));
         let kind = std::str::from_utf8(&bytes)
@@ -119,15 +114,16 @@ fn check_extraction_rejection(document: &Document, font: &PdfFont, name: &str) -
     }
     assert_eq!(
         error.repair.map(pagura_core::Repair::as_str),
-        expected.first().map(String::as_str),
+        Some(expected),
         "{name}: {error}"
     );
     assert!(error.object.is_some() || name == "repair-tounicode-object");
+    assert!(document.diagnostics().is_empty(), "{name}");
     Ok(())
 }
 
 #[test]
-fn extraction_faults_never_reject_drawable_fonts() -> Result<()> {
+fn extraction_repairs_reject_font_loading_in_strict_mode() -> Result<()> {
     for name in [
         "repair-tounicode-simple",
         "repair-tounicode-mixed-sources",
@@ -144,6 +140,8 @@ fn extraction_faults_never_reject_drawable_fonts() -> Result<()> {
         "repair-tounicode-limit",
         "repair-tounicode-object",
         "repair-tounicode-codespace",
+        "repair-tounicode-checksum",
+        "repair-tounicode-key-solidus",
         "unicode-surrogate",
         "unicode-cycle",
         "unicode-range-overflow",
@@ -157,29 +155,18 @@ fn extraction_faults_never_reject_drawable_fonts() -> Result<()> {
         "unicode-simple-source-length",
     ] {
         let strict = open(name, Recovery::Strict)?;
-        let font = PdfFont::load(&strict, dictionary(&strict)?)?;
-        check_extraction_rejection(&strict, &font, name)?;
-        check_glyphs(&font, name, "strict.out")?;
-        assert!(
-            strict
-                .diagnostics()
-                .iter()
-                .any(|item| Some(item.repair.as_str())
-                    == tags(name)
-                        .ok()
-                        .and_then(|tags| tags.first().cloned())
-                        .as_deref()),
-            "{name}"
-        );
+        let error = PdfFont::load(&strict, dictionary(&strict)?).unwrap_err();
+        check_strict_rejection(&strict, &error, name)?;
+        // A cached nested parser failure must keep its original tag and context.
+        let repeated = PdfFont::load(&strict, dictionary(&strict)?).unwrap_err();
+        assert_eq!(error, repeated, "{name}");
+        assert!(strict.diagnostics().is_empty(), "{name}");
         let repaired = open(name, Recovery::Repair)?;
         let font = PdfFont::load(&repaired, dictionary(&repaired)?)?;
         check_glyphs(&font, name, "out")?;
         for tag in tags(name)? {
             assert!(
-                repaired
-                    .diagnostics()
-                    .iter()
-                    .any(|item| item.repair.as_str() == tag),
+                repaired.diagnostics().iter().any(|item| item.tag() == tag),
                 "{name}: {tag}"
             );
         }
@@ -198,17 +185,12 @@ fn painting_critical_repairs_require_permission_and_preserve_exact_glyphs() -> R
         let strict = open(name, Recovery::Strict)?;
         let error = PdfFont::load(&strict, dictionary(&strict)?).unwrap_err();
         assert_eq!(error.kind, ErrorKind::Syntax);
-        assert_eq!(
-            error.repair.map(pagura_core::Repair::as_str),
-            tags(name)?.first().map(String::as_str)
-        );
-        assert!(error.object.is_some());
-        assert_eq!(strict.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
+        check_strict_rejection(&strict, &error, name)?;
         let repaired = open(name, Recovery::Repair)?;
         let font = PdfFont::load(&repaired, dictionary(&repaired)?)?;
         check_glyphs(&font, name, "out")?;
         assert!(repaired.diagnostics().iter().any(|item| {
-            Some(item.repair.as_str())
+            Some(item.tag())
                 == tags(name)
                     .ok()
                     .and_then(|tags| tags.first().cloned())
@@ -252,5 +234,22 @@ fn repeated_unicode_faults_use_bounded_document_diagnostics() -> Result<()> {
         document.suppressed_diagnostics(),
         usize::try_from(uint(&row[1])?).map_err(|_| Error::syntax("invalid suppression oracle"))?
     );
+    Ok(())
+}
+
+#[test]
+fn null_unicode_entries_are_absent_without_repairs() -> Result<()> {
+    for name in [
+        "tounicode-null-direct",
+        "tounicode-null-indirect",
+        "tounicode-null-undefined",
+    ] {
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            let document = open(name, recovery)?;
+            let font = PdfFont::load(&document, dictionary(&document)?)?;
+            check_glyphs(&font, name, "out")?;
+            assert_eq!(document.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
+        }
+    }
     Ok(())
 }

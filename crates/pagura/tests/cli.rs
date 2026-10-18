@@ -204,3 +204,31 @@ fn scan_retries_a_late_repair_without_losing_earlier_pages() {
     assert!(text.contains("\"rendered\":1"), "{text}");
     assert!(text.contains("\"repairs\":[]"), "{text}");
 }
+
+#[test]
+#[cfg(feature = "bundled-data")]
+fn scan_separates_information_from_repairs() {
+    for (name, strict, repairs) in [
+        ("bundled-helvetica", true, "[]"),
+        (
+            "bundled-diagnostic-kinds",
+            false,
+            "[\"font.descriptor-weight\"]",
+        ),
+    ] {
+        let output = pagura()
+            .arg("scan")
+            .arg(fixture_path("paint", &format!("{name}.pdf")))
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let text = String::from_utf8(output.stdout).unwrap();
+        assert!(text.contains(&format!("\"strict\":{strict}")), "{text}");
+        assert!(text.contains(&format!("\"repairs\":{repairs}")), "{text}");
+        assert!(
+            text.contains("\"information\":[\"font.substituted\"]"),
+            "{text}"
+        );
+        assert!(text.contains("\"failures\":[]"), "{text}");
+    }
+}

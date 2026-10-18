@@ -96,10 +96,7 @@ fn duplicate_keys_are_strict_errors_and_reported_repairs() {
         value.as_dictionary().unwrap().get(b"A"),
         Some(&Value::Integer(2))
     );
-    assert_eq!(
-        parser.take_diagnostics()[0].repair.as_str(),
-        "syntax.duplicate-key"
-    );
+    assert_eq!(parser.take_diagnostics()[0].tag(), "syntax.duplicate-key");
 }
 
 #[test]
