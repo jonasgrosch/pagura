@@ -8,6 +8,7 @@
 mod colorants;
 pub(crate) use colorants::Separations;
 mod images;
+mod opaque_image;
 mod patterns;
 mod reduced;
 mod regions;
@@ -280,7 +281,9 @@ impl Context {
             self.glyphs.clear();
         }
     }
-    fn surface(&mut self, tile: Tile, initial: Backdrop<'_>) -> Result<Surface> {
+    /// Checks a group surface over `tile` against the pixel, memory and work
+    /// budgets without taking them, returning its pixel count and byte size.
+    fn admit_surface(&self, tile: Tile) -> Result<(usize, usize)> {
         let count = usize::try_from(u64::from(tile.width) * u64::from(tile.height))
             .ok()
             .filter(|&v| v <= self.limits.pixels)
@@ -288,13 +291,21 @@ impl Context {
         let bytes = count
             .checked_mul(size_of::<Pixel>())
             .ok_or(Error::limit("group byte size overflow"))?;
-        self.trim_raster(bytes);
-        self.allocated = self
-            .allocated
+        self.allocated
             .checked_add(bytes)
             .filter(|&n| n <= self.limits.decoded_bytes)
             .ok_or(Error::limit("group memory budget exceeded"))?;
-        self.charge(count)?;
+        self.work
+            .checked_add(count)
+            .filter(|&v| v <= self.limits.raster_work)
+            .ok_or(Error::limit("compositing work budget exceeded"))?;
+        Ok((count, bytes))
+    }
+    fn surface(&mut self, tile: Tile, initial: Backdrop<'_>) -> Result<Surface> {
+        let (count, bytes) = self.admit_surface(tile)?;
+        self.trim_raster(bytes);
+        self.allocated += bytes;
+        self.work += count;
         let mut pixels = Vec::new();
         pixels
             .try_reserve_exact(count)
@@ -1142,49 +1153,60 @@ impl Context {
     }
 }
 
+impl Context {
+    /// The compositor state for one render of `list`, and its page blending model.
+    fn page(list: &DisplayList, options: &RenderOptions) -> Result<(Self, Model)> {
+        let mut crop = PathBuilder::new();
+        crop.rect(
+            list.crop.x0,
+            list.crop.y0,
+            list.crop.width(),
+            list.crop.height(),
+        );
+        let mut context = Self {
+            overprint: options.overprint.resolve(list.print_intent),
+            separations: list.preview_separations(options)?,
+            preview: colorants::Preview::default(),
+            spot_batch: None,
+            mask_colors: false,
+            elide_opaque_groups: !list.group.knockout
+                && list.group.model.is_none_or(|m| m == Model::Rgb)
+                && normal_scene(&list.commands),
+            raster: pagura_raster::Rasterizer::default(),
+            bounds: regions::Prepared::new(
+                list.device_transform(options),
+                list.limits.decoded_bytes,
+            ),
+            glyphs: crate::display::GlyphCache::new(list.limits.decoded_bytes),
+            limits: list.limits,
+            device: list.device_transform(options),
+            page_device: list.device_transform(options),
+            view_unit: list.user_unit,
+            crop: crop.finish(),
+            allocated: 0,
+            work: 0,
+            clip: None,
+            mask: None,
+            function_work: 0,
+            soft_source: false,
+            transfers: transfer::Regions::new(&list.commands, list.limits)?,
+        };
+        context.allocated = context
+            .transfers
+            .as_ref()
+            .map_or(0, transfer::Regions::bytes);
+        let model = list.group.model.unwrap_or(if context.separations.enabled {
+            Model::Cmyk
+        } else {
+            Model::Rgb
+        });
+        context.elide_opaque_groups &= !context.separations.enabled;
+        Ok((context, model))
+    }
+}
+
 pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
-    let mut crop = PathBuilder::new();
-    crop.rect(
-        list.crop.x0,
-        list.crop.y0,
-        list.crop.width(),
-        list.crop.height(),
-    );
-    let mut context = Context {
-        overprint: options.overprint.resolve(list.print_intent),
-        separations: list.preview_separations(options)?,
-        preview: colorants::Preview::default(),
-        spot_batch: None,
-        mask_colors: false,
-        elide_opaque_groups: !list.group.knockout
-            && list.group.model.is_none_or(|m| m == Model::Rgb)
-            && normal_scene(&list.commands),
-        raster: pagura_raster::Rasterizer::default(),
-        bounds: regions::Prepared::new(list.device_transform(options), list.limits.decoded_bytes),
-        glyphs: crate::display::GlyphCache::new(list.limits.decoded_bytes),
-        limits: list.limits,
-        device: list.device_transform(options),
-        page_device: list.device_transform(options),
-        view_unit: list.user_unit,
-        crop: crop.finish(),
-        allocated: 0,
-        work: 0,
-        clip: None,
-        mask: None,
-        function_work: 0,
-        soft_source: false,
-        transfers: transfer::Regions::new(&list.commands, list.limits)?,
-    };
-    context.allocated = context
-        .transfers
-        .as_ref()
-        .map_or(0, transfer::Regions::bytes);
-    let model = list.group.model.unwrap_or(if context.separations.enabled {
-        Model::Cmyk
-    } else {
-        Model::Rgb
-    });
-    context.elide_opaque_groups &= !context.separations.enabled;
+    let (mut context, model) = Context::page(list, options)?;
     let mut output =
         Pixmap::new_with_limits(tile.width, tile.height, options.background, list.limits)?;
     // Keep the high-precision page backdrop bounded too. Global device
@@ -1218,6 +1240,12 @@ impl Context {
         tile: Tile,
         region: Tile,
     ) -> Result<()> {
+        if let [Command::Image(image)] = list.commands.as_slice()
+            && !list.group.knockout
+            && self.copy_opaque_image(image, model, output, tile, region)?
+        {
+            return Ok(());
+        }
         let Tile { x, y, width, .. } = region;
         self.clip = None;
         self.discard_mask();
@@ -1572,6 +1600,92 @@ mod tests {
             list.render(&RenderOptions::default()).unwrap_err().kind,
             pagura_core::ErrorKind::Limit
         );
+    }
+
+    #[test]
+    fn sole_rgb_images_preserve_work_and_surface_admission() {
+        let mut list = overprint_list(include_bytes!(
+            "../../../corpus/generated/paint/image-page-rgb.pdf"
+        ));
+        let options = RenderOptions::default();
+        let expected = list.render(&options).unwrap();
+        // One surface visit, one clip visit, one sample per pixel, and one mark.
+        list.limits.raster_work = 3 * 32 * 32 + 1;
+        assert_eq!(list.render(&options).unwrap(), expected);
+        list.limits.raster_work -= 1;
+        let error = list.render(&options).unwrap_err();
+        assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
+        assert!(matches!(
+            error.position,
+            pagura_core::Position::Stream { .. }
+        ));
+        for work in [1, 32 * 32] {
+            list.limits.raster_work = work;
+            let error = list.render(&options).unwrap_err();
+            assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
+            assert_eq!(error.position, pagura_core::Position::Unknown);
+        }
+        list.limits.raster_work = Limits::default().raster_work;
+        list.limits.decoded_bytes = 32 * 32 * size_of::<Pixel>();
+        assert_eq!(list.render(&options).unwrap(), expected);
+        list.limits.decoded_bytes -= 1;
+        assert_eq!(
+            list.render(&options).unwrap_err().kind,
+            pagura_core::ErrorKind::Limit
+        );
+    }
+
+    #[test]
+    fn only_sole_opaque_rgb_images_copy_straight_into_the_output() {
+        use crate::display::ImageCommand;
+        use crate::interpreter::images::Image;
+        fn copies(edit: impl FnOnce(&mut ImageCommand)) -> bool {
+            let mut list = overprint_list(include_bytes!(
+                "../../../corpus/generated/paint/image-page-rgb.pdf"
+            ));
+            let [Command::Image(image)] = list.commands.as_mut_slice() else {
+                panic!("the fixture paints one image");
+            };
+            edit(image);
+            let [Command::Image(image)] = list.commands.as_slice() else {
+                unreachable!();
+            };
+            let options = RenderOptions::default();
+            let (mut context, model) = Context::page(&list, &options).unwrap();
+            let (width, height) = list.device_size(&options).unwrap();
+            let tile = Tile {
+                x: 0,
+                y: 0,
+                width,
+                height,
+            };
+            let mut output =
+                Pixmap::new_with_limits(width, height, options.background, list.limits).unwrap();
+            context
+                .copy_opaque_image(image, model, &mut output, tile, tile)
+                .unwrap()
+        }
+        fn image(edit: impl FnOnce(&mut Image)) -> impl FnOnce(&mut ImageCommand) {
+            |command| edit(Arc::get_mut(&mut command.image).expect("the image is unshared"))
+        }
+        let transfer = overprint_list(include_bytes!(
+            "../../../corpus/generated/recovery/transfer-image.pdf"
+        ))
+        .commands
+        .iter()
+        .find_map(|command| match command {
+            Command::Image(image) => image.transfer.clone(),
+            _ => None,
+        })
+        .expect("the fixture paints its image through a transfer");
+        assert!(copies(|_| {}));
+        assert!(!copies(image(|i| i.decode = vec![(1.0, 0.0); 3])));
+        assert!(!copies(image(|i| i.decoded.interpolate = true)));
+        assert!(!copies(|c| c.composite.alpha = 0.5));
+        assert!(!copies(|c| c.transfer = Some(transfer)));
+        // A fractional last column, and an image over half the chunk.
+        assert!(!copies(|c| c.transform.a = 31.5));
+        assert!(!copies(|c| c.transform.a = 16.0));
     }
 
     #[test]

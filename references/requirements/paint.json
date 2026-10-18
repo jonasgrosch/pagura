@@ -354,6 +354,11 @@
       "tests": [
         "paint/image-minification",
         "paint/image-interpolate",
+        "paint/image-page-rgb",
+        "paint/image-page-rgb-crop",
+        "paint/image-page-rgb-quarter-turn",
+        "paint/image-page-rgb-reflected",
+        "pagura-render compositor::tests::only_sole_opaque_rgb_images_copy_straight_into_the_output",
         "paint/image-area-fractional",
         "paint/image-area-reflected",
         "paint/image-area-quarter",
@@ -386,6 +391,7 @@
       "status": "implemented subset",
       "tests": [
         "paint/type3-recursion",
+        "pagura-render compositor::tests::sole_rgb_images_preserve_work_and_surface_admission",
         "pagura-render interpreter::text::tests::paint_cache_admission_is_atomic_and_shared_across_saved_states",
         "pagura-render interpreter::text::tests::fonts_and_outlines_are_reused",
         "pagura-render interpreter::text::cache::tests::admission_follows_the_loaded_fonts_owned_estimate",

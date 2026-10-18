@@ -71,13 +71,14 @@ impl Sampler {
         if !t.is_finite() {
             return Err(Error::limit("image sampling transform overflow"));
         }
+        let minifying = self.minifying();
         let mut out = Prepared {
             swapped: t.a == 0.0 && t.d == 0.0,
             sampler: self,
             columns: Vec::new(),
             origin,
             vertical: None,
-            minifying: t.a.hypot(t.b) > 1.0 + 1e-9 || t.c.hypot(t.d) > 1.0 + 1e-9,
+            minifying,
         };
         if out.minifying && ((t.b == 0.0 && t.c == 0.0) || out.swapped) {
             let count = usize::try_from(width)

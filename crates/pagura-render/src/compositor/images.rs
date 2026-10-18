@@ -231,7 +231,7 @@ fn prepare(
     Ok((sampler, mask))
 }
 
-fn sampler_for(image: &Image, inverse: Transform) -> Sampler {
+pub(super) fn sampler_for(image: &Image, inverse: Transform) -> Sampler {
     Sampler {
         width: image.decoded.width,
         height: image.decoded.height,

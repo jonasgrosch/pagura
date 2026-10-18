@@ -35,6 +35,16 @@ pub(super) struct Sampler {
     pub(super) inverse: Transform,
 }
 impl Sampler {
+    pub(super) fn minifying(&self) -> bool {
+        let t = self.inverse;
+        t.a.hypot(t.b) > 1.0 + 1e-9 || t.c.hypot(t.d) > 1.0 + 1e-9
+    }
+
+    pub(super) fn nearest(&self, x: u32, y: u32) -> Result<usize> {
+        let center = Point::new(f64::from(x) + 0.5, f64::from(y) + 0.5) * self.inverse;
+        self.index(center.x.floor(), center.y.floor())
+    }
+
     pub(super) fn magnify(
         &self,
         x: u32,
@@ -43,11 +53,11 @@ impl Sampler {
         maximum: usize,
         mut texel: impl FnMut(usize) -> Result<Texel>,
     ) -> Result<Texel> {
-        let center = Point::new(f64::from(x) + 0.5, f64::from(y) + 0.5) * self.inverse;
         if !self.interpolate {
             charge(work, 1, maximum)?;
-            return texel(self.index(center.x.floor(), center.y.floor())?);
+            return texel(self.nearest(x, y)?);
         }
+        let center = Point::new(f64::from(x) + 0.5, f64::from(y) + 0.5) * self.inverse;
         charge(work, 4, maximum)?;
         let (x, y) = (center.x - 0.5, center.y - 0.5);
         let (left, top) = (x.floor(), y.floor());
