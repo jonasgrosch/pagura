@@ -1,12 +1,22 @@
 //! Logical order comes from /K. Separators remain explicit reader policy:
 //! paragraph/heading boundaries use two LFs, cells/items one LF; geometry supplies
 //! spacing within blocks. Consecutive ActualText replacements have no break.
-use super::{BTreeMap, Budget, Error, LogicalText, Plan, Range, Reference, Result, TextPage};
+use super::{Budget, LogicalText, Plan, Reference, TextPage};
 use crate::layout::{
-    Atom, Replacement, atoms,
-    copy::append,
-    geometry::{gap, same_line},
+    Atom, AtomText, Replacement, atoms,
+    copy::{Origin, append, borders_whitespace},
+    geometry::{em, gap, same_line},
 };
+use pagura_core::{Error, Result};
+use std::{collections::BTreeMap, ops::Range};
+
+/// The block a structure element's text belongs to (14.8.4): separators
+/// between blocks are line feeds, two after a paragraph or heading.
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct Block {
+    node: usize,
+    paragraph: bool,
+}
 
 pub(super) fn export(page: &TextPage, plan: &Plan<'_>, budget: &mut Budget) -> Result<LogicalText> {
     let groups = groups(page, plan, budget)?;
@@ -242,13 +252,13 @@ fn replacement_atom(
         .first()
         .zip(selected.last())
         .map_or(0..0, |(&a, &b)| a..b + 1);
-    let chars: Vec<_> = node
+    let chars: AtomText = node
         .replacement
         .iter()
         .flat_map(|s| s.text.chars())
         .map(Some)
         .collect();
-    budget.store(chars.capacity().saturating_mul(size_of::<Option<char>>()))?;
+    budget.store(size_of_val(&*chars))?;
     Ok(Atom {
         chars,
         geometry: selected.first().copied(),
@@ -258,18 +268,15 @@ fn replacement_atom(
         replacement: node.replacement.as_ref().map(|r| r.kind),
     })
 }
-fn block(plan: &Plan<'_>, index: usize) -> Option<(usize, bool)> {
+fn block(plan: &Plan<'_>, index: usize) -> Option<Block> {
     let mut current = Some(index);
     while let Some(i) = current {
         let node = &plan.nodes[i];
         if let Some(role) = &node.element.standard_type {
             let paragraph = super::roles::heading(role.as_bytes())
-                || matches!(
-                    role.as_bytes(),
-                    b"P" | b"H" | b"H1" | b"H2" | b"H3" | b"H4" | b"H5" | b"H6" | b"Title"
-                );
+                || matches!(role.as_bytes(), b"P" | b"H" | b"Title");
             if paragraph || matches!(role.as_bytes(), b"LI" | b"LBody" | b"TD" | b"TH") {
-                return Some((i, paragraph));
+                return Some(Block { node: i, paragraph });
             }
         }
         current = node.element.parent;
@@ -280,46 +287,31 @@ struct Output<'a> {
     page: &'a TextPage,
     logical: LogicalText,
     last: Option<usize>,
-    block: Option<(usize, bool)>,
+    block: Option<Block>,
     replacement: Option<Replacement>,
 }
 impl Output<'_> {
-    fn emit(
-        &mut self,
-        atom: &Atom,
-        block: Option<(usize, bool)>,
-        budget: &mut Budget,
-    ) -> Result<()> {
+    fn emit(&mut self, atom: &Atom, block: Option<Block>, budget: &mut Budget) -> Result<()> {
         let actual_pair = self.replacement == Some(Replacement::Actual)
             && atom.replacement == Some(Replacement::Actual);
         if !self.logical.text.is_empty() && !atom.chars.is_empty() && !actual_pair {
             if self.block != block && (self.block.is_some() || block.is_some()) {
                 self.separator('\n', budget)?;
-                if self.block.is_some_and(|b| b.1) || block.is_some_and(|b| b.1) {
+                if self.block.is_some_and(|b| b.paragraph) || block.is_some_and(|b| b.paragraph) {
                     self.separator('\n', budget)?;
                 }
             } else if self.replacement == Some(Replacement::Alt)
                 || atom.replacement == Some(Replacement::Alt)
             {
-                if !self.logical.text.ends_with(char::is_whitespace)
-                    && !atom
-                        .chars
-                        .first()
-                        .is_some_and(|c| c.is_some_and(char::is_whitespace))
-                {
+                if !borders_whitespace(&self.logical.text, atom) {
                     self.separator(' ', budget)?;
                 }
             } else if let Some((a, b)) = self.last.zip(atom.geometry) {
                 let (a, b) = (&self.page.glyphs()[a], &self.page.glyphs()[b]);
                 if !same_line(a, b, crate::LayoutOptions::default()) {
                     self.separator('\n', budget)?;
-                } else if gap(a, b)
-                    > crate::LayoutOptions::default().space_gap * a.em.max(b.em).max(1e-6)
-                    && !self.logical.text.ends_with(char::is_whitespace)
-                    && !atom
-                        .chars
-                        .first()
-                        .is_some_and(|c| c.is_some_and(char::is_whitespace))
+                } else if gap(a, b) > crate::LayoutOptions::default().space_gap * em(a, b)
+                    && !borders_whitespace(&self.logical.text, atom)
                 {
                     self.separator(' ', budget)?;
                 }
@@ -332,7 +324,7 @@ impl Output<'_> {
                 &mut self.logical.text,
                 c,
                 atom.glyphs.clone(),
-                false,
+                Origin::Decoded,
             );
         }
         self.last = atom
@@ -359,7 +351,7 @@ impl Output<'_> {
             &mut self.logical.text,
             Some(c),
             0..0,
-            true,
+            Origin::Inserted,
         );
         Ok(())
     }
