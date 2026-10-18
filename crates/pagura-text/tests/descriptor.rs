@@ -111,7 +111,7 @@ impl Provider for Collection {
     fn standard_font(&self, _: &[u8]) -> Result<Option<Arc<StandardFont>>> {
         Ok(None)
     }
-    fn predefined_cmap(&self, _: &[u8]) -> Result<Option<Arc<PredefinedCMap>>> {
+    fn predefined_cmap(&self, _: &[u8]) -> Result<Option<PredefinedCMap>> {
         Ok(None)
     }
     fn cid_to_unicode(&self, _: &[u8], _: &[u8]) -> Result<Option<Arc<CidToUnicode>>> {
@@ -143,7 +143,7 @@ fn substituted_cid_fonts_still_repair_contradictory_descriptor_flags() -> Result
     };
     let font = |document: &Document| -> Result<PdfFont> {
         let dictionary = document.object(ObjectId::new(4, 0))?.dictionary().unwrap();
-        PdfFont::load_with(document, dictionary, &provider)
+        PdfFont::load_with_provider(document, dictionary, Some(&provider))
     };
     let strict = open(Recovery::Strict)?;
     let error = font(&strict).unwrap_err();

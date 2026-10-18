@@ -128,7 +128,7 @@ impl Provider for Bundled {
     fn standard_font(&self, base_name: &[u8]) -> Result<Option<Arc<StandardFont>>> {
         fonts::standard_font(base_name, &self.standard_fonts, &self.limits)
     }
-    fn predefined_cmap(&self, name: &[u8]) -> Result<Option<Arc<PredefinedCMap>>> {
+    fn predefined_cmap(&self, name: &[u8]) -> Result<Option<PredefinedCMap>> {
         cmaps::predefined_cmap(name, &self.cmaps, &self.limits)
     }
     fn cid_to_unicode(

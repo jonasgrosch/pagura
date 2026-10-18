@@ -8,7 +8,6 @@
 
 use pagura::Error;
 use pagura::provider::PredefinedCMap;
-use std::sync::Arc;
 
 /// How many codes of the input are decoded.
 const CODES: usize = 256;
@@ -31,7 +30,7 @@ pub fn run(data: &[u8]) {
     let resolve = |_: &[u8]| {
         let parent = parent.ok_or_else(|| Error::missing_object("no parent CMap supplied"))?;
         let nested = |_: &[u8]| Err(Error::missing_object("only one parent CMap supplied"));
-        PredefinedCMap::parse(parent, &limits, nested).map(Arc::new)
+        PredefinedCMap::parse(parent, &limits, nested)
     };
     let Some(cmap) = super::checked(PredefinedCMap::parse(program, &limits, resolve)) else {
         return;
@@ -42,10 +41,10 @@ pub fn run(data: &[u8]) {
         if rest.is_empty() {
             break;
         }
-        let Some((_, length, _)) = super::checked(cmap.decode_code(rest, &limits)) else {
+        let Some(code) = super::checked(cmap.decode_code(rest, &limits)) else {
             break;
         };
-        let length = usize::from(length);
+        let length = usize::from(code.byte_len);
         assert!(
             (1..=4).contains(&length) && length <= rest.len(),
             "a {length}-byte code from {} bytes",

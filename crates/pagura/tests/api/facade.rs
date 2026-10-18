@@ -50,7 +50,7 @@ impl Provider for Forwarding {
             .map_or(Ok(None), |inner| inner.standard_font(name))
     }
 
-    fn predefined_cmap(&self, name: &[u8]) -> pagura::Result<Option<Arc<PredefinedCMap>>> {
+    fn predefined_cmap(&self, name: &[u8]) -> pagura::Result<Option<PredefinedCMap>> {
         self.inner()
             .map_or(Ok(None), |inner| inner.predefined_cmap(name))
     }

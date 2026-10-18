@@ -9,7 +9,7 @@ pub(crate) fn predefined_cmap(
     name: &[u8],
     cache: &Cache<PredefinedCMap>,
     limits: &Limits,
-) -> Result<Option<Arc<PredefinedCMap>>> {
+) -> Result<Option<PredefinedCMap>> {
     load(name, cache, limits, &mut Vec::new())
 }
 
@@ -19,7 +19,7 @@ fn load(
     cache: &Cache<PredefinedCMap>,
     limits: &Limits,
     path: &mut Vec<&'static [u8]>,
-) -> Result<Option<Arc<PredefinedCMap>>> {
+) -> Result<Option<PredefinedCMap>> {
     let Some(file) = CMAPS.iter().find(|file| file.key == name) else {
         return Ok(None);
     };
@@ -39,7 +39,7 @@ fn load(
             path.pop();
             cmap
         })
-        .map(Some)
+        .map(|cmap| Some(PredefinedCMap::clone(&cmap)))
 }
 
 /// CID-to-Unicode data for an Adobe character collection (9.10.2).
@@ -355,7 +355,7 @@ mod tests {
             let again = provider
                 .predefined_cmap(&cmap_name)?
                 .ok_or_else(|| Error::syntax("missing cached CMap"))?;
-            assert!(Arc::ptr_eq(&cmap, &again));
+            assert!(PredefinedCMap::ptr_eq(&cmap, &again));
             let mode = fixture("text", &format!("{name}.mode"));
             assert_eq!(
                 cmap.writing_mode(),
@@ -374,7 +374,8 @@ mod tests {
             let mut bytes = input.as_slice();
             for value in rows(&name, "out")? {
                 let values = row(&value)?;
-                let (code, len, cid) = cmap.decode_code(bytes, &Limits::default())?;
+                let decoded = cmap.decode_code(bytes, &Limits::default())?;
+                let (code, len, cid) = (decoded.code, decoded.byte_len, u32::from(decoded.cid));
                 assert_eq!(
                     (code, u32::from(len), cid),
                     (

@@ -50,12 +50,13 @@ pub(crate) fn parse(data: &[u8], limits: &Limits) -> Result<StandardMetrics> {
             .at(Position::Buffer(offset))?;
     }
     match (section, metrics.name) {
-        (Section::Header, Some(name)) if !metrics.widths.is_empty() => Ok(StandardMetrics {
-            name,
-            encoding: metrics.encoding,
-            widths: metrics.widths,
-            descriptor: metrics.descriptor,
-        }),
+        (Section::Header, Some(name)) if !metrics.widths.is_empty() => {
+            let mut parsed = StandardMetrics::new(name);
+            parsed.encoding = metrics.encoding;
+            parsed.widths = metrics.widths;
+            parsed.descriptor = metrics.descriptor;
+            Ok(parsed)
+        }
         _ => Err(Error::syntax("incomplete AFM metrics")),
     }
 }
@@ -125,7 +126,7 @@ impl Builder {
                     _ => return Err(Error::syntax("invalid AFM pitch")),
                 }
             }
-            "Weight" => bounded(value, limits)?.clone_into(&mut d.weight),
+            "Weight" => d.weight = bounded(value, limits)?.into(),
             "Ascender" => d.ascent = Some(number(value)?),
             "Descender" => d.descent = Some(number(value)?),
             "CapHeight" => d.cap_height = Some(number(value)?),

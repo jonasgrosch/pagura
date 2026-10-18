@@ -99,7 +99,7 @@ fn standard_fonts_use_afm_widths_and_substitute_outlines() -> Result<()> {
             .ok_or_else(|| Error::syntax("missing standard font"))?;
         let document = open(&name)?;
         assert!(PdfFont::load(&document, font(&document)?).is_err());
-        let loaded = PdfFont::load_with(&document, font(&document)?, &provider)?;
+        let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
         for value in rows(&name, "out")? {
             let values = row(&value)?;
             near(loaded.width(integer(&values[0])?), number(&values[1])?);
@@ -142,7 +142,7 @@ fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> R
     let provider = Bundled::default();
     for name in names("bundled-substitute-inventory")? {
         let document = open(&name)?;
-        let loaded = PdfFont::load_with(&document, font(&document)?, &provider)?;
+        let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
         let glyphs = loaded.decode(b"A")?;
         let values = rows(&name, "out")?;
         let values = row(&values[0])?;
@@ -172,7 +172,7 @@ fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> R
     ] {
         let document = open(name)?;
         assert_eq!(
-            PdfFont::load_with(&document, font(&document)?, &provider)
+            PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
                 .unwrap_err()
                 .kind,
             ErrorKind::Unsupported(features::NON_EMBEDDED)
@@ -206,7 +206,7 @@ fn predefined_cmap_bindings_decode_embedded_glyphs() -> Result<()> {
             .predefined_cmap(&cmap_name)?
             .ok_or_else(|| Error::syntax("missing predefined CMap"))?;
         let document = open(&name)?;
-        let loaded = PdfFont::load_with(&document, font(&document)?, &provider)?;
+        let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
         assert_eq!(loaded.writing_mode(), cmap.writing_mode());
         let glyphs = loaded.decode(&fixture("text", &format!("{name}.input")))?;
         let expected = rows(&name, "glyphs")?;
@@ -237,7 +237,7 @@ fn predefined_cmap_bindings_decode_embedded_glyphs() -> Result<()> {
 fn embedded_programs_take_precedence_and_do_not_report_substitution() -> Result<()> {
     let provider = Bundled::default();
     let document = open("tt-unicode-priority")?;
-    let loaded = PdfFont::load_with(&document, font(&document)?, &provider)?;
+    let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
     let glyphs = loaded.decode(b"A")?;
     let GlyphShape::Outline { program, glyph, .. } = &glyphs[0].shape else {
         return Err(Error::syntax("missing embedded program"));
@@ -248,7 +248,7 @@ fn embedded_programs_take_precedence_and_do_not_report_substitution() -> Result<
     // An embedded but invalid binding is an error, never a substitution.
     let document = open("binding-wrong-fontfile")?;
     assert_eq!(
-        PdfFont::load_with(&document, font(&document)?, &provider)
+        PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
             .unwrap_err()
             .kind,
         ErrorKind::Syntax
@@ -270,7 +270,7 @@ fn symbol_substitutes_select_glyphs_by_afm_name_and_keep_pdf_widths() -> Result<
         "substitute-Symbol-truetype-nonsymbolic",
     ] {
         let document = open(name)?;
-        let loaded = PdfFont::load_with(&document, font(&document)?, &provider)?;
+        let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))?;
         let glyphs = loaded.decode(&fixture("text", &format!("{name}.input")))?;
         let rows = rows(name, "out")?;
         assert_eq!(glyphs.len(), rows.len());
@@ -316,7 +316,7 @@ fn cjk_programs_are_opt_in_and_missing_programs_fail_explicitly() -> Result<()> 
     for ordering in ["Japan1", "GB1", "CNS1", "Korea1"] {
         let document = open(&format!("substitute-cid-{ordering}-CIDFontType2"))?;
         assert_eq!(
-            PdfFont::load_with(&document, font(&document)?, &provider)
+            PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
                 .unwrap_err()
                 .kind,
             ErrorKind::Unsupported(features::NON_EMBEDDED)
@@ -360,7 +360,7 @@ mod cjk {
                     ..OpenOptions::default()
                 },
             )?;
-            let loaded = PdfFont::load_with(&document, font(&document)?, provider)?;
+            let loaded = PdfFont::load_with_provider(&document, font(&document)?, Some(provider))?;
             let collection = fixture("text", &format!("{name}.collection"));
             let program = provider
                 .cid_font(b"Adobe", &collection)?
@@ -420,7 +420,8 @@ mod cjk {
             "substitute-cid-wmode",
         ] {
             let document = open(name)?;
-            let error = PdfFont::load_with(&document, font(&document)?, &provider).unwrap_err();
+            let error = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
+                .unwrap_err();
             assert_eq!(
                 error.kind,
                 ErrorKind::Unsupported(features::CID_SUBSTITUTE_VERTICAL)
@@ -441,7 +442,8 @@ mod cjk {
             ),
         ] {
             let document = open(name)?;
-            let error = PdfFont::load_with(&document, font(&document)?, &provider).unwrap_err();
+            let error = PdfFont::load_with_provider(&document, font(&document)?, Some(&provider))
+                .unwrap_err();
             assert_eq!(error.kind, kind);
             assert_eq!(document.diagnostics(), NO_DIAGNOSTICS);
         }

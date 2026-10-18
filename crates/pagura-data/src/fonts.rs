@@ -24,12 +24,12 @@ pub(crate) fn standard_font(
     let outline = OUTLINES.iter().find(|program| program.key == name);
     cache
         .get_or_try_insert(metrics.key, || {
-            Ok(StandardFont {
-                metrics: Arc::new(afm::parse(metrics.data, limits)?),
-                program: outline
+            Ok(StandardFont::new(
+                Arc::new(afm::parse(metrics.data, limits)?),
+                outline
                     .map(|program| program.parse(limits).map(Arc::new))
                     .transpose()?,
-            })
+            ))
         })
         .map(Some)
 }
