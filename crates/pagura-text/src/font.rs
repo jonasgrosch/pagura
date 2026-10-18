@@ -1,6 +1,7 @@
 //! PDF font loading and glyph selection (9.6–9.7).
 use crate::{
     FontKind, GlyphShape, PdfFont, WritingMode,
+    cid::{Cid, CidToGidMap},
     cmap::{self, CMap, Code},
     descriptor::{Descriptor, FontFlags},
     encoding::{self, SimpleMapping},
@@ -29,7 +30,7 @@ pub(crate) enum Source {
         program: Arc<FontProgram>,
         truetype_raw: bool,
         substituted: bool,
-        cid_map: Option<Vec<u8>>,
+        cid_map: Option<CidToGidMap>,
     },
 }
 
@@ -399,16 +400,6 @@ pub(crate) fn cid_collection<'a>(
     Ok(Some((registry, ordering)))
 }
 
-fn stream(document: &Document, value: &Value) -> Result<Vec<u8>> {
-    let id = value
-        .as_reference()
-        .ok_or_else(|| Error::syntax("font stream must be indirect"))?;
-    document
-        .stream_data(document.object(id)?)
-        .map(std::borrow::Cow::into_owned)
-        .map_err(|e| e.in_object(id))
-}
-
 impl PdfFont {
     pub(crate) fn shape(
         &self,
@@ -419,16 +410,16 @@ impl PdfFont {
     ) -> GlyphShape {
         match &self.source {
             Source::MetricsOnly => GlyphShape::Blank,
-            Source::CidSubstitute { program } => {
-                crate::cid_substitute::glyph(program, self.cid_unicode.as_deref(), selector).map_or(
-                    GlyphShape::Blank,
-                    |glyph| GlyphShape::Outline {
-                        program: Arc::clone(program),
-                        glyph,
-                        matrix: program.font_matrix(),
-                    },
-                )
-            }
+            Source::CidSubstitute { program } => Cid::try_from(selector)
+                .ok()
+                .and_then(|cid| {
+                    crate::cid_substitute::glyph(program, self.cid_unicode.as_deref(), cid)
+                })
+                .map_or(GlyphShape::Blank, |glyph| GlyphShape::Outline {
+                    program: Arc::clone(program),
+                    glyph,
+                    matrix: program.font_matrix(),
+                }),
             Source::Type3 {
                 procedures, matrix, ..
             } => name
@@ -459,7 +450,9 @@ impl PdfFont {
                     }
                 };
                 let glyph = if self.kind == FontKind::Type0 {
-                    cid_glyph(program, cid_map.as_deref(), selector)
+                    Cid::try_from(selector)
+                        .ok()
+                        .and_then(|cid| cid_glyph(program, cid_map.as_ref(), cid))
                 } else if let Mapping::Simple(simple) = &self.mapping
                     && code.len == 1
                     && let Some(slot) = usize::try_from(code.value)
@@ -481,41 +474,31 @@ impl PdfFont {
 
     // 9.7.6.3 specifically requires CID 0 when a CIDToGIDMap stream
     // has no entry, before considering ordinary CMap notdef substitution.
-    pub(crate) fn lacks_gid_entry(&self, cid: u32) -> bool {
+    pub(crate) fn lacks_gid_entry(&self, cid: Cid) -> bool {
         match &self.source {
             Source::Program {
                 cid_map: Some(map), ..
-            } => usize::try_from(cid)
-                .ok()
-                .and_then(|cid| cid.checked_mul(2))
-                .is_none_or(|offset| offset >= map.len()),
+            } => map.get(cid).is_none(),
             _ => false,
         }
     }
 
-    pub(crate) fn has_cid(&self, cid: u32) -> bool {
+    pub(crate) fn has_cid(&self, cid: Cid) -> bool {
         match &self.source {
             Source::Program {
                 program, cid_map, ..
-            } => cid_glyph(program, cid_map.as_deref(), cid).is_some(),
-            Source::CidSubstitute { .. } => cid <= 65535,
+            } => cid_glyph(program, cid_map.as_ref(), cid).is_some(),
+            Source::CidSubstitute { .. } => true,
             Source::Type3 { .. } | Source::MetricsOnly => false,
         }
     }
 }
 
-fn cid_glyph(program: &FontProgram, map: Option<&[u8]>, cid: u32) -> Option<GlyphId> {
+fn cid_glyph(program: &FontProgram, map: Option<&CidToGidMap>, cid: Cid) -> Option<GlyphId> {
     if program.is_cid_keyed() {
-        return program.glyph_for_cid(cid);
+        return program.glyph_for_cid(u32::from(cid));
     }
-    if map.is_some_and(|map| {
-        usize::try_from(cid)
-            .ok()
-            .is_none_or(|cid| cid >= map.len() / 2)
-    }) {
-        return None;
-    }
-    let glyph = mapped_gid(map, cid);
+    let glyph = mapped_gid(map, cid)?;
     (glyph < program.glyph_count()).then_some(GlyphId(glyph))
 }
 
@@ -523,7 +506,7 @@ fn cid_map(
     document: &Document,
     metrics_font: &Dictionary,
     id: Option<ObjectId>,
-) -> Result<Option<Vec<u8>>> {
+) -> Result<Option<CidToGidMap>> {
     Ok(if metrics_font.is_name(b"Subtype", b"CIDFontType2") {
         match optional(document, metrics_font, b"CIDToGIDMap")? {
             None => {
@@ -538,16 +521,18 @@ fn cid_map(
             }
             Some(Value::Name(name)) if name == b"Identity" => None,
             Some(_) => {
-                let bytes = stream(
-                    document,
-                    metrics_font
-                        .get(b"CIDToGIDMap")
-                        .ok_or_else(|| Error::syntax("missing CIDToGIDMap"))?,
-                )?;
-                if bytes.len() % 2 != 0 || bytes.len() > 131_072 {
-                    return Err(Error::syntax("invalid CIDToGIDMap length"));
+                let id = metrics_font
+                    .get(b"CIDToGIDMap")
+                    .and_then(Value::as_reference)
+                    .ok_or_else(|| Error::syntax("CIDToGIDMap stream must be indirect"))?;
+                let bytes = document
+                    .stream_data(document.object(id)?)
+                    .map_err(|e| e.in_object(id))?;
+                // Check the decoded length before copying the data.
+                if bytes.len() > CidToGidMap::MAX_BYTES {
+                    return Err(Error::syntax("invalid CIDToGIDMap length").in_object(id));
                 }
-                Some(bytes)
+                Some(CidToGidMap::new(bytes.into()).map_err(|e| e.in_object(id))?)
             }
         }
     } else {
@@ -555,15 +540,13 @@ fn cid_map(
     })
 }
 
-fn mapped_gid(map: Option<&[u8]>, cid: u32) -> u32 {
-    let Some(map) = map else { return cid };
-    let Some(offset) = usize::try_from(cid).ok().and_then(|cid| cid.checked_mul(2)) else {
-        return 0;
-    };
-    let Some(bytes) = offset.checked_add(2).and_then(|end| map.get(offset..end)) else {
-        return 0;
-    };
-    u32::from(u16::from_be_bytes([bytes[0], bytes[1]]))
+/// The glyph of `cid` under the CIDToGIDMap, or Identity without one
+/// (9.7.4.2, Table 115). `None` means the stream has no entry for it.
+fn mapped_gid(map: Option<&CidToGidMap>, cid: Cid) -> Option<u32> {
+    match map {
+        Some(map) => map.get(cid).map(u32::from),
+        None => Some(u32::from(cid)),
+    }
 }
 
 #[cfg(test)]
@@ -585,17 +568,17 @@ mod tests {
         let expected = Parser::new(&data, Origin::Buffer, document.limits()).parse()?;
         for value in array(&expected)? {
             let values = array(value)?;
-            let code = values[0]
+            let cid = values[0]
                 .as_integer()
-                .and_then(|v| u32::try_from(v).ok())
+                .and_then(Cid::from_integer)
                 .ok_or_else(|| Error::syntax("invalid oracle code"))?;
             assert_eq!(
-                i64::from(mapped_gid(map.as_deref(), code)),
+                i64::from(mapped_gid(map.as_ref(), cid).unwrap_or(0)),
                 values[1]
                     .as_integer()
                     .ok_or_else(|| Error::syntax("invalid oracle glyph"))?
             );
-            assert_eq!(mapped_gid(None, code), code);
+            assert_eq!(mapped_gid(None, cid), Some(u32::from(cid)));
         }
         Ok(())
     }

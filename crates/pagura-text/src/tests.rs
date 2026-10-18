@@ -139,7 +139,7 @@ fn cmap_vectors() -> Result<()> {
             assert_eq!(code.value, integer(&row[0])?, "{name}");
             assert_eq!(u32::from(code.len), integer(&row[1])?, "{name}");
             let cid = if valid {
-                map.cid(code, &mut work, document.limits())?
+                map.cid(code, &mut work, document.limits())?.map(u32::from)
             } else {
                 None
             };
@@ -153,7 +153,7 @@ fn cmap_vectors() -> Result<()> {
                 "{name}"
             );
             assert_eq!(
-                map.notdef(code, &mut work, document.limits())?,
+                u32::from(map.notdef(code, &mut work, document.limits())?),
                 integer(&row[3])?
             );
             assert_eq!(map.text(code), text(&row[4]));
