@@ -10,6 +10,10 @@ use pagura_core::{Diagnostic, Dictionary, Error, Result, Value};
 use pagura_document::Document;
 use std::collections::BTreeMap;
 
+/// Glyph-space units per text-space unit for every font type except Type 3
+/// (9.2.4): widths and vertical metrics are in thousandths of text space.
+pub(crate) const GLYPH_SPACE_UNITS: f64 = 0.001;
+
 #[derive(Debug)]
 pub(crate) struct Metrics {
     widths: BTreeMap<u32, f64>,
