@@ -63,19 +63,7 @@ pub(crate) fn decode(
                 width = MIN_WIDTH;
                 previous = None;
             }
-            EOD => {
-                // 7.4.4.2: unused final-byte bits are zero.
-                if reader.buffer & ((1 << reader.bits) - 1) != 0 {
-                    repair(
-                        diagnostics,
-                        repairs::LZW_PADDING,
-                        "nonzero LZW end padding ignored",
-                        reader.position(),
-                    )?;
-                }
-                trailing(input, reader.offset, Trailer::Nothing, diagnostics)?;
-                return output.finish(reader.offset);
-            }
+            EOD => return end(&reader, input, output, diagnostics),
             _ => {
                 // The encoder inserts one entry ahead while more input remains.
                 // At decoder next=4095, another data code would mean the encoder
@@ -123,6 +111,26 @@ pub(crate) fn decode(
         input.len(),
     )?;
     output.finish(input.len())
+}
+
+/// Finishes at EOD: the rest of its byte must be zero (7.4.4.2) and nothing
+/// may follow.
+fn end(
+    reader: &Codes<'_>,
+    input: &[u8],
+    output: Output,
+    diagnostics: &mut Diagnostics,
+) -> Result<Vec<u8>> {
+    if reader.buffer & ((1 << reader.bits) - 1) != 0 {
+        repair(
+            diagnostics,
+            repairs::LZW_PADDING,
+            "nonzero LZW end padding ignored",
+            reader.position(),
+        )?;
+    }
+    trailing(input, reader.offset, Trailer::Nothing, diagnostics)?;
+    output.finish(reader.offset)
 }
 
 struct Codes<'a> {
