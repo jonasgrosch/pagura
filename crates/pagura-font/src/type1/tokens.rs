@@ -20,6 +20,14 @@ impl<'a> Tokens<'a> {
     }
     pub fn next(&mut self) -> Result<Option<&'a [u8]>> {
         loop {
+            let token = self.raw()?;
+            if token.is_none_or(|t| !matches!(t.first(), Some(b'{' | b'('))) {
+                return Ok(token);
+            }
+        }
+    }
+    pub fn raw(&mut self) -> Result<Option<&'a [u8]>> {
+        loop {
             while self.data.get(self.pos).is_some_and(|b| white(*b)) {
                 self.pos += 1;
             }
@@ -42,9 +50,7 @@ impl<'a> Tokens<'a> {
             self.pos += 1;
             if matches!(byte, b'{' | b'(') {
                 self.balanced(byte, if byte == b'{' { b'}' } else { b')' })?;
-                continue;
-            }
-            if !b"[]<>}".contains(&byte) {
+            } else if !b"[]<>}".contains(&byte) {
                 while self
                     .data
                     .get(self.pos)
@@ -53,7 +59,9 @@ impl<'a> Tokens<'a> {
                     self.pos += 1;
                 }
             }
-            cap(self.pos - start, self.limits.string_bytes.min(65535), start)?;
+            if !matches!(byte, b'{' | b'(') {
+                cap(self.pos - start, self.limits.string_bytes.min(65535), start)?;
+            }
             return Ok(Some(&self.data[start..self.pos]));
         }
     }
@@ -94,6 +102,19 @@ impl<'a> Tokens<'a> {
         }
         Err(bad(self.pos, "unterminated Type 1 string or procedure"))
     }
+    pub fn procedure(&mut self) -> Result<Option<&'a [u8]>> {
+        let start = self.pos;
+        let token = self.raw()?;
+        if let Some(body) = token
+            .and_then(|t| t.strip_prefix(b"{"))
+            .and_then(|s| s.strip_suffix(b"}"))
+        {
+            Ok(Some(body))
+        } else {
+            self.pos = start;
+            Ok(None)
+        }
+    }
     pub fn peek(&mut self) -> Result<Option<&'a [u8]>> {
         let pos = self.pos;
         let token = self.next()?;
@@ -108,10 +129,10 @@ impl<'a> Tokens<'a> {
         let token = self.required()?;
         integer(token, self.pos)
     }
-    pub fn binary(&mut self) -> Result<&'a [u8]> {
+    pub fn binary(&mut self, aliases: &super::aliases::Aliases) -> Result<&'a [u8]> {
         let size = self.integer()?;
         cap(size, self.limits.decoded_bytes.min(65535), self.pos)?;
-        if !matches!(self.required()?, b"RD" | b"-|") {
+        if !aliases.reader(self.required()?) {
             return Err(super::unsupported(
                 self.pos,
                 "Type 1 binary reader is not implemented",
@@ -175,4 +196,24 @@ pub(super) fn integer(bytes: &[u8], at: usize) -> Result<usize> {
 
 fn white(byte: u8) -> bool {
     matches!(byte, 0 | 9 | 10 | 12 | 13 | 32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Tokens;
+    use pagura_core::Limits;
+
+    #[test]
+    fn balanced_literals_are_not_copied_or_mistaken_for_single_name_tokens() {
+        let mut data = b"{ (ignored) % ignored brace }\n".to_vec();
+        data.resize(70000, b' ');
+        data.extend_from_slice(b"} end");
+        let limits = Limits {
+            string_bytes: 8,
+            ..Limits::default()
+        };
+        let mut tokens = Tokens::new(&data, &limits);
+        assert_eq!(tokens.next().unwrap(), Some(b"end".as_slice()));
+        assert_eq!(tokens.next().unwrap(), None);
+    }
 }

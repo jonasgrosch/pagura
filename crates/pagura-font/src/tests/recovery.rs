@@ -199,3 +199,20 @@ fn repair_mode_mutations_keep_work_and_diagnostics_bounded() {
         }
     }
 }
+
+#[test]
+fn unused_cff_blue_hint_order_is_reported_in_all_containers() {
+    for (name, format) in [
+        ("operators", FontFormat::Cff),
+        ("family-operators", FontFormat::Cff),
+        ("values", FontFormat::Cff),
+        ("other", FontFormat::Cff),
+        ("family", FontFormat::Cff),
+        ("family-other", FontFormat::Cff),
+        ("opentype", FontFormat::OpenType),
+        ("cid", FontFormat::Cff),
+        ("cff2", FontFormat::OpenType),
+    ] {
+        repair_vector(&format!("repair-cff-blue-{name}"), format);
+    }
+}

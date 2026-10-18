@@ -8,7 +8,9 @@ use pagura_core::{Diagnostics, Limits, Name, Position, Recovery, Result};
 use pagura_raster::{Path, Transform};
 use std::collections::BTreeMap;
 
+mod aliases;
 mod charstring;
+mod memory;
 mod tokens;
 use tokens::Tokens;
 
@@ -48,6 +50,7 @@ impl Type1 {
             encoding,
             start,
             encrypted,
+            mut aliases,
         } = cleartext(&flat, limits)?;
         let cipher = flat
             .get(start..)
@@ -91,20 +94,28 @@ impl Type1 {
                         return Err(bad(r.pos, "duplicate Type 1 Subrs array"));
                     }
                     have_subrs = true;
-                    subrs = subroutines(&mut r, len_iv, limits)?;
+                    subrs = subroutines(&mut r, len_iv, limits, &aliases)?;
                 }
                 b"/CharStrings" => {
                     if have_chars {
                         return Err(bad(r.pos, "invalid Type 1 dictionary organization"));
                     }
                     have_chars = true;
-                    charstrings(&mut r, len_iv, limits, subrs.len(), &mut glyphs, &mut names)?;
+                    charstrings(
+                        &mut r,
+                        len_iv,
+                        limits,
+                        subrs.len(),
+                        &mut glyphs,
+                        &mut names,
+                        &aliases,
+                    )?;
                 }
                 b"closefile" => {
                     closed = true;
                     break;
                 }
-                _ => {}
+                _ => aliases.definition(token, &mut r, limits)?,
             }
         }
         if !closed {
@@ -254,12 +265,14 @@ struct Clear {
     encoding: Box<[Option<Name>; 256]>,
     start: usize,
     encrypted: bool,
+    aliases: aliases::Aliases,
 }
 fn cleartext(flat: &[u8], limits: &Limits) -> Result<Clear> {
     if !flat.starts_with(b"%!") {
         return Err(bad(0, "missing Type 1 header"));
     }
     let mut clear = Tokens::new(flat, limits);
+    let mut aliases = aliases::Aliases::default();
     let mut matrix = None;
     let mut font_type = false;
     let mut encrypted = false;
@@ -320,7 +333,7 @@ fn cleartext(flat: &[u8], limits: &Limits) -> Result<Clear> {
                 encrypted = true;
                 break;
             }
-            _ => {}
+            _ => aliases.definition(token, &mut clear, limits)?,
         }
     }
     if !font_type {
@@ -340,10 +353,16 @@ fn cleartext(flat: &[u8], limits: &Limits) -> Result<Clear> {
         encoding,
         start,
         encrypted,
+        aliases,
     })
 }
 
-fn subroutines(r: &mut Tokens<'_>, len_iv: Option<usize>, limits: &Limits) -> Result<Vec<Vec<u8>>> {
+fn subroutines(
+    r: &mut Tokens<'_>,
+    len_iv: Option<usize>,
+    limits: &Limits,
+    aliases: &aliases::Aliases,
+) -> Result<Vec<Vec<u8>>> {
     let count = r.integer()?;
     cap(
         count,
@@ -362,7 +381,7 @@ fn subroutines(r: &mut Tokens<'_>, len_iv: Option<usize>, limits: &Limits) -> Re
     while r.peek()? == Some(b"dup".as_slice()) {
         r.required()?;
         let index = r.integer()?;
-        let program = r.binary()?;
+        let program = r.binary(aliases)?;
         let program = char_bytes(program, len_iv, r.pos)?;
         let slot = subrs
             .get_mut(index)
@@ -373,20 +392,7 @@ fn subroutines(r: &mut Tokens<'_>, len_iv: Option<usize>, limits: &Limits) -> Re
         assigned[index] = true;
         assignments += 1;
         *slot = program;
-        match r.required()? {
-            b"NP" | b"|-" | b"put" => {}
-            b"noaccess" => {
-                if r.required()? != b"put" {
-                    return Err(bad(r.pos, "invalid Type 1 subroutine terminator"));
-                }
-            }
-            _ => {
-                return Err(unsupported(
-                    r.pos,
-                    "Type 1 subroutine assignment is not implemented",
-                ));
-            }
-        }
+        aliases.finish(r, aliases::Assignment::Put)?;
     }
     if assignments != count {
         return Err(bad(r.pos, "incomplete Type 1 Subrs array"));
@@ -401,6 +407,7 @@ fn charstrings(
     subr_count: usize,
     glyphs: &mut Vec<Vec<u8>>,
     names: &mut BTreeMap<Name, GlyphId>,
+    aliases: &aliases::Aliases,
 ) -> Result<()> {
     let count = r.integer()?;
     cap(count, limits.objects.min(limits.value_nodes), r.pos)?;
@@ -415,7 +422,7 @@ fn charstrings(
                 r.pos,
             )?;
             cap(name.len(), limits.string_bytes, r.pos)?;
-            let program = r.binary()?;
+            let program = r.binary(aliases)?;
             let glyph = GlyphId(
                 u32::try_from(glyphs.len())
                     .map_err(|_| crate::read::limit(r.pos, "Type 1 glyph count overflow"))?,
@@ -425,7 +432,7 @@ fn charstrings(
             }
             cap(glyphs.len() + 1, count, r.pos)?;
             glyphs.push(char_bytes(program, len_iv, r.pos)?);
-            r.required()?;
+            aliases.finish(r, aliases::Assignment::Define)?;
         }
     }
     Ok(())

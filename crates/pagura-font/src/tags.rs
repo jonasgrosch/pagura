@@ -19,3 +19,8 @@ pub const COMPONENT_FLAGS: Repair = Repair::new("font.component-flags");
 pub const CHARSTRING_OPERATOR: Repair = Repair::new("font.charstring-operator");
 /// Replace an unusable glyph with an empty outline; resource failures stay errors.
 pub const GLYPH_DATA: Repair = Repair::new("font.glyph-data");
+
+/// Ignore blue hint ordering faults in unhinted outlines (TN 5176 section 15;
+/// Type 1 5.3-5.5). Operator prerequisites and ascending pairs still apply in
+/// strict mode. Original bytes are retained; no hint zones are sorted.
+pub const CFF_BLUE_ORDER: Repair = Repair::new("font.cff-blue-order");

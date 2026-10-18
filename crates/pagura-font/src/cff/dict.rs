@@ -4,11 +4,13 @@ use pagura_core::{Limits, Result};
 use pagura_raster::Transform;
 use std::collections::BTreeMap;
 
+mod blues;
 mod validation;
 
 pub(super) struct Dict {
     entries: BTreeMap<u16, Vec<f64>>,
     at: usize,
+    blue_order_fault: Option<usize>,
 }
 impl Dict {
     pub(super) fn check(&self, private: bool, strings: usize) -> Result<()> {
@@ -118,6 +120,7 @@ fn parse_inner(
     cff2: bool,
 ) -> Result<Dict> {
     let mut entries = BTreeMap::new();
+    let mut blue_order_fault = None;
     let mut stack = Vec::new();
     let mut work = 0;
     let mut vsindex = 0;
@@ -160,7 +163,7 @@ fn parse_inner(
                 return Err(bad(r.at(), "reserved CFF DICT operator"));
             }
             if matches!(op, 7 | 9) && !entries.contains_key(&(op - 1)) {
-                return Err(bad(r.at(), "CFF blue arrays out of order"));
+                blue_order_fault.get_or_insert(r.at() - 1);
             }
             if entries.insert(op, std::mem::take(&mut stack)).is_some() {
                 return Err(bad(r.at(), "duplicate CFF DICT operator"));
@@ -174,6 +177,7 @@ fn parse_inner(
     Ok(Dict {
         entries,
         at: r.base,
+        blue_order_fault,
     })
 }
 

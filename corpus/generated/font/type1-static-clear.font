@@ -1,0 +1,11 @@
+%!PS-AdobeFont-1.0: Static 1.0
+/FontType 1 def
+/FontMatrix [0.001 0 0 0.001 0 0] def
+/Encoding StandardEncoding def
+userdict begin
+/-| {string currentfile exch readstring pop} executeonly def
+/|- {noaccess def} executeonly def
+/| {noaccess put} executeonly def
+end
+currentfile eexec
+ÙÖoc;„j˜›™t°ŸÆÌDR•M:OÂrYi™º‡lÆ–\º€Ûª&0ù[dó+Ñð"¼™ø÷ß¨Å1eA>š¢:…9|iÓ,x~`ó<9(c8cXFB½M`ÍqªiÐ2Ëlÿk{sjë@¿M*A1îL)Y¯Aüx¯¶hCkgGµñ+¦1¤Â<LxS¦®O±6šæÿm­ÒzØÇ7¥˜WÞ®j4ì]ªrù—\ç+Ñ\(eAˆÈ ‹ê>”xœô7¡8b“­.…B!…kZ59µ“§ÀS•šsr?‡¥m‡íÓeŽ ê¬²

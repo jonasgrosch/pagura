@@ -87,6 +87,9 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   empty clips; these are project policy.
 - `font.descriptor-weight` (9.8.1, Table 120): an invalid optional FontWeight
   is ignored when choosing a substitute.
+- `font.cff-blue-order` (CFF section 15, Table 23; Type 1 5.3–5.5): unused
+  hint zones whose pairs do not ascend are ignored; outlines and widths are
+  unchanged.
 - `filter.truncated`, `filter.checksum-mismatch`, `filter.trailing-data`,
   `filter.raw-deflate`: damaged filter data yields the bytes decoded so far.
 - `filter.lzw-full-table`, `filter.lzw-padding`: an LZW encoder that fills its

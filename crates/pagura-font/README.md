@@ -103,9 +103,17 @@ by adx/ady. Its asb is checked against the accent, and the base bearing/width
 must match the composite. A nonzero-bearing vector distinguishes origin
 translation from subtracting asb twice.
 
-Static Type 1 extraction recognizes conventional RD/ND/NP and
-`-|`/`|-` binary forms; it does not implement a PostScript virtual machine or validate the entire
-dictionary-building program, RD definitions, definefont or key placement.
+Static Type 1 extraction recognizes RD/ND/NP, the documented `-|`/`|-`/`|`
+aliases, and explicitly declared custom names for the same three static
+procedures (Type 1 2.4, 7.3 and 10.3). Definitions are matched to a literal binary
+reader or dictionary/array assignment, with optional noaccess, bind and access
+qualifiers where applicable. They may occur in the cleartext or Private
+portion. Comments and whitespace are lexical only; nested or computed
+procedure execution is unsupported. Length-delimited binary data stays opaque.
+Canonical aliases remain available without declarations for the existing
+abbreviated static extraction convention. This is not a PostScript virtual
+machine and does not validate the entire dictionary-building program,
+definefont or required-key placement.
 CFF CID lookup ignores redundant Encoding data, and complete rejection of
 noncanonical ROS ordering/metadata, predefined CID charsets and FD dictionary
 domains remains a structural-validation gap. Font-owned vectors use
@@ -179,13 +187,37 @@ For rendering, a successfully recovered unusable glyph is an empty path with
 `font.glyph-data`; paint nothing for it and continue PDF text positioning and
 other glyphs. Failed composite dependencies discard the entire requested
 glyph. Budget failures still propagate. Diagnostics retain the first position
-of each repair kind per parse or outline operation, with at most nine entries
-per operation. Type 1 decrypted charstring positions refer to that decrypted
+of each repair kind per parse or outline operation, coalescing repetitions. Type 1 decrypted charstring positions refer to that decrypted
 buffer. Bytes shared by the font remain unchanged.
 
 The caller must create the sink using `Document::recovery()`, call the
 corresponding diagnostic-aware method, attach the font stream object to parse
 diagnostics when known, and forward `diagnostics.take()` through
 `Document::report` even when the operation fails. The font crate has no document
-dependency. The current text loader and renderer still use the strict methods;
-these repairs require that caller wiring before they affect page rendering.
+dependency. The text loader and renderer use these diagnostic-aware methods
+and forward their diagnostics to the document.
+
+
+`font.cff-blue-order` admits ordering faults only in unused blue hint metadata.
+TN 5176 section 15/Table 23 orders OtherBlues after BlueValues and
+FamilyOtherBlues after FamilyBlues. Type 1 5.3-5.5 requires each individual
+alignment-zone pair to ascend, while zones themselves need not be globally
+sorted. The reader checks pair direction by the sign of the second delta,
+without accumulating unused absolute coordinates. Strict mode rejects with
+the tag; repair mode reports it and retains unchanged widths, subroutines and
+outlines. Original bytes are never sorted or changed. Full validation of zone
+cardinality, spacing and BlueScale constraints remains outside this unhinted
+API. The corresponding CFF2 recovery is project policy pending primary text.
+
+`FontProgram::retained_bytes()` is computed once after parsing and returned in
+constant time. It estimates the input and parsed-state Arc allocations, vector
+capacities, Type 1 decrypted buffers, encoding arrays, name/CID trees and
+variation data. sfnt table slices and CFF INDEX ranges do not duplicate input
+bytes. Trees use ADR 0012's 64 bytes of estimated bookkeeping per entry; names
+conservatively add their logical lengths, including names core may store
+inline. Arithmetic saturates. This is not allocator telemetry, peak memory,
+or an exclusive-ownership measurement: clones report the same full shared
+estimate. Temporary parsers, aliases, dictionaries, diagnostics and outlines
+are excluded, as are this value's inline size and any caller's surrounding
+Arc. Callers charge those last two separately and charge a shared program
+once, preserving the separate treatment of provider-owned substitutes.

@@ -3,6 +3,7 @@ use crate::{CmapSubtable, FontFormat, FontProgram, GlyphId};
 use pagura_core::{Diagnostics, ErrorKind, Limits, Position, Recovery};
 
 mod recovery;
+mod static_fonts;
 use pagura_raster::{PathBuilder, Point, Segment};
 
 fn font(name: &str, format: FontFormat) -> FontProgram {
@@ -291,6 +292,8 @@ fn truncated_prefixes_never_panic() {
         ("cff2", FontFormat::OpenType),
         ("type1-pfa", FontFormat::Type1),
         ("type1-pfb", FontFormat::Type1),
+        ("type1-static-custom", FontFormat::Type1),
+        ("type1-static-comments", FontFormat::Type1),
         ("review-cff-mask-implicit-vstem", FontFormat::Cff),
         ("review-cff-dict-stack-48", FontFormat::Cff),
         ("review-type1-othersubr-fallback", FontFormat::Type1),

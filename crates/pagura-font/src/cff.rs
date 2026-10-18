@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use std::ops::Range;
 
 mod dict;
+mod memory;
 mod predefined;
 mod select;
 pub(crate) mod strings;
@@ -89,7 +90,12 @@ pub(super) fn index(r: &mut Read<'_>, limits: &Limits, cff2: bool) -> Result<Vec
 }
 
 impl Cff {
-    pub fn parse(data: &[u8], range: Range<usize>, limits: &Limits) -> Result<Self> {
+    pub fn parse(
+        data: &[u8],
+        range: Range<usize>,
+        limits: &Limits,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Self> {
         let Header {
             top,
             strings: string_ranges,
@@ -101,11 +107,10 @@ impl Cff {
             top.check(false, string_ranges.len())?;
         }
         if top.has(0x0c14) {
-            return Err(pagura_core::Error::unsupported(
-                crate::features::FORMAT,
+            return Err(format_error(
+                range.start,
                 "synthetic CFF font is not supported",
-            )
-            .at(pagura_core::Position::Buffer(range.start)));
+            ));
         }
         let mut charstrings = table.tail(top.offset(17, None)?)?;
         let glyphs = index(&mut charstrings, limits, cff2)?;
@@ -114,11 +119,10 @@ impl Cff {
         }
         cap(glyphs.len(), limits.objects, charstrings.at())?;
         if !cff2 && top.number(0x0c06, 2.0)? != 2.0 {
-            return Err(pagura_core::Error::unsupported(
-                crate::features::FORMAT,
+            return Err(format_error(
+                range.start,
                 "CFF CharstringType is not Type 2",
-            )
-            .at(pagura_core::Position::Buffer(range.start)));
+            ));
         }
         let variations = if cff2 && top.has(24) {
             variation::parse(table.tail(top.offset(24, None)?)?, limits)?
@@ -170,8 +174,15 @@ impl Cff {
             variations: &variations,
             strings: string_ranges.len(),
         };
-        let (private, select) =
-            dictionaries(table, &top, data, glyphs.len(), cid, context, limits)?;
+        let (private, select) = dictionaries(
+            table,
+            &top,
+            data,
+            glyphs.len(),
+            context,
+            limits,
+            diagnostics,
+        )?;
         Ok(Self {
             glyphs,
             global,
@@ -236,6 +247,7 @@ fn private_dict(
     limits: &Limits,
     context: Context<'_>,
     matrix: Transform,
+    diagnostics: &mut Diagnostics,
 ) -> Result<Private> {
     let pair = match top.values(18) {
         Some(pair) => pair,
@@ -259,6 +271,7 @@ fn private_dict(
     if !context.cff2 {
         private.check(true, 0)?;
     }
+    private.check_blues(diagnostics)?;
     let subrs = if private.has(19) {
         index(
             &mut table.tail(
@@ -388,12 +401,12 @@ fn dictionaries(
     top: &dict::Dict,
     data: &[u8],
     glyphs: usize,
-    cid: bool,
     context: Context<'_>,
     limits: &Limits,
+    diagnostics: &mut Diagnostics,
 ) -> Result<(Vec<Private>, Vec<usize>)> {
     let cff2 = context.cff2;
-    let (private, select) = if cid || cff2 && top.has(0x0c24) {
+    let (private, select) = if top.has(0x0c1e) || cff2 && top.has(0x0c24) {
         let mut array = table.tail(top.offset(0x0c24, None)?)?;
         let fonts = index(&mut array, limits, cff2)?;
         if fonts.is_empty() || fonts.len() > if cff2 { 65536 } else { 256 } {
@@ -426,6 +439,7 @@ fn dictionaries(
                 &remaining,
                 context,
                 dict.matrix(Transform::IDENTITY)?,
+                diagnostics,
             )?;
             remaining.value_nodes = remaining.value_nodes.saturating_sub(parsed.subrs.len() + 1);
             remaining.operations = remaining.operations.saturating_sub(parsed.parse_work + 1);
@@ -451,6 +465,7 @@ fn dictionaries(
                 limits,
                 context,
                 Transform::IDENTITY,
+                diagnostics,
             )?],
             vec![0; glyphs],
         )
@@ -475,4 +490,9 @@ fn random_seed(value: f64) -> u32 {
         bits[2] ^ bits[6],
         bits[3] ^ bits[7],
     ])
+}
+
+fn format_error(at: usize, message: &'static str) -> pagura_core::Error {
+    pagura_core::Error::unsupported(crate::features::FORMAT, message)
+        .at(pagura_core::Position::Buffer(at))
 }

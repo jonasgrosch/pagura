@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "font",
-  "scope": "Reviewed the supported font-program behavior against the local Adobe Type 1 Font Format (chapters 2, 3, 5-8 and 10), TN 5176 CFF (sections 2-19, appendices A-C/F/H), TN 5177 Type 2 (sections 2-4, appendices A-C), and TN 5014 CIDFont (sections 2.3/2.4, 3.2 and 4.1/4.2). The itemized verdicts below distinguish corrected behavior, agreement, unhinted outline policy and incomplete structural validation; this is not full PostScript or font conformance certification. The previous PDF-side review remains ISO 32000-2:2020 sponsored EC3, 9.6.3, 9.6.5.1/2/4, 9.7.4.1/2/3, 9.9.1/2 and Tables 124/125. Only unavailable primary texts remain pending: OpenType/ISO 14496-22 and TrueType Reference Manual (including CFF2), TN 5015 Type 1 supplements including lenIV -1, and TN 5040 PFB packaging. Project budgets are separate from format limits. Reported recovery is checked as ADR 0003 project policy against ISO 9.9.1/Table 124 and PDF cmap selection in 9.6.5.4; unknown charstring escape policy is checked against Type 1 6.3/Appendix 2 and TN 5177 3.3/Appendix A. The sfnt alignment, extent, loca, component-flag and cmap layout details still await the unavailable TrueType/OpenType primary texts; corpus inspection is secondary evidence, not primary-format verification.",
+  "scope": "Reviewed the supported font-program behavior against the local Adobe Type 1 Font Format (chapters 2, 3, 5-8 and 10), TN 5176 CFF (sections 2-19, appendices A-C/F/H), TN 5177 Type 2 (sections 2-4, appendices A-C), and TN 5014 CIDFont (sections 2.3/2.4, 3.2 and 4.1/4.2). The itemized verdicts below distinguish corrected behavior, agreement, unhinted outline policy and incomplete structural validation; this is not full PostScript or font conformance certification. The previous PDF-side review remains ISO 32000-2:2020 sponsored EC3, 9.6.3, 9.6.5.1/2/4, 9.7.4.1/2/3, 9.9.1/2 and Tables 124/125. Only unavailable primary texts remain pending: OpenType/ISO 14496-22 and TrueType Reference Manual (including CFF2), TN 5015 Type 1 supplements including lenIV -1, and TN 5040 PFB packaging. Project budgets are separate from format limits. Reported recovery is checked as ADR 0003 project policy against ISO 9.9.1/Table 124 and PDF cmap selection in 9.6.5.4; unknown charstring escape policy is checked against Type 1 6.3/Appendix 2 and TN 5177 3.3/Appendix A. The sfnt alignment, extent, loca, component-flag and cmap layout details still await the unavailable TrueType/OpenType primary texts; corpus inspection is secondary evidence, not primary-format verification. Static Type 1 RD/ND/NP aliases and bounded procedure definitions have additionally been checked against Type 1 2.4, 7.3 and 10.3. CFF blue-hint ordering recovery is checked against TN 5176 section 15/Table 23 and Type 1 5.3-5.5: each zone pair ascends, while zones themselves need not be globally sorted. FontProgram retained_bytes is an ADR 0012 accounting model, not a format requirement or allocator measurement.",
   "requirements": [
     {
       "id": "font-truetype",
@@ -251,7 +251,7 @@
           "locator": "9, Tables 9-10; 15, Table 23; 17; Appendix F/H",
           "rule": "Use the operator domain and arity, default charset/encoding zero, CharstringType two, matrix .001, widths zero; Private is required even when zero length.",
           "verdict": "corrected: validate entry domains/arity/booleans/SID references and require Private. Hint, naming and printer metadata do not alter unhinted paths; synthetic CFF is explicitly unsupported.",
-          "implementation": "OtherBlues follows BlueValues and FamilyOtherBlues follows FamilyBlues. Subrs is relative to Private. All Table 9/10/23 operator codes were compared with the dispatch/validation code. Metadata defaults (isFixedPitch 0, ItalicAngle 0, UnderlinePosition -100, UnderlineThickness 50, PaintType 0, FontBBox zeros, StrokeWidth 0; BlueScale .039625, BlueShift 7, BlueFuzz 1, ForceBold false, LanguageGroup 0, ExpansionFactor .06; CIDFontVersion/Revision/Type 0 and CIDCount 8720) have no exposed effect in this unhinted API. initialRandomSeed defaults to zero and seeds the documented generator. Embedded PostScript is ignored as Appendix F permits.",
+          "implementation": "Strict mode requires OtherBlues after BlueValues and FamilyOtherBlues after FamilyBlues. Diagnostic-aware repair mode admits these ordering faults through font.cff-blue-order; reversed individual pairs are also reported, without sorting valid zones or applying hints. Subrs is relative to Private. All Table 9/10/23 operator codes were compared with the dispatch/validation code. Metadata defaults (isFixedPitch 0, ItalicAngle 0, UnderlinePosition -100, UnderlineThickness 50, PaintType 0, FontBBox zeros, StrokeWidth 0; BlueScale .039625, BlueShift 7, BlueFuzz 1, ForceBold false, LanguageGroup 0, ExpansionFactor .06; CIDFontVersion/Revision/Type 0 and CIDCount 8720) have no exposed effect in this unhinted API. initialRandomSeed defaults to zero and seeds the documented generator. Embedded PostScript is ignored as Appendix F permits.",
           "expectations": "Metadata-only defaults are a reviewed scope boundary, not assertions of PostScript execution or hint validation.",
           "vectors": [
             "font/review-cff-private-required",
@@ -1045,7 +1045,7 @@
           "locator": "2.2-2.4; 10.1-10.3",
           "rule": "Extract explicit font/Private/CharStrings values, static arrays and binary RD entries; FontType is 1 and a matrix and encoding are required.",
           "verdict": "corrected, limited to static extraction: require header/FontType/matrix, enforce CharStrings capacity and complete unique Subrs assignments, accept numeric procedure-form matrices and unencrypted dictionaries.",
-          "implementation": "The static extractor does not execute or validate PostScript dictionary construction, definefont, RD/ND definitions or required-key placement. Hybrid/synthetic detection is explicitly unsupported; this is a known capability limit, not pending review.",
+          "implementation": "The static extractor matches literal RD/ND/NP procedure shapes and aliases without executing PostScript. It does not validate general dictionary construction, definefont or required-key placement. Hybrid/synthetic detection stays explicitly unsupported.",
           "expectations": "Font-owned vectors now place /Private explicitly; shared writer defaults retain their byte contract for the text fixtures, which still contain abbreviated static dictionaries. No claim that those abbreviations are executable conforming PostScript.",
           "vectors": [
             "font/review-type1-missing-header",
@@ -1556,7 +1556,7 @@
       "tables": [
         "124"
       ],
-      "status": "Explicit strict/repair font APIs; bounded per-operation diagnostics and glyph-local fallback. Page callers still require wiring.",
+      "status": "Strict/repair font APIs with bounded per-operation diagnostics and glyph-local fallback; text and render callers forward document recovery and diagnostics.",
       "tests": [
         "font/sfnt-legacy-true",
         "font/repair-sfnt-version",
@@ -1587,7 +1587,7 @@
         "font/repair-cmap13-prefix",
         "font/repair-cff-global-escape"
       ],
-      "gaps": "pagura-text and pagura-render must use diagnostic-aware methods with Document::recovery and forward diagnostics through Document::report; their paths are outside this component. TrueType/OpenType primary layout verification remains pending.",
+      "gaps": "TrueType/OpenType primary layout verification remains pending.",
       "verification": {
         "primary_text": "ISO 32000-2:2020 sponsored EC3; Adobe Type 1 Font Format; Adobe TN 5177; ADR 0003",
         "rule": "Embedded programs normally conform to their named formats; reader-tolerated departures must be tagged repairs.",
@@ -1599,7 +1599,7 @@
           "OpenType / ISO 14496-22: corresponding sfnt and cmap rules, CFF2"
         ],
         "external_status": "Corpus font dictionaries and programs inspected in memory, never copied into fixtures; this evidence does not verify unavailable primary texts.",
-        "evidence": "SafeDocs PDF 0000002 uses true; 0000018 has readable unaligned offsets; 0000028 has an odd format-4 sentinel; 0000047 has an overdeclared cmap length; 0000055 uses composite reserved bit 0x10; 0000325 has advances with missing unused side bearings. Inspection of the unsupported-version files in the available reports found 267 true-tagged and 33 0x00010000-tagged sfnt programs, with no additional sfnt flavor; other embedded programs were CFF or Type 1."
+        "evidence": "Local corpus inspection encountered legacy true signatures, readable unaligned offsets, odd format-4 sentinels, overdeclared cmap extents, reserved composite bit 0x10 and omitted unused horizontal side bearings. The available inspected sfnt programs used 267 legacy true signatures and 33 0x00010000 signatures; no additional flavor was needed. This is secondary format evidence, not primary-text verification."
       },
       "repairs": [
         {
@@ -1714,6 +1714,112 @@
           "primary_review": "PDF embedding/selection requirement reviewed; TrueType/OpenType internal layout primary text pending."
         }
       ]
+    },
+    {
+      "id": "font-type1-aliases",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.9.1"
+      ],
+      "tables": [
+        "124"
+      ],
+      "status": "Bounded static Type 1 procedure bindings and assignments, including symbolic and explicitly declared custom names.",
+      "tests": [
+        "font/type1-static-symbols",
+        "font/type1-static-canonical",
+        "font/type1-static-custom",
+        "font/type1-static-clear",
+        "font/type1-static-short",
+        "font/type1-static-comments",
+        "font/type1-computed-reader",
+        "font/type1-computed-put",
+        "font/type1-computed-nested",
+        "font/type1-computed-custom"
+      ],
+      "gaps": "This remains a static extractor, not full PostScript validation. Computed readers or assignment procedures, nested procedure execution, arbitrary alias expansion and unrecognized executable forms use font.type1-postscript.",
+      "verification": {
+        "primary_text": "Local Adobe Type 1 Font Format; TN 5176 CFF",
+        "locator": "Type 1 2.4 (chapter 2 example and aliases); 7.3; 8.4; 10.3",
+        "rule": "RD reads an exact length of binary charstring bytes; ND defines a dictionary entry; NP stores a subroutine array entry. Chapter 2 explicitly permits symbolic aliases and definitions outside the Private dictionary. Subroutine zero may hold an ordinary charstring when flex and hint replacement are unused (8.4).",
+        "verdict": "agrees with the documented scope; independent vectors and API invariants tested",
+        "implementation": "Recognize RD/-|, ND/|-, NP/| plus custom names bound to the exact static reader/def/put bodies. Match declarations and assignments without evaluating PostScript; bound token lengths, nesting, work and binding count. Canonical aliases remain available for the pre-existing abbreviated static extraction convention.",
+        "expectations": "Independent Python font writers derive paths and metrics analytically; Rust API tests check the documented memory model and stable recovery tags without importing or running the engine from the generator."
+      }
+    },
+    {
+      "id": "font-cff-blue-order",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.9.1"
+      ],
+      "tables": [
+        "124"
+      ],
+      "status": "Reported recovery of unused blue-zone operator and pair ordering, across bare/CID/OpenType CFF and CFF2.",
+      "tests": [
+        "font/repair-cff-blue-operators",
+        "font/repair-cff-blue-family-operators",
+        "font/repair-cff-blue-values",
+        "font/repair-cff-blue-other",
+        "font/repair-cff-blue-family",
+        "font/repair-cff-blue-family-other",
+        "font/cff-blue-zone-order",
+        "font/repair-cff-blue-opentype",
+        "font/repair-cff-blue-cid",
+        "font/repair-cff-blue-cff2"
+      ],
+      "gaps": "Complete validation of blue-zone cardinality, distances and BlueScale constraints is outside this unhinted API. CFF2 primary text remains unavailable; its matching unhinted recovery is a documented project choice.",
+      "verification": {
+        "primary_text": "Local Adobe Type 1 Font Format; TN 5176 CFF",
+        "locator": "TN 5176 15/Table 23; Type 1 5.3-5.5; ISO 9.9.1/Table 124; ADR 0003",
+        "rule": "OtherBlues follows BlueValues and FamilyOtherBlues follows FamilyBlues. Each individual lower/upper zone pair ascends; zone pairs need not be globally sorted. In delta encoding the second delta of each pair is nonnegative.",
+        "verdict": "agrees with the documented scope; independent vectors and API invariants tested",
+        "implementation": "Strict mode rejects font.cff-blue-order. Repair mode keeps original bytes and ignores only ordering of unused hint metadata; widths, subroutines and paths remain unchanged. No zones are sorted. The delta sign test avoids accumulating unused absolute coordinates. All diagnostics pass through the public parse sink.",
+        "expectations": "Independent Python font writers derive paths and metrics analytically; Rust API tests check the documented memory model and stable recovery tags without importing or running the engine from the generator."
+      },
+      "repairs": [
+        {
+          "tag": "font.cff-blue-order",
+          "locator": "TN 5176 15/Table 23; Type 1 5.3-5.5; ADR 0003",
+          "rule": "Ignore operator/pair ordering faults in unused blue hints, with strict rejection and reported repair.",
+          "vectors": [
+            "font/repair-cff-blue-operators",
+            "font/repair-cff-blue-family-operators",
+            "font/repair-cff-blue-values",
+            "font/repair-cff-blue-other",
+            "font/repair-cff-blue-family",
+            "font/repair-cff-blue-family-other",
+            "font/repair-cff-blue-opentype",
+            "font/repair-cff-blue-cid",
+            "font/repair-cff-blue-cff2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-retained-bytes",
+      "reference": "project-policy",
+      "clauses": [],
+      "tables": [],
+      "status": "A cached, saturating estimate of each parsed program's retained heap, independent of glyph use and clones.",
+      "tests": [
+        "font/memory-truetype",
+        "font/memory-cff",
+        "font/memory-cff-cid",
+        "font/memory-cff2",
+        "font/memory-type1-small",
+        "font/memory-type1-large"
+      ],
+      "gaps": "Allocator padding/fragmentation and private core Name representation are estimated. A clone reports the full shared estimate; callers charge once per distinct program. pagura-text must replace its proxy and continue charging its own outer Arc and FontProgram value separately.",
+      "verification": {
+        "primary_text": "ADR 0012; public pagura-core Name API",
+        "locator": "ADR 0012 retained-cache accounting model; docs/ARCHITECTURE.md performance policy",
+        "rule": "Count original input and parsed-state Arc allocations, owned vector capacities and nested buffers, encodings, name/CID trees and variation data once. The estimate is not peak memory or allocator telemetry.",
+        "verdict": "agrees with the documented scope; independent vectors and API invariants tested",
+        "implementation": "Compute once at successful parse and return a cached usize. Input bytes and CFF INDEX ranges are not double-counted. Type 1 decrypted subroutines/charstrings are retained separately. Tree entries add 64 bytes of estimated bookkeeping and names add logical payload lengths, conservatively including inline names. Exclude FontProgram inline storage, a caller-owned surrounding Arc, temporary parsing/outlining and external diagnostics.",
+        "expectations": "Independent Python font writers derive paths and metrics analytically; Rust API tests check the documented memory model and stable recovery tags without importing or running the engine from the generator."
+      }
     }
   ]
 }

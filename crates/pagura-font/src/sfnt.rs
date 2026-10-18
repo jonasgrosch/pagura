@@ -9,6 +9,7 @@ use std::ops::Range;
 
 mod cmap;
 mod glyf;
+mod memory;
 mod names;
 
 type Tables = BTreeMap<[u8; 4], Range<usize>>;
@@ -35,7 +36,7 @@ impl Sfnt {
             Ok(Read::new(&data[range.clone()], range.start))
         };
         let (units, location_format, glyph_count, advances, cff) = if signature == 0x4f54_544f {
-            let cff = cff_tables(data, &tables, limits)?;
+            let cff = cff_tables(data, &tables, limits, diagnostics)?;
             let count = usize::try_from(cff.glyph_count())
                 .map_err(|_| crate::read::limit(0, "glyph count overflow"))?;
             // ISO 32000-2, 9.9.1 Table 124: CFF OpenType needs CFF and cmap,
@@ -298,12 +299,17 @@ fn header(mut head: Read<'_>) -> Result<(u16, i16)> {
     Ok((units, location_format))
 }
 
-fn cff_tables(data: &[u8], tables: &Tables, limits: &Limits) -> Result<crate::cff::Cff> {
+fn cff_tables(
+    data: &[u8],
+    tables: &Tables,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<crate::cff::Cff> {
     let range = tables
         .get(b"CFF ")
         .or_else(|| tables.get(b"CFF2"))
         .ok_or_else(|| bad(0, "missing OpenType CFF table"))?;
-    crate::cff::Cff::parse(data, range.clone(), limits)
+    crate::cff::Cff::parse(data, range.clone(), limits, diagnostics)
 }
 
 fn maxp_count(mut maxp: Read<'_>, signature: u32, limits: &Limits) -> Result<usize> {

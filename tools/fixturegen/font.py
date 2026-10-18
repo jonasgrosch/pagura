@@ -179,7 +179,7 @@ def cff_font(cid=False, cff2=False, hostile=None, variable=False, variant=None, 
     if variant == "global":
         glyphs[1] = operands(0,0)+b"\x15"+number(-107)+b"\x1d"+end
     charstrings = index(glyphs, cff2)
-    private_extra = b""
+    private_extra = operands(-210,10)+b"\x07"+operands(-10,10)+b"\x06" if variant == "blue-order" else b""
     if variant in ("private-blend","private-blend-override"):
         # Dataset 1 has one active region. Blend 10 + 20*1 = 30,
         # leaving the leading BlueValues operand 5 untouched.
@@ -522,6 +522,7 @@ def cases():
                  "unsupported font.format\n","font-cff","opentype")
     yield from specification_cases()
     yield from recovery_cases()
+    yield from static_font_cases()
 
     yield vector("cff-nonfinite",cff_font(conforming=True,hostile="nonfinite"),"outline-error 1\n","font-bounds","cff")
 
@@ -808,7 +809,7 @@ def specification_cases():
              "outline 1\nm 0 0\nl 12 0\nl 15 4\nh\n")
 
 
-def recovery_vector(name, data, expected, tag, glyph=None, fmt="truetype"):
+def recovery_vector(name, data, expected, tag, glyph=None, fmt="truetype", requirement="font-recovery"):
     """ADR 0003 policy oracles: strict tag and exact recovered glyph/mapping."""
     phase = "parse" if glyph is None else f"outline {glyph}"
     tags = [tag]
@@ -818,7 +819,7 @@ def recovery_vector(name, data, expected, tag, glyph=None, fmt="truetype"):
                   {".font": data, ".expect": expected.encode(),
                    ".strict": f"{phase} {tag}\n".encode(),
                    ".repairs": ("\n".join(tags)+"\n").encode()},
-                  ("font-recovery",), "Reported font recovery with exact retained geometry",
+                  (requirement,), "Reported font recovery with exact retained geometry",
                   extra={"format": fmt, "repairs": tags})
 
 
@@ -937,3 +938,94 @@ def recovery_cases():
                               mappings+result, "font.cmap-truncated")
     yield recovery_vector("cff-global-escape", reviewed_cff(move+number(-107)+b"\x1d"+suffix,
                           global_subrs=[line+reserved+b"\x0b"]), expected, "font.charstring-operator", 1, "cff")
+
+
+def static_type1(aliases=(b"-|", b"|-", b"|"), subrs=1, clear_definitions=False,
+                 qualifier=b"executeonly", short=False, comments=False, computed=None):
+    """Type 1 2.4/7.3/10.3: explicit procedures and length-delimited cipher bytes."""
+    reader, define, put = aliases
+    bodies = [b"string currentfile exch readstring pop", b"def" if short else b"noaccess def",
+              b"put" if short else b"noaccess put"]
+    if comments:
+        bodies = [body.replace(b" ", b" % ignored } { ( text\n", 1) for body in bodies]
+    if computed is not None:
+        index, body = computed
+        bodies[index] = body
+    declarations = b"".join(b"/"+name+b" {"+body+b"} "+qualifier+b" def\n"
+                            for name,body in zip(aliases,bodies))
+    clear = (b"%!PS-AdobeFont-1.0: Static 1.0\n/FontType 1 def\n"
+             b"/FontMatrix [0.001 0 0 0.001 0 0] def\n/Encoding StandardEncoding def\n")
+    if clear_definitions:
+        clear += b"userdict begin\n"+declarations+b"end\n"
+    clear += b"currentfile eexec\n"
+    private = b"dup /Private 8 dict dup begin\n"
+    if not clear_definitions:
+        private += declarations
+    private += b"/lenIV 4 def\n/Subrs "+str(subrs).encode()+b" array\n"
+    line = (operands(100,0)+b"\x05"+operands(0,200)+b"\x05"+operands(-100,0)+b"\x05\x0b")
+    for i in range(subrs):
+        cipher = encrypt(bytes(4)+(line if i==0 else b"\x0b"),4330)
+        private += b"dup "+str(i).encode()+b" "+str(len(cipher)).encode()+b" "+reader+b" "+cipher+b" "+put+b"\n"
+    private += define+b"\n2 index /CharStrings 2 dict dup begin\n"
+    width = operands(0,600)+b"\x0d"
+    glyphs = [(b".notdef",width+b"\x0e"),
+              (b"A",width+operands(0,0)+b"\x15"+operands(0)+b"\x0a\x0e")]
+    for name, program in glyphs:
+        cipher = encrypt(bytes(4)+program,4330)
+        private += b"/"+name+b" "+str(len(cipher)).encode()+b" "+reader+b" "+cipher+b" "+define+b"\n"
+    private += b"end end readonly put noaccess put\ncurrentfile closefile\n"
+    return clear+encrypt(bytes(4)+private,55665)
+
+
+def static_font_cases():
+    expected = "count 2\nadvance 1 600\nname A 1\noutline 0\noutline 1\n"+RECT
+    for name, options in [
+        ("symbols", {}),
+        ("canonical", {"aliases":(b"RD",b"ND",b"NP")}),
+        ("custom", {"aliases":(b"readBytes",b"defineGlyph",b"storeSubr"), "qualifier":b"bind executeonly"}),
+        ("clear", {"clear_definitions":True}),
+        ("short", {"short":True, "qualifier":b"readonly"}),
+        ("comments", {"comments":True}),
+    ]:
+        yield vector("type1-static-"+name, static_type1(**options), expected, "font-type1-aliases", "type1")
+    for name, options in [
+        ("reader", {"computed":(0,b"currentfile exch readstring pop")}),
+        ("put", {"computed":(2,b"exch pop put")}),
+        ("nested", {"computed":(2,b"{pop} noaccess put")}),
+        ("custom", {"aliases":(b"RD",b"ND",b"customPut"), "computed":(2,b"exch pop put")}),
+    ]:
+        yield vector("type1-computed-"+name, static_type1(**options), "unsupported font.type1-postscript\n", "font-type1-aliases", "type1")
+
+    rect = operands(0,0)+b"\x15"+operands(100,0,0,200,-100,0)+b"\x05\x0e"
+    expected = "count 2\nadvance 1 600\noutline 1\n"+RECT
+    width = operands(600)+b"\x14"
+    for name, private in [
+        ("operators", operands(-210,10)+b"\x07"+operands(-10,10)+b"\x06"),
+        ("family-operators", operands(-210,10)+b"\x09"+operands(-10,10)+b"\x08"),
+        ("values", operands(10,-5)+b"\x06"),
+        ("other", operands(-10,10)+b"\x06"+operands(10,-5)+b"\x07"),
+        ("family", operands(10,-5)+b"\x08"),
+        ("family-other", operands(-10,10)+b"\x08"+operands(10,-5)+b"\x09"),
+    ]:
+        data = reviewed_cff(rect, private=private+width)
+        yield recovery_vector("cff-blue-"+name, data, expected, "font.cff-blue-order", fmt="cff", requirement="font-cff-blue-order")
+    # Type 1 5.3 explicitly permits these non-globally-sorted top-zone pairs.
+    zones = operands(-15,15,700,15,-168,12)+b"\x06"
+    yield vector("cff-blue-zone-order", reviewed_cff(rect, private=zones+width), expected, "font-cff-blue-order", "cff")
+    data = reviewed_cff(rect, private=operands(-210,10)+b"\x07"+width)
+    yield recovery_vector("cff-blue-opentype", sfnt({b"CFF ":data,b"cmap":cmap(4)},otto=True),
+                          expected, "font.cff-blue-order", fmt="opentype", requirement="font-cff-blue-order")
+    yield recovery_vector("cff-blue-cid", cff_font(cid=True,conforming=True,variant="blue-order"),
+                          "count 5\nis-cid 1\nadvance 1 600\noutline 1\n"+RECT,
+                          "font.cff-blue-order", fmt="cff", requirement="font-cff-blue-order")
+    yield recovery_vector("cff-blue-cff2", truetype(cff=cff_font(cff2=True,conforming=True,variant="blue-order"),cff2=True),
+                          "count 5\noutline 1\n"+RECT, "font.cff-blue-order", fmt="opentype", requirement="font-cff-blue-order")
+    for name, data, fmt in [
+        ("truetype", truetype(), "truetype"),
+        ("cff", cff_font(conforming=True), "cff"),
+        ("cff-cid", cff_font(cid=True,conforming=True,variant="fd-array"), "cff"),
+        ("cff2", truetype(cff=cff_font(cff2=True,conforming=True,variable=True),cff2=True), "opentype"),
+        ("type1-small", static_type1(subrs=1), "type1"),
+        ("type1-large", static_type1(subrs=65), "type1"),
+    ]:
+        yield vector("memory-"+name, data, "outline 1\n"+("m 0 0\nl 130 0\nl 130 200\nl 0 200\nh\n" if name=="cff2" else "m 0 0\nl 200 0\nl 200 400\nl 0 400\nh\n" if name=="cff-cid" else RECT), "font-retained-bytes", fmt)

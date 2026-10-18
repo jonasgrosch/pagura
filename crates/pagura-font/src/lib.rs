@@ -13,6 +13,7 @@ use pagura_raster::{Path, Transform};
 use std::sync::Arc;
 
 mod cff;
+mod memory;
 mod read;
 mod recovery;
 mod sfnt;
@@ -74,6 +75,7 @@ pub struct FontProgram {
     data: Arc<[u8]>,
     parsed: Arc<Program>,
     limits: Limits,
+    retained_bytes: usize,
 }
 
 #[derive(Debug)]
@@ -134,14 +136,18 @@ impl FontProgram {
             FontFormat::TrueType | FontFormat::OpenType => {
                 Program::Sfnt(sfnt::Sfnt::parse(&data, limits, diagnostics)?)
             }
-            FontFormat::Cff => Program::Cff(cff::Cff::parse(&data, 0..data.len(), limits)?),
+            FontFormat::Cff => {
+                Program::Cff(cff::Cff::parse(&data, 0..data.len(), limits, diagnostics)?)
+            }
             FontFormat::Type1 => Program::Type1(type1::Type1::parse(&data, limits)?),
         };
+        let retained_bytes = memory::estimate(&data, &parsed);
         Ok(Self {
             format,
             data,
             parsed: Arc::new(parsed),
             limits: *limits,
+            retained_bytes,
         })
     }
 
@@ -153,6 +159,23 @@ impl FontProgram {
     /// The raw program bytes.
     pub fn data(&self) -> &[u8] {
         &self.data
+    }
+
+    /// Estimated heap bytes retained by this parsed program (ADR 0012).
+    ///
+    /// Computed once at parse time with saturating arithmetic. Counts the input
+    /// and parsed-state Arc allocations, owned vector capacities, decrypted
+    /// Type 1 buffers, encodings, name/CID indexes and variation data. Tree
+    /// entries use 64 bytes of estimated bookkeeping; name payloads are charged
+    /// by length, conservatively including names that core may store inline.
+    ///
+    /// This is an accounting estimate, not allocator telemetry or peak memory.
+    /// It excludes this value's inline storage, any caller's Arc around it,
+    /// temporary parse/outline storage and caller-owned diagnostics. Clones
+    /// share the counted allocations: charge the estimate once per distinct
+    /// program, rather than once per clone. Outlines are not retained.
+    pub fn retained_bytes(&self) -> usize {
+        self.retained_bytes
     }
 
     /// Number of glyphs.
