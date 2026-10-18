@@ -46,6 +46,13 @@ polygon to each pixel square. Rasterizer output must match within ±1 level
 of 255 for polygons, and within a documented flattening tolerance for curves.
 Pixel-aligned opaque cases stay exact.
 
+Composition has the same contract (amended 2026-10-18). Every composited pixel
+is within one level of 255 of the exact result: the imaging model of clause 11
+applied in exact arithmetic to the same coverage bytes, then rounded. Working
+precision is chosen to hold that bound for any number of overlapping marks;
+per-mark 8-bit accumulation does not. Composited fixtures may therefore carry
+a tolerance of 1. Exact rounding ties are not part of the contract.
+
 ## Consequences
 
 The 8-bit surface is not the final imaging model: transparency groups, soft

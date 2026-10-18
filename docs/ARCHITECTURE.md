@@ -116,6 +116,13 @@ a group is provably equivalent), may change rounding. The conditions are:
 The change reports every changed pixel with its oracle value. Fixture
 expectations and tolerances never change to accommodate it.
 
+Composition is judged by its own contract instead (ADR 0004): every composited
+pixel within one level of the exact result. A change to compositing precision
+or structure qualifies when it holds that bound on every fixture, benchmark
+page and stress case, including cases where many partial-coverage marks
+overlap, and reports every changed pixel. Composited fixtures may carry a
+tolerance of 1 for it; each such tolerance change is listed with its case.
+
 When an area stalls, study how the best-in-class implementation of that
 specific problem works (ADR 0006: inspiration, never copied or translated code),
 then build something cleaner, more idiomatic and faster than it.
