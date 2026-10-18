@@ -1,7 +1,7 @@
 //! PDF syntax for validated objects, the cross-reference table and the trailer.
 
 use crate::NewObject;
-use pagura_core::{Error, Meter, Name, ObjectId, Result, Value};
+use pagura_core::{Dictionary, Error, Meter, ObjectId, Result, Value};
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -10,6 +10,9 @@ const HEADER: &[u8] = b"%PDF-1.7\n%\xE2\xE3\xCF\xD3\n";
 
 /// The `Limit` message of the output budget.
 const FILE_BUDGET: &str = "writer file budget exceeded";
+
+/// The stream dictionary key the writer fills in (7.3.8.2 Table 5).
+pub(crate) const STREAM_LENGTH: &[u8] = b"Length";
 
 /// Hexadecimal digits by value; strings are written in uppercase (7.3.4.3).
 const HEX_DIGITS: &[u8; 16] = b"0123456789ABCDEF";
@@ -78,19 +81,10 @@ impl Writer {
 
     pub(crate) fn object(&mut self, id: ObjectId, object: &NewObject) -> Result<()> {
         self.text(format_args!("{id} obj\n"))?;
-        match &object.stream {
-            None => self.value(&object.value)?,
-            Some(data) => {
-                let Value::Dictionary(dictionary) = &object.value else {
-                    return Err(Error::invalid_argument(
-                        "a stream's value must be a dictionary",
-                    ));
-                };
-                let mut dictionary = dictionary.clone();
-                let length =
-                    i64::try_from(data.len()).map_err(|_| Error::limit("stream too long"))?;
-                dictionary.insert(Name::new(b"Length"), Value::Integer(length));
-                self.value(&Value::Dictionary(dictionary))?;
+        match object {
+            NewObject::Value(value) => self.value(value)?,
+            NewObject::Stream { dictionary, data } => {
+                self.dictionary(dictionary, Some(data.len()))?;
                 self.put(b"\nstream\n")?;
                 self.put(data)?;
                 self.put(b"\nendstream")?;
@@ -119,16 +113,29 @@ impl Writer {
                 }
                 self.put(b"]")
             }
-            Value::Dictionary(dictionary) => {
-                self.put(b"<<")?;
-                for (key, value) in dictionary {
-                    self.text(format_args!(" {key} "))?;
-                    self.value(value)?;
-                }
-                self.put(b" >>")
-            }
+            Value::Dictionary(dictionary) => self.dictionary(dictionary, None),
             Value::Reference(id) => self.text(format_args!("{id} R")),
         }
+    }
+
+    /// Writes a dictionary. A stream's `length` replaces the value of its
+    /// `/Length` entry, or is appended if there is none.
+    fn dictionary(&mut self, dictionary: &Dictionary, mut length: Option<usize>) -> Result<()> {
+        self.put(b"<<")?;
+        for (key, value) in dictionary {
+            self.text(format_args!(" {key} "))?;
+            if key.as_bytes() == STREAM_LENGTH
+                && let Some(length) = length.take()
+            {
+                self.text(format_args!("{length}"))?;
+            } else {
+                self.value(value)?;
+            }
+        }
+        if let Some(length) = length {
+            self.text(format_args!(" /Length {length}"))?;
+        }
+        self.put(b" >>")
     }
 
     /// Writes a finite real. `Display` for `f64` never uses an exponent,
@@ -209,7 +216,7 @@ impl fmt::Write for Writer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pagura_core::{Dictionary, ErrorKind};
+    use pagura_core::{ErrorKind, Name};
 
     fn written(value: &Value) -> Vec<u8> {
         let mut writer = Writer::new(1 << 20);
@@ -274,19 +281,27 @@ mod tests {
 
     #[test]
     fn streams_use_stored_length_and_exclude_separator_eol() {
-        let mut dictionary = Dictionary::new();
-        dictionary.insert(Name::new(b"Filter"), Value::name(b"ASCIIHexDecode"));
-        dictionary.insert(Name::new(b"Length"), Value::Integer(999));
-        let mut writer = Writer::new(1024);
-        writer
-            .object(
-                ObjectId::new(2, 0),
-                &NewObject::stream(dictionary, b"FF>".to_vec()),
-            )
-            .unwrap();
+        let stream = |entries: &[(&[u8], Value)]| {
+            let dictionary = entries
+                .iter()
+                .map(|(key, value)| (Name::new(key), value.clone()))
+                .collect();
+            let data = b"FF>".to_vec();
+            let mut writer = Writer::new(1024);
+            let object = NewObject::Stream { dictionary, data };
+            writer.object(ObjectId::new(2, 0), &object).unwrap();
+            String::from_utf8(writer.into_bytes()).unwrap()
+        };
+        let filter = (&b"Filter"[..], Value::name(b"ASCIIHexDecode"));
+        let length = (&b"Length"[..], Value::Integer(999));
         assert_eq!(
-            writer.into_bytes(),
-            b"2 0 obj\n<< /Filter /ASCIIHexDecode /Length 3 >>\nstream\nFF>\nendstream\nendobj\n"
+            stream(&[filter.clone(), length.clone()]),
+            "2 0 obj\n<< /Filter /ASCIIHexDecode /Length 3 >>\nstream\nFF>\nendstream\nendobj\n"
         );
+        // A given /Length keeps its place; without one, it comes last.
+        assert!(
+            stream(&[length, filter.clone()]).contains("<< /Length 3 /Filter /ASCIIHexDecode >>")
+        );
+        assert!(stream(&[filter]).contains("<< /Filter /ASCIIHexDecode /Length 3 >>"));
     }
 }

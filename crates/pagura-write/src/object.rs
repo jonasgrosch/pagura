@@ -1,32 +1,30 @@
 //! Objects handed to the builder.
 
-use pagura_core::Value;
+use pagura_core::{Dictionary, Value};
 
-/// An object to write: a value, plus data if it is a stream.
+/// An indirect object to write (7.3.10): a value, or a stream.
+///
+/// The enum is exhaustive: a stream is the one kind of object that can only
+/// be indirect (7.3.8.1), and every other object is a [`Value`], so these two
+/// cases are all there are.
 #[derive(Debug, Clone, PartialEq)]
-pub struct NewObject {
-    /// The value; a stream's value must be its dictionary.
-    pub value: Value,
-    /// Exact stored stream bytes. If `/Filter` is supplied, the caller must
-    /// encode these bytes accordingly (7.3.8.2); this serializer does not encode.
-    /// `/Length` is written automatically from the stored byte count.
-    pub stream: Option<Vec<u8>>,
+pub enum NewObject {
+    /// Any object other than a stream.
+    Value(Value),
+    /// A stream (7.3.8).
+    Stream {
+        /// The stream dictionary. The writer writes `/Length` from `data`,
+        /// in place of any `/Length` given here.
+        dictionary: Dictionary,
+        /// The stored bytes, written exactly. If `dictionary` declares
+        /// `/Filter`, they must already be encoded accordingly (7.3.8.2):
+        /// the writer does not encode.
+        data: Vec<u8>,
+    },
 }
 
-impl NewObject {
-    /// A non-stream object.
-    pub fn value(value: Value) -> Self {
-        Self {
-            value,
-            stream: None,
-        }
-    }
-
-    /// A stream object whose data is already encoded if its dictionary has filters.
-    pub fn stream(dictionary: pagura_core::Dictionary, data: Vec<u8>) -> Self {
-        Self {
-            value: Value::Dictionary(dictionary),
-            stream: Some(data),
-        }
+impl From<Value> for NewObject {
+    fn from(value: Value) -> Self {
+        Self::Value(value)
     }
 }

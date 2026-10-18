@@ -7,7 +7,7 @@ use pagura_write::{Builder, NewObject};
 fn catalog() -> NewObject {
     let mut dictionary = Dictionary::new();
     dictionary.insert(Name::new(b"Type"), Value::name(b"Catalog"));
-    NewObject::value(Value::Dictionary(dictionary))
+    NewObject::Value(Value::Dictionary(dictionary))
 }
 fn builder(limits: Limits) -> Builder {
     let mut builder = Builder::new(limits);
@@ -21,7 +21,13 @@ fn trailer_root_is_a_dictionary_not_a_stream() {
     dictionary.insert(Name::new(b"Type"), Value::name(b"Catalog"));
     let mut output = Builder::default();
     output
-        .insert(ObjectId::new(1, 0), NewObject::stream(dictionary, vec![]))
+        .insert(
+            ObjectId::new(1, 0),
+            NewObject::Stream {
+                dictionary,
+                data: vec![],
+            },
+        )
         .unwrap();
     assert_eq!(
         output.finish(ObjectId::new(1, 0)).unwrap_err().kind,
@@ -47,7 +53,7 @@ fn names_exclude_nul_in_values_and_keys() {
     }] {
         let mut output = builder(Limits::default());
         output
-            .insert(ObjectId::new(2, 0), NewObject::value(value))
+            .insert(ObjectId::new(2, 0), NewObject::Value(value))
             .unwrap();
         let error = output.finish(ObjectId::new(1, 0)).unwrap_err();
         assert_eq!(error.kind, ErrorKind::InvalidArgument);
@@ -59,7 +65,7 @@ fn sparse_cross_reference_ranges_are_bounded_before_serializing() {
     for number in [u32::MAX, u32::MAX - 1, 4_000_000] {
         let mut output = builder(Limits::default());
         output
-            .insert(ObjectId::new(number, 0), NewObject::value(Value::Null))
+            .insert(ObjectId::new(number, 0), NewObject::Value(Value::Null))
             .unwrap();
         assert_eq!(
             output.finish(ObjectId::new(1, 0)).unwrap_err().kind,
@@ -71,7 +77,7 @@ fn sparse_cross_reference_ranges_are_bounded_before_serializing() {
 fn xref_entries_free_chain_and_trailer_match_independent_offsets() {
     let mut output = builder(Limits::default());
     output
-        .insert(ObjectId::new(3, 0), NewObject::value(Value::Null))
+        .insert(ObjectId::new(3, 0), NewObject::Value(Value::Null))
         .unwrap();
     let bytes = output.finish(ObjectId::new(1, 0)).unwrap();
     let prefix=b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n1 0 obj\n<< /Type /Catalog >>\nendobj\n3 0 obj\nnull\nendobj\n";
@@ -95,7 +101,10 @@ fn streams_beyond_the_stream_budget_fail() {
     output
         .insert(
             ObjectId::new(2, 0),
-            NewObject::stream(Dictionary::new(), vec![0; 3]),
+            NewObject::Stream {
+                dictionary: Dictionary::new(),
+                data: vec![0; 3],
+            },
         )
         .unwrap();
     assert_eq!(
@@ -110,7 +119,10 @@ fn the_file_budget_admits_exactly_the_written_size() {
             file_bytes,
             ..Limits::default()
         });
-        let stream = NewObject::stream(Dictionary::new(), vec![7; 4096]);
+        let stream = NewObject::Stream {
+            dictionary: Dictionary::new(),
+            data: vec![7; 4096],
+        };
         output.insert(ObjectId::new(2, 0), stream).unwrap();
         output.finish(ObjectId::new(1, 0))
     };
@@ -129,13 +141,13 @@ fn the_value_budget_applies_per_object() {
     for number in 2..=11 {
         let array = Value::Array(vec![Value::Null; 999]);
         output
-            .insert(ObjectId::new(number, 0), NewObject::value(array))
+            .insert(ObjectId::new(number, 0), NewObject::Value(array))
             .unwrap();
     }
     assert!(output.finish(ObjectId::new(1, 0)).is_ok());
     let over = ObjectId::new(12, 0);
     let array = Value::Array(vec![Value::Null; 1000]);
-    output.insert(over, NewObject::value(array)).unwrap();
+    output.insert(over, NewObject::Value(array)).unwrap();
     let error = output.finish(ObjectId::new(1, 0)).unwrap_err();
     assert_eq!((error.kind, error.object), (ErrorKind::Limit, Some(over)));
 }
@@ -149,9 +161,39 @@ fn nesting_beyond_the_depth_limit_fails() {
     for (levels, fits) in [(2, true), (3, false)] {
         let mut output = builder(limits);
         output
-            .insert(ObjectId::new(2, 0), NewObject::value(nested(levels)))
+            .insert(ObjectId::new(2, 0), NewObject::Value(nested(levels)))
             .unwrap();
         let result = output.finish(ObjectId::new(1, 0));
         assert_eq!(result.is_ok(), fits, "{levels} levels");
     }
+}
+#[test]
+fn stream_dictionaries_are_checked_as_written() {
+    // value_nodes 2 admits the dictionary and the /Length the writer adds.
+    let limits = Limits {
+        value_nodes: 2,
+        ..Limits::default()
+    };
+    let stream = |entries: &[(&[u8], Value)]| {
+        let mut output = builder(limits);
+        let dictionary = entries
+            .iter()
+            .map(|(key, value)| (Name::new(key), value.clone()))
+            .collect();
+        let data = b"data".to_vec();
+        let object = NewObject::Stream { dictionary, data };
+        output.insert(ObjectId::new(2, 0), object).unwrap();
+        output.finish(ObjectId::new(1, 0))
+    };
+    // A stale or dangling /Length is replaced, so it is neither checked nor counted.
+    let stale = Value::Reference(ObjectId::new(9, 0));
+    let bytes = stream(&[(b"Length", stale)]).unwrap();
+    let text = String::from_utf8_lossy(&bytes);
+    assert!(
+        text.contains("<< /Length 4 >>\nstream\ndata\nendstream"),
+        "{text}"
+    );
+    assert!(stream(&[]).is_ok());
+    let error = stream(&[(b"Filter", Value::name(b"ASCIIHexDecode"))]).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
 }
