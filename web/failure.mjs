@@ -2,7 +2,8 @@
 export class HostFailure extends Error {
   constructor(reason, error) {
     super(`PDF host ${reason}: ${error?.message ?? error}`, { cause: error });
-    this.name = 'HostFailure'; this.reason = reason;
+    this.name = 'HostFailure';
+    this.reason = reason;
   }
 }
 export function failureReason(error) {

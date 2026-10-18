@@ -7,3 +7,5 @@ indent_style = space
 indent_size = 4
 [*.{json,yml,yaml}]
 indent_size = 2
+[*.{mjs,ts}]
+indent_size = 2

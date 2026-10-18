@@ -5,12 +5,19 @@ export function externalUrl(action) {
   try {
     // Relative URIs require the PDF's Base; never guess from the viewer URL.
     url = action.base === null || action.base === undefined ? new URL(action.uri) : new URL(action.uri, action.base);
-  } catch { throw new Error('URI cannot be resolved without a valid absolute PDF Base'); }
+  } catch {
+    throw new Error('URI cannot be resolved without a valid absolute PDF Base');
+  }
   if (!['http:', 'https:', 'mailto:'].includes(url.protocol)) throw new Error(`Blocked URI scheme: ${url.protocol}`);
   if (url.username || url.password) throw new Error('URI credentials are not allowed');
   return url.href;
 }
-const namedPages = { NextPage: 'Go to next page', PrevPage: 'Go to previous page', FirstPage: 'Go to first page', LastPage: 'Go to last page' };
+const namedPages = {
+  NextPage: 'Go to next page',
+  PrevPage: 'Go to previous page',
+  FirstPage: 'Go to first page',
+  LastPage: 'Go to last page',
+};
 export function targetLabel(target, pageLabel = (page) => String(page + 1)) {
   if (!target.length) return 'Link without a target';
   if (target.length > 1) return 'Multiple actions (not run)';
@@ -18,20 +25,43 @@ export function targetLabel(target, pageLabel = (page) => String(page + 1)) {
   if (action.kind === 1) return `Go to page ${pageLabel(action.page)}`;
   if (action.kind === 2) {
     if (action.isMap) return 'Coordinate-appending URI action (not run)';
-    try { return `Open ${externalUrl(action)} (external; asks before opening)`; } catch (error) { return error.message; }
+    try {
+      return `Open ${externalUrl(action)} (external; asks before opening)`;
+    } catch (error) {
+      return error.message;
+    }
   }
-  if (action.kind === 3) return Object.hasOwn(namedPages, action.name) ? namedPages[action.name] : `${action.name} named action (not run)`;
+  if (action.kind === 3)
+    return Object.hasOwn(namedPages, action.name) ? namedPages[action.name] : `${action.name} named action (not run)`;
   return `${({ 4: 'GoToR', 5: 'Launch', 6: 'JavaScript' })[action.kind] ?? action.name} action (not run)`;
 }
-export async function activateTarget(target, { destination, named, report, notice, confirm = (value) => window.confirm(value), open = (value) => window.open(value, '_blank', 'noopener,noreferrer') }) {
+export async function activateTarget(
+  target,
+  {
+    destination,
+    named,
+    report,
+    notice,
+    confirm = (value) => window.confirm(value),
+    open = (value) => window.open(value, '_blank', 'noopener,noreferrer'),
+  },
+) {
   try {
-    if (target.length !== 1) { notice(targetLabel(target)); return; }
+    if (target.length !== 1) {
+      notice(targetLabel(target));
+      return;
+    }
     const action = target[0];
     if (action.kind === 1) await destination(action);
     else if (action.kind === 2 && !action.isMap) {
       const url = externalUrl(action);
       if (confirm(`Open external link?\n${url}`)) open(url);
     } else if (action.kind === 3 && Object.hasOwn(namedPages, action.name)) await named(action.name);
-    else notice(`${targetLabel(target)}. This viewer does not run scripts, open remote files or perform unsupported actions.`);
-  } catch (error) { report(error); }
+    else
+      notice(
+        `${targetLabel(target)}. This viewer does not run scripts, open remote files or perform unsupported actions.`,
+      );
+  } catch (error) {
+    report(error);
+  }
 }
