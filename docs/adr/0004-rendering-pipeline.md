@@ -70,21 +70,22 @@ exact result.
 Pixel-aligned opaque cases stay exact, and exact rounding ties are not part
 of the contract.
 
-**Known defect** (recorded 2026-10-18). Pages whose content is all opaque
-Normal fills take an 8-bit path that stores every mark immediately. A fully
-covering opaque mark makes a pixel exact again. Each partially covering mark
-then rounds once and adds at most half a level. After `n` partially covering
-stores since a pixel's last full coverage, its output is within `n/2 + 1/2`
-levels of the exact rounded result:
+**Known defect** (recorded 2026-10-18, corrected the same day). Pages whose
+content is all opaque Normal fills take an 8-bit path that stores every mark
+immediately. Its kernel works on a source colour already quantized to 8 bits,
+and rounds the source and backdrop contributions separately before adding
+them. So a partially covering mark can add up to about one and a half levels of
+error, and the error carries into later marks. A fully covering mark leaves at
+most the half level of its own colour's quantization.
 
-- two such stores keep the contract;
-- from the third onward, a pixel can drift by up to half a level per store.
+Two partially covering marks after a full one can already give 217 where the
+exact result is 219. A thousand slivers on one pixel give 127 instead of 5.
+The first recorded version of this note claimed half a level per mark; that
+bound was wrong.
 
-Real pages rarely put more than two partially covering marks on one pixel.
-A crafted page with a thousand slivers on one pixel gives 127 where the exact
-result is 5. The fix under study counts partial stores per pixel and promotes
-before the third, so that the 8-bit path is retired only once its replacement
-is cheap. Fixture oracles compute the exact result independently in
+The fix under study first rounds once per store from the unquantized source
+colour, then bounds and removes what remains, so that the 8-bit path is
+retired only once its replacement is cheap. Fixture oracles compute the exact result independently in
 Python, and a fixture may carry a tolerance of 1 against it.
 
 ## Consequences
