@@ -104,6 +104,18 @@ output identical unless a documented, independently verified reason says
 otherwise. Never trade fidelity, security, portability or the no-unsafe rule
 for speed.
 
+One reason is standing: an exact reformulation, meaning the same mathematics
+evaluated in a different order (a separable filter, or painting directly where
+a group is provably equivalent), may change rounding. The conditions are:
+
+- no pixel moves by more than one level;
+- an independent exact oracle exists for the affected output;
+- across every fixture, benchmark page and threshold-sensitive stress case, the
+  new output matches that oracle at least as often as the current output does.
+
+The change reports every changed pixel with its oracle value. Fixture
+expectations and tolerances never change to accommodate it.
+
 When an area stalls, study how the best-in-class implementation of that
 specific problem works (ADR 0006: inspiration, never copied or translated code),
 then build something cleaner, more idiomatic and faster than it.
