@@ -1,8 +1,10 @@
 //! Search policy: Unicode uppercase mapping, whitespace folding, optional
 //! discretionary line hyphens. No normalization or locale-dependent case fold.
-use super::{Error, Quad, Range, Result, TextPage};
+use crate::{Quad, TextPage};
 use pagura_core::Meter;
+use pagura_core::{Error, Result};
 use std::collections::{HashSet, VecDeque};
+use std::ops::Range;
 
 /// Search policy. Case mapping uses Rust's Unicode `char::to_uppercase`.
 /// Hosts build options from [`Default`] with struct update syntax, so the

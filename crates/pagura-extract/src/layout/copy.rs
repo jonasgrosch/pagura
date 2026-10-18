@@ -1,10 +1,9 @@
 //! Copy text, semantic separators and byte-indexed word/line boundaries.
-use super::super::{Character, TextLine, TextWord, search};
 use super::geometry::{FRAGMENT_EMS, PARALLEL, coordinates, direction, dot, em, gap, same_line};
-use super::{
-    Atom, Error, LayoutOptions, Line, PositionedText, Range, Replacement, Result, TextPage,
-    reversed,
-};
+use super::{Atom, Line, Replacement, reversed};
+use crate::{Character, LayoutOptions, PositionedText, TextLine, TextPage, TextWord, search};
+use pagura_core::{Error, Result};
+use std::ops::Range;
 /// Whether layout decoded a character from glyphs or inserted it.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Origin {

@@ -1,7 +1,9 @@
 //! Logical content references, ISO 32000-2 14.7.2–14.7.5 and 14.8.
-use super::{LogicalText, Name, ObjectId, Range, Result, TextPage};
+use crate::{LogicalText, TextPage};
 use pagura_core::{Diagnostics, Dictionary, Error, Meter, Position, Value};
+use pagura_core::{Name, ObjectId, Result};
 use pagura_document::{Document, Page};
+use std::ops::Range;
 mod content;
 mod copy;
 mod roles;
