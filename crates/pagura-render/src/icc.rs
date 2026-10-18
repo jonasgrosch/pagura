@@ -1,7 +1,7 @@
 //! Document-bound ICC profile cache for one compilation (8.6.5.5). Profile
 //! parsing and evaluation live in `pagura-color`.
 
-use pagura_core::{Error, ObjectId, Result};
+use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
 use pagura_document::Document;
 use std::collections::BTreeMap;
 use std::{
@@ -49,15 +49,37 @@ pub(crate) struct ColorContext<'a> {
     document: &'a Document,
     cache: &'a Cache,
 }
-impl std::ops::Deref for ColorContext<'_> {
-    type Target = Document;
-    fn deref(&self) -> &Document {
-        self.document
-    }
-}
 impl<'a> ColorContext<'a> {
     pub(crate) fn new(document: &'a Document, cache: &'a Cache) -> Self {
         Self { document, cache }
+    }
+    /// The document whose objects colour spaces refer to.
+    pub(crate) fn document(&self) -> &'a Document {
+        self.document
+    }
+    pub(crate) fn limits(&self) -> pagura_core::Limits {
+        self.document.limits()
+    }
+    pub(crate) fn resolve<'v>(&self, value: &'v Value) -> Result<&'v Value>
+    where
+        'a: 'v,
+    {
+        self.document.resolve(value)
+    }
+    pub(crate) fn resolve_dictionary<'v>(&self, value: &'v Value) -> Result<&'v Dictionary>
+    where
+        'a: 'v,
+    {
+        self.document.resolve_dictionary(value)
+    }
+    pub(crate) fn object(&self, id: ObjectId) -> Result<&'a pagura_document::IndirectObject> {
+        self.document.object(id)
+    }
+    pub(crate) fn stream_data(
+        &self,
+        object: &pagura_document::IndirectObject,
+    ) -> Result<std::borrow::Cow<'a, [u8]>> {
+        self.document.stream_data(object)
     }
     pub(crate) fn profile(&self, id: ObjectId, components: usize) -> Result<Option<Arc<Profile>>> {
         if let Some(cached) = self.cache.profiles.borrow().get(&id) {

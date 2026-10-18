@@ -62,7 +62,7 @@ impl Pattern {
         let transform = d
             .get(b"Matrix")
             .map(|v| {
-                let m = numbers::array::<6>(document, v, GEOMETRY)?;
+                let m = numbers::array::<6>(document.document(), v, GEOMETRY)?;
                 Ok(Transform::new(m[0], m[1], m[2], m[3], m[4], m[5]))
             })
             .transpose()?
@@ -110,7 +110,7 @@ impl Tiling {
             return Err(Error::syntax("invalid TilingType"));
         }
         let b = numbers::array::<4>(
-            document,
+            document.document(),
             d.get(b"BBox")
                 .ok_or(Error::syntax("pattern requires BBox"))?,
             GEOMETRY,
