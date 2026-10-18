@@ -2,10 +2,11 @@
 //! Cryptographic primitives and the PDF standard security handler
 //! (ISO 32000-2 clause 7.6), implemented from their published standards.
 //!
-//! Primitives (RFC 1321 MD5, FIPS 180-4 SHA-2, RC4, FIPS 197 AES with
-//! SP 800-38A CBC, FIPS 186-5 ECDSA verification) know nothing about PDF. The [`standard`] module
-//! implements password authentication and per-object decryption from plain
-//! parameters; the document layer maps the `/Encrypt` dictionary onto them.
+//! Primitives (RFC 1321 MD5, FIPS 180-4 SHA-1/SHA-2, RC4, FIPS 197 AES with
+//! SP 800-38A CBC, FIPS 186-5 ECDSA and RFC 8017 RSA verification) know nothing
+//! about PDF. The [`standard`] module implements password authentication and
+//! per-object decryption from plain parameters; the document layer maps the
+//! `/Encrypt` dictionary onto them.
 //!
 //! Cipher operations are limited to decryption and the encryption steps that
 //! key derivation needs. Signature operations are verification only. This is
@@ -16,15 +17,23 @@
 //! of timing or cache observations in a shared execution environment.
 
 pub mod aes;
+mod bigint;
 mod ec;
 pub mod ecdsa;
 mod hash;
 mod rc4;
+pub mod rsa;
 pub mod standard;
+mod verification;
 
 pub use aes::Aes;
-pub use hash::{Md5, Sha256, Sha384, Sha512, md5, sha256, sha384, sha512};
+pub use bigint::MAX_MODULUS_BITS;
+pub use hash::{
+    Md5, Sha1, Sha224, Sha256, Sha384, Sha512, md5, sha1, sha224, sha256, sha384, sha512,
+};
 pub use rc4::Rc4;
+pub use rsa::{HashAlgorithm, PssParameters, RsaLimits, RsaPublicKey};
+pub use verification::Verification;
 
 /// Unicode data copyright and permission notice for the SASLprep tables.
 #[must_use]

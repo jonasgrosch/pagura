@@ -1,5 +1,8 @@
 //! Streaming hash primitives from RFC 1321 and FIPS 180-4.
 
+mod sha1;
+pub use sha1::{Sha1, sha1};
+
 // Only fixed-size block offsets are indexed; input is consumed through slices.
 fn absorb<const N: usize>(
     buffer: &mut [u8; N],
@@ -347,6 +350,73 @@ fn sha32_compress(state: &mut [u32; 8], block: &[u8; 64]) {
         *word = word.wrapping_add(value);
     }
 }
+
+/// Streaming SHA-224 (FIPS 180-4 section 6.3).
+#[derive(Clone, Debug)]
+pub struct Sha224 {
+    state: [u32; 8],
+    buffer: [u8; 64],
+    used: usize,
+    bytes: u64,
+}
+impl Default for Sha224 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+impl Sha224 {
+    /// Initializes the chaining state of FIPS 180-4 section 5.3.2; this is
+    /// not truncated SHA-256.
+    pub const fn new() -> Self {
+        Self {
+            state: [
+                0xc105_9ed8,
+                0x367c_d507,
+                0x3070_dd17,
+                0xf70e_5939,
+                0xffc0_0b31,
+                0x6858_1511,
+                0x64f9_8fa7,
+                0xbefa_4fa4,
+            ],
+            buffer: [0; 64],
+            used: 0,
+            bytes: 0,
+        }
+    }
+    /// Absorbs bytes without allocation, counting length modulo the specified length field.
+    pub fn update(&mut self, data: &[u8]) {
+        self.bytes = self.bytes.wrapping_add(data.len() as u64);
+        absorb(&mut self.buffer, &mut self.used, data, |block| {
+            sha32_compress(&mut self.state, block);
+        });
+    }
+    /// Appends FIPS 180-4 padding and returns the first seven state words.
+    pub fn finalize(mut self) -> [u8; 28] {
+        let bits = self.bytes.wrapping_mul(8).to_be_bytes();
+        let count = if self.used < 56 {
+            56 - self.used
+        } else {
+            120 - self.used
+        };
+        let mut padding = [0; 64];
+        padding[0] = 0x80;
+        self.update(&padding[..count]);
+        self.update(&bits);
+        let mut out = [0; 28];
+        for (chunk, word) in out.as_chunks_mut::<4>().0.iter_mut().zip(self.state) {
+            chunk.copy_from_slice(&word.to_be_bytes());
+        }
+        out
+    }
+}
+/// Computes the SHA-224 digest (FIPS 180-4 section 6.3).
+pub fn sha224(data: &[u8]) -> [u8; 28] {
+    let mut hash = Sha224::new();
+    hash.update(data);
+    hash.finalize()
+}
+
 // FIPS 180-4 section 4.2.3: fractional cube roots of the first 80 primes.
 const K64: [u64; 80] = [
     0x428a_2f98_d728_ae22,

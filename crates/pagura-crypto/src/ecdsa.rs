@@ -15,6 +15,7 @@ mod der;
 #[cfg(test)]
 mod tests;
 
+use crate::Verification;
 pub use crate::ec::Curve;
 use crate::ec::{Point, Uint};
 use pagura_core::{Error, Position, Result};
@@ -92,13 +93,14 @@ impl PublicKey {
     /// FIPS 186-5 §6.4.2: digest truncation uses the leftmost order-sized
     /// bit string, including P-521's non-byte-aligned truncation. Both high
     /// and low s are accepted; ECDSA itself does not impose a low-s rule.
-    /// `Ok(true)` establishes only the mathematical equation, never trust,
+    /// `Verification::Valid` establishes only the mathematical equation, never trust,
     /// hash strength, policy acceptance or PDF signed-byte coverage.
     ///
     /// # Errors
     /// Returns an invalid-argument error for an empty digest or a signature
-    /// parsed for a different curve. A mathematical mismatch is `Ok(false)`.
-    pub fn verify_digest(&self, digest: &[u8], signature: &Signature) -> Result<bool> {
+    /// parsed for a different curve. A mathematical mismatch is
+    /// `Ok(Verification::Invalid)`.
+    pub fn verify_digest(&self, digest: &[u8], signature: &Signature) -> Result<Verification> {
         if signature.curve != self.curve {
             return Err(Error::invalid_argument(
                 "ECDSA signature and public key curves differ",
@@ -111,7 +113,7 @@ impl PublicKey {
         let scalar = &parameters.scalar;
         let Some(inverse) = scalar.inverse(scalar.encode(signature.s)) else {
             // Signature construction already rejects zero; keep inversion total.
-            return Ok(false);
+            return Ok(Verification::Invalid);
         };
         let e = digest_integer(self.curve, digest);
         let u = scalar.decode(scalar.mul(scalar.encode(scalar.reduce_once(e)), inverse));
@@ -120,10 +122,14 @@ impl PublicKey {
             .point
             .double_scalar(u, v, parameters, self.curve.bits());
         let Some((x, _)) = result.affine_coordinates(parameters) else {
-            return Ok(false);
+            return Ok(Verification::Invalid);
         };
         // SP 800-186's named parameters give p < 2*n for all three curves.
-        Ok(scalar.reduce_once(x) == signature.r)
+        Ok(if scalar.reduce_once(x) == signature.r {
+            Verification::Valid
+        } else {
+            Verification::Invalid
+        })
     }
 
     /// Parses a strict DER signature and verifies it against a digest.
@@ -131,7 +137,7 @@ impl PublicKey {
     /// # Errors
     /// Returns the errors from [`Signature::from_der`] or
     /// [`Self::verify_digest`]. No BER or malformed-integer tolerance is used.
-    pub fn verify_der(&self, digest: &[u8], der: &[u8]) -> Result<bool> {
+    pub fn verify_der(&self, digest: &[u8], der: &[u8]) -> Result<Verification> {
         self.verify_digest(digest, &Signature::from_der(self.curve, der)?)
     }
 }
