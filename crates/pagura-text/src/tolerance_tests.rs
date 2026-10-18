@@ -265,7 +265,11 @@ fn widths_length_mismatches_are_reported_repairs() -> Result<()> {
         let error = PdfFont::load(&strict, dictionary(&strict)?)
             .err()
             .ok_or_else(|| Error::syntax("expected a strict rejection"))?;
-        assert_eq!(error.repair, Some(repairs::WIDTHS_LENGTH), "{name}: {error}");
+        assert_eq!(
+            error.repair,
+            Some(repairs::WIDTHS_LENGTH),
+            "{name}: {error}"
+        );
         assert!(strict.diagnostics().is_empty(), "{name}");
         let repaired = open(name, Recovery::Repair)?;
         let font = PdfFont::load(&repaired, dictionary(&repaired)?)?;

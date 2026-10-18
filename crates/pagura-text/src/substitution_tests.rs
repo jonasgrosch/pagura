@@ -325,3 +325,35 @@ fn substituted_fonts_reject_malformed_unicode_in_strict_mode() -> Result<()> {
     }
     Ok(())
 }
+
+#[test]
+fn null_or_dangling_font_files_still_use_the_provider() -> Result<()> {
+    // A FontFile entry that is null or refers to a missing object embeds
+    // nothing (7.3.9, 7.3.10), so the provider's substitute applies.
+    let name = "substitute-style-bold-weight";
+    let document = Document::open(
+        fixture("text", &format!("{name}.pdf")),
+        &OpenOptions::default(),
+    )?;
+    let original = document
+        .object(ObjectId::new(4, 0))?
+        .dictionary()
+        .ok_or_else(|| Error::syntax("missing font"))?;
+    for value in [Value::Null, Value::Reference(ObjectId::new(99, 0))] {
+        let mut descriptor = document
+            .object(ObjectId::new(5, 0))?
+            .dictionary()
+            .ok_or_else(|| Error::syntax("missing descriptor"))?
+            .clone();
+        descriptor.insert(Name::new(b"FontFile2"), value);
+        let mut font = original.clone();
+        font.insert(Name::new(b"FontDescriptor"), Value::Dictionary(descriptor));
+        let substituted = PdfFont::load_with(&document, &font, &Outlines)?;
+        check_glyphs(name, &substituted)?;
+        let error = PdfFont::load(&document, &font)
+            .err()
+            .ok_or_else(|| Error::syntax("expected a missing program"))?;
+        assert_eq!(error.feature(), Some(features::NON_EMBEDDED));
+    }
+    Ok(())
+}

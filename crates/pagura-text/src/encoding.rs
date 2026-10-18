@@ -16,7 +16,7 @@ pub(crate) struct SimpleMapping {
 
 impl SimpleMapping {
     pub(crate) fn new(names: Encoding, limits: Limits, base_font: &[u8]) -> Result<Self> {
-        let dingbats = crate::substitute::standard_name(base_font) == Some(b"ZapfDingbats");
+        let dingbats = is_dingbats(base_font);
         let mut work = 0;
         let mut bytes = 0;
         let mut texts = std::array::from_fn(|_| None);
@@ -127,10 +127,13 @@ pub(crate) fn unicode(name: &[u8]) -> Option<String> {
 }
 
 pub(crate) fn unicode_for_font(name: &[u8], base_font: &[u8]) -> Option<String> {
-    unicode_with(
-        name,
-        crate::substitute::standard_name(base_font) == Some(b"ZapfDingbats"),
-    )
+    unicode_with(name, is_dingbats(base_font))
+}
+
+/// Whether a base font name is ZapfDingbats under the substitution aliases,
+/// so its Annex D.6 glyph names apply.
+fn is_dingbats(base_font: &[u8]) -> bool {
+    crate::substitute::standard_name(base_font) == Some(crate::substitute::Standard14::ZapfDingbats)
 }
 
 fn unicode_with(name: &[u8], dingbats: bool) -> Option<String> {
