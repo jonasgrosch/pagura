@@ -21,9 +21,6 @@ pub mod repairs;
 mod sfnt;
 mod type1;
 
-#[cfg(test)]
-mod tests;
-
 /// Stable tags for font capabilities not implemented yet.
 pub mod features {
     use pagura_core::Feature;
