@@ -4,7 +4,7 @@ use crate::timestamp::TstInfo;
 use crate::types::{EcdsaSignature, StringValue};
 use crate::x509::{Certificate, CertificateList, extensions};
 use crate::{BitString, Integer, ObjectIdentifier, Time};
-use pagura_core::{Diagnostics, ErrorKind, Limits, Position, Recovery, Result};
+use pagura_core::{Diagnostic, Diagnostics, ErrorKind, Limits, Position, Recovery, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
@@ -204,7 +204,7 @@ fn ber_deviations_are_explicit_and_bounded() {
         diagnostics
             .as_slice()
             .iter()
-            .map(|item| item.repair)
+            .filter_map(Diagnostic::repair)
             .collect::<Vec<_>>(),
         [
             crate::tags::BER_INDEFINITE,
