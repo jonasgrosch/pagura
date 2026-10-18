@@ -121,7 +121,7 @@ fn check_strict(bytes: Vec<u8>, name: &str, repaired: bool) {
         let error = result.unwrap_err();
         assert_eq!(
             error.repair,
-            Some(pagura_font::tags::DESCRIPTOR_FLAGS),
+            Some(pagura_font::repairs::DESCRIPTOR_FLAGS),
             "{name}: {error}"
         );
         assert_eq!(error.object, Some(ObjectId::new(6, 0)), "{name}");
@@ -161,7 +161,7 @@ fn check_result(
         document
             .diagnostics()
             .iter()
-            .any(|d| d.repair() == Some(pagura_font::tags::DESCRIPTOR_FLAGS)),
+            .any(|d| d.repair() == Some(pagura_font::repairs::DESCRIPTOR_FLAGS)),
         repaired,
         "{name}"
     );

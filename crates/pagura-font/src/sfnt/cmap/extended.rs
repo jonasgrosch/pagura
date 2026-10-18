@@ -1,7 +1,7 @@
 //! Mixed-byte and trimmed Unicode cmap layouts, pending OpenType primary review.
 use super::{charge, word};
 use crate::read::{Read, bad, cap};
-use crate::{recovery::repair, tags};
+use crate::{recovery::repair, repairs};
 use pagura_core::{Diagnostics, Limits, Position, Result};
 
 pub(super) fn validate_two(
@@ -37,7 +37,7 @@ pub(super) fn validate_two(
         if start > r.data.len() {
             repair(
                 diagnostics,
-                tags::CMAP_TRUNCATED,
+                repairs::CMAP_TRUNCATED,
                 "missing cmap subheader glyph array",
                 Position::Buffer(header.at() - 2),
             )?;

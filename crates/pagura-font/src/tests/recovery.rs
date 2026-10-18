@@ -143,7 +143,7 @@ fn repair_diagnostics_are_bounded_and_repeated_calls_are_independent() {
     // The strict compatibility API admits no repair.
     assert_eq!(
         font.outline(GlyphId(3)).unwrap_err().repair,
-        Some(crate::tags::COMPONENT_FLAGS)
+        Some(crate::repairs::COMPONENT_FLAGS)
     );
     for _ in 0..2 {
         let mut diagnostics = Diagnostics::new(Recovery::Repair);
