@@ -746,7 +746,10 @@ def bundled_cases():
         # AFM name/width/code set is separately checked without assuming AGL.
         sample_unicode = {"space":" ","A":"A","a":"a","fi":"ﬁ","Alpha":"Α","alpha":"α"}
         samples = [32,65,97,174,0]
-        outlines = item["outline"]
+        # TrueType substitutes are selected through their Unicode cmap. The CFF
+        # substitutes for Symbol and ZapfDingbats are not linked by the data
+        # crate yet, so their fonts still expect no outline glyph.
+        outlines = item["outline"] if item["outline"].endswith(".ttf") else None
         rows = [(code,widths.get(encoding.get(code),0)/1000,
                  sample_unicode.get(encoding.get(code)),
                  bundled_tt_glyph(data/outlines,ord(sample_unicode[encoding[code]]))
