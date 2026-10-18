@@ -181,7 +181,7 @@ impl FilterChain {
         diagnostics: &mut Diagnostics,
     ) -> Result<Cow<'a, [u8]>> {
         if self.filters.is_empty() && input.len() > max_output {
-            return Err(crate::report::limit(max_output));
+            return Err(crate::bounded::decode_limit(max_output));
         }
         let mut data = Cow::Borrowed(input);
         for filter in &self.filters {

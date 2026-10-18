@@ -5,7 +5,7 @@ use super::{
     matcher::{Matcher, Token},
     tables::{DIST_BASE, DIST_EXTRA, LENGTH_BASE, LENGTH_EXTRA},
 };
-use crate::bounded::{Bytes, limit};
+use crate::bounded::{BoundedBytes, ENCODE_BUDGET, encode_limit, with_capacity};
 use pagura_core::{Limits, Result};
 
 const BLOCK: usize = 65535;
@@ -14,7 +14,7 @@ const ORDER: [usize; 19] = [
 ];
 
 struct Bits {
-    bytes: Bytes,
+    bytes: BoundedBytes,
     pending: u32,
     count: u8,
 }
@@ -110,11 +110,9 @@ fn payload_cost<const N: usize>(tokens: &[Token], literal: &Book<N>, distance: &
 }
 
 fn length_runs(lengths: impl Iterator<Item = u8>) -> Result<Vec<Run>> {
-    let mut values = Vec::new();
-    values.try_reserve_exact(316).map_err(|_| limit(0))?;
+    let mut values = with_capacity(316)?;
     values.extend(lengths);
-    let mut runs = Vec::new();
-    runs.try_reserve_exact(values.len()).map_err(|_| limit(0))?;
+    let mut runs = with_capacity(values.len())?;
     let mut pos = 0;
     while pos < values.len() {
         let value = values[pos];
@@ -297,7 +295,7 @@ fn block(output: &mut Bits, bytes: &[u8], tokens: &[Token], final_block: bool) -
     if cost(stored_cost) < cost(fixed_cost) && cost(stored_cost) <= dynamic_cost {
         output.put(u32::from(final_block), 3)?;
         output.align()?;
-        let length = u16::try_from(bytes.len()).map_err(|_| limit(0))?;
+        let length = u16::try_from(bytes.len()).map_err(|_| encode_limit())?;
         output.bytes.extend(&length.to_le_bytes())?;
         output.bytes.extend(&(!length).to_le_bytes())?;
         output.bytes.extend(bytes)?;
@@ -314,10 +312,10 @@ fn block(output: &mut Bits, bytes: &[u8], tokens: &[Token], final_block: bool) -
 
 pub(super) fn compress(data: &[u8], level: Level, limits: &Limits) -> Result<Vec<u8>> {
     if data.len() > limits.decoded_bytes || limits.stream_bytes < 8 {
-        return Err(limit(data.len()));
+        return Err(encode_limit());
     }
     let mut output = Bits {
-        bytes: Bytes::new(limits.stream_bytes),
+        bytes: BoundedBytes::new(limits.stream_bytes, ENCODE_BUDGET),
         pending: 0,
         count: 0,
     };
@@ -327,10 +325,7 @@ pub(super) fn compress(data: &[u8], level: Level, limits: &Limits) -> Result<Vec
         &[0x78, 0x9c]
     })?;
     let mut matcher = Matcher::new(data.len(), level)?;
-    let mut tokens = Vec::new();
-    tokens
-        .try_reserve_exact(data.len().min(BLOCK))
-        .map_err(|_| limit(0))?;
+    let mut tokens = with_capacity(data.len().min(BLOCK))?;
     if data.is_empty() {
         block(&mut output, &[], &[], true)?;
     }
@@ -346,7 +341,7 @@ pub(super) fn compress(data: &[u8], level: Level, limits: &Limits) -> Result<Vec
     }
     output.align()?;
     output.bytes.extend(&adler32(data).to_be_bytes())?;
-    Ok(output.bytes.data)
+    Ok(output.bytes.into_vec())
 }
 
 fn adler32(input: &[u8]) -> u32 {

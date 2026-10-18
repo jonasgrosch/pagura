@@ -71,7 +71,7 @@ fn inflate(
         bit: 0,
     };
     let output = Output::new(cap, predictor)?;
-    let history = if predictor.kind == crate::PredictorKind::None {
+    let history = if predictor.kind() == crate::PredictorKind::None {
         None
     } else {
         Some(History::new(output.history_capacity().min(window))?)
@@ -270,7 +270,7 @@ impl Huffman {
         let mut entries = Vec::new();
         entries
             .try_reserve_exact(size)
-            .map_err(|_| crate::report::limit(offset))?;
+            .map_err(|_| crate::bounded::decode_limit(offset))?;
         entries.resize(size, Entry::default());
         for (symbol, &length) in lengths.iter().enumerate() {
             if length == 0 {
@@ -327,13 +327,8 @@ struct History {
 
 impl History {
     fn new(size: usize) -> Result<Self> {
-        let mut bytes = Vec::new();
-        bytes
-            .try_reserve_exact(size)
-            .map_err(|_| crate::report::limit(0))?;
-        bytes.resize(size, 0);
         Ok(Self {
-            bytes,
+            bytes: crate::bounded::filled(size, 0)?,
             cursor: 0,
             available: 0,
         })
@@ -442,7 +437,7 @@ impl Inflater {
         let end = bits
             .offset
             .checked_add(count)
-            .ok_or_else(|| crate::report::limit(bits.offset))?;
+            .ok_or_else(|| crate::bounded::decode_limit(bits.offset))?;
         let bytes = bits.input.get(bits.offset..end).ok_or(Fault::End)?;
         self.emit(bytes, bits.offset)?;
         bits.offset = end;

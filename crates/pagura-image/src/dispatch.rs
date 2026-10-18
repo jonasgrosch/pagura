@@ -215,10 +215,10 @@ fn predicted_flate(
 ) -> Option<Vec<u8>> {
     let (width, height, components) = dimensions;
     let predictor = pagura_codec::Predictor::from_params(params).ok()?;
-    if predictor.kind == pagura_codec::PredictorKind::None
-        || predictor.columns != width
-        || predictor.colors != components
-        || predictor.bits_per_component != 8
+    if predictor.kind() == pagura_codec::PredictorKind::None
+        || predictor.columns() != width
+        || predictor.colors() != components
+        || predictor.bits_per_component() != 8
     {
         return None;
     }
