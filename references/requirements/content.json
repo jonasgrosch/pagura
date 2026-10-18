@@ -634,11 +634,11 @@
         "11.7.4"
       ],
       "rule": "Subtractive overprint requires per-colourant selection and overprint-mode semantics before compositing; converting a source to RGB or a dense CMYK vector loses this information.",
-      "status": "explicit unsupported for CMYK group overprint",
+      "status": "implemented; independently verified CMYK overprint",
       "tests": [
         "content/overprint-cmyk-boundary"
       ],
-      "gaps": "CMYK output-intent simulation is deferred: retained colours lack colourant-write masks/OPM and destination ICC inverse transforms are not implemented. Accepting this input as ordinary source-over would erase underlying inks."
+      "gaps": "Physical ink prediction and output-intent ICC destination transforms remain outside the display simulation policy."
     },
     {
       "id": "content-icc-admission",

@@ -1097,7 +1097,7 @@ def mesh_cases():
 def group_region_cases():
     pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 512 512] /Resources << /XObject << /G 5 0 R >> /ExtGState << /A << /ca .5 >> >> >> /Contents 4 0 R >>',stream(b'254 254 4 4 re W n /A gs /G Do'),stream(b'1 0 0 rg 0 0 512 512 re f',b'/Type /XObject /Subtype /Form /BBox [0 0 512 512] /Resources << >> /Group << /S /Transparency /I true >>')])
     yield Case('group-small-clip',pdf,RENDER,('content-group-regions',),'11.4.4, 11.6.6: a large group contributes only inside its hard clip; half-opacity red is (255,128,128)',oracle=opaque_rectangles(512,512,[((254,254,4,4),(255,128,128))]))
-    yield Case('overprint-cmyk-boundary',single_page([b'/A gs 1 0 0 0 k 0 0 8 8 re f'],media_box=b'[0 0 8 8]',resources=b'<< /ExtGState << /A << /op true /OPM 1 >> >> >>',page_extra=b'/Group << /S /Transparency /CS /DeviceCMYK /I true >>'),UNSUPPORTED,('content-overprint-boundary',),'11.7.4 requires colourant-preserving overprint simulation; dense converted vectors cannot supply it',feature='transparency.overprint')
+    yield Case('overprint-cmyk-boundary',single_page([b'/A gs 1 0 0 0 k 0 0 8 8 re f'],media_box=b'[0 0 8 8]',resources=b'<< /ExtGState << /A << /op true /OPM 1 >> >> >>',page_extra=b'/Group << /S /Transparency /CS /DeviceCMYK /I true >>'),RENDER,('content-overprint-boundary',),'11.7.4 selects nonzero CMYK colourants before compositing',oracle=opaque_rectangles(8,8,[((0,0,8,8),(0,255,255))]))
 
 
 def note_icon_cases():
