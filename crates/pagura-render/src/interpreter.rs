@@ -1,7 +1,5 @@
 //! Content compilation from immutable objects and optional in-memory form values.
 
-mod annotation_shapes;
-mod annotation_widgets;
 mod annotations;
 mod annotations_filled;
 #[cfg(test)]
@@ -10,9 +8,9 @@ mod forms;
 pub(crate) mod images;
 mod masks;
 mod path;
+mod pattern;
 mod pattern_inline;
-mod patterns;
-mod shadings;
+mod shading;
 mod state;
 pub(crate) mod text;
 
