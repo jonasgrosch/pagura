@@ -5,6 +5,1572 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "image/jpeg-arithmetic-sequential",
+      "kind": "vector",
+      "description": "jpeg arithmetic sequential",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-sequential.in",
+          "sha256": "e4e194f7110b9248799f404a09c85a4ec048ffee869ba6f2a77974eaa5c67b76"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-sequential.out",
+          "sha256": "9effb22ad1d15c8b60bcbdfcd5b60baa85a410378c7fa2277f1654b52fb9208b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-sequential.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-pdf-sequential",
+      "kind": "vector",
+      "description": "jpeg arithmetic pdf sequential",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-pdf-sequential.out",
+          "sha256": "48d0d313b96a4cc0474d668292bdf60434cf1a10d750305686874d747fc9e819"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-pdf-sequential.params",
+          "sha256": "a2f4105646045bd76bf1ecb0a7cfe609c3c4843a71c8d34d40a2c959e2d43d31"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpeg-arithmetic-pdf-sequential.pdf",
+          "sha256": "d46a3a2738a46934936c775f24f2eb3140a4aa1a0baf6ae721cb7407ac90ea4d"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-default-conditioning",
+      "kind": "vector",
+      "description": "jpeg arithmetic default conditioning",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-default-conditioning.in",
+          "sha256": "1c4b42ba8c9ffcae8d0dbe4284a8b1b37456b1c45f0a74ff8bd523dab602a666"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-default-conditioning.out",
+          "sha256": "9effb22ad1d15c8b60bcbdfcd5b60baa85a410378c7fa2277f1654b52fb9208b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-default-conditioning.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-progressive",
+      "kind": "vector",
+      "description": "jpeg arithmetic progressive",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-progressive.in",
+          "sha256": "c57886e85e657e624b63302ab3e60ff2b81699e7795e74df43154db1e3ed2e94"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-progressive.out",
+          "sha256": "9effb22ad1d15c8b60bcbdfcd5b60baa85a410378c7fa2277f1654b52fb9208b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-progressive.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-pdf-progressive",
+      "kind": "vector",
+      "description": "jpeg arithmetic pdf progressive",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-pdf-progressive.out",
+          "sha256": "48d0d313b96a4cc0474d668292bdf60434cf1a10d750305686874d747fc9e819"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-pdf-progressive.params",
+          "sha256": "a2f4105646045bd76bf1ecb0a7cfe609c3c4843a71c8d34d40a2c959e2d43d31"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpeg-arithmetic-pdf-progressive.pdf",
+          "sha256": "afdc9362a2d1a1fbcb9ea44442296be3ebc52eb2d6669c28a2d1a7f9731afbed"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-progressive-bands",
+      "kind": "vector",
+      "description": "jpeg arithmetic progressive bands",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-progressive-bands.in",
+          "sha256": "98c7a6cffaa544e24a296a8b36f59484ee2175ccfd75d54908d86b0240d6d6bf"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-progressive-bands.out",
+          "sha256": "9effb22ad1d15c8b60bcbdfcd5b60baa85a410378c7fa2277f1654b52fb9208b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-progressive-bands.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-rgb-shared-tables",
+      "kind": "vector",
+      "description": "jpeg arithmetic rgb shared tables",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-rgb-shared-tables.in",
+          "sha256": "2b3f218514ad80322a51cec827edf9995ac7d2f3621495e0e74d6489ed731166"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-rgb-shared-tables.out",
+          "sha256": "b2d5822d9004489e0e190c901159162a6c6104f7678e902c6ca5ed8e95f2b331"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-rgb-shared-tables.params",
+          "sha256": "d0c8d63554557f8e137c7a3738ebc7c4066588d2de9b4ca29cbb5ba3d36b75f8"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-restart",
+      "kind": "vector",
+      "description": "jpeg arithmetic restart",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-restart.in",
+          "sha256": "7ad4027ea67a42ba673e3910eb3b041d2415b7159cf5412843e43fcba2210b72"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-restart.out",
+          "sha256": "5def059a80a7f9185aa2b5dddc9697140a69f74c1d2c06b485da8e92cfad5c0d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-restart.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-progressive-restart",
+      "kind": "vector",
+      "description": "jpeg arithmetic progressive restart",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-progressive-restart.in",
+          "sha256": "e58a9656aafa9817e756ba05f688d92f6dfd60deb8f9bbe3e8fc8608db67cd29"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-progressive-restart.out",
+          "sha256": "5def059a80a7f9185aa2b5dddc9697140a69f74c1d2c06b485da8e92cfad5c0d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-progressive-restart.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-four-tables",
+      "kind": "vector",
+      "description": "jpeg arithmetic four tables",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-four-tables.in",
+          "sha256": "b2b09cf6d71e993ea276f73d5e1863dc5dbba81b5a7ca04d2fb6c1041078253d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-four-tables.out",
+          "sha256": "b82275f384bf36741f3ae8498454886a394ac00e838ffd70fd96c520f37cd7d6"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-four-tables.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-progressive-four-tables",
+      "kind": "vector",
+      "description": "jpeg arithmetic progressive four tables",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-progressive-four-tables.in",
+          "sha256": "180ea3f070c790cfc9de40906cfe1176ee246449024049a933aab75c997a4658"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-progressive-four-tables.out",
+          "sha256": "b82275f384bf36741f3ae8498454886a394ac00e838ffd70fd96c520f37cd7d6"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-progressive-four-tables.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-12bit",
+      "kind": "vector",
+      "description": "jpeg arithmetic 12bit",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit.exact",
+          "sha256": "311ef59fd7a3968a370df5dd67530b32e89600a8b248ab01e6a443e906b04e06"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit.in",
+          "sha256": "ab71bbe34c7f25152c89c8425b61a3a02b261107b5c02cb190f4251c8425f2e6"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit.out",
+          "sha256": "7c64948d56021aab4c6d1092800ae15f036407caa21e03cc717d1178c84d76c6"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-pdf-12bit",
+      "kind": "vector",
+      "description": "jpeg arithmetic pdf 12bit",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-pdf-12bit.out",
+          "sha256": "a8100b558415a3c8d92b0e20c760fdc19dbc474f85e8cf19c17996801f1ec9dc"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-pdf-12bit.params",
+          "sha256": "a2f4105646045bd76bf1ecb0a7cfe609c3c4843a71c8d34d40a2c959e2d43d31"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpeg-arithmetic-pdf-12bit.pdf",
+          "sha256": "21160b91c6a6e75a599e7e80148cb0f59c53b9fd32f50b0208d597c53e21e03e"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-12bit-ranges",
+      "kind": "vector",
+      "description": "jpeg arithmetic 12bit ranges",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-ranges.exact",
+          "sha256": "cadec6a29dca12babbf1d4d9e6c959108c0dbd2dddcf47454fd9a2af33775a11"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-ranges.in",
+          "sha256": "d3db14a99b8141f87cbbdd87a04154624cc0feed389761d11a8370a4e280c257"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-ranges.out",
+          "sha256": "4673c7ec330f001b3b0caabaebf678fcc7ab82d3c90012f3f5fced9cc2be2bde"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-ranges.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-12bit-bands",
+      "kind": "vector",
+      "description": "jpeg arithmetic 12bit bands",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-bands.exact",
+          "sha256": "311ef59fd7a3968a370df5dd67530b32e89600a8b248ab01e6a443e906b04e06"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-bands.in",
+          "sha256": "94cb524776107ff803a3996033dc2d9821bd32fa10f3cbb72972ac277270ca11"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-bands.out",
+          "sha256": "7c64948d56021aab4c6d1092800ae15f036407caa21e03cc717d1178c84d76c6"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-bands.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-12bit-rgb",
+      "kind": "vector",
+      "description": "jpeg arithmetic 12bit rgb",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-rgb.exact",
+          "sha256": "bdf5223b098d3513228268ecb0acff7fce7db08589fd7ab3167acacdedbecec8"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-rgb.in",
+          "sha256": "a568c375413e933cb66b2f0786b0d6d702f6b0b388ecc79cb10346f43e245e1c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-rgb.out",
+          "sha256": "ec74032c12214ba6d05a66968354759cb999903906c4c0fcdacea5a0e657e8d2"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-rgb.params",
+          "sha256": "d0c8d63554557f8e137c7a3738ebc7c4066588d2de9b4ca29cbb5ba3d36b75f8"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-12bit-ycck",
+      "kind": "vector",
+      "description": "jpeg arithmetic 12bit ycck",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-ycck.exact",
+          "sha256": "ab1dada15da3046422e0fedf02d8472425923e8b5cf22394c0a127cbd13605f1"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-ycck.in",
+          "sha256": "00940f8b09851e91941b5a1375abb57f3e2aa7548d45289648cae972f8bb587d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-ycck.out",
+          "sha256": "4abb97f9874726e2653ca46b372bcbbdd9a9a1f9ffa728c405d5607bb4b8d47f"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-ycck.params",
+          "sha256": "d0c8d63554557f8e137c7a3738ebc7c4066588d2de9b4ca29cbb5ba3d36b75f8"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-12bit-adobe-rgb",
+      "kind": "vector",
+      "description": "jpeg arithmetic 12bit adobe rgb",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-adobe-rgb.exact",
+          "sha256": "bdf5223b098d3513228268ecb0acff7fce7db08589fd7ab3167acacdedbecec8"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-adobe-rgb.in",
+          "sha256": "39e690c39d2d92ce1d5de7d8008daf2e9ae118136057844d98c08b7100cfa430"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-adobe-rgb.out",
+          "sha256": "ec74032c12214ba6d05a66968354759cb999903906c4c0fcdacea5a0e657e8d2"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-adobe-rgb.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-12bit-adobe-ycck",
+      "kind": "vector",
+      "description": "jpeg arithmetic 12bit adobe ycck",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-adobe-ycck.exact",
+          "sha256": "ab1dada15da3046422e0fedf02d8472425923e8b5cf22394c0a127cbd13605f1"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-adobe-ycck.in",
+          "sha256": "f52b03a106f64b146b97a4ea903951c2fd6a39ca5bab4f810b36fb7dffa69846"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-adobe-ycck.out",
+          "sha256": "4abb97f9874726e2653ca46b372bcbbdd9a9a1f9ffa728c405d5607bb4b8d47f"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-adobe-ycck.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-12bit-adobe-cmyk",
+      "kind": "vector",
+      "description": "jpeg arithmetic 12bit adobe cmyk",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-adobe-cmyk.exact",
+          "sha256": "076ad0f4ad919c1bc942017d0a21db6929bd654111a34f22141201d9dcaad021"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-adobe-cmyk.in",
+          "sha256": "0e3aa88d02d87569495cb8304bf43a4a8e7e0136d733d1ebffbc3097c209ef7b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-adobe-cmyk.out",
+          "sha256": "1ea81ca14a113c945e8ec65740bca42dbda3cc46f5b8660053af82b97e821a84"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-adobe-cmyk.params",
+          "sha256": "d0c8d63554557f8e137c7a3738ebc7c4066588d2de9b4ca29cbb5ba3d36b75f8"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-12bit-four-tables",
+      "kind": "vector",
+      "description": "jpeg arithmetic 12bit four tables",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-four-tables.exact",
+          "sha256": "076ad0f4ad919c1bc942017d0a21db6929bd654111a34f22141201d9dcaad021"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-four-tables.in",
+          "sha256": "d0180518628bc901f7a759f2c2bc71e029cf23258e90d5746b29a82b1e4bff0f"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-four-tables.out",
+          "sha256": "1ea81ca14a113c945e8ec65740bca42dbda3cc46f5b8660053af82b97e821a84"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-four-tables.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-12bit-progressive",
+      "kind": "vector",
+      "description": "jpeg arithmetic 12bit progressive",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-progressive.exact",
+          "sha256": "311ef59fd7a3968a370df5dd67530b32e89600a8b248ab01e6a443e906b04e06"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-progressive.in",
+          "sha256": "0e3e8a76f686ad4978bfa7782fe66f6f37d9dae8bd1f8e3dd882d95c22c2526c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-progressive.out",
+          "sha256": "7c64948d56021aab4c6d1092800ae15f036407caa21e03cc717d1178c84d76c6"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-12bit-progressive.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-wide-quantizer",
+      "kind": "vector",
+      "description": "jpeg arithmetic wide quantizer",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-wide-quantizer.in",
+          "sha256": "f1e291ede35238c93edaa71cd2a5eda40e85a15cf49799fc9c426589e55b5f83"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-wide-quantizer.out",
+          "sha256": "20d6cbba51c226737d093283d1c5608f30de935dc6c55fae28069adea417b9f7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-wide-quantizer.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-zero-suffix-termination",
+      "kind": "vector",
+      "description": "jpeg arithmetic zero suffix termination",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-zero-suffix-termination.in",
+          "sha256": "7355d039e1153f30427dadcb335fba180376d338d64dcb992c03ae4799375fad"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-zero-suffix-termination.out",
+          "sha256": "b2ec9812962b05f9f04ee25ee5a085ed41478c295e18d96969d593d02dbbbba6"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-zero-suffix-termination.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-empty-termination",
+      "kind": "vector",
+      "description": "jpeg arithmetic empty termination",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-arithmetic-empty-termination.exact",
+          "sha256": "57aec05bb16bd8b25726b4ff919f26cc9a06c5f810848587d1c1233c60331b1d"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-empty-termination.in",
+          "sha256": "5ea65430ccf726b1ff00aa12168e10022f3171c61817b264843eb4d54ee1d1c5"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-empty-termination.out",
+          "sha256": "1df1b7ce1fd8fcbe20cde61646875e54fe38d8945ea7911afd59e025cc520a68"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-empty-termination.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-sequential",
+      "kind": "vector",
+      "description": "jpeg 12bit sequential",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-12bit-sequential.exact",
+          "sha256": "311ef59fd7a3968a370df5dd67530b32e89600a8b248ab01e6a443e906b04e06"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-12bit-sequential.in",
+          "sha256": "01375083e619bb46cc02a86fd1024a887aa7d8e3332bf36a125e31d48f93781b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-sequential.out",
+          "sha256": "7c64948d56021aab4c6d1092800ae15f036407caa21e03cc717d1178c84d76c6"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-sequential.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-pdf-sequential",
+      "kind": "vector",
+      "description": "jpeg 12bit pdf sequential",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-pdf-sequential.out",
+          "sha256": "a8100b558415a3c8d92b0e20c760fdc19dbc474f85e8cf19c17996801f1ec9dc"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-pdf-sequential.params",
+          "sha256": "a2f4105646045bd76bf1ecb0a7cfe609c3c4843a71c8d34d40a2c959e2d43d31"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpeg-12bit-pdf-sequential.pdf",
+          "sha256": "3348d0d27a88c3ec20f7d1b8e1c76d0d5e2d506cc01eb1e679025ca30e8bef24"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-progressive",
+      "kind": "vector",
+      "description": "jpeg 12bit progressive",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive.exact",
+          "sha256": "311ef59fd7a3968a370df5dd67530b32e89600a8b248ab01e6a443e906b04e06"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive.in",
+          "sha256": "c58c0362a16e9bc6fc601a484b143062583c055e7c279b875f93f2b703658ba7"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive.out",
+          "sha256": "7c64948d56021aab4c6d1092800ae15f036407caa21e03cc717d1178c84d76c6"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-pdf-progressive",
+      "kind": "vector",
+      "description": "jpeg 12bit pdf progressive",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-pdf-progressive.out",
+          "sha256": "a8100b558415a3c8d92b0e20c760fdc19dbc474f85e8cf19c17996801f1ec9dc"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-pdf-progressive.params",
+          "sha256": "a2f4105646045bd76bf1ecb0a7cfe609c3c4843a71c8d34d40a2c959e2d43d31"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpeg-12bit-pdf-progressive.pdf",
+          "sha256": "b73276b4bdd66395c76eb950e00ab9c65437b07f5ca29a8e778e9cac2b183d55"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-restart",
+      "kind": "vector",
+      "description": "jpeg 12bit restart",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-12bit-restart.exact",
+          "sha256": "116e75d81eb4461610f6293cb083bbca9dc6c547c9fcbf12f5c382833804e5e3"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-12bit-restart.in",
+          "sha256": "7b7dd8dd0ed2760daadc128ffaa33e4d963c634c56ddfc35b0c9b4288f5c7cc9"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-restart.out",
+          "sha256": "6e8b7d9e70ddf60c9b695560e1953af58c8d59e38d46dc0e37fc0a93df2bb005"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-restart.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-progressive-restart",
+      "kind": "vector",
+      "description": "jpeg 12bit progressive restart",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive-restart.exact",
+          "sha256": "116e75d81eb4461610f6293cb083bbca9dc6c547c9fcbf12f5c382833804e5e3"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive-restart.in",
+          "sha256": "b30db4fe824841c5fd4c689eb47a15a5247c4295f7fd923884545024a1e4aecd"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive-restart.out",
+          "sha256": "6e8b7d9e70ddf60c9b695560e1953af58c8d59e38d46dc0e37fc0a93df2bb005"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive-restart.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-wide-quantizer",
+      "kind": "vector",
+      "description": "jpeg 12bit wide quantizer",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-12bit-wide-quantizer.exact",
+          "sha256": "e25992c8cb689d37691742db9064b3614c02cd3b674333e13fe1ac60b5f1fc40"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-12bit-wide-quantizer.in",
+          "sha256": "c3d030899d6283063f5404164d292cefbd947a772303a4ad8ebf909bc61fd412"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-wide-quantizer.out",
+          "sha256": "20d6cbba51c226737d093283d1c5608f30de935dc6c55fae28069adea417b9f7"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-wide-quantizer.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-ranges",
+      "kind": "vector",
+      "description": "jpeg 12bit ranges",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-12bit-ranges.exact",
+          "sha256": "cadec6a29dca12babbf1d4d9e6c959108c0dbd2dddcf47454fd9a2af33775a11"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-12bit-ranges.in",
+          "sha256": "8bbd064de23fe653f02f09bdf47f6497af4ef253e6af4f1b0e9ffb4fb504e386"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-ranges.out",
+          "sha256": "4673c7ec330f001b3b0caabaebf678fcc7ab82d3c90012f3f5fced9cc2be2bde"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-ranges.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-rgb",
+      "kind": "vector",
+      "description": "jpeg 12bit rgb",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-12bit-rgb.exact",
+          "sha256": "bdf5223b098d3513228268ecb0acff7fce7db08589fd7ab3167acacdedbecec8"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-12bit-rgb.in",
+          "sha256": "425fc27902d8ccaf4b6e41be4eda07e141d3c9b754fc43a9e2ac46dc8194043e"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-rgb.out",
+          "sha256": "ec74032c12214ba6d05a66968354759cb999903906c4c0fcdacea5a0e657e8d2"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-rgb.params",
+          "sha256": "d0c8d63554557f8e137c7a3738ebc7c4066588d2de9b4ca29cbb5ba3d36b75f8"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-progressive-rgb",
+      "kind": "vector",
+      "description": "jpeg 12bit progressive rgb",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive-rgb.exact",
+          "sha256": "bdf5223b098d3513228268ecb0acff7fce7db08589fd7ab3167acacdedbecec8"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive-rgb.in",
+          "sha256": "25635755af91f1b8ca8fed296c1db7a3cef19c821967390ab3bfb9d3105571f0"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive-rgb.out",
+          "sha256": "ec74032c12214ba6d05a66968354759cb999903906c4c0fcdacea5a0e657e8d2"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive-rgb.params",
+          "sha256": "d0c8d63554557f8e137c7a3738ebc7c4066588d2de9b4ca29cbb5ba3d36b75f8"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-ycck",
+      "kind": "vector",
+      "description": "jpeg 12bit ycck",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-12bit-ycck.exact",
+          "sha256": "ab1dada15da3046422e0fedf02d8472425923e8b5cf22394c0a127cbd13605f1"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-12bit-ycck.in",
+          "sha256": "76b1d9219b68087f7af52658fa8c979835434e6b0380b1995e76aa4661dc5ef8"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-ycck.out",
+          "sha256": "4abb97f9874726e2653ca46b372bcbbdd9a9a1f9ffa728c405d5607bb4b8d47f"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-ycck.params",
+          "sha256": "d0c8d63554557f8e137c7a3738ebc7c4066588d2de9b4ca29cbb5ba3d36b75f8"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-adobe-rgb",
+      "kind": "vector",
+      "description": "jpeg 12bit adobe rgb",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-12bit-adobe-rgb.exact",
+          "sha256": "bdf5223b098d3513228268ecb0acff7fce7db08589fd7ab3167acacdedbecec8"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-12bit-adobe-rgb.in",
+          "sha256": "7f801010c7150953b870e7a975f708ba34b4805d0db92083584dba28211db54f"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-adobe-rgb.out",
+          "sha256": "ec74032c12214ba6d05a66968354759cb999903906c4c0fcdacea5a0e657e8d2"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-adobe-rgb.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-adobe-ycck",
+      "kind": "vector",
+      "description": "jpeg 12bit adobe ycck",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-12bit-adobe-ycck.exact",
+          "sha256": "ab1dada15da3046422e0fedf02d8472425923e8b5cf22394c0a127cbd13605f1"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-12bit-adobe-ycck.in",
+          "sha256": "9b0ba64f13d8614087e838b3f6e5db94d8c673786e08bd7bf1f9a0c179812983"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-adobe-ycck.out",
+          "sha256": "4abb97f9874726e2653ca46b372bcbbdd9a9a1f9ffa728c405d5607bb4b8d47f"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-adobe-ycck.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-adobe-cmyk",
+      "kind": "vector",
+      "description": "jpeg 12bit adobe cmyk",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-12bit-adobe-cmyk.exact",
+          "sha256": "076ad0f4ad919c1bc942017d0a21db6929bd654111a34f22141201d9dcaad021"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-12bit-adobe-cmyk.in",
+          "sha256": "455fb3f1545ab3b896ad1855f499c075e172439a7e445df65bf772512cab2824"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-adobe-cmyk.out",
+          "sha256": "1ea81ca14a113c945e8ec65740bca42dbda3cc46f5b8660053af82b97e821a84"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-adobe-cmyk.params",
+          "sha256": "d0c8d63554557f8e137c7a3738ebc7c4066588d2de9b4ca29cbb5ba3d36b75f8"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-progressive-ranges",
+      "kind": "vector",
+      "description": "jpeg 12bit progressive ranges",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive-ranges.exact",
+          "sha256": "cadec6a29dca12babbf1d4d9e6c959108c0dbd2dddcf47454fd9a2af33775a11"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive-ranges.in",
+          "sha256": "0896f5186989344342f8fa4e6c71743fc6d084c73c385fa4abb2cd0c347f702e"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive-ranges.out",
+          "sha256": "4673c7ec330f001b3b0caabaebf678fcc7ab82d3c90012f3f5fced9cc2be2bde"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-progressive-ranges.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-sample-reduction",
+      "kind": "vector",
+      "description": "jpeg 12bit sample reduction",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".exact": {
+          "path": "corpus/generated/image/jpeg-12bit-sample-reduction.exact",
+          "sha256": "b400e0c1c488612a9e93c9f0cbfaa9f450483522976af8338f2aeda7e3228968"
+        },
+        ".in": {
+          "path": "corpus/generated/image/jpeg-12bit-sample-reduction.in",
+          "sha256": "7a4771649ac611b3ee043a5e64a5bcf4a8c9899fd230a620c5df454890d3b30b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-sample-reduction.out",
+          "sha256": "d9f55e48cb415407a6244ed49f90c40fd93957db13b351ff2cda4509ba536666"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-sample-reduction.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-budget-huffman",
+      "kind": "vector",
+      "description": "jpeg budget huffman",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-budget-huffman.in",
+          "sha256": "0c29144d1346a4d124bcd1e648aae92c58bfa80408b8605c4b91a1b8b83f9001"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-budget-huffman.out",
+          "sha256": "68c078f7178270e419a96d5b00741e572d353df78d5e127fcd1b5fcb7967e77a"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-budget-huffman.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-budget-arithmetic",
+      "kind": "vector",
+      "description": "jpeg budget arithmetic",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-budget-arithmetic.in",
+          "sha256": "eeaefafcb8c386b5ca22a93d4ad703480c8973f5115f6a77a0ce2064c7b0bb90"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-budget-arithmetic.out",
+          "sha256": "68c078f7178270e419a96d5b00741e572d353df78d5e127fcd1b5fcb7967e77a"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-budget-arithmetic.params",
+          "sha256": "fd9189f4a5224be3b3113a54595fa476a59ccbe69b3e9f375700d0bb381618ab"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-dac-odd",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad dac odd",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-odd.in",
+          "sha256": "460be6119e2f94cfdb44708e9f50fe454abab8d8c3e773cfbbfb08bea91d967c"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-odd.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-odd.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-dac-selector",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad dac selector",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-selector.in",
+          "sha256": "e7cabb4e9defb7f673f7e74be82f7ff4ec5278df7586c88adbfe5d08f82e7a2b"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-selector.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-selector.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-dac-class",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad dac class",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-class.in",
+          "sha256": "79cc16ef1eea48021307c24ff8bf148260bbf5517600048a3ceffd037ec87117"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-class.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-class.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-dac-dc-bounds",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad dac dc bounds",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-dc-bounds.in",
+          "sha256": "ceee39c5d4cf300ed5dfdb7eb69566c81f96866d5a9fabcafad40fe4af1e5733"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-dc-bounds.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-dc-bounds.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-dac-ac-zero",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad dac ac zero",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-ac-zero.in",
+          "sha256": "15cd51d58e37440255fd9fb4f5586796de54daa9b899dc654d3e72d74718b8ff"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-ac-zero.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-ac-zero.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-dac-ac-large",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad dac ac large",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-ac-large.in",
+          "sha256": "0f0fc040ac6aefae927ecf8642f2be8b6228595fa3e3282960bfe8779a5498c4"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-ac-large.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dac-ac-large.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-restart",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad restart",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-restart.in",
+          "sha256": "3e765241f88cc4185a84be1792e7db3c7c03a189c35f423952235cffd07a378f"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-restart.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-restart.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-truncated",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad truncated",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-truncated.in",
+          "sha256": "e1418234d7fae48db89f3c02c4ccd19aa52bcf8bd831feb6f0657f3d262c1faf"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-truncated.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-truncated.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-missing-eoi",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad missing eoi",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-missing-eoi.in",
+          "sha256": "ab56905a20549697fcc0771ec40463b3ffbe43f6152ff9142caeab17580b794e"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-missing-eoi.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-missing-eoi.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-marker",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad marker",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-marker.in",
+          "sha256": "f105211feb8564e2a9f0b9f33f132df1c20df068389d64e97deccb39cd02b693"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-marker.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-marker.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-zero-run",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad zero run",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-zero-run.in",
+          "sha256": "2c418062d5c153be154ecda378f9190bd71b98f21a3674fbbd4995b28c1fa7ee"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-zero-run.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-zero-run.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-dc-overflow",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad dc overflow",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dc-overflow.in",
+          "sha256": "913cb86b14401b48c9db56fac092781e410992325b3ffdf4fd87ed02a2338fcc"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dc-overflow.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-dc-overflow.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-ac-overflow",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad ac overflow",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-ac-overflow.in",
+          "sha256": "b41c73e5107dbe58cc841343e0a29ce389c7f01c782e31a55475b6f04bd98b26"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-ac-overflow.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-ac-overflow.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-refinement-order",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad refinement order",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-refinement-order.in",
+          "sha256": "0adb90091323024c546e82762d58a56ca652668cf749269121911fab5ad0e8d6"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-refinement-order.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-refinement-order.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-ac-before-dc",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad ac before dc",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-ac-before-dc.in",
+          "sha256": "ad79bd50878dc3d3c3cee2b272f68d765b805421ccba1fa693b4dc28023a69b0"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-ac-before-dc.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-ac-before-dc.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-selector",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad selector",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-selector.in",
+          "sha256": "6756e553d6cf584e5954e1b2fe661abdd56dbda60f221cb505fc0d87d96e6679"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-selector.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-selector.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-bad-stuffing",
+      "kind": "vector",
+      "description": "jpeg arithmetic bad stuffing",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-stuffing.in",
+          "sha256": "78a363588403dc57e7577dfb6496d700d1d4ecee18e5ca3e26f02c01f09275d8"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-stuffing.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-bad-stuffing.params",
+          "sha256": "ee3d73920822c960737a2532c4feb33ba0091410e0c5d06c92bd2a75bea5e621"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-arithmetic-dac-redefined",
+      "kind": "vector",
+      "description": "jpeg arithmetic dac redefined",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-arithmetic-dac-redefined.in",
+          "sha256": "3757ebe21eb6b2974c97317ca549636575f809b0e7d3b1373be67e6b893ea832"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-arithmetic-dac-redefined.out",
+          "sha256": "9cb7908eac8563b4629c1bebf326e19892c8fabb653080ec06d1d220b6336ede"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-arithmetic-dac-redefined.params",
+          "sha256": "97898971e3f56480b57ae7cec6d92ab7cf1bee018a4ef8ce19760387cfddb0c5"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-baseline-12bit-rejected",
+      "kind": "vector",
+      "description": "jpeg baseline 12bit rejected",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-baseline-12bit-rejected.in",
+          "sha256": "f75dc7ee365b36470b0baf890747c04466c29b30d2656b801c42c31b7e9f224f"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-baseline-12bit-rejected.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-baseline-12bit-rejected.params",
+          "sha256": "68a73a1e7934b1e83e6afb26bc551e5ca2c20914cdc685ca3fe9fe9e29286e69"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-12bit-pdf-bpc-mismatch",
+      "kind": "vector",
+      "description": "jpeg 12bit pdf bpc mismatch",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpeg-12bit-pdf-bpc-mismatch.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-12bit-pdf-bpc-mismatch.params",
+          "sha256": "1a3f579a904f9bfdda171cb1a8a149e8e66123aba452b73e5259f580cea978cb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpeg-12bit-pdf-bpc-mismatch.pdf",
+          "sha256": "dba8c10cea9877a1f10c875f5a9ccf75184f540ca95c2b8ec8b9b1d2cf5ffc2f"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-render-arithmetic",
+      "kind": "pdf",
+      "description": "JPEG native-precision reconstruction painted on a pixel-aligned grid",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "path": "corpus/generated/image/jpeg-render-arithmetic.pdf",
+      "sha256": "f3299c0a101bb40251abeb90c0c056584c6f80d3f728c95d9697c834e09fdd95",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-render-arithmetic.ppm",
+      "oracle_sha256": "dd13ae61bd2d72ce22e7e75d425815520dd9f4f555e903b445e8d3a7d1b82a14",
+      "dpi": 72,
+      "width": 24,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "image/jpeg-render-arithmetic-progressive",
+      "kind": "pdf",
+      "description": "JPEG native-precision reconstruction painted on a pixel-aligned grid",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-arithmetic"
+      ],
+      "path": "corpus/generated/image/jpeg-render-arithmetic-progressive.pdf",
+      "sha256": "b8436ac3d433a09f0d3b89d27d8248e292807368315db2886fb88d552697ecd6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-render-arithmetic-progressive.ppm",
+      "oracle_sha256": "dd13ae61bd2d72ce22e7e75d425815520dd9f4f555e903b445e8d3a7d1b82a14",
+      "dpi": 72,
+      "width": 24,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "image/jpeg-render-12bit",
+      "kind": "pdf",
+      "description": "JPEG native-precision reconstruction painted on a pixel-aligned grid",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "path": "corpus/generated/image/jpeg-render-12bit.pdf",
+      "sha256": "81051741526fd8177d1ca3b2a43b3d0274821d3506ce924af6f29268986c41ff",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-render-12bit.ppm",
+      "oracle_sha256": "0c04c206e819b96492fb19aaa394b80f0164624d6610b45a6f0be45b4929e738",
+      "dpi": 72,
+      "width": 24,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "image/jpeg-render-12bit-progressive",
+      "kind": "pdf",
+      "description": "JPEG native-precision reconstruction painted on a pixel-aligned grid",
+      "expected": "render",
+      "requirements": [
+        "image-jpeg-12bit"
+      ],
+      "path": "corpus/generated/image/jpeg-render-12bit-progressive.pdf",
+      "sha256": "e435d1cc8d94940751a824198ab460833bde270d233c5dc03419a374407fc831",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/image/jpeg-render-12bit-progressive.ppm",
+      "oracle_sha256": "0c04c206e819b96492fb19aaa394b80f0164624d6610b45a6f0be45b4929e738",
+      "dpi": 72,
+      "width": 24,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
       "id": "image/samples-1-1-raw",
       "kind": "vector",
       "description": "MSB rows, row padding and exact unpacked samples",
@@ -10524,45 +12090,45 @@
       }
     },
     {
-      "id": "image/jpeg-baseline-gray-12bit",
+      "id": "image/jpeg-baseline-gray-precision-9",
       "kind": "vector",
-      "description": "jpeg baseline gray 12bit",
+      "description": "jpeg baseline gray precision 9",
       "requirements": [
         "image-dct"
       ],
       "files": {
         ".in": {
-          "path": "corpus/generated/image/jpeg-baseline-gray-12bit.in",
-          "sha256": "65078e41ed8adc7e96f15b39188474d83635333e87e8bd3473b14bd6184e2f74"
+          "path": "corpus/generated/image/jpeg-baseline-gray-precision-9.in",
+          "sha256": "5d23246686cd30d533dbfc34b42108303171b8ba13530ad78c14c1d223ab5259"
         },
         ".out": {
-          "path": "corpus/generated/image/jpeg-baseline-gray-12bit.out",
+          "path": "corpus/generated/image/jpeg-baseline-gray-precision-9.out",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         ".params": {
-          "path": "corpus/generated/image/jpeg-baseline-gray-12bit.params",
+          "path": "corpus/generated/image/jpeg-baseline-gray-precision-9.params",
           "sha256": "68a73a1e7934b1e83e6afb26bc551e5ca2c20914cdc685ca3fe9fe9e29286e69"
         }
       }
     },
     {
-      "id": "image/jpeg-progressive-12bit",
+      "id": "image/jpeg-progressive-precision-9",
       "kind": "vector",
-      "description": "jpeg progressive 12bit",
+      "description": "jpeg progressive precision 9",
       "requirements": [
         "image-dct"
       ],
       "files": {
         ".in": {
-          "path": "corpus/generated/image/jpeg-progressive-12bit.in",
-          "sha256": "f9d1e8d9eb5f677bf2424c262f65cd3a75c5611be9670cbf6abc1b2137417cf3"
+          "path": "corpus/generated/image/jpeg-progressive-precision-9.in",
+          "sha256": "9c239f8264fda96a86ec501cfdd2817eacc888bc098ab87c8e606fc1f85e19cc"
         },
         ".out": {
-          "path": "corpus/generated/image/jpeg-progressive-12bit.out",
+          "path": "corpus/generated/image/jpeg-progressive-precision-9.out",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         ".params": {
-          "path": "corpus/generated/image/jpeg-progressive-12bit.params",
+          "path": "corpus/generated/image/jpeg-progressive-precision-9.params",
           "sha256": "68a73a1e7934b1e83e6afb26bc551e5ca2c20914cdc685ca3fe9fe9e29286e69"
         }
       }

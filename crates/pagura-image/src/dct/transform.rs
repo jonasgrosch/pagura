@@ -21,7 +21,102 @@ fn sample(value: f64) -> u8 {
     value.round().clamp(0.0, 255.0) as u8
 }
 
+trait Sample: Copy + Default {
+    fn from_idct(value: f64) -> Self;
+    fn finish(samples: Vec<Self>, components: usize, convert: bool) -> Vec<u8>;
+}
+
+impl Sample for u8 {
+    fn from_idct(value: f64) -> Self {
+        sample(value + 128.0)
+    }
+
+    fn finish(mut samples: Vec<Self>, components: usize, convert: bool) -> Vec<u8> {
+        if convert && components >= 3 {
+            for pixel in samples.chunks_exact_mut(components) {
+                let rgb = ycbcr(
+                    f64::from(pixel[0]),
+                    f64::from(pixel[1]) - 128.0,
+                    f64::from(pixel[2]) - 128.0,
+                );
+                for (out, value) in pixel[..3].iter_mut().zip(rgb) {
+                    *out = sample(value);
+                    if components == 4 {
+                        *out = 255 - *out;
+                    }
+                }
+            }
+        }
+        samples
+    }
+}
+
+impl Sample for u16 {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "T.81 A.3.1 native samples are rounded and clamped to 0..4095"
+    )]
+    fn from_idct(value: f64) -> Self {
+        (value + 2048.0).round().clamp(0.0, 4095.0) as Self
+    }
+
+    fn finish(samples: Vec<Self>, components: usize, convert: bool) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(samples.len());
+        for pixel in samples.chunks_exact(components) {
+            if convert && components >= 3 {
+                let rgb = ycbcr(
+                    f64::from(pixel[0]),
+                    f64::from(pixel[1]) - 2048.0,
+                    f64::from(pixel[2]) - 2048.0,
+                );
+                for value in rgb {
+                    let native = value.clamp(0.0, 4095.0);
+                    let native = if components == 4 {
+                        4095.0 - native
+                    } else {
+                        native
+                    };
+                    // Keep fractional colour results until the final byte rounding.
+                    bytes.push(sample(native * 255.0 / 4095.0));
+                }
+                bytes.extend(pixel[3..].iter().map(|&v| reduce(v)));
+            } else {
+                bytes.extend(pixel.iter().map(|&v| reduce(v)));
+            }
+        }
+        bytes
+    }
+}
+
+/// PDF 7.4.8 specifies bytes, but not twelve-bit normalization. Preserve
+/// endpoints and round once; the odd denominator precludes half-level ties.
+fn reduce(value: u16) -> u8 {
+    u8::try_from((u32::from(value) * 255 + 2047) / 4095).unwrap_or(255)
+}
+
+fn ycbcr(y: f64, cb: f64, cr: f64) -> [f64; 3] {
+    [
+        y + 1.402 * cr,
+        y - 0.344_136 * cb - 0.714_136 * cr,
+        y + 1.772 * cb,
+    ]
+}
+
 pub(super) fn output(
+    frame: &Frame,
+    adobe: Option<u8>,
+    transform: Option<i64>,
+    limits: &Limits,
+) -> Result<DctImage> {
+    if frame.precision == 8 {
+        output_native::<u8>(frame, adobe, transform, limits)
+    } else {
+        output_native::<u16>(frame, adobe, transform, limits)
+    }
+}
+
+fn output_native<T: Sample>(
     frame: &Frame,
     adobe: Option<u8>,
     transform: Option<i64>,
@@ -38,7 +133,7 @@ pub(super) fn output(
             return Err(Error::syntax("JPEG component has no complete scan"));
         }
         let quant = c.quant.ok_or(Error::syntax("missing JPEG quantizer"))?;
-        let mut plane = vec![0; c.stride * c.rows * 64];
+        let mut plane = vec![T::default(); c.stride * c.rows * 64];
         let pitch = c.stride * 8;
         for (blocks, rows) in c
             .blocks
@@ -50,7 +145,7 @@ pub(super) fn output(
                 for ((&coefficient, &q), &position) in coefficients.iter().zip(&quant).zip(&ORDER) {
                     natural[position] = f64::from(coefficient) * f64::from(q);
                 }
-                let block = idct.block(&natural);
+                let block = idct.block::<T>(&natural);
                 for (row, samples) in rows.chunks_exact_mut(pitch).zip(&block) {
                     row[column * 8..column * 8 + 8].copy_from_slice(samples);
                 }
@@ -71,7 +166,7 @@ pub(super) fn output(
     if adobe == Some(2) && n != 4 {
         return Err(Error::syntax("Adobe YCCK marker requires four components"));
     }
-    let mut samples = vec![0; count];
+    let mut samples = vec![T::default(); count];
     let components = usize::from(n);
     let width = frame.width as usize;
     for (i, c) in frame.components.iter().enumerate() {
@@ -82,35 +177,18 @@ pub(super) fn output(
             expand(source, &mut row[i..], components, c.h, frame.max_h);
         }
     }
-    if convert && n >= 3 {
-        for pixel in samples.chunks_exact_mut(components) {
-            let (y, cb, cr) = (
-                f64::from(pixel[0]),
-                f64::from(pixel[1]) - 128.0,
-                f64::from(pixel[2]) - 128.0,
-            );
-            pixel[0] = sample(y + 1.402 * cr);
-            pixel[1] = sample(y - 0.344_136 * cb - 0.714_136 * cr);
-            pixel[2] = sample(y + 1.772 * cb);
-            if n == 4 {
-                for c in &mut pixel[..3] {
-                    *c = 255 - *c;
-                }
-            }
-        }
-    }
     Ok(DctImage {
         width: frame.width,
         height: frame.height,
         components: n,
-        samples,
+        samples: T::finish(samples, components, convert),
     })
 }
 
 /// T.81 A.1.1 sampling factors: each source sample occupies a contiguous run.
 /// Integer ratios use replication; a remainder handles ratios such as 3:4
 /// without division in the pixel loop. The last run can be cropped by the frame.
-fn expand(source: &[u8], destination: &mut [u8], components: usize, h: usize, max_h: usize) {
+fn expand<T: Copy>(source: &[T], destination: &mut [T], components: usize, h: usize, max_h: usize) {
     if max_h.is_multiple_of(h) {
         let repeat = max_h / h;
         for (&value, run) in source
@@ -137,6 +215,99 @@ fn expand(source: &[u8], destination: &mut [u8], components: usize, h: usize, ma
 #[cfg(test)]
 mod tests {
     use super::expand;
+
+    #[test]
+    fn native_reconstruction_and_reduction_preserve_the_full_range() {
+        use super::Sample;
+        for native in 0..=4095u16 {
+            assert_eq!(u16::from_idct(f64::from(native) - 2048.0), native);
+            let exact = f64::from(native) * 255.0 / 4095.0;
+            assert!((f64::from(super::reduce(native)) - exact).abs() < 0.5);
+        }
+        assert_eq!(u16::from_idct(-3000.0), 0);
+        assert_eq!(u16::from_idct(3000.0), 4095);
+    }
+
+    #[test]
+    fn eight_bit_colour_transform_keeps_byte_rounding() {
+        use super::Sample;
+        // Independent byte-domain formulas also pin inversion after rounding.
+        for y in 0..=255u8 {
+            for chroma in 0..=255u8 {
+                for components in [3, 4] {
+                    let pixel = [y, chroma, 255 - chroma, 73];
+                    let (cb, cr) = (f64::from(chroma) - 128.0, 127.0 - f64::from(chroma));
+                    let rgb = [
+                        f64::from(y) + 1.402 * cr,
+                        f64::from(y) - 0.344_136 * cb - 0.714_136 * cr,
+                        f64::from(y) + 1.772 * cb,
+                    ];
+                    let mut expected = pixel[..components].to_vec();
+                    for (out, value) in expected[..3].iter_mut().zip(rgb) {
+                        let byte = super::sample(value);
+                        *out = if components == 4 { 255 - byte } else { byte };
+                    }
+                    assert_eq!(
+                        u8::finish(pixel[..components].to_vec(), components, true),
+                        expected
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn native_colour_rounding_matches_exact_integer_rationals() {
+        use super::Sample;
+        let mut state = 0x1234_5678u32;
+        for _ in 0..100_000 {
+            let pixel = std::array::from_fn::<_, 4, _>(|_| {
+                state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                u16::try_from(state >> 20).unwrap()
+            });
+            let (y, cb, cr) = (
+                i64::from(pixel[0]) * 1_000_000,
+                i64::from(pixel[1]) - 2048,
+                i64::from(pixel[2]) - 2048,
+            );
+            let rgb = [
+                y + 1_402_000 * cr,
+                y - 344_136 * cb - 714_136 * cr,
+                y + 1_772_000 * cb,
+            ];
+            let denominator = 4095 * 1_000_000i64;
+            for components in [3, 4] {
+                let bytes = u16::finish(pixel[..components].to_vec(), components, true);
+                for (&actual, exact) in bytes.iter().zip(rgb) {
+                    let exact = exact.clamp(0, denominator);
+                    let exact = if components == 4 {
+                        denominator - exact
+                    } else {
+                        exact
+                    };
+                    let error = (i64::from(actual) * denominator - exact * 255).abs();
+                    assert!(
+                        2 * error <= denominator,
+                        "{pixel:?}: {actual} vs {exact}/{denominator}"
+                    );
+                }
+                if components == 4 {
+                    assert_eq!(bytes[3], super::reduce(pixel[3]));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn twelve_bit_expansion_retains_low_bits() {
+        let source = [1u16, 2047, 2048, 4094, 4095];
+        let mut expanded = [0; 10];
+        expand(&source, &mut expanded, 1, 1, 2);
+        assert_eq!(
+            expanded,
+            [1, 1, 2047, 2047, 2048, 2048, 4094, 4094, 4095, 4095]
+        );
+    }
 
     #[test]
     fn block_rows_and_padding_preserve_component_coordinates() {

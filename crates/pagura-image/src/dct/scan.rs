@@ -5,14 +5,38 @@ use super::{
 };
 use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Position, Result};
 
-struct Scan {
+pub(super) struct Scan {
     selected: Vec<(usize, usize, usize)>,
-    start: usize,
-    end: usize,
-    high: u8,
-    low: u8,
+    pub(super) start: usize,
+    pub(super) end: usize,
+    pub(super) high: u8,
+    pub(super) low: u8,
 }
 impl Scan {
+    fn geometry(&self, frame: &super::Frame) -> Result<(usize, usize)> {
+        let interleaved = self.selected.len() > 1;
+        let geometry = if interleaved {
+            (frame.mcu_cols, frame.mcu_rows)
+        } else {
+            let c = &frame.components[self.selected[0].0];
+            (
+                (frame.width as usize * c.h).div_ceil(8 * frame.max_h),
+                (frame.height as usize * c.v).div_ceil(8 * frame.max_v),
+            )
+        };
+        if interleaved
+            && self
+                .selected
+                .iter()
+                .map(|&(i, _, _)| frame.components[i].h * frame.components[i].v)
+                .sum::<usize>()
+                > 10
+        {
+            return Err(Error::syntax("too many JPEG data units in MCU"));
+        }
+        Ok(geometry)
+    }
+
     fn parse(data: &[u8], frame: &mut super::Frame) -> Result<Self> {
         let n = usize::from(*data.first().ok_or(Error::syntax("missing JPEG scan"))?);
         if n == 0 || n > frame.components.len() || data.len() != 1 + 2 * n + 3 {
@@ -98,26 +122,18 @@ impl Decoder {
             .ok_or(Error::syntax("JPEG scan before frame"))?;
         let scan = Scan::parse(payload, frame)?;
         let interleaved = scan.selected.len() > 1;
-        let (cols, rows) = if interleaved {
-            (frame.mcu_cols, frame.mcu_rows)
-        } else {
-            let c = &frame.components[scan.selected[0].0];
-            (
-                (frame.width as usize * c.h).div_ceil(8 * frame.max_h),
-                (frame.height as usize * c.v).div_ceil(8 * frame.max_v),
-            )
-        };
-        if interleaved
-            && scan
-                .selected
-                .iter()
-                .map(|&(i, _, _)| frame.components[i].h * frame.components[i].v)
-                .sum::<usize>()
-                > 10
-        {
-            return Err(Error::syntax("too many JPEG data units in MCU"));
-        }
+        let (cols, rows) = scan.geometry(frame)?;
         let mut bits = Bits::new(data, offset);
+        let mut arithmetic = frame
+            .arithmetic
+            .then(|| {
+                super::arithmetic::Arithmetic::new(
+                    data,
+                    offset,
+                    limits.operations.saturating_sub(self.work),
+                )
+            })
+            .transpose()?;
         let mut predictors = [0i32; 4];
         let (mut eob, mut sequence) = (0u32, 0u8);
         for mcu in 0..cols * rows {
@@ -125,21 +141,18 @@ impl Decoder {
                 if eob != 0 {
                     return Err(bits.error("JPEG EOB run crosses restart"));
                 }
-                bits.restart(sequence, diagnostics, &mut self.padding_reported)?;
+                if let Some(coder) = &mut arithmetic {
+                    coder.restart(sequence)?;
+                } else {
+                    bits.restart(sequence, diagnostics, &mut self.padding_reported)?;
+                }
                 sequence = (sequence + 1) % 8;
                 predictors.fill(0);
             }
             for &(i, dc, ac) in &scan.selected {
                 let c = &mut frame.components[i];
-                let quant =
-                    self.quant[c.table].ok_or(bits.error("missing JPEG quantization table"))?;
-                if frame.baseline && quant.iter().any(|&q| q > 255) {
-                    return Err(bits.error("baseline JPEG quantizer exceeds eight bits"));
-                }
-                if c.quant.is_some_and(|q| q != quant) {
-                    return Err(bits.error("JPEG quantizer changed between scans"));
-                }
-                c.quant = Some(quant);
+                latch_quant(c, &self.quant, frame.baseline)
+                    .map_err(|error| error.at(Position::Buffer(offset)))?;
                 let (horizontal, vertical) = if interleaved { (c.h, c.v) } else { (1, 1) };
                 for y in 0..vertical {
                     for x in 0..horizontal {
@@ -157,16 +170,30 @@ impl Decoder {
                             .blocks
                             .get_mut(index)
                             .ok_or(bits.error("JPEG block outside component"))?;
-                        decode_block(
-                            block,
-                            &scan,
-                            frame.progressive,
-                            &self.huffman,
-                            (dc, ac),
-                            &mut predictors[i],
-                            &mut eob,
-                            &mut bits,
-                        )?;
+                        if let Some(coder) = &mut arithmetic {
+                            coder.block(
+                                block,
+                                &scan,
+                                frame.progressive,
+                                &self.conditioning,
+                                i,
+                                (dc, ac),
+                                &mut predictors[i],
+                                frame.precision,
+                            )?;
+                        } else {
+                            decode_block(
+                                block,
+                                &scan,
+                                frame.progressive,
+                                frame.precision,
+                                &self.huffman,
+                                (dc, ac),
+                                &mut predictors[i],
+                                &mut eob,
+                                &mut bits,
+                            )?;
+                        }
                     }
                 }
             }
@@ -174,9 +201,35 @@ impl Decoder {
         if eob != 0 {
             return Err(bits.error("JPEG EOB run exceeds scan"));
         }
+        if let Some(coder) = arithmetic {
+            let (offset, used) = coder.finish()?;
+            self.work = self
+                .work
+                .checked_add(used)
+                .filter(|&w| w <= limits.operations)
+                .ok_or(Error::limit("JPEG arithmetic work budget exceeded"))?;
+            return Ok(offset);
+        }
         bits.align(diagnostics, &mut self.padding_reported)?;
         scan_end(data, bits.offset, &mut self.work, limits, diagnostics)
     }
+}
+
+/// Quantizers are latched at a component's first scan (B.2.4.1).
+fn latch_quant(
+    component: &mut super::frame::Component,
+    tables: &[Option<[u16; 64]>; 4],
+    baseline: bool,
+) -> Result<()> {
+    let quant = tables[component.table].ok_or(Error::syntax("missing JPEG quantization table"))?;
+    if baseline && quant.iter().any(|&q| q > 255) {
+        return Err(Error::syntax("baseline JPEG quantizer exceeds eight bits"));
+    }
+    if component.quant.is_some_and(|q| q != quant) {
+        return Err(Error::syntax("JPEG quantizer changed between scans"));
+    }
+    component.quant = Some(quant);
+    Ok(())
 }
 
 /// T.81 B.2.1 fixes the final segment's MCU count. Extra complete bytes can
@@ -247,6 +300,7 @@ fn decode_block(
     block: &mut [i32; 64],
     scan: &Scan,
     progressive: bool,
+    precision: u8,
     tables: &[Option<Huffman>; 8],
     selectors: (usize, usize),
     predictor: &mut i32,
@@ -263,12 +317,15 @@ fn decode_block(
     if scan.start == 0 {
         if scan.high == 0 {
             let size = table(selectors.0)?.symbol(bits)?;
-            if size > 11 {
+            if size > precision + 3 {
                 return Err(bits.error("invalid JPEG DC magnitude"));
             }
             *predictor = predictor
                 .checked_add(bits.signed(size)?)
-                .filter(|v| (-2048..=2047).contains(v))
+                .filter(|&v| {
+                    let bound = 1 << (precision + 3);
+                    (-bound..bound).contains(&v)
+                })
                 .ok_or(bits.error("JPEG DC predictor out of range"))?;
             block[0] = *predictor << scan.low;
         } else {
@@ -309,7 +366,7 @@ fn decode_block(
                 return Err(bits.error("invalid sequential JPEG AC symbol"));
             }
         } else {
-            if size > 10 {
+            if size > precision + 2 {
                 return Err(bits.error("invalid JPEG AC magnitude"));
             }
             k += run;

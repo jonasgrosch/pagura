@@ -22,16 +22,18 @@ pub(super) struct Frame {
     pub(super) mcu_rows: usize,
     pub(super) progressive: bool,
     pub(super) baseline: bool,
+    pub(super) arithmetic: bool,
+    pub(super) precision: u8,
 }
 impl Frame {
     pub(super) fn parse(data: &[u8], process: u8, limits: &Limits) -> Result<Self> {
         if data.len() < 6 {
             return Err(Error::syntax("truncated JPEG frame"));
         }
-        if data[0] != 8 {
+        if !matches!(data[0], 8 | 12) || (process == 0xc0 && data[0] != 8) {
             return Err(Error::unsupported(
                 crate::features::JPEG_PRECISION,
-                "only 8-bit JPEG precision is supported",
+                "JPEG process requires eight or twelve bit precision",
             ));
         }
         let height = u32::from(u16::from_be_bytes([data[1], data[2]]));
@@ -91,12 +93,16 @@ impl Frame {
             .ok_or(Error::syntax("missing JPEG components"))?;
         let mcu_cols = (width as usize).div_ceil(8 * max_h);
         let mcu_rows = (height as usize).div_ceil(8 * max_v);
-        let mut memory = u64::from(width) * u64::from(height) * u64::from(n);
+        // Coefficients coexist with native planes and expanded samples. For
+        // P=12 the latter coexist with the final byte buffer as well.
+        let twelve_bit = data[0] == 12;
+        let mut memory =
+            u64::from(width) * u64::from(height) * u64::from(n) * if twelve_bit { 3 } else { 1 };
         for c in &mut components {
             c.stride = mcu_cols * c.h;
             c.rows = mcu_rows * c.v;
             memory = memory
-                .checked_add((c.stride * c.rows) as u64 * 64 * 5)
+                .checked_add((c.stride * c.rows) as u64 * 64 * if twelve_bit { 6 } else { 5 })
                 .ok_or(Error::limit("JPEG allocation overflow"))?;
         }
         if memory > limits.decoded_bytes as u64 {
@@ -113,7 +119,9 @@ impl Frame {
             max_v,
             mcu_cols,
             mcu_rows,
-            progressive: process == 0xc2,
+            progressive: matches!(process, 0xc2 | 0xca),
+            arithmetic: matches!(process, 0xc9 | 0xca),
+            precision: data[0],
             baseline: process == 0xc0,
         })
     }

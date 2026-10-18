@@ -433,6 +433,8 @@ def eob_jpeg(run_count=4, restart=0):
 
 
 def cases():
+    from . import jpeg as jpeg_models
+    yield from jpeg_models.cases()
     yield from raw_cases()
     yield from dictionary_cases()
     yield from iso_review_cases()
@@ -509,8 +511,7 @@ def cases():
     for name in ("jpeg-baseline-gray", "jpeg-progressive"):
         encoded, _ = jpeg(progressive=name == "jpeg-progressive")
         at = encoded.index(b"\xff\xc0" if name == "jpeg-baseline-gray" else b"\xff\xc2")
-        twelve = encoded[:at+4]+bytes([12])+encoded[at+5:]
-        yield vector(name+"-12bit", "dct", twelve, outcome="unsupported", feature="jpeg.precision")
+        yield vector(name+"-precision-9", "dct", encoded[:at+4]+bytes([9])+encoded[at+5:], outcome="unsupported", feature="jpeg.precision")
     encoded, _ = jpeg(restart=1)
     yield vector("jpeg-bad-restart", "dct", encoded.replace(b"\xff\xd0", b"\xff\xd1", 1), outcome="syntax")
 
