@@ -227,8 +227,8 @@ fn prepare_inner(
     text.text("/Tx BMC\nq\n")?;
     text.text(&format!(
         "{} {} {} {} re W n\n",
-        area.x0,
-        area.y0,
+        area.x0(),
+        area.y0(),
         area.width(),
         area.height()
     ))?;
@@ -318,44 +318,23 @@ fn normal(
     Ok(Some(Appearance::Existing(id)))
 }
 fn bounds(widget: &Widget<'_>) -> Result<Rect> {
-    let bbox = Rect {
-        x0: 0.0,
-        y0: 0.0,
-        x1: widget.rectangle.width(),
-        y1: widget.rectangle.height(),
-    };
-    if !bbox.x1.is_finite() || !bbox.y1.is_finite() || bbox.x1 <= 0.0 || bbox.y1 <= 0.0 {
-        return Err(Error::invalid_argument(
+    let (width, height) = (widget.rectangle.width(), widget.rectangle.height());
+    Rect::from_corners(0.0, 0.0, width, height)
+        .filter(|_| width > 0.0 && height > 0.0)
+        .ok_or(Error::invalid_argument(
             "appearance widget rectangle must have finite positive area",
-        ));
-    }
-    Ok(bbox)
+        ))
 }
 fn inset(bbox: Rect, padding: f64) -> Result<Rect> {
-    let rect = Rect {
-        x0: bbox.x0 + padding,
-        y0: bbox.y0 + padding,
-        x1: bbox.x1 - padding,
-        y1: bbox.y1 - padding,
-    };
-    if ![
-        rect.x0,
-        rect.y0,
-        rect.x1,
-        rect.y1,
-        rect.width(),
-        rect.height(),
-    ]
-    .iter()
-    .all(|v| v.is_finite())
-        || rect.width() <= 0.0
-        || rect.height() <= 0.0
-    {
-        return Err(Error::invalid_argument(
+    let (x0, y0) = (bbox.x0() + padding, bbox.y0() + padding);
+    let (x1, y1) = (bbox.x1() - padding, bbox.y1() - padding);
+    // Padding wider than the box inverts it; that is no area, not a
+    // rectangle to normalize.
+    Rect::from_corners(x0, y0, x1, y1)
+        .filter(|rect| x0 < x1 && y0 < y1 && rect.width().is_finite() && rect.height().is_finite())
+        .ok_or(Error::invalid_argument(
             "widget has no area inside its text padding",
-        ));
-    }
-    Ok(rect)
+        ))
 }
 fn form_dictionary(bbox: Rect) -> Dictionary {
     let mut dictionary = Dictionary::new();
@@ -365,7 +344,7 @@ fn form_dictionary(bbox: Rect) -> Dictionary {
     dictionary.insert(
         Name::new(b"BBox"),
         Value::Array(
-            [bbox.x0, bbox.y0, bbox.x1, bbox.y1]
+            [bbox.x0(), bbox.y0(), bbox.x1(), bbox.y1()]
                 .map(Value::Real)
                 .to_vec(),
         ),

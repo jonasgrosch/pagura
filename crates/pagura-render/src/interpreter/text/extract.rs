@@ -259,13 +259,13 @@ impl Compiler<'_> {
         let advance_end = trm.apply(advance);
         let (bbox, cell_transform) = if let GlyphShape::Type3 { matrix, .. } = &glyph.shape {
             (
-                info.bbox.unwrap_or(cell(0.0, 0.0, 1000.0, 1000.0)),
+                info.bbox.map_or(cell(0.0, 0.0, 1000.0, 1000.0), Cell::from),
                 matrix.then(transform),
             )
         } else {
             let (bottom, top) = info
                 .bbox
-                .map_or((0.0, 1.0), |b| (b.y0 / 1000.0, b.y1 / 1000.0));
+                .map_or((0.0, 1.0), |b| (b.y0() / 1000.0, b.y1() / 1000.0));
             let bbox = vertical.map_or(cell(0.0, bottom, glyph.advance, top), |v| {
                 cell(0.0, 0.0, glyph.advance, -v.advance)
             });
@@ -533,8 +533,25 @@ fn marked_id(
     }
 }
 
-fn cell(x0: f64, y0: f64, x1: f64, y1: f64) -> Rect {
-    Rect { x0, y0, x1, y1 }
+/// A glyph cell in text space. Unlike a [`Rect`], its corners keep the
+/// direction of the advance, so the selection quad follows the writing
+/// direction (a negative advance gives a reversed cell).
+#[derive(Clone, Copy)]
+struct Cell {
+    x0: f64,
+    y0: f64,
+    x1: f64,
+    y1: f64,
+}
+
+fn cell(x0: f64, y0: f64, x1: f64, y1: f64) -> Cell {
+    Cell { x0, y0, x1, y1 }
+}
+
+impl From<Rect> for Cell {
+    fn from(rect: Rect) -> Self {
+        cell(rect.x0(), rect.y0(), rect.x1(), rect.y1())
+    }
 }
 
 #[cfg(test)]

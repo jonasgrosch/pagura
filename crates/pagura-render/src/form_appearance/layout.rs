@@ -64,9 +64,9 @@ pub(super) fn write(
     out.bytes(&da.state)?;
     out.text(&format!("{} {size} Tf\n", da.font))?;
     let baseline = if layout.multiline {
-        area.y1 - font.ascent * size * da.matrix[3]
+        area.y1() - font.ascent * size * da.matrix[3]
     } else {
-        area.y0 + (area.height() - (font.ascent - font.descent) * size * da.matrix[3]) / 2.0
+        area.y0() + (area.height() - (font.ascent - font.descent) * size * da.matrix[3]) / 2.0
             - font.descent * size * da.matrix[3]
     };
     if let Some(cells) = layout.comb {
@@ -81,13 +81,13 @@ pub(super) fn write(
         };
         for (i, c) in chars.iter().enumerate() {
             let width = advance(*c, da, size);
-            let x = area.x0 + (offset + i as f64) * cell + (cell - width) / 2.0;
+            let x = area.x0() + (offset + i as f64) * cell + (cell - width) / 2.0;
             matrix(out, da, x, baseline)?;
             out.text(&format!("<{:02X}> Tj\n", c.code))?;
         }
     } else {
         for (i, line) in lines.iter().enumerate() {
-            let x = area.x0
+            let x = area.x0()
                 + match layout.quadding {
                     Justification::Left => 0.0,
                     Justification::Centre => (area.width() - line.width) / 2.0,

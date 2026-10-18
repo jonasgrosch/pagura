@@ -151,10 +151,10 @@ fn snapshot(doc: &Document) -> Result<String> {
             "widget|{}|{}|{},{},{},{}|{}|{}|{}|{}",
             w.field,
             w.merged,
-            r.x0,
-            r.y0,
-            r.x1,
-            r.y1,
+            r.x0(),
+            r.y0(),
+            r.x1(),
+            r.y1(),
             if w.on_states.is_empty() {
                 "_".into()
             } else {

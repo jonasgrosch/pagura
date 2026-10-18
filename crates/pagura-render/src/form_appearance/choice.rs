@@ -77,21 +77,17 @@ pub(super) fn list(
         };
     let row_da = DefaultAppearance { size, ..da.clone() };
     for (row, (i, option)) in options.iter().enumerate().skip(top).enumerate() {
-        let y1 = area.y1 - row as f64 * height;
-        if y1 <= area.y0 {
+        let y1 = area.y1() - row as f64 * height;
+        if y1 <= area.y0() {
             break;
         }
-        let row_area = Rect {
-            x0: area.x0,
-            x1: area.x1,
-            y0: y1 - height,
-            y1,
-        };
+        let row_area = Rect::from_corners(area.x0(), y1 - height, area.x1(), y1)
+            .ok_or(Error::syntax("list row height must be positive"))?;
         if selected.binary_search(&i).is_ok() {
             out.text(&format!(
                 "q\n0.6 0.75 0.9 rg\n{} {} {} {} re f\nQ\n",
-                row_area.x0,
-                row_area.y0,
+                row_area.x0(),
+                row_area.y0(),
                 row_area.width(),
                 row_area.height()
             ))?;
