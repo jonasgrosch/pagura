@@ -162,7 +162,6 @@
         "paint/text-end-without-begin",
         "paint/text-unfinished",
         "paint/text-mode-invalid",
-        "paint/text-clip-reset",
         "paint/text-q-crosses",
         "paint/text-et-crosses",
         "paint/text-no-font",
@@ -407,7 +406,9 @@
       "clauses": [
         "9.6.2.2",
         "9.8.2",
-        "Table 121"
+        "Table 121",
+        "9.6.5.1",
+        "9.6.5.2"
       ],
       "status": "implemented",
       "tests": [
@@ -416,13 +417,15 @@
         "paint/bundled-courier-oblique",
         "paint/bundled-descriptor-flags",
         "paint/bundled-symbol",
-        "paint/bundled-zapfdingbats"
+        "paint/bundled-zapfdingbats",
+        "paint/bundled-symbol-differences",
+        "paint/bundled-zapfdingbats-differences"
       ],
       "gaps": "",
       "review": [
         {
-          "locator": "9.6.2.2; 9.8.2; Table 121",
-          "rule": "Explicit substitutes use bundled outlines and AFM widths, or PDF widths when supplied. FontDescriptor flags select a substitute when no program is embedded; Symbol and ZapfDingbats remain explicit Unsupported.",
+          "locator": "9.6.2.2; 9.8.2; Table 121; 9.6.5.1; 9.6.5.2",
+          "rule": "Explicit substitutes use bundled outlines and AFM widths, or PDF widths when supplied. FontDescriptor flags select a substitute when no program is embedded. Symbol and ZapfDingbats use AFM built-in encodings and Differences by glyph name; independent CFF charstrings supply the cubic outlines.",
           "verdict": "verified against local primary text; cache accounting is implementation policy"
         }
       ]
@@ -551,6 +554,81 @@
           "locator": "9.2.4; 9.4.4; Annex C.1",
           "rule": "The PDF advance is independent of the glyph outline. Diagnostic-aware outlining reports a bounded repair for an unusable glyph, leaving its advance and subsequent glyphs intact; Strict rejects the repair.",
           "verdict": "verified against local primary text; glyph recovery is explicit implementation policy (ADR 0003)"
+        }
+      ]
+    },
+    {
+      "id": "paint-text-clip-recovery",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.3.6",
+        "9.4.1"
+      ],
+      "status": "implemented",
+      "tests": [
+        "paint/text-clip-reset",
+        "paint/text-clip-reset-retained",
+        "paint/text-clip-reset-reentered",
+        "pagura-render interpreter::text::tests::text_clip_resets_report_positions_and_preserve_accumulated_outlines",
+        "paint/text-clip-reset-restored",
+        "paint/text-clip-reset-inherited"
+      ],
+      "gaps": "",
+      "review": [
+        {
+          "locator": "9.3.6; 9.4.1",
+          "rule": "A prohibited reset to a nonclipping mode through Tr or Q before ET reports text.clip-mode-reset. Repair retains the accumulated outline subpaths until ET, honors the new painting mode and appends any later clipping glyphs. Strict rejects the transition before mutating the state; this is reader-dependent recovery policy (ADR 0003).",
+          "verdict": "verified against local primary text; recovery choice is explicit implementation policy"
+        }
+      ]
+    },
+    {
+      "id": "paint-appearance-recovery",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.9.5",
+        "12.5.5"
+      ],
+      "status": "implemented",
+      "tests": [
+        "paint/annotation-empty-bbox-width",
+        "paint/annotation-empty-bbox-height",
+        "paint/annotation-empty-bbox-point",
+        "paint/annotation-empty-bbox-rotated",
+        "paint/annotation-empty-rect-width",
+        "paint/annotation-empty-rect-height",
+        "paint/annotation-empty-rect-point",
+        "paint/annotation-empty-indirect",
+        "pagura-render interpreter::annotations::tests::empty_appearance_fitting_reports_repairs_without_entering_the_stream",
+        "pagura-render interpreter::annotations::tests::fitting_uses_the_transformed_envelope_and_preserves_other_errors"
+      ],
+      "gaps": "",
+      "review": [
+        {
+          "locator": "7.9.5; 12.5.5",
+          "rule": "Zero-sized rectangles are permitted. When such a rectangle has zero extent in the upright fitting envelope, or the destination has zero area, report annotation.appearance-empty and skip that appearance without executing its content. Strict rejects the repair. Nonzero source bounds collapsed by the matrix remain syntax errors. This is reader-dependent fitting policy (ADR 0003).",
+          "verdict": "verified against local primary text; recovery choice is explicit implementation policy"
+        }
+      ]
+    },
+    {
+      "id": "paint-bundled-cjk-substitute",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.7.4.3",
+        "9.7.5.2"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "paint/bundled-cjk-substitute",
+        "pagura provider::cjk_substitute_matches_independent_otf_oracle"
+      ],
+      "gaps": "Horizontal only, behind cjk-fonts; glyphs and curves independently decoded from the pinned regional OTF.",
+      "review": [
+        {
+          "locator": "9.7.4.3; 9.7.5.2",
+          "rule": "PDF CMap codes select CIDs, the collection selects Unicode, and the regional substitute OTF cmap selects glyph indices. OTF CFF charset, FDSelect, FDArray and Type 2 charstrings supply outlines; W and DW supply advances. Substitution is explicit provider policy (ADR 0009).",
+          "verdict": "verified against local primary text; substitution is explicit implementation policy"
         }
       ]
     }

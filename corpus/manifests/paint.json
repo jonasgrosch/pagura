@@ -780,21 +780,6 @@
       "render_error": "syntax"
     },
     {
-      "id": "paint/text-clip-reset",
-      "kind": "pdf",
-      "description": "text clip reset",
-      "expected": "open",
-      "requirements": [
-        "paint-text-errors"
-      ],
-      "path": "corpus/generated/paint/text-clip-reset.pdf",
-      "sha256": "0ef4d51e65fbf13ab44f857fd2f9c60fdd3d5cd05a6facdce0a7b84c52a5631e",
-      "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "syntax"
-    },
-    {
       "id": "paint/text-q-crosses",
       "kind": "pdf",
       "description": "text q crosses",
@@ -2030,32 +2015,130 @@
     {
       "id": "paint/bundled-symbol",
       "kind": "pdf",
-      "description": "No licensed substitute outlines are available",
-      "expected": "unsupported",
+      "description": "AFM names and advances select bundled CFF outlines; rational cubic area oracle",
       "requirements": [
         "paint-bundled-fonts"
       ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/bundled-symbol.pdf",
+          "sha256": "e8250f5740cb59a838fa1ef6e0540377d3ae43b5658e43c5bf452574fc6fb56d"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/bundled-symbol.rgb",
+          "sha256": "c89e0557cf0a6e8ebc303e4e141cf32bed92f01b122fdc2f821b280c3bde44b4"
+        }
+      },
+      "expected": "render",
       "path": "corpus/generated/paint/bundled-symbol.pdf",
-      "sha256": "29596a4dc2208c8b254b05551576b38129653c322fc0c626bf6ef2801a367142",
+      "sha256": "e8250f5740cb59a838fa1ef6e0540377d3ae43b5658e43c5bf452574fc6fb56d",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "font.non-embedded"
+      "repairs": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/paint/bundled-symbol.rgb",
+      "oracle_sha256": "c89e0557cf0a6e8ebc303e4e141cf32bed92f01b122fdc2f821b280c3bde44b4",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/bundled-symbol-differences",
+      "kind": "pdf",
+      "description": "AFM names and advances select bundled CFF outlines; rational cubic area oracle",
+      "requirements": [
+        "paint-bundled-fonts"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/bundled-symbol-differences.pdf",
+          "sha256": "98d132505942c7e8a30f7288187e0579da5f5781f52bc66597ede8db99814ab3"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/bundled-symbol-differences.rgb",
+          "sha256": "9aa35d0880f53620042dae27855342766beffb50ba4ca6c17aed9ae9333260ff"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/bundled-symbol-differences.pdf",
+      "sha256": "98d132505942c7e8a30f7288187e0579da5f5781f52bc66597ede8db99814ab3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/paint/bundled-symbol-differences.rgb",
+      "oracle_sha256": "9aa35d0880f53620042dae27855342766beffb50ba4ca6c17aed9ae9333260ff",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
     },
     {
       "id": "paint/bundled-zapfdingbats",
       "kind": "pdf",
-      "description": "No licensed substitute outlines are available",
-      "expected": "unsupported",
+      "description": "AFM names and advances select bundled CFF outlines; rational cubic area oracle",
       "requirements": [
         "paint-bundled-fonts"
       ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/bundled-zapfdingbats.pdf",
+          "sha256": "c3b65d66901506fbd0c7a1d82ee813368f806d6cc7f6a385ef509a1dc69eb772"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/bundled-zapfdingbats.rgb",
+          "sha256": "43f49f6764ced5206d93eb47768f71b070f567bba1dd6b51bcd3190a29bad4f9"
+        }
+      },
+      "expected": "render",
       "path": "corpus/generated/paint/bundled-zapfdingbats.pdf",
-      "sha256": "73109dbe28311f496c372276fe3e213ac2bce00fa576f807e61a046efabfc34c",
+      "sha256": "c3b65d66901506fbd0c7a1d82ee813368f806d6cc7f6a385ef509a1dc69eb772",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [],
-      "feature": "font.non-embedded"
+      "repairs": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/paint/bundled-zapfdingbats.rgb",
+      "oracle_sha256": "43f49f6764ced5206d93eb47768f71b070f567bba1dd6b51bcd3190a29bad4f9",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/bundled-zapfdingbats-differences",
+      "kind": "pdf",
+      "description": "AFM names and advances select bundled CFF outlines; rational cubic area oracle",
+      "requirements": [
+        "paint-bundled-fonts"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/bundled-zapfdingbats-differences.pdf",
+          "sha256": "a1f204c5d6e1aa7ea1f03fe33821e32ce5ceeed361725a2d7ed21f59d9919e57"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/bundled-zapfdingbats-differences.rgb",
+          "sha256": "bd714e7e96cc251d307f128f409097f4332cbc2dc14b6b7034d3cdd7d8d5c390"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/bundled-zapfdingbats-differences.pdf",
+      "sha256": "a1f204c5d6e1aa7ea1f03fe33821e32ce5ceeed361725a2d7ed21f59d9919e57",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/paint/bundled-zapfdingbats-differences.rgb",
+      "oracle_sha256": "bd714e7e96cc251d307f128f409097f4332cbc2dc14b6b7034d3cdd7d8d5c390",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
     },
     {
       "id": "paint/bundled-cjk-cmap",
@@ -2086,6 +2169,444 @@
       "width": 64,
       "height": 64,
       "dpi": 72
+    },
+    {
+      "id": "paint/text-clip-reset",
+      "kind": "pdf",
+      "description": "A nonclipping Tr before ET is reported even without glyphs",
+      "requirements": [
+        "paint-text-clip-recovery"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/text-clip-reset.pdf",
+          "sha256": "0ef4d51e65fbf13ab44f857fd2f9c60fdd3d5cd05a6facdce0a7b84c52a5631e"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/text-clip-reset.rgb",
+          "sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/text-clip-reset.pdf",
+      "sha256": "0ef4d51e65fbf13ab44f857fd2f9c60fdd3d5cd05a6facdce0a7b84c52a5631e",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "text.clip-mode-reset"
+      ],
+      "oracle": "corpus/generated/paint/text-clip-reset.rgb",
+      "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-clip-reset-retained",
+      "kind": "pdf",
+      "description": "Clipping accumulated before a reset survives ET; later nonclipping text paints before ET",
+      "requirements": [
+        "paint-text-clip-recovery"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/text-clip-reset-retained.pdf",
+          "sha256": "8c8a0c18342c40c78fa31d827bd647d57c4c90fc4a19722fb25e402c55633953"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/text-clip-reset-retained.rgb",
+          "sha256": "61e0927c049308a83c0dcea5610b87dd087de1ac6867bd56d9b093b7fb6d1e4a"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/text-clip-reset-retained.pdf",
+      "sha256": "8c8a0c18342c40c78fa31d827bd647d57c4c90fc4a19722fb25e402c55633953",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "text.clip-mode-reset"
+      ],
+      "oracle": "corpus/generated/paint/text-clip-reset-retained.rgb",
+      "oracle_sha256": "61e0927c049308a83c0dcea5610b87dd087de1ac6867bd56d9b093b7fb6d1e4a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-clip-reset-reentered",
+      "kind": "pdf",
+      "description": "Reentering a clipping mode appends to the earlier clip; each reset is positioned",
+      "requirements": [
+        "paint-text-clip-recovery"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/text-clip-reset-reentered.pdf",
+          "sha256": "70e0ce33823fb0d579717f7d844fc6152da55e2863ac6d112b225f0cc926f84c"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/text-clip-reset-reentered.rgb",
+          "sha256": "e8930ec32d750305e00ba34bb4f3cc0a80343e9028a84d57b29dd4ca699701a8"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/text-clip-reset-reentered.pdf",
+      "sha256": "70e0ce33823fb0d579717f7d844fc6152da55e2863ac6d112b225f0cc926f84c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "text.clip-mode-reset",
+        "text.clip-mode-reset"
+      ],
+      "oracle": "corpus/generated/paint/text-clip-reset-reentered.rgb",
+      "oracle_sha256": "e8930ec32d750305e00ba34bb4f3cc0a80343e9028a84d57b29dd4ca699701a8",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-clip-reset-restored",
+      "kind": "pdf",
+      "description": "Q restoring a nonclipping mode also reports the reset and preserves the accumulated clip",
+      "requirements": [
+        "paint-text-clip-recovery"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/text-clip-reset-restored.pdf",
+          "sha256": "cf33c4a90d3bb5a9dbcd1df513aa8ede8c33327dbc7184bac3d7e12f7b507fcf"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/text-clip-reset-restored.rgb",
+          "sha256": "3fd9d7e3a370a94a9f9662749f48cc53bf49c5dd1adb1c1bbec007316ceb9b8c"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/text-clip-reset-restored.pdf",
+      "sha256": "cf33c4a90d3bb5a9dbcd1df513aa8ede8c33327dbc7184bac3d7e12f7b507fcf",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "text.clip-mode-reset"
+      ],
+      "oracle": "corpus/generated/paint/text-clip-reset-restored.rgb",
+      "oracle_sha256": "3fd9d7e3a370a94a9f9662749f48cc53bf49c5dd1adb1c1bbec007316ceb9b8c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-clip-reset-inherited",
+      "kind": "pdf",
+      "description": "A clipping mode inherited at BT also forbids a nonclipping reset before ET",
+      "requirements": [
+        "paint-text-clip-recovery"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/text-clip-reset-inherited.pdf",
+          "sha256": "286b515362cdc1627559da0c50693855e33d68e5ddc092c9a9d37a2c5d1fbb09"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/text-clip-reset-inherited.rgb",
+          "sha256": "3fd9d7e3a370a94a9f9662749f48cc53bf49c5dd1adb1c1bbec007316ceb9b8c"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/text-clip-reset-inherited.pdf",
+      "sha256": "286b515362cdc1627559da0c50693855e33d68e5ddc092c9a9d37a2c5d1fbb09",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "text.clip-mode-reset"
+      ],
+      "oracle": "corpus/generated/paint/text-clip-reset-inherited.rgb",
+      "oracle_sha256": "3fd9d7e3a370a94a9f9662749f48cc53bf49c5dd1adb1c1bbec007316ceb9b8c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/annotation-empty-bbox-width",
+      "kind": "pdf",
+      "description": "Zero extent prevents appearance fitting; skip it and retain the following annotation",
+      "requirements": [
+        "paint-appearance-recovery"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/annotation-empty-bbox-width.pdf",
+          "sha256": "ffc20e88277b7224cd29732ad4fc125f2cc3fcb4bc1165d5106c6eef1f8e0267"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/annotation-empty-bbox-width.rgb",
+          "sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/annotation-empty-bbox-width.pdf",
+      "sha256": "ffc20e88277b7224cd29732ad4fc125f2cc3fcb4bc1165d5106c6eef1f8e0267",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.appearance-empty"
+      ],
+      "oracle": "corpus/generated/paint/annotation-empty-bbox-width.rgb",
+      "oracle_sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/annotation-empty-indirect",
+      "kind": "pdf",
+      "description": "Zero extent prevents appearance fitting; skip it and retain the following annotation",
+      "requirements": [
+        "paint-appearance-recovery"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/annotation-empty-indirect.pdf",
+          "sha256": "80f0663a7dea2e00a8f5b736ef6adf62653bf789d9cc855e9f420976b7d3416f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/annotation-empty-indirect.rgb",
+          "sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/annotation-empty-indirect.pdf",
+      "sha256": "80f0663a7dea2e00a8f5b736ef6adf62653bf789d9cc855e9f420976b7d3416f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.appearance-empty"
+      ],
+      "oracle": "corpus/generated/paint/annotation-empty-indirect.rgb",
+      "oracle_sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/annotation-empty-bbox-height",
+      "kind": "pdf",
+      "description": "Zero extent prevents appearance fitting; skip it and retain the following annotation",
+      "requirements": [
+        "paint-appearance-recovery"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/annotation-empty-bbox-height.pdf",
+          "sha256": "d64b87fe4940b1bc1f4a95c269df0cf5c3471876f675d14d4eeea6bc9b8598fc"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/annotation-empty-bbox-height.rgb",
+          "sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/annotation-empty-bbox-height.pdf",
+      "sha256": "d64b87fe4940b1bc1f4a95c269df0cf5c3471876f675d14d4eeea6bc9b8598fc",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.appearance-empty"
+      ],
+      "oracle": "corpus/generated/paint/annotation-empty-bbox-height.rgb",
+      "oracle_sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/annotation-empty-bbox-point",
+      "kind": "pdf",
+      "description": "Zero extent prevents appearance fitting; skip it and retain the following annotation",
+      "requirements": [
+        "paint-appearance-recovery"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/annotation-empty-bbox-point.pdf",
+          "sha256": "1bfb9cd11fb0ae5018b88464f18458bf74261047ecff25a5d629879133ceec76"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/annotation-empty-bbox-point.rgb",
+          "sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/annotation-empty-bbox-point.pdf",
+      "sha256": "1bfb9cd11fb0ae5018b88464f18458bf74261047ecff25a5d629879133ceec76",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.appearance-empty"
+      ],
+      "oracle": "corpus/generated/paint/annotation-empty-bbox-point.rgb",
+      "oracle_sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/annotation-empty-bbox-rotated",
+      "kind": "pdf",
+      "description": "Zero extent prevents appearance fitting; skip it and retain the following annotation",
+      "requirements": [
+        "paint-appearance-recovery"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/annotation-empty-bbox-rotated.pdf",
+          "sha256": "0808bb86655fe13ad27eef9a9cf1365dfbb68cbfc5aa808e491fbb2da5eba62f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/annotation-empty-bbox-rotated.rgb",
+          "sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/annotation-empty-bbox-rotated.pdf",
+      "sha256": "0808bb86655fe13ad27eef9a9cf1365dfbb68cbfc5aa808e491fbb2da5eba62f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.appearance-empty"
+      ],
+      "oracle": "corpus/generated/paint/annotation-empty-bbox-rotated.rgb",
+      "oracle_sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/annotation-empty-rect-width",
+      "kind": "pdf",
+      "description": "Zero extent prevents appearance fitting; skip it and retain the following annotation",
+      "requirements": [
+        "paint-appearance-recovery"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/annotation-empty-rect-width.pdf",
+          "sha256": "f08cbb77778199b93db917d32a44209b90d8ff9d90d9f1569d592fb37ab5a211"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/annotation-empty-rect-width.rgb",
+          "sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/annotation-empty-rect-width.pdf",
+      "sha256": "f08cbb77778199b93db917d32a44209b90d8ff9d90d9f1569d592fb37ab5a211",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.appearance-empty"
+      ],
+      "oracle": "corpus/generated/paint/annotation-empty-rect-width.rgb",
+      "oracle_sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/annotation-empty-rect-height",
+      "kind": "pdf",
+      "description": "Zero extent prevents appearance fitting; skip it and retain the following annotation",
+      "requirements": [
+        "paint-appearance-recovery"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/annotation-empty-rect-height.pdf",
+          "sha256": "63fd9c1e2f97d966bf7b0ef93e50aa28e2243f0f9587f3cd0165a78588325b73"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/annotation-empty-rect-height.rgb",
+          "sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/annotation-empty-rect-height.pdf",
+      "sha256": "63fd9c1e2f97d966bf7b0ef93e50aa28e2243f0f9587f3cd0165a78588325b73",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.appearance-empty"
+      ],
+      "oracle": "corpus/generated/paint/annotation-empty-rect-height.rgb",
+      "oracle_sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/annotation-empty-rect-point",
+      "kind": "pdf",
+      "description": "Zero extent prevents appearance fitting; skip it and retain the following annotation",
+      "requirements": [
+        "paint-appearance-recovery"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/annotation-empty-rect-point.pdf",
+          "sha256": "060df6a3aa6bce5bb10ba7f8d280dd6cc5e07720fa79955b63ec5ca733c64c81"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/annotation-empty-rect-point.rgb",
+          "sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/annotation-empty-rect-point.pdf",
+      "sha256": "060df6a3aa6bce5bb10ba7f8d280dd6cc5e07720fa79955b63ec5ca733c64c81",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "annotation.appearance-empty"
+      ],
+      "oracle": "corpus/generated/paint/annotation-empty-rect-point.rgb",
+      "oracle_sha256": "cd418f4c9a5949988abdae5b509fc985c188a44ce102408df61fa7144157a25e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/bundled-cjk-substitute",
+      "kind": "vector",
+      "description": "Opt-in Source Han Sans: predefined CMap to CID to collection Unicode to OTF cmap and CID CFF outlines",
+      "requirements": [
+        "paint-bundled-cjk-substitute"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/bundled-cjk-substitute.pdf",
+          "sha256": "b4fbe4d90f8cf306588c141efacaf31bc363d8f1ff102aa69ed5b91e1af1b97b"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/bundled-cjk-substitute.rgb",
+          "sha256": "70c1bd5276b2fcd414c4a4e115b523fef82f8eeb0f82687f04aa033b69959234"
+        }
+      },
+      "driver": "bundled-cjk-paint",
+      "cargo_feature": "cjk-fonts",
+      "tolerance": 1
     },
     {
       "id": "paint/image-area-fractional",

@@ -136,7 +136,6 @@ def text_cases():
         ("text-end-without-begin",b"ET",[]),
         ("text-unfinished",b"BT",[]),
         ("text-mode-invalid",b"8 Tr",[]),
-        ("text-clip-reset",b"BT 7 Tr 0 Tr ET",[]),
         ("text-q-crosses",b"q BT Q ET",[]),
         ("text-et-crosses",b"BT q ET Q",[]),
         ("text-no-font",b"BT (A) Tj ET",[]),
@@ -228,6 +227,8 @@ def cases():
     yield from image_cases()
     yield from extra_cases()
     yield from bundled_cases()
+    yield from repair_cases()
+    yield cjk_substitute_case()
     yield from affine_area_cases()
     yield shared_font_case()
     yield late_font_repair_case()
@@ -424,10 +425,26 @@ def bundled_cases():
     yield Vector(identifier,{'.pdf':page(b'BT /F 24 Tf 3 8 Td (HH) Tj ET',[font,descriptor],FONT,64),'.rgb':oracle},
                  ('paint-bundled-fonts',),'FontDescriptor flags select fixed-pitch italic substitute; PDF widths take precedence',
                  extra={'path':f'corpus/generated/paint/{identifier}.pdf','sha256':hashlib.sha256(page(b'BT /F 24 Tf 3 8 Td (HH) Tj ET',[font,descriptor],FONT,64)).hexdigest(),'kind':'pdf','expected':RENDER,'pages':1,'repairs':['font.substituted'],'strict_valid':True,'oracle':f'corpus/generated/paint/{identifier}.rgb','oracle_sha256':hashlib.sha256(oracle).hexdigest(),'tolerance':1,'width':64,'height':64,'dpi':72})
-    for name in ('Symbol','ZapfDingbats'):
-        font=b'<< /Type /Font /Subtype /Type1 /BaseFont /'+name.encode()+b' >>'
-        yield Case('bundled-'+name.lower(),page(b'BT /F 24 Tf (A) Tj ET',[font],FONT),UNSUPPORTED,
-                   ('paint-bundled-fonts',),'No licensed substitute outlines are available',feature='font.non-embedded')
+    from .paint_cff import oracle as cff_oracle
+    for base, outline, names in [('Symbol','FoxitSymbol',('Omega','alpha')),
+                                  ('ZapfDingbats','FoxitDingbats',('a2','a1'))]:
+        for differences in (False, True):
+            identifier = 'bundled-'+base.lower()+('-differences' if differences else '')
+            encoding = b''
+            mapping = dict(zip(b'AB', names)) if differences else None
+            advances = {65: F(850), 66: F(850)} if differences and base == 'Symbol' else None
+            codes = b'ABA' if advances else b'AB'
+            if differences:
+                encoding = b' /Encoding << /Differences [65 /'+names[0].encode()+b' /'+names[1].encode()+b'] >>'
+            if advances:
+                encoding += b' /FirstChar 65 /LastChar 66 /Widths [850 850]'
+            font = b'<< /Type /Font /Subtype /Type1 /BaseFont /'+base.encode()+encoding+b' >>'
+            pdf = page(b'BT /F 24 Tf 3 8 Td ('+codes+b') Tj ET',[font],FONT,64)
+            oracle = cff_oracle(root/'data/fonts'/f'{outline}.cff',root/'data/afm'/f'{base}.afm',
+                                codes,differences=mapping,advances=advances)
+            yield render_vector(identifier,pdf,oracle,'paint-bundled-fonts',
+                                'AFM names and advances select bundled CFF outlines; rational cubic area oracle',
+                                repairs=('font.substituted',),tolerance=1,size=64)
     # H is Adobe-Japan1's predefined two-byte JIS map. Code 0x2422 maps
     # to CID 843 (hiragana A). A licensed bundled H outline is deliberately
     # assigned to that CID in the embedded subset, separating code/CID/glyph
@@ -666,3 +683,98 @@ AREA_TIES_2048 = (
     232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243,
     244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254,
 )
+
+
+def render_vector(name, pdf, oracle, requirement, description, *, repairs=(), strict_valid=True, tolerance=0, size=SIZE):
+    """PDF oracle handled by recovery/provider tests rather than the strict suite."""
+    import hashlib
+    from .model import Vector
+    return Vector(name,{'.pdf':pdf,'.rgb':oracle},(requirement,),description,
+                  extra=dict(kind='pdf',expected=RENDER,path=f'corpus/generated/paint/{name}.pdf',
+                             sha256=hashlib.sha256(pdf).hexdigest(),pages=1,strict_valid=strict_valid,
+                             repairs=list(repairs),oracle=f'corpus/generated/paint/{name}.rgb',
+                             oracle_sha256=hashlib.sha256(oracle).hexdigest(),dpi=72,
+                             width=size,height=size,tolerance=tolerance))
+
+
+def repair_cases():
+    tag = 'text.clip-mode-reset'
+    yield render_vector('text-clip-reset',page(b'BT 7 Tr 0 Tr ET'),rects([]),
+                        'paint-text-clip-recovery','A nonclipping Tr before ET is reported even without glyphs',
+                        repairs=(tag,),strict_valid=False)
+    yield render_vector('text-clip-reset-retained',
+                        page(b'1 0 0 rg BT /F 10 Tf 2 2 Td 7 Tr (A) Tj 0 Tr 10 0 Td (A) Tj ET 0 1 0 rg 0 0 32 32 re f',ttf(),FONT),
+                        rects([((2,2,4,6),GREEN),((12,2,4,6),RED)]),
+                        'paint-text-clip-recovery','Clipping accumulated before a reset survives ET; later nonclipping text paints before ET',
+                        repairs=(tag,),strict_valid=False)
+    yield render_vector('text-clip-reset-reentered',
+                        page(b'BT /F 10 Tf 2 2 Td 7 Tr (A) Tj 3 Tr (A) Tj 7 Tr (A) Tj 0 Tr ET 0 0 32 32 re f',ttf(),FONT),
+                        rects([((2,2,4,6),BLACK),((10,2,4,6),BLACK)]),
+                        'paint-text-clip-recovery','Reentering a clipping mode appends to the earlier clip; each reset is positioned',
+                        repairs=(tag,tag),strict_valid=False)
+    yield render_vector('text-clip-reset-restored',
+                        page(b'BT /F 10 Tf 2 2 Td q 7 Tr (A) Tj Q ET 0 0 32 32 re f',ttf(),FONT),
+                        rects([((2,2,4,6),BLACK)]),
+                        'paint-text-clip-recovery','Q restoring a nonclipping mode also reports the reset and preserves the accumulated clip',
+                        repairs=(tag,),strict_valid=False)
+    yield render_vector('text-clip-reset-inherited',
+                        page(b'7 Tr BT /F 10 Tf 2 2 Td (A) Tj 0 Tr ET 0 0 32 32 re f',ttf(),FONT),
+                        rects([((2,2,4,6),BLACK)]),
+                        'paint-text-clip-recovery','A clipping mode inherited at BT also forbids a nonclipping reset before ET',
+                        repairs=(tag,),strict_valid=False)
+    # The first appearance must never execute: its unresolved shading resource
+    # would fail if entered. A following valid appearance proves
+    # that skipping preserves page graphics and annotation iteration.
+    for name, box, matrix, rect in [
+        ('bbox-width',b'[0 0 0 4]',b'[1 0 0 1 0 0]',b'[2 2 10 14]'),
+        ('indirect',b'[0 0 0 4]',b'[1 0 0 1 0 0]',b'[2 2 10 14]'),
+        ('bbox-height',b'[0 0 4 0]',b'[1 0 0 1 0 0]',b'[2 2 10 14]'),
+        ('bbox-point',b'[0 0 0 0]',b'[1 0 0 1 0 0]',b'[2 2 10 14]'),
+        ('bbox-rotated',b'[0 0 0 4]',b'[0 1 -1 0 12 3]',b'[2 2 10 14]'),
+        ('rect-width',b'[0 0 2 4]',b'[1 0 0 1 0 0]',b'[2 2 2 14]'),
+        ('rect-height',b'[0 0 2 4]',b'[1 0 0 1 0 0]',b'[2 2 10 2]'),
+        ('rect-point',b'[0 0 2 4]',b'[1 0 0 1 0 0]',b'[2 2 2 2]'),
+    ]:
+        objects = [
+            b'<< /Type /Catalog /Pages 2 0 R >>',
+            b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+            b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 32 32] /Contents 4 0 R /Annots [<< /Subtype /Stamp /Rect '+rect+b' /AP << /N 5 0 R >> >> << /Subtype /Stamp /Rect [20 4 24 12] /AP << /N 6 0 R >> >>] >>',
+            stream(b'0 0 1 rg 0 0 32 32 re f'),
+            stream(b'/Unavailable sh',b'/Type /XObject /Subtype /Form /BBox '+box+b' /Matrix '+matrix+b' /Resources << >>'),
+            stream(b'1 0 0 rg 0 0 2 4 re f',b'/Type /XObject /Subtype /Form /BBox [0 0 2 4] /Resources << >>'),
+        ]
+        if name == 'indirect':
+            annotation = b'<< /Subtype /Stamp /Rect '+rect+b' /AP << /N 5 0 R >> >>'
+            objects[2] = objects[2].replace(annotation,b'7 0 R')
+            objects.append(annotation)
+        yield render_vector('annotation-empty-'+name,document(objects),
+                            rects([((0,0,32,32),BLUE),((20,4,4,8),RED)]),
+                            'paint-appearance-recovery','Zero extent prevents appearance fitting; skip it and retain the following annotation',
+                            repairs=('annotation.appearance-empty',),strict_valid=False)
+
+
+def cjk_substitute_case():
+    """Feature-gated CID substitution, independently selected through data files."""
+    from pathlib import Path
+    from .model import Vector
+    from .text import bundled_cmap, bundled_unicode
+    from .paint_cff import otf_contours, outline_oracle
+    root = Path(__file__).resolve().parents[2]/'data'
+    folder = root/'cmaps/Adobe-Japan1-7'
+    inventory = {p.name:p for p in folder.iterdir()}
+    codes = (0x4e00, 0x3042)  # CJK ideograph ONE and hiragana A.
+    mapping, mode, _, _ = bundled_cmap(inventory['UniJIS-UCS2-H'],inventory,{})
+    assert mode == 0
+    cids = [mapping[2,code] for code in codes]
+    unicode = bundled_unicode(folder/'cid2unicode.txt')
+    scalars = [ord(unicode[cid]) for cid in cids]
+    outline = root/'cjk/SourceHanSansJP-Regular.otf'
+    oracle = outline_oracle([otf_contours(outline,scalar) for scalar in scalars],[1100,923])
+    font = b'<< /Type /Font /Subtype /Type0 /BaseFont /Collection /Encoding /UniJIS-UCS2-H /DescendantFonts [6 0 R] >>'
+    cidfont = b'<< /Type /Font /Subtype /CIDFontType0 /BaseFont /Collection /CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 7 >> /FontDescriptor 7 0 R /DW 923 /W [%d [1100]] >>' % cids[0]
+    descriptor = b'<< /Type /FontDescriptor /Flags 4 /FontName /Collection /FontBBox [-100 -300 1200 1000] /ItalicAngle 0 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 >>'
+    pdf = page(b'BT /F 24 Tf 3 8 Td <'+b''.join(b'%04x'%c for c in codes)+b'> Tj ET',
+               [font,cidfont,descriptor],FONT,64)
+    return Vector('bundled-cjk-substitute',{'.pdf':pdf,'.rgb':oracle},('paint-bundled-cjk-substitute',),
+                  'Opt-in Source Han Sans: predefined CMap to CID to collection Unicode to OTF cmap and CID CFF outlines',
+                  extra={'driver':'bundled-cjk-paint','cargo_feature':'cjk-fonts','tolerance':1})

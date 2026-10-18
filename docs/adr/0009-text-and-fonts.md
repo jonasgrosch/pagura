@@ -42,13 +42,22 @@ and reaches the engine only through a provider (invariant 7):
   metric-compatible with Helvetica, Times and Courier, from Google's pinned
   `croscorefonts` release. A substituted glyph uses the AFM advance, so
   layout follows the PDF's metrics even where outlines differ slightly.
-- **Symbol and ZapfDingbats** have no permissively licensed metric-compatible
-  outlines. Copyleft sets such as URW base-35 cannot be bundled in an MIT/Apache
-  project, so these fonts keep failing with `font.non-embedded` until a
-  permissive source exists. Their AFM metrics are still bundled.
+- **Symbol and ZapfDingbats** (amended 2026-10-18): FoxitSymbol and
+  FoxitDingbats, PDFium's BSD-3-Clause CFF fonts as pdf.js redistributes
+  them. They are metric-compatible and carry the AFM glyph names, so glyphs
+  are selected by name through the built-in encoding or Differences.
+  Copyleft sets such as URW base-35 remain excluded.
+- **Non-embedded CID fonts** (amended 2026-10-18, opt-in `cjk-fonts`):
+  Source Han Sans Regular for the Japan1, GB1, CNS1 and Korea1 collections
+  (SIL OFL 1.1), about 23 MiB. CIDs reach a glyph through the collection's
+  Unicode data and the font's Unicode cmap, never through the font's own
+  CIDs, and the PDF's W and DW keep the advances. Writing is horizontal
+  only until vertical forms are supported (`font.cid-substitute-vertical`).
+  The feature is off by default, so default binaries and the WebAssembly
+  host stay small.
 
-`pagura-text` defines the provider interface (standard font by base name,
-predefined CMap by name). A data crate implements it over the bundled files,
+`pagura-text` defines the provider interface: a standard font by base name,
+a predefined CMap by name, and a CID substitute by character collection. A data crate implements it over the bundled files,
 which are recorded with source URLs and SHA-256 in a lock, like the corpora.
 Hosts may supply their own provider; the browser can fetch data lazily
 instead of embedding it in the WebAssembly module. Substitution is reported

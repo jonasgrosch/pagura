@@ -19,9 +19,13 @@ impl Compiler<'_> {
         }
         for value in values {
             self.annotation(value, page.resources()).map_err(|error| {
-                value
-                    .as_reference()
-                    .map_or(error.clone(), |id| error.in_object(id))
+                if let Some(id) = value.as_reference()
+                    && error.object.is_none()
+                {
+                    error.in_object(id)
+                } else {
+                    error
+                }
             })?;
         }
         Ok(())
@@ -60,10 +64,10 @@ impl Compiler<'_> {
             return Ok(());
         }
         let rect = rectangle(self.document, d, b"Rect")?;
-        if rect.width() == 0.0 && rect.height() == 0.0 {
-            return Ok(());
-        }
         let Some(ap) = d.get(b"AP") else {
+            if rect.width() == 0.0 && rect.height() == 0.0 {
+                return Ok(());
+            }
             if matches!(subtype.as_bytes(), b"Popup" | b"Projection")
                 || (subtype == b"Link" && no_border(self.document, d)?)
             {
@@ -135,7 +139,20 @@ impl Compiler<'_> {
             })
             .transpose()?
             .unwrap_or(Transform::IDENTITY);
-        let placement = placement(bbox, transform, rect)?;
+        let Some(placement) = placement(bbox, transform, rect)? else {
+            return super::repair(
+                self.document,
+                pagura_core::Diagnostic::new(
+                    super::tags::APPEARANCE_EMPTY,
+                    "zero-sized appearance or annotation rectangle; appearance skipped",
+                )
+                .in_object(id)
+                .at(pagura_core::Position::Stream {
+                    object: id,
+                    offset: 0,
+                }),
+            );
+        };
         // Annotation appearances start independently of the page's final state.
         // Table 166 requires ignoring annotation styling keys for an explicit AP.
         let saved = std::mem::replace(
@@ -246,7 +263,7 @@ fn rectangle(document: &pagura_document::Document, d: &Dictionary, key: &[u8]) -
 }
 
 /// Fit the upright envelope of all four transformed corners (12.5.5).
-fn placement(b: Rect, m: Transform, r: Rect) -> Result<Transform> {
+fn placement(b: Rect, m: Transform, r: Rect) -> Result<Option<Transform>> {
     let points = [
         Point::new(b.x0, b.y0),
         Point::new(b.x1, b.y0),
@@ -259,7 +276,13 @@ fn placement(b: Rect, m: Transform, r: Rect) -> Result<Transform> {
     let y0 = points.iter().map(|p| p.y).fold(f64::INFINITY, f64::min);
     let y1 = points.iter().map(|p| p.y).fold(f64::NEG_INFINITY, f64::max);
     if x1 <= x0 || y1 <= y0 {
+        if b.width() == 0.0 || b.height() == 0.0 {
+            return Ok(None);
+        }
         return Err(Error::syntax("degenerate appearance bounds"));
+    }
+    if r.width() == 0.0 || r.height() == 0.0 {
+        return Ok(None);
     }
     let sx = r.width() / (x1 - x0);
     let sy = r.height() / (y1 - y0);
@@ -267,7 +290,7 @@ fn placement(b: Rect, m: Transform, r: Rect) -> Result<Transform> {
     if !a.is_finite() {
         return Err(Error::limit("appearance fitting exceeds numeric range"));
     }
-    Ok(a)
+    Ok(Some(a))
 }
 
 fn standard_type(name: &[u8]) -> bool {
@@ -302,4 +325,128 @@ fn standard_type(name: &[u8]) -> bool {
             | b"Projection"
             | b"RichMedia"
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{RenderOptions, compile_page};
+    use pagura_core::{ErrorKind, ObjectId, Position, Recovery};
+    use pagura_document::{Document, OpenOptions};
+    use pagura_testkit::fixture;
+
+    #[test]
+    fn empty_appearance_fitting_reports_repairs_without_entering_the_stream() {
+        for suffix in [
+            "bbox-width",
+            "bbox-height",
+            "bbox-point",
+            "bbox-rotated",
+            "indirect",
+            "rect-width",
+            "rect-height",
+            "rect-point",
+        ] {
+            let name = format!("annotation-empty-{suffix}");
+            let object = ObjectId::new(5, 0);
+            let position = Position::Stream { object, offset: 0 };
+            let strict = Document::open(
+                fixture("paint", &format!("{name}.pdf")),
+                &OpenOptions {
+                    recovery: Recovery::Strict,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let error = compile_page(&strict, strict.page(0).unwrap()).unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Syntax);
+            assert_eq!(error.repair, Some(super::super::tags::APPEARANCE_EMPTY));
+            assert_eq!(error.object, Some(object));
+            assert_eq!(error.position, position);
+            assert_eq!(strict.diagnostics(), []);
+            let repaired = Document::open(
+                fixture("paint", &format!("{name}.pdf")),
+                &OpenOptions::default(),
+            )
+            .unwrap();
+            let page = repaired.page(0).unwrap();
+            let image = compile_page(&repaired, page)
+                .unwrap()
+                .render(&RenderOptions::default())
+                .unwrap();
+            assert_eq!(
+                pagura_testkit::ppm(
+                    image.width(),
+                    image.height(),
+                    &image.to_rgb_over(pagura_raster::Rgba8::WHITE)
+                ),
+                fixture("paint", &format!("{name}.rgb")),
+                "{name}"
+            );
+            let diagnostics = repaired.diagnostics();
+            assert_eq!(diagnostics.len(), 1);
+            assert_eq!(diagnostics[0].repair, super::super::tags::APPEARANCE_EMPTY);
+            assert_eq!(diagnostics[0].object, Some(object));
+            assert_eq!(diagnostics[0].position, position);
+            compile_page(&repaired, page).unwrap();
+            assert_eq!(repaired.diagnostics(), diagnostics);
+        }
+    }
+
+    #[test]
+    fn fitting_uses_the_transformed_envelope_and_preserves_other_errors() {
+        let zero_width = Rect {
+            x0: 0.0,
+            y0: 0.0,
+            x1: 0.0,
+            y1: 4.0,
+        };
+        let target = Rect {
+            x0: 2.0,
+            y0: 2.0,
+            x1: 10.0,
+            y1: 14.0,
+        };
+        assert!(
+            placement(zero_width, Transform::IDENTITY, target)
+                .unwrap()
+                .is_none()
+        );
+        // An oblique line has a nonzero upright envelope and can still be fit.
+        assert!(
+            placement(
+                zero_width,
+                Transform::new(1.0, 1.0, -1.0, 1.0, 0.0, 0.0),
+                target
+            )
+            .unwrap()
+            .is_some()
+        );
+        let bbox = Rect {
+            x0: 0.0,
+            y0: 0.0,
+            x1: 2.0,
+            y1: 4.0,
+        };
+        let error =
+            placement(bbox, Transform::new(0.0, 0.0, 0.0, 1.0, 0.0, 0.0), target).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        let error = placement(
+            Rect {
+                x0: 0.0,
+                y0: 0.0,
+                x1: 0.5,
+                y1: 0.5,
+            },
+            Transform::IDENTITY,
+            Rect {
+                x0: 0.0,
+                y0: 0.0,
+                x1: f64::MAX,
+                y1: f64::MAX,
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
+    }
 }

@@ -101,6 +101,9 @@ impl Compiler<'_> {
         {
             return Err(Error::syntax("Q crosses text object boundary"));
         }
+        if let Some(saved) = self.saved.last() {
+            self.check_text_mode(saved.text.mode)?;
+        }
         let object = self.state.text.object.take();
         let procedure = self.state.text.procedure.clone();
         self.state = self
@@ -141,10 +144,8 @@ impl Compiler<'_> {
                     .and_then(|v| u8::try_from(v).ok())
                     .filter(|&v| v < 8)
                     .ok_or(Error::syntax("text render mode outside 0..7"))?;
+                self.check_text_mode(mode)?;
                 if let Some(object) = &mut self.state.text.object {
-                    if object.clipping && mode < 4 {
-                        return Err(Error::syntax("text clipping mode reset before ET"));
-                    }
                     object.clipping |= mode >= 4;
                 }
                 self.state.text.mode = mode;
@@ -188,6 +189,16 @@ impl Compiler<'_> {
             }
             b"d0" | b"d1" => self.glyph_metrics(word, v)?,
             _ => return Err(Error::syntax("invalid text operator")),
+        }
+        Ok(())
+    }
+
+    fn check_text_mode(&self, mode: u8) -> Result<()> {
+        if mode < 4 && self.state.text.object.as_ref().is_some_and(|o| o.clipping) {
+            self.repair(
+                super::tags::TEXT_CLIP_RESET,
+                "text clipping mode reset before ET; accumulated clip retained",
+            )?;
         }
         Ok(())
     }

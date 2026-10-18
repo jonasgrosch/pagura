@@ -10,6 +10,10 @@ const FONTS: &[&str] = &[
     "bundled-courier-oblique",
     "bundled-descriptor-flags",
     "bundled-cjk-cmap",
+    "bundled-symbol",
+    "bundled-zapfdingbats",
+    "bundled-symbol-differences",
+    "bundled-zapfdingbats-differences",
 ];
 
 #[test]
@@ -20,12 +24,8 @@ fn facade_and_context_remain_send_and_sync() {
 }
 
 #[test]
-fn explicit_absence_and_symbolic_fonts_stay_unsupported() {
-    for name in FONTS
-        .iter()
-        .copied()
-        .chain(["bundled-symbol", "bundled-zapfdingbats"])
-    {
+fn explicit_absence_of_font_data_stays_unsupported() {
+    for &name in FONTS {
         let source = Document::open(
             fixture("paint", &format!("{name}.pdf")),
             &OpenOptions::default(),
@@ -252,4 +252,74 @@ fn unusable_glyphs_report_repairs_without_losing_advances() {
     .unwrap();
     let error = pagura::compile_page(&strict, strict.page(0).unwrap()).unwrap_err();
     assert_eq!(error.repair.unwrap().as_str(), "font.glyph-data");
+}
+
+#[test]
+#[cfg(feature = "cjk-fonts")]
+fn cjk_substitute_matches_independent_otf_oracle() {
+    let document = Document::open(
+        fixture("paint", "bundled-cjk-substitute.pdf"),
+        &OpenOptions {
+            recovery: pagura::Recovery::Strict,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let context = pagura::render_context(Arc::new(document));
+    let page = context.document().page(0).unwrap();
+    let options = pagura::RenderOptions::default();
+    let image = context.render_page(page, &options).unwrap();
+    let expected = fixture("paint", "bundled-cjk-substitute.rgb");
+    let actual = pagura_testkit::ppm(
+        image.width(),
+        image.height(),
+        &image.to_rgb_over(pagura::Rgba8::WHITE),
+    );
+    assert_eq!(actual.len(), expected.len());
+    assert!(actual.iter().zip(expected).all(|(a, b)| a.abs_diff(b) <= 1));
+    let diagnostics = context.document().diagnostics();
+    assert_eq!(
+        diagnostics
+            .iter()
+            .map(|d| d.repair.as_str())
+            .collect::<Vec<_>>(),
+        ["font.cid-glyph-missing", "font.substituted"]
+    );
+    let tile = pagura::Tile {
+        x: 11,
+        y: 9,
+        width: 37,
+        height: 41,
+    };
+    let part = context.render_tile(page, &options, tile).unwrap();
+    for y in 0..tile.height {
+        let start = usize::try_from(tile.x).unwrap() * 4;
+        assert_eq!(
+            part.row(y).unwrap(),
+            &image.row(tile.y + y).unwrap()
+                [start..start + usize::try_from(tile.width).unwrap() * 4]
+        );
+    }
+}
+
+#[test]
+#[cfg(not(feature = "cjk-fonts"))]
+fn cjk_substitution_requires_its_opt_in_data() {
+    let document = Document::open(
+        fixture("paint", "bundled-cjk-substitute.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let context = pagura::render_context(Arc::new(document));
+    let error = context
+        .compile_page(context.document().page(0).unwrap())
+        .unwrap_err();
+    assert_eq!(
+        error.feature().unwrap().as_str(),
+        if cfg!(feature = "bundled-data") {
+            "font.non-embedded"
+        } else {
+            "font.predefined-cmap"
+        }
+    );
 }

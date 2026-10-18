@@ -43,6 +43,12 @@ pub(crate) mod tags {
     /// 8.11.4.3: use the initial ON state for an unregistered, valid OCG.
     /// This also applies under OCMD negation; readers differ on this policy.
     pub const OPTIONAL_GROUP: Repair = Repair::new("content.optional-group");
+    /// 9.3.6: retain accumulated glyph clips through ET after a nonclipping reset.
+    /// Most readers keep the clip when recovering this prohibited transition.
+    pub const TEXT_CLIP_RESET: Repair = Repair::new("text.clip-mode-reset");
+    /// 7.9.5; 12.5.5: skip an appearance with a zero-sized source or target
+    /// rectangle. Most readers paint nothing where fitting has no area.
+    pub const APPEARANCE_EMPTY: Repair = Repair::new("annotation.appearance-empty");
 }
 
 pub(crate) fn repair(document: &Document, diagnostic: pagura_core::Diagnostic) -> Result<()> {

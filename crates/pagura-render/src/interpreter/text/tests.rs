@@ -148,3 +148,58 @@ fn malformed_font_programs_report_their_own_stream() {
     assert_eq!(diagnostic.position, font_stream);
     assert_eq!(diagnostic.object, Some(pagura_core::ObjectId::new(7, 0)));
 }
+
+#[test]
+fn text_clip_resets_report_positions_and_preserve_accumulated_outlines() {
+    for (name, offsets) in [
+        ("text-clip-reset", &[10][..]),
+        ("text-clip-reset-retained", &[42][..]),
+        ("text-clip-reset-reentered", &[33, 57][..]),
+        ("text-clip-reset-restored", &[33][..]),
+        ("text-clip-reset-inherited", &[33][..]),
+    ] {
+        let document = open(name);
+        let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
+        let object = pagura_core::ObjectId::new(4, 0);
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        assert_eq!(error.repair.unwrap().as_str(), "text.clip-mode-reset");
+        assert_eq!(error.object, Some(object));
+        assert_eq!(
+            error.position,
+            pagura_core::Position::Stream {
+                object,
+                offset: offsets[0],
+            }
+        );
+        assert_eq!(document.diagnostics(), []);
+        let repaired = Document::open(
+            fixture("paint", &format!("{name}.pdf")),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let page = repaired.page(0).unwrap();
+        let list = compile_page(&repaired, page).unwrap();
+        let image = list.render(&RenderOptions::default()).unwrap();
+        assert_eq!(
+            pagura_testkit::ppm(
+                image.width(),
+                image.height(),
+                &image.to_rgb_over(pagura_raster::Rgba8::WHITE)
+            ),
+            fixture("paint", &format!("{name}.rgb")),
+            "{name}"
+        );
+        let diagnostics = repaired.diagnostics();
+        assert_eq!(diagnostics.len(), offsets.len());
+        for (diagnostic, &offset) in diagnostics.iter().zip(offsets) {
+            assert_eq!(diagnostic.repair.as_str(), "text.clip-mode-reset");
+            assert_eq!(diagnostic.object, Some(object));
+            assert_eq!(
+                diagnostic.position,
+                pagura_core::Position::Stream { object, offset }
+            );
+        }
+        compile_page(&repaired, page).unwrap();
+        assert_eq!(repaired.diagnostics(), diagnostics);
+    }
+}
