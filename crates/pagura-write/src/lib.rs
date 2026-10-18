@@ -274,7 +274,7 @@ impl Writer {
             }
             Value::Dictionary(dictionary) => {
                 self.output.extend_from_slice(b"<<");
-                for (key, value) in dictionary.iter() {
+                for (key, value) in dictionary {
                     self.text(format_args!(" {key} "));
                     self.value(value);
                 }

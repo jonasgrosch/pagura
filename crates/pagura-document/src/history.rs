@@ -199,7 +199,7 @@ impl Document {
             }
             table.entries.insert(number, entry);
         }
-        for (key, value) in revision.trailer.iter() {
+        for (key, value) in &revision.trailer {
             ctx.step(0, source)?;
             ctx.allocate::<u8>(
                 value.retained_bytes().saturating_add(key.as_bytes().len()),

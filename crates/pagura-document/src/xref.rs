@@ -182,7 +182,7 @@ fn primary(
             kind = RevisionKind::Hybrid;
         }
         let entries = merge_entries(&mut table, entries, &trailer, offset, shift)?;
-        for (key, value) in trailer.iter() {
+        for (key, value) in &trailer {
             if !table.trailer.contains_key(key.as_bytes()) {
                 table.trailer.insert(key.clone(), value.clone());
             }

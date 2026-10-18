@@ -134,7 +134,7 @@ impl Views<'_> {
             return;
         };
         if let Some(names) = self.dictionary(catalog, b"Names") {
-            for (category, root) in names.iter() {
+            for (category, root) in names {
                 let tree = self.document.name_tree(root);
                 let Some(entries) = super::checked(tree.entries()) else {
                     continue;

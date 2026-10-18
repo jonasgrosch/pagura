@@ -296,7 +296,7 @@ fn methods<'a>(
         let dictionary = resolve(value)?
             .as_dictionary()
             .ok_or(Error::syntax("CF must be a dictionary"))?;
-        for (name, value) in dictionary.iter() {
+        for (name, value) in dictionary {
             if name == b"Identity" {
                 continue;
             }

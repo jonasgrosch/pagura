@@ -115,7 +115,7 @@ pub(super) fn additional<'a>(
     let (dictionary, source) = ctx.dictionary(value, source)?;
     ctx.allocate::<AdditionalAction<'_>>(dictionary.len(), source)?;
     let mut result = Vec::new();
-    for (trigger, value) in dictionary.iter() {
+    for (trigger, value) in dictionary {
         ctx.step(0, source)?;
         if !ctx.resolve(value, source)?.0.is_null() {
             result.push(AdditionalAction {
