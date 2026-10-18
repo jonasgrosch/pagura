@@ -133,6 +133,9 @@ def recovery_cases():
 
 
 def cases():
+    yield from image_shading_bounds_cases()
+    yield knockout_rounding_case()
+    yield from content_bounds_cases()
     yield render("compound-path", b"0 0 m 8 0 l 8 8 l 0 8 l h 2 2 4 4 re f*", [((0,0,8,8),BLACK), ((2,2,4,4),(255,255,255))])
     yield render("nonzero", b"0 0 8 8 re 2 2 4 4 re f", [((0,0,8,8),BLACK)])
     yield render("ctm-during-path", b"0 0 m 1 0 0 1 4 0 cm 0 0 l 0 4 l -4 4 l h f", [((0,0,4,4),BLACK)])
@@ -1457,3 +1460,114 @@ def icc_lut_cases():
     for i,l in enumerate((.2,.6,.85)):tags[f'A2B{i}'.encode()]=icc_legacy(4,pcs=b'Lab ',constant=(l*65280/65535,32768/65535,32768/65535))[0]
     pdf=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /XObject << /F 5 0 R >> >> /Contents 4 0 R >>',stream(b'/Perceptual ri /F Do'),stream(b'/Pattern cs /P scn 0 0 8 8 re f',b'/Type /XObject /Subtype /Form /BBox [0 0 8 8] /Resources << /Pattern << /P 6 0 R >> >>'),stream(b'/C cs .5 .5 .5 .5 scn 0 0 1 1 re f',b'/Type /Pattern /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 2 2] /XStep 2 /YStep 2 /Resources << /ColorSpace << /C [/ICCBased 7 0 R] >> >>'),stream(icc_pack(tags,4,pcs=b'Lab '),b'/N 4')])
     yield Case('icc-intent-pattern-in-form',pdf,RENDER,('content-icc-intent',),'ISO 8.7.3.1 and ICC 8.10.2: pattern inherits rendering intent from the parent form initial graphics state',oracle=opaque_rectangles(8,8,[((x,y,1,1),cie_rgb('Lab',(20,0,0),white=ICC_D50)) for x in range(0,8,2) for y in range(0,8,2)]),extra={'tolerance':1})
+
+
+def content_bounds_cases():
+    """Default-user envelopes, ISO 12.3.2.2; exact rectangle geometry oracles.
+
+    Culling uses conservative stroke/control/clip envelopes as project policy.
+    Rotation and UserUnit affect the render oracle, not default-user bounds.
+    """
+    specs = [
+        ('empty', b'', [], None, {}),
+        ('union', b'1 0 0 rg 1 2 2 3 re f 0 0 1 rg 5 6 2 1 re f',
+         [((1, 2, 2, 3), RED), ((5, 6, 2, 1), BLUE)], [1, 2, 7, 7], {}),
+        ('clip', b'2 1 4 5 re W n 0 0 8 8 re f',
+         [((2, 1, 4, 5), BLACK)], [2, 1, 6, 6], {}),
+        ('outside', b'10 10 2 2 re f', [], None, {}),
+        ('stroke-envelope', b'1 M 2 w 2 4 m 6 4 l S',
+         [((2, 3, 4, 2), BLACK)], [0, 2, 8, 6], {}),
+        ('default-space', b'2 0 0 3 1 2 cm 0 0 2 1 re f',
+         [((4, 6, 6, 8), BLACK)], [1, 2, 5, 5],
+         {'page_extra': b'/Rotate 90 /UserUnit 2'}),
+        ('crop', b'-2 2 7 4 re f', [((0, 1, 4, 4), BLACK)], [1, 2, 5, 6],
+         {'page_extra': b'/CropBox [1 1 7 7]'}),
+    ]
+    for name, content, geometry, bounds, options in specs:
+        size = 16 if name == 'default-space' else 6 if name == 'crop' else 8
+        yield Case('bounds-' + name,
+                   single_page([content], media_box=b'[0 0 8 8]', **options),
+                   RENDER, ('content-bounds',),
+                   'Default-user-space content envelope: ' + name,
+                   oracle=opaque_rectangles(size, size, geometry),
+                   extra={'content_bounds': bounds})
+    yield Case('bounds-form', form_pdf(), RENDER, ('content-bounds',),
+               'A form is bounded by its transformed BBox and painted commands',
+               oracle=opaque_rectangles(8, 8, [((2, 2, 4, 4), RED)]),
+               extra={'content_bounds': [2, 2, 6, 6]})
+    resources = b'<< /ColorSpace << /N [/Separation /None /DeviceGray << /FunctionType 2 /Domain [0 1] /C0 [0] /C1 [1] /N 1 >>] >> >>'
+    yield Case('bounds-no-ink', single_page([b'/N cs 1 scn 0 0 8 8 re f'],
+               media_box=b'[0 0 8 8]', resources=resources), RENDER, ('content-bounds',),
+               'None separation contributes no painted content',
+               oracle=opaque_rectangles(8, 8, []), extra={'content_bounds': None})
+
+
+def knockout_rounding_case():
+    """Independent rational opaque knockout/Normal identity (11.4.6, 9.3.8)."""
+    import math
+    import random
+    from decimal import Decimal
+    rng = random.Random(20261022)
+    size = 16
+    background, foreground, colours = [], [], []
+    def quantize(v):
+        value = v * 255 + F(1, 2)
+        return min(255, max(0, value.numerator // value.denominator))
+    while len(colours) < size * size:
+        base, first = F(rng.randrange(257), 256), F(rng.randrange(257), 256)
+        w1, w2 = F(rng.randrange(1, 256), 256), F(rng.randrange(1, 256), 256)
+        a1, a2 = F(quantize(w1), 255), F(quantize(w2), 255)
+        offset = (1 - a2) * ((1 - a1) * base + a1 * first)
+        low = max(0, math.ceil(offset * 255 - F(1, 2)))
+        high = min(254, math.floor((offset + a2) * 255 - F(1, 2)))
+        if low > high:
+            continue
+        k = rng.randint(low, high)
+        target = (F(k) + F(1, 2) - F(1, 10**9)) / 255
+        second = float((target - offset) / a2)
+        for _ in range(rng.randrange(5)):
+            second = math.nextafter(second, math.inf if rng.randrange(2) else -math.inf)
+        if not 0 <= second <= 1:
+            continue
+        i = len(colours)
+        x, y = i % size, i // size
+        def rect(colour, width):
+            colour = format(Decimal.from_float(float(colour)), 'f')
+            width = format(Decimal.from_float(float(width)), 'f')
+            return f'{colour} {colour} {colour} rg {x} {y} {width} 1 re f\n'.encode()
+        background.append(rect(base, 1))
+        foreground.extend((rect(first, w1), rect(second, w2)))
+        colours.append(quantize(offset + a2 * F(second)))
+    resources = b'<< /XObject << /G 5 0 R >> >>'
+    pdf = document([
+        b'<< /Type /Catalog /Pages 2 0 R >>',
+        b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 16 16] /Resources ' + resources + b' /Contents 4 0 R >>',
+        stream(b''.join(background) + b'/G Do'),
+        stream(b''.join(foreground), b'/Type /XObject /Subtype /Form /BBox [0 0 16 16] /Group << /S /Transparency /CS /DeviceRGB /I false /K true >>'),
+    ])
+    pixels = bytes(v for y in reversed(range(size)) for x in range(size)
+                   for v in (colours[y * size + x],) * 3)
+    return Case('knockout-opaque-rounding', pdf, RENDER, ('content-opaque-knockout',),
+                'Opaque knockout members reduce to Normal source-over; output thresholds use independent rational composition',
+                oracle=b'P6\n16 16\n255\n' + pixels, extra={'tolerance': 1})
+
+
+def image_shading_bounds_cases():
+    image_pdf = document([
+        b'<< /Type /Catalog /Pages 2 0 R >>',
+        b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /XObject << /I 5 0 R >> >> /Contents 4 0 R >>',
+        stream(b'4 0 0 2 1 3 cm /I Do'),
+        stream(bytes([0, 0, 255]), b'/Type /XObject /Subtype /Image /Width 1 /Height 1 /BitsPerComponent 8 /ColorSpace /DeviceRGB'),
+    ])
+    yield Case('bounds-image', image_pdf, RENDER, ('content-bounds',),
+               'An image contributes its transformed unit rectangle',
+               oracle=opaque_rectangles(8, 8, [((1, 3, 4, 2), BLUE)]),
+               extra={'content_bounds': [1, 3, 5, 5]})
+    shading_pdf = single_page([b'/S sh'], media_box=b'[0 0 8 8]', resources=
+        b'<< /Shading << /S << /ShadingType 2 /ColorSpace /DeviceRGB /BBox [2 1 6 5] /Coords [0 0 8 0] /Extend [true true] /Function << /FunctionType 2 /Domain [0 1] /C0 [1 0 0] /C1 [1 0 0] /N 1 >> >> >> >>')
+    yield Case('bounds-shading', shading_pdf, RENDER, ('content-bounds',),
+               'A shading is bounded by its transformed BBox',
+               oracle=opaque_rectangles(8, 8, [((2, 1, 4, 4), RED)]),
+               extra={'content_bounds': [2, 1, 6, 5]})

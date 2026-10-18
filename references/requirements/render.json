@@ -34,6 +34,50 @@
       ],
       "gaps": "",
       "rule": "Contents-array streams form one lexical sequence with separating whitespace; boundaries may occur between tokens, including within an operation, as specified in Table 31."
+    },
+    {
+      "id": "content-bounds",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.3.2.2",
+        "8.3.2",
+        "8.5.4"
+      ],
+      "status": "conservative default-user-space API; tight geometric bounds remain outside scope",
+      "tests": [
+        "pagura-render::compositor::regions::tests",
+        "content/bounds-empty",
+        "content/bounds-union",
+        "content/bounds-clip",
+        "content/bounds-outside",
+        "content/bounds-stroke-envelope",
+        "content/bounds-default-space",
+        "content/bounds-crop",
+        "content/bounds-form",
+        "content/bounds-no-ink",
+        "content/bounds-image",
+        "content/bounds-shading",
+        "content/point-fill",
+        "content/point-clip"
+      ],
+      "gaps": "Control hulls and stroke/clip envelopes can exceed the smallest painted rectangle; fixed-size annotation views and hairlines use the one-unit reference device.",
+      "rule": "12.3.2.2 defines destination bounds in default user space and clamps them to the crop box. This API shares conservative culling geometry without integer pixel rounding; using control hulls, stroke envelopes and clip envelopes is project policy, not an assertion that their geometric intersections are tight."
+    },
+    {
+      "id": "content-opaque-knockout",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.3.8",
+        "11.3.3",
+        "11.4.6"
+      ],
+      "status": "opaque Normal fill members elided on Normal RGB scenes without masks, patterns or transfers",
+      "rule": "When member opacity is one, its alpha equals its shape and knockout replacement reduces to Normal source-over. Elision retains the original group mask viewport. Exact-area coverage bytes and guarded nearest output rounding are project policy; the composited oracle allows one level under ADR 0004.",
+      "gaps": "Non-opaque members, non-Normal scenes, soft masks, transfer functions, patterns and non-RGB blending retain their group surfaces.",
+      "tests": [
+        "content/knockout-opaque-rounding",
+        "paint/text-knockout-opaque-overlap"
+      ]
     }
   ]
 }

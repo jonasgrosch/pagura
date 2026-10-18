@@ -17,6 +17,7 @@ fn open(name: &str) -> Document {
 }
 
 const RENDER: &[&str] = &[
+    "knockout-opaque-rounding",
     "pattern",
     "shading",
     "annotation-flags",
@@ -284,7 +285,8 @@ fn independent_content_pixels() {
                         3
                     } else {
                         u8::from(
-                            name.starts_with("dash-")
+                            name == "knockout-opaque-rounding"
+                                || name.starts_with("dash-")
                                 || name.starts_with("fractional")
                                 || name.starts_with("icc-")
                                 || name.starts_with("default-underlying-")

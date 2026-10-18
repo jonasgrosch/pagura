@@ -412,6 +412,7 @@ mod tests {
         };
         let limits = pagura_core::Limits::default();
         let mut context = Context {
+            elide_opaque_groups: false,
             raster: pagura_raster::Rasterizer::default(),
             bounds: super::super::regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
             limits,

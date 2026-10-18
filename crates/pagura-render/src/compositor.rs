@@ -11,6 +11,7 @@ mod reduced;
 mod regions;
 mod sampled;
 mod view;
+pub(crate) use regions::content_bounds;
 use regions::group_region;
 
 use crate::display::{Clip, Command, DisplayList, Mark, PathCommand};
@@ -149,6 +150,7 @@ impl Backdrop<'_> {
 }
 
 struct Context {
+    elide_opaque_groups: bool,
     bounds: regions::Prepared,
     raster: pagura_raster::Rasterizer,
     limits: Limits,
@@ -336,10 +338,21 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
+        self.path_in((p, target.tile), target, initial, model, knockout, depth)
+    }
+    fn path_in(
+        &mut self,
+        (p, tile): (&PathCommand, Tile),
+        target: &mut Surface,
+        initial: Backdrop<'_>,
+        model: Model,
+        knockout: bool,
+        depth: usize,
+    ) -> Result<()> {
         if !path_active(p, model)? {
             return Ok(());
         }
-        let Some(mask) = self.path_mask(p, target.tile)? else {
+        let Some(mask) = self.path_mask(p, tile)? else {
             return Ok(());
         };
         let result = self.paint_path((p, &mask), target, initial, model, knockout, depth);
@@ -518,6 +531,38 @@ impl Context {
         }
         Ok(Some(mask))
     }
+    fn opaque_group(
+        &mut self,
+        group: &Group,
+        parent: &mut Surface,
+        parent_model: Model,
+        tile: Tile,
+        depth: usize,
+    ) -> Result<()> {
+        if depth + 1 >= self.limits.depth {
+            return Err(Error::limit("compositing depth exceeded"));
+        }
+        self.charge(group.commands.len())?;
+        for command in &group.commands {
+            let Command::Path(p) = command else {
+                return Err(Error::invalid_argument(
+                    "opaque knockout has a non-path member",
+                ));
+            };
+            if p.color.paints() {
+                self.path_in(
+                    (p, tile),
+                    parent,
+                    Backdrop::Transparent,
+                    parent_model,
+                    false,
+                    depth + 1,
+                )
+                .map_err(|e| crate::display::contextual(e, p.position))?;
+            }
+        }
+        Ok(())
+    }
     fn group(
         &mut self,
         group: &Group,
@@ -530,6 +575,14 @@ impl Context {
         let Some(tile) = self.region(group, parent.tile)? else {
             return Ok(());
         };
+        // For opaque Normal members, knockout's shape-weighted replacement
+        // reduces to source-over (9.3.8, 11.4.6). Keep the group's mask viewport
+        // even though its intermediate colour surface is unnecessary.
+        // The scene preflight validated every retained knockout group. Masks
+        // and patterns disable elision, so no dynamic group bypasses that check.
+        if self.elide_opaque_groups && !knockout && group.attributes.knockout {
+            return self.opaque_group(group, parent, parent_model, tile, depth);
+        }
         let model = if group.attributes.isolated {
             group.attributes.model.unwrap_or(parent_model)
         } else {
@@ -886,6 +939,9 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
         list.crop.height(),
     );
     let mut context = Context {
+        elide_opaque_groups: !list.group.knockout
+            && list.group.model.is_none_or(|m| m == Model::Rgb)
+            && normal_scene(&list.commands),
         raster: pagura_raster::Rasterizer::default(),
         bounds: regions::Prepared::new(list.device_transform(options), list.limits.decoded_bytes),
         limits: list.limits,
@@ -967,6 +1023,46 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
         y += height;
     }
     Ok(output)
+}
+
+fn opaque_knockout(group: &Group) -> bool {
+    group.attributes.view.is_none()
+        && !group.attributes.isolated
+        && group.attributes.knockout
+        && group.attributes.model.is_none_or(|m| m == Model::Rgb)
+        && group.composite.simple()
+        && group.commands.iter().all(|c| {
+            matches!(c, Command::Path(p)
+            if matches!(p.mark, Mark::Fill(_)) && p.composite.simple()
+            && p.transfer.is_none() && matches!(p.color, crate::color::Color::Solid { .. }))
+        })
+}
+// A changed backdrop must never feed an amplifying blend, transfer or mask.
+fn normal_scene(commands: &[Command]) -> bool {
+    commands.iter().all(|command| match command {
+        Command::Path(p) => {
+            matches!(p.color, crate::color::Color::Solid { .. })
+                && p.composite.blend == crate::blend::BlendMode::Normal
+                && p.composite.mask.is_none()
+                && p.transfer.is_none()
+        }
+        Command::Image(i) => {
+            i.composite.blend == crate::blend::BlendMode::Normal
+                && i.composite.mask.is_none()
+                && i.transfer.is_none()
+        }
+        Command::Shading(s) => {
+            s.composite.blend == crate::blend::BlendMode::Normal
+                && s.composite.mask.is_none()
+                && s.transfer.is_none()
+        }
+        Command::Group(g) => {
+            g.composite.simple()
+                && g.attributes.model.is_none_or(|m| m == Model::Rgb)
+                && (!g.attributes.knockout || opaque_knockout(g))
+                && normal_scene(&g.commands)
+        }
+    })
 }
 
 fn mask_value(mask: &SoftMask, pixel: Pixel, model: Model) -> f64 {
@@ -1057,6 +1153,7 @@ mod tests {
         let path = Arc::new(path.finish());
         let clip = Mask::from_path(2, 2, &path, Transform::IDENTITY, FillRule::NonZero, 4).unwrap();
         let mut context = Context {
+            elide_opaque_groups: false,
             raster: pagura_raster::Rasterizer::default(),
             bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
             limits,

@@ -3,7 +3,7 @@
 //! Prepared bounds belong to one render context.
 use super::{Group, Tile};
 use crate::display::{Clip, Command, Mark, PathCommand};
-use pagura_core::{Error, Result};
+use pagura_core::{Error, Rect, Result};
 use pagura_raster::{Path, Point, Segment, Transform};
 use std::{
     collections::HashMap,
@@ -147,7 +147,10 @@ fn paint_region(
     device: Transform,
     work: &mut Work<'_>,
 ) -> Result<Option<Tile>> {
-    let pad = match &p.mark {
+    retained_region(&p.path, device, tile, stroke_pad(p, device), work)
+}
+fn stroke_pad(p: &PathCommand, device: Transform) -> (f64, f64) {
+    match &p.mark {
         Mark::Fill(_) => (0.0, 0.0),
         Mark::Stroke(s, t, adjust) => {
             let t = t.then(device);
@@ -159,8 +162,7 @@ fn paint_region(
                 (r * t.b.hypot(t.d) + extra).max(0.5) * factor,
             )
         }
-    };
-    retained_region(&p.path, device, tile, pad, work)
+    }
 }
 fn clip_region(
     mut clip: Option<&Arc<Clip>>,
@@ -184,6 +186,9 @@ fn retained_region(
     pad: (f64, f64),
     work: &mut Work<'_>,
 ) -> Result<Option<Tile>> {
+    Ok(hull_region(retained_hull(path, device, work)?, tile, pad))
+}
+fn retained_hull(path: &Arc<Path>, device: Transform, work: &mut Work<'_>) -> Result<[Point; 2]> {
     work.charge(1)?;
     let key = Arc::as_ptr(path) as usize;
     let hull = if device == work.prepared.device {
@@ -203,7 +208,7 @@ fn retained_region(
     } else {
         control_hull(path, device, work)?
     };
-    Ok(hull_region(hull, tile, pad))
+    Ok(hull)
 }
 fn path_region(
     path: &Path,
@@ -264,6 +269,154 @@ fn union(a: Tile, b: Tile) -> Tile {
         width: (a.x + a.width).max(b.x + b.width) - x,
         height: (a.y + a.height).max(b.y + b.height) - y,
     }
+}
+
+/// Default-user-space envelopes, before pixel rounding or page rotation.
+pub(crate) fn content_bounds(list: &crate::DisplayList) -> Result<Option<Rect>> {
+    let mut prepared = Prepared::new(Transform::IDENTITY, list.limits.decoded_bytes);
+    let mut used = 0;
+    content_region(
+        &list.commands,
+        list.crop,
+        list.limits.depth,
+        &mut Work {
+            used: &mut used,
+            maximum: list.limits.raster_work,
+            prepared: &mut prepared,
+        },
+    )
+}
+fn content_region(
+    commands: &[Command],
+    clip: Rect,
+    depth: usize,
+    work: &mut Work<'_>,
+) -> Result<Option<Rect>> {
+    if depth == 0 {
+        return Err(Error::limit("content bounds nesting exceeded"));
+    }
+    work.charge(commands.len())?;
+    let mut total: Option<Rect> = None;
+    for command in commands {
+        let (bounds, chain) = match command {
+            Command::Path(p) if !p.color.paints() => continue,
+            Command::Path(p) => {
+                let bounds = content_hull(&p.path, work)?;
+                let pad = stroke_pad(p, Transform::IDENTITY);
+                let bounds = bounds
+                    .map(|r| {
+                        Rect::from_corners(r.x0 - pad.0, r.y0 - pad.1, r.x1 + pad.0, r.y1 + pad.1)
+                            .ok_or(Error::limit("content bounds overflow"))
+                    })
+                    .transpose()?;
+                (bounds, p.clip.as_ref())
+            }
+            Command::Image(i)
+                if i.image
+                    .space
+                    .as_ref()
+                    .map_or_else(|| !i.stencil.paints(), |space| !space.paints()) =>
+            {
+                continue;
+            }
+            Command::Image(i) => {
+                let mut path = pagura_raster::PathBuilder::new();
+                path.rect(0.0, 0.0, 1.0, 1.0);
+                (
+                    hull_rect(control_hull(&path.finish(), i.transform, work)?),
+                    i.clip.as_ref(),
+                )
+            }
+            Command::Shading(s) if !s.shading.space.paints() => continue,
+            Command::Shading(s) => {
+                let bounds = if let Some(bbox) = s.shading.bbox {
+                    let mut path = pagura_raster::PathBuilder::new();
+                    path.rect(bbox.x0, bbox.y0, bbox.width(), bbox.height());
+                    hull_rect(control_hull(&path.finish(), s.transform, work)?)
+                } else {
+                    Some(clip)
+                };
+                (bounds, s.clip.as_ref())
+            }
+            Command::Group(g) => {
+                let bounds = if let Some(path) = &g.bounds {
+                    content_hull(path, work)?.and_then(|r| r.intersection(&clip))
+                } else {
+                    Some(clip)
+                };
+                (
+                    bounds
+                        .map(|r| content_region(&g.commands, r, depth - 1, work))
+                        .transpose()?
+                        .flatten(),
+                    None,
+                )
+            }
+        };
+        let Some(mut bounds) = bounds.and_then(|r| r.intersection(&clip)) else {
+            continue;
+        };
+        let mut chain = chain;
+        let mut visible = true;
+        while let Some(node) = chain {
+            let rect = content_hull(&node.path, work)?;
+            if let Some(next) = rect.and_then(|r| r.intersection(&bounds)) {
+                bounds = next;
+            } else {
+                visible = false;
+                break;
+            }
+            chain = node.parent.as_ref();
+        }
+        if visible {
+            total = Some(total.map_or(bounds, |r| Rect {
+                x0: r.x0.min(bounds.x0),
+                y0: r.y0.min(bounds.y0),
+                x1: r.x1.max(bounds.x1),
+                y1: r.y1.max(bounds.y1),
+            }));
+        }
+    }
+    Ok(total)
+}
+fn content_hull(path: &Arc<Path>, work: &mut Work<'_>) -> Result<Option<Rect>> {
+    let hull = retained_hull(path, Transform::IDENTITY, work)?;
+    let Some(rect) = hull_rect(hull) else {
+        return Ok(None);
+    };
+    // Degenerate point contours occupy a reference-device cell (8.5.3.3.1).
+    // One unit on either side contains that cell for either axis orientation.
+    work.charge(path.segments().len())?;
+    let mut start = None;
+    let mut point = false;
+    let mut contains_point = false;
+    for segment in path.segments() {
+        match *segment {
+            Segment::MoveTo(p) => {
+                contains_point |= point;
+                start = Some(p);
+                point = true;
+            }
+            Segment::LineTo(p) => point &= start == Some(p),
+            Segment::CubicTo(a, b, c) => point &= [a, b, c].into_iter().all(|p| start == Some(p)),
+            Segment::Close => {
+                contains_point |= point;
+            }
+        }
+    }
+    let pad = if contains_point || point { 1.0 } else { 0.0 };
+    Ok(Some(
+        Rect::from_corners(rect.x0 - pad, rect.y0 - pad, rect.x1 + pad, rect.y1 + pad)
+            .ok_or(Error::limit("content bounds overflow"))?,
+    ))
+}
+fn hull_rect([lo, hi]: [Point; 2]) -> Option<Rect> {
+    (lo.x <= hi.x && lo.y <= hi.y).then_some(Rect {
+        x0: lo.x,
+        y0: lo.y,
+        x1: hi.x,
+        y1: hi.y,
+    })
 }
 
 #[cfg(test)]
@@ -360,6 +513,75 @@ mod tests {
             retained_region(&path, device, tile, (0.0, 0.0), &mut work)?,
             Some(full)
         );
+        Ok(())
+    }
+    #[test]
+    fn content_envelopes_are_in_default_user_space() -> Result<()> {
+        use pagura_document::{Document, OpenOptions};
+        let cases = [
+            ("empty", None),
+            ("union", Some([1.0, 2.0, 7.0, 7.0])),
+            ("clip", Some([2.0, 1.0, 6.0, 6.0])),
+            ("outside", None),
+            ("stroke-envelope", Some([0.0, 2.0, 8.0, 6.0])),
+            ("default-space", Some([1.0, 2.0, 5.0, 5.0])),
+            ("crop", Some([1.0, 2.0, 5.0, 6.0])),
+            ("form", Some([2.0, 2.0, 6.0, 6.0])),
+            ("no-ink", None),
+            ("image", Some([1.0, 3.0, 5.0, 5.0])),
+            ("shading", Some([2.0, 1.0, 6.0, 5.0])),
+        ];
+        for (name, expected) in cases {
+            let document = Document::open(
+                pagura_testkit::fixture("content", &format!("bounds-{name}.pdf")),
+                &OpenOptions::default(),
+            )?;
+            let list = crate::compile_page(&document, document.page(0)?)?;
+            assert_eq!(
+                list.content_bounds()?.map(|r| [r.x0, r.y0, r.x1, r.y1]),
+                expected,
+                "{name}"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn content_bounds_obey_traversal_budgets() -> Result<()> {
+        use pagura_document::{Document, OpenOptions};
+        let document = Document::open(
+            pagura_testkit::fixture("content", "bounds-union.pdf"),
+            &OpenOptions::default(),
+        )?;
+        let mut list = crate::compile_page(&document, document.page(0)?)?;
+        list.limits.raster_work = 1;
+        assert_eq!(
+            list.content_bounds().unwrap_err().kind,
+            pagura_core::ErrorKind::Limit
+        );
+        list.limits.raster_work = 1000;
+        list.limits.depth = 0;
+        assert_eq!(
+            list.content_bounds().unwrap_err().kind,
+            pagura_core::ErrorKind::Limit
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn point_contours_have_a_reference_device_envelope() -> Result<()> {
+        use pagura_document::{Document, OpenOptions};
+        for name in ["point-fill", "point-clip"] {
+            let document = Document::open(
+                pagura_testkit::fixture("content", &format!("{name}.pdf")),
+                &OpenOptions::default(),
+            )?;
+            let list = crate::compile_page(&document, document.page(0)?)?;
+            assert_eq!(
+                list.content_bounds()?.map(|r| [r.x0, r.y0, r.x1, r.y1]),
+                Some([3.25, 3.25, 5.25, 5.25])
+            );
+        }
         Ok(())
     }
 }

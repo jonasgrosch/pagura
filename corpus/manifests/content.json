@@ -5,6 +5,286 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "content/bounds-image",
+      "kind": "pdf",
+      "description": "An image contributes its transformed unit rectangle",
+      "expected": "render",
+      "requirements": [
+        "content-bounds"
+      ],
+      "path": "corpus/generated/content/bounds-image.pdf",
+      "sha256": "394ae1e65285178dc9ffe3d49965514ac0c75d41ffbd148cc170cbda6ea45306",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/bounds-image.ppm",
+      "oracle_sha256": "bdf6a5d1976b63a3d3e3842218cee979779149da51831b04823c49258929328e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "content_bounds": [
+        1,
+        3,
+        5,
+        5
+      ]
+    },
+    {
+      "id": "content/bounds-shading",
+      "kind": "pdf",
+      "description": "A shading is bounded by its transformed BBox",
+      "expected": "render",
+      "requirements": [
+        "content-bounds"
+      ],
+      "path": "corpus/generated/content/bounds-shading.pdf",
+      "sha256": "838ccc35a182dbfb43f2aa9b1e0d5b1d0c5ca8b9291f320eb42ee3b94f00d606",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/bounds-shading.ppm",
+      "oracle_sha256": "64db0735c52711a4fc8361b19fb6c6b6c016f6367eb0d48b0c0ea3642eb68aee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "content_bounds": [
+        2,
+        1,
+        6,
+        5
+      ]
+    },
+    {
+      "id": "content/knockout-opaque-rounding",
+      "kind": "pdf",
+      "description": "Opaque knockout members reduce to Normal source-over; output thresholds use independent rational composition",
+      "expected": "render",
+      "requirements": [
+        "content-opaque-knockout"
+      ],
+      "path": "corpus/generated/content/knockout-opaque-rounding.pdf",
+      "sha256": "27e12a8af948b66ccf1d665c97e7db4b6a24079f37b63e0bf868105e61c59668",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/knockout-opaque-rounding.ppm",
+      "oracle_sha256": "526660aaa66fa5ec67753e2655dff0164e1d9716755b50bef23b90e105f071c4",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "content/bounds-empty",
+      "kind": "pdf",
+      "description": "Default-user-space content envelope: empty",
+      "expected": "render",
+      "requirements": [
+        "content-bounds"
+      ],
+      "path": "corpus/generated/content/bounds-empty.pdf",
+      "sha256": "8a8d90ba498d6885672b25659621c5659611247e7cda30d7ce2b97f6cea530e4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/bounds-empty.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "content_bounds": null
+    },
+    {
+      "id": "content/bounds-union",
+      "kind": "pdf",
+      "description": "Default-user-space content envelope: union",
+      "expected": "render",
+      "requirements": [
+        "content-bounds"
+      ],
+      "path": "corpus/generated/content/bounds-union.pdf",
+      "sha256": "933a4b3ae804bcf5cae86cd2df5ad04bbb7d05abe2571cdc2cc9d2dc284d0012",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/bounds-union.ppm",
+      "oracle_sha256": "10d7a7ad4f3d55d687bb9b818b878c5efdea09fa6df1335946f71fe7c8154d18",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "content_bounds": [
+        1,
+        2,
+        7,
+        7
+      ]
+    },
+    {
+      "id": "content/bounds-clip",
+      "kind": "pdf",
+      "description": "Default-user-space content envelope: clip",
+      "expected": "render",
+      "requirements": [
+        "content-bounds"
+      ],
+      "path": "corpus/generated/content/bounds-clip.pdf",
+      "sha256": "f88d089357647fc808bc499da74a1b73b096737a24fd1b5ebaed9cfa5e50e24a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/bounds-clip.ppm",
+      "oracle_sha256": "f5d2829956cbad598b86928eacbf8ac469975c8db4bc9d2d733391bdb06d3706",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "content_bounds": [
+        2,
+        1,
+        6,
+        6
+      ]
+    },
+    {
+      "id": "content/bounds-outside",
+      "kind": "pdf",
+      "description": "Default-user-space content envelope: outside",
+      "expected": "render",
+      "requirements": [
+        "content-bounds"
+      ],
+      "path": "corpus/generated/content/bounds-outside.pdf",
+      "sha256": "889a719d42390f1e6371f2232b5aba45911270a63962dc463b5c92df64f0a942",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/bounds-outside.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "content_bounds": null
+    },
+    {
+      "id": "content/bounds-stroke-envelope",
+      "kind": "pdf",
+      "description": "Default-user-space content envelope: stroke-envelope",
+      "expected": "render",
+      "requirements": [
+        "content-bounds"
+      ],
+      "path": "corpus/generated/content/bounds-stroke-envelope.pdf",
+      "sha256": "d95cc7e2953c01adba1db09ff7c0dc2060457e41317f04ddc051fba8f3ec8b09",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/bounds-stroke-envelope.ppm",
+      "oracle_sha256": "02b798868e552d1184512ab39b76f885594412addc61e1535f93e098bf6c9039",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "content_bounds": [
+        0,
+        2,
+        8,
+        6
+      ]
+    },
+    {
+      "id": "content/bounds-default-space",
+      "kind": "pdf",
+      "description": "Default-user-space content envelope: default-space",
+      "expected": "render",
+      "requirements": [
+        "content-bounds"
+      ],
+      "path": "corpus/generated/content/bounds-default-space.pdf",
+      "sha256": "0e7e42b7d73ede67df15cf4c3d28f4e0aef9a612b0440068130cc82f8e04b18c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/bounds-default-space.ppm",
+      "oracle_sha256": "349c09820f07c3d4648deff82b98a9729566027fa6f65d45dbffc364eb4c258a",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "content_bounds": [
+        1,
+        2,
+        5,
+        5
+      ]
+    },
+    {
+      "id": "content/bounds-crop",
+      "kind": "pdf",
+      "description": "Default-user-space content envelope: crop",
+      "expected": "render",
+      "requirements": [
+        "content-bounds"
+      ],
+      "path": "corpus/generated/content/bounds-crop.pdf",
+      "sha256": "fb09dc3fafe09cc31553ad563443caeecd85e0c1f3c405bd0082779b5857ff87",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/bounds-crop.ppm",
+      "oracle_sha256": "6dff068e8f2e22abceb4849867babe9f8bbadff64e63319b56df99aba91c06be",
+      "dpi": 72,
+      "width": 6,
+      "height": 6,
+      "content_bounds": [
+        1,
+        2,
+        5,
+        6
+      ]
+    },
+    {
+      "id": "content/bounds-form",
+      "kind": "pdf",
+      "description": "A form is bounded by its transformed BBox and painted commands",
+      "expected": "render",
+      "requirements": [
+        "content-bounds"
+      ],
+      "path": "corpus/generated/content/bounds-form.pdf",
+      "sha256": "3e3dd0f08e3a2bf281e6ee6bb0e5e0457ec7ba5a7cfd454b3c02753712d7075b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/bounds-form.ppm",
+      "oracle_sha256": "8b4138d7d2b9786e9649a6d79502309f9e72bb5de795bf7d24a4dfe45b36070d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "content_bounds": [
+        2,
+        2,
+        6,
+        6
+      ]
+    },
+    {
+      "id": "content/bounds-no-ink",
+      "kind": "pdf",
+      "description": "None separation contributes no painted content",
+      "expected": "render",
+      "requirements": [
+        "content-bounds"
+      ],
+      "path": "corpus/generated/content/bounds-no-ink.pdf",
+      "sha256": "dcb6395ebf0935399cdd7011db462d512d0e663908049bcd8bda3bac3eb740e2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/bounds-no-ink.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "content_bounds": null
+    },
+    {
       "id": "content/compound-path",
       "kind": "pdf",
       "description": "compound-path",

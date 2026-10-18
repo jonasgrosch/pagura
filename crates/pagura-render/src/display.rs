@@ -103,6 +103,21 @@ impl DisplayList {
         self.len() == 0
     }
 
+    /// Conservative bounds of painted content in default user space, clamped to
+    /// the crop box (12.3.2.2). Returns `None` for empty or disjoint culling geometry.
+    ///
+    /// Uses the renderer's culling geometry: cubic control hulls, stroke
+    /// envelopes, group bounds and hard-clip envelopes. These can include empty
+    /// space; the result is not a tight geometric intersection. Unbounded
+    /// shadings use the crop. Point contours and hairlines use a one-unit
+    /// reference device; annotation view flags introduce no zoom or rotation.
+    ///
+    /// # Errors
+    /// Returns `Limit` for overflowing geometry or exhausted traversal budgets.
+    pub fn content_bounds(&self) -> Result<Option<Rect>> {
+        crate::compositor::content_bounds(self)
+    }
+
     /// Device size after crop, rotation, user unit and scale (8.3.2).
     ///
     /// # Errors
