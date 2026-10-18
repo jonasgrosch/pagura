@@ -7,13 +7,13 @@
 use std::cmp::Ordering;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct Uint(pub [u64; 9]);
+pub(crate) struct Uint(pub(crate) [u64; 9]);
 
 impl Uint {
-    pub const ZERO: Self = Self([0; 9]);
-    pub const ONE: Self = Self([1, 0, 0, 0, 0, 0, 0, 0, 0]);
+    pub(crate) const ZERO: Self = Self([0; 9]);
+    pub(crate) const ONE: Self = Self([1, 0, 0, 0, 0, 0, 0, 0, 0]);
 
-    pub fn from_be_bytes(bytes: &[u8]) -> Option<Self> {
+    pub(crate) fn from_be_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() > 72 {
             return None;
         }
@@ -24,7 +24,7 @@ impl Uint {
         Some(out)
     }
 
-    pub const fn ge(self, other: Self) -> bool {
+    pub(crate) const fn ge(self, other: Self) -> bool {
         let mut i = 9;
         while i != 0 {
             i -= 1;
@@ -35,11 +35,11 @@ impl Uint {
         true
     }
 
-    pub fn bit(self, index: usize) -> bool {
+    pub(crate) fn bit(self, index: usize) -> bool {
         self.0[index / 64] & (1 << (index % 64)) != 0
     }
 
-    pub const fn is_zero(self) -> bool {
+    pub(crate) const fn is_zero(self) -> bool {
         let mut i = 0;
         while i < 9 {
             if self.0[i] != 0 {
@@ -51,7 +51,7 @@ impl Uint {
     }
 
     // The active-limb subtraction wraps; callers account for the borrow.
-    pub const fn sub(self, other: Self, limbs: usize) -> (Self, bool) {
+    pub(crate) const fn sub(self, other: Self, limbs: usize) -> (Self, bool) {
         let mut out = Self::ZERO;
         let mut borrow = false;
         let mut i = 0;
@@ -65,7 +65,7 @@ impl Uint {
         (out, borrow)
     }
 
-    pub fn shr(self, bits: usize) -> Self {
+    pub(crate) fn shr(self, bits: usize) -> Self {
         debug_assert!((1..64).contains(&bits));
         let mut out = Self::ZERO;
         for i in 0..9 {
@@ -93,15 +93,15 @@ impl Ord for Uint {
 /// A fixed named prime and its compile-time Montgomery constants.
 #[derive(Debug)]
 pub(crate) struct Modulus {
-    pub value: Uint,
-    pub one: Uint,
+    pub(crate) value: Uint,
+    pub(crate) one: Uint,
     limbs: usize,
     factor: u64,
     r_squared: Uint,
 }
 
 impl Modulus {
-    pub const fn new(value: Uint, limbs: usize) -> Self {
+    pub(crate) const fn new(value: Uint, limbs: usize) -> Self {
         // Newton iteration doubles the number of correct inverse bits.
         let mut inverse = 1_u64;
         let mut i = 0;
@@ -130,7 +130,7 @@ impl Modulus {
     }
 
     /// Adds canonical residues in either ordinary or Montgomery form.
-    pub const fn add(&self, a: Uint, b: Uint) -> Uint {
+    pub(crate) const fn add(&self, a: Uint, b: Uint) -> Uint {
         let mut sum = Uint::ZERO;
         let mut carry = false;
         let mut i = 0;
@@ -148,7 +148,7 @@ impl Modulus {
         }
     }
 
-    pub fn sub(&self, a: Uint, b: Uint) -> Uint {
+    pub(crate) fn sub(&self, a: Uint, b: Uint) -> Uint {
         let (difference, borrow) = a.sub(b, self.limbs);
         if borrow {
             // Wrapping addition of p cancels the active-limb underflow.
@@ -171,7 +171,7 @@ impl Modulus {
         clippy::cast_possible_truncation,
         reason = "explicit low half of a double-limb accumulator"
     )]
-    pub fn mul(&self, a: Uint, b: Uint) -> Uint {
+    pub(crate) fn mul(&self, a: Uint, b: Uint) -> Uint {
         let mut product = [0_u64; 19];
         for i in 0..self.limbs {
             let mut carry = 0_u128;
@@ -208,19 +208,19 @@ impl Modulus {
         result
     }
 
-    pub fn encode(&self, value: Uint) -> Uint {
+    pub(crate) fn encode(&self, value: Uint) -> Uint {
         self.mul(value, self.r_squared)
     }
 
-    pub fn decode(&self, value: Uint) -> Uint {
+    pub(crate) fn decode(&self, value: Uint) -> Uint {
         self.mul(value, Uint::ONE)
     }
 
-    pub fn square(&self, value: Uint) -> Uint {
+    pub(crate) fn square(&self, value: Uint) -> Uint {
         self.mul(value, value)
     }
 
-    pub fn pow(&self, value: Uint, exponent: Uint) -> Uint {
+    pub(crate) fn pow(&self, value: Uint, exponent: Uint) -> Uint {
         let mut result = self.one;
         for i in (0..64 * self.limbs).rev() {
             result = self.square(result);
@@ -232,7 +232,7 @@ impl Modulus {
     }
 
     /// Fermat inversion; zero has no inverse and is explicitly rejected.
-    pub fn inverse(&self, value: Uint) -> Option<Uint> {
+    pub(crate) fn inverse(&self, value: Uint) -> Option<Uint> {
         if value.is_zero() {
             return None;
         }
@@ -241,7 +241,7 @@ impl Modulus {
     }
 
     /// All three field primes equal 3 mod 4. The candidate must be checked.
-    pub fn sqrt(&self, value: Uint) -> Option<Uint> {
+    pub(crate) fn sqrt(&self, value: Uint) -> Option<Uint> {
         // (p+1)/4 = floor(p/4)+1, without a full-width p+1 overflow.
         let exponent = self.add(self.value.shr(2), Uint::ONE);
         let root = self.pow(value, exponent);
@@ -249,7 +249,7 @@ impl Modulus {
     }
 
     /// Reduces a value less than 2*p (coordinates and truncated hashes).
-    pub fn reduce_once(&self, value: Uint) -> Uint {
+    pub(crate) fn reduce_once(&self, value: Uint) -> Uint {
         if value.ge(self.value) {
             value.sub(self.value, self.limbs).0
         } else {

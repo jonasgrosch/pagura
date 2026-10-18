@@ -5,19 +5,19 @@ use super::{Point, Uint, field::Modulus};
 
 #[derive(Debug)]
 pub(crate) struct Parameters {
-    pub field: Modulus,
-    pub scalar: Modulus,
-    pub b: Uint,
-    pub gx: Uint,
-    pub gy: Uint,
+    pub(crate) field: Modulus,
+    pub(crate) scalar: Modulus,
+    pub(crate) b: Uint,
+    pub(crate) gx: Uint,
+    pub(crate) gy: Uint,
 }
 
 impl Parameters {
-    pub fn generator(&self) -> Point {
+    pub(crate) fn generator(&self) -> Point {
         Point::affine(self.field.encode(self.gx), self.field.encode(self.gy), self)
     }
 
-    pub fn equation(&self, x: Uint) -> Uint {
+    pub(crate) fn equation(&self, x: Uint) -> Uint {
         let f = &self.field;
         let three_x = f.add(f.add(x, x), x);
         f.add(f.sub(f.mul(f.square(x), x), three_x), f.encode(self.b))
