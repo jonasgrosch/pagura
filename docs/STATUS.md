@@ -1,9 +1,12 @@
 # Capability and evidence status
 
-Pagura is in **milestones M1–M2** (`docs/ROADMAP.md`). It opens real-world files reliably and renders vector pages.
-Font programs, PDF fonts and image codecs now decode, but the renderer does
-not paint text or images yet, so most real pages still fail explicitly. No
-claim of conformance or speed superiority is made. Requirement registries
+Pagura is in **milestones M3–M5** (`docs/ROADMAP.md`). It opens real-world
+files reliably and paints vector graphics, text and images; colour and
+transparency are partly done, and the remaining gaps fail explicitly with
+stable tags. Exploratory timings put rendering at roughly 6–12× slower than
+PDFium, MuPDF and CoreGraphics on the benchmark pages and about level with
+pdf.js. That is not an ADR 0002 measurement. No claim of conformance or
+speed superiority is made. Requirement registries
 whose `scope` does not say so have not yet been verified against the
 primary standards.
 
@@ -12,11 +15,11 @@ primary standards.
 | Core | Order-preserving dictionaries (key-indexed above 16 entries), inline names, finite reals, generation-aware references; per-object value budgets; structured errors with `Feature` tags, positions, objects and the repair a strict rejection refused; reported repairs (`Recovery::Strict`/`Repair`) | Broader syntax recovery |
 | Document | Classic and stream cross-references, object streams, `/Prev` revisions with cycle detection, hybrid files, lazily parsed `OnceLock`-cached objects, references to undefined objects as null, typed cached page tree with shared resources, the ADR 0003 repair catalogue including full reconstruction | Linearization hints; the remaining failures of other projects' bug-reproduction suites |
 | Filters | ASCIIHex, ASCII85, RunLength, LZW, Flate (zlib and reported raw DEFLATE), PNG/TIFF predictors at 1–16 bits; caps enforced while decoding | — |
-| Security | MD5, SHA-2, RC4, AES; standard handler R2–R4, R5 (Adobe extension), R6; crypt filters; `/Perms` checks reported | SASLprep for non-ASCII R6 passwords; public-key handlers |
+| Security | MD5, SHA-2, RC4, AES; standard handler R2–R4, R5 (Adobe extension), R6 with SASLprep (Unicode 3.2.0 NFKC) for non-ASCII passwords; crypt filters; `/Perms` checks reported | Public-key handlers (`security.Adobe-PubSec`) |
 | Fonts | `pagura-font`: TrueType and OpenType (glyf and CFF/CFF2 default instance), bare and CID-keyed CFF, Type 1 (PFA, PFB, eexec); outlines, advances, matrices, names, built-in encodings, cmap formats 0, 4, 6, 12 | Expert CFF charsets, FDSelect 4, CFF2 Private DICT blends and variations, other cmap formats, hinting |
 | Text | `pagura-text`: simple, Type 3 and composite fonts; standard encodings and Differences; widths, CID metrics, embedded CMaps with usecmap, CIDToGIDMap, ToUnicode; non-embedded standard fonts through metric-compatible substitutes and the predefined CJK CMaps, both from `pagura-data` through a `Provider` (ADR 0009, on by default in the `pagura` facade, `pagura licenses` lists the notices); fonts and outlines shared across a document's pages by `RenderContext`; TrueType glyph selection per 9.6.5.4 with documented reader fallbacks; per-font retained-memory estimates | Symbol and ZapfDingbats substitutes; non-embedded CID fonts |
-| Images | `pagura-image`: samples at 1–16 bits, decode arrays, mask metadata, inline images; JPEG (baseline and progressive Huffman, CMYK/YCCK); CCITT G3/G4; JBIG2 generic, symbol and text regions; JPEG 2000 Part 1 with default precincts | Painting (M4); JBIG2/JPX wiring into XObjects; JBIG2 refinement, Huffman, halftones; JPX precinct and code-block modes; JPEG arithmetic and 12-bit |
-| Rendering | Display list; sweep rasterizer with exact-area antialiasing; strokes with caps, joins, dashes and stroke adjustment; geometric clipping; Device, Default, Indexed, ICC-via-alternate, CalGray, Lab, Separation and DeviceN colour; PDF functions (Types 0, 2, 3, 4) and transfer functions; form XObjects; opaque transparency groups including RGB blending spaces; optional content with View usage; crop, rotation, UserUnit; tiles | Dashes under scaling and negative dash phases (8.4.3.6); CalRGB; painting text (M3) and images (M4); non-opaque transparency, shadings, patterns (M5) |
+| Images | `pagura-image`: samples at 1–16 bits, decode arrays, mask metadata, inline images; JPEG (baseline and progressive Huffman, CMYK/YCCK); CCITT G3/G4; JBIG2 generic, refinement, symbol, text, halftone and Huffman-coded regions; JPEG 2000 Part 1 with precincts, progression changes, code-block modes, ROI and partial-quality reconstruction; reported repairs for damaged data and malformed parameters | JPEG arithmetic coding and 12-bit samples; JBIG2 extended templates; JPEG 2000 colour specifications and sample layouts outside the supported set |
+| Rendering | Display list; sweep rasterizer with exact-area antialiasing; strokes with caps, joins, dashes and stroke adjustment; geometric clipping; Device, Default, Indexed, ICC (matrix/TRC and LUT profiles), CalGray, CalRGB, Lab, Separation and DeviceN colour; PDF functions and transfer functions; form XObjects; text in every render mode, Type 3 glyphs and bundled substitutes; images with masks, soft masks, Decode, Interpolate and separable minification; tiling patterns and mesh shadings; transparency groups, soft masks and blend modes in an RGB blending space; optional content with View usage; annotation appearances; crop, rotation, UserUnit; tiles; reported recovery of common content faults | Non-RGB group colour spaces (`transparency.group-colorspace`); overprint simulation (`transparency.overprint`); transfer functions under transparency (`transparency.transfer`); some annotation appearances; the composition redesign under ADR 0004's accuracy contract |
 | Writing | Deterministic new documents, insertion-ordered dictionaries, budgets | Incremental saves, signatures, redaction (M7) |
 | WebAssembly | `pagura-host` WASI command (protocol v1, `crates/pagura-host/PROTOCOL.md`); dependency-free browser shim and viewer; native/WASI byte parity; protocol 1.1 viewport generations; bounded LRU of compiled pages; continuous scrolling, zoom and a password prompt; verified in a real browser (cross-origin isolated, exact pixels at DPR 2, multi-page navigation, explicit unsupported banner) | Threads; interrupting a running tile; browser checks of the new gestures |
 | Safety | Workspace-only product dependencies; every product target forbids unsafe; clippy pedantic, `missing_docs`, no `unwrap`/`expect`/`panic`; nine cargo-fuzz targets with a bounded smoke run (`tools/fuzz_smoke.py`) and every finding replayed on stable Rust | Process sandbox, long fuzz campaigns |
@@ -24,6 +27,9 @@ primary standards.
 
 ## Evidence (scoreboards in `docs/scoreboard/`)
 
+Last recorded at commit 8909e1c. Later rounds made at least 2,000 more
+real-world pages render, by their own before-and-after runs, and are
+re-recorded after the composition redesign.
 Each file gets 60 seconds of CPU time, so machine load does not turn into
 timeouts. Real-world files that exceed it now render all their pages too slowly;
 painting dominates their time and is being optimized.

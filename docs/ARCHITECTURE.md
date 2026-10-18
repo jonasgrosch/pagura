@@ -99,29 +99,23 @@ least as clean as it found it, and the preferred levers, in order, are:
 Added complexity must be defended against the speed it buys: the change records
 the measured gain, the code it adds or removes and the alternatives considered,
 and a small gain does not justify a large or fragile mechanism. Profile before
-optimizing, keep algorithmic fallbacks explicit and bounded, and keep every
-output identical unless a documented, independently verified reason says
-otherwise. Never trade fidelity, security, portability or the no-unsafe rule
-for speed.
+optimizing, and keep algorithmic fallbacks explicit and bounded. Never trade
+fidelity, security, portability or the no-unsafe rule for speed.
 
-One reason is standing: an exact reformulation, meaning the same mathematics
-evaluated in a different order (a separable filter, or painting directly where
-a group is provably equivalent), may change rounding. The conditions are:
+An optimization keeps output identical, or stays within the rendering
+accuracy contract of ADR 0004: every pixel within one level of its exact
+result. A change that alters output qualifies only under these conditions:
 
-- no pixel moves by more than one level;
-- an independent exact oracle exists for the affected output;
-- across every fixture, benchmark page and threshold-sensitive stress case, the
-  new output matches that oracle at least as often as the current output does.
+- an independent exact oracle covers the affected output;
+- the bound holds on every fixture, benchmark page and stress case,
+  including cases where many partial-coverage marks overlap;
+- the change reports every changed pixel with its oracle value;
+- it reports how often the old and new outputs match the exact rounding, so
+  that a systematic loss of precision is visible.
 
-The change reports every changed pixel with its oracle value. Fixture
-expectations and tolerances never change to accommodate it.
-
-Composition is judged by its own contract instead (ADR 0004): every composited
-pixel within one level of the exact result. A change to compositing precision
-or structure qualifies when it holds that bound on every fixture, benchmark
-page and stress case, including cases where many partial-coverage marks
-overlap, and reports every changed pixel. Composited fixtures may carry a
-tolerance of 1 for it; each such tolerance change is listed with its case.
+A fixture's tolerance may rise to 1 only for such a change, and each one is
+listed with its case. Anything beyond one level is a correctness change, not
+an optimization, and needs its own decision.
 
 When an area stalls, study how the best-in-class implementation of that
 specific problem works (ADR 0006: inspiration, never copied or translated code),

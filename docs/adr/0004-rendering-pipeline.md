@@ -40,18 +40,23 @@ the corresponding `colorspace.*` tag until implemented.
 
 ## Accuracy and oracles
 
-Exact-area antialiasing has an analytic answer: the covered area of each
-pixel. Fixture oracles are computed independently in Python by clipping the
-polygon to each pixel square. Rasterizer output must match within ±1 level
-of 255 for polygons, and within a documented flattening tolerance for curves.
-Pixel-aligned opaque cases stay exact.
+Every rendered pixel has an exact answer, and one contract covers every
+stage (amended 2026-10-18): each pixel is within one level of 255 of its
+exact result.
 
-Composition has the same contract (amended 2026-10-18). Every composited pixel
-is within one level of 255 of the exact result: the imaging model of clause 11
-applied in exact arithmetic to the same coverage bytes, then rounded. Working
-precision is chosen to hold that bound for any number of overlapping marks;
-per-mark 8-bit accumulation does not. Composited fixtures may therefore carry
-a tolerance of 1. Exact rounding ties are not part of the contract.
+- **Rasterization:** the exact covered area of each pixel (the path clipped
+  to the pixel square), with curves within a documented flattening
+  tolerance.
+- **Image sampling:** the exact-area average of the source samples under the
+  image transform, or the nearest sample where 8.9.5.3 asks for no
+  interpolation.
+- **Composition:** the imaging model of clause 11 applied in exact
+  arithmetic to the same coverage bytes, for any number of overlapping
+  marks. Per-mark 8-bit accumulation does not hold this bound.
+
+Pixel-aligned opaque cases stay exact, and exact rounding ties are not part
+of the contract. Fixture oracles compute the exact result independently in
+Python, and a fixture may carry a tolerance of 1 against it.
 
 ## Consequences
 

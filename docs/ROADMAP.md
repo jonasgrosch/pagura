@@ -23,9 +23,14 @@ tools/check.py` passes, and `docs/STATUS.md` records the evidence.
   against the primary standards (ISO 32000-2 and the format standards in the
   private reference cache); discrepancies become fixtures with independent
   expectations. A registry whose `scope` does not state this is unverified.
-- **M3/M4 painting:** fonts, text and image decoding exist; the renderer does
-  not paint glyphs or images yet, which blocks most real-world pages
-  (`operator.BT` and image XObjects lead the failure histogram).
+- **Rendering speed without spending accuracy:** one compositor with f32
+  page and group buffers under ADR 0004's accuracy contract (every pixel
+  within one level of its exact result), opaque text-object groups elided,
+  device geometry prepared once. Speed comes from the rasterizer and the
+  compositor, not from glyph-position snapping (ADR 0013).
+- **M3/M5 gaps on real files:** vertical writing with substituted CJK fonts,
+  Type 1 programs that need PostScript, non-RGB transparency group colour
+  spaces, overprint, and transfer functions under transparency.
 - **M1:** files whose catalog opens but whose page tree fails, and the
   remaining open failures in other projects' bug-reproduction suites.
 - **Robustness:** a short, routine coverage-guided fuzz run with every finding
