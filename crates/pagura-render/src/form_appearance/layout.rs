@@ -122,7 +122,7 @@ fn encode(
     let mut chars = Vec::new();
     let mut input = text.chars().peekable();
     while let Some(c) = input.next() {
-        if chars.len() >= limits.value_nodes {
+        if chars.len() >= limits.text_items {
             return Err(Error::limit("appearance character budget exceeded"));
         }
         let c = if c == '\r' {
@@ -191,7 +191,7 @@ fn lines(
     let mut result = Vec::new();
     let (mut start, mut i, mut measured, mut last_space) = (0, 0, 0.0, None);
     while let Some(c) = chars.get(i) {
-        if *work >= limits.operations {
+        if *work >= limits.text_work {
             return Err(Error::limit("appearance layout work budget exceeded"));
         }
         *work += 1;

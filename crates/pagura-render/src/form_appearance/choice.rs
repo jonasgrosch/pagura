@@ -148,7 +148,7 @@ fn source_indices(document: &Document, field: &Field<'_>, values: &[&str]) -> Re
         values
             .iter()
             .fold(0usize, |n, v| n.saturating_add(v.len().max(1))),
-    ) > document.limits().operations
+    ) > document.limits().text_work
     {
         return Err(Error::limit("choice appearance lookup budget exceeded"));
     }

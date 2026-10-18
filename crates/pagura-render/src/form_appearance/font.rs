@@ -5,6 +5,9 @@ use pagura_document::Document;
 use pagura_text::{FontKind, Provider, WritingMode};
 use std::collections::BTreeMap;
 
+/// One-byte codes of a simple font (9.6.5).
+const CODES: usize = 256;
+
 pub(super) struct Font {
     pub codes: BTreeMap<char, (u8, f64)>,
     pub ascent: f64,
@@ -34,7 +37,10 @@ impl Font {
                 "appearance generation requires a horizontal simple font",
             ));
         }
-        if document.limits().operations < 256 || document.limits().document_bytes < 256 * 64 {
+        // Mapping every one-byte code is fixed font work: 256 decodes into
+        // at most 256 entries.
+        let limits = document.limits();
+        if limits.font_work < CODES || limits.font_entries < CODES {
             return Err(Error::limit("appearance font mapping budget exceeded"));
         }
         let mut codes = BTreeMap::new();
