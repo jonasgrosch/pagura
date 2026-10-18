@@ -27,10 +27,16 @@ fn unhex(text: &str) -> Vec<u8> {
         .collect()
 }
 
+/// An independent fixture generator under `tools/fixturegen/pki`.
+pub(crate) fn generator(script: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tools/fixturegen/pki")
+        .join(script)
+}
+
 fn python(script: &str, args: &[&Path]) -> Vec<Case> {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let output = Command::new("python3")
-        .arg(root.join("tests").join(script))
+        .arg(generator(script))
         .args(args)
         .output()
         .unwrap();
@@ -89,11 +95,10 @@ fn independently_generated_envelopes() {
     }
 }
 
-#[test]
-fn cached_pkits_and_wycheproof_encodings() {
-    let references = std::env::var_os("PAGURA_SIGNATURE_REFERENCES_DIR")
-        .map(PathBuf::from)
-        .or_else(|| {
+/// The signature reference cache. The scripts report a missing cache as absent.
+pub(crate) fn references() -> PathBuf {
+    std::env::var_os("PAGURA_SIGNATURE_REFERENCES_DIR").map_or_else(
+        || {
             std::env::var_os("PAGURA_REFERENCES_DIR")
                 .map(PathBuf::from)
                 .or_else(|| {
@@ -101,9 +106,16 @@ fn cached_pkits_and_wycheproof_encodings() {
                         .or_else(|| std::env::var_os("USERPROFILE"))
                         .map(|home| PathBuf::from(home).join(".cache/pagura-references"))
                 })
-                .map(|root| root.join("signatures"))
-        });
-    let cases = references.map_or_else(Vec::new, |references| python("vectors.py", &[&references]));
+                .unwrap_or_default()
+                .join("signatures")
+        },
+        PathBuf::from,
+    )
+}
+
+#[test]
+fn cached_pkits_and_wycheproof_encodings() {
+    let cases = python("vectors.py", &[&references()]);
     if cases.is_empty() {
         eprintln!("External PKI vectors are absent; generated encoding cases still run");
         return;

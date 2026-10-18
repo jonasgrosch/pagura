@@ -1,8 +1,9 @@
-//! Verification-free PKI parsing (X.690, RFC 5280, RFC 5652 and RFC 3161).
+//! Bounded PKI parsing and host-anchored certification path validation.
 //!
 //! Parsed data never establishes integrity, trust, freshness or revocation.
-//! Original encodings remain available for subsequent verification. No host
-//! capabilities, algorithm implementation or trust store enter this crate.
+//! Original encodings remain available for verification. The validation module
+//! takes explicit host anchors, time and signature callbacks; it has no clock,
+//! network, algorithm implementation or implicit trust store.
 #![forbid(unsafe_code)]
 
 pub mod cms;
@@ -10,6 +11,7 @@ pub mod der;
 pub mod oids;
 pub mod timestamp;
 pub mod types;
+pub mod validation;
 pub mod x509;
 
 pub use types::{BitString, Integer, ObjectIdentifier, Time};
