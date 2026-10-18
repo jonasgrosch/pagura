@@ -19,11 +19,7 @@ pub(super) fn coordinates(origin: Point, axis: Point) -> (f64, f64) {
         -origin.x * axis.y + origin.y * axis.x,
     )
 }
-pub(in crate::page) fn same_line(
-    a: &PositionedGlyph,
-    b: &PositionedGlyph,
-    options: LayoutOptions,
-) -> bool {
+pub(crate) fn same_line(a: &PositionedGlyph, b: &PositionedGlyph, options: LayoutOptions) -> bool {
     let axis = direction(a);
     let other = direction(b);
     let (_, av) = coordinates(a.origin, axis);
@@ -31,7 +27,7 @@ pub(in crate::page) fn same_line(
     axis.x * other.x + axis.y * other.y > 0.98
         && (av - bv).abs() <= options.baseline_tolerance * a.em.max(b.em).max(1e-6)
 }
-pub(in crate::page) fn gap(a: &PositionedGlyph, b: &PositionedGlyph) -> f64 {
+pub(crate) fn gap(a: &PositionedGlyph, b: &PositionedGlyph) -> f64 {
     let axis = direction(a);
     let delta = Point::new(b.origin.x - a.advance_end.x, b.origin.y - a.advance_end.y);
     delta.x * axis.x + delta.y * axis.y

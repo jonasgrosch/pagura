@@ -63,11 +63,12 @@ pub mod provider;
 /// (ADR 0014), as returned by [`text_page`] and
 /// [`RenderContext::text_page`].
 pub mod text {
-    pub use pagura_text::{
-        Character, FontKind, LayoutOptions, LogicalText, MarkedContent, MarkedSpan,
-        PositionedGlyph, PositionedText, Quad, SearchOptions, StructureElement, StructureNamespace,
-        TextFont, TextLine, TextMatch, TextObject, TextPage, TextWord, WritingMode,
+    pub use pagura_extract::{
+        Character, LayoutOptions, LogicalText, MarkedContent, MarkedSpan, PositionedGlyph,
+        PositionedText, Quad, SearchOptions, StructureElement, StructureNamespace, TextFont,
+        TextLine, TextMatch, TextObject, TextPage, TextWord,
     };
+    pub use pagura_text::{FontKind, WritingMode};
 }
 
 /// Lossless integer widening (`u32` to `usize`, `usize` to `u64`) on the

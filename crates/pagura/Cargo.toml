@@ -16,6 +16,7 @@ pagura-core.workspace = true
 pagura-crypto.workspace = true
 pagura-data = { workspace = true, optional = true }
 pagura-document.workspace = true
+pagura-extract.workspace = true
 pagura-font.workspace = true
 pagura-pki.workspace = true
 pagura-raster.workspace = true

@@ -4,11 +4,11 @@ use super::{
     cache, resource,
 };
 use pagura_core::{Name, ObjectId, Rect};
-use pagura_raster::Point;
-use pagura_text::{
+use pagura_extract::{
     LayoutOptions, MarkedContent, MarkedSpan, PositionedGlyph, PositionedText, Quad, TextFont,
     TextPage,
 };
+use pagura_raster::Point;
 use std::collections::BTreeMap;
 
 mod unicode;
@@ -154,9 +154,12 @@ impl Compiler<'_> {
             && let Some(start) = start
         {
             let mut output = extract.output.borrow_mut();
-            output.charge(size_of::<pagura_text::TextObject>(), self.document.limits())?;
+            output.charge(
+                size_of::<pagura_extract::TextObject>(),
+                self.document.limits(),
+            )?;
             let end = output.text.glyphs.len();
-            output.text.objects.push(pagura_text::TextObject {
+            output.text.objects.push(pagura_extract::TextObject {
                 marked_content: Arc::clone(&extract.path),
                 object: object.id(),
                 glyphs: start..end,
@@ -173,9 +176,12 @@ impl Compiler<'_> {
     ) -> Result<()> {
         if let Some(extract) = &self.extraction {
             let mut output = extract.output.borrow_mut();
-            output.charge(size_of::<pagura_text::TextObject>(), self.document.limits())?;
+            output.charge(
+                size_of::<pagura_extract::TextObject>(),
+                self.document.limits(),
+            )?;
             let end = output.text.glyphs.len();
-            output.text.objects.push(pagura_text::TextObject {
+            output.text.objects.push(pagura_extract::TextObject {
                 object,
                 glyphs: end..end,
                 hidden: hidden || !self.visible,
@@ -539,7 +545,7 @@ fn ignore_metadata_fault(
         return Err(error);
     }
     let mut diagnostic =
-        pagura_core::Diagnostic::new(pagura_text::repairs::MARKED_PROPERTY, error.message)
+        pagura_core::Diagnostic::new(pagura_extract::repairs::MARKED_PROPERTY, error.message)
             .at(position);
     if let pagura_core::Position::Stream { object, .. } = position {
         diagnostic = diagnostic.in_object(object);
@@ -649,10 +655,10 @@ mod tests {
             check_logical(name, &text);
             check_glyphs(name, &text);
             let relaid = text
-                .with_layout(pagura_text::LayoutOptions {
+                .with_layout(pagura_extract::LayoutOptions {
                     include_hidden: true,
                     space_gap: 1.0,
-                    ..pagura_text::LayoutOptions::default()
+                    ..pagura_extract::LayoutOptions::default()
                 })
                 .unwrap();
             assert_eq!(
@@ -673,22 +679,22 @@ mod tests {
             );
             if name == "tagged-nested-order" {
                 let found = text
-                    .find("First Second", pagura_text::SearchOptions::default())
+                    .find("First Second", pagura_extract::SearchOptions::default())
                     .unwrap();
                 assert_eq!(found.len(), 1);
                 assert_eq!(found[0].quads.first(), Some(&text.glyphs()[0].quad));
                 assert_eq!(found[0].quads.len(), 11);
                 assert_eq!(
-                    text.find("Second First", pagura_text::SearchOptions::default())
+                    text.find("Second First", pagura_extract::SearchOptions::default())
                         .unwrap(),
-                    [] as [pagura_text::TextMatch; 0]
+                    [] as [pagura_extract::TextMatch; 0]
                 );
             }
             if name == "tagged-all-artifact" {
                 assert_eq!(text.text(), "Footer");
                 assert_eq!(text.logical().unwrap().text(), "");
                 assert_eq!(
-                    text.find("Footer", pagura_text::SearchOptions::default())
+                    text.find("Footer", pagura_extract::SearchOptions::default())
                         .unwrap()[0]
                         .quads
                         .len(),
@@ -697,7 +703,7 @@ mod tests {
             }
         }
     }
-    fn check_logical(name: &str, text: &pagura_text::TextPage) {
+    fn check_logical(name: &str, text: &pagura_extract::TextPage) {
         if let Some(logical) = text.logical() {
             assert_eq!(
                 logical.text().as_bytes(),
@@ -742,7 +748,7 @@ mod tests {
                     row[3].as_string()
                 );
                 assert_eq!(
-                    element.namespace == pagura_text::StructureNamespace::Pdf20,
+                    element.namespace == pagura_extract::StructureNamespace::Pdf20,
                     row[6].as_bool().unwrap()
                 );
                 assert_eq!(
@@ -759,7 +765,7 @@ mod tests {
             );
         }
     }
-    fn check_glyphs(name: &str, text: &pagura_text::TextPage) {
+    fn check_glyphs(name: &str, text: &pagura_extract::TextPage) {
         let rows = expected(name, "glyphs");
         let rows = rows.as_array().unwrap();
         assert_eq!(text.glyphs().len(), rows.len());
@@ -876,7 +882,7 @@ mod tests {
                 document
                     .diagnostics()
                     .iter()
-                    .all(|d| d.repair() != Some(pagura_text::repairs::STRUCTURE_FALLBACK))
+                    .all(|d| d.repair() != Some(pagura_extract::repairs::STRUCTURE_FALLBACK))
             );
         }
     }
@@ -920,7 +926,7 @@ mod tests {
                         "{name}"
                     );
                     let geometric = text
-                        .with_layout(pagura_text::LayoutOptions::default())
+                        .with_layout(pagura_extract::LayoutOptions::default())
                         .unwrap();
                     assert_eq!(text.reading_characters(), geometric.reading_characters());
                     assert_eq!(text.lines(), geometric.lines());
@@ -929,7 +935,7 @@ mod tests {
                     let reports = doc.diagnostics();
                     let report = reports
                         .iter()
-                        .find(|d| d.repair() == Some(pagura_text::repairs::STRUCTURE_FALLBACK))
+                        .find(|d| d.repair() == Some(pagura_extract::repairs::STRUCTURE_FALLBACK))
                         .unwrap();
                     assert_eq!(report.message, error.message);
                     assert_eq!(report.position, error.position);

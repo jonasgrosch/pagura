@@ -115,12 +115,12 @@ fn element<'a>(
     let replacement = actual
         .map(|text| super::ReplacementText {
             text,
-            kind: crate::page::layout::Replacement::Actual,
+            kind: crate::layout::Replacement::Actual,
         })
         .or_else(|| {
             alt.map(|text| super::ReplacementText {
                 text,
-                kind: crate::page::layout::Replacement::Alt,
+                kind: crate::layout::Replacement::Alt,
             })
         });
     budget.store(
@@ -249,7 +249,7 @@ fn property(doc: &Document, dictionary: &Dictionary, key: &[u8]) -> Result<Optio
                 .resolve(v)?
                 .as_string()
                 .ok_or(Error::syntax("structure replacement must be a text string"))?;
-            crate::decode_text_string(bytes, doc.limits())
+            pagura_text::decode_text_string(bytes, doc.limits())
         })
         .transpose()
 }

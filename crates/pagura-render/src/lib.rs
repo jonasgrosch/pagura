@@ -37,8 +37,9 @@ use pagura_core::{Error, Rect, Result};
 use pagura_document::{Document, Page, Rotation};
 use pagura_raster::Rgba8;
 
+pub use pagura_extract::{PositionedText, SearchOptions, TextMatch, TextPage};
 pub use pagura_raster::Pixmap;
-pub use pagura_text::{PositionedText, Provider, SearchOptions, TextMatch, TextPage};
+pub use pagura_text::Provider;
 
 /// Stable tags for rendering capabilities not implemented yet.
 pub mod features;

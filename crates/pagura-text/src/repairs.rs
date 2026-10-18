@@ -24,15 +24,6 @@ pub const DESCRIPTOR_WEIGHT: Repair = Repair::new("font.descriptor-weight");
 /// (9.6.4, Table 111); the declared horizontal advance is retained.
 pub const TYPE3_EMPTY_BOUNDS: Repair = Repair::new("font.type3-empty-bounds");
 
-/// Unusable marked-content property lists or ActualText, Alt or E values
-/// are ignored (14.6.2; 14.9.3–14.9.5).
-/// This never supplies a guessed replacement or changes glyph painting.
-pub const MARKED_PROPERTY: Repair = Repair::new("text.marked-property");
-
-/// Logical structure is unusable: the page has no logical view, and its page
-/// text is unaffected (14.7–14.8; reader recovery policy, ADR 0003 and ADR 0014).
-pub const STRUCTURE_FALLBACK: Repair = Repair::new("text.structure-fallback");
-
 /// Reports one item at a time so malformed maps cannot grow a temporary
 /// diagnostic vector beyond Document's bounded/deduplicating sink.
 #[derive(Clone, Copy)]
