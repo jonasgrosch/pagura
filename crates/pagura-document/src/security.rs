@@ -57,7 +57,7 @@ pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
             "non-Standard security handler is not implemented",
         ));
     }
-    let mut policy = Policy::new(document, id);
+    let mut policy = Policy::new(document, id)?;
     let permissions = policy.unsigned_permissions(dictionary)?;
     // Normalize one scalar without cloning the source dictionary/value tree.
     let mut params = parameters(dictionary, document.trailer(), permissions)?;

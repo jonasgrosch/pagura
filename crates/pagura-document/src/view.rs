@@ -1,7 +1,7 @@
 //! Shared work accounting and source locations for navigation views.
 pub(crate) mod text;
 
-use crate::{Document, ObjectSource};
+use crate::Document;
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, Limits, ObjectId, Position, Repair, Result, Value,
 };
@@ -64,16 +64,9 @@ impl<'a> Context<'a> {
     }
     pub fn source(&self, id: ObjectId) -> Result<Source> {
         let object = self.doc.object(id)?;
-        let position = match object.source() {
-            ObjectSource::File(range) => Position::File(range.start),
-            ObjectSource::Compressed { stream, .. } => Position::Stream {
-                object: ObjectId::new(*stream, 0),
-                offset: 0,
-            },
-        };
         Ok(Source {
             object: Some(id),
-            position,
+            position: object.source().position(),
         })
     }
     pub fn page_index(&mut self, id: ObjectId, source: Source) -> Result<usize> {
@@ -146,13 +139,7 @@ impl<'a> Context<'a> {
                 }
                 let object = self.doc.object(*id).map_err(|e| source.error(e))?;
                 source.object = Some(*id);
-                source.position = match object.source() {
-                    ObjectSource::File(range) => Position::File(range.start),
-                    ObjectSource::Compressed { stream, .. } => Position::Stream {
-                        object: ObjectId::new(*stream, 0),
-                        offset: 0,
-                    },
-                };
+                source.position = object.source().position();
                 value = object.value();
             } else {
                 return Ok((value, source));

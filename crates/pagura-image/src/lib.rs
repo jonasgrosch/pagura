@@ -355,10 +355,7 @@ fn image_position(
             object: image.id(),
             offset,
         },
-        pagura_core::Position::Unknown => match image.source() {
-            pagura_document::ObjectSource::File(range) => pagura_core::Position::File(range.start),
-            pagura_document::ObjectSource::Compressed { .. } => pagura_core::Position::Unknown,
-        },
+        pagura_core::Position::Unknown => image.source().position(),
         position => position,
     }
 }

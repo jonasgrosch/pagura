@@ -6,22 +6,40 @@ pub(crate) mod stream;
 use recovery::{corrected_offset, end, stream_extent, zero_catalog_header};
 
 use crate::Document;
-use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Result, Value};
+use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result, Value};
 use std::ops::Range;
 
 /// Where an indirect object's definition is stored.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ObjectSource {
     /// `N G obj … endobj` at this byte range of the file, or the complete
     /// dictionary/payload range of a repaired direct stream.
     File(Range<usize>),
-    /// Inside the object stream `stream`, at position `index`.
+    /// Inside the object stream `stream`, at position `index` (7.5.7).
+    #[non_exhaustive]
     Compressed {
         /// Object number of the containing object stream.
         stream: u32,
         /// Zero-based index within the object stream.
         index: u32,
+        /// Byte offset of the object's value in the decoded stream data.
+        offset: usize,
     },
+}
+
+impl ObjectSource {
+    /// Where the definition starts: its `N G obj` header in the file, or its
+    /// value in the decoded data of the containing object stream.
+    pub const fn position(&self) -> Position {
+        match self {
+            Self::File(range) => Position::File(range.start),
+            Self::Compressed { stream, offset, .. } => Position::Stream {
+                object: ObjectId::new(*stream, 0),
+                offset: *offset,
+            },
+        }
+    }
 }
 
 /// A parsed indirect object.
@@ -161,7 +179,7 @@ pub(crate) fn parse_at(
     if !header_matches {
         return Err(
             Error::syntax("cross-reference entry disagrees with object header")
-                .at(pagura_core::Position::File(offset))
+                .at(Position::File(offset))
                 .in_object(id),
         );
     }
@@ -213,7 +231,7 @@ pub(crate) fn parse_at(
         if !catalog || stream.is_some() || !direct.is_empty() || !parser.keyword(b"endobj") {
             return Err(
                 Error::syntax("zero-numbered root is not a complete plain Catalog")
-                    .at(pagura_core::Position::File(offset))
+                    .at(Position::File(offset))
                     .in_object(id),
             );
         }
@@ -222,7 +240,7 @@ pub(crate) fn parse_at(
                 crate::repairs::CATALOG_OBJECT_NUMBER,
                 "zero-numbered Catalog uses its positive trailer Root and exact xref identity",
             )
-            .at(pagura_core::Position::File(offset))
+            .at(Position::File(offset))
             .in_object(id),
         )?;
     } else {
