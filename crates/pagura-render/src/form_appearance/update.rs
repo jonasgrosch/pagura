@@ -123,13 +123,13 @@ fn text_region(bytes: &[u8], limits: Limits) -> Result<Option<std::ops::Range<us
                 if tx && active.is_none() {
                     if region.is_some() {
                         return Err(Error::unsupported(
-                            crate::form_appearance::features::APPEARANCE_UPDATE,
+                            crate::features::APPEARANCE_UPDATE,
                             "multiple variable text sections are unavailable",
                         ));
                     }
                     if scope.text {
                         return Err(Error::unsupported(
-                            crate::form_appearance::features::APPEARANCE_UPDATE,
+                            crate::features::APPEARANCE_UPDATE,
                             "variable text section inside a text object is unavailable",
                         ));
                     }
@@ -150,7 +150,7 @@ fn text_region(bytes: &[u8], limits: Limits) -> Result<Option<std::ops::Range<us
                 {
                     if scope != start_scope {
                         return Err(Error::unsupported(
-                            crate::form_appearance::features::APPEARANCE_UPDATE,
+                            crate::features::APPEARANCE_UPDATE,
                             "variable text section crosses a graphics or text scope",
                         ));
                     }
@@ -160,7 +160,7 @@ fn text_region(bytes: &[u8], limits: Limits) -> Result<Option<std::ops::Range<us
             }
             b"BI" => {
                 return Err(Error::unsupported(
-                    crate::form_appearance::features::APPEARANCE_UPDATE,
+                    crate::features::APPEARANCE_UPDATE,
                     "updating appearances with inline images is unavailable",
                 ));
             }
@@ -204,7 +204,7 @@ impl Scope {
             b"Q" => {
                 if minimum.is_some_and(|n| self.graphics <= n) {
                     return Err(Error::unsupported(
-                        crate::form_appearance::features::APPEARANCE_UPDATE,
+                        crate::features::APPEARANCE_UPDATE,
                         "variable text section crosses a graphics scope",
                     ));
                 }

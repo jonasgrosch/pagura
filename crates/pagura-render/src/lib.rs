@@ -41,10 +41,10 @@ use pagura_raster::Rgba8;
 pub use pagura_raster::Pixmap;
 pub use pagura_text::{PositionedText, Provider, SearchOptions, TextMatch, TextPage};
 
-/// Stable tags for rendering capabilities not implemented yet.
 pub mod features;
 /// In-memory form appearance programs and resource dictionaries (12.7.4.3).
 pub mod form_appearance;
+pub mod repairs;
 
 /// The accuracy contract of a rendering (ADR 0004).
 ///

@@ -5,14 +5,10 @@ use crate::{
     display::{Command, ImageCommand},
 };
 use pagura_core::{
-    Feature, Name,
+    Name,
     syntax::{Parser, is_whitespace},
 };
 use pagura_image::{DecodedImage, ImageKind, MaskKind, Samples};
-
-pub(crate) const ALPHA_DATA: Feature = Feature::new("image.alpha-data");
-pub(crate) const STENCIL_PATTERN: Feature = Feature::new("image.stencil-pattern");
-pub(crate) const EMBEDDED_COLOR: Feature = Feature::new("image.embedded-color");
 
 #[derive(Debug)]
 pub(crate) struct Image {
@@ -192,7 +188,7 @@ impl Compiler<'_> {
             }
             MaskKind::InData => {
                 return Err(Error::unsupported(
-                    ALPHA_DATA,
+                    crate::features::TRANSPARENCY_SMASK_IN_DATA,
                     "image opacity plane is unavailable",
                 ));
             }
@@ -297,7 +293,7 @@ impl Compiler<'_> {
                     (pagura_image::jpx::JpxColor::Enumerated(17), 1) => b"DeviceGray",
                     _ => {
                         return Err(Error::unsupported(
-                            EMBEDDED_COLOR,
+                            crate::features::XOBJECT_JPX_COLOR,
                             "embedded JPX colour interpretation is not implemented",
                         ));
                     }

@@ -143,7 +143,7 @@ fn filled_widgets_match_independent_exact_area_pixels() {
         }
         if let Some(tag) = params.lines().find_map(|l| l.strip_prefix("diagnostic=")) {
             assert_eq!(tag, "form.appearance-kept");
-            let kept = DiagnosticKind::Information(super::tags::APPEARANCE_KEPT);
+            let kept = DiagnosticKind::Information(crate::repairs::APPEARANCE_KEPT);
             expected.push(kept);
             let diagnostic = document
                 .diagnostics()
@@ -262,7 +262,7 @@ fn empty_appearances_keep_reported_recovery_and_skip_generation() {
     }
     let diagnostics = document.diagnostics();
     assert_eq!(diagnostics.len(), 1);
-    assert_eq!(diagnostics[0].repair(), Some(super::tags::APPEARANCE_EMPTY));
+    assert_eq!(diagnostics[0].repair(), Some(crate::repairs::APPEARANCE_EMPTY));
     assert_eq!(
         diagnostics[0].object,
         Some(pagura_core::ObjectId::new(80, 0))

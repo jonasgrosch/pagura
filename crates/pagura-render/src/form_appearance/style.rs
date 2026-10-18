@@ -28,7 +28,7 @@ impl Style {
             }
             if rotation.rem_euclid(360) != 0 {
                 return Err(Error::unsupported(
-                    crate::form_appearance::features::WIDGET_ROTATION,
+                    crate::features::APPEARANCE_WIDGET_ROTATION,
                     "rotated widget appearance generation is unavailable",
                 ));
             }
@@ -63,7 +63,7 @@ impl Style {
                 }
                 _ => {
                     return Err(Error::unsupported(
-                        crate::form_appearance::features::BORDER_STYLE,
+                        crate::features::APPEARANCE_BORDER_STYLE,
                         "widget border style is unavailable",
                     ));
                 }
@@ -80,7 +80,7 @@ impl Style {
             }
             if number(document, &border[0])? != 0.0 || number(document, &border[1])? != 0.0 {
                 return Err(Error::unsupported(
-                    crate::form_appearance::features::BORDER_STYLE,
+                    crate::features::APPEARANCE_BORDER_STYLE,
                     "rounded widget borders are unavailable",
                 ));
             }

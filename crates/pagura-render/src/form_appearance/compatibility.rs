@@ -87,7 +87,7 @@ pub(super) fn without_text(bytes: &[u8], limits: Limits) -> Result<Vec<u8>> {
         let op = parser.word()?;
         if op == b"Do" || op == b"Tr" && !matches!(operands.as_slice(), [Value::Integer(0..=3)]) {
             return Err(Error::unsupported(
-                super::features::APPEARANCE_UPDATE,
+                crate::features::APPEARANCE_UPDATE,
                 "unmarked appearance contains inseparable text clipping or XObject artwork",
             ));
         }

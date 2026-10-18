@@ -1997,7 +1997,7 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "image.embedded-color"
+      "feature": "xobject.jpx-color"
     },
     {
       "id": "paint/image-stencil-pattern-explicit",
@@ -2012,7 +2012,7 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "image.stencil-pattern"
+      "feature": "pattern.image-mask"
     },
     {
       "id": "paint/text-soft-mask-inside-object",
@@ -2450,7 +2450,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "text.clip-mode-reset"
+        "content.text-clip-reset"
       ],
       "oracle": "corpus/generated/paint/text-clip-reset.rgb",
       "oracle_sha256": "c308e6da46b19b0f92c4ab53e35cdb8deb7d00995debb237843fb28c5f6cf916",
@@ -2482,7 +2482,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "text.clip-mode-reset"
+        "content.text-clip-reset"
       ],
       "oracle": "corpus/generated/paint/text-clip-reset-retained.rgb",
       "oracle_sha256": "61e0927c049308a83c0dcea5610b87dd087de1ac6867bd56d9b093b7fb6d1e4a",
@@ -2514,8 +2514,8 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "text.clip-mode-reset",
-        "text.clip-mode-reset"
+        "content.text-clip-reset",
+        "content.text-clip-reset"
       ],
       "oracle": "corpus/generated/paint/text-clip-reset-reentered.rgb",
       "oracle_sha256": "e8930ec32d750305e00ba34bb4f3cc0a80343e9028a84d57b29dd4ca699701a8",
@@ -2547,7 +2547,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "text.clip-mode-reset"
+        "content.text-clip-reset"
       ],
       "oracle": "corpus/generated/paint/text-clip-reset-restored.rgb",
       "oracle_sha256": "3fd9d7e3a370a94a9f9662749f48cc53bf49c5dd1adb1c1bbec007316ceb9b8c",
@@ -2579,7 +2579,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "text.clip-mode-reset"
+        "content.text-clip-reset"
       ],
       "oracle": "corpus/generated/paint/text-clip-reset-inherited.rgb",
       "oracle_sha256": "3fd9d7e3a370a94a9f9662749f48cc53bf49c5dd1adb1c1bbec007316ceb9b8c",

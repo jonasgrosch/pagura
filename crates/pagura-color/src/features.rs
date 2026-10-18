@@ -9,5 +9,9 @@ pub const ICC_BASED: Feature = Feature::new("colorspace.ICCBased");
 /// Nonzero calibrated black points require black-point compensation.
 pub const BLACK_POINT: Feature = Feature::new("colorspace.BlackPoint");
 
+/// Colour space families outside Table 61, which a later PDF version or an
+/// extension may define.
+pub const UNKNOWN_FAMILY: Feature = Feature::new("colorspace.unknown");
+
 /// Every tag above.
-pub const ALL: &[Feature] = &[ICC_BASED, BLACK_POINT];
+pub const ALL: &[Feature] = &[ICC_BASED, BLACK_POINT, UNKNOWN_FAMILY];

@@ -201,13 +201,13 @@ def cases():
     o=base(flags=1<<23);o[11]['Rect']=[0,0,20,20]
     yield vector('text-no-scroll-overflow',o,value='ABCDEFGH',expected='text|ABCDEFGH',appearance='error:invalid-argument')
     o=base()
-    yield vector('text-missing-font-character',o,value='Ω',expected='text|Ω',appearance='error:unsupported:form.font-encoding')
+    yield vector('text-missing-font-character',o,value='Ω',expected='text|Ω',appearance='error:unsupported:appearance.font-encoding')
     o=base();o[10]['DA']=b'0 g'
     yield vector('text-invalid-da',o,appearance='error:syntax')
     o=base();o[10]['DA']=b'/F1 10 Tf 0 1 -1 0 30 40 Tm'
-    yield vector('text-oblique-matrix',o,appearance='error:unsupported:form.text-matrix')
+    yield vector('text-oblique-matrix',o,appearance='error:unsupported:appearance.text-matrix')
     o=base();o[11]['MK']={'R':90}
-    yield vector('text-rotated-widget',o,appearance='error:unsupported:form.widget-rotation')
+    yield vector('text-rotated-widget',o,appearance='error:unsupported:appearance.widget-rotation')
     o=base('Btn',1<<15,widgets=2);o[11]['Opt']=['shared','shared']
     for i in range(2):o[20+i]['AP']={'N':{'Off':ref(81),str(i):ref(80)}}
     yield vector('radio-duplicate-exports',o,mode='button-export',value='shared',error='invalid-argument',requirement='forms-fill-button')
@@ -227,11 +227,11 @@ def cases():
     yield vector('checkbox-absent-ap-custom-state',o,mode='state',value='Custom',expected='button|Custom|0:Custom',content=check,appearance='generated',requirement='forms-fill-button')
 
     o=base();o[10]['DA']=b'/F1 -10 Tf'
-    yield vector('text-negative-font-size',o,appearance='error:unsupported:form.text-matrix',requirement='forms-appearance-style')
+    yield vector('text-negative-font-size',o,appearance='error:unsupported:appearance.text-matrix',requirement='forms-appearance-style')
 
     o=base(ap=True)
     o[80]=stream(b'BT /F1 10 Tf /Tx BMC (OLD) Tj EMC ET', b'/Type /XObject /Subtype /Form /BBox [0 0 100 20] /Resources << /Font << /F1 70 0 R >> >>')
-    yield vector('text-existing-inside-text-object',o,appearance='error:unsupported:form.appearance-update',requirement='forms-appearance-update')
+    yield vector('text-existing-inside-text-object',o,appearance='error:unsupported:appearance.update',requirement='forms-appearance-update')
 
     o=base(flags=1<<12);o[11]['Rect']=[0,0,18,40]
     o[70]['Encoding']['Differences']=[32,name('A'),65,name('space'),66]+[name(c) for c in 'BCDEFGHIJKLMNOPQRSTUVWXYZ']
