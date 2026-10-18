@@ -1,7 +1,7 @@
 //! Aggregate retained-cache accounting (ADR 0012).
 
 use pagura_core::{Error, ObjectId, Result};
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 
 pub(crate) const fn slot_bytes() -> usize {
     size_of::<(ObjectId, crate::Slot)>().saturating_add(64)
@@ -19,6 +19,7 @@ pub(crate) const fn stream_slot_bytes() -> usize {
 pub(crate) struct Budget {
     limit: usize,
     used: Mutex<usize>,
+    parent: Option<Arc<Budget>>,
 }
 
 impl Budget {
@@ -26,6 +27,15 @@ impl Budget {
         Self {
             limit,
             used: Mutex::new(0),
+            parent: None,
+        }
+    }
+
+    pub(crate) fn child(parent: Arc<Self>) -> Self {
+        Self {
+            limit: parent.limit,
+            used: Mutex::new(0),
+            parent: Some(parent),
         }
     }
 
@@ -37,13 +47,20 @@ impl Budget {
             .ok_or_else(|| {
                 Error::limit("document retained-memory budget exceeded").in_object(object)
             })?;
+        if let Some(parent) = &self.parent {
+            parent.charge(bytes, object)?;
+        }
         *used = next;
         Ok(())
     }
 
     pub(crate) fn release(&self, bytes: usize) {
         let mut used = self.used.lock().unwrap_or_else(PoisonError::into_inner);
-        *used = used.saturating_sub(bytes);
+        let released = bytes.min(*used);
+        *used -= released;
+        if let Some(parent) = &self.parent {
+            parent.release(released);
+        }
     }
 
     pub(crate) const fn reservation(&self) -> Reservation<'_> {
@@ -56,6 +73,14 @@ impl Budget {
     #[cfg(test)]
     pub(crate) fn used(&self) -> usize {
         *self.used.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
+impl Drop for Budget {
+    fn drop(&mut self) {
+        if let Some(parent) = &self.parent {
+            parent.release(*self.used.get_mut().unwrap_or_else(PoisonError::into_inner));
+        }
     }
 }
 

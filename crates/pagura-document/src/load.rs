@@ -15,6 +15,16 @@ impl Document {
         table: xref::XrefTable,
         diagnostics: Vec<pagura_core::Diagnostic>,
     ) -> Result<Self> {
+        Self::from_source(bytes.into(), options, table, diagnostics, None)
+    }
+
+    pub(crate) fn from_source(
+        bytes: crate::history::Bytes,
+        options: &OpenOptions,
+        table: xref::XrefTable,
+        diagnostics: Vec<pagura_core::Diagnostic>,
+        parent: Option<&Document>,
+    ) -> Result<Self> {
         let root = table
             .trailer
             .get(b"Root")
@@ -27,31 +37,11 @@ impl Document {
                     .map(|(&number, entry)| ObjectId::new(number, entry.generation))
             })
             .unwrap_or(ObjectId::new(0, 0));
-        let retained = crate::memory::Budget::new(options.limits.document_bytes);
-        // Include eager metadata before constructing the slot map. Per-node tree
-        // bookkeeping is an estimate, consistent with the core dictionary index.
-        let structure = table
-            .entries
-            .values()
-            .filter(|entry| !matches!(entry.location, Location::Free))
-            .count()
-            .saturating_mul(crate::memory::slot_bytes())
-            .saturating_add(table.trailer.retained_bytes())
-            .saturating_add(
-                table
-                    .revisions
-                    .capacity()
-                    .saturating_mul(size_of::<crate::Revision>()),
-            );
-        let structure = table.revisions.iter().fold(structure, |sum, revision| {
-            sum.saturating_add(
-                revision
-                    .trailer()
-                    .retained_bytes()
-                    .saturating_sub(size_of::<pagura_core::Dictionary>()),
-            )
-        });
-        retained.charge(structure, root)?;
+        let retained = Arc::new(parent.map_or_else(
+            || crate::memory::Budget::new(options.limits.document_bytes),
+            |parent| crate::memory::Budget::child(parent.retained.clone()),
+        ));
+        retained.charge(structure_bytes(&table, parent.is_none()), root)?;
         let rebuilt = table.rebuild_remaining;
         let rebuild_streams = table.rebuild_streams;
         let object_streams: std::collections::BTreeMap<_, _> = table
@@ -93,6 +83,7 @@ impl Document {
             pages: OnceLock::new(),
             diagnostics: Mutex::new(crate::diagnostics::Log::default()),
             retained,
+            historical: crate::history::Cache::default(),
         };
         document.report(diagnostics);
         document.security = security::read(&document)?;
@@ -207,5 +198,43 @@ impl Document {
             Parser::at(&self.bytes, offset, Origin::File, self.limits())?
                 .with_recovery(self.recovery()),
         )
+    }
+}
+
+// Charge shared xref deltas once, at the source document. Snapshot slot maps
+// and trailers remain separate retained allocations (ADR 0012).
+fn structure_bytes(table: &xref::XrefTable, include_entries: bool) -> usize {
+    let structure = table
+        .entries
+        .values()
+        .filter(|entry| !matches!(entry.location, Location::Free))
+        .count()
+        .saturating_mul(crate::memory::slot_bytes())
+        .saturating_add(table.trailer.retained_bytes())
+        .saturating_add(
+            table
+                .revisions
+                .capacity()
+                .saturating_mul(size_of::<crate::Revision>()),
+        );
+    let structure = table.revisions.iter().fold(structure, |sum, revision| {
+        sum.saturating_add(
+            revision
+                .trailer()
+                .retained_bytes()
+                .saturating_sub(size_of::<pagura_core::Dictionary>()),
+        )
+    });
+    if include_entries {
+        table.revisions.iter().fold(structure, |sum, revision| {
+            sum.saturating_add(
+                revision
+                    .entries
+                    .len()
+                    .saturating_mul(size_of::<(u32, xref::XrefEntry)>() + 64),
+            )
+        })
+    } else {
+        structure
     }
 }

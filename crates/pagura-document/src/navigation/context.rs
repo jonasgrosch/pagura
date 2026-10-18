@@ -1,7 +1,7 @@
 //! Shared work accounting and source locations for navigation views.
 use crate::{Document, ObjectSource};
 use pagura_core::{
-    Diagnostic, Diagnostics, Dictionary, Error, ObjectId, Position, Repair, Result, Value,
+    Diagnostic, Diagnostics, Dictionary, Error, Limits, ObjectId, Position, Repair, Result, Value,
 };
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -21,18 +21,33 @@ impl Source {
     }
 }
 
-pub(crate) struct Context<'a> {
-    pub doc: &'a Document,
+#[derive(Clone, Copy, Default)]
+struct Work {
     steps: usize,
     bytes: usize,
+    scanned: usize,
+}
+pub(crate) struct Context<'a> {
+    pub doc: &'a Document,
+    work: std::rc::Rc<std::cell::Cell<Work>>,
+    limits: Limits,
     pages: Option<std::collections::BTreeMap<ObjectId, usize>>,
 }
 impl<'a> Context<'a> {
     pub fn new(doc: &'a Document) -> Self {
         Self {
             doc,
-            steps: 0,
-            bytes: 0,
+            work: std::rc::Rc::default(),
+            limits: doc.limits(),
+            pages: None,
+        }
+    }
+    /// A different source revision using this traversal's aggregate work budget.
+    pub fn for_document<'b>(&self, doc: &'b Document) -> Context<'b> {
+        Context {
+            doc,
+            work: self.work.clone(),
+            limits: self.limits,
             pages: None,
         }
     }
@@ -81,19 +96,33 @@ impl<'a> Context<'a> {
             })
     }
     pub fn step(&mut self, depth: usize, source: Source) -> Result<()> {
-        let limits = self.doc.limits();
-        if depth > limits.depth || self.steps >= limits.value_nodes.min(limits.objects) {
+        let limits = self.limits;
+        let mut work = self.work.get();
+        if depth > limits.depth || work.steps >= limits.value_nodes.min(limits.objects) {
             return Err(source.error(Error::limit("navigation traversal budget exceeded")));
         }
-        self.steps += 1;
+        work.steps += 1;
+        self.work.set(work);
         Ok(())
     }
     pub fn allocate<T>(&mut self, count: usize, source: Source) -> Result<()> {
-        self.bytes = count
+        let mut work = self.work.get();
+        work.bytes = count
             .checked_mul(size_of::<T>())
-            .and_then(|n| self.bytes.checked_add(n))
-            .filter(|&n| n <= self.doc.limits().document_bytes)
+            .and_then(|n| work.bytes.checked_add(n))
+            .filter(|&n| n <= self.limits.document_bytes)
             .ok_or_else(|| source.error(Error::limit("navigation result budget exceeded")))?;
+        self.work.set(work);
+        Ok(())
+    }
+    pub fn scan(&self, count: usize, source: Source) -> Result<()> {
+        let mut work = self.work.get();
+        work.scanned = work
+            .scanned
+            .checked_add(count)
+            .filter(|&n| n <= self.limits.file_bytes)
+            .ok_or_else(|| source.error(Error::limit("source scan budget exceeded")))?;
+        self.work.set(work);
         Ok(())
     }
     pub fn resolve(

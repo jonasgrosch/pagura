@@ -53,11 +53,15 @@ pub enum RevisionKind {
 }
 
 /// Source metadata for one revision, newest first (clause 7.5.6).
+/// A linearized base combines its first-page and main sections (F.3.4, F.3.11).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Revision {
     pub(crate) offset: usize,
+    // Terminal section differs from the primary section in a linearized base.
+    pub(crate) end_section: usize,
     pub(crate) kind: RevisionKind,
     pub(crate) trailer: Dictionary,
+    pub(crate) entries: std::sync::Arc<BTreeMap<u32, XrefEntry>>,
 }
 
 impl Revision {
@@ -177,7 +181,7 @@ fn primary(
             entries.extend(supplement);
             kind = RevisionKind::Hybrid;
         }
-        merge_entries(&mut table, entries, &trailer, offset, shift)?;
+        let entries = merge_entries(&mut table, entries, &trailer, offset, shift)?;
         for (key, value) in trailer.iter() {
             if !table.trailer.contains_key(key.as_bytes()) {
                 table.trailer.insert(key.clone(), value.clone());
@@ -186,8 +190,10 @@ fn primary(
         let prev = integer_offset(&trailer, b"Prev")?;
         table.revisions.push(Revision {
             offset,
+            end_section: offset,
             kind,
             trailer,
+            entries: std::sync::Arc::new(entries),
         });
         let Some(prev) = prev else {
             break;
@@ -196,8 +202,63 @@ fn primary(
             .checked_add(shift)
             .ok_or(Error::syntax("Prev offset overflow"))?;
     }
+    join_linearized_base(bytes, header, limits, &mut table)?;
     validate_identities(bytes, &table, limits)?;
     Ok(table)
+}
+
+// F.3.4 and F.3.11: the first-page and main sections describe one base,
+// linked by a forward Prev. Only the main section ends that source revision.
+fn join_linearized_base(
+    bytes: &[u8],
+    header: usize,
+    limits: Limits,
+    table: &mut XrefTable,
+) -> Result<()> {
+    let count = table.revisions.len();
+    if count < 2 || table.revisions[count - 2].offset >= table.revisions[count - 1].offset {
+        return Ok(());
+    }
+    // The linearization dictionary is the first indirect object (F.3.3).
+    // Its fixed-size header probe cannot scan arbitrary document bodies.
+    let mut parser = Parser::new(
+        &bytes[header..bytes.len().min(header.saturating_add(1024))],
+        Origin::File,
+        limits,
+    );
+    let linearized: Result<bool> = (|| {
+        parser.unsigned()?;
+        parser.unsigned()?;
+        if !parser.keyword(b"obj") {
+            return Ok(false);
+        }
+        Ok(parser
+            .parse()?
+            .as_dictionary()
+            .and_then(|d| d.get(b"Linearized"))
+            .and_then(pagura_core::Value::as_number)
+            .is_some_and(|n| n > 0.0))
+    })();
+    match linearized {
+        Ok(true) => {}
+        Err(error) if error.kind == pagura_core::ErrorKind::Limit => return Err(error),
+        _ => return Ok(()),
+    }
+    if let Some(main) = table.revisions.pop()
+        && let Some(first_page) = table.revisions.last_mut()
+    {
+        let mut entries = main.entries;
+        std::sync::Arc::make_mut(&mut entries)
+            .append(std::sync::Arc::make_mut(&mut first_page.entries));
+        first_page.entries = entries;
+        for (key, value) in main.trailer {
+            if !first_page.trailer.contains_key(key.as_bytes()) {
+                first_page.trailer.insert(key, value);
+            }
+        }
+        first_page.end_section = main.offset;
+    }
+    Ok(())
 }
 
 fn validate_identities(bytes: &[u8], table: &XrefTable, limits: Limits) -> Result<()> {
@@ -240,11 +301,11 @@ fn validate_identities(bytes: &[u8], table: &XrefTable, limits: Limits) -> Resul
 
 fn merge_entries(
     table: &mut XrefTable,
-    entries: BTreeMap<u32, XrefEntry>,
+    mut entries: BTreeMap<u32, XrefEntry>,
     trailer: &Dictionary,
     offset: usize,
     shift: usize,
-) -> Result<()> {
+) -> Result<BTreeMap<u32, XrefEntry>> {
     let size = integer_offset(trailer, b"Size")?.ok_or(Error::syntax("trailer Size is missing"))?;
     if size == 0
         || entries
@@ -256,16 +317,16 @@ fn merge_entries(
                 .at(Position::File(offset)),
         );
     }
-    for (number, mut entry) in entries {
+    for (&number, entry) in &mut entries {
         if let Location::Offset(at) = entry.location {
             entry.location = Location::Offset(
                 at.checked_add(shift)
                     .ok_or(Error::syntax("object offset overflow"))?,
             );
         }
-        table.entries.entry(number).or_insert(entry);
+        table.entries.entry(number).or_insert(*entry);
     }
-    Ok(())
+    Ok(entries)
 }
 
 fn section(

@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "signatures",
-  "scope": "PDF clause locators verified against the locally supplied ISO 32000-2:2020 text. Two-range coverage and strict physical source binding are verification policy; result aspects follow ADR 0015. Document views are structural; the facade integrity stage is tracked separately in cms-signatures.json.",
+  "scope": "PDF clause locators verified against the locally supplied ISO 32000-2:2020 text. Two-range coverage, strict physical source binding and conservative object-level policy comparisons are verification policy; independent result aspects follow ADR 0015. Document views are structural, and structural permission never establishes cryptographic validity; the facade integrity stage is tracked separately in cms-signatures.json.",
   "requirements": [
     {
       "id": "signature-fields",
@@ -40,15 +40,19 @@
       "reference": "iso32000-2-full-text",
       "clauses": [
         "7.5.6",
-        "12.8.1"
+        "12.8.1",
+        "F.3.4",
+        "F.3.11"
       ],
       "status": "partial",
       "tests": [
         "pagura-document signatures::tests",
-        "corpus/manifests/signatures.json"
+        "corpus/manifests/signatures.json",
+        "pagura-document signatures::change_tests",
+        "corpus/manifests/signature-changes.json"
       ],
-      "description": "Coverage matches parsed Prev-chain revision terminators and lists later revisions.",
-      "gaps": "Repaired documents are inconclusive. Unconfirmed Prev-chain revision terminators are inconclusive. Historical fields removed or replaced by later revisions are not enumerated."
+      "description": "Coverage matches parsed Prev-chain terminators. Historical object reads use lazy strict prefixes with generation-aware xref data, shared source bytes and aggregate cache accounting. Removed or replaced signatures remain discoverable. Linearized first-page and main xref sections describe one base revision in Prev-chain order; optional early EOF markers are ignored.",
+      "gaps": "Repaired or unconfirmed history is inconclusive. Historical encrypted access is unsupported and history_complete reports incomplete signature discovery."
     },
     {
       "id": "signature-transforms",
@@ -63,8 +67,8 @@
         "pagura-document signatures::tests",
         "corpus/manifests/signatures.json"
       ],
-      "description": "DocMDP permissions, FieldMDP selections, UR parameters and field locks are inert data.",
-      "gaps": "Modification classification, rights enforcement and transform digest validation are not implemented."
+      "description": "Typed DocMDP permissions, FieldMDP selections, UR parameters and field locks; supported restrictions are frozen at the signed revision.",
+      "gaps": "Transform digest validation and deprecated usage-rights enforcement are not implemented."
     },
     {
       "id": "signature-results",
@@ -76,7 +80,33 @@
         "corpus/manifests/signatures.json"
       ],
       "description": "Independent integrity, coverage, modification, trust, time, revocation and algorithm states follow ADR 0015 decision 2.",
-      "gaps": "Facade CMS integrity is tracked in cms-signatures.json. Trust, modification classification, clock trust and revocation remain unchecked. Legacy encodings remain unsupported."
+      "gaps": "Facade CMS integrity is tracked in cms-signatures.json and permitted changes in signature-permitted-changes. Trust, clock trust and revocation remain unchecked here. Legacy encodings remain unsupported; adbe.pkcs7.sha1 is weak, and the adbe.x509.rsa_sha1 name alone does not identify its digest (Table 260 note a)."
+    },
+    {
+      "id": "signature-permitted-changes",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.9",
+        "7.3.10",
+        "7.5.6",
+        "7.5.7",
+        "7.5.8",
+        "12.5.5",
+        "14.4",
+        "14.3.3",
+        "12.7.7",
+        "12.8.2.2",
+        "12.8.2.3",
+        "12.8.2.4",
+        "Tables 236, 257, 259"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-document signatures::change_tests",
+        "corpus/manifests/signature-changes.json"
+      ],
+      "description": "Per-object and trailer decisions under signed DocMDP P=1/2/3 and FieldMDP All/Include/Exclude restrictions. Xref deltas include redefined object-stream members and indirect-Length dependencies. Reachable roles are shared across signatures from the oldest covered signed revision; undefined references are null and unrelated slots stay lazy; cumulative results retain reverted violations. All owners must authorize associated appearance changes. Annotation and widget changes, signing appearances and added AP entries, including indirect null-to-appearance transitions, report visible_overlay without changing permission. Large-file fixtures are authored in Rust tests at run time.",
+      "gaps": "Structural decisions are conditional on cryptographic verification. Unsupported roles, transformations, template instantiation, document information, non-catalog FieldMDP Data targets and DSS/timestamp exceptions are inconclusive. No usage rights are granted. Historical encryption or repaired source makes discovery incomplete and analysis inconclusive. Shared change-analysis budget exhaustion preserves structural and ByteRange results and reports changes inconclusive."
     }
   ]
 }
