@@ -1,5 +1,14 @@
-//! Encoding assignments from ISO 32000-2 Annex D, Tables D.2, D.4–D.6.
-//! Numeric assignments are data; undefined slots remain absent.
+//! Encoding assignments from ISO 32000-2 Annex D, Tables D.2, D.4–D.6, and
+//! the Unicode values of the glyph names they use.
+//!
+//! Provenance: transcribed from Annex D (code-to-name tables), from the
+//! Adobe Glyph List values of those names (`UNICODE`) and from the separate
+//! ZapfDingbats name list of Annex D.6 (`DINGBATS_UNICODE`); there is no
+//! generator. Numeric assignments are data; undefined slots remain absent.
+//! Every code-to-name slot of the seven tables is checked against the
+//! independent `annex-*` and `encoding-table-*` vectors of
+//! `tools/fixturegen/text.py`, and a unit test keeps both name tables sorted
+//! for their binary searches.
 
 pub(crate) const STANDARD: &[(u8, &str)] = &[
     (32, "space"),
@@ -1377,7 +1386,8 @@ pub(crate) const ZAPF_DINGBATS: &[(u8, &str)] = &[
     (254, "a191"),
 ];
 
-// Unicode scalars for the named Latin and symbol characters in Annex D.
+/// Unicode scalars of the Latin and symbol glyph names of Annex D, sorted by
+/// name for binary search.
 pub(crate) const UNICODE: &[(&str, u32)] = &[
     ("A", 0x0041),
     ("AE", 0x00c6),

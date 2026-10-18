@@ -314,6 +314,12 @@ mod tests {
     }
 
     #[test]
+    fn glyph_name_tables_are_sorted_for_binary_search() {
+        assert!(tables::UNICODE.is_sorted_by_key(|(name, _)| *name));
+        assert!(tables::DINGBATS_UNICODE.is_sorted_by_key(|(name, _)| *name));
+    }
+
+    #[test]
     fn names_and_encoding_exceptions() {
         assert_eq!(unicode(b"uni00410042_u1F600.alt").as_deref(), Some("AB😀"));
         assert_eq!(unicode(b"Euro_uni0041D800_B").as_deref(), Some("€B"));
