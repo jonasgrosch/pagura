@@ -6,6 +6,10 @@ use std::{collections::BTreeMap, sync::Arc};
 
 /// External font resources. Implementations own their caches and budgets;
 /// interpretation never opens files or acquires host capabilities.
+/// Shared results are excluded from [`crate::PdfFont::retained_bytes`]; a
+/// provider must budget them once in its own cache, independently of fonts.
+/// The host must cover outstanding shared results even after cache eviction
+/// or destruction of the provider itself.
 pub trait Provider: Send + Sync {
     /// Standard-14 metrics and optional substitute, by canonical base name.
     ///

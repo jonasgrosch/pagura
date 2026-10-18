@@ -32,7 +32,7 @@ pub(crate) enum Source {
 #[derive(Debug)]
 pub(crate) enum Mapping {
     Simple(Box<SimpleMapping>),
-    Composite(Arc<CMap>),
+    Composite { map: Arc<CMap>, shared: bool },
 }
 
 pub(crate) fn load(document: &Document, font: &Dictionary) -> Result<PdfFont> {
@@ -71,13 +71,7 @@ pub(crate) fn load_with(
         }
         (
             descendant,
-            Some(Mapping::Composite(cmap::load_with(
-                document,
-                font.get(b"Encoding")
-                    .ok_or_else(|| Error::syntax("Type0 missing Encoding"))?,
-                false,
-                provider,
-            )?)),
+            Some(composite_mapping(document, font, provider)?),
             descendants[0].as_reference(),
         )
     } else {
@@ -122,7 +116,7 @@ pub(crate) fn load_with(
     };
     let cid_map = cid_map(document, metrics_font, metrics_id)?;
     let mode = match &mapping {
-        Mapping::Composite(map) => map.mode,
+        Mapping::Composite { map, .. } => map.mode,
         Mapping::Simple(_) => WritingMode::Horizontal,
     };
     let to_unicode = to_unicode(document, font, &mapping);
@@ -141,6 +135,26 @@ pub(crate) fn load_with(
         to_unicode,
         limits: document.limits(),
         cid_unicode,
+        retained: 0,
+    }
+    .accounted())
+}
+
+fn composite_mapping(
+    document: &Document,
+    font: &Dictionary,
+    provider: Option<&dyn crate::Provider>,
+) -> Result<Mapping> {
+    let encoding = font
+        .get(b"Encoding")
+        .ok_or_else(|| Error::syntax("Type0 missing Encoding"))?;
+    let shared = document
+        .resolve(encoding)?
+        .as_name()
+        .is_some_and(|name| !matches!(name.as_bytes(), b"Identity-H" | b"Identity-V"));
+    Ok(Mapping::Composite {
+        map: cmap::load_with(document, encoding, false, provider)?,
+        shared,
     })
 }
 
@@ -251,7 +265,9 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
         to_unicode,
         limits: document.limits(),
         cid_unicode: None,
-    })
+        retained: 0,
+    }
+    .accounted())
 }
 
 pub(crate) fn to_unicode(
@@ -297,7 +313,9 @@ fn to_unicode_inner(document: &Document, value: &Value, mapping: &Mapping) -> Re
                 offset: 0,
             },
         ),
-        Mapping::Composite(encoding) => map.consistent_with(encoding, document.limits()),
+        Mapping::Composite { map: encoding, .. } => {
+            map.consistent_with(encoding, document.limits())
+        }
     }
     .map_err(|e| e.in_object(id))?;
     Ok(map)
@@ -309,7 +327,7 @@ fn collection_unicode(
     mapping: &Mapping,
     provider: Option<&dyn crate::Provider>,
 ) -> Result<Option<Arc<crate::CidToUnicode>>> {
-    let (Mapping::Composite(map), Some(provider)) = (mapping, provider) else {
+    let (Mapping::Composite { map, .. }, Some(provider)) = (mapping, provider) else {
         return Ok(None);
     };
     if let (Some(registry), Some(ordering)) = (&map.registry, &map.ordering) {

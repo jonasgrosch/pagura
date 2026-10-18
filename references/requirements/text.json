@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "text",
-  "scope": "The rule paraphrases and exact ISO locators below were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text (ISO_32000-2_sponsored_EC3.txt): PDF string-decoding/spacing interfaces, supported font dictionaries and embedding bindings, character selection, widths/CID metrics, PDF-specific CMap rules and ToUnicode. Every code-to-name slot of Standard, MacRoman, WinAnsi, PDFDoc, Symbol and ZapfDingbats was compared with Annex D; MacExpert was also checked. This is not verification of Adobe Glyph List rules, TN5014 grammar or external font-program binary formats. Provider additions were checked against ISO 9.6.2.2/Table 109 and 9.9.2, 9.8.1-9.8.2/Tables 120-121, 9.7.5.2/Table 116 and 9.10.2, and TN5014 sections 5.1-5.4 for pinned resource inheritance. AFM values and Unicode projection choices are checked against the pinned data files, not claimed as verification of external AFM or sfnt format standards. Recovery additions were checked against ISO 9.7.4.1 Table 115, 9.7.4.2, 9.7.5.4, 9.7.6.2, 9.10.3 and TN5014 7.4. Tolerant interpretations depart from those rules as individually reported below; corpus acceptance is evidence of tolerance, not standards conformance.",
+  "scope": "The rule paraphrases and exact ISO locators below were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text (ISO_32000-2_sponsored_EC3.txt): PDF string-decoding/spacing interfaces, supported font dictionaries and embedding bindings, character selection, widths/CID metrics, PDF-specific CMap rules and ToUnicode. Every code-to-name slot of Standard, MacRoman, WinAnsi, PDFDoc, Symbol and ZapfDingbats was compared with Annex D; MacExpert was also checked. This is not verification of Adobe Glyph List rules, TN5014 grammar or external font-program binary formats. Provider additions were checked against ISO 9.6.2.2/Table 109 and 9.9.2, 9.8.1-9.8.2/Tables 120-121, 9.7.5.2/Table 116 and 9.10.2, and TN5014 sections 5.1-5.4 for pinned resource inheritance. AFM values and Unicode projection choices are checked against the pinned data files, not claimed as verification of external AFM or sfnt format standards. Recovery additions were checked against ISO 9.7.4.1 Table 115, 9.7.4.2, 9.7.5.4, 9.7.6.2, 9.10.3 and TN5014 7.4. Tolerant interpretations depart from those rules as individually reported below; corpus acceptance is evidence of tolerance, not standards conformance. Round 5 rechecks the PDF TrueType routes against 9.6.5.4 and Table 113 in the same local ISO text; final-paragraph alternatives are reader policy. Retained byte accounting is ADR 0012 policy, not a numerical requirement of Annex C.1.",
   "requirements": [
     {
       "id": "text-type3",
@@ -369,19 +369,38 @@
         "text/tt-mac-os-additions",
         "text/tt-full-unicode-mac",
         "text/tt-platform-zero-mac",
-        "text/tt-bmp-before-full"
+        "text/tt-bmp-before-full",
+        "text/tt-mac-by-name",
+        "text/tt-symbol-encoding-ignored",
+        "text/tt-policy-name-mac",
+        "text/tt-policy-name-full",
+        "text/tt-policy-name-platform-zero",
+        "text/tt-policy-full-before-platform-zero",
+        "text/tt-policy-mac-before-full",
+        "text/tt-policy-name-symbol",
+        "text/tt-policy-raw-unicode",
+        "text/tt-policy-raw-unicode-f000",
+        "text/tt-policy-raw-full",
+        "text/tt-policy-raw-platform-zero",
+        "text/tt-policy-raw-bmp-before-full",
+        "text/tt-policy-raw-unmapped",
+        "text/tt-policy-multiscalar-unmapped",
+        "text/tt-policy-name-nonbmp",
+        "text/tt-post-notdef-before-policy"
       ],
       "gaps": "Full AGL algorithm primary-text review remains pending; the exact cmap API distinction is now implemented upstream and covered here.",
       "verification": {
         "rule": "Symbolic or unencoded fonts use direct symbol/Mac codes; encoded nonsymbolic fonts use names via Unicode, Mac OS Roman, then post.",
         "implementation": "ISO selection routes implemented with distinct Windows BMP, full-Unicode and platform-0 API variants.",
-        "expectations": "Agree for the previous routes plus conflicting BMP/full-Unicode and full/platform-0 without BMP records.",
-        "verdict": "ISO routes agree, including the formerly blocked mixed-Unicode records.",
+        "expectations": "Normative routes and Table 113 agree with independent glyph-ID expectations. Additional mappings are explicit reader policy permitted by the final paragraph, not normative fallback orders.",
+        "verdict": "ISO 9.6.5.4 and Table 113 routes agree; final-paragraph choices are separately documented and tested.",
         "choices": [
           "When symbolic/no-Encoding wording overlaps the named/Nonsymbolic wording, the more specific direct-code paragraph takes precedence.",
-          "A present subtable does not fall through to another cmap on a missing glyph; name selection falls back to post, and raw selection defaults to .notdef.",
+          "Use the prescribed name route and post before reader-chosen fallbacks. After failure try Mac OS Roman by glyph name, full Windows Unicode (3,10), platform 0 Unicode, then the symbol byte route. Never use ToUnicode to select a glyph.",
           "The four allowed symbol high-byte ranges are tried in ascending order; a conforming symbol cmap uses one range.",
-          "When Mac OS Roman contains aliases for a name, the lowest character code is used."
+          "When Mac OS Roman contains aliases for a name, the lowest character code is used.",
+          "For direct codes, try symbol high-byte variants, then Mac Roman. Only after failure try (3,1), (3,10), then platform 0; within each Unicode table try the literal byte before F000/F100/F200 offsets. Missing all routes selects glyph 0. Multi-scalar names never select a scalar cmap entry.",
+          "A successful post lookup is binding even for glyph 0; reader fallback applies only when lookup fails."
         ]
       }
     },
@@ -1055,6 +1074,99 @@
           "Accept block counts above 100 only within entry and operation budgets; negative and mismatched counts remain invalid.",
           "Interpret an otherwise reversed byte bound as an integer interval, split into disjoint aligned rectangular pieces without widening it. Reversed whole intervals, conflicting codespaces and ambiguous code lengths remain errors.",
           "Strict mode rejects these painting-critical repairs with their stable tags. ToUnicode maps inherit the extraction-only discard policy."
+        ]
+      }
+    },
+    {
+      "id": "text-truetype-fallback",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.6.5.4"
+      ],
+      "tables": [
+        "113"
+      ],
+      "status": "Preserve required subtable/name/post routes, then apply deterministic reader-selected mappings.",
+      "tests": [
+        "text/tt-mac-by-name",
+        "text/tt-symbol-encoding-ignored",
+        "text/tt-policy-name-mac",
+        "text/tt-policy-name-full",
+        "text/tt-policy-name-platform-zero",
+        "text/tt-policy-full-before-platform-zero",
+        "text/tt-policy-mac-before-full",
+        "text/tt-policy-name-symbol",
+        "text/tt-policy-raw-unicode",
+        "text/tt-policy-raw-unicode-f000",
+        "text/tt-policy-raw-full",
+        "text/tt-policy-raw-platform-zero",
+        "text/tt-policy-raw-bmp-before-full",
+        "text/tt-policy-raw-unmapped",
+        "text/tt-policy-multiscalar-unmapped",
+        "text/tt-policy-name-nonbmp",
+        "text/tt-unicode-missing-post",
+        "text/tt-symbol-present-missing",
+        "text/tt-post-notdef-before-policy"
+      ],
+      "gaps": "AGL/AGLFN algorithm and external sfnt binary layout reviews remain pending; reader-chosen fallback orders are policy.",
+      "verification": {
+        "rule": "Use (3,1) via glyph-name Unicode or, when absent, (1,0) via Mac OS Roman names; unmapped names use post. Symbolic or unencoded fonts use (3,0) ranges or raw (1,0). After all specified routes fail a reader may choose another mapping.",
+        "implementation": "Normative routes remain first. Reader policy is shared with text-truetype-selection and exercised by conflicting records and absent names.",
+        "expectations": "Independent Python sfnt construction supplies explicit glyph IDs from ISO routes or the documented policy. No product execution supplies expectations.",
+        "verdict": "Normative subset agrees; the final fallback order is implementation policy, not a prescribed standard order.",
+        "choices": [
+          "When symbolic/no-Encoding wording overlaps the named/Nonsymbolic wording, the more specific direct-code paragraph takes precedence.",
+          "Use the prescribed name route and post before reader-chosen fallbacks. After failure try Mac OS Roman by glyph name, full Windows Unicode (3,10), platform 0 Unicode, then the symbol byte route. Never use ToUnicode to select a glyph.",
+          "The four allowed symbol high-byte ranges are tried in ascending order; a conforming symbol cmap uses one range.",
+          "When Mac OS Roman contains aliases for a name, the lowest character code is used.",
+          "For direct codes, try symbol high-byte variants, then Mac Roman. Only after failure try (3,1), (3,10), then platform 0; within each Unicode table try the literal byte before F000/F100/F200 offsets. Missing all routes selects glyph 0. Multi-scalar names never select a scalar cmap entry.",
+          "A successful post lookup is binding even for glyph 0; reader fallback applies only when lookup fails."
+        ]
+      },
+      "corpus_evidence": {
+        "corpus": "SafeDocs realworld zip 0000, read-only local files",
+        "method": "Enumerate indirect TrueType font dictionaries once per document; load without a provider, probe all 256 codes, compare previous and current glyph IDs. Separately inspect page/Form text-showing operands for changed codes. These are compatibility observations, not independent standards verification.",
+        "members": 1000,
+        "opened": 997,
+        "truetype_dictionaries": 6096,
+        "loaded_embedded_fonts": 4859,
+        "unloaded_fonts": 1237,
+        "named_mac_without_windows_bmp": 218,
+        "direct_mac_without_symbol": 288,
+        "direct_symbol_available": 197,
+        "changed_font_code_pairs": 7716,
+        "changed_fonts": 1954,
+        "changed_files": 51,
+        "nonzero_glyph_choices_changed": 0,
+        "changed_codes_observed_in_text_showing_operands": 0,
+        "usage_scan_limitations": "Usage scan covers pages and Form XObjects in the 51 changed files; six content streams stopped at inline images or parse errors. Does not prove no changed code is used in annotations or unparsed content."
+      }
+    },
+    {
+      "id": "text-retained-memory",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "C.1"
+      ],
+      "tables": [],
+      "status": "PdfFont::retained_bytes is a saturating, constant-time retained-storage estimate computed once when loading succeeds (ADR 0012 policy).",
+      "tests": [
+        "text/tt-unicode-priority",
+        "text/embedded-cff",
+        "text/embedded-type1",
+        "text/type3-differences",
+        "text/embedded-cid-variable-codes"
+      ],
+      "gaps": "No allocator telemetry or peak bound. Private FontProgram tables use an explicit proxy until pagura-font exposes a retained estimate; renderer admission is outside this crate.",
+      "verification": {
+        "rule": "Annex C.1 discusses processor limits; the retained accounting amounts and provider ownership convention are implementation policy under ADR 0012.",
+        "implementation": "Owned encoding payloads, widths, vertical metrics, CMaps, Unicode, CIDToGIDMap, Type 3 resources/procedures and an embedded-program proxy are computed once. Names include payload allowances; trees add 64 bytes per entry. Provider-owned shared resources are excluded and remain its cache-budget responsibility.",
+        "expectations": "Unit tests cover all five requested font categories, owned resource growth, stable repeated reads, shared provider identity/Unicode exclusion and saturating arithmetic. No allocator-accurate size is claimed.",
+        "verdict": "Accounting policy tested, not an ISO-defined byte count.",
+        "choices": [
+          "Include the PdfFont struct itself, but exclude Document-owned source dictionaries/streams and renderer-owned outlines. Replace the renderer input-size estimate with retained_bytes; do not add the two.",
+          "Embedded private FontProgram storage uses two input byte lengths plus 192 bytes per glyph, 16 KiB fixed overhead, the public program struct and Arc headers. This models parsed offsets, charstrings, encodings and indexes without reparsing a program or walking glyphs.",
+          "Provider substitute programs, predefined CMaps and CID-to-Unicode tables are charged by their provider, never per font. Copied encodings/metrics, embedded maps and inherited map copies remain owned allocations."
         ]
       }
     }

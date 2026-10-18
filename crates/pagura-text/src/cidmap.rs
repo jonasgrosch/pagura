@@ -26,6 +26,10 @@ impl CidRange {
 pub(crate) struct CidMap(BTreeMap<Code, CidRange>);
 
 impl CidMap {
+    pub(crate) fn heap_bytes(&self) -> usize {
+        crate::memory::tree::<Code, CidRange>(self.0.len())
+    }
+
     pub(crate) fn len(&self) -> usize {
         self.0.len()
     }

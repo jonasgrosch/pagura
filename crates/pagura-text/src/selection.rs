@@ -11,32 +11,73 @@ pub(crate) fn truetype(
     raw: bool,
 ) -> Option<GlyphId> {
     if raw {
-        if program.has_cmap_subtable(CmapSubtable::WindowsSymbol) {
-            // A conforming PDF symbol cmap uses one of these high bytes.
-            // For unmapped characters choose .notdef, never another subtable.
-            return [0, 0xf000, 0xf100, 0xf200]
-                .into_iter()
-                .find_map(|high| mapped(program, CmapSubtable::WindowsSymbol, code + high));
-        }
-        return mapped(program, CmapSubtable::MacRoman, code);
+        return symbol(program, code)
+            .or_else(|| mapped(program, CmapSubtable::MacRoman, code))
+            .or_else(|| raw_unicode(program, code));
     }
     let name = name?;
     let selected = if program.has_cmap_subtable(CmapSubtable::WindowsUnicode) {
-        unicode
-            .and_then(|text| {
-                let mut chars = text.chars();
-                let scalar = chars.next()?;
-                chars.next().is_none().then_some(scalar)
-            })
-            .and_then(|scalar| mapped(program, CmapSubtable::WindowsUnicode, u32::from(scalar)))
+        scalar(unicode).and_then(|code| mapped(program, CmapSubtable::WindowsUnicode, code))
     } else if program.has_cmap_subtable(CmapSubtable::MacRoman) {
         mac_os_code(name.as_bytes()).and_then(|code| mapped(program, CmapSubtable::MacRoman, code))
     } else {
         None
     };
-    // A missing entry does not mean its subtable is absent. The name route
-    // uses post here, without trying a lower-priority cmap (9.6.5.4).
-    selected.or_else(|| program.glyph_for_name(name.as_bytes()))
+    // Preserve the mandated post route before reader-chosen alternatives.
+    selected
+        .or_else(|| program.glyph_for_name(name.as_bytes()))
+        .or_else(|| named_fallback(program, code, name, unicode))
+}
+
+// 9.6.5.4's final paragraph permits reader-selected mappings. Policy: after
+// the normative routes (including post) fail, try Mac Roman by glyph name,
+// then full Windows Unicode, platform 0 Unicode, then the symbol byte route.
+// ToUnicode is deliberately never consulted for painting.
+fn named_fallback(
+    program: &FontProgram,
+    code: u32,
+    name: &Name,
+    unicode: Option<&str>,
+) -> Option<GlyphId> {
+    mac_os_code(name.as_bytes())
+        .and_then(|code| mapped(program, CmapSubtable::MacRoman, code))
+        .or_else(|| {
+            scalar(unicode).and_then(|code| {
+                [CmapSubtable::WindowsUnicodeFull, CmapSubtable::Unicode]
+                    .into_iter()
+                    .find_map(|table| mapped(program, table, code))
+            })
+        })
+        .or_else(|| symbol(program, code))
+}
+
+fn scalar(text: Option<&str>) -> Option<u32> {
+    let mut chars = text?.chars();
+    let value = chars.next()?;
+    chars.next().is_none().then_some(u32::from(value))
+}
+
+fn symbol(program: &FontProgram, code: u32) -> Option<GlyphId> {
+    [0, 0xf000, 0xf100, 0xf200]
+        .into_iter()
+        .find_map(|high| mapped(program, CmapSubtable::WindowsSymbol, code + high))
+}
+
+// Without an Encoding, byte values are the only available character identity.
+// Keep symbol/Mac priority; only on failure try Unicode subtables in this
+// order, using literal bytes before the three symbol high-byte alternatives.
+fn raw_unicode(program: &FontProgram, code: u32) -> Option<GlyphId> {
+    [
+        CmapSubtable::WindowsUnicode,
+        CmapSubtable::WindowsUnicodeFull,
+        CmapSubtable::Unicode,
+    ]
+    .into_iter()
+    .find_map(|table| {
+        [0, 0xf000, 0xf100, 0xf200]
+            .into_iter()
+            .find_map(|high| mapped(program, table, code + high))
+    })
 }
 
 fn mapped(program: &FontProgram, subtable: CmapSubtable, code: u32) -> Option<GlyphId> {

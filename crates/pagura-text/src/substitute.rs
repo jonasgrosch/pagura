@@ -81,7 +81,9 @@ pub(crate) fn load(
         to_unicode,
         limits: document.limits(),
         cid_unicode: None,
-    })
+        retained: 0,
+    }
+    .accounted())
 }
 
 fn unavailable() -> Error {

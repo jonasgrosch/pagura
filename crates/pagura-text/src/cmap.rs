@@ -95,6 +95,28 @@ pub(crate) struct CMap {
 }
 
 impl CMap {
+    pub(crate) fn heap_bytes(&self) -> usize {
+        let names = [&self.use_name, &self.registry, &self.ordering]
+            .into_iter()
+            .flatten()
+            .fold(0_usize, |sum, name| sum.saturating_add(name.len()));
+        self.spaces
+            .capacity()
+            .saturating_mul(size_of::<Range>())
+            .saturating_add(self.mappings.heap_bytes())
+            .saturating_add(self.notdef.heap_bytes())
+            .saturating_add(crate::memory::tree::<Code, Option<String>>(
+                self.unicode.len(),
+            ))
+            .saturating_add(
+                self.unicode
+                    .values()
+                    .flatten()
+                    .fold(0_usize, |sum, text| sum.saturating_add(text.capacity())),
+            )
+            .saturating_add(names)
+    }
+
     pub(crate) fn identity(name: &[u8]) -> Result<Self> {
         let mode = match name {
             b"Identity-H" => WritingMode::Horizontal,

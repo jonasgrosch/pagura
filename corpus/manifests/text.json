@@ -2700,7 +2700,7 @@
         },
         ".out": {
           "path": "corpus/generated/text/tt-symbol-present-missing.out",
-          "sha256": "5c9e2a1b0a14046e6b6a7e61a2a1b4168f9aa63e7470816e96318406ec90cf92"
+          "sha256": "1357eecefeb084eda0483d88aa8c5b2b188e73d080d7f5e9d03b1ff855a1e967"
         },
         ".pdf": {
           "path": "corpus/generated/text/tt-symbol-present-missing.pdf",
@@ -3121,6 +3121,482 @@
         ".pdf": {
           "path": "corpus/generated/text/embedded-cid-notdef.pdf",
           "sha256": "00bc15c6caf3e66e058bf39e474dddc43476c5117610125530500c5cdbe757e0"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-mac-by-name",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-mac-by-name.input",
+          "sha256": "d1211001882d2ce16a8553e449b6c8b7f71e61836efc2e416143808f20e721e7"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-mac-by-name.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-mac-by-name.out",
+          "sha256": "a2b1dd53e5b06d357c341f98d8177fc305ef3c2c375dc37e1e416483ce5be097"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-mac-by-name.pdf",
+          "sha256": "b29b6b9c99a838da306944c7ec01bb2477c4d68ba210a467e5197d38599be07a"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-symbol-encoding-ignored",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-symbol-encoding-ignored.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-symbol-encoding-ignored.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-symbol-encoding-ignored.out",
+          "sha256": "1357eecefeb084eda0483d88aa8c5b2b188e73d080d7f5e9d03b1ff855a1e967"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-symbol-encoding-ignored.pdf",
+          "sha256": "18ce4de46c755168cc4706f3a3163d8b2f13b9708c1a6684ed0e46ce74d2d5a8"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-policy-name-mac",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-policy-name-mac.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-policy-name-mac.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-policy-name-mac.out",
+          "sha256": "b8bd19c26fdca36ce5a021e3ac2f0bf6ee843928150bf989d72bafd896d1aa09"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-policy-name-mac.pdf",
+          "sha256": "aced430c6487e1f3a0e4f5d177e343123592f7f7aac8e818217ab350191f0f14"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-policy-name-full",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-policy-name-full.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-policy-name-full.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-policy-name-full.out",
+          "sha256": "b8bd19c26fdca36ce5a021e3ac2f0bf6ee843928150bf989d72bafd896d1aa09"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-policy-name-full.pdf",
+          "sha256": "e76b78572bd672a49ef63856a6c5e04dfbe612dc9bc663a28cee69c77cf69bd5"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-policy-name-platform-zero",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-policy-name-platform-zero.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-policy-name-platform-zero.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-policy-name-platform-zero.out",
+          "sha256": "b8bd19c26fdca36ce5a021e3ac2f0bf6ee843928150bf989d72bafd896d1aa09"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-policy-name-platform-zero.pdf",
+          "sha256": "1eb310f6c149efa3df96b68619330eccc93136e2ec8bcd492f77b0f2f0dd05bb"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-policy-full-before-platform-zero",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-policy-full-before-platform-zero.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-policy-full-before-platform-zero.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-policy-full-before-platform-zero.out",
+          "sha256": "b8bd19c26fdca36ce5a021e3ac2f0bf6ee843928150bf989d72bafd896d1aa09"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-policy-full-before-platform-zero.pdf",
+          "sha256": "a29286b84d8ad1dfc31e3a922269f22e6709359494e74b591f2fdd8a8112f602"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-policy-mac-before-full",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-policy-mac-before-full.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-policy-mac-before-full.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-policy-mac-before-full.out",
+          "sha256": "b8bd19c26fdca36ce5a021e3ac2f0bf6ee843928150bf989d72bafd896d1aa09"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-policy-mac-before-full.pdf",
+          "sha256": "d81737bae17e7cb139e2e4c2616bea3c557997c453ba50ebf635e7a13bf7cc15"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-policy-name-symbol",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-policy-name-symbol.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-policy-name-symbol.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-policy-name-symbol.out",
+          "sha256": "b8bd19c26fdca36ce5a021e3ac2f0bf6ee843928150bf989d72bafd896d1aa09"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-policy-name-symbol.pdf",
+          "sha256": "cf272d3d0d8a1837035595a17667ec52ce9b5f31145891b2ffe056737bd1d127"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-policy-raw-unicode",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-policy-raw-unicode.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-policy-raw-unicode.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-policy-raw-unicode.out",
+          "sha256": "1357eecefeb084eda0483d88aa8c5b2b188e73d080d7f5e9d03b1ff855a1e967"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-policy-raw-unicode.pdf",
+          "sha256": "189a1e0da48fe4f5fdb9c83febff9f05079685d4dd59c317ab5dc87a6db10133"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-policy-raw-unicode-f000",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-policy-raw-unicode-f000.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-policy-raw-unicode-f000.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-policy-raw-unicode-f000.out",
+          "sha256": "1357eecefeb084eda0483d88aa8c5b2b188e73d080d7f5e9d03b1ff855a1e967"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-policy-raw-unicode-f000.pdf",
+          "sha256": "d0f0e7c94ac6d402f90aaed00604ba57a6fb4f2c85c966d04fe4664f730ec7ff"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-policy-raw-full",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-policy-raw-full.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-policy-raw-full.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-policy-raw-full.out",
+          "sha256": "1357eecefeb084eda0483d88aa8c5b2b188e73d080d7f5e9d03b1ff855a1e967"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-policy-raw-full.pdf",
+          "sha256": "359ba9d66c8d512e4edcd76512088270dfc83d44d15f93ce7b22c75475cbb445"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-policy-raw-platform-zero",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-policy-raw-platform-zero.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-policy-raw-platform-zero.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-policy-raw-platform-zero.out",
+          "sha256": "1357eecefeb084eda0483d88aa8c5b2b188e73d080d7f5e9d03b1ff855a1e967"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-policy-raw-platform-zero.pdf",
+          "sha256": "1a69bb82b095a243499bbda704bd063807ef7571d4f322490a3078aab80e8e7c"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-policy-raw-bmp-before-full",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-policy-raw-bmp-before-full.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-policy-raw-bmp-before-full.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-policy-raw-bmp-before-full.out",
+          "sha256": "1357eecefeb084eda0483d88aa8c5b2b188e73d080d7f5e9d03b1ff855a1e967"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-policy-raw-bmp-before-full.pdf",
+          "sha256": "bb4063103a656d62b8c762814e3e92e289e1745488dbf522565ace0c9158c1b7"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-policy-raw-unmapped",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-policy-raw-unmapped.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-policy-raw-unmapped.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-policy-raw-unmapped.out",
+          "sha256": "5c9e2a1b0a14046e6b6a7e61a2a1b4168f9aa63e7470816e96318406ec90cf92"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-policy-raw-unmapped.pdf",
+          "sha256": "3805d02963a2cf131dd63ce310364b397193994a8245a0d326603c87d91e2716"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-policy-multiscalar-unmapped",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-policy-multiscalar-unmapped.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-policy-multiscalar-unmapped.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-policy-multiscalar-unmapped.out",
+          "sha256": "e201cc0c8099867b5b52367af580c16bf7fed5da81c2cb696bb3fdaa4214218b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-policy-multiscalar-unmapped.pdf",
+          "sha256": "54301b5a6e5dc59009df46ac1bfc4a28a445837e1d09ee03bd613f5a4e68b988"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-post-notdef-before-policy",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-post-notdef-before-policy.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-post-notdef-before-policy.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-post-notdef-before-policy.out",
+          "sha256": "5c9e2a1b0a14046e6b6a7e61a2a1b4168f9aa63e7470816e96318406ec90cf92"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-post-notdef-before-policy.pdf",
+          "sha256": "f1275e36d6cf8fd29ae93e8278b12afd253a112069e86bd41a14de37d3bd952d"
+        }
+      },
+      "driver": "program"
+    },
+    {
+      "id": "text/tt-policy-name-nonbmp",
+      "kind": "vector",
+      "description": "Independent font program bindings, selectors and PDF-space metrics",
+      "requirements": [
+        "text-truetype-selection",
+        "text-truetype-fallback"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/tt-policy-name-nonbmp.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/tt-policy-name-nonbmp.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/tt-policy-name-nonbmp.out",
+          "sha256": "fa197a913e0b1f06ab8471e60daa62f78df62471ae9c07a6a06e164580f81750"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tt-policy-name-nonbmp.pdf",
+          "sha256": "8d652ec9ff1e7ae258e3c171ee9f901ab0bf218fd3bd1c16ed1e3afb4be2c459"
         }
       },
       "driver": "program"

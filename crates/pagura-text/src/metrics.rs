@@ -17,6 +17,15 @@ pub(crate) struct Metrics {
 }
 
 impl Metrics {
+    pub(crate) fn heap_bytes(&self) -> usize {
+        crate::memory::tree::<u32, f64>(self.widths.len()).saturating_add(crate::memory::tree::<
+            u32,
+            VerticalMetrics,
+        >(
+            self.vertical.len()
+        ))
+    }
+
     pub(crate) fn standard(
         metrics: &crate::StandardMetrics,
         names: &[Option<pagura_core::Name>; 256],

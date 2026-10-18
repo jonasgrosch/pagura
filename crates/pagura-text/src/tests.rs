@@ -432,6 +432,23 @@ fn check_program_vector(name: &str) -> Result<()> {
 #[test]
 fn embedded_program_vectors() -> Result<()> {
     for name in [
+        "tt-mac-by-name",
+        "tt-symbol-encoding-ignored",
+        "tt-policy-name-mac",
+        "tt-policy-name-full",
+        "tt-policy-name-platform-zero",
+        "tt-policy-full-before-platform-zero",
+        "tt-policy-mac-before-full",
+        "tt-policy-name-symbol",
+        "tt-policy-raw-unicode",
+        "tt-policy-raw-unicode-f000",
+        "tt-policy-raw-full",
+        "tt-policy-raw-platform-zero",
+        "tt-policy-raw-bmp-before-full",
+        "tt-policy-raw-unmapped",
+        "tt-policy-multiscalar-unmapped",
+        "tt-post-notdef-before-policy",
+        "tt-policy-name-nonbmp",
         "tt-full-unicode-mac",
         "tt-platform-zero-mac",
         "tt-bmp-before-full",

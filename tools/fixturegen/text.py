@@ -207,6 +207,7 @@ def original_cases():
     yield from annex_cases()
     yield from primary_regression_cases()
     yield from program_cases()
+    yield from truetype_fallback_cases()
     yield from glyph_name_cases()
     yield from embedding_error_cases()
     yield from bundled_cases()
@@ -514,7 +515,8 @@ def program_cases():
     for high in (0,0xf000,0xf100,0xf200):
         yield tt("tt-symbol-%04x" % high,[(3,0,{high+65:1}),(1,0,{65:2})],rows=[row(65,1)],flags=4,encoding=b"/InvalidEncoding")
     yield tt("tt-symbol-mac-only",[(1,0,{65:2})],rows=[row(65,2)],flags=4,encoding=None)
-    yield tt("tt-symbol-present-missing",[(3,0,{66:1}),(1,0,{65:2})],rows=[row(65,0)],flags=4,encoding=None)
+    # The mandated symbol route fails: the final paragraph permits Mac fallback.
+    yield tt("tt-symbol-present-missing",[(3,0,{66:1}),(1,0,{65:2})],rows=[row(65,2)],flags=4,encoding=None)
     yield tt("tt-noencoding-direct",[(3,1,{65:1}),(1,0,{65:2})],rows=[row(65,2)],encoding=None)
     yield tt("tt-noencoding-symbol",[(3,0,{0xf041:2}),(3,1,{65:1})],rows=[row(65,2)],encoding=None)
     yield tt("tt-units-per-em",[(3,1,{65:1})],rows=[row(65,1,"A",600/1280)],units=1280,widths=[600/1280*1000]*192)
@@ -545,6 +547,43 @@ def program_cases():
     yield binding_vector("embedded-cid-variable-codes",tt_cid,b" \x81 ",[row(32,1," "),row(0x8120,2,"😀",length=2)],subtype=b"Type0",encoding=b"8 0 R",cmap=cmap,unicode_map=to_unicode,descendant_extra=b"/DW 600 /W [0 [500]]",stream_extra=b"/Length1 %d" % len(tt_cid),requirements=("text-embedded-fonts","text-cmap","text-unicode","text-string-contract"))
     cmap=b"/Identity-H usecmap 1 beginnotdefchar <0041> 2 endnotdefchar"
     yield binding_vector("embedded-cid-notdef",tt_cid,b"\0A\0B",[row(65,2,length=2),row(66,0,width=.5,length=2)],subtype=b"Type0",encoding=b"8 0 R",cmap=cmap,cmap_extra=b"/UseCMap /Identity-H",descendant_extra=b"/DW 600 /W [0 [500]]",stream_extra=b"/Length1 %d" % len(tt_cid),requirements=("text-embedded-fonts","text-cmap"))
+
+
+def truetype_fallback_cases():
+    """9.6.5.4 normative routes, then explicitly chosen reader policy.
+
+    The records deliberately disagree. Expected glyphs follow the ISO route
+    or the stated final-paragraph policy, never a product executable.
+    """
+    def vector(name, records, glyph, *, raw=False, code=65, text="A", **options):
+        program = text_truetype(records, names=(b"X", b"Y", b"Z", b"Q"))
+        return binding_vector(name, program, bytes([code]),
+            [(code, 1, .6, False, None if raw else text, glyph, None, None, None)],
+            requirements=("text-truetype-selection", "text-truetype-fallback"),
+            encoding=None if raw else options.pop("encoding", b"/WinAnsiEncoding"),
+            stream_extra=b"/Length1 %d" % len(program), **options)
+    yield vector("tt-mac-by-name", [(1,0,{128:2,196:1})], 2, code=196, text="Ä")
+    yield vector("tt-symbol-encoding-ignored", [(3,0,{0xf041:2}),(3,1,{65:1})], 2,
+                 flags=4, text=None)
+    yield vector("tt-policy-name-mac", [(3,1,{66:1}),(1,0,{65:2})], 2)
+    yield vector("tt-policy-name-full", [(3,10,{65:2})], 2)
+    yield vector("tt-policy-name-platform-zero", [(0,3,{65:2})], 2)
+    yield vector("tt-policy-full-before-platform-zero", [(3,10,{65:2}),(0,3,{65:1})], 2)
+    yield vector("tt-policy-mac-before-full", [(3,1,{66:1}),(1,0,{65:2}),(3,10,{65:3})], 2)
+    yield vector("tt-policy-name-symbol", [(3,0,{0xf041:2})], 2)
+    yield vector("tt-policy-raw-unicode", [(3,1,{65:2}),(1,0,{66:1})], 2, raw=True)
+    yield vector("tt-policy-raw-unicode-f000", [(3,1,{0xf041:2})], 2, raw=True, flags=4)
+    yield vector("tt-policy-raw-full", [(3,10,{65:2})], 2, raw=True)
+    yield vector("tt-policy-raw-platform-zero", [(0,3,{65:2})], 2, raw=True)
+    yield vector("tt-policy-raw-bmp-before-full", [(3,1,{65:2}),(3,10,{65:1})], 2, raw=True)
+    yield vector("tt-policy-raw-unmapped", [(3,1,{66:2})], 0, raw=True)
+    yield vector("tt-policy-multiscalar-unmapped", [(3,10,{102:2})], 0,
+                 encoding=b"<< /Differences [65 /f_f] >>", text="ff")
+    # A successful post lookup is binding even when it explicitly names gid 0.
+    yield vector("tt-post-notdef-before-policy", [(3,0,{0xf041:2})], 0,
+                 encoding=b"<< /Differences [65 /.notdef] >>", text=None)
+    yield vector("tt-policy-name-nonbmp", [(3,10,{0x1f600:2})], 2,
+                 encoding=b"<< /Differences [65 /u1F600] >>", text="😀")
 
 
 def glyph_name_cases():

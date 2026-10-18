@@ -29,6 +29,7 @@ mod cidmap;
 mod cmap;
 mod encoding;
 mod font;
+mod memory;
 mod metrics;
 mod objects;
 mod program;
@@ -150,9 +151,34 @@ pub struct PdfFont {
     to_unicode: Option<cmap::CMap>,
     limits: Limits,
     cid_unicode: Option<Arc<CidToUnicode>>,
+    retained: usize,
 }
 
 impl PdfFont {
+    /// Estimates retained storage, including this font and its owned allocations
+    /// (ADR 0012). Computed once at load; this accessor is constant time.
+    ///
+    /// Counts encoding payloads, width/vertical tables, owned CMaps, ToUnicode,
+    /// CIDToGIDMap and Type 3 procedures/resources. Tree entries include a
+    /// 64-byte bookkeeping allowance; names include a payload allowance even
+    /// when inline. Embedded program storage uses a proxy for private parsed
+    /// tables: twice the input bytes, 192 bytes per glyph and 16 KiB overhead.
+    /// This is an estimate, not allocator telemetry or a peak-memory bound.
+    ///
+    /// Provider-owned programs, predefined CMaps and collection Unicode tables
+    /// are excluded: their shared allocations belong to the provider's cache
+    /// and budget, never to individual fonts. Copies derived from them count.
+    /// Document source objects/streams and renderer-owned outline caches are
+    /// excluded. Replace an input-size font estimate with this value; do not
+    /// add that estimate or `size_of::<PdfFont>()` again.
+    pub fn retained_bytes(&self) -> usize {
+        self.retained
+    }
+
+    fn accounted(mut self) -> Self {
+        self.retained = memory::estimate(&self);
+        self
+    }
     /// Loads the font dictionary `font` (already resolved) of `document`.
     ///
     /// Faulty ToUnicode interpretations are reported and discarded without
@@ -269,7 +295,7 @@ impl PdfFont {
                     encoding.unicode[usize::from(byte)].as_deref(),
                 )
             }
-            font::Mapping::Composite(map) => {
+            font::Mapping::Composite { map, .. } => {
                 let (code, valid) = map.next(input, work, self.limits)?;
                 let mut cid = if valid {
                     map.cid(code, work, self.limits)?
