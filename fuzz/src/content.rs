@@ -67,8 +67,9 @@ pub fn run(data: &[u8]) {
     super::assert_diagnostics(&document.diagnostics(), options.recovery);
 }
 
-/// The fixed one-page document around `content`.
-fn wrap(content: &[u8]) -> Vec<u8> {
+/// The fixed one-page document around `content`, also the page of
+/// [`super::extraction`].
+pub(crate) fn wrap(content: &[u8]) -> Vec<u8> {
     let mut pdf = Pdf::new();
     pdf.object(b"<< /Type /Catalog /Pages 2 0 R /OCProperties << /OCGs [6 0 R 7 0 R] /D << /OFF [7 0 R] >> >> >>");
     pdf.object(b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>");

@@ -94,3 +94,17 @@ path = "fuzz_targets/host.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "navigation"
+path = "fuzz_targets/navigation.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "extraction"
+path = "fuzz_targets/extraction.rs"
+test = false
+doc = false
+bench = false

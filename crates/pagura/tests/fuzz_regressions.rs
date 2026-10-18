@@ -7,11 +7,14 @@
 //! input must again reach the end: every API returns a value that keeps its
 //! documented contract or a structured error, and nothing panics.
 //! [`KNOWN_FAILURES`] lists the stored inputs whose fix has not landed yet;
-//! an entry that passes fails this test, so that it is removed.
+//! an entry that passes fails this test, so that it is removed. The reading
+//! drivers also run on the generated fixtures their seeds come from, which
+//! they must pass: a driver that fails on valid input hides its findings.
 
 #[path = "../../../fuzz/src/lib.rs"]
 mod harness;
 
+use pagura::{Document, OpenOptions};
 use std::path::PathBuf;
 use std::{fs, io, panic};
 
@@ -60,6 +63,60 @@ fn stored_inputs_have_a_target_and_a_note() {
             "known failure {id} is not stored"
         );
         assert!(!defect.is_empty(), "known failure {id} names no defect");
+    }
+}
+
+/// Generated PDFs of `area` whose names start with `prefix`, in name order.
+fn generated(area: &str, prefix: &str) -> io::Result<Vec<Vec<u8>>> {
+    let directory = pagura_testkit::workspace_root()
+        .join("corpus/generated")
+        .join(area);
+    let mut paths = Vec::new();
+    for entry in fs::read_dir(directory)? {
+        let path = entry?.path();
+        let name = path.file_name().map(|n| n.to_string_lossy().into_owned());
+        if path.extension().is_some_and(|e| e == "pdf")
+            && name.is_some_and(|n| n.starts_with(prefix))
+        {
+            paths.push(path);
+        }
+    }
+    paths.sort();
+    paths.iter().map(fs::read).collect()
+}
+
+#[test]
+fn reading_drivers_pass_on_generated_fixtures() {
+    let navigation = generated("document", "navigation-").unwrap();
+    let text = generated("text", "extract-").unwrap();
+    assert!(
+        !navigation.is_empty() && !text.is_empty(),
+        "fixtures missing"
+    );
+    for pdf in &navigation {
+        assert!(harness::run("navigation", pdf));
+    }
+    // The host's reading requests (flag bit 3) in protocol 1.2 with
+    // generations, and in protocol 1 (bit 4): page 0, scale 1, an 8 x 8
+    // tile, a one-page search for `a` with at most four matches.
+    for pdf in navigation.iter().chain(&text) {
+        for flags in [9, 24] {
+            let mut input = vec![flags, 0, 15, 0, 0, 8, 8, 1, 0, 4, 0, 1, b'a'];
+            input.extend_from_slice(pdf);
+            assert!(harness::run("host", &input));
+        }
+    }
+    // The text fixtures' page content on the extraction page, searched for `a`.
+    for pdf in &text {
+        let document = Document::open(pdf.as_slice(), &OpenOptions::default()).unwrap();
+        let page = document.page(0).unwrap();
+        let mut content = Vec::new();
+        for stream in document.content_streams(page).unwrap() {
+            content.extend_from_slice(&document.stream_data(stream).unwrap());
+            content.push(b'\n');
+        }
+        content.extend_from_slice(b"%a");
+        assert!(harness::run("extraction", &content));
     }
 }
 

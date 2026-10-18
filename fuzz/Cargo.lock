@@ -74,6 +74,8 @@ name = "pagura"
 version = "0.1.0"
 dependencies = [
  "pagura-core",
+ "pagura-crypto",
+ "pagura-data",
  "pagura-document",
  "pagura-raster",
  "pagura-render",
@@ -96,6 +98,15 @@ name = "pagura-crypto"
 version = "0.1.0"
 dependencies = [
  "pagura-core",
+]
+
+[[package]]
+name = "pagura-data"
+version = "0.1.0"
+dependencies = [
+ "pagura-core",
+ "pagura-font",
+ "pagura-text",
 ]
 
 [[package]]
@@ -157,7 +168,9 @@ name = "pagura-render"
 version = "0.1.0"
 dependencies = [
  "pagura-core",
+ "pagura-crypto",
  "pagura-document",
+ "pagura-font",
  "pagura-image",
  "pagura-raster",
  "pagura-text",

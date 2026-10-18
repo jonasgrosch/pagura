@@ -26,7 +26,9 @@ listed per target below.
 | `image` | selector byte, then codec data or wrapper parts | `dct`, `ccitt` (strict and reported row recovery), `jbig2::decode`, `jpx::decode`, `decode_xobject` and `decode_inline`; samples match the reported size and bit depth |
 | `text` | selector byte, string, wrapper parts | `PdfFont::load` and `decode`; glyph codes cover the string exactly; outlines of embedded programs and Type 3 procedures load |
 | `content` | a content stream | `compile_page` on a fixed 32 × 32 page with one resource of each kind; a rendered tile equals the same pixels of the whole page (ADR 0004) |
-| `host` | flags, page, scale, tile, PDF | hello, open, page_info, v1.1 generations with a current and a stale tile, render_tile, diagnostics and close through `pagura_host::Session`; one well-formed response per request in order, stale tiles skipped, the same tile identical through v1 and v1.1 |
+| `host` | flags, page, scale, tile, search window and query, PDF | hello, open, page_info, v1.1 generations with a current and a stale tile, render_tile, the v1.2 reading requests (page text, a search window and the complete search, page links, outlines, page labels, accounting before and after close), diagnostics and close through `pagura_host::Session`; one response per request in order, each with its documented payload layout, errors included; stale tiles skipped, the same tile identical through v1 and v1.1; matches inside the window and the page text, folding to the query, and a cursor that resumes with exactly the remaining matches; close releases the text cache; v1 and v1.1 sessions answer reading requests with an operational InvalidArgument error and keep serving |
+| `navigation` | a PDF file | outlines, named destinations and lookups of every listed name, name and number trees, the OpenAction, links of up to 16 pages and page labels, in both recovery modes; results within one traversal budget, destination pages inside the document, outline and action parents before their children, link quads inside the rectangle, one label per page, and actions read back from their own dictionaries, with a second read returning the same result |
+| `extraction` | a content stream, optionally ending in a `%` query line | `compile_page_with_text`, `compile_page` and `text_page` on the `content` page, in both recovery modes; text and display list from one compilation (the same marks and pixels as without extraction, the same text as `text_page`); characters partition the text, lines and words lie inside it, glyph quads are finite; `TextPage::find` of the query and of a slice of the text, with every option, returns ranges of the text that fold to the query |
 
 Structured inputs split their parts at a line holding only `%%%%`. The
 wrapper targets (`text`, `image` modes 4–7) turn the parts into objects 3,
@@ -34,7 +36,8 @@ wrapper targets (`text`, `image` modes 4–7) turn the parts into objects 3,
 as in the generated fixtures. A part `<< entries >> stream`, followed by a
 line break and the data, becomes a stream whose `/Length` the wrapper sets;
 any other part is used as an object body verbatim. The selector bytes are
-documented in `src/image.rs`, `src/text.rs` and `src/host.rs`.
+documented in `src/image.rs`, `src/text.rs` and `src/host.rs`, the search
+query of `extraction` in `src/extraction.rs`.
 
 ## Routine run
 
@@ -66,15 +69,20 @@ cd fuzz && cargo +nightly fuzz run -O -a document corpus/document -- \
 
 `python3 fuzz/seed.py` rebuilds `corpus/<target>/` from the manifests in
 `corpus/manifests/`: every generated PDF for `syntax`, `document` and
-`render`; the codec vectors for `filters`; the font vectors under each format
-selector; the image, JBIG2 and JPEG 2000 vectors both as raw codec inputs and
-wrapped in image XObjects; the text fixtures' objects, and every font vector
-embedded in simple and composite font dictionaries; the pages' content
-streams for `content`; and the classic, document and content PDFs behind a
-host request header. Two review cases join the document seeds: a stream whose
-`/Length` refers to its own object, and two streams whose lengths refer to
-each other. When present, the pinned corpora in `$PAGURA_CORPORA_DIR` add
-real-world files. Corpora (`corpus/`), crash artifacts (`artifacts/`) and
+`render`, the classic and document PDFs (with the navigation fixtures) for
+`navigation`; the codec vectors for `filters`; the font vectors under each
+format selector; the image, JBIG2 and JPEG 2000 vectors both as raw codec
+inputs and wrapped in image XObjects; the text fixtures' objects, and every
+font vector embedded in simple and composite font dictionaries; the pages'
+content streams for `content` and `extraction`, which also gets the text
+extraction fixtures' streams ending in one of their queries and a few streams
+showing text on its page; the classic, document and content PDFs behind a
+host request header, and the text extraction and navigation fixtures behind
+one with the reading requests, the latter in all three protocol versions. Two
+review cases join the document and navigation seeds: a stream whose `/Length`
+refers to its own object, and two streams whose lengths refer to each other.
+When present, the pinned corpora in `$PAGURA_CORPORA_DIR` add real-world
+files. Corpora (`corpus/`), crash artifacts (`artifacts/`) and
 builds (`target/`) stay local.
 
 ## Findings
@@ -92,4 +100,6 @@ replays every stored input on stable Rust and requires it to finish without
 a failure. An input whose fix has not landed yet goes on the short
 `KNOWN_FAILURES` list in that test, naming the defect; once it passes, the
 test fails until the entry is removed. The fix itself comes with a minimized,
-independently explained fixture in the owning area.
+independently explained fixture in the owning area. The same test runs the
+`navigation`, `extraction` and `host` drivers on the generated navigation and
+text extraction fixtures, which they must pass.

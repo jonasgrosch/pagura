@@ -17,10 +17,12 @@ use pagura_core::{Diagnostic, Error, Limits, Recovery, Result};
 
 pub mod content;
 pub mod document;
+pub mod extraction;
 pub mod filters;
 pub mod font;
 pub mod host;
 pub mod image;
+pub mod navigation;
 pub mod render;
 pub mod syntax;
 pub mod text;
@@ -30,7 +32,7 @@ pub mod wrapper;
 pub type Driver = fn(&[u8]);
 
 /// Every target, by the name `cargo fuzz` and `fuzz/regressions/` use.
-pub const TARGETS: [(&str, Driver); 9] = [
+pub const TARGETS: [(&str, Driver); 11] = [
     ("syntax", syntax::run),
     ("filters", filters::run),
     ("document", document::run),
@@ -40,6 +42,8 @@ pub const TARGETS: [(&str, Driver); 9] = [
     ("text", text::run),
     ("content", content::run),
     ("host", host::run),
+    ("navigation", navigation::run),
+    ("extraction", extraction::run),
 ];
 
 /// Runs the driver of `target` on `data`. Returns `false` for an unknown

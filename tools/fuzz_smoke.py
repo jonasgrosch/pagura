@@ -37,6 +37,8 @@ MAX_LEN = {
     "text": 32768,
     "content": 16384,
     "host": 65536,
+    "navigation": 131072,
+    "extraction": 16384,
 }
 LIBFUZZER = ["-rss_limit_mb=2048", "-timeout=10", "-print_final_stats=1"]
 BUILD = ["-O", "-a"]  # release with debug assertions and overflow checks

@@ -3,8 +3,10 @@
 Seeds come from the generated fixtures and vectors in corpus/generated/,
 found through corpus/manifests/, in the input layouts the drivers in
 fuzz/src/ document; from two review cases whose stream /Length refers to its
-own object or to another stream's; and, when present, from the pinned
-out-of-tree corpora. Files are only read and copied, never executed.
+own object or to another stream's; from a few content streams that show text
+on the fixed page of the content and extraction targets; and, when present,
+from the pinned out-of-tree corpora. Files are only read and copied, never
+executed.
 """
 import argparse
 import hashlib
@@ -28,6 +30,21 @@ SEPARATOR = b"\n%%%%\n"
 FIRST_OBJECT = 3
 MAX_OBJECTS = 32
 HOST_TILE = bytes([1, 0, 15, 0, 0, 8, 8])  # protocol 1.1, repair, page 0, scale 1, 8 x 8 at the origin
+# Must match fuzz/src/host.rs: flag bit 3 adds the protocol 1.2 reading
+# requests, bit 4 sends them in a v1 or v1.1 session instead.
+HOST_READING = 8
+HOST_OLDER = 16
+# Content streams on the fixed page of fuzz/src/content.rs, whose Type 3 font
+# /F shows code 97 as `a`: words and lines, a TJ gap, replacement text, an
+# Alt word break, a hyphen at a line break, reversed and hidden text. The
+# last line, a comment, is a search query (fuzz/src/extraction.rs).
+EXTRACTION_SEEDS = [
+    b"BT /F 6 Tf 2 24 Td (aa aaa) Tj 0 -8 Td [(a) -400 (aa)] TJ ET\n%A A",
+    b"BT /F 6 Tf 2 24 Td /Span << /ActualText <FEFF0053007400720061007300DF0065> >> BDC (aaa) Tj EMC "
+    b"/Span << /Alt (two words) >> BDC (a) Tj EMC ET\n%strasse",
+    b"BT /F 6 Tf 2 24 Td /Span << /ActualText (con-) >> BDC (a) Tj EMC 0 -7 Td (aa) Tj ET\n%conaa",
+    b"/ReversedChars BMC BT /F 6 Tf 2 16 Td (aaa) Tj ET EMC /OC /Off BDC BT /F 6 Tf 2 8 Td (a) Tj ET EMC\n%aa",
+]
 
 
 def add(target: str, data: bytes) -> None:
@@ -302,6 +319,45 @@ def text_seeds() -> None:
             add_structured("text", bytes([base - FIRST_OBJECT]), seed)
 
 
+def host_reading(flags: int, query: bytes, pdf: bytes) -> bytes:
+    """A host seed with the reading requests: a one-page search window from
+    page 0, offset 0, at most four matches, case-insensitive, for `query`."""
+    query = query[:255]
+    return bytes([flags, *HOST_TILE[1:], 1, 0, 4, 0, len(query)]) + query + pdf
+
+
+def text_page_cases() -> list[tuple[bytes, bytes]]:
+    """The text extraction fixtures, each with a query: the first one its
+    case searches for, else the first word of its expected text."""
+    found = []
+    for case in cases("text"):
+        pdf = read(case, ".pdf")
+        if case.get("driver") != "text-page" or pdf is None:
+            continue
+        queries = re.findall(rb"\[<([0-9A-Fa-f]*)>", read(case, ".queries") or b"")
+        words = (read(case, ".text") or b"").split()
+        query = bytes.fromhex(queries[0].decode()) if queries else (words[0] if words else b"a")
+        found.append((pdf, query))
+    return found
+
+
+def reading_seeds() -> None:
+    """Text extraction on the fixed page, and the host's reading requests
+    over the text and navigation fixtures, in all three protocol versions."""
+    for data in EXTRACTION_SEEDS:
+        add("extraction", data)
+    for pdf, query in text_page_cases():
+        if b"\n" not in query and b"\r" not in query:
+            for stream_data in content_streams(pdf):
+                add("extraction", stream_data + b"\n%" + query)
+        add("host", host_reading(HOST_TILE[0] | HOST_READING, query, pdf))
+    for case in cases("document"):
+        pdf = read(case, ".pdf")
+        if case["id"].startswith("document/navigation-") and pdf is not None:
+            for flags in (HOST_READING, HOST_READING | HOST_OLDER, HOST_TILE[0] | HOST_READING | HOST_OLDER):
+                add("host", host_reading(flags, b"a", pdf))
+
+
 def main() -> int:
     global CORPUS
     parser = argparse.ArgumentParser(description=__doc__)
@@ -313,18 +369,21 @@ def main() -> int:
     for data in generated + review:
         for target in ("document", "render", "syntax"):
             add(target, data)
+    for data in manifest_pdfs(["classic", "document"]) + review:
+        add("navigation", data)
     cache = Path(os.environ.get("PAGURA_CORPORA_DIR", "~/.cache/pagura-corpora")).expanduser()
     for source in [cache / "upstream", cache / "safedocs-unsafe/pdf", cache / "safedocs-cc-main-2021-31/pdf"]:
         if source.exists():
             files = sorted(p for p in source.rglob("*") if p.is_file() and p.suffix.lower() == ".pdf")
             for path in [p for p in files if p.stat().st_size <= MAX_SEED][:PER_SOURCE]:
                 data = path.read_bytes()
-                for target in ("document", "render", "syntax"):
+                for target in ("document", "render", "syntax", "navigation"):
                     add(target, data)
     for data in manifest_pdfs(["classic", "document", "content"]) + review:
         add("host", HOST_TILE + data)
         for stream_data in content_streams(data):
             add("content", stream_data)
+            add("extraction", stream_data)
     for case in cases("codec"):
         data = read(case, ".in")
         for selector in range(8):
@@ -335,6 +394,7 @@ def main() -> int:
             add("font", bytes([selector]) + data)
     image_seeds()
     text_seeds()
+    reading_seeds()
     counts = {target.name: len(list(target.iterdir())) for target in sorted(CORPUS.iterdir())}
     print(json.dumps(counts))
     return 0
