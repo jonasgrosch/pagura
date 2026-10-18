@@ -58,8 +58,9 @@ fn arithmetic_work_and_coefficient_storage_use_existing_limits() {
 #[test]
 fn arithmetic_and_huffman_twins_share_a_pixel_scaled_work_budget() {
     // Default Limits admit 24 MP: keep the same operations/pixel ratio here.
+    let operations = u64::try_from(Limits::default().operations).unwrap() * (128 * 64) / 24_000_000;
     let limits = Limits {
-        operations: Limits::default().operations * (128 * 64) / 24_000_000,
+        operations: usize::try_from(operations).unwrap(),
         ..Limits::default()
     };
     let huffman = fixture("image", "jpeg-budget-huffman.in");
