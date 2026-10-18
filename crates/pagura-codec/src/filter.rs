@@ -14,8 +14,8 @@ pub enum Filter {
     Lzw {
         /// Predictor applied after decompression.
         predictor: Predictor,
-        /// `/EarlyChange`, default true.
-        early_change: bool,
+        /// `/EarlyChange`.
+        early_change: EarlyChange,
     },
     /// `FlateDecode` / `Fl` (zlib, RFC 1950/1951).
     Flate {
@@ -34,6 +34,16 @@ pub enum Filter {
     },
     /// `Crypt`, applied by the security handler. Carries `/Name`, if any.
     Crypt(Option<Name>),
+}
+
+/// When LZW codes grow by one bit: the `/EarlyChange` parameter (Table 8).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum EarlyChange {
+    /// `1`, the default: one code early, as TIFF LZW does.
+    #[default]
+    Early,
+    /// `0`: as late as possible.
+    Postponed,
 }
 
 /// The image codecs of clause 7.4 (Table 6), decoded by `pagura-image`.
@@ -195,8 +205,8 @@ impl Filter {
             b"LZWDecode" | b"LZW" => Self::Lzw {
                 predictor: Predictor::from_params(params)?,
                 early_change: match params.and_then(|p| p.get(b"EarlyChange")) {
-                    None | Some(Value::Null | Value::Integer(1)) => true,
-                    Some(Value::Integer(0)) => false,
+                    None | Some(Value::Null | Value::Integer(1)) => EarlyChange::Early,
+                    Some(Value::Integer(0)) => EarlyChange::Postponed,
                     Some(_) => return Err(Error::syntax("EarlyChange must be 0 or 1")),
                 },
             },

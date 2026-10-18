@@ -6445,6 +6445,52 @@
       "oracle_source": "independent Python standard-library/format encoder"
     },
     {
+      "id": "codec/lzw-missing-initial-clear",
+      "kind": "vector",
+      "description": "lzw missing initial clear",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-missing-initial-clear.in",
+          "sha256": "f48d3979d81fd7bc6c7e41414d213d6ce7ef3be6a0e2aec232fbbaceb51c0f9e"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-missing-initial-clear.out",
+          "sha256": "08a08dad02ee8a6839aa3f8c48ba32f83fa575aa65c02d599eaec4e357558278"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-missing-initial-clear.params",
+          "sha256": "657d456e11f24f4c820f3cbfd7877f8d8f41fd67d07af0efe8d99f6a14919e42"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
+      "id": "codec/lzw-missing-initial-clear-phrase",
+      "kind": "vector",
+      "description": "lzw missing initial clear phrase",
+      "requirements": [
+        "filter-lzw"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/lzw-missing-initial-clear-phrase.in",
+          "sha256": "49fea70046e9bad0b1a046b3425dde18d4293056262ac3806c578fca697a4845"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/lzw-missing-initial-clear-phrase.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/lzw-missing-initial-clear-phrase.params",
+          "sha256": "1a8121988c0b4bc90abc67e32b5e20d454c5233dfaeef7bb8366f1d0f69389c1"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
       "id": "codec/lzw-invalid-code",
       "kind": "vector",
       "description": "lzw invalid code",
