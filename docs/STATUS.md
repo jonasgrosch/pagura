@@ -74,6 +74,19 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   aliases lose their Unicode value. Strict rejects extraction repairs and
   discards their map, reporting the rejection while painting continues;
   painting-critical repairs still reject in Strict.
+- `content.colour-operator` (8.6.8, Table 73): `sc`/`SC` on a space that needs
+  `scn`/`SCN` reads matching numeric operands as `scn`/`SCN`;
+  `content.empty-path` (8.5.3.1): painting with no current path paints nothing
+  and discards a pending clip; `content.clip-order` (8.5.4): construction after
+  `W`/`W*` keeps the deferred clip; `content.indexed-excess` (8.6.6.3): excess
+  Indexed lookup bytes are ignored, short palettes stay errors.
+  `content.optional-group`, `content.optional-config`,
+  `content.optional-groups`, `content.optional-properties` (8.11.4.2, Tables
+  98–99): unregistered groups start ON and incomplete configurations disable
+  optional-content evaluation. Readers disagree on `AnyOff` membership and on
+  empty clips; these are project policy.
+- `font.descriptor-weight` (9.8.1, Table 120): an invalid optional FontWeight
+  is ignored when choosing a substitute.
 - `filter.truncated`, `filter.checksum-mismatch`, `filter.trailing-data`,
   `filter.raw-deflate`: damaged filter data yields the bytes decoded so far.
 - `filter.lzw-full-table`, `filter.lzw-padding`: an LZW encoder that fills its
