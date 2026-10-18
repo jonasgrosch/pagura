@@ -24,6 +24,25 @@ pub(crate) fn array(value: &Value) -> Result<&[Value]> {
         .as_array()
         .ok_or_else(|| Error::syntax("font entry is not an array"))
 }
+/// An array of exactly `N` numbers, each resolved (7.3.6).
+pub(crate) fn numbers<const N: usize>(
+    document: &Document,
+    value: &Value,
+    message: &'static str,
+) -> Result<[f64; N]> {
+    let values: &[Value; N] = array(value)?
+        .try_into()
+        .map_err(|_| Error::syntax(message))?;
+    let mut numbers = [0.0; N];
+    for (slot, value) in numbers.iter_mut().zip(values) {
+        *slot = document
+            .resolve(value)?
+            .as_number()
+            .ok_or(Error::syntax(message))?;
+    }
+    Ok(numbers)
+}
+
 pub(crate) fn number(
     document: &Document,
     dict: &Dictionary,

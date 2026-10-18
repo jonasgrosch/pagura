@@ -10,7 +10,7 @@ use crate::{
     encoding::{self, BaseEncoding, SimpleMapping},
     features,
     metrics::{GLYPH_SPACE_UNITS, Metrics},
-    objects::{array, optional, required},
+    objects::{array, numbers, optional, required},
     selection::Route,
 };
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result, Value};
@@ -205,30 +205,18 @@ fn simple_mapping(
 }
 
 fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
-    let values = array(required(document, font, b"FontMatrix")?)?;
-    if values.len() != 6 {
-        return Err(Error::syntax("FontMatrix must have six numbers"));
-    }
-    let mut matrix = [0.0; 6];
-    for (slot, value) in matrix.iter_mut().zip(values) {
-        *slot = document
-            .resolve(value)?
-            .as_number()
-            .ok_or_else(|| Error::syntax("invalid FontMatrix component"))?;
-    }
-    let matrix = Transform::new(
-        matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5],
-    );
-    let bbox = array(required(document, font, b"FontBBox")?)?;
-    if bbox.len() != 4
-        || bbox.iter().any(|v| {
-            document
-                .resolve(v)
-                .map_or(true, |v| v.as_number().is_none())
-        })
-    {
-        return Err(Error::syntax("invalid Type3 FontBBox"));
-    }
+    let [a, b, c, d, e, f] = numbers(
+        document,
+        required(document, font, b"FontMatrix")?,
+        "FontMatrix must have six numbers",
+    )?;
+    let matrix = Transform::new(a, b, c, d, e, f);
+    // Validated but unused: glyph procedures draw their own marks (Table 110).
+    let [_, _, _, _] = numbers(
+        document,
+        required(document, font, b"FontBBox")?,
+        "invalid Type3 FontBBox",
+    )?;
     let procs = document.resolve_dictionary(required(document, font, b"CharProcs")?)?;
     let mut procedures = BTreeMap::new();
     for (name, value) in procs {
