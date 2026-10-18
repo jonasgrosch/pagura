@@ -1,86 +1,74 @@
 //! A bounded reader for just ECDSA-Sig-Value, not a general ASN.1 parser.
 
-use super::{Curve, Uint};
+use pagura_core::bytes::Cursor;
 use pagura_core::{Error, Position, Result};
 
-struct Reader<'a> {
-    bytes: &'a [u8],
-    offset: usize,
+use super::{Curve, Uint};
+
+/// X.690 8.9 and 8.3: the universal SEQUENCE and INTEGER tags.
+const SEQUENCE: u8 = 0x30;
+const INTEGER: u8 = 0x02;
+/// X.690 8.1.3.5: a long-form length with one subsequent length byte.
+const LONG_LENGTH_ONE_BYTE: u8 = 0x81;
+/// The longest valid encoding: a SEQUENCE header with a long-form length and
+/// two 66-byte P-521 INTEGERs. Their top byte is at most 1, so they need no
+/// sign byte; the shorter P-256 and P-384 integers may.
+const MAX_BYTES: usize = 3 + 2 * (2 + 66);
+
+const MESSAGE: &str = "invalid ECDSA signature DER";
+
+/// A tag and its definite length; X.690 10.1 requires the shortest form.
+fn header(cursor: &mut Cursor<'_>, tag: u8) -> Result<usize> {
+    if cursor.u8()? != tag {
+        return Err(cursor.error(MESSAGE));
+    }
+    match cursor.u8()? {
+        short @ 0..=0x7f => Ok(usize::from(short)),
+        LONG_LENGTH_ONE_BYTE => match cursor.u8()? {
+            long @ 0x80..=0xff => Ok(usize::from(long)),
+            _ => Err(cursor.error(MESSAGE)),
+        },
+        // At most MAX_BYTES exist, so longer lengths are never minimal.
+        _ => Err(cursor.error(MESSAGE)),
+    }
 }
 
-impl Reader<'_> {
-    fn error(&self) -> Error {
-        Error::syntax("invalid ECDSA signature DER").at(Position::Buffer(self.offset))
+/// A minimally encoded positive INTEGER (X.690 8.3.2) in `1..n`.
+fn integer(cursor: &mut Cursor<'_>, curve: Curve) -> Result<Uint> {
+    let length = header(cursor, INTEGER)?;
+    let start = cursor.position();
+    let bytes = cursor.take(length)?;
+    let unsigned = match bytes {
+        // Empty, negative, or a leading zero that the sign does not need.
+        [] | [0x80..=0xff, ..] | [0, 0..=0x7f, ..] => return Err(Error::syntax(MESSAGE).at(start)),
+        [0, rest @ ..] => rest,
+        _ => bytes,
+    };
+    if unsigned.len() > curve.coordinate_bytes() {
+        return Err(Error::syntax("ECDSA signature integer exceeds curve order").at(start));
     }
-
-    fn byte(&mut self) -> Result<u8> {
-        let byte = self
-            .bytes
-            .get(self.offset)
-            .copied()
-            .ok_or_else(|| self.error())?;
-        self.offset += 1;
-        Ok(byte)
+    let value = Uint::from_be_bytes(unsigned).ok_or_else(|| Error::syntax(MESSAGE).at(start))?;
+    if value.is_zero() || value >= curve.parameters().scalar.value {
+        return Err(Error::syntax("ECDSA signature integer outside 1..n").at(start));
     }
-
-    fn header(&mut self, tag: u8) -> Result<usize> {
-        if self.byte()? != tag {
-            return Err(self.error());
-        }
-        match self.byte()? {
-            short @ 0..=127 => Ok(usize::from(short)),
-            129 => {
-                let length = self.byte()?;
-                if length < 128 {
-                    return Err(self.error());
-                }
-                Ok(usize::from(length))
-            }
-            // At most 139 bytes exist, so longer lengths are never minimal.
-            _ => Err(self.error()),
-        }
-    }
-
-    fn integer(&mut self, curve: Curve) -> Result<Uint> {
-        let length = self.header(2)?;
-        let start = self.offset;
-        let bytes = self
-            .bytes
-            .get(start..start + length)
-            .ok_or_else(|| self.error())?;
-        let first = *bytes.first().ok_or_else(|| self.error())?;
-        if first & 0x80 != 0 || (bytes.len() > 1 && first == 0 && bytes[1] & 0x80 == 0) {
-            return Err(self.error());
-        }
-        self.offset += length;
-        let unsigned = if first == 0 { &bytes[1..] } else { bytes };
-        if unsigned.len() > curve.coordinate_bytes() {
-            return Err(Error::syntax("ECDSA signature integer exceeds curve order")
-                .at(Position::Buffer(start)));
-        }
-        let value = Uint::from_be_bytes(unsigned).ok_or_else(|| self.error())?;
-        if value.is_zero() || value >= curve.parameters().scalar.value {
-            return Err(
-                Error::syntax("ECDSA signature integer outside 1..n").at(Position::Buffer(start))
-            );
-        }
-        Ok(value)
-    }
+    Ok(value)
 }
 
 pub(super) fn parse(curve: Curve, bytes: &[u8]) -> Result<(Uint, Uint)> {
-    if bytes.len() > 139 {
-        return Err(Error::limit("ECDSA signature DER exceeds 139 bytes").at(Position::Buffer(0)));
+    if bytes.len() > MAX_BYTES {
+        return Err(
+            Error::limit("ECDSA signature DER exceeds 139 bytes").at(Position::Buffer(MAX_BYTES))
+        );
     }
-    let mut reader = Reader { bytes, offset: 0 };
-    let length = reader.header(0x30)?;
-    if length != bytes.len() - reader.offset {
-        return Err(reader.error());
+    let mut cursor = Cursor::new(bytes).with_message(MESSAGE);
+    let length = header(&mut cursor, SEQUENCE)?;
+    if length != cursor.remaining() {
+        return Err(cursor.error(MESSAGE));
     }
-    let r = reader.integer(curve)?;
-    let s = reader.integer(curve)?;
-    if reader.offset != bytes.len() {
-        return Err(reader.error());
+    let r = integer(&mut cursor, curve)?;
+    let s = integer(&mut cursor, curve)?;
+    if !cursor.at_end() {
+        return Err(cursor.error(MESSAGE));
     }
     Ok((r, s))
 }

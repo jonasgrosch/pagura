@@ -6,6 +6,8 @@
 
 use std::cmp::Ordering;
 
+use crate::bigint::montgomery_factor;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Uint(pub(crate) [u64; 9]);
 
@@ -102,22 +104,15 @@ pub(crate) struct Modulus {
 
 impl Modulus {
     pub(crate) const fn new(value: Uint, limbs: usize) -> Self {
-        // Newton iteration doubles the number of correct inverse bits.
-        let mut inverse = 1_u64;
-        let mut i = 0;
-        while i < 6 {
-            inverse = inverse.wrapping_mul(2_u64.wrapping_sub(value.0[0].wrapping_mul(inverse)));
-            i += 1;
-        }
         let mut modulus = Self {
             value,
             one: Uint::ONE,
             limbs,
-            factor: inverse.wrapping_neg(),
+            factor: montgomery_factor(value.0[0]),
             r_squared: Uint::ZERO,
         };
         let mut power = Uint::ONE;
-        i = 0;
+        let mut i = 0;
         while i < 128 * limbs {
             power = modulus.add(power, power);
             i += 1;
