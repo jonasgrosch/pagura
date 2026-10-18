@@ -1,8 +1,9 @@
 //! Closed-form rectangle coverage and fractional clipping bounds (8.5.3–8.5.4).
 
-use super::{Geometry, Row, Shape, index, quantize};
+use super::{Geometry, Row, Shape, index};
 use crate::Segment;
 use crate::flatten::bounded;
+use crate::quantize_unit;
 use pagura_core::{Error, Limits, Result};
 
 #[derive(Debug, Clone, Copy)]
@@ -136,12 +137,12 @@ impl Rectangle {
             let height = (self.bottom.min(y + 1.0) - self.top.max(y)).clamp(0.0, 1.0);
             if height > 0.0 {
                 let run = &mut row[start..end];
-                run.fill(quantize(height));
+                run.fill(quantize_unit(height));
                 if let Some(pixel) = run.first_mut() {
-                    *pixel = quantize(first * height);
+                    *pixel = quantize_unit(first * height);
                 }
                 if let Some(pixel) = run.last_mut() {
-                    *pixel = quantize(last * height);
+                    *pixel = quantize_unit(last * height);
                 }
             }
         }
