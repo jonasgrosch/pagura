@@ -1,9 +1,11 @@
 //! Document-bound rendering resources (ADR 0009).
-use crate::{DisplayList, Pixmap, RenderOptions, Tile, interpreter};
+use crate::interpreter::{self, Shared, text::cache::FontCache};
+use crate::optional::Visibility;
+use crate::{DisplayList, Pixmap, RenderOptions, Tile};
 use pagura_core::Result;
 use pagura_document::{Document, Page};
 use pagura_text::{Provider, TextPage};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 
 /// Immutable document and provider, with bounded fonts and glyph outlines shared
 /// across page compilations. Dropping the context releases its retained caches.
@@ -11,7 +13,9 @@ use std::sync::{Arc, Mutex};
 pub struct RenderContext {
     document: Arc<Document>,
     provider: Option<Arc<dyn Provider>>,
-    pub(crate) fonts: Arc<Mutex<interpreter::text::cache::FontCache>>,
+    fonts: Mutex<FontCache>,
+    /// The document's default optional-content configuration, read once.
+    visibility: OnceLock<Visibility>,
 }
 
 impl std::fmt::Debug for RenderContext {
@@ -36,19 +40,37 @@ impl RenderContext {
     }
 
     fn create(document: Arc<Document>, provider: Option<Arc<dyn Provider>>) -> Self {
-        let fonts = Arc::new(Mutex::new(interpreter::text::cache::FontCache::new(
-            document.limits(),
-        )));
+        let fonts = Mutex::new(FontCache::new(document.limits()));
         Self {
             document,
             provider,
             fonts,
+            visibility: OnceLock::new(),
         }
+    }
+
+    fn shared(&self) -> Result<Shared<'_>> {
+        let visibility = if let Some(visibility) = self.visibility.get() {
+            visibility
+        } else {
+            let visibility = Visibility::new(&self.document)?;
+            self.visibility.get_or_init(|| visibility)
+        };
+        Ok(Shared {
+            provider: self.provider.as_deref(),
+            fonts: &self.fonts,
+            visibility,
+        })
     }
 
     /// The immutable source document to which resource identities belong.
     pub fn document(&self) -> &Document {
         &self.document
+    }
+
+    #[cfg(test)]
+    pub(crate) fn font_cache(&self) -> &Mutex<FontCache> {
+        &self.fonts
     }
 
     /// Estimated font-input, dictionary, outline and bookkeeping bytes
@@ -67,7 +89,7 @@ impl RenderContext {
     /// As [`crate::compile_page`]. A page from another document is rejected.
     pub fn compile_page(&self, page: &Page) -> Result<DisplayList> {
         self.check_owned(page)?;
-        interpreter::compile_cached(&self.document, page, self.provider.as_deref(), &self.fonts)
+        interpreter::compile_shared(&self.document, page, &self.shared()?)
     }
 
     /// Compiles a page with in-memory form values, sharing fonts and outlines.
@@ -86,7 +108,7 @@ impl RenderContext {
                 "form does not belong to rendering context",
             ));
         }
-        interpreter::compile_filled_cached(filler, page, self.provider.as_deref(), &self.fonts)
+        interpreter::compile_filled_shared(filler, page, &self.shared()?)
     }
 
     /// Compiles a page and extracts its positioned text, reusing this
@@ -96,7 +118,7 @@ impl RenderContext {
     /// As [`Self::compile_page`] and [`crate::compile_page_with_text`].
     pub fn compile_page_with_text(&self, page: &Page) -> Result<(DisplayList, TextPage)> {
         self.check_owned(page)?;
-        interpreter::compile_with_text(&self.document, page, self.provider.as_deref(), &self.fonts)
+        interpreter::compile_with_text(&self.document, page, &self.shared()?)
     }
 
     /// Extracts a page's positioned text, reusing this document's fonts.

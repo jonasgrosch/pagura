@@ -18,6 +18,7 @@ use crate::color::{self, Color};
 use crate::display::{Clip, Command, DisplayList, Mark, PathCommand};
 use crate::features;
 use crate::operators::{MAX_OPERANDS, Operation, Operator};
+use crate::optional::Visibility;
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Dictionary, Error, Feature, Name, ObjectId, Position, Rect, Result, Value};
 use pagura_document::{Document, IndirectObject, Page};
@@ -33,8 +34,8 @@ pub(crate) fn repair(document: &Document, diagnostic: pagura_core::Diagnostic) -
     Ok(())
 }
 
-pub(crate) use annotations_filled::compile_filled_cached;
 pub use annotations_filled::compile_filled_page;
+pub(crate) use annotations_filled::compile_filled_shared;
 pub(crate) use text::extract::compile_with_text;
 pub use text::extract::{compile_page_with_text, text_page};
 
@@ -47,31 +48,57 @@ pub use text::extract::{compile_page_with_text, text_page};
 /// Returns positioned syntax errors, resource-limit errors and stable
 /// `Unsupported` tags. No partial list is returned on failure.
 pub fn compile_page(document: &Document, page: &Page) -> Result<DisplayList> {
-    let fonts = std::sync::Mutex::new(text::cache::FontCache::new(document.limits()));
-    compile_cached(document, page, None, &fonts)
+    compile_page_with_provider(document, page, None)
 }
 
-/// Compiles a page using external font resources supplied explicitly (ADR 0009).
-/// Use [`crate::RenderContext`] to share fonts across multiple pages.
+/// Compiles a page, taking fonts the document does not embed from
+/// `provider` (ADR 0009). Use [`crate::RenderContext`] to share fonts and the
+/// optional-content configuration across pages.
 ///
 /// # Errors
 /// As [`compile_page`], including errors from the provider.
-pub fn compile_page_with(
-    document: &Document,
-    page: &Page,
-    provider: &dyn pagura_text::Provider,
-) -> Result<DisplayList> {
-    let fonts = std::sync::Mutex::new(text::cache::FontCache::new(document.limits()));
-    compile_cached(document, page, Some(provider), &fonts)
-}
-
-pub(crate) fn compile_cached(
+pub fn compile_page_with_provider(
     document: &Document,
     page: &Page,
     provider: Option<&dyn pagura_text::Provider>,
-    fonts: &std::sync::Mutex<text::cache::FontCache>,
 ) -> Result<DisplayList> {
-    compile(document, page, provider, fonts, None, None).map(|(list, _)| list)
+    Shared::standalone(document, provider, |shared| {
+        compile_shared(document, page, shared)
+    })
+}
+
+pub(crate) fn compile_shared(
+    document: &Document,
+    page: &Page,
+    shared: &Shared<'_>,
+) -> Result<DisplayList> {
+    compile(document, page, shared, None, None).map(|(list, _)| list)
+}
+
+/// Document-bound resources that compilations borrow: the provider, the font
+/// cache and the default optional-content configuration (ADR 0009). A
+/// [`crate::RenderContext`] keeps them across pages.
+pub(crate) struct Shared<'a> {
+    pub(crate) provider: Option<&'a dyn pagura_text::Provider>,
+    pub(crate) fonts: &'a std::sync::Mutex<text::cache::FontCache>,
+    pub(crate) visibility: &'a Visibility,
+}
+
+impl Shared<'_> {
+    /// Runs `compile` with resources that live for this one call.
+    pub(crate) fn standalone<T>(
+        document: &Document,
+        provider: Option<&dyn pagura_text::Provider>,
+        compile: impl FnOnce(&Shared<'_>) -> Result<T>,
+    ) -> Result<T> {
+        let fonts = std::sync::Mutex::new(text::cache::FontCache::new(document.limits()));
+        let visibility = Visibility::new(document)?;
+        compile(&Shared {
+            provider,
+            fonts: &fonts,
+            visibility: &visibility,
+        })
+    }
 }
 
 /// Interprets a page and its annotations in one session, with in-memory
@@ -80,12 +107,11 @@ pub(crate) fn compile_cached(
 fn compile(
     document: &Document,
     page: &Page,
-    provider: Option<&dyn pagura_text::Provider>,
-    fonts: &std::sync::Mutex<text::cache::FontCache>,
+    shared: &Shared<'_>,
     filler: Option<&pagura_document::forms::FormFiller<'_>>,
     text: Option<text::extract::Output>,
 ) -> Result<(DisplayList, Option<text::extract::Output>)> {
-    let session = Session::new(document, page, provider, fonts, filler, text)?;
+    let session = Session::new(document, page, shared, filler, text);
     let mut compiler = Compiler::new(&session);
     let group = compiler.page().map_err(|e| e.in_object(page.id()))?;
     let mut list = DisplayList::new(page, document.limits());

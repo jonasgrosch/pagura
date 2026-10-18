@@ -3,8 +3,9 @@
 //!
 //! [`compile_page`] builds an immutable vector [`DisplayList`] with
 //! source-space colours, winding fills, strokes, clip stacks and form
-//! expansion. The list renders into device tiles through `pagura-raster`.
-//! [`render_page`] and [`render_tile`] compile and render in one call.
+//! expansion. The list renders into device tiles through `pagura-raster`
+//! with [`DisplayList::render`] and [`DisplayList::render_tile`]. A
+//! [`RenderContext`] shares fonts and document configuration across pages.
 
 mod blend;
 mod cie;
@@ -27,24 +28,27 @@ mod transparency;
 pub use context::RenderContext;
 pub use display::DisplayList;
 pub use interpreter::{
-    compile_filled_page, compile_page, compile_page_with, compile_page_with_text, text_page,
+    compile_filled_page, compile_page, compile_page_with_provider, compile_page_with_text,
+    text_page,
 };
 pub use overprint::OverprintPreview;
 
 use pagura_core::{Error, Rect, Result};
-use pagura_document::{Document, Page, Rotation};
+use pagura_document::{Page, Rotation};
 use pagura_raster::Rgba8;
 
 pub use pagura_raster::Pixmap;
-pub use pagura_text::{Provider, SearchOptions, TextMatch, TextPage};
+pub use pagura_text::{Provider, TextPage};
 
 pub mod features;
 /// In-memory form appearance programs and resource dictionaries (12.7.4.3).
 pub mod form_appearance;
 pub mod repairs;
 
-/// Options for rendering a page.
+/// Options for rendering a page. Start from [`RenderOptions::default`] or
+/// [`RenderOptions::from_dpi`]; fields may be added.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub struct RenderOptions {
     /// Device pixels per default user-space unit (1/72 inch); 1.0 is 72 dpi.
     pub scale: f64,
@@ -67,10 +71,28 @@ impl Default for RenderOptions {
 impl RenderOptions {
     /// Options for a resolution in dots per inch.
     pub fn from_dpi(dpi: f64) -> Self {
-        Self {
-            scale: dpi / 72.0,
-            ..Self::default()
-        }
+        Self::default().with_scale(dpi / 72.0)
+    }
+
+    /// These options with `scale` device pixels per user-space unit.
+    #[must_use]
+    pub const fn with_scale(mut self, scale: f64) -> Self {
+        self.scale = scale;
+        self
+    }
+
+    /// These options compositing onto `background`.
+    #[must_use]
+    pub const fn with_background(mut self, background: Rgba8) -> Self {
+        self.background = background;
+        self
+    }
+
+    /// These options with the overprint `preview` policy.
+    #[must_use]
+    pub const fn with_overprint(mut self, preview: OverprintPreview) -> Self {
+        self.overprint = preview;
+        self
     }
 }
 
@@ -132,61 +154,6 @@ fn pixels(extent: f64) -> Result<u32> {
         reason = "range checked above; value is a positive integer"
     )]
     Ok(rounded as u32)
-}
-
-/// Renders a whole page.
-///
-/// # Errors
-///
-/// Returns `Unsupported` for content this renderer cannot draw, a limit
-/// error for budget violations, and syntax errors for malformed content.
-/// No partial page is ever returned.
-pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
-    compile_page(document, page)?.render(options)
-}
-
-/// Renders a whole page using explicitly supplied external font resources.
-///
-/// # Errors
-/// As [`render_page`], including errors from the provider.
-pub fn render_page_with(
-    document: &Document,
-    page: &Page,
-    options: &RenderOptions,
-    provider: &dyn Provider,
-) -> Result<Pixmap> {
-    compile_page_with(document, page, provider)?.render(options)
-}
-
-/// Renders one tile of a page. Tiles of one page with the same options
-/// assemble byte for byte into the [`render_page`] result. To render many
-/// tiles of a page, compile it once with [`compile_page`] and call
-/// [`DisplayList::render_tile`].
-///
-/// # Errors
-///
-/// As [`render_page`], plus `InvalidArgument` for a tile outside the page.
-pub fn render_tile(
-    document: &Document,
-    page: &Page,
-    options: &RenderOptions,
-    tile: Tile,
-) -> Result<Pixmap> {
-    compile_page(document, page)?.render_tile(options, tile)
-}
-
-/// Renders a tile using explicitly supplied external font resources.
-///
-/// # Errors
-/// As [`render_tile`], including errors from the provider.
-pub fn render_tile_with(
-    document: &Document,
-    page: &Page,
-    options: &RenderOptions,
-    tile: Tile,
-    provider: &dyn Provider,
-) -> Result<Pixmap> {
-    compile_page_with(document, page, provider)?.render_tile(options, tile)
 }
 
 #[cfg(test)]

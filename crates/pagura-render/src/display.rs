@@ -525,8 +525,7 @@ impl GlyphCache {
 /// An immutable interpreted page, retaining source colours and default-user-space
 /// geometry separately from device pixels (ISO 32000-2, 8.4–8.6; ADR 0004).
 ///
-/// Compile with [`crate::compile_page`]; [`crate::render_page`] and
-/// [`crate::render_tile`] compile and render in one call.
+/// Compile with [`crate::compile_page`] or [`crate::RenderContext`].
 #[derive(Debug)]
 pub struct DisplayList {
     pub(crate) commands: Vec<Command>,

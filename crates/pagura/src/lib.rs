@@ -39,10 +39,10 @@ pub use pagura_raster::{Pixmap, Rgba8};
 /// Form appearance programs and resources kept as data (12.7.4.3).
 pub use pagura_render::form_appearance;
 pub use pagura_render::{
-    DisplayList, OverprintPreview, Provider, RenderContext, RenderOptions, SearchOptions,
-    TextMatch, TextPage, Tile, compile_page_with, compile_page_with_text, device_size,
-    render_page_with, render_tile_with,
+    DisplayList, OverprintPreview, Provider, RenderContext, RenderOptions, TextPage, Tile,
+    compile_page_with_text, device_size,
 };
+pub use pagura_text::{SearchOptions, TextMatch};
 pub use pagura_write::{Builder, NewObject};
 
 use std::sync::Arc;
@@ -70,10 +70,10 @@ pub fn render_context(document: Arc<Document>) -> RenderContext {
 /// As [`pagura_render::compile_page`] and the feature-selected provider.
 pub fn compile_page(document: &Document, page: &Page) -> Result<DisplayList> {
     #[cfg(feature = "bundled-data")]
-    return compile_page_with(
+    return pagura_render::compile_page_with_provider(
         document,
         page,
-        &pagura_data::Bundled::new(document.limits()),
+        Some(&pagura_data::Bundled::new(document.limits())),
     );
     #[cfg(not(feature = "bundled-data"))]
     pagura_render::compile_page(document, page)

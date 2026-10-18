@@ -69,8 +69,9 @@ pub fn compile_page_with_text(
     page: &pagura_document::Page,
     provider: Option<&dyn pagura_text::Provider>,
 ) -> Result<(crate::DisplayList, TextPage)> {
-    let fonts = std::sync::Mutex::new(cache::FontCache::new(document.limits()));
-    compile_with_text(document, page, provider, &fonts)
+    super::super::Shared::standalone(document, provider, |shared| {
+        compile_with_text(document, page, shared)
+    })
 }
 
 /// Extracts a page's positioned text; painting commands are discarded and
@@ -90,17 +91,10 @@ pub fn text_page(
 pub(crate) fn compile_with_text(
     document: &pagura_document::Document,
     page: &pagura_document::Page,
-    provider: Option<&dyn pagura_text::Provider>,
-    fonts: &std::sync::Mutex<cache::FontCache>,
+    shared: &super::super::Shared<'_>,
 ) -> Result<(crate::DisplayList, TextPage)> {
-    let (list, output) = super::super::compile(
-        document,
-        page,
-        provider,
-        fonts,
-        None,
-        Some(Output::default()),
-    )?;
+    let (list, output) =
+        super::super::compile(document, page, shared, None, Some(Output::default()))?;
     let text = output.map(|output| output.text).unwrap_or_default();
     let text = TextPage::from_positioned(text, LayoutOptions::default(), document.limits())?
         .with_structure(document, page)?;

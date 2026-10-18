@@ -171,8 +171,8 @@ fn provider_and_explicit_entry_points_agree_and_load_once() {
     let options = pagura::RenderOptions::default();
     let expected = context.render_page(page, &options).unwrap();
     let explicit =
-        pagura_render::render_page_with(document, page, &options, provider.as_ref()).unwrap();
-    assert_eq!(explicit.data(), expected.data());
+        pagura_render::compile_page_with_provider(document, page, Some(provider.as_ref())).unwrap();
+    assert_eq!(explicit.render(&options).unwrap().data(), expected.data());
     let tile = pagura::Tile {
         x: 0,
         y: 0,
@@ -180,9 +180,7 @@ fn provider_and_explicit_entry_points_agree_and_load_once() {
         height: 64,
     };
     assert_eq!(
-        pagura_render::render_tile_with(document, page, &options, tile, provider.as_ref())
-            .unwrap()
-            .data(),
+        explicit.render_tile(&options, tile).unwrap().data(),
         expected.data()
     );
 }

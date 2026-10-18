@@ -24,17 +24,15 @@ pub fn compile_filled_page(
     page: &Page,
     provider: Option<&dyn Provider>,
 ) -> Result<DisplayList> {
-    let fonts = std::sync::Mutex::new(super::text::cache::FontCache::new(
-        filler.document().limits(),
-    ));
-    compile_filled_cached(filler, page, provider, &fonts)
+    super::Shared::standalone(filler.document(), provider, |shared| {
+        compile_filled_shared(filler, page, shared)
+    })
 }
 
-pub(crate) fn compile_filled_cached(
+pub(crate) fn compile_filled_shared(
     filler: &FormFiller<'_>,
     page: &Page,
-    provider: Option<&dyn Provider>,
-    fonts: &std::sync::Mutex<super::text::cache::FontCache>,
+    shared: &super::Shared<'_>,
 ) -> Result<DisplayList> {
     let document = filler.document();
     let owned = document.page(page.index())?;
@@ -43,7 +41,7 @@ pub(crate) fn compile_filled_cached(
             "page does not belong to form document",
         ));
     }
-    super::compile(document, page, provider, fonts, Some(filler), None).map(|(list, _)| list)
+    super::compile(document, page, shared, Some(filler), None).map(|(list, _)| list)
 }
 
 pub(super) struct FilledAnnotations<'f, 'd> {

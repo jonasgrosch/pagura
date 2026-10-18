@@ -7,7 +7,7 @@
 //! annotation appearance or a pattern cell cannot start from a fresh budget.
 
 use super::text::{self, cache::FontCache, extract, type3};
-use super::{Compiler, FillRule, Graphics, PathBuilder, Result};
+use super::{Compiler, FillRule, Graphics, PathBuilder, Result, Shared};
 use crate::color::Color;
 use crate::optional::Visibility;
 use crate::pattern::{PaintType, TilingDefinition};
@@ -27,7 +27,7 @@ pub(super) struct Session<'a> {
     /// In-memory form values whose widgets get generated appearances.
     pub(super) filler: Option<&'a pagura_document::forms::FormFiller<'a>>,
     profiles: crate::icc::Cache,
-    pub(super) visibility: Visibility,
+    pub(super) visibility: &'a Visibility,
     /// Fonts, outlines and images this compilation retains.
     pub(super) paint: RefCell<text::cache::Cache>,
     /// Positioned text, when the compilation also extracts text.
@@ -48,20 +48,19 @@ impl<'a> Session<'a> {
     pub(super) fn new(
         document: &'a Document,
         page: &'a Page,
-        provider: Option<&'a dyn pagura_text::Provider>,
-        fonts: &'a Mutex<FontCache>,
+        shared: &Shared<'a>,
         filler: Option<&'a pagura_document::forms::FormFiller<'a>>,
         text: Option<extract::Output>,
-    ) -> Result<Self> {
+    ) -> Self {
         let limits = document.limits();
-        Ok(Self {
+        Self {
             document,
             page,
-            provider,
-            fonts,
+            provider: shared.provider,
+            fonts: shared.fonts,
             filler,
             profiles: crate::icc::Cache::default(),
-            visibility: Visibility::new(document)?,
+            visibility: shared.visibility,
             paint: RefCell::default(),
             text: text.map(RefCell::new),
             operations: RefCell::new(Meter::new(
@@ -77,7 +76,7 @@ impl<'a> Session<'a> {
                 "page compilation byte budget exceeded",
             )),
             fill_work: Cell::new(0),
-        })
+        }
     }
 
     /// Charges interpretation work against the page's `operations` budget.

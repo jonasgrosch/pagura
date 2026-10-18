@@ -113,15 +113,14 @@ fn independent_paint_oracles_and_device_tiles() {
 fn paint_cache_admission_is_atomic_and_shared_across_saved_states() {
     let document = open("text-mode-0");
     let fonts = std::sync::Mutex::new(super::cache::FontCache::new(document.limits()));
-    let session = super::super::Session::new(
-        &document,
-        document.page(0).unwrap(),
-        None,
-        &fonts,
-        None,
-        None,
-    )
-    .unwrap();
+    let visibility = crate::optional::Visibility::new(&document).unwrap();
+    let shared = super::super::Shared {
+        provider: None,
+        fonts: &fonts,
+        visibility: &visibility,
+    };
+    let session =
+        super::super::Session::new(&document, document.page(0).unwrap(), &shared, None, None);
     let mut compiler = super::super::Compiler::new(&session);
     compiler.session.retain(10).unwrap();
     compiler.save_graphics().unwrap();
@@ -141,15 +140,14 @@ fn paint_cache_admission_is_atomic_and_shared_across_saved_states() {
 fn fonts_and_outlines_are_reused() {
     let document = open("text-tj-adjustments");
     let fonts = std::sync::Mutex::new(super::cache::FontCache::new(document.limits()));
-    let session = super::super::Session::new(
-        &document,
-        document.page(0).unwrap(),
-        None,
-        &fonts,
-        None,
-        None,
-    )
-    .unwrap();
+    let visibility = crate::optional::Visibility::new(&document).unwrap();
+    let shared = super::super::Shared {
+        provider: None,
+        fonts: &fonts,
+        visibility: &visibility,
+    };
+    let session =
+        super::super::Session::new(&document, document.page(0).unwrap(), &shared, None, None);
     super::super::Compiler::new(&session).page().unwrap();
     assert_eq!(session.paint.borrow().font_counts(), (1, 1));
 }

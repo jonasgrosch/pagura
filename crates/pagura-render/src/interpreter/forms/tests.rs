@@ -1,14 +1,16 @@
 use super::*;
 use crate::display::DisplayList;
+use crate::interpreter::Shared;
 use crate::interpreter::session::Session;
 use crate::interpreter::text::cache::FontCache;
+use crate::optional::Visibility;
 use pagura_core::{ErrorKind, Name, Position};
 use pagura_document::{Document, OpenOptions, Page};
 use pagura_testkit::fixture;
 use std::sync::Mutex;
 
-fn session<'a>(document: &'a Document, page: &'a Page, fonts: &'a Mutex<FontCache>) -> Session<'a> {
-    Session::new(document, page, None, fonts, None, None).unwrap()
+fn session<'a>(document: &'a Document, page: &'a Page, shared: &Shared<'a>) -> Session<'a> {
+    Session::new(document, page, shared, None, None)
 }
 
 fn list(page: &Page, document: &Document, commands: Vec<crate::display::Command>) -> DisplayList {
@@ -28,8 +30,14 @@ fn source_and_generated_bodies_share_groups_positions_and_mark_accounting() {
     let object = document.object(ObjectId::new(80, 0)).unwrap();
     let bytes = document.stream_data(object).unwrap();
     let fonts = Mutex::new(FontCache::new(document.limits()));
-    let stored_session = session(&document, page, &fonts);
-    let generated_session = session(&document, page, &fonts);
+    let visibility = Visibility::new(&document).unwrap();
+    let shared = Shared {
+        provider: None,
+        fonts: &fonts,
+        visibility: &visibility,
+    };
+    let stored_session = session(&document, page, &shared);
+    let generated_session = session(&document, page, &shared);
     let mut stored = Compiler::new(&stored_session);
     stored.position = Position::Buffer(19);
     stored
@@ -92,7 +100,13 @@ fn both_form_inputs_reject_an_overfull_parent_display_list() {
         },
     ] {
         let fonts = Mutex::new(FontCache::new(document.limits()));
-        let session = session(&document, page, &fonts);
+        let visibility = Visibility::new(&document).unwrap();
+        let shared = Shared {
+            provider: None,
+            fonts: &fonts,
+            visibility: &visibility,
+        };
+        let session = session(&document, page, &shared);
         let mut compiler = Compiler::new(&session);
         // Empty annotation view groups can occupy commands without painting marks.
         for _ in 0..2 {
@@ -121,7 +135,13 @@ fn generated_input_uses_the_form_subtype_error_contract() {
         .into_iter()
         .collect();
     let fonts = Mutex::new(FontCache::new(document.limits()));
-    let session = session(&document, page, &fonts);
+    let visibility = Visibility::new(&document).unwrap();
+    let shared = Shared {
+        provider: None,
+        fonts: &fonts,
+        visibility: &visibility,
+    };
+    let session = session(&document, page, &shared);
     let mut compiler = Compiler::new(&session);
     let error = compiler
         .form_body(

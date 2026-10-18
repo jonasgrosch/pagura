@@ -64,9 +64,13 @@ fn appearance_layout_and_painting_reuse_the_context_font_entry() {
     );
     let context = RenderContext::new(Arc::clone(&embedded));
     let value = pagura_core::Value::Reference(pagura_core::ObjectId::new(70, 0));
-    let first =
-        crate::interpreter::text::cache::pdf_font(&embedded, &value, None, Some(&context.fonts))
-            .unwrap();
+    let first = crate::interpreter::text::cache::pdf_font(
+        &embedded,
+        &value,
+        None,
+        Some(context.font_cache()),
+    )
+    .unwrap();
     let mut filler = embedded.form_filler().unwrap().unwrap();
     filler.set(0, FillValue::Text("A")).unwrap();
     for _ in 0..3 {
@@ -81,7 +85,7 @@ fn appearance_layout_and_painting_reuse_the_context_font_entry() {
             &embedded,
             &value,
             None,
-            Some(&context.fonts),
+            Some(context.font_cache()),
         )
         .unwrap();
         assert!(Arc::ptr_eq(&first, &cached));

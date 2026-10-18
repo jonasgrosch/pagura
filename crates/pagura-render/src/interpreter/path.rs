@@ -207,8 +207,13 @@ mod tests {
         let fonts = std::sync::Mutex::new(super::super::text::cache::FontCache::new(
             document.limits(),
         ));
-        let session = super::super::Session::new(&document, &page, None, &fonts, None, None)
-            .unwrap();
+        let visibility = crate::optional::Visibility::new(&document).unwrap();
+        let shared = super::super::Shared {
+            provider: None,
+            fonts: &fonts,
+            visibility: &visibility,
+        };
+        let session = super::super::Session::new(&document, page, &shared, None, None);
         let compiler = Compiler::new(&session);
         let mut builder = pagura_raster::PathBuilder::new();
         builder.rect(3.5, 1.0, 0.0, 6.0);

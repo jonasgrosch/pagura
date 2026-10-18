@@ -37,10 +37,7 @@ fn preview_modes_select_print_intent_without_changing_compilation() {
             OverprintPreview::Auto,
             OverprintPreview::Always,
         ] {
-            let options = RenderOptions {
-                overprint: mode,
-                ..RenderOptions::default()
-            };
+            let options = RenderOptions::default().with_overprint(mode);
             let simulated =
                 mode == OverprintPreview::Always || (mode == OverprintPreview::Auto && print);
             let oracle = if simulated {
@@ -89,10 +86,7 @@ fn never_bypasses_simulated_plate_limits_even_after_a_cached_failure() {
         pagura::ErrorKind::Limit
     );
     let image = list
-        .render(&RenderOptions {
-            overprint: OverprintPreview::Never,
-            ..RenderOptions::default()
-        })
+        .render(&RenderOptions::default().with_overprint(OverprintPreview::Never))
         .unwrap();
     assert_bytes_eq(
         &ppm(8, 8, &image.to_rgb_over(Rgba8::WHITE)),
@@ -126,10 +120,7 @@ fn preview_policy_controls_cmyk_luminosity_masks_without_page_separations() {
                 "preview-cmyk-mask-no-intent"
             };
             let actual = list
-                .render(&RenderOptions {
-                    overprint: mode,
-                    ..RenderOptions::default()
-                })
+                .render(&RenderOptions::default().with_overprint(mode))
                 .unwrap()
                 .to_rgb_over(Rgba8::WHITE);
             let expected = fixture("overprint", &format!("{oracle}.ppm"));
