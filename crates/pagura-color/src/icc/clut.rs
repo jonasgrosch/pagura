@@ -3,7 +3,8 @@
 //! Multilinear interpolation is project policy where ICC leaves interpolation
 //! unspecified; a two-point axis is linear as required by those clauses.
 
-use super::{Budget, sample_index, slice, u16_at, usize_f64};
+use super::{Budget, sample_index, usize_f64};
+use pagura_core::bytes::Cursor;
 use pagura_core::{Error, Result};
 
 #[derive(Debug, Clone)]
@@ -12,8 +13,9 @@ pub(super) struct Clut {
     values: Vec<f64>,
 }
 impl Clut {
+    /// Parses a CLUT whose samples start `data`; `data` may extend beyond it.
     pub(super) fn parse(
-        data: &[u8],
+        data: &Cursor<'_>,
         grids: &[u8],
         precision: usize,
         budget: &mut Budget,
@@ -28,11 +30,8 @@ impl Clut {
             .iter()
             .try_fold(3_usize, |n, &g| n.checked_mul(usize::from(g)))
             .ok_or(Error::limit("ICC CLUT size overflow"))?;
-        budget.charge(count)?;
-        let bytes = count
-            .checked_mul(precision)
-            .ok_or(Error::limit("ICC CLUT byte size overflow"))?;
-        let values = samples(slice(data, 0, bytes)?, count, precision)?;
+        budget.values(count)?;
+        let values = samples(&mut data.clone(), count, precision)?;
         Ok(Self {
             grids: grids.iter().map(|&n| usize::from(n)).collect(),
             values,
@@ -77,16 +76,17 @@ impl Clut {
     }
 }
 
-pub(super) fn samples(data: &[u8], count: usize, precision: usize) -> Result<Vec<f64>> {
+/// Reads `count` normalized 8- or 16-bit table entries, advancing `data`.
+pub(super) fn samples(data: &mut Cursor<'_>, count: usize, precision: usize) -> Result<Vec<f64>> {
     let mut values = Vec::new();
     values
         .try_reserve_exact(count)
         .map_err(|_| Error::limit("ICC table allocation failed"))?;
-    for i in 0..count {
+    for _ in 0..count {
         values.push(if precision == 1 {
-            f64::from(slice(data, i, 1)?[0]) / 255.0
+            f64::from(data.u8()?) / 255.0
         } else {
-            f64::from(u16_at(data, 2 * i)?) / 65535.0
+            f64::from(data.u16()?) / 65535.0
         });
     }
     Ok(values)
