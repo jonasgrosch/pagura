@@ -33,6 +33,19 @@ pub use hash::{Digest, Md5, Sha1, Sha224, Sha256, Sha384, Sha512};
 pub use rsa::{HashAlgorithm, PssParameters, RsaLimits, RsaPublicKey};
 pub use verification::Verification;
 
+/// Stable tags for security handlers this crate does not implement.
+pub mod features {
+    use pagura_core::Feature;
+
+    /// A handler revision outside the implemented standard revisions.
+    pub const REVISION: Feature = Feature::new("security.revision");
+    /// The unpublished version 3 encryption algorithm.
+    pub const VERSION3: Feature = Feature::new("security.V3");
+
+    /// Every feature tag of this crate.
+    pub const ALL: &[Feature] = &[REVISION, VERSION3];
+}
+
 /// Unicode data copyright and permission notice for the SASLprep tables.
 #[must_use]
 pub const fn unicode_notice() -> &'static str {
