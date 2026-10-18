@@ -7,7 +7,7 @@ pagura-cli       ──► pagura (the `pagura` command-line tool; the facade on
 pagura-host      ──► pagura
 pagura           ──► pagura-render, pagura-write, pagura-document, pagura-text and pagura-font (text model, provider types), pagura-raster, pagura-pki (CMS signature verification), pagura-data (optional bundled fonts and CMaps), pagura-crypto (Unicode data notice)
 pagura-render    ──► pagura-text, pagura-font (glyph outline diagnostics), pagura-image, pagura-document, pagura-raster, pagura-crypto (MD5 for ICC profile IDs)
-pagura-data      ──► pagura-text (its Provider), pagura-font
+pagura-data      ──► pagura-text (its Provider), pagura-font (ADR 0026)
 pagura-text      ──► pagura-font, pagura-document, pagura-raster
 pagura-image     ──► pagura-document, pagura-codec
 pagura-font      ──► pagura-raster
@@ -26,6 +26,7 @@ Dependencies point downward only and are fixed in the crate manifests.
 | `pagura-document` | immutable source bytes, cross-reference data and revisions, lazily parsed and cached objects, decoded streams, typed page tree, recovery; navigation (12.3–12.6), interactive-form views and in-memory filling (12.7) and signature structure (12.8) as inert views | content streams, pixels, executing actions, cryptographic verification |
 | `pagura-raster` | geometry, paths, flattening, exact-area fill, stroking, masks, `Pixmap` | PDF |
 | `pagura-font` | font programs (TrueType/OpenType, CFF/CFF2, Type 1) as outlines, advances, encodings and cmaps | PDF dictionaries |
+| `pagura-data` | optional bundled data for fonts a PDF does not embed: standard-14 metrics and substitute outlines, predefined CMaps, CID-to-Unicode data and CJK substitutes, behind one cargo feature each, as a `Provider` with lazy caches (ADR 0009, 0026) | documents, content streams |
 | `pagura-text` | PDF font dictionaries, encodings, widths, CMaps and ToUnicode; shown strings to positioned glyphs | content streams, pixels |
 | `pagura-image` | image XObjects and inline images; JPEG, CCITT, JBIG2 and JPEG 2000 decoding to samples | painting, colour conversion |
 | `pagura-render` | content interpretation into a display list in PDF terms; page-to-device transform; tiles; painting through `pagura-raster` | file structure |
