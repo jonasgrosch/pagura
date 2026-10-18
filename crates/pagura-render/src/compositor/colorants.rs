@@ -250,13 +250,7 @@ impl Context {
         state: &Composite,
         direct: bool,
     ) -> Result<Source> {
-        if let Space::Indexed { base, high, lookup } = space {
-            let decoded = crate::color::indexed_components(
-                base,
-                *high,
-                lookup,
-                components.first().copied().unwrap_or(0.0),
-            )?;
+        if let Some((base, decoded)) = crate::transparency::indexed(space, components)? {
             return self.source(base, &decoded, model, state, direct);
         }
         let mut result = self.sampled_source(space, model, state);
@@ -283,16 +277,14 @@ impl Context {
                 }
             }
         }
-        if matches!(space, Space::Cmyk)
-            && model == Model::Cmyk
+        if model == Model::Cmyk
             && !result.spot
             && direct
             && state.overprint
             && state.nonzero_overprint
+            && let Some(native) = model.native(space, components)
         {
-            for (preserve, &tint) in result.preserve.iter_mut().zip(components) {
-                *preserve = tint == 0.0;
-            }
+            result.preserve = native.zero;
         }
         Ok(result)
     }

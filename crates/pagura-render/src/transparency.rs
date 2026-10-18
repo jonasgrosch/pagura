@@ -5,7 +5,7 @@ use crate::color::Space;
 use crate::display::Command;
 use crate::functions::Function;
 use crate::icc::ColorContext;
-use pagura_core::{Dictionary, Error, Result};
+use pagura_core::{Dictionary, Error, Result, Value};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -60,6 +60,16 @@ pub(crate) enum Model {
     Rgb,
     Cmyk,
 }
+
+/// Native component conversion and exact zero selection share the same clipping.
+/// Keep zero selection before complementing: a tiny nonzero tint can round to
+/// additive white, but must still replace its backdrop component (11.7.4.3).
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Native {
+    pub(crate) color: [f64; 4],
+    pub(crate) zero: [bool; 4],
+}
+
 impl Model {
     pub(crate) fn components(self) -> usize {
         match self {
@@ -114,6 +124,9 @@ impl Model {
         conversion: &Conversion,
         work: &mut usize,
     ) -> Result<[f64; 4]> {
+        if let Some(native) = self.native(space, components) {
+            return Ok(native.color);
+        }
         if let Space::Special { all: true, .. } = space {
             let value = 1.0 - components.first().copied().unwrap_or(1.0).clamp(0.0, 1.0);
             return Ok([value; 4]);
@@ -136,35 +149,49 @@ impl Model {
                 work,
             );
         }
-        if let Space::Indexed { base, high, lookup } = space {
-            let decoded = crate::color::indexed_components(
-                base,
-                *high,
-                lookup,
-                components.first().copied().unwrap_or(0.0),
-            )?;
+        if let Some((base, decoded)) = indexed(space, components)? {
             return self.source(base, &decoded, conversion, work);
-        }
-        let matching = matches!(
-            (self, space),
-            (Self::Gray, Space::Gray) | (Self::Rgb, Space::Rgb) | (Self::Cmyk, Space::Cmyk)
-        );
-        if matching {
-            let mut out = [0.0; 4];
-            for (out, &v) in out.iter_mut().zip(components) {
-                *out = if self == Self::Cmyk {
-                    1.0 - v.clamp(0.0, 1.0)
-                } else {
-                    v.clamp(0.0, 1.0)
-                };
-            }
-            return Ok(out);
         }
         self.encode_rgb(
             space.convert_with_intent(components, conversion.intent)?,
             conversion,
             work,
         )
+    }
+    pub(crate) fn native(self, space: &Space, components: &[f64]) -> Option<Native> {
+        if let Space::Icc {
+            base,
+            profile: None,
+            range,
+        } = space
+        {
+            let clipped = Space::clip_icc(components, range);
+            return self.native(base, &clipped[..base.components()]);
+        }
+        if !matches!(
+            (self, space),
+            (Self::Gray, Space::Gray) | (Self::Rgb, Space::Rgb) | (Self::Cmyk, Space::Cmyk)
+        ) {
+            return None;
+        }
+        Some(self.native_values(components))
+    }
+    fn native_values(self, components: &[f64]) -> Native {
+        let mut native = Native {
+            color: [0.0; 4],
+            zero: [false; 4],
+        };
+        for ((color, zero), &v) in native
+            .color
+            .iter_mut()
+            .zip(&mut native.zero)
+            .zip(components)
+        {
+            let v = v.clamp(0.0, 1.0);
+            *zero = v == 0.0;
+            *color = if self == Self::Cmyk { 1.0 - v } else { v };
+        }
+        native
     }
     pub(crate) fn black(self) -> [f64; 4] {
         if self == Self::Cmyk {
@@ -177,17 +204,58 @@ impl Model {
         if value.len() != self.components() {
             return Err(Error::syntax("wrong group backdrop component count"));
         }
-        let mut out = [0.0; 4];
-        for (out, &v) in out.iter_mut().zip(value) {
-            *out = if self == Self::Cmyk {
-                1.0 - v.clamp(0.0, 1.0)
-            } else {
-                v.clamp(0.0, 1.0)
-            };
+        Ok(self.native_values(value).color)
+    }
+
+    fn parse(document: &ColorContext<'_>, resources: &Dictionary, value: &Value) -> Result<Self> {
+        let space = crate::color::blending(document, resources, value)?.blending_fallback();
+        match space {
+            Space::Gray => Ok(Self::Gray),
+            Space::Rgb => Ok(Self::Rgb),
+            Space::Cmyk => Ok(Self::Cmyk),
+            Space::Icc { base, profile, .. } if profile.as_ref().is_none_or(|p| !p.lab_input()) => {
+                // Without inverse ICC transforms a supported ICC group
+                // composites in its N-component device base; sources keep
+                // their forward transforms.
+                match base.as_ref() {
+                    Space::Gray => Ok(Self::Gray),
+                    Space::Rgb => Ok(Self::Rgb),
+                    Space::Cmyk => Ok(Self::Cmyk),
+                    _ => Err(group_space_error()),
+                }
+            }
+            _ => Err(group_space_error()),
         }
-        Ok(out)
     }
 }
+
+/// Resolve an Indexed sample before colour conversion and component selection
+/// (8.6.6.3). Both consumers use the same clipping and base-space decoding.
+pub(crate) fn indexed<'a>(
+    space: &'a Space,
+    components: &[f64],
+) -> Result<Option<(&'a Space, Vec<f64>)>> {
+    let Space::Indexed { base, high, lookup } = space else {
+        return Ok(None);
+    };
+    Ok(Some((
+        base,
+        crate::color::indexed_components(
+            base,
+            *high,
+            lookup,
+            components.first().copied().unwrap_or(0.0),
+        )?,
+    )))
+}
+
+fn group_space_error() -> Error {
+    Error::unsupported(
+        crate::features::TRANSPARENCY_GROUP_COLORSPACE,
+        "group blending space requires an unsupported colour transform",
+    )
+}
+
 fn scalar(function: Option<&Function>, value: f64, work: &mut usize) -> Result<f64> {
     let mut result = [value];
     if let Some(function) = function {
@@ -238,17 +306,7 @@ impl Attributes {
         };
         let model = d
             .get(b"CS")
-            .map(
-                |v| match crate::color::blending(document, resources, v)?.blending_fallback() {
-                    Space::Gray => Ok(Model::Gray),
-                    Space::Rgb => Ok(Model::Rgb),
-                    Space::Cmyk => Ok(Model::Cmyk),
-                    _ => Err(Error::unsupported(
-                        crate::features::TRANSPARENCY_GROUP_COLORSPACE,
-                        "calibrated group blending is not implemented",
-                    )),
-                },
-            )
+            .map(|v| Model::parse(document, resources, v))
             .transpose()?;
         Ok(Some(Self {
             view: None,
@@ -279,4 +337,18 @@ pub(crate) struct SoftMask {
     pub(crate) method: MaskMethod,
     pub(crate) backdrop: [f64; 4],
     pub(crate) transfer: Option<Function>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn native_zero_selection_precedes_complement_rounding() {
+        let native = Model::Cmyk
+            .native(&Space::Cmyk, &[0.5, 1e-20, -1.0, 2.0])
+            .unwrap();
+        assert_eq!(native.color, [0.5, 1.0, 1.0, 0.0]);
+        assert_eq!(native.zero, [false, false, true, false]);
+    }
 }
