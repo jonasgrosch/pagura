@@ -1,7 +1,7 @@
-//! Reported text repairs (ADR 0003). ToUnicode only controls extraction
-//! (9.10.3); malformed maps still require permission to repair or discard.
-use pagura_core::{Diagnostic, Diagnostics, Error, ObjectId, Position, Recovery, Repair, Result};
-use pagura_document::Document;
+//! Stable tags for reported font repairs (ADR 0003). ToUnicode only controls
+//! extraction (9.10.3); malformed maps still require permission to repair or
+//! discard.
+use pagura_core::Repair;
 
 /// Missing embedded CIDFontType2 CIDToGIDMap uses Identity (9.7.4.1, Table 115).
 pub const CID_TO_GID_IDENTITY: Repair = Repair::new("font.cid-to-gid-identity");
@@ -23,53 +23,20 @@ pub const DESCRIPTOR_WEIGHT: Repair = Repair::new("font.descriptor-weight");
 /// Reversed d1 bounds are ignored only for procedures with no drawing commands
 /// (9.6.4, Table 111); the declared horizontal advance is retained.
 pub const TYPE3_EMPTY_BOUNDS: Repair = Repair::new("font.type3-empty-bounds");
+/// A font stream whose `Length1` to `Length3` are absent, invalid or disagree
+/// with its decoded program (Table 125). The program is parsed as decoded.
+pub const STREAM_LENGTHS: Repair = Repair::new("font.stream-lengths");
 
-/// Reports one item at a time so malformed maps cannot grow a temporary
-/// diagnostic vector beyond Document's bounded/deduplicating sink.
-#[derive(Clone, Copy)]
-pub(crate) struct Report<'a>(Option<&'a Document>);
-
-impl<'a> Report<'a> {
-    pub(crate) fn new(document: &'a Document) -> Self {
-        Self(Some(document))
-    }
-    pub(crate) fn strict() -> Self {
-        Self(None)
-    }
-    pub(crate) fn repair(
-        self,
-        tag: Repair,
-        message: &'static str,
-        position: Position,
-    ) -> Result<()> {
-        let mut diagnostic = Diagnostic::new(tag, message).at(position);
-        if let Position::Stream { object, .. } = position {
-            diagnostic = diagnostic.in_object(object);
-        }
-        self.diagnostic(diagnostic)
-    }
-    pub(crate) fn diagnostic(self, diagnostic: Diagnostic) -> Result<()> {
-        let mut sink = Diagnostics::new(self.0.map_or(Recovery::Strict, Document::recovery));
-        sink.repair(diagnostic)?;
-        if let Some(document) = self.0 {
-            document.report(sink.take());
-        }
-        Ok(())
-    }
-    pub(crate) fn discarded(self, error: Error, object: Option<ObjectId>) -> Result<()> {
-        // Preserve the original error kind, position and refused repair in Strict.
-        if self
-            .0
-            .is_none_or(|document| document.recovery() == Recovery::Strict)
-        {
-            return Err(error);
-        }
-        let diagnostic = Diagnostic::new(
-            error.repair.unwrap_or(TOUNICODE_INVALID),
-            "invalid ToUnicode data discarded; glyph selection is unchanged",
-        )
-        .in_object_opt(error.object.or(object))
-        .at(error.position);
-        self.diagnostic(diagnostic)
-    }
-}
+/// Every repair tag defined by this crate.
+pub const ALL: &[Repair] = &[
+    CID_TO_GID_IDENTITY,
+    TOUNICODE_INVALID,
+    TOUNICODE_SIMPLE_CODES,
+    TOUNICODE_UTF16,
+    TOUNICODE_RANGE,
+    CMAP_BLOCK_COUNT,
+    CMAP_CODESPACE,
+    DESCRIPTOR_WEIGHT,
+    TYPE3_EMPTY_BOUNDS,
+    STREAM_LENGTHS,
+];

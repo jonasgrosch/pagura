@@ -166,8 +166,11 @@ mod tests {
     /// tags (ADR 0003).
     #[test]
     fn strict_accepts_information_and_rejects_every_repair() {
-        let information = [pagura_text::SUBSTITUTED, pagura_text::CID_GLYPH_MISSING]
-            .map(|tag| Diagnostic::information(tag, "provider information"));
+        let information = [
+            pagura_text::information::SUBSTITUTED,
+            pagura_text::information::CID_GLYPH_MISSING,
+        ]
+        .map(|tag| Diagnostic::information(tag, "provider information"));
         assert_diagnostics(&information, Recovery::Strict);
         let text = [
             text::TOUNICODE_INVALID,

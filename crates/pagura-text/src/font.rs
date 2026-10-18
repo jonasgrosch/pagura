@@ -312,7 +312,7 @@ pub(crate) fn to_unicode(
     match to_unicode_map(document, value, mapping) {
         Ok(map) => Ok(map),
         Err(error) => {
-            crate::repairs::Report::new(document).discarded(error, value.as_reference())?;
+            crate::report::Report::new(document).discarded(error, value.as_reference())?;
             Ok(None)
         }
     }
@@ -537,7 +537,7 @@ fn cid_map(
                     "embedded CIDFontType2 missing CIDToGIDMap; using Identity (9.7.4.1, Table 115)",
                 );
                 diagnostic.object = id;
-                crate::repairs::Report::new(document).diagnostic(diagnostic)?;
+                crate::report::Report::new(document).diagnostic(diagnostic)?;
                 None
             }
             Some(Value::Name(name)) if name == b"Identity" => None,

@@ -8,13 +8,6 @@ use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Result};
 use pagura_document::Document;
 use pagura_font::{CmapSubtable, FontProgram, GlyphId};
 
-/// A substitute cannot draw every CID reachable through the encoding CMap.
-/// Reported once at font load, including notdef coverage, rather than retaining
-/// a document reference or reporting repeatedly during extraction. Missing
-/// values draw no mark and retain their original PDF metrics in both modes.
-/// This describes a provider coverage limitation, not malformed PDF input.
-pub const CID_GLYPH_MISSING: &str = "font.cid-glyph-missing";
-
 pub(crate) fn load(
     document: &Document,
     font: &Dictionary,
@@ -62,7 +55,7 @@ pub(crate) fn load(
             report(
                 document,
                 id,
-                CID_GLYPH_MISSING,
+                crate::information::CID_GLYPH_MISSING,
                 "CID substitute has incomplete Unicode/glyph coverage; missing CIDs paint nothing and retain PDF advances",
             );
             break;
@@ -72,7 +65,7 @@ pub(crate) fn load(
     report(
         document,
         id,
-        crate::SUBSTITUTED,
+        crate::information::SUBSTITUTED,
         "non-embedded CID font uses a collection-specific Unicode substitute (9.7.4.2); PDF widths retained",
     );
     Ok(PdfFont {
