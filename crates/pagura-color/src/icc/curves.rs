@@ -1,6 +1,7 @@
 //! Forward curves: ICC.1:2010 10.5 and 10.16.
 
-use super::{Budget, fixed, sample_index, slice, u16_at, u32_at, unsupported, usize_f64};
+use super::{At, Budget, format::zeros, sample_index, unsupported, usize_f64};
+use pagura_core::bytes::Cursor;
 use pagura_core::{Error, Result};
 
 #[derive(Debug, Clone)]
@@ -8,8 +9,50 @@ pub(super) enum Curve {
     Identity,
     Gamma(f64),
     Samples(Vec<f64>),
-    Parametric(u16, [f64; 7]),
+    Parametric(Parametric),
 }
+
+/// A parametricCurveType function (10.16, Table 65) with its parameters.
+#[derive(Debug, Clone, Copy)]
+pub(super) enum Parametric {
+    /// `Y = X^g`.
+    Power { g: f64 },
+    /// `Y = (aX + b)^g` above `-b/a`, else 0 (CIE 122-1996).
+    Cie122 { g: f64, a: f64, b: f64 },
+    /// `Y = (aX + b)^g + c` above `-b/a`, else `c` (IEC 61966-3).
+    Iec61966 { g: f64, a: f64, b: f64, c: f64 },
+    /// `Y = (aX + b)^g` from `d`, else `cX` (IEC 61966-2.1, sRGB).
+    Srgb {
+        g: f64,
+        a: f64,
+        b: f64,
+        c: f64,
+        d: f64,
+    },
+    /// `Y = (aX + b)^g + e` from `d`, else `cX + f`.
+    Full {
+        g: f64,
+        a: f64,
+        b: f64,
+        c: f64,
+        d: f64,
+        e: f64,
+        f: f64,
+    },
+}
+
+/// The parameter count of each parametric function type (Table 65).
+fn parameters(kind: u16) -> Result<usize> {
+    Ok(match kind {
+        0 => 1,
+        1 => 3,
+        2 => 4,
+        3 => 5,
+        4 => 7,
+        _ => return Err(unsupported("unsupported ICC parametric curve")),
+    })
+}
+
 impl Curve {
     pub(super) fn retained_bytes(&self) -> usize {
         if let Self::Samples(v) = self {
@@ -18,92 +61,85 @@ impl Curve {
             0
         }
     }
-    pub(super) fn extent(data: &[u8]) -> Result<usize> {
-        match slice(data, 0, 4)? {
-            b"curv" => usize::try_from(u32_at(data, 8)?)
+    /// The encoded size of the curve starting `data`, before alignment.
+    pub(super) fn extent(data: &Cursor<'_>) -> Result<usize> {
+        match data.bytes(0, 4)? {
+            b"curv" => usize::try_from(data.u32_at(8)?)
                 .ok()
                 .and_then(|n| n.checked_mul(2))
                 .and_then(|n| n.checked_add(12))
                 .ok_or(Error::limit("ICC curve extent overflow")),
-            b"para" => {
-                let count = match u16_at(data, 8)? {
-                    0 => 1,
-                    1 => 3,
-                    2 => 4,
-                    3 => 5,
-                    4 => 7,
-                    _ => return Err(unsupported("unsupported ICC parametric curve")),
-                };
-                Ok(12 + 4 * count)
-            }
+            b"para" => Ok(12 + 4 * parameters(data.u16_at(8)?)?),
             _ => Err(unsupported("unsupported ICC curve tag type")),
         }
     }
 
-    pub(super) fn parse(data: &[u8], budget: &mut Budget) -> Result<Self> {
-        super::format::zeros(slice(data, 4, 4)?)?;
-        match slice(data, 0, 4)? {
+    pub(super) fn parse(data: &Cursor<'_>, budget: &mut Budget) -> Result<Self> {
+        zeros(data, 4, 4)?;
+        let length = data.data().len();
+        match data.bytes(0, 4)? {
             b"curv" => {
-                let count = usize::try_from(u32_at(data, 8)?)
+                let count = usize::try_from(data.u32_at(8)?)
                     .map_err(|_| Error::limit("ICC curve size overflow"))?;
-                budget.charge(count)?;
-                if data.len() != Self::extent(data)? {
+                budget.values(count)?;
+                if length != Self::extent(data)? {
                     return Err(Error::syntax("invalid ICC curve extent"));
                 }
-                slice(
-                    data,
-                    12,
-                    count
-                        .checked_mul(2)
-                        .ok_or(Error::limit("ICC curve size overflow"))?,
-                )?;
+                let mut samples = data.cursor_at(12)?;
                 match count {
                     0 => Ok(Self::Identity),
                     1 => {
-                        let gamma = f64::from(u16_at(data, 12)?) / 256.0;
+                        let gamma = f64::from(samples.u16()?) / 256.0;
                         if gamma <= 0.0 {
                             return Err(Error::syntax("invalid ICC curve gamma"));
                         }
                         Ok(Self::Gamma(gamma))
                     }
                     _ => {
-                        let mut samples = Vec::new();
-                        samples
+                        let mut values = Vec::new();
+                        values
                             .try_reserve_exact(count)
                             .map_err(|_| Error::limit("ICC curve allocation failed"))?;
-                        for i in 0..count {
-                            samples.push(f64::from(u16_at(data, 12 + 2 * i)?) / 65535.0);
+                        for _ in 0..count {
+                            values.push(f64::from(samples.u16()?) / 65535.0);
                         }
-                        Ok(Self::Samples(samples))
+                        Ok(Self::Samples(values))
                     }
                 }
             }
             b"para" => {
-                super::format::zeros(slice(data, 10, 2)?)?;
-                if data.len() != Self::extent(data)? {
+                zeros(data, 10, 2)?;
+                if length != Self::extent(data)? {
                     return Err(Error::syntax("invalid ICC parametric curve extent"));
                 }
-                let kind = u16_at(data, 8)?;
-                let count = match kind {
-                    0 => 1,
-                    1 => 3,
-                    2 => 4,
-                    3 => 5,
-                    4 => 7,
-                    _ => return Err(unsupported("unsupported ICC parametric curve")),
-                };
-                let mut params = [0.0; 7];
-                for (i, p) in params.iter_mut().enumerate().take(count) {
-                    *p = fixed(data, 12 + 4 * i)?;
+                let kind = data.u16_at(8)?;
+                let mut values = data.cursor_at(12)?;
+                let mut p = [0.0; 7];
+                for p in p.iter_mut().take(parameters(kind)?) {
+                    *p = values.fixed()?;
                 }
-                if params[0] <= 0.0 || (kind > 0 && params[1] <= 0.0) {
+                let [g, a, b, c, d, e, f] = p;
+                if g <= 0.0 || (kind > 0 && a <= 0.0) {
                     return Err(Error::syntax("invalid ICC parametric curve"));
                 }
-                if kind >= 3 && params[4] <= 1.0 && params[1] * params[4].max(0.0) + params[2] < 0.0
-                {
+                if kind >= 3 && d <= 1.0 && a * d.max(0.0) + b < 0.0 {
                     return Err(Error::syntax("ICC curve power includes negative inputs"));
                 }
-                Ok(Self::Parametric(kind, params))
+                Ok(Self::Parametric(match kind {
+                    0 => Parametric::Power { g },
+                    1 => Parametric::Cie122 { g, a, b },
+                    2 => Parametric::Iec61966 { g, a, b, c },
+                    3 => Parametric::Srgb { g, a, b, c, d },
+                    _ => Parametric::Full {
+                        g,
+                        a,
+                        b,
+                        c,
+                        d,
+                        e,
+                        f,
+                    },
+                }))
             }
             _ => Err(unsupported("unsupported ICC curve tag type")),
         }
@@ -118,40 +154,7 @@ impl Curve {
                 let high = (low + 1).min(values.len() - 1);
                 values[low] + (position - usize_f64(low)) * (values[high] - values[low])
             }
-            // Table 65's type 4 offset and lower inequalities are inconsistent
-            // with its parameter list. Use +e above d and c*x+f below d, and
-            // complementary lower branches (the conventional ICC model).
-            Self::Parametric(kind, [g, a, b, c, d, e, f]) => match kind {
-                0 => x.powf(*g),
-                1 => {
-                    if a * x >= -b {
-                        (a * x + b).max(0.0).powf(*g)
-                    } else {
-                        0.0
-                    }
-                }
-                2 => {
-                    if a * x >= -b {
-                        (a * x + b).max(0.0).powf(*g) + c
-                    } else {
-                        *c
-                    }
-                }
-                3 => {
-                    if x >= *d {
-                        (a * x + b).powf(*g)
-                    } else {
-                        c * x
-                    }
-                }
-                _ => {
-                    if x >= *d {
-                        (a * x + b).powf(*g) + e
-                    } else {
-                        c * x + f
-                    }
-                }
-            },
+            Self::Parametric(curve) => curve.evaluate(x),
         };
         // Positive overflow has a defined clipped value (10.16). NaN and
         // negative infinity still indicate genuinely undefined arithmetic.
@@ -159,5 +162,52 @@ impl Curve {
             return Err(Error::syntax("undefined ICC curve arithmetic"));
         }
         Ok(value.clamp(0.0, 1.0))
+    }
+}
+
+impl Parametric {
+    fn evaluate(self, x: f64) -> f64 {
+        match self {
+            Self::Power { g } => x.powf(g),
+            Self::Cie122 { g, a, b } => {
+                if a * x >= -b {
+                    (a * x + b).max(0.0).powf(g)
+                } else {
+                    0.0
+                }
+            }
+            Self::Iec61966 { g, a, b, c } => {
+                if a * x >= -b {
+                    (a * x + b).max(0.0).powf(g) + c
+                } else {
+                    c
+                }
+            }
+            Self::Srgb { g, a, b, c, d } => {
+                if x >= d {
+                    (a * x + b).powf(g)
+                } else {
+                    c * x
+                }
+            }
+            // Table 65's type 4 offset and lower inequalities are inconsistent
+            // with its parameter list. Use +e above d and c*x+f below d, and
+            // complementary lower branches (the conventional ICC model).
+            Self::Full {
+                g,
+                a,
+                b,
+                c,
+                d,
+                e,
+                f,
+            } => {
+                if x >= d {
+                    (a * x + b).powf(g) + e
+                } else {
+                    c * x + f
+                }
+            }
+        }
     }
 }

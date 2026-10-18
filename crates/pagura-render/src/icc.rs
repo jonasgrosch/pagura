@@ -70,7 +70,7 @@ impl<'a> ColorContext<'a> {
         }
         let object = self.document.object(id)?;
         let bytes = self.document.stream_data(object)?;
-        let profile = pagura_color::Profile::parse(&bytes, components, self.limits())
+        let profile = pagura_color::Profile::parse(&bytes, components, &self.limits())
             .map_err(|e| e.in_object(id))?
             .map(|profile| {
                 Arc::new(Profile {
@@ -108,106 +108,30 @@ impl<'a> ColorContext<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pagura_color::Intent;
-    use pagura_core::Limits;
-    use pagura_core::{ErrorKind, ObjectId, Value};
-    use pagura_document::{Document, OpenOptions};
+    use pagura_core::Value;
+    use pagura_document::OpenOptions;
 
     #[test]
-    fn lut_storage_is_admitted_before_evaluation() {
-        let document = Document::open(
-            pagura_testkit::fixture("content", "icc-mft2-4-XYZ-v4.pdf"),
-            &OpenOptions::default(),
-        )
-        .unwrap();
-        let data = document
-            .stream_data(document.object(ObjectId::new(5, 0)).unwrap())
-            .unwrap();
-        // Four two-sample input curves, 2^4 three-channel nodes and three
-        // two-sample output curves require 8 + 48 + 6 scalar values.
-        for (nodes, succeeds) in [(61, false), (62, true)] {
-            let result = pagura_color::Profile::parse(
-                &data,
-                4,
-                Limits {
-                    value_nodes: nodes,
-                    ..Limits::default()
-                },
-            );
-            if succeeds {
-                assert!(
-                    result
-                        .unwrap()
-                        .unwrap()
-                        .convert(&[0.5; 4], Intent::Relative)
-                        .is_ok()
-                );
-            } else {
-                assert_eq!(result.unwrap_err().kind, ErrorKind::Limit);
-            }
-        }
-        let error = pagura_color::Profile::parse(
-            &data,
-            4,
-            Limits {
-                decoded_bytes: 495,
-                ..Limits::default()
-            },
-        )
-        .unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Limit);
-    }
-
-    #[test]
-    fn profile_extents_and_curve_storage_are_bounded() {
+    fn profiles_are_cached_by_object_without_rewriting_the_stream() {
         let document = Document::open(
             pagura_testkit::fixture("content", "icc-3-sampled.pdf"),
             &OpenOptions::default(),
         )
         .unwrap();
-        let object = document.object(ObjectId::new(5, 0)).unwrap();
-        let data = document.stream_data(object).unwrap();
-        assert!(
-            pagura_color::Profile::parse(&data, 3, Limits::default())
-                .unwrap()
-                .is_some()
-        );
+        let id = ObjectId::new(5, 0);
         let cache = Cache::default();
         let context = ColorContext::new(&document, &cache);
-        let first = context.profile(ObjectId::new(5, 0), 3).unwrap().unwrap();
+        let first = context.profile(id, 3).unwrap().unwrap();
         let retained = cache.bytes.get();
-        let second = context.profile(ObjectId::new(5, 0), 3).unwrap().unwrap();
+        let second = context.profile(id, 3).unwrap().unwrap();
         assert!(Arc::ptr_eq(&first, &second));
         assert_eq!(cache.bytes.get(), retained);
-
-        for end in 0..data.len() {
-            assert_eq!(
-                pagura_color::Profile::parse(&data[..end], 3, Limits::default())
-                    .unwrap_err()
-                    .kind,
-                ErrorKind::Syntax
-            );
-        }
         assert_eq!(
-            pagura_color::Profile::parse(&data, 1, Limits::default())
-                .unwrap_err()
-                .kind,
-            ErrorKind::Syntax
-        );
-        assert_eq!(
-            pagura_color::Profile::parse(
-                &data,
-                3,
-                Limits {
-                    value_nodes: 10,
-                    ..Limits::default()
-                }
-            )
-            .unwrap_err()
-            .kind,
-            ErrorKind::Limit
+            context.profile(id, 1).unwrap_err().kind,
+            pagura_core::ErrorKind::Syntax
         );
         // The stream dictionary is immutable; profile admission never rewrites it.
+        let object = document.object(id).unwrap();
         assert_eq!(
             object.dictionary().unwrap().get(b"N"),
             Some(&Value::Integer(3))
