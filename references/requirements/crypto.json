@@ -150,8 +150,8 @@
         "pagura-crypto standard::saslprep tests",
         "pagura-crypto mapped-password authentication tests",
         "tools/fixturegen/crypto.py saslprep_examples",
-        "crates/pagura-crypto/tools/generate_stringprep.py --rfc PATH --check",
-        "tools/fixturegen/unicode32.py --check",
+        "tools/gen/saslprep.py --check (tools/check.py; --rfc PATH also checks the RFC text)",
+        "tools/gen/unicode32.py --check (tools/check.py)",
         "standard::saslprep::normalization::tests every_official_unicode32_nfkc_relation",
         "crypto/saslprep-generated-passwords and nfkc32-corrections",
         "crypto/r6-saslprep-{unicode-passwords,bidi-passwords,normalized-boundary,correction-passwords}"
@@ -1407,7 +1407,7 @@
       "id": "generated-tables",
       "locator": "RFC 3454 Appendices A.1, B.1, C.1.2, C.2.1-C.9, D.1-D.2",
       "paraphrase": "Use the appendix sets themselves, with Unicode 3.2 membership, rather than deriving them from prose or current Unicode categories.",
-      "implementation": "The Python generator parses only numeric code/range fields between explicit table markers, checks ordered ranges, compares all code points in all fourteen sets with stringprep, and emits merged Rust numeric ranges with membership bitmasks and the source SHA-256.",
+      "implementation": "The Python generator parses only numeric code/range fields between explicit table markers, checks ordered ranges, compares all code points in all fourteen sets with stringprep, and emits merged Rust numeric ranges with symbolic membership flags and the pinned source SHA-256. Without the RFC, --check derives the same membership from stringprep alone.",
       "vectors": "crypto/saslprep-table-membership is independently computed from Python predicates and compared against every generated Rust range and lookup gap.",
       "verdict": "verified"
     }
@@ -1416,9 +1416,9 @@
     "mapping_overlap": "U+200B is in B.1 and C.1.2. B.1 removal takes precedence, matching the independent oracle; this explicit choice is not claimed as a separately ordered rule in RFC 4013.",
     "unassigned_policy": "Use stored-string A.1 rejection for authentication queries too; RFC 3454 section 7 permits queries to reject unassigned code points.",
     "errors": "Invalid UTF-8, prohibited output, unassigned output and bidi violations use Password, not document Syntax. Positions identify bytes in the relevant password buffer; fixed messages never embed password/key data.",
-    "reproduction": "python3 crates/pagura-crypto/tools/generate_stringprep.py --rfc ~/.cache/pagura-references/text/rfc3454.txt --check",
+    "reproduction": "python3 tools/gen/saslprep.py --rfc ~/.cache/pagura-references/text/rfc3454.txt --check",
     "oracle": "Python standard-library stringprep plus unicodedata.ucd_3_2_0 (Unicode 3.2.0) supplies independent complete-profile and normalization fixture expectations, never production normalization tables.",
-    "normalization": "The complete mapped string is normalized and validated before 127-byte truncation. Unicode 3.2 data is generated reproducibly by python3 tools/fixturegen/unicode32.py; --check runs as a Rust unit test. Production tables are generated only from bundled files, never from Python normalization.",
+    "normalization": "The complete mapped string is normalized and validated before 127-byte truncation. Unicode 3.2 data is generated reproducibly by python3 tools/gen/unicode32.py; tools/check.py runs its --check. Production tables are generated only from bundled files, never from Python normalization.",
     "activated_vector_ids": [
       "crypto/saslprep-nfkc-feminine-ordinal",
       "crypto/saslprep-nfkc-roman-nine",
