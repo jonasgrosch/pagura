@@ -43,7 +43,7 @@ fn read_body(
     if !parser.keyword(b"endobj") {
         return Err(Error::syntax("missing xref stream endobj"));
     }
-    diagnostics.extend(parser.take_diagnostics());
+    diagnostics.absorb(parser.take_diagnostics())?;
     let chain = pagura_codec::FilterChain::from_entries(
         dictionary.get(b"Filter"),
         dictionary.get(b"DecodeParms"),

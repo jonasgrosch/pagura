@@ -363,6 +363,13 @@ fn encode_payload(out: &mut Encoder, response: &Response) -> Result<()> {
                 out.push(&[match item.kind {
                     DiagnosticKind::Repair(_) => 0,
                     DiagnosticKind::Information(_) => 1,
+                    // A kind added to pagura-core needs a code in a new
+                    // protocol version; until then it cannot be encoded.
+                    _ => {
+                        return Err(Error::invalid_argument(
+                            "diagnostic kind has no wire code in this protocol version",
+                        ));
+                    }
                 }])?;
                 encode_diagnostic(out, item)?;
             }
@@ -399,6 +406,13 @@ fn encode_payload(out: &mut Encoder, response: &Response) -> Result<()> {
                 ErrorKind::Cycle => 5,
                 ErrorKind::Password => 6,
                 ErrorKind::InvalidArgument => 7,
+                // A kind added to pagura-core needs a code in a new protocol
+                // version; until then it cannot be encoded faithfully.
+                _ => {
+                    return Err(Error::invalid_argument(
+                        "error kind has no wire code in this protocol version",
+                    ));
+                }
             }])?;
             out.string(error.feature().map_or("", pagura::Feature::as_str))?;
             out.string(error.repair.map_or("", pagura::Repair::as_str))?;
@@ -473,6 +487,9 @@ impl Encoder {
             Position::File(offset) => (1, Some(offset), None),
             Position::Stream { object, offset } => (2, Some(offset), Some(object)),
             Position::Buffer(offset) => (3, Some(offset), None),
+            // A position kind added to pagura-core is sent as unknown until a
+            // protocol version gives it a code.
+            _ => (0, None, None),
         };
         self.push(&[kind])?;
         if let Some(offset) = offset {
