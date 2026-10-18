@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(unreachable_pub)]
 //! Deterministic serialization of new PDF documents (ISO 32000-2 clause 7.5).
 //!
 //! Output depends only on the inserted objects: object order is ascending

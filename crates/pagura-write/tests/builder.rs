@@ -9,12 +9,14 @@ fn catalog() -> NewObject {
     dictionary.insert(Name::new(b"Type"), Value::name(b"Catalog"));
     NewObject::Value(Value::Dictionary(dictionary))
 }
+
 fn builder(limits: Limits) -> Builder {
     let mut builder = Builder::new(limits);
     let inserted = builder.insert(ObjectId::new(1, 0), catalog());
     assert_eq!(inserted, Ok(()));
     builder
 }
+
 #[test]
 fn trailer_root_is_a_dictionary_not_a_stream() {
     let mut dictionary = Dictionary::new();
@@ -34,6 +36,7 @@ fn trailer_root_is_a_dictionary_not_a_stream() {
         ErrorKind::InvalidArgument
     );
 }
+
 #[test]
 fn new_documents_require_zero_generations() {
     let mut output = Builder::default();
@@ -44,6 +47,7 @@ fn new_documents_require_zero_generations() {
         assert_eq!(error.object, Some(id));
     }
 }
+
 #[test]
 fn names_exclude_nul_in_values_and_keys() {
     for value in [Value::name(b"bad\0name"), {
@@ -60,6 +64,7 @@ fn names_exclude_nul_in_values_and_keys() {
         assert_eq!(error.object, Some(ObjectId::new(2, 0)));
     }
 }
+
 #[test]
 fn sparse_cross_reference_ranges_are_bounded_before_serializing() {
     for number in [u32::MAX, u32::MAX - 1, 4_000_000] {
@@ -73,6 +78,7 @@ fn sparse_cross_reference_ranges_are_bounded_before_serializing() {
         );
     }
 }
+
 #[test]
 fn xref_entries_free_chain_and_trailer_match_independent_offsets() {
     let mut output = builder(Limits::default());
@@ -80,18 +86,28 @@ fn xref_entries_free_chain_and_trailer_match_independent_offsets() {
         .insert(ObjectId::new(3, 0), NewObject::Value(Value::Null))
         .unwrap();
     let bytes = output.finish(ObjectId::new(1, 0)).unwrap();
-    let prefix=b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n1 0 obj\n<< /Type /Catalog >>\nendobj\n3 0 obj\nnull\nendobj\n";
-    assert!(bytes.starts_with(prefix));
+    let header = b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n";
+    let first = b"1 0 obj\n<< /Type /Catalog >>\nendobj\n";
+    let third = b"3 0 obj\nnull\nendobj\n";
+    let prefix = [&header[..], first, third].concat();
+    assert!(bytes.starts_with(&prefix));
     let expected = format!(
-        "xref\n0 4\n0000000002 65535 f \n0000000015 00000 n \n0000000000 00000 f \n{:010} 00000 n \ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n{}\n%%EOF\n",
-        prefix
-            .windows(7)
-            .position(|bytes| bytes == b"3 0 obj")
-            .unwrap(),
+        concat!(
+            "xref\n0 4\n",
+            "0000000002 65535 f \n",
+            "{:010} 00000 n \n",
+            "0000000000 00000 f \n",
+            "{:010} 00000 n \n",
+            "trailer\n<< /Size 4 /Root 1 0 R >>\n",
+            "startxref\n{}\n%%EOF\n",
+        ),
+        header.len(),
+        header.len() + first.len(),
         prefix.len()
     );
     assert_eq!(&bytes[prefix.len()..], expected.as_bytes());
 }
+
 #[test]
 fn streams_beyond_the_stream_budget_fail() {
     let mut output = builder(Limits {
@@ -112,6 +128,7 @@ fn streams_beyond_the_stream_budget_fail() {
         ErrorKind::Limit
     );
 }
+
 #[test]
 fn the_file_budget_admits_exactly_the_written_size() {
     let finish = |file_bytes| {
@@ -130,6 +147,7 @@ fn the_file_budget_admits_exactly_the_written_size() {
     assert_eq!(finish(size).unwrap().len(), size);
     assert_eq!(finish(size - 1).unwrap_err().kind, ErrorKind::Limit);
 }
+
 #[test]
 fn the_value_budget_applies_per_object() {
     // An array of 999 nulls is 1000 values, exactly the budget.
@@ -151,6 +169,7 @@ fn the_value_budget_applies_per_object() {
     let error = output.finish(ObjectId::new(1, 0)).unwrap_err();
     assert_eq!((error.kind, error.object), (ErrorKind::Limit, Some(over)));
 }
+
 #[test]
 fn nesting_beyond_the_depth_limit_fails() {
     let limits = Limits {
@@ -167,6 +186,7 @@ fn nesting_beyond_the_depth_limit_fails() {
         assert_eq!(result.is_ok(), fits, "{levels} levels");
     }
 }
+
 #[test]
 fn stream_dictionaries_are_checked_as_written() {
     // value_nodes 2 admits the dictionary and the /Length the writer adds.
@@ -196,4 +216,43 @@ fn stream_dictionaries_are_checked_as_written() {
     assert!(stream(&[]).is_ok());
     let error = stream(&[(b"Filter", Value::name(b"ASCIIHexDecode"))]).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
+}
+
+#[test]
+fn insert_and_root_errors_name_the_object() {
+    let mut output = builder(Limits::default());
+    for id in [ObjectId::new(0, 0), ObjectId::new(1, 0)] {
+        let error = output
+            .insert(id, NewObject::Value(Value::Null))
+            .unwrap_err();
+        assert_eq!(
+            (error.kind, error.object),
+            (ErrorKind::InvalidArgument, Some(id))
+        );
+    }
+    let missing = ObjectId::new(2, 0);
+    let error = output.finish(missing).unwrap_err();
+    assert_eq!(
+        (error.kind, error.object),
+        (ErrorKind::MissingObject, Some(missing))
+    );
+    output
+        .insert(missing, NewObject::Value(Value::Null))
+        .unwrap();
+    let error = output.finish(missing).unwrap_err();
+    assert_eq!(
+        (error.kind, error.object),
+        (ErrorKind::InvalidArgument, Some(missing))
+    );
+
+    let mut full = Builder::new(Limits {
+        objects: 1,
+        ..Limits::default()
+    });
+    full.insert(ObjectId::new(1, 0), catalog()).unwrap();
+    let error = full.insert(missing, catalog()).unwrap_err();
+    assert_eq!(
+        (error.kind, error.object),
+        (ErrorKind::Limit, Some(missing))
+    );
 }

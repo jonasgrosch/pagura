@@ -39,9 +39,9 @@ impl Builder {
     /// and a limit error beyond [`Limits::objects`].
     pub fn insert(&mut self, id: ObjectId, object: NewObject) -> Result<()> {
         if id.number == 0 || self.objects.contains_key(&id.number) {
-            return Err(Error::invalid_argument(
-                "object number is zero or already used",
-            ));
+            return Err(
+                Error::invalid_argument("object number is zero or already used").in_object(id),
+            );
         }
         if id.generation != 0 {
             return Err(
@@ -50,7 +50,7 @@ impl Builder {
             );
         }
         if self.objects.len() >= self.limits.objects {
-            return Err(Error::limit("writer object budget exceeded"));
+            return Err(Error::limit("writer object budget exceeded").in_object(id));
         }
         self.objects.insert(id.number, object);
         Ok(())
@@ -66,14 +66,16 @@ impl Builder {
     pub fn finish(&self, root: ObjectId) -> Result<Vec<u8>> {
         let catalog = self
             .get(root)
-            .ok_or(Error::missing_object("Root object is missing"))?;
+            .ok_or(Error::missing_object("root object is missing").in_object(root))?;
         let is_catalog = matches!(
             catalog,
             NewObject::Value(Value::Dictionary(dictionary))
                 if dictionary.is_name(b"Type", b"Catalog")
         );
         if !is_catalog {
-            return Err(Error::invalid_argument("Root must be a Catalog dictionary"));
+            return Err(
+                Error::invalid_argument("root object must be a catalog dictionary").in_object(root),
+            );
         }
         for (&number, object) in &self.objects {
             self.validate_object(object)
