@@ -8,6 +8,8 @@ pub const VERSION: u32 = 1;
 pub const VERSION_1_1: u32 = 0x0001_0001;
 /// Protocol 1.2, adding reading operations without changing older layouts.
 pub const VERSION_1_2: u32 = 0x0001_0002;
+/// Protocol 1.3, adding painted content bounds without changing older layouts.
+pub const VERSION_1_3: u32 = 0x0001_0003;
 /// Kind byte for structured error responses.
 pub const ERROR_KIND: u8 = 255;
 
@@ -69,7 +71,7 @@ pub enum Request<'a> {
     Close(u32),
     /// Snapshot session retention accounting (v1.1).
     Stats,
-    /// Reading operations negotiated in v1.2.
+    /// Reading operations, with additions gated by the negotiated version.
     Reading(crate::reading::Request<'a>),
 }
 
@@ -216,7 +218,7 @@ pub fn decode(body: &[u8], limits: pagura::Limits) -> Result<RequestFrame<'_>> {
             },
         },
         9 => Request::Stats,
-        10..=15 => Request::Reading(crate::reading::decode(kind, &mut reader, limits)?),
+        10..=16 => Request::Reading(crate::reading::decode(kind, &mut reader, limits)?),
         _ => return Err(Error::syntax("unknown request kind").at(Position::Buffer(0))),
     };
     if reader.offset != body.len() {

@@ -17,6 +17,21 @@ export class PageLayout {
     return height * zoom + page * this.gap;
   }
   height(zoom) { return Math.max(0, this.top(this.count, zoom) - this.gap); }
+  /** Page with the greatest visible height; equal coverage retains the current
+   * page. The surface has 24px padding above the first page. Binary search skips
+   * offscreen pages; the loop is bounded by the viewport's visible page count. */
+  dominantPage(scrollTop, viewportHeight, zoom, current = 0) {
+    const top = scrollTop - this.gap, bottom = top + viewportHeight;
+    let best = Math.min(current, Math.max(0, this.count - 1)), coverage = 0;
+    let index = this.pageAt(top, zoom), start = this.top(index, zoom);
+    for (; index < this.count && start < bottom; index++) {
+      const height = this.heights[index] * zoom;
+      const visible = Math.max(0, Math.min(bottom, start + height) - Math.max(top, start));
+      if (visible > coverage || (visible === coverage && index === current)) { best = index; coverage = visible; }
+      start += height + this.gap;
+    }
+    return best;
+  }
   pageAt(offset, zoom) {
     let low = 0, high = this.count;
     while (low < high) {

@@ -5,6 +5,7 @@ import { destinationView } from '../web/destinations.mjs';
 import { readingWorkload } from '../web/reading_workload.mjs';
 import { OutlineTree } from '../web/outline_tree.mjs';
 import { ReadingView } from '../web/reading_view.mjs';
+import { navigationDocument } from '../web/navigation_document.mjs';
 /** Offline parity, independent pixel oracles and browser-shim checks.
  * Prerequisites: cargo build --locked --offline -p pagura-host; cargo wasm --offline
  * Usage: node tools/host_test.mjs
@@ -17,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { WASI } from 'node:wasi';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
-import { FrameDecoder, encodeRequest, HostError, decodeResponse, MAX_FILE, VERSION_1_1, VERSION_1_2 } from '../web/protocol.mjs';
+import { FrameDecoder, encodeRequest, HostError, decodeResponse, MAX_FILE, VERSION_1_1, VERSION_1_2, VERSION_1_3 } from '../web/protocol.mjs';
 import { HostFailure, failureReason } from '../web/failure.mjs';
 import { SessionClient } from '../web/client.mjs';
 import { createWasi } from '../web/wasi.mjs';
@@ -328,6 +329,19 @@ function testCodecAndCapabilities() {
   layout.setHeight(0, 64); layout.setHeight(1, 128);
   assert.equal(layout.top(2, 2), 432); assert.equal(layout.pageAt(431, 2), 1);
   assert.equal(layout.pageAt(432, 2), 2); assert.throws(() => layout.setHeight(0, NaN));
+  const pages = new PageLayout(3); for(let i=0;i<3;i++) pages.setHeight(i,100);
+  assert.equal(pages.dominantPage(120,100,1,0),1); // Eight pixels of the preceding page remain at the top.
+  assert.equal(pages.dominantPage(0,400,1,2),2); // Equal coverage retains an explicit destination.
+  assert.equal(pages.dominantPage(120,100,1,2),1);
+  assert.equal(pages.dominantPage(244,100,2,0),1);
+  for(const flag of [2,255]) assert.throws(()=>decodeResponse(Uint8Array.from([144,1,0,0,0,flag])),/bounds flag/);
+  const literalBounds=Buffer.concat([Buffer.from([144,1,0,0,0,1]),...[60,100,180,300].map((v)=>{const b=Buffer.alloc(8);b.writeDoubleLE(v);return b;})]);
+  assert.deepEqual(decodeResponse(literalBounds).value,{bounds:[60,100,180,300]});
+  for(let n=6;n<literalBounds.length;n++) assert.throws(()=>decodeResponse(literalBounds.subarray(0,n)),/Truncated/);
+  const invalidBounds=Buffer.from(literalBounds); invalidBounds.writeDoubleLE(NaN,6);
+  assert.throws(()=>decodeResponse(invalidBounds),/Invalid content bounds/);
+  invalidBounds.writeDoubleLE(999,6); assert.throws(()=>decodeResponse(invalidBounds),/Invalid content bounds/);
+  assert.throws(()=>decodeResponse(Buffer.concat([literalBounds,Buffer.from([0])])),/Trailing/);
   bytesEqual(encodeRequest(1, 7), Uint8Array.from([9, 0, 0, 0, 1, 7, 0, 0, 0, 1, 0, 0, 0]), 'literal JS handshake oracle');
   for (const bytes of [new Uint8Array([0, 0, 0, 0]), new Uint8Array([255, 255, 255, 255])]) {
     assert.throws(() => new FrameDecoder(() => {}).feed(bytes));
@@ -499,8 +513,11 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
       assert.equal(elements.get('previous').disabled, index === 0); assert.equal(elements.get('next').disabled, index === 1);
       checkPixels({ rgba: canvases(index)[0].image.data }, index === 0 ? firstPage : secondPageRgb({ x: 0, y: 0, width: 64, height: 64 }));
     };
-    checkPage(0);
     const settledPage = (index) => ready() && elements.get('page').value === String(index + 1) && canvases(index).length > 0;
+    // With both pages fully visible, equal coverage retains the last destination.
+    assert.equal(elements.get('page').value,'2');
+    elements.get('page').value='1'; elements.get('page').dispatch('change');
+    await waitFor(() => settledPage(0)); checkPage(0);
     elements.get('next').dispatch('click'); await waitFor(() => settledPage(1)); checkPage(1);
     elements.get('previous').dispatch('click'); await waitFor(() => settledPage(0)); checkPage(0);
     for (const index of [1, 0, 1]) {
@@ -724,8 +741,34 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
       const small = destinationView({fit,coordinates:[10,20,50,100]},geometry,1,1,1);
       assert.equal(small.zoom,0.1); assert.match(small.notice,/10%/);
     }
-    for (const fit of [5,6,7]) assert.throws(() => destinationView({fit,coordinates:[null,null,null,null]},geometry,200,400,1),/content bounds/);
+    const painted = [10,20,50,100];
+    assert.deepEqual(destinationView({fit:5,coordinates:[null,null,null,null]},geometry,200,400,1,{},painted),{zoom:5,x:50,y:500});
+    assert.deepEqual(destinationView({fit:6,coordinates:[80,null,null,null]},geometry,200,400,1,{},painted),{zoom:5,x:50,y:600});
+    assert.deepEqual(destinationView({fit:7,coordinates:[15,null,null,null]},geometry,200,400,1,{},painted),{zoom:5,x:75,y:500});
+    for(const [fit,expected] of [[5,{zoom:2,x:0,y:0}],[6,{zoom:2,x:0,y:240}],[7,{zoom:2,x:160,y:0}]]) {
+      assert.deepEqual(destinationView({fit,coordinates:[80,null,null,null]},geometry,200,400,1,{},null),expected);
+    }
     assert.throws(() => destinationView({fit:0,coordinates:[null,null,Infinity,null]},geometry,200,400,1),/Invalid destination zoom/);
+
+    elements.get('zoom').value='1'; elements.get('viewport').clientHeight=300;
+    picker.files=[new File([navigationDocument()],'content-fits.pdf')]; picker.dispatch('change');
+    await waitFor(() => ready() && elements.get('outline-tree').children.length===6);
+    for(let index=0;index<6;index++) {
+      const target=index<3?1:2, width=index<3?120:600, height=index<3?200:800;
+      const expected=index%3===0?Math.min(252/width,252/height):index%3===1?252/width:252/height;
+      elements.get('outline-tree').children[index].dispatch('keydown',{key:'Enter'});
+      await waitFor(() => ready() && elements.get('page').value===String(target+1) && view(target)?.style.width===`${600*expected}px`);
+      assert.equal(elements.get('error').hidden,true);
+      assert.equal(elements.get('page-label').textContent,`Label: ${target===1?'Painted':'Empty'}`);
+      // Model the browser's queued scroll event after programmatic navigation.
+      elements.get('viewport').dispatch('scroll');
+      await waitFor(ready); assert.equal(elements.get('page').value,String(target+1));
+    }
+    elements.get('zoom').value='1'; elements.get('zoom').dispatch('change');
+    elements.get('page').value='2'; elements.get('page').dispatch('change'); await waitFor(() => ready() && view(1));
+    elements.get('viewport').scrollTop=824-8; // 800px page and 24px inter-page gap.
+    elements.get('viewport').dispatch('scroll'); await waitFor(ready);
+    assert.equal(elements.get('page').value,'2');
 
     // Labels can arrive after visible links. Refresh names without adding a
     // second tab stop for a multiline link, and announce the updated name.
@@ -835,9 +878,39 @@ async function testReading(client, root, native, wasiRun) {
     const result = spawnSync(native, [], { input, timeout: 30000, maxBuffer: 64 * 1024 * 1024 });
     assert.ifError(result.error); assert.equal(result.status, 0, result.stderr?.toString());
     const wasi = await wasiRun(input, `reading-${name}`); assert.equal(wasi.code, 0);
-    bytesEqual(wasi.bytes, result.stdout, `reading ${name} native/WASI identity`); return parse(wasi.bytes);
+    // These small fixtures fit both targets' byte budgets. Capacity accounting
+    // uses target allocation sizes, so only its eight text-byte bytes may
+    // differ here; entry counts and every document result/layout stay exact.
+    const accounted = (bytes) => {
+      const copy = Buffer.from(bytes); let offset=0;
+      for(const frame of parse(bytes)) {
+        const length = copy.readUInt32LE(offset);
+        if(frame.kind === 143) {
+          assert.equal(frame.value.textBytes === 0, frame.value.textPages === 0);
+          assert.ok(frame.value.textBytes <= 16*1024*1024);
+          copy.fill(0,offset+4+29,offset+4+37);
+        }
+        offset+=4+length;
+      }
+      return copy;
+    };
+    bytesEqual(accounted(wasi.bytes), accounted(result.stdout), `reading ${name} native/WASI identity`); return parse(wasi.bytes);
   };
   const open = (bytes, recovery = 1) => [2, { bytes, password: new Uint8Array(), recovery }];
+  const navigation = navigationDocument();
+  const bounds = await parity('content-bounds', [open(navigation), ...[0,1,2].map((page) => [16,{document:1,page}]),
+    [16,{document:1,page:99}], [16,{document:99,page:0}]], VERSION_1_3);
+  assert.deepEqual(bounds.slice(2,5).map((f)=>f.value.bounds),[[20,480,320,740],[60,100,180,300],null]);
+  assert.ok(bounds.slice(5).every((f)=>f.kind===255 && f.value.category===7));
+  for(const version of [1,VERSION_1_1,VERSION_1_2]) {
+    const older = await parity(`bounds-older-${version}`, [open(navigation),[16,{document:1,page:1}],[3,{document:1,page:1}]],version);
+    assert.equal(older[2].value.category,7); assert.equal(older[3].kind,131);
+  }
+  const heavy = readingWorkload(4,50), heavyDoc = await client.open(heavy.bytes);
+  for(let page=0;page<4;page++) await client.pageText(heavyDoc.document,page);
+  const heavyStats = await client.readingStats();
+  assert.equal(heavyStats.textPages,4); assert.ok(heavyStats.textBytes<16*1024*1024);
+  await client.close(heavyDoc.document);
   const manifest = JSON.parse(await readFile(join(root, 'corpus/manifests/text.json'), 'utf8'));
   for (const entry of manifest.cases.filter((entry) => entry.id.startsWith('text/extract-'))) {
     const pdf = new Uint8Array(await readFile(join(root, entry.files['.pdf'].path)));

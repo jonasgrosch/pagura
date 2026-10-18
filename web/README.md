@@ -119,7 +119,7 @@ cargo wasm --offline
 node tools/host_test.mjs
 ```
 
-Tests preserve complete native/WASI response identity and independent classic
+Tests preserve native/WASI document-response identity and independent classic
 PPM oracles, plus page-2 full/partial geometry oracles, generation skips, cache
 reuse/eviction, continuous lazy layout, navigation, fit presets, gestures,
 password retry/cancel, diagnostics and explicit failures. In-memory HTTP tests
@@ -237,14 +237,15 @@ partial native selections are therefore lost across zoom/eviction.
 
 Link areas are focusable, named links activated by Enter or Space. Internal
 XYZ/Fit/FitH/FitV/FitR destinations preserve fit and coordinate instructions,
-including nullable coordinates and rotation. FitB/FitBH/FitBV are preserved on
-the wire but report that engine content bounds are unavailable; no guessed
-page-box fallback is used. A dedicated content-fit adapter preserves that
-unavailable result until painted bounds can be requested from the host.
+including nullable coordinates and rotation. FitB/FitBH/FitBV use conservative
+painted-content bounds from protocol 1.3, transformed through rotation and
+UserUnit. FitB centres the bounds within document scroll limits; FitBH/FitBV fit one axis and
+honour the destination coordinate on the other. Empty pages use the crop box.
 Destination zoom outside 10%–800% is clamped into that range with a short
 informational notice; destination coordinates use the clamped zoom.
-The host needs `DisplayList::content_bounds() -> Result<Option<Rect>>` in default
-user space to implement those three fits accurately.
+Bounds and tiles share the host's compiled-page cache. The page field follows
+the page with the greatest visible height, retaining the selected destination
+when visible heights tie; a strip of the previous page no longer wins.
 
 URI/Base are inert data until activation. Relative references require an
 absolute PDF Base; the viewer URL is never a fallback. Only http, https and
@@ -275,7 +276,30 @@ Tests use markup-bearing titles/text to verify inert nodes. Protocol 1.2 adds
 kinds 10–15; older sessions reject them operationally and retain their layouts.
 See PROTOCOL.md for the complete bounded layouts and cursor semantics.
 
+## Real-browser navigation check
+
+Build the host and start `python3 tools/serve_web.py`. Start a separate Chrome
+profile with a loopback debugging port, for example on macOS:
+
+```
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --disable-background-networking --remote-debugging-port=9222 --user-data-dir=/tmp/pagura-browser-check
+node web/browser_test.mjs http://127.0.0.1:9222 http://127.0.0.1:8000/
+```
+
+The dependency-free check opens and closes its own tab. It loads independently
+authored geometry through the file input, checks FitB/FitBH/FitBV for painted
+and empty pages, waits for rendered tiles and native scroll events, and checks
+the page field when a strip of the previous page remains visible. It requires
+cross-origin isolation, verifies page labels and zoom, fails on console errors,
+and prints its raw observations and browser identity. Use the separate profile
+above rather than an ordinary browsing profile. Both supplied URLs must use
+loopback HTTP.
+
 ## Reading measurements
+
+The text LRU charges the engine's retained-capacity estimate plus 512 bytes of
+cache bookkeeping per page. Its counters are target-specific; they are not RSS
+or WebAssembly linear-memory measurements.
 
 ```
 node web/reading_benchmark.mjs target/wasm32-wasip1/release/pagura-host.wasm > reading.json

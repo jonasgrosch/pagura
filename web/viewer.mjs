@@ -264,7 +264,9 @@ async function followDestination(action) {
     viewport.scrollTop - layout.top(page, zoom)) : null;
   const info = await pageInfo(action.page, epoch);
   if (!info || epoch !== documentEpoch) return;
-  const plan = destinationView(action, info, viewport.clientWidth - 48, viewport.clientHeight - 48, zoom, retained ? { left: retained[0], top: retained[1] } : {});
+  const bounds = action.fit >= 5 ? (await client.contentBounds(handle, action.page)).bounds : null;
+  if (epoch !== documentEpoch) return;
+  const plan = destinationView(action, info, viewport.clientWidth - 48, viewport.clientHeight - 48, zoom, retained ? { left: retained[0], top: retained[1] } : {}, bounds);
   zoomInput.value = 'custom'; changeZoom(plan.zoom, 0);
   await navigate(action.page); if (epoch !== documentEpoch) return;
   if (plan.y !== null) viewport.scrollTop = layout.top(action.page, zoom) + plan.y;
@@ -324,7 +326,7 @@ window.addEventListener('dragover', (event) => { event.preventDefault(); documen
 window.addEventListener('dragleave', (event) => { if (!event.relatedTarget) document.body.classList.remove('dragging'); });
 window.addEventListener('drop', (event) => { event.preventDefault(); document.body.classList.remove('dragging'); void openFile(event.dataTransfer.files[0]); });
 viewport.addEventListener('scroll', () => {
-  if (layout.count) { page = layout.pageAt(viewport.scrollTop + 1, zoom); controls(); }
+  if (layout.count) { page = layout.dominantPage(viewport.scrollTop, viewport.clientHeight, zoom, page); controls(); }
   invalidate();
 }, { passive: true });
 viewport.addEventListener('wheel', (event) => {

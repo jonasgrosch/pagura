@@ -84,6 +84,8 @@ pub enum Request<'a> {
     Labels(u32),
     /// Extended session accounting; kind 9 remains unchanged.
     Stats,
+    /// Conservative painted bounds in default user space (document, page; v1.3).
+    Bounds(u32, u32),
 }
 /// A fully bounded reading payload. Its wire kind and data are constructed only
 /// by the adapter; v1/v1.1 serialization never changes.
@@ -127,6 +129,7 @@ pub(crate) fn decode<'a>(kind: u8, reader: &mut Reader<'a>, limits: Limits) -> R
         12 => Request::Links(reader.u32()?, reader.u32()?),
         13 => Request::Outlines(reader.u32()?),
         14 => Request::Labels(reader.u32()?),
+        16 => Request::Bounds(reader.u32()?, reader.u32()?),
         _ => Request::Stats,
     })
 }
@@ -159,25 +162,8 @@ pub(crate) fn page_text(page: &pagura::TextPage, cap: usize) -> Result<Response>
     Ok(Response::new(138, out))
 }
 pub(crate) fn text_charge(page: &pagura::TextPage) -> usize {
-    text_retained_bytes(page).saturating_add(512)
-}
-
-fn text_retained_bytes(page: &pagura::TextPage) -> usize {
-    // Replace this estimate with page.retained_bytes() when TextPage exposes it.
-    // Cache bookkeeping is charged separately by text_charge.
-    // Fixed target-independent estimates, not allocator telemetry. Source bytes
-    // are charged separately. Over-budget pages can be served without retention.
-    page.glyphs()
-        .len()
-        .saturating_mul(2048)
-        .saturating_add(
-            page.reading_characters()
-                .len()
-                .saturating_add(page.characters().len())
-                .saturating_mul(128),
-        )
-        .saturating_add(page.text().len())
-        .saturating_add(page.content_text().len())
-        .saturating_add(page.marked_content().len().saturating_mul(256))
+    // TextPage excludes its inline header and allocator bookkeeping; retain the
+    // fixed cache-entry allowance in addition to the owned-capacity estimate.
+    page.retained_bytes().saturating_add(512)
 }
 pub(crate) use navigation::{labels, links, outlines};

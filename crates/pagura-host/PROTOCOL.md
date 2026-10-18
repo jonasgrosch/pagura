@@ -1,7 +1,7 @@
-# Pagura session protocol v1, v1.1 and v1.2
+# Pagura session protocol v1 through v1.3
 
-ADR 0005 defines a synchronous command over stdin/stdout, identically on native
-and wasm32-wasip1. This document freezes the v1 byte layout, including the refused-repair field.
+ADR 0005 defines a synchronous command over stdin/stdout with the same layouts
+on native and wasm32-wasip1. This document freezes the v1 byte layout, including the refused-repair field.
 Future incompatible changes require a new protocol version. No JSON, newline,
 platform-sized integers, implicit padding, compression, or unsolicited frames.
 All integers and IEEE-754 binary64 values are **little endian**. PDF and password
@@ -15,7 +15,9 @@ before a complete body is read uses identifier zero. Complete but malformed
 bodies use the identifier from that body. There is exactly one response per
 complete valid request. Callers serialize requests; the host flushes responses.
 
-The first request is `hello(1)` for v1 or `hello(65537)` (0x00010001) for v1.1, or `hello(65538)` (0x00010002) for v1.2. Repeated hello, unsupported versions,
+The first request is `hello(1)` for v1, `hello(65537)` (0x00010001) for v1.1,
+`hello(65538)` (0x00010002) for v1.2, or `hello(65539)` (0x00010003) for v1.3.
+Repeated hello, unsupported versions,
 non-increasing IDs, unknown kinds, invalid recovery bytes, trailing payload,
 truncation and oversized frames emit one error and **end the session**. Clean
 EOF between frames is successful. EOF inside a frame is malformed. Native exit
@@ -302,12 +304,43 @@ unknown kinds and trailing bytes are terminal protocol errors as before.
 
 Extracted TextPages have an independent LRU, keyed by document and page, at most
 eight entries and min(Limits.document_bytes,16 MiB) by default. The configurable
-Session::with_text_cache_bytes budget charges 512 bytes per entry, 2048 per
-positioned glyph, 128 per content/reading character, 256 per marked span and
-both exported string byte lengths. Estimates are fixed across targets; no
-source-size multiplier is used. Hits refresh recency; over-budget pages are
+Session::with_text_cache_bytes budget charges TextPage::retained_bytes() plus
+512 bytes per entry for its inline header and cache bookkeeping. The engine's
+capacity estimate counts both page and logical text, vectors, strings and shared
+source allocations once per page; Arc reference counts do not change it.
+Allocation sizes differ by target: text_bytes and, near the byte budget,
+eviction and text_pages can differ between native and WASI. Protocol layouts
+and document results stay identical. Accounting counters are not cross-target
+heap-size constants or document-output parity evidence.
+No source-size multiplier is used. Hits refresh recency; over-budget pages are
 served without retention. Close releases the text cache for that document.
 Kind 15 reports these charges and entry counts; kind 9 stays unchanged.
 Charges exclude font caches, document internals, temporaries and transport/JS
 buffers and are not heap/RSS measurements. Text extraction may compile a page
 independently of its cached painting list; no text is added to display lists.
+
+## Painted content bounds (v1.3)
+
+`hello(65539)` enables kinds 1–15 unchanged plus kind 16. Older sessions reject
+a valid kind-16 request with operational InvalidArgument and remain usable.
+
+| Kind | Request payload | Success kind | Success payload |
+|---|---|---|---|
+| 16 content_bounds | `u32 document,page` | 144 | `u8 present; [f64 x0,y0,x1,y1]` |
+
+Present is exactly 0 or 1. A zero has no following coordinates and means the
+page has no painted bounds. A one has four finite coordinates, ordered as an
+effective crop rectangle. Payloads are exactly 1 or 33 bytes, before kind/id.
+They use default user space, before Rotate, UserUnit or zoom. These are the
+renderer’s conservative painted-content bounds, clamped to the crop box
+(12.3.2.2); curves, clips, strokes and groups can overestimate the painted area.
+The viewer uses them for FitB/FitBH/FitBV, falling back to the crop box for an
+empty page. This fallback is viewer policy, not fabricated engine geometry.
+
+The request reuses or admits the page's compiled display list under its existing
+LRU budget, so bounds and subsequent tiles share compilation. Unknown handles
+and invalid page indexes return operational InvalidArgument at payload offsets
+5 and 9 respectively; compilation errors and bounds traversal limits preserve
+their structured category/context. A response-budget failure returns Limit
+without partial geometry. Request truncation or trailing bytes remain terminal
+protocol errors. The request is synchronous and never interrupts running work.

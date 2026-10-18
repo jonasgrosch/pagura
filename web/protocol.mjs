@@ -4,6 +4,7 @@ export const MAX_FRAME = 512 * 1024 * 1024 + 32 * 1024 * 1024 + 14;
 export const MAX_FILE = 512 * 1024 * 1024;
 export const VERSION_1_1 = 0x00010001;
 export const VERSION_1_2 = 0x00010002;
+export const VERSION_1_3 = 0x00010003;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 class Reader {
@@ -92,7 +93,7 @@ export function decodeResponse(body) {
       break;
     }
     case 137: value = { sourceBytes: r.offset64(), cacheBytes: r.offset64(), documents: r.u32(), lists: r.u32() }; break;
-    case 138: case 139: case 140: case 141: case 142: case 143: value = decodeReading(kind, r); break;
+    case 138: case 139: case 140: case 141: case 142: case 143: case 144: value = decodeReading(kind, r); break;
     case 255: {
       const category = r.u8(), tag = r.text(), repair = r.text(), message = r.text();
       if (category < 1 || category > 7 || (category === 3) !== (tag.length > 0) || (repair.length > 0 && category !== 1)) throw new Error('Invalid structured error');
@@ -127,14 +128,14 @@ export class FrameDecoder {
   finish() { if (this.used || this.body) throw new Error('Truncated response at host exit'); }
 }
 
-/** Encode canonical v1 and additive v1.1 requests. All numeric arguments are checked. */
+/** Encode canonical v1 and additive requests. All numeric arguments are checked. */
 export function encodeRequest(kind, id, values = {}) {
   const u32 = (value) => {
     if (!Number.isInteger(value) || value < 0 || value > 0xffffffff) throw new Error('Expected a u32 argument');
     return value;
   };
   if (!u32(id)) throw new Error('Request identifier must be nonzero');
-  if (kind >= 10 && kind <= 15) {
+  if (kind >= 10 && kind <= 16) {
     const payload = encodeReading(kind, values), bytes = new Uint8Array(payload.length + 9), view = new DataView(bytes.buffer);
     view.setUint32(0, payload.length + 5, true); bytes[4] = kind; view.setUint32(5, id, true); bytes.set(payload, 9); return bytes;
   }

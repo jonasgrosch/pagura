@@ -1,4 +1,4 @@
-/** Additive v1.2 reading layouts. Counts are checked before allocating arrays. */
+/** Additive reading and content-bounds layouts. Counts precede allocations. */
 function list(r, minimum, read, max = 1000000) {
   const count = r.u32();
   if (count > max || count > Math.floor((r.bytes.length - r.offset) / minimum)) throw new Error('Invalid reading record count');
@@ -60,17 +60,23 @@ export function decodeReading(kind, r) {
   if (kind === 142) return list(r, 4, () => r.text(), 200000);
   if (kind === 143) return { sourceBytes: r.offset64(), cacheBytes: r.offset64(), documents: r.u32(), lists: r.u32(),
     textBytes: r.offset64(), textPages: r.u32() };
+  if (kind === 144) {
+    const present = r.u8(); if (present > 1) throw new Error('Invalid content bounds flag');
+    const bounds = present ? Array.from({length:4}, () => r.f64()) : null;
+    if (bounds && (!bounds.every(Number.isFinite) || bounds[0] > bounds[2] || bounds[1] > bounds[3])) throw new Error('Invalid content bounds');
+    return { bounds };
+  }
   throw new Error('Unknown reading response');
 }
 export function encodeReading(kind, values) {
   if (kind === 15) return new Uint8Array();
   const query = kind === 11 ? new TextEncoder().encode(values.query) : null;
   if (query && query.length > 4096) throw new Error('Search query budget exceeded');
-  const bytes = new Uint8Array(kind === 11 ? 25 + query.length : kind === 10 || kind === 12 ? 8 : 4);
+  const bytes = new Uint8Array(kind === 11 ? 25 + query.length : kind === 10 || kind === 12 || kind === 16 ? 8 : 4);
   const view = new DataView(bytes.buffer); let offset = 0;
   const u32 = (n) => { if (!Number.isInteger(n) || n < 0 || n > 0xffffffff) throw new Error('Expected u32 reading argument'); view.setUint32(offset, n, true); offset += 4; };
   u32(values.document);
-  if (kind === 10 || kind === 12) u32(values.page);
+  if (kind === 10 || kind === 12 || kind === 16) u32(values.page);
   if (kind === 11) {
     for (const field of ['start', 'end', 'offset', 'limit']) u32(values[field]);
     if (!Number.isInteger(values.flags) || values.flags < 0 || values.flags > 7) throw new Error('Invalid search flags');

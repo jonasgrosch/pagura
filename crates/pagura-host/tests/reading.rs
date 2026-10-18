@@ -45,6 +45,8 @@ fn bodies(bytes: &[u8]) -> Vec<&[u8]> {
 #[test]
 fn native_binary_and_session_match_literal_text_layout() {
     let pdf = fixture("text", "extract-simple.pdf");
+    let document = pagura::Document::open(pdf.clone(), &pagura::OpenOptions::default()).unwrap();
+    let text = pagura::text_page(&document, document.page(0).unwrap()).unwrap();
     let mut input = frame(1, 1, &protocol::VERSION_1_2.to_le_bytes());
     input.extend(frame(2, 2, &open(&pdf)));
     input.extend(frame(10, 3, &u32s(&[1, 0])));
@@ -75,9 +77,8 @@ fn native_binary_and_session_match_literal_text_layout() {
     assert_eq!(frames[2], expected);
     assert_eq!(frames[3][0], 143);
     assert_eq!(frames[3].len(), 41);
-    // Two glyphs, four content/reading characters, two strings of length two,
-    // and the fixed cache-entry charge. The estimator stays conservative.
-    assert_eq!(&frames[3][29..37], &5124_u64.to_le_bytes());
+    let charge = u64::try_from(text.retained_bytes() + 512).unwrap();
+    assert_eq!(&frames[3][29..37], &charge.to_le_bytes());
     assert_eq!(&frames[3][37..41], &1_u32.to_le_bytes());
     assert_eq!(&frames[5][5..], &[0; 36]);
 }
@@ -94,6 +95,7 @@ fn all_reading_requests_reject_truncation_and_preserve_older_sessions() {
         (13, u32s(&[1])),
         (14, u32s(&[1])),
         (15, vec![]),
+        (16, u32s(&[1, 0])),
     ];
     for (kind, payload) in &payloads {
         let encoded = frame(*kind, 2, payload);
@@ -116,8 +118,74 @@ fn all_reading_requests_reject_truncation_and_preserve_older_sessions() {
         Session::default()
             .serve(&mut input.as_slice(), &mut out)
             .unwrap();
-        assert!(bodies(&out)[1..7].iter().all(|b| b[0] == 255 && b[5] == 7));
+        assert!(bodies(&out)[1..8].iter().all(|b| b[0] == 255 && b[5] == 7));
     }
+}
+
+#[test]
+fn content_bounds_are_additive_and_match_independent_rectangle_geometry() {
+    let pdf = fixture("classic", "two-pages.pdf");
+    for version in [
+        protocol::VERSION,
+        protocol::VERSION_1_1,
+        protocol::VERSION_1_2,
+        protocol::VERSION_1_3,
+    ] {
+        let mut input = frame(1, 1, &version.to_le_bytes());
+        input.extend(frame(2, 2, &open(&pdf)));
+        input.extend(frame(16, 3, &u32s(&[1, 0])));
+        input.extend(frame(16, 4, &u32s(&[1, 1])));
+        input.extend(frame(3, 5, &u32s(&[1, 0])));
+        input.extend(frame(16, 6, &u32s(&[1, 2])));
+        input.extend(frame(16, 7, &u32s(&[99, 0])));
+        input.extend(frame(16, 8, &u32s(&[1, 0])));
+        input.extend(frame(9, 9, &[]));
+        let mut out = Vec::new();
+        Session::default()
+            .serve(&mut input.as_slice(), &mut out)
+            .unwrap();
+        let frames = bodies(&out);
+        assert_eq!(frames[4][0], 131);
+        if version == protocol::VERSION_1_3 {
+            assert_eq!(&frames[8][25..29], &2_u32.to_le_bytes());
+            for (id, coordinates) in [(3_u32, [8_f64, 8., 24., 24.]), (4, [32., 32., 64., 64.])] {
+                let mut expected = vec![144];
+                expected.extend(id.to_le_bytes());
+                expected.push(1);
+                for value in coordinates {
+                    expected.extend(value.to_le_bytes());
+                }
+                assert_eq!(frames[usize::try_from(id - 1).unwrap()], expected);
+            }
+        } else {
+            for result in &frames[2..4] {
+                assert_eq!((result[0], result[5]), (255, 7));
+            }
+        }
+        for result in &frames[5..7] {
+            assert_eq!((result[0], result[5]), (255, 7));
+        }
+    }
+    let blank = fixture("classic", "blank.pdf");
+    let mut input = frame(1, 1, &protocol::VERSION_1_3.to_le_bytes());
+    input.extend(frame(2, 2, &open(&blank)));
+    input.extend(frame(16, 3, &u32s(&[1, 0])));
+    let mut out = Vec::new();
+    Session::default()
+        .serve(&mut input.as_slice(), &mut out)
+        .unwrap();
+    assert_eq!(bodies(&out)[2], &[144, 3, 0, 0, 0, 0]);
+    let mut input = frame(1, 1, &protocol::VERSION_1_3.to_le_bytes());
+    input.extend(frame(2, 2, &open(&pdf)));
+    input.extend(frame(16, 3, &u32s(&[1, 0])));
+    let mut out = Vec::new();
+    Session::new(Limits {
+        decoded_bytes: 32,
+        ..Limits::default()
+    })
+    .serve(&mut input.as_slice(), &mut out)
+    .unwrap();
+    assert_eq!((bodies(&out)[2][0], bodies(&out)[2][5]), (255, 2));
 }
 #[test]
 fn text_cache_budget_eviction_and_close_release_accounting() {

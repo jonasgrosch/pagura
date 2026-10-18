@@ -188,7 +188,10 @@ impl Session {
                 if self.version.is_none()
                     && matches!(
                         *version,
-                        protocol::VERSION | protocol::VERSION_1_1 | protocol::VERSION_1_2
+                        protocol::VERSION
+                            | protocol::VERSION_1_1
+                            | protocol::VERSION_1_2
+                            | protocol::VERSION_1_3
                     ) =>
             {
                 self.version = Some(*version);
@@ -448,13 +451,47 @@ impl Session {
         request: crate::reading::Request<'_>,
     ) -> Result<crate::reading::Response> {
         use crate::reading::{Request, Response, Writer};
-        if self.version != Some(protocol::VERSION_1_2) {
+        if matches!(request, Request::Bounds(..)) && self.version != Some(protocol::VERSION_1_3) {
+            return Err(Error::invalid_argument(
+                "content bounds require protocol 1.3",
+            ));
+        }
+        if !matches!(
+            self.version,
+            Some(protocol::VERSION_1_2 | protocol::VERSION_1_3)
+        ) {
             return Err(Error::invalid_argument(
                 "reading request requires protocol 1.2",
             ));
         }
         let cap = self.limits.decoded_bytes.min(32 * 1024 * 1024);
         match request {
+            Request::Bounds(doc, page) => {
+                let key = (doc, page);
+                let list = if let Some(list) = self.cache.get(key) {
+                    list
+                } else {
+                    let context = self.documents.get(&doc).ok_or(
+                        Error::invalid_argument("unknown document handle").at(Position::Buffer(5)),
+                    )?;
+                    let page = context
+                        .document()
+                        .page(index(page)?)
+                        .map_err(|error| error.at(Position::Buffer(9)))?;
+                    let list = Arc::new(context.compile_page(page)?);
+                    self.cache.insert(key, Arc::clone(&list));
+                    list
+                };
+                let bounds = list.content_bounds()?;
+                let mut out = Writer::new(cap);
+                out.u8(u8::from(bounds.is_some()))?;
+                if let Some(bounds) = bounds {
+                    for value in [bounds.x0, bounds.y0, bounds.x1, bounds.y1] {
+                        out.f64(value)?;
+                    }
+                }
+                Ok(Response::new(144, out))
+            }
             Request::Text(doc, page) => {
                 crate::reading::page_text(self.extracted(doc, page)?.as_ref(), cap)
             }
@@ -543,7 +580,7 @@ impl Session {
     fn require_extensions(&self) -> Result<()> {
         if matches!(
             self.version,
-            Some(protocol::VERSION_1_1 | protocol::VERSION_1_2)
+            Some(protocol::VERSION_1_1 | protocol::VERSION_1_2 | protocol::VERSION_1_3)
         ) {
             Ok(())
         } else {
