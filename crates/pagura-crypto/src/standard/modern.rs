@@ -7,7 +7,7 @@ use super::{
     file_key,
 };
 use crate::aes::Aes;
-use crate::{Sha256, sha256, sha384, sha512};
+use crate::{Digest, Sha256, Sha384, Sha512};
 
 // The parent validates parameter lengths before calling this module.
 // Algorithms 2.A and 2.B. All intermediate lengths are bounded: password <=127,
@@ -55,15 +55,15 @@ fn modern_hash(revision: u8, password: &[u8], salt: &[u8], user: &[u8]) -> Resul
             % 3;
         key_len = match selector {
             0 => {
-                key[..32].copy_from_slice(&sha256(&encrypted));
+                key[..32].copy_from_slice(&Sha256::digest(&encrypted));
                 32
             }
             1 => {
-                key[..48].copy_from_slice(&sha384(&encrypted));
+                key[..48].copy_from_slice(&Sha384::digest(&encrypted));
                 48
             }
             _ => {
-                key.copy_from_slice(&sha512(&encrypted));
+                key.copy_from_slice(&Sha512::digest(&encrypted));
                 64
             }
         };
