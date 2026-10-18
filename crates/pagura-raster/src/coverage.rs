@@ -3,7 +3,7 @@
 //! One active-edge order follows prepared vertex events across scanlines.
 //! Endpoint inversions partition crossing blocks and discover their events in
 //! one pass. Winding boundaries are selected before integration; partial-cell
-//! areas and prefix cover differences resolve in one scan over each row.
+//! areas and prefix cover differences resolve at touched cells and constant runs.
 //! Horizontal clipping projects outside geometry onto viewport boundaries,
 //! preserving winding and bounding work by the surface.
 
@@ -99,6 +99,7 @@ struct Sweep {
 struct Row {
     areas: Vec<f64>,
     covers: Vec<f64>,
+    touched: Vec<u64>,
     origin: u32,
     work: usize,
     maximum: usize,
@@ -106,6 +107,16 @@ struct Row {
 }
 impl Row {
     fn reset(&mut self, width: usize, origin: u32) -> Result<()> {
+        // A prior budget error may have left a partially integrated row.
+        for x in take_cells(&mut self.touched) {
+            self.areas[x] = 0.0;
+            self.covers[x] = 0.0;
+        }
+        let words = width.div_ceil(64);
+        self.touched
+            .try_reserve_exact(words.saturating_sub(self.touched.len()))
+            .map_err(|_| Error::limit("scanline bitset allocation failed"))?;
+        self.touched.resize(words, 0);
         for buffer in [&mut self.areas, &mut self.covers] {
             buffer
                 .try_reserve_exact(width.saturating_sub(buffer.len()))
@@ -138,22 +149,64 @@ impl Row {
         if start > 0 {
             if let Some(first) = self.covers.first_mut() {
                 *first += area;
+                self.touched[0] |= 1;
             }
             if let Some(after) = self.covers.get_mut(start) {
                 *after -= area;
+                self.touched[start / 64] |= 1 << (start % 64);
             }
         }
         for (x, target) in self.areas.iter_mut().enumerate().take(end).skip(start) {
-            let x = f64::from(u32::try_from(x).map_err(|_| Error::limit("column exceeds u32"))?);
-            *target += area * ramp(a - x, b - x);
+            let column =
+                f64::from(u32::try_from(x).map_err(|_| Error::limit("column exceeds u32"))?);
+            *target += area * ramp(a - column, b - column);
+            self.touched[x / 64] |= 1 << (x % 64);
         }
         Ok(())
     }
-    fn finish(&self, output: &mut [u8]) {
+    fn finish(&mut self, output: &mut [u8]) -> Result<()> {
+        let cells: usize = self.touched.iter().map(|w| w.count_ones() as usize).sum();
+        // Charge both bitset passes as well as cells, before draining any state.
+        self.charge(cells + 2 * self.touched.len() + 1)?;
         let mut cover = 0.0;
-        for ((out, area), delta) in output.iter_mut().zip(&self.areas).zip(&self.covers) {
-            cover += delta;
-            *out = quantize(area + cover);
+        let mut left = 0;
+        // Untouched entries are +0.0. Visiting written deltas in increasing x
+        // preserves the dense scan's addition order; omitted +0.0 additions
+        // cannot change coverage. Area is zero between touched cells, so every
+        // pixel in a gap has quantize(cover). Output was cleared once per mask.
+        for x in take_cells(&mut self.touched) {
+            fill_run(&mut output[left..x], cover);
+            cover += std::mem::take(&mut self.covers[x]);
+            output[x] = quantize(std::mem::take(&mut self.areas[x]) + cover);
+            left = x + 1;
+        }
+        fill_run(&mut output[left..], cover);
+        Ok(())
+    }
+}
+
+// Draining clears only nonzero bitset words and yields each written cell once.
+fn take_cells(words: &mut [u64]) -> impl Iterator<Item = usize> + '_ {
+    words.iter_mut().enumerate().flat_map(|(word, marked)| {
+        let mut bits = *marked;
+        if bits != 0 {
+            *marked = 0;
+        }
+        std::iter::from_fn(move || {
+            if bits == 0 {
+                return None;
+            }
+            let x = word * 64 + bits.trailing_zeros() as usize;
+            bits &= bits - 1;
+            Some(x)
+        })
+    })
+}
+fn fill_run(output: &mut [u8], cover: f64) {
+    if !output.is_empty() {
+        let value = quantize(cover);
+        if value != 0 {
+            output.fill(value);
         }
     }
 }
@@ -178,6 +231,7 @@ impl Scratch {
         let buffers = [
             bytes(&self.row.areas),
             bytes(&self.row.covers),
+            bytes(&self.row.touched),
             bytes(&self.edges),
             bytes(&self.raw),
             bytes(&self.boundary),
@@ -270,8 +324,6 @@ pub(crate) fn coverage(
         if active.is_empty() && edges.get(admitted).is_none_or(|e| e.a.y >= hi) {
             continue;
         }
-        row.areas.fill(0.0);
-        row.covers.fill(0.0);
         let mut start = lo;
         loop {
             let end = vertices.peek().copied().unwrap_or(hi).min(hi);
@@ -299,8 +351,7 @@ pub(crate) fn coverage(
             vertices.next();
             start = end;
         }
-        row.charge(stride)?;
-        row.finish(output);
+        row.finish(output)?;
     }
     Ok(())
 }
@@ -691,3 +742,6 @@ pub(crate) fn charge(work: &mut usize, amount: usize, maximum: usize) -> Result<
         .ok_or(Error::limit("raster work budget exceeded"))?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;
