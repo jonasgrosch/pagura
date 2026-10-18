@@ -3,7 +3,7 @@
 //! Binary package-merge selects the cheapest 2*n-2 items at the last level.
 //! Each selected occurrence of a leaf contributes one bit to its code length.
 //! Stable weight/creation-order ties make the construction deterministic.
-use crate::encoding::{filled, limit};
+use crate::bounded::{filled, limit};
 use pagura_core::Result;
 
 #[derive(Clone, Copy)]

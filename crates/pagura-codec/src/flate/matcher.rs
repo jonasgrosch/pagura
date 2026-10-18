@@ -1,6 +1,6 @@
 //! Bounded hash-chain LZ77 matching (RFC 1951 3.2.3/3.2.5 and section 4).
 use super::Level;
-use crate::encoding::filled;
+use crate::bounded::filled;
 use pagura_core::Result;
 
 const WINDOW: usize = 32768;
