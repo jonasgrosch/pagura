@@ -141,7 +141,12 @@ fn groups(page: &TextPage, plan: &Plan<'_>, budget: &mut Budget) -> Result<Vec<V
             owners[range.clone()].fill(Some(index));
         }
     }
-    budget.store(page.positioned.marked.len().saturating_mul(80))?;
+    budget.store(
+        page.positioned
+            .marked
+            .len()
+            .saturating_mul(super::MAP_ENTRY_BYTES),
+    )?;
     let occurrences: BTreeMap<_, _> = page
         .positioned
         .marked

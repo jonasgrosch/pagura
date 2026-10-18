@@ -1,6 +1,7 @@
 //! Search policy: Unicode uppercase mapping, whitespace folding, optional
 //! discretionary line hyphens. No normalization or locale-dependent case fold.
-use super::{Error, Quad, Range, Result, TextPage, charge};
+use super::{Error, Quad, Range, Result, TextPage};
+use pagura_core::Meter;
 use std::collections::{HashSet, VecDeque};
 
 /// Search policy. Case mapping uses Rust's Unicode `char::to_uppercase`.
@@ -33,6 +34,16 @@ pub struct TextMatch {
     /// Each contributing source glyph's quad, once, in reading order.
     pub quads: Vec<Quad>,
 }
+/// Storage per query byte: its pattern characters, prefix table and
+/// matching window.
+const QUERY_BYTES: usize = 128;
+/// Work per query byte to case-map it and build the prefix table.
+const QUERY_WORK: usize = 4;
+/// Amortized matching work per searched unit.
+const UNIT_WORK: usize = 4;
+/// Bookkeeping per highlighted glyph: its set entry and vector growth.
+const QUAD_ENTRY_BYTES: usize = 64;
+
 #[derive(Clone, Copy)]
 struct Unit {
     value: char,
@@ -56,10 +67,13 @@ impl TextPage {
         if query.len() > self.limits.string_bytes {
             return Err(Error::limit("search query byte budget exceeded"));
         }
-        let mut bytes = query.len().saturating_mul(128);
-        charge(&mut bytes, 0, self.limits.document_bytes)?;
-        let mut work = query.len().saturating_mul(4);
-        charge(&mut work, 0, self.limits.operations)?;
+        let mut bytes = Meter::new(
+            self.limits.document_bytes,
+            "text search storage budget exceeded",
+        );
+        bytes.charge_product(query.len(), QUERY_BYTES)?;
+        let mut work = Meter::new(self.limits.text_work, "text search work budget exceeded");
+        work.charge_product(query.len(), QUERY_WORK)?;
         let pattern = pattern(query, options);
         if pattern.is_empty() {
             return Ok(Vec::new());
@@ -113,13 +127,13 @@ struct Search<'a> {
     window: VecDeque<Unit>,
     matched: usize,
     result: Vec<TextMatch>,
-    bytes: usize,
-    work: usize,
+    bytes: Meter,
+    work: Meter,
 }
 impl Search<'_> {
     fn run(&mut self) -> Result<()> {
         let chars = &self.page.reading;
-        charge(&mut self.work, chars.len(), self.page.limits.operations)?;
+        self.work.charge(chars.len())?;
         let mut index = 0;
         while index < chars.len() {
             let Some(c) = chars[index].unicode else {
@@ -187,7 +201,7 @@ impl Search<'_> {
         Ok(())
     }
     fn push(&mut self, unit: Unit) -> Result<()> {
-        charge(&mut self.work, 4, self.page.limits.operations)?;
+        self.work.charge(UNIT_WORK)?;
         while self.matched > 0 && unit.value != self.pattern[self.matched] {
             self.matched = self.prefix[self.matched - 1];
         }
@@ -224,23 +238,15 @@ impl Search<'_> {
                     .is_none_or(|c| !word(c)))
     }
     fn record(&mut self, range: Range<usize>) -> Result<()> {
-        charge(
-            &mut self.bytes,
-            size_of::<TextMatch>(),
-            self.page.limits.document_bytes,
-        )?;
+        self.bytes.charge_items::<TextMatch>(1)?;
         let mut seen = HashSet::new();
         let mut quads = Vec::new();
         for character in &self.page.reading[range.clone()] {
-            charge(&mut self.work, 1, self.page.limits.operations)?;
+            self.work.charge(1)?;
             for glyph in character.glyphs.clone() {
-                charge(&mut self.work, 1, self.page.limits.operations)?;
+                self.work.charge(1)?;
                 if !seen.contains(&glyph) {
-                    charge(
-                        &mut self.bytes,
-                        size_of::<Quad>() + 64,
-                        self.page.limits.document_bytes,
-                    )?;
+                    self.bytes.charge(size_of::<Quad>() + QUAD_ENTRY_BYTES)?;
                     seen.insert(glyph);
                     quads.push(self.page.positioned.glyphs[glyph].quad);
                 }

@@ -58,6 +58,14 @@ pub struct MarkedContent {
     pub alt: Option<String>,
 }
 
+impl MarkedContent {
+    /// The replacement text of this occurrence: ActualText, or Alt when
+    /// ActualText is absent (14.9.3–14.9.4).
+    pub(crate) fn replacement(&self) -> Option<&str> {
+        self.actual_text.as_deref().or(self.alt.as_deref())
+    }
+}
+
 /// A marked-content span, including spans containing no text-showing operation.
 #[derive(Debug, Clone)]
 pub struct MarkedSpan {
@@ -488,12 +496,4 @@ impl TextPage {
     pub fn words(&self) -> &[TextWord] {
         &self.words
     }
-}
-
-fn charge(total: &mut usize, amount: usize, maximum: usize) -> Result<()> {
-    *total = total
-        .checked_add(amount)
-        .filter(|n| *n <= maximum)
-        .ok_or_else(|| Error::limit("text extraction budget exceeded"))?;
-    Ok(())
 }

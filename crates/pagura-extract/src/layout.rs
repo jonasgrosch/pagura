@@ -3,8 +3,9 @@
 //! marked sequences keep content order. Orientation groups keep discovery order.
 use super::{
     Arc, Error, LayoutOptions, Limits, Point, PositionedGlyph, PositionedText, Range, Result,
-    TextPage, charge,
+    TextPage,
 };
+use pagura_core::Meter;
 use std::collections::{BTreeMap, BTreeSet};
 pub(super) mod copy;
 pub(super) mod geometry;
@@ -97,43 +98,42 @@ pub(super) fn build(
     Ok(page)
 }
 
+/// Ordering `n` records takes about `n log n` comparisons; this is the
+/// constant work per record for grouping and export on top of that.
+const ORDER_WORK_PER_RECORD: usize = 8;
+/// Storage a record can need besides itself: its line, word and character
+/// entries in the content and reading views.
+const RECORD_OUTPUT_BYTES: usize = 256;
+/// Exported text a record can add as a separator: a space or line feeds.
+const SEPARATOR_TEXT_BYTES: usize = 2;
+/// Storage of one exported character: `Character` entries in the content
+/// and reading views, its UTF-8 text in both strings and its search units.
+const CHARACTER_OUTPUT_BYTES: usize = 128;
+/// Storage of one entry of a marked-content path.
+const MARK_PATH_BYTES: usize = 16;
+/// Unknown Unicode exports U+FFFD.
+const REPLACEMENT_TEXT_BYTES: usize = '\u{fffd}'.len_utf8();
+
+/// Checks the records and charges an upper estimate of the layout's work,
+/// storage and text before any of it is built.
 fn validate(source: &PositionedText, options: LayoutOptions, limits: Limits) -> Result<()> {
     let count = validate_records(source, options, limits)?;
-    let mut work = count.saturating_mul(
-        usize::try_from(count.bit_width())
-            .unwrap_or(usize::MAX)
-            .saturating_add(8),
-    );
-    charge(&mut work, 0, limits.operations)?;
-    let mut bytes = count.saturating_mul(size_of::<PositionedGlyph>() + 256);
-    let mut string_bytes = count.saturating_mul(2);
-    charge(&mut bytes, 0, limits.document_bytes)?;
+    let mut work = Meter::new(limits.text_work, "text layout work budget exceeded");
+    let mut bytes = Meter::new(limits.document_bytes, "text page retained budget exceeded");
+    let mut text = Meter::new(limits.string_bytes, "extracted text byte budget exceeded");
+    let order = usize::try_from(count.bit_width())
+        .unwrap_or(usize::MAX)
+        .saturating_add(ORDER_WORK_PER_RECORD);
+    work.charge_product(count, order)?;
+    bytes.charge_product(count, size_of::<PositionedGlyph>() + RECORD_OUTPUT_BYTES)?;
+    text.charge_product(count, SEPARATOR_TEXT_BYTES)?;
     for glyph in &source.glyphs {
         validate_glyph(glyph, source.fonts.len())?;
-        charge(
-            &mut work,
-            glyph.unicode.as_ref().map_or(1, String::len),
-            limits.operations,
-        )?;
-        charge(
-            &mut string_bytes,
-            glyph.unicode.as_ref().map_or(3, String::len),
-            limits.string_bytes,
-        )?;
-        charge(
-            &mut bytes,
-            glyph
-                .unicode
-                .as_ref()
-                .map_or(1, String::len)
-                .saturating_mul(128),
-            limits.document_bytes,
-        )?;
-        charge(
-            &mut bytes,
-            glyph.marked_content.len().saturating_mul(16),
-            limits.document_bytes,
-        )?;
+        let len = glyph.unicode.as_deref().map(str::len);
+        work.charge(len.unwrap_or(1))?;
+        text.charge(len.unwrap_or(REPLACEMENT_TEXT_BYTES))?;
+        bytes.charge_product(len.unwrap_or(1), CHARACTER_OUTPUT_BYTES)?;
+        bytes.charge_product(glyph.marked_content.len(), MARK_PATH_BYTES)?;
         if glyph.marked_content.len() > limits.depth {
             return Err(Error::limit("text marked-content depth exceeded"));
         }
@@ -147,42 +147,16 @@ fn validate(source: &PositionedText, options: LayoutOptions, limits: Limits) -> 
         if span.ancestors.len() > limits.depth {
             return Err(Error::limit("text marked-content depth exceeded"));
         }
-        charge(
-            &mut work,
-            span.content
-                .actual_text
-                .as_ref()
-                .or(span.content.alt.as_ref())
-                .map_or(0, String::len),
-            limits.operations,
-        )?;
-        charge(
-            &mut string_bytes,
-            span.content
-                .actual_text
-                .as_ref()
-                .or(span.content.alt.as_ref())
-                .map_or(0, String::len),
-            limits.string_bytes,
-        )?;
-        charge(
-            &mut bytes,
-            span.content
-                .actual_text
-                .as_ref()
-                .map_or(0, String::len)
-                .saturating_mul(128),
-            limits.document_bytes,
-        )?;
-        charge(
-            &mut bytes,
-            span.content
-                .alt
-                .as_ref()
-                .map_or(0, String::len)
-                .saturating_mul(128),
-            limits.document_bytes,
-        )?;
+        let content = &span.content;
+        let replacement = content.replacement().map_or(0, str::len);
+        work.charge(replacement)?;
+        text.charge(replacement)?;
+        for value in [&content.actual_text, &content.alt] {
+            bytes.charge_product(
+                value.as_ref().map_or(0, String::len),
+                CHARACTER_OUTPUT_BYTES,
+            )?;
+        }
     }
     Ok(())
 }
@@ -202,10 +176,10 @@ fn validate_records(
     {
         return Err(Error::invalid_argument("invalid text layout thresholds"));
     }
-    if source.glyphs.len() > limits.value_nodes
-        || source.marked.len() > limits.value_nodes
-        || source.objects.len() > limits.value_nodes
-        || source.fonts.len() > limits.value_nodes
+    if source.glyphs.len() > limits.text_items
+        || source.marked.len() > limits.text_items
+        || source.objects.len() > limits.text_items
+        || source.fonts.len() > limits.text_items
     {
         return Err(Error::limit("positioned text entry budget exceeded"));
     }
@@ -252,11 +226,7 @@ pub(super) fn atoms(
         if let Some(spans) = replacements.get(&index) {
             for span in spans {
                 if !span.hidden || options.include_hidden {
-                    let text = span
-                        .content
-                        .actual_text
-                        .as_ref()
-                        .or(span.content.alt.as_ref());
+                    let text = span.content.replacement();
                     result.push(Atom {
                         occurrence: Some(span.content.id),
                         chars: text.into_iter().flat_map(|s| s.chars()).map(Some).collect(),
@@ -322,7 +292,7 @@ pub(super) fn atoms(
             });
         }
         index = end;
-        if result.len() > limits.value_nodes {
+        if result.len() > limits.text_items {
             return Err(Error::limit("text atom budget exceeded"));
         }
     }

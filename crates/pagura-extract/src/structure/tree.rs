@@ -26,7 +26,7 @@ pub(super) fn read<'a>(
     }
     let mut seen = BTreeSet::new();
     while let Some(task) = tasks.pop() {
-        budget.work(1)?;
+        budget.visit()?;
         let (value, parent, depth) = match task {
             Task::End(index) => {
                 plan.nodes[index].end = plan.nodes.len();
@@ -128,7 +128,7 @@ fn element<'a>(
             + role.len() * 2
             + replacement.as_ref().map_or(0, |r| r.text.capacity()),
     )?;
-    if plan.nodes.len() >= budget.limits.value_nodes {
+    if plan.nodes.len() >= budget.limits.text_items {
         return Err(Error::limit("structure element count exceeded"));
     }
     let artifact = standard_type
