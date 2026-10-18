@@ -1,5 +1,6 @@
 //! PDF name objects (ISO 32000-2 clause 7.3.5).
 
+use crate::{Error, Result};
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt;
@@ -9,10 +10,16 @@ use std::hash::{Hash, Hasher};
 /// Almost every name in real documents (`Type`, `Font`, `FlateDecode`) fits.
 const INLINE_CAPACITY: usize = 23;
 
-/// A PDF name: an arbitrary byte sequence without NUL, not necessarily UTF-8.
+/// A PDF name: a byte sequence, not necessarily UTF-8.
 ///
 /// Escapes such as `#20` are already decoded. Equality, ordering and hashing
 /// use the decoded bytes, so a `Name` can be looked up by `&[u8]`.
+///
+/// Clause 7.3.5 forbids the NUL byte (0x00) in a name. The type does not
+/// enforce that: [`Name::new`] accepts any bytes, for names that code spells
+/// out such as `b"Type"`. Bytes from any other source go through
+/// [`Name::try_new`] (or `TryFrom<&[u8]>`), which rejects NUL. The parser
+/// rejects NUL in names it reads, and the writer refuses to serialize one.
 #[derive(Clone)]
 pub struct Name(Repr);
 
@@ -26,7 +33,8 @@ enum Repr {
 }
 
 impl Name {
-    /// Creates a name from decoded bytes.
+    /// Creates a name from decoded bytes without checking them; use it for
+    /// names written in code. Untrusted bytes go through [`Name::try_new`].
     pub fn new(bytes: &[u8]) -> Self {
         match u8::try_from(bytes.len()) {
             Ok(len) if bytes.len() <= INLINE_CAPACITY => {
@@ -36,6 +44,18 @@ impl Name {
             }
             _ => Self(Repr::Heap(bytes.into())),
         }
+    }
+
+    /// Creates a name from decoded bytes, enforcing clause 7.3.5.
+    ///
+    /// # Errors
+    ///
+    /// Returns an invalid-argument error if `bytes` contains NUL.
+    pub fn try_new(bytes: &[u8]) -> Result<Self> {
+        if bytes.contains(&0) {
+            return Err(Error::invalid_argument("name contains a NUL byte"));
+        }
+        Ok(Self::new(bytes))
     }
 
     pub(crate) fn heap_bytes(&self) -> usize {
@@ -64,12 +84,16 @@ impl Name {
     }
 }
 
-impl From<&[u8]> for Name {
-    fn from(bytes: &[u8]) -> Self {
-        Self::new(bytes)
+/// Checks the bytes like [`Name::try_new`].
+impl TryFrom<&[u8]> for Name {
+    type Error = Error;
+
+    fn try_from(bytes: &[u8]) -> Result<Self> {
+        Self::try_new(bytes)
     }
 }
 
+/// For names written in code, like [`Name::new`].
 impl<const N: usize> From<&[u8; N]> for Name {
     fn from(bytes: &[u8; N]) -> Self {
         Self::new(bytes)
@@ -159,6 +183,20 @@ mod tests {
         assert_eq!(long.len(), 40);
         assert_eq!(Name::new(&[b'x'; 40]), long);
         assert!(short < long);
+    }
+
+    #[test]
+    fn checked_construction_rejects_nul_only() {
+        assert_eq!(Name::try_new(b"A B").unwrap(), *b"A B");
+        assert_eq!(Name::try_from([b'x'; 40].as_slice()).unwrap().len(), 40);
+        for bad in [b"\0".as_slice(), b"A\0B", &[b'x'; 40][..39], b""] {
+            let checked = Name::try_new(bad);
+            assert_eq!(checked.is_err(), bad.contains(&0), "{bad:?}");
+        }
+        assert_eq!(
+            Name::try_new(b"\0").unwrap_err().kind,
+            crate::ErrorKind::InvalidArgument
+        );
     }
 
     #[test]

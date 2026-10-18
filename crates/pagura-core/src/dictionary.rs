@@ -1,8 +1,9 @@
 //! Order-preserving PDF dictionaries (ISO 32000-2 clause 7.3.7).
 
-use crate::{Name, Value};
+use crate::{INDEX_ENTRY_OVERHEAD, Name, Value};
 use std::collections::BTreeMap;
 use std::fmt;
+use std::iter::FusedIterator;
 
 /// Up to this many entries, lookup scans the contiguous entries. Beyond it a
 /// key index keeps lookup and insertion logarithmic, so a dictionary with many
@@ -35,8 +36,9 @@ impl Dictionary {
         }
     }
 
-    /// Estimate index storage with 64 bytes of tree bookkeeping per entry;
-    /// cloned index keys own their heap bytes independently of entry keys.
+    /// Estimate index storage with [`INDEX_ENTRY_OVERHEAD`] bytes of tree
+    /// bookkeeping per entry; cloned index keys own their heap bytes
+    /// independently of entry keys.
     pub(crate) fn allocation_bytes(&self) -> usize {
         let entries = self
             .entries
@@ -48,7 +50,7 @@ impl Dictionary {
         let index = self.index.as_ref().map_or(0, |index| {
             index.keys().fold(0_usize, |sum, name| {
                 sum.saturating_add(size_of::<(Name, usize)>())
-                    .saturating_add(64)
+                    .saturating_add(INDEX_ENTRY_OVERHEAD)
                     .saturating_add(name.heap_bytes())
             })
         });
@@ -133,9 +135,10 @@ impl Dictionary {
         Some(value)
     }
 
-    /// Entries in source order.
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&Name, &Value)> {
-        self.entries.iter().map(|(name, value)| (name, value))
+    /// Entries in source order. `for (key, value) in &dictionary` does the
+    /// same.
+    pub fn iter(&self) -> DictionaryIter<'_> {
+        DictionaryIter(self.entries.iter())
     }
 
     /// Entries in source order, with mutable values and immutable keys.
@@ -196,6 +199,42 @@ impl IntoIterator for Dictionary {
         self.entries.into_iter()
     }
 }
+
+impl<'a> IntoIterator for &'a Dictionary {
+    type Item = (&'a Name, &'a Value);
+    type IntoIter = DictionaryIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+/// The entries of a [`Dictionary`] in source order, from
+/// [`Dictionary::iter`] or `&Dictionary`'s `IntoIterator`.
+#[derive(Debug, Clone)]
+pub struct DictionaryIter<'a>(std::slice::Iter<'a, (Name, Value)>);
+
+impl<'a> Iterator for DictionaryIter<'a> {
+    type Item = (&'a Name, &'a Value);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|(name, value)| (name, value))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl DoubleEndedIterator for DictionaryIter<'_> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.next_back().map(|(name, value)| (name, value))
+    }
+}
+
+impl ExactSizeIterator for DictionaryIter<'_> {}
+
+impl FusedIterator for DictionaryIter<'_> {}
 
 #[cfg(test)]
 mod tests {
@@ -280,6 +319,25 @@ mod tests {
             assert_eq!(dictionary.get(name), Some(&Value::Integer(*value)));
         }
         assert_eq!(dictionary.get(b"absent"), None);
+    }
+
+    #[test]
+    fn borrowed_iteration_visits_entries_in_source_order() {
+        let dictionary: Dictionary = [
+            (Name::new(b"B"), Value::Integer(1)),
+            (Name::new(b"A"), Value::Integer(2)),
+        ]
+        .into_iter()
+        .collect();
+        let mut visited = Vec::new();
+        for (key, value) in &dictionary {
+            visited.push((key.as_bytes(), value.as_integer()));
+        }
+        assert_eq!(visited, [(b"B".as_slice(), Some(1)), (b"A", Some(2))]);
+        let entries = dictionary.iter();
+        assert_eq!(entries.len(), 2);
+        let last = entries.rev().next().map(|(key, _)| key.as_bytes());
+        assert_eq!(last, Some(b"A".as_slice()));
     }
 
     #[test]

@@ -17,9 +17,10 @@ pub mod syntax;
 mod value;
 
 pub use diagnostic::{Diagnostic, DiagnosticKind, Diagnostics, Recovery, Repair};
-pub use dictionary::Dictionary;
+pub use dictionary::{Dictionary, DictionaryIter};
 pub use error::{Error, ErrorKind, Feature, Position, Result, ResultExt};
 pub use limits::Limits;
 pub use name::Name;
 pub use rect::Rect;
+pub use retained::INDEX_ENTRY_OVERHEAD;
 pub use value::{ObjectId, Value};
