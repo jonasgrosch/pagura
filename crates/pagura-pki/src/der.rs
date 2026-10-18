@@ -545,11 +545,12 @@ fn deviation(
     pos: usize,
     message: &'static str,
 ) -> Result<()> {
-    let diagnostic = Diagnostic::new(repair, message).at(Position::Buffer(pos));
     if ber {
-        diagnostics.repair(diagnostic)
+        diagnostics.repair(Diagnostic::new(repair, message).at(Position::Buffer(pos)))
     } else {
-        Err(diagnostic.to_error())
+        let mut error = Error::syntax(message).at(Position::Buffer(pos));
+        error.repair = Some(repair);
+        Err(error)
     }
 }
 
