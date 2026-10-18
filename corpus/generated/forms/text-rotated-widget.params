@@ -1,4 +1,4 @@
 mode=text
 error=
-appearance=error:unsupported:form.widget-rotation
+appearance=error:unsupported:appearance.widget-rotation
 changed=true

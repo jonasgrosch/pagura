@@ -133,7 +133,7 @@ impl<'f, 'd> FilledAnnotations<'f, 'd> {
             {
                 // Information, valid in Strict mode too: the source data is valid.
                 let mut diagnostic = pagura_core::Diagnostic::information(
-                    super::tags::APPEARANCE_KEPT,
+                    crate::repairs::APPEARANCE_KEPT,
                     "stored appearance retained because generation is unsupported",
                 )
                 .at(widget.position);

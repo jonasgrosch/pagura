@@ -38,7 +38,7 @@ impl Visibility {
         let Some(configuration) = properties.get(b"D") else {
             configuration_repair(
                 document,
-                crate::interpreter::tags::OPTIONAL_CONFIG,
+                crate::repairs::OPTIONAL_CONFIG,
                 "OCProperties has no default configuration",
             )?;
             return Ok(Self {
@@ -51,7 +51,7 @@ impl Visibility {
         let Some(values) = properties.get(b"OCGs") else {
             configuration_repair(
                 document,
-                crate::interpreter::tags::OPTIONAL_GROUPS,
+                crate::repairs::OPTIONAL_GROUPS,
                 "OCProperties has no OCGs array",
             )?;
             return Ok(Self {
@@ -210,7 +210,7 @@ impl Visibility {
         // OCProperties is absent, including negated membership expressions.
         if self.configuration == Configuration::Absent {
             let mut diagnostic = pagura_core::Diagnostic::new(
-                crate::interpreter::tags::OPTIONAL_PROPERTIES,
+                crate::repairs::OPTIONAL_PROPERTIES,
                 "optional content requires OCProperties",
             );
             if let Some(id) = value.as_reference() {
@@ -344,7 +344,7 @@ impl Visibility {
         crate::interpreter::repair(
             document,
             pagura_core::Diagnostic::new(
-                crate::interpreter::tags::OPTIONAL_GROUP,
+                crate::repairs::OPTIONAL_GROUP,
                 "undefined optional content group",
             )
             .in_object(id),

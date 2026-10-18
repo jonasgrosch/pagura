@@ -1,96 +1,84 @@
-//! Stable rendering capability tags.
+//! Stable tags for rendering capabilities that are not implemented.
+//!
+//! This crate owns the `graphics.`, `annotation.`, `appearance.`,
+//! `extgstate.`, `optionalcontent.`, `pattern.`, `shading.`,
+//! `transparency.`, `xobject.`, `function.` and `operator.` areas.
+//! Colour-space tags (`colorspace.`) belong to `pagura-color`.
 
 use pagura_core::Feature;
 
 /// Stroking under a singular CTM cannot recover the pen's user space.
 pub const SINGULAR_STROKE: Feature = Feature::new("graphics.singular-stroke");
 
-/// Unsupported capability `annotation.appearance`.
+/// Generating an appearance for an annotation without `AP` outside the
+/// supported subtypes and borders (12.5.6).
 pub const ANNOTATION_APPEARANCE: Feature = Feature::new("annotation.appearance");
 
-/// Unsupported capability `colorspace.CalGray`.
-pub const COLORSPACE_CALGRAY: Feature = Feature::new("colorspace.CalGray");
+/// Black-point compensation requested by `UseBlackPtComp /ON` (Table 58).
+pub const EXTGSTATE_BLACK_POINT_COMPENSATION: Feature = Feature::new("extgstate.UseBlackPtComp");
 
-/// Unsupported capability `colorspace.CalRGB`.
-pub const COLORSPACE_CALRGB: Feature = Feature::new("colorspace.CalRGB");
-
-/// Unsupported capability `colorspace.DeviceN`.
-pub const COLORSPACE_DEVICEN: Feature = Feature::new("colorspace.DeviceN");
-
-/// Unsupported capability `colorspace.Lab`.
-pub const COLORSPACE_LAB: Feature = Feature::new("colorspace.Lab");
-
-/// Unsupported capability `colorspace.Separation`.
-pub const COLORSPACE_SEPARATION: Feature = Feature::new("colorspace.Separation");
-
-/// Unsupported capability `colorspace.unknown`.
-pub const COLORSPACE_UNKNOWN: Feature = Feature::new("colorspace.unknown");
-
-/// Unsupported capability `extgstate.BG`.
-pub const EXTGSTATE_BG: Feature = Feature::new("extgstate.BG");
-
-/// Unsupported capability `extgstate.Font`.
-pub const EXTGSTATE_FONT: Feature = Feature::new("extgstate.Font");
-
-/// Unsupported capability `extgstate.HT`.
-pub const EXTGSTATE_HT: Feature = Feature::new("extgstate.HT");
-
-/// Unsupported capability `extgstate.SM`.
-pub const EXTGSTATE_SM: Feature = Feature::new("extgstate.SM");
-
-/// Unsupported capability `extgstate.TK`.
-pub const EXTGSTATE_TK: Feature = Feature::new("extgstate.TK");
-
-/// Unsupported capability `extgstate.TR`.
-pub const EXTGSTATE_TR: Feature = Feature::new("extgstate.TR");
-
-/// Unsupported capability `extgstate.UCR`.
-pub const EXTGSTATE_UCR: Feature = Feature::new("extgstate.UCR");
-
-/// Unsupported capability `extgstate.unknown`.
-pub const EXTGSTATE_UNKNOWN: Feature = Feature::new("extgstate.unknown");
-
-/// Unsupported capability `graphics.stroke-adjustment`.
-pub const GRAPHICS_STROKE_ADJUSTMENT: Feature = Feature::new("graphics.stroke-adjustment");
-
-/// Unsupported capability `image.inline`.
-pub const IMAGE_INLINE: Feature = Feature::new("image.inline");
-
-/// Unsupported capability `image.xobject`.
-pub const IMAGE_XOBJECT: Feature = Feature::new("image.xobject");
-
-/// Unsupported capability `optionalcontent.usage`.
+/// Usage-dependent optional content (8.11.4.4).
 pub const OPTIONALCONTENT_USAGE: Feature = Feature::new("optionalcontent.usage");
 
-/// Unsupported capability `pattern.colorspace`.
-pub const PATTERN_COLORSPACE: Feature = Feature::new("pattern.colorspace");
+/// XObject subtypes other than Image and Form, such as PostScript (8.8).
+pub const XOBJECT_SUBTYPE: Feature = Feature::new("xobject.subtype");
 
-/// Unsupported capability `shading.paint`.
-pub const SHADING_PAINT: Feature = Feature::new("shading.paint");
+/// JPEG 2000 colour described only inside the codestream: embedded ICC
+/// profiles and enumerated spaces other than sRGB and greyscale (8.9.5.3).
+pub const XOBJECT_JPX_COLOR: Feature = Feature::new("xobject.jpx-color");
 
-/// Unsupported capability `transparency.BM`.
+/// Image opacity carried in the image data (`SMaskInData`, 11.6.5.3).
+pub const TRANSPARENCY_SMASK_IN_DATA: Feature = Feature::new("transparency.SMaskInData");
+
+/// Blend modes outside Tables 134 and 135.
 pub const TRANSPARENCY_BM: Feature = Feature::new("transparency.BM");
 
-/// Unsupported capability `transparency.CA`.
-pub const TRANSPARENCY_CA_STROKING: Feature = Feature::new("transparency.CA");
-
-/// Unsupported capability `transparency.SMask`.
-pub const TRANSPARENCY_SMASK: Feature = Feature::new("transparency.SMask");
-
-/// Unsupported capability `transparency.ca`.
-pub const TRANSPARENCY_CA: Feature = Feature::new("transparency.ca");
-
-/// Unsupported capability `transparency.group`.
+/// Group subtypes other than Transparency (8.10.3).
 pub const TRANSPARENCY_GROUP: Feature = Feature::new("transparency.group");
 
-/// Unsupported capability `transparency.group-colorspace`.
+/// Group blending spaces that need an unsupported colour transform (11.7.2).
 pub const TRANSPARENCY_GROUP_COLORSPACE: Feature = Feature::new("transparency.group-colorspace");
 
-/// Unsupported capability `transparency.knockout`.
-pub const TRANSPARENCY_KNOCKOUT: Feature = Feature::new("transparency.knockout");
+/// Transfer-function region selection for transparent artwork.
+pub const TRANSPARENCY_TRANSFER: Feature = Feature::new("transparency.transfer");
 
-/// Unsupported capability `xobject.subtype`.
-pub const XOBJECT_SUBTYPE: Feature = Feature::new("xobject.subtype");
+/// Process-colour overprint inside a subtractive blending space.
+pub const TRANSPARENCY_OVERPRINT: Feature = Feature::new("transparency.overprint");
+
+/// Patch mesh points whose inverse cannot be resolved numerically.
+pub const SHADING_MESH: Feature = Feature::new("shading.mesh");
+
+/// Singular shading coordinate systems.
+pub const SHADING_TRANSFORM: Feature = Feature::new("shading.transform");
+
+/// Repeated coloured and uncoloured pattern cells the device lattice cannot place.
+pub const PATTERN_TILING: Feature = Feature::new("pattern.tiling");
+
+/// Temporary graphics parameters in a shading pattern.
+pub const PATTERN_STATE: Feature = Feature::new("pattern.ExtGState");
+
+/// An image mask painted with a pattern (8.9.6.2).
+pub const PATTERN_IMAGE_MASK: Feature = Feature::new("pattern.image-mask");
+
+/// Oblique, reflected or degenerate text transforms and negative font sizes
+/// in a generated form appearance (12.7.4.3).
+pub const APPEARANCE_TEXT_MATRIX: Feature = Feature::new("appearance.text-matrix");
+
+/// Default appearance operators outside the supported subset (12.7.4.3).
+pub const APPEARANCE_DEFAULT_APPEARANCE: Feature = Feature::new("appearance.default-appearance");
+
+/// Field text without a reversible simple horizontal font encoding.
+pub const APPEARANCE_FONT_ENCODING: Feature = Feature::new("appearance.font-encoding");
+
+/// Rounded, beveled and inset widget border generation.
+pub const APPEARANCE_BORDER_STYLE: Feature = Feature::new("appearance.border-style");
+
+/// Appearance generation for a rotated widget.
+pub const APPEARANCE_WIDGET_ROTATION: Feature = Feature::new("appearance.widget-rotation");
+
+/// Inline images, multiple variable text sections or crossed content scopes
+/// in an appearance being updated.
+pub const APPEARANCE_UPDATE: Feature = Feature::new("appearance.update");
 
 macro_rules! operator_tags {
     ($($name:literal),* $(,)?) => {
@@ -114,32 +102,29 @@ operator_tags!(
     "Tz", "v", "w", "W", "W*", "y", "'", "\""
 );
 
-/// Unsupported ICC range interpretation (retained feature-tag API).
-pub const COLORSPACE_ICC_RANGE: Feature = Feature::new("colorspace.ICCRange");
-
-/// Nonzero calibrated black points require black-point compensation.
-pub const COLORSPACE_BLACKPOINT: Feature = Feature::new("colorspace.BlackPoint");
-
-/// PostScript-calculator functions.
-pub const FUNCTION_CALCULATOR: Feature = Feature::new("function.Type4");
-/// Separation names None and All have special device semantics.
-pub const COLORSPACE_SPECIAL_INK: Feature = Feature::new("colorspace.special-ink");
-
-/// Annotation fitting that preserves display size or orientation.
-pub const ANNOTATION_FLAGS: Feature = Feature::new("annotation.flags");
-
-/// Transfer-function region selection for transparent artwork.
-pub const TRANSPARENCY_TRANSFER: Feature = Feature::new("transparency.transfer");
-/// Process-colour overprint inside a subtractive blending space.
-pub const TRANSPARENCY_OVERPRINT: Feature = Feature::new("transparency.overprint");
-
-/// Triangle and patch mesh shading sources.
-pub const SHADING_MESH: Feature = Feature::new("shading.mesh");
-/// Singular shading coordinate systems.
-pub const SHADING_TRANSFORM: Feature = Feature::new("shading.transform");
-/// Retained capability tag for degenerate shading boxes.
-pub const SHADING_BOUNDS: Feature = Feature::new("shading.degenerate-bounds");
-/// Repeated coloured and uncoloured pattern cells.
-pub const PATTERN_TILING: Feature = Feature::new("pattern.tiling");
-/// Temporary graphics parameters in a shading pattern.
-pub const PATTERN_STATE: Feature = Feature::new("pattern.ExtGState");
+/// Every tag above except [`OPERATORS`].
+pub const ALL: &[Feature] = &[
+    SINGULAR_STROKE,
+    ANNOTATION_APPEARANCE,
+    EXTGSTATE_BLACK_POINT_COMPENSATION,
+    OPTIONALCONTENT_USAGE,
+    XOBJECT_SUBTYPE,
+    XOBJECT_JPX_COLOR,
+    TRANSPARENCY_SMASK_IN_DATA,
+    TRANSPARENCY_BM,
+    TRANSPARENCY_GROUP,
+    TRANSPARENCY_GROUP_COLORSPACE,
+    TRANSPARENCY_TRANSFER,
+    TRANSPARENCY_OVERPRINT,
+    SHADING_MESH,
+    SHADING_TRANSFORM,
+    PATTERN_TILING,
+    PATTERN_STATE,
+    PATTERN_IMAGE_MASK,
+    APPEARANCE_TEXT_MATRIX,
+    APPEARANCE_DEFAULT_APPEARANCE,
+    APPEARANCE_FONT_ENCODING,
+    APPEARANCE_BORDER_STYLE,
+    APPEARANCE_WIDGET_ROTATION,
+    APPEARANCE_UPDATE,
+];

@@ -393,8 +393,8 @@ def extra_cases():
         yield Case(name,page(content),OPEN,("paint-inline",),name.replace("-"," "),extra={"render_error":"syntax"})
 
     for name,data,dictionary,fill,tag in [
-        ("image-jpx-icc-explicit",jpx.jp2(jpx.codestream([[0]],1,1),1,1,1,method=2),b"/Filter /JPXDecode",b"","image.embedded-color"),
-        ("image-stencil-pattern-explicit",b"\0",b"/ImageMask true /BitsPerComponent 1",b"/Pattern cs ","image.stencil-pattern"),
+        ("image-jpx-icc-explicit",jpx.jp2(jpx.codestream([[0]],1,1),1,1,1,method=2),b"/Filter /JPXDecode",b"","xobject.jpx-color"),
+        ("image-stencil-pattern-explicit",b"\0",b"/ImageMask true /BitsPerComponent 1",b"/Pattern cs ","pattern.image-mask"),
     ]:
         image=stream(data,b"/Subtype /Image /Width 1 /Height 1 "+dictionary)
         yield Case(name,page(fill+b"2 0 0 2 2 2 cm /I Do",[image],b"<< /XObject << /I 5 0 R >> >>"),UNSUPPORTED,("paint-images",),name.replace("-"," "),feature=tag)
@@ -811,7 +811,7 @@ def render_vector(name, pdf, oracle, requirement, description, *, repairs=(), in
 
 
 def repair_cases():
-    tag = 'text.clip-mode-reset'
+    tag = 'content.text-clip-reset'
     yield render_vector('text-clip-reset',page(b'BT 7 Tr 0 Tr ET'),rects([]),
                         'paint-text-clip-recovery','A nonclipping Tr before ET is reported even without glyphs',
                         repairs=(tag,),strict_valid=False)

@@ -248,7 +248,10 @@ fn appearance_storage_and_output_limits_fail_without_partial_results() {
 #[test]
 fn negative_font_size_is_valid_but_explicitly_unsupported() {
     let error = DefaultAppearance::parse(b"/F1 -10 Tf", Limits::default()).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::Unsupported(features::TEXT_MATRIX));
+    assert_eq!(
+        error.kind,
+        ErrorKind::Unsupported(crate::features::APPEARANCE_TEXT_MATRIX)
+    );
 }
 
 #[test]
@@ -267,7 +270,7 @@ fn text_updates_reject_sections_crossing_text_or_graphics_scopes() {
         .unwrap_err();
         assert_eq!(
             error.kind,
-            ErrorKind::Unsupported(features::APPEARANCE_UPDATE)
+            ErrorKind::Unsupported(crate::features::APPEARANCE_UPDATE)
         );
     }
 }

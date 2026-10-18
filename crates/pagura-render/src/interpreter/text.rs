@@ -203,7 +203,7 @@ impl Compiler<'_> {
     fn check_text_mode(&self, mode: u8) -> Result<()> {
         if mode < 4 && self.state.text.object.as_ref().is_some_and(|o| o.clipping) {
             self.repair(
-                super::tags::TEXT_CLIP_RESET,
+                crate::repairs::TEXT_CLIP_RESET,
                 "text clipping mode reset before ET; accumulated clip retained",
             )?;
         }

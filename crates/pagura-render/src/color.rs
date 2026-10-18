@@ -1,8 +1,7 @@
 //! Source-space colours and device conversions (8.6 and 10.4).
 
-use crate::features;
 use crate::icc::ColorContext;
-use pagura_core::{Dictionary, Error, Feature, Result, Value};
+use pagura_core::{Dictionary, Error, Result, Value};
 use pagura_raster::Rgba8;
 use std::sync::Arc;
 
@@ -89,7 +88,7 @@ impl Color {
                 return Err(Error::syntax("colour space requires SCN or scn"));
             }
             let mut diagnostic = pagura_core::Diagnostic::new(
-                crate::interpreter::tags::COLOUR_OPERATOR,
+                crate::repairs::COLOR_OPERATOR,
                 "colour space requires SCN or scn",
             )
             .at(position);
@@ -153,7 +152,7 @@ impl Color {
                     return Err(Error::syntax("invalid unused pattern colour operands"));
                 }
                 let mut diagnostic = pagura_core::Diagnostic::new(
-                    crate::interpreter::tags::PATTERN_UNDERLYING,
+                    crate::repairs::PATTERN_UNDERLYING,
                     "coloured pattern uses intrinsic colours; extra scn operands ignored (8.7.3.2, Table 73)",
                 ).at(position);
                 if let pagura_core::Position::Stream { object, .. } = position {
@@ -382,12 +381,6 @@ fn resolve(
                 }
                 return Ok(device);
             }
-            if let Some(feature) = unsupported(name.as_bytes()) {
-                return Err(Error::unsupported(
-                    feature,
-                    "colour space is not implemented",
-                ));
-            }
             if depth != 0 {
                 return Err(Error::syntax(
                     "nested colour space requires an explicit definition",
@@ -473,7 +466,7 @@ fn array_space(
             _,
         ) => Err(Error::syntax("wrong colour space array length")),
         _ => Err(Error::unsupported(
-            unsupported(family.as_bytes()).unwrap_or(features::COLORSPACE_UNKNOWN),
+            pagura_color::features::UNKNOWN_FAMILY,
             "colour space family is not implemented",
         )),
     }
@@ -785,18 +778,6 @@ fn alternate_components(
     })
 }
 
-fn unsupported(name: &[u8]) -> Option<Feature> {
-    Some(match name {
-        b"Separation" => features::COLORSPACE_SEPARATION,
-        b"DeviceN" => features::COLORSPACE_DEVICEN,
-        b"Lab" => features::COLORSPACE_LAB,
-        b"CalGray" => features::COLORSPACE_CALGRAY,
-        b"CalRGB" => features::COLORSPACE_CALRGB,
-        b"Pattern" => features::PATTERN_COLORSPACE,
-        _ => return None,
-    })
-}
-
 /// Quantizes a colour component in `0..=1` to an 8-bit channel, rounding to
 /// nearest; out-of-range components are clamped first (clause 8.6.4.1).
 pub(crate) fn channel(value: f64) -> u8 {
@@ -849,7 +830,7 @@ fn indexed_space(
     }
     if lookup.len() > required {
         let mut diagnostic = pagura_core::Diagnostic::new(
-            crate::interpreter::tags::INDEXED_EXCESS,
+            crate::repairs::INDEXED_EXCESS,
             "Indexed lookup has wrong length",
         );
         if let Some(id) = lookup_id {

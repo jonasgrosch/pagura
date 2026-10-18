@@ -247,26 +247,6 @@ impl Compiler<'_> {
                     .as_bool()
                     .ok_or(Error::syntax("AIS must be boolean"))?;
             }
-            b"TR" | b"TR2" => {
-                if value
-                    .as_name()
-                    .is_none_or(|n| n != b"Identity" && !(key == b"TR2" && n == b"Default"))
-                {
-                    return Err(unsupported(features::EXTGSTATE_TR));
-                }
-            }
-            b"Font" => return Err(unsupported(features::EXTGSTATE_FONT)),
-            // 10.4.2: black generation and undercolour removal are used when
-            // converting RGB to CMYK; conversion functions are retained by extgstate.
-            b"BG" | b"BG2" | b"UCR" | b"UCR2" => {
-                let default = matches!(key, b"BG2" | b"UCR2")
-                    && value.as_name().is_some_and(|n| n == b"Default");
-                if !matches!(value, Value::Dictionary(_)) && !default {
-                    return Err(Error::syntax(
-                        "black generation or UCR must be a function or Default",
-                    ));
-                }
-            }
             // Continuous-tone output transmits transferred components directly;
             // no screening is performed (10.6.1). Validate the permitted shape.
             b"HT" => {
@@ -303,7 +283,7 @@ fn device_parameter(key: &[u8], value: &Value) -> Result<()> {
                 .as_name()
                 .ok_or(Error::syntax("UseBlackPtComp must be a name"))?;
             if name == b"ON" {
-                return Err(unsupported(features::EXTGSTATE_UNKNOWN));
+                return Err(unsupported(features::EXTGSTATE_BLACK_POINT_COMPENSATION));
             }
             if name != b"OFF" && name != b"Default" {
                 return Err(Error::syntax("invalid UseBlackPtComp"));

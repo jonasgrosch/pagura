@@ -3,9 +3,9 @@ use super::*;
 #[test]
 fn unsupported_edited_fields_fail_while_untouched_fields_keep_stored_appearances() {
     for (kind, feature) in [
-        ("type0", crate::form_appearance::features::FONT_ENCODING),
+        ("type0", crate::features::APPEARANCE_FONT_ENCODING),
         ("hybrid-xfa", pagura_document::features::XFA),
-        ("oblique-tm", crate::form_appearance::features::TEXT_MATRIX),
+        ("oblique-tm", crate::features::APPEARANCE_TEXT_MATRIX),
     ] {
         for recovery in [Recovery::Strict, Recovery::Repair] {
             let name = format!("render-fallback-{kind}");

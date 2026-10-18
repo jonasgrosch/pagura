@@ -78,7 +78,7 @@ impl DefaultAppearance {
         }
         if result.scale <= 0.0 || result.leading < 0.0 {
             return Err(Error::unsupported(
-                crate::form_appearance::features::TEXT_MATRIX,
+                crate::features::APPEARANCE_TEXT_MATRIX,
                 "nonpositive text scale or negative leading is unavailable",
             ));
         }
@@ -103,7 +103,7 @@ impl DefaultAppearance {
                 self.size = numeric(size)?;
                 if self.size < 0.0 {
                     return Err(Error::unsupported(
-                        crate::form_appearance::features::TEXT_MATRIX,
+                        crate::features::APPEARANCE_TEXT_MATRIX,
                         "negative variable text font sizes are unavailable",
                     ));
                 }
@@ -118,7 +118,7 @@ impl DefaultAppearance {
                 self.matrix.copy_from_slice(&values[..4]);
                 if values[0] <= 0.0 || values[3] <= 0.0 || values[1] != 0.0 || values[2] != 0.0 {
                     return Err(Error::unsupported(
-                        crate::form_appearance::features::TEXT_MATRIX,
+                        crate::features::APPEARANCE_TEXT_MATRIX,
                         "oblique or reflected variable text matrices are unavailable",
                     ));
                 }
@@ -168,7 +168,7 @@ impl DefaultAppearance {
             }
             _ => {
                 return Err(Error::unsupported(
-                    crate::form_appearance::features::DEFAULT_APPEARANCE,
+                    crate::features::APPEARANCE_DEFAULT_APPEARANCE,
                     "default appearance operator is unavailable",
                 ));
             }
