@@ -17,7 +17,8 @@ mod shape;
 mod unicode;
 pub(crate) use unicode::{cid_collection, to_unicode};
 
-/// The font dictionary's `/Subtype`.
+/// The font dictionary's `/Subtype`. ISO 32000-2 Table 110 closes this set,
+/// so the enum is exhaustive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FontKind {
     /// `Type1`, including the standard 14 fonts.
@@ -32,7 +33,8 @@ pub enum FontKind {
     Type0,
 }
 
-/// Horizontal or vertical writing (clause 9.7.4.3).
+/// Horizontal or vertical writing (clause 9.7.4.3). PDF defines exactly
+/// these two modes, so the enum is exhaustive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum WritingMode {
     /// Glyphs advance along x.
@@ -42,6 +44,37 @@ pub enum WritingMode {
     Vertical,
 }
 
+impl FontKind {
+    pub(crate) fn from_subtype(name: &[u8]) -> Option<Self> {
+        Some(match name {
+            b"Type1" => Self::Type1,
+            b"MMType1" => Self::MmType1,
+            b"TrueType" => Self::TrueType,
+            b"Type3" => Self::Type3,
+            b"Type0" => Self::Type0,
+            _ => return None,
+        })
+    }
+
+    /// The `/Subtype` name.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Type1 => "Type1",
+            Self::MmType1 => "MMType1",
+            Self::TrueType => "TrueType",
+            Self::Type3 => "Type3",
+            Self::Type0 => "Type0",
+        }
+    }
+}
+
+impl std::fmt::Display for FontKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// Where a font's glyphs come from.
 #[derive(Debug)]
 pub(crate) enum Source {
     MetricsOnly,

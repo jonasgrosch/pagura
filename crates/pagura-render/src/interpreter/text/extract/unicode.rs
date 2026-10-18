@@ -41,19 +41,16 @@ mod tests {
             )
             .unwrap(),
         );
-        Glyph {
-            code: 65,
-            byte_len: 1,
-            advance: 0.6,
-            vertical: None,
-            word_space: false,
-            unicode: None,
-            shape: GlyphShape::Outline {
+        Glyph::new(
+            65,
+            1,
+            0.6,
+            GlyphShape::Outline {
                 matrix: program.font_matrix(),
                 program,
                 glyph: GlyphId(1),
             },
-        }
+        )
     }
 
     #[test]
