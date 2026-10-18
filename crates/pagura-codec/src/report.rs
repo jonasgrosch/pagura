@@ -1,5 +1,5 @@
 //! Positioned errors and repairs shared by the decoders.
-use crate::tags;
+use crate::repairs;
 use pagura_core::syntax::is_whitespace;
 use pagura_core::{Diagnostic, Diagnostics, Error, Position, Repair, Result};
 
@@ -33,7 +33,7 @@ pub(crate) fn trailing(
     {
         repair(
             diagnostics,
-            tags::TRAILING_DATA,
+            repairs::TRAILING_DATA,
             "data after filter end marker",
             end + index,
         )?;

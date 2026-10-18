@@ -50,7 +50,8 @@ pub enum ImageCodec {
 }
 
 impl ImageCodec {
-    /// The stable feature tag reported while the codec is unavailable.
+    /// The codec's feature tag, reported when a chain asks this crate to
+    /// decode the codec itself (see [`features`]).
     pub const fn feature(self) -> Feature {
         match self {
             Self::Dct => features::DCT,
@@ -223,7 +224,7 @@ impl Filter {
             }
             _ => {
                 return Err(Error::unsupported(
-                    Feature::new("filter.unknown"),
+                    features::UNKNOWN,
                     "unknown stream filter",
                 ));
             }
