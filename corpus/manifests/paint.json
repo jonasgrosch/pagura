@@ -870,6 +870,86 @@
       "render_error": "syntax"
     },
     {
+      "id": "paint/image-page-rgb",
+      "kind": "pdf",
+      "description": "image page rgb",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-page-rgb.pdf",
+      "sha256": "4083c0c6998b9dbc7a1fcf69198a5ccbe7cba80659e72987b0c1f127e7a110f4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-page-rgb.ppm",
+      "oracle_sha256": "69f309a54244e7650c59c0284e260078ce04eee54b6628f0ee62fa7366483653",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-page-rgb-crop",
+      "kind": "pdf",
+      "description": "image page rgb crop",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-page-rgb-crop.pdf",
+      "sha256": "f37c273611e3384182df05109caf2a8e2919475d9537de2f7d43f6c115e79dbc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-page-rgb-crop.ppm",
+      "oracle_sha256": "ce4d3f82141abcfb5a8312befa4e94d77db4f96bc256577bf4370ff765c1c16c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-page-rgb-quarter-turn",
+      "kind": "pdf",
+      "description": "image page rgb quarter turn",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-page-rgb-quarter-turn.pdf",
+      "sha256": "96737ea00cf0d71833f4ad499affc36097f069f68a9f8a75e0b64a03e9189927",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-page-rgb-quarter-turn.ppm",
+      "oracle_sha256": "8dd810cf5eac46f563d3c0560ef982e5b55876e106fec3f42a45cd26af501da2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-page-rgb-reflected",
+      "kind": "pdf",
+      "description": "image page rgb reflected",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-page-rgb-reflected.pdf",
+      "sha256": "2f21c93ea488f253bfba1575228a06323daba4f914e9c7cdbffac7b7fdcb462e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-page-rgb-reflected.ppm",
+      "oracle_sha256": "a9621ee8e5844dfab308ae35866a4bc9bd1e2dd63e5dba79e6136209ece38cdb",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
       "id": "paint/image-rgb-colour-key",
       "kind": "pdf",
       "description": "image rgb colour key",

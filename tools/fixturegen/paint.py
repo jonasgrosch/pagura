@@ -166,6 +166,16 @@ def image_case(name, data, dictionary, samples, width, height, *, matrix=None, m
 
 
 def image_cases():
+    colors=[RED,GREEN,BLUE,(17,85,170)]
+    for name,matrix in [
+        ("image-page-rgb",(32,0,0,32,0,0)),
+        ("image-page-rgb-crop",(64,0,0,32,0,0)),
+        ("image-page-rgb-quarter-turn",(0,32,-32,0,32,0)),
+        ("image-page-rgb-reflected",(-32,0,0,32,32,0)),
+    ]:
+        yield image_case(name,bytes(v for color in colors for v in color),
+                         b"/ColorSpace /DeviceRGB /BitsPerComponent 8",[],2,2,
+                         matrix=matrix,colors=colors,requirement="paint-image-resampling")
     yield image_case("image-rgb-colour-key",bytes(RED+GREEN+RED+BLUE),b"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Mask [255 255 0 0 0 0]",[],4,1,colors=[RED,GREEN,RED,BLUE],alpha=[0,1,0,1],requirement="paint-image-masks")
     pixels=[0,85,170,255,255,170,85,0]
     for turns,matrix in enumerate([(8,0,0,4,2,2),(0,8,-4,0,6,2),(-8,0,0,-4,10,6),(0,-8,4,0,2,10)]):
