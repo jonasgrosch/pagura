@@ -1,6 +1,6 @@
 //! Static storage admission for Normal source-over (ISO 32000-2, 11.3.3).
 //! Counts bound stores at any pixel, independently of the requested tile.
-use super::{Command, Model, opaque_knockout};
+use super::{Command, Model, scene::opaque_knockout};
 use crate::color::Color;
 use pagura_core::{Error, Limits, Result};
 

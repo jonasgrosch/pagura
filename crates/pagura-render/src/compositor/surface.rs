@@ -1,12 +1,145 @@
-//! Group storage with one proven solid interval (11.3.3).
+//! Group surfaces and the per-pixel compositing arithmetic (11.3, 11.4).
 //!
-//! Consecutive identical opaque spans need no second store. All other mutation
-//! invalidates the interval; floating-point pixels remain authoritative.
-//! An admitted page holds bounded N16/F32 storage instead (ADR 0004).
+//! A surface remembers one proven solid interval: consecutive identical
+//! opaque spans need no second store. All other mutation invalidates the
+//! interval; floating-point pixels remain authoritative. An admitted page
+//! holds bounded N16/F32 storage instead (ADR 0004).
 
-use super::{Pixel, narrow};
+use super::{Model, narrow};
 use crate::Tile;
+use crate::transparency::Composite;
 use pagura_core::{Error, Result};
+
+#[derive(Debug, Clone, Copy, Default)]
+pub(super) struct Pixel {
+    pub(super) color: [f64; 4],
+    pub(super) alpha: f64,
+    pub(super) group: f64,
+    pub(super) shape: f64,
+}
+impl Pixel {
+    pub(super) fn source(color: [f64; 4], alpha: f64) -> Self {
+        Self {
+            color: color.map(|v| v * alpha),
+            alpha,
+            ..Self::default()
+        }
+    }
+    pub(super) fn straight(self) -> [f64; 4] {
+        if self.alpha > 0.0 {
+            self.color.map(|v| (v / self.alpha).clamp(0.0, 1.0))
+        } else {
+            [0.0; 4]
+        }
+    }
+    pub(super) fn paint(
+        &mut self,
+        source: Source,
+        state: &Composite,
+        initial: Self,
+        knockout: bool,
+        model: Model,
+    ) {
+        let Source {
+            color,
+            alpha,
+            shape,
+            preserve,
+            spot,
+        } = source;
+        let base = if knockout { initial } else { *self };
+        let opacity = if knockout && shape > 0.0 {
+            alpha / shape
+        } else {
+            alpha
+        };
+        // Compatible overprinting substitutes backdrop components (11.7.4.3).
+        // For another blend mode, this is the source of the implicit
+        // non-isolated group, before applying the requested outer blend.
+        let back = if preserve.iter().any(|&v| v) {
+            base.straight()
+        } else {
+            [0.0; 4]
+        };
+        let blend_mode = if spot
+            && matches!(
+                state.blend,
+                crate::blend::BlendMode::Difference
+                    | crate::blend::BlendMode::Exclusion
+                    | crate::blend::BlendMode::Hue
+                    | crate::blend::BlendMode::Saturation
+                    | crate::blend::BlendMode::Color
+                    | crate::blend::BlendMode::Luminosity
+            ) {
+            crate::blend::BlendMode::Normal
+        } else {
+            state.blend
+        };
+        let (color, blend) = if blend_mode == crate::blend::BlendMode::Normal {
+            (
+                color,
+                [0, 1, 2, 3].map(|i| if preserve[i] { back[i] } else { color[i] }),
+            )
+        } else {
+            let color = [0, 1, 2, 3].map(|i| {
+                if preserve[i] {
+                    (1.0 - base.alpha) * color[i] + base.alpha * back[i]
+                } else {
+                    color[i]
+                }
+            });
+            (color, blend_mode.apply(base.straight(), color, model))
+        };
+        let value = [0, 1, 2, 3].map(|i| {
+            (1.0 - opacity) * base.color[i]
+                + opacity * ((1.0 - base.alpha) * color[i] + base.alpha * blend[i])
+        });
+        let value_alpha = opacity + base.alpha * (1.0 - opacity);
+        if knockout {
+            self.color = [0, 1, 2, 3].map(|i| (1.0 - shape) * self.color[i] + shape * value[i]);
+            self.alpha = (1.0 - shape) * self.alpha + shape * value_alpha;
+            self.group = (1.0 - shape) * self.group + alpha;
+        } else {
+            self.color = value;
+            self.alpha = value_alpha;
+            self.group = alpha + self.group * (1.0 - alpha);
+        }
+        self.shape = shape + self.shape * (1.0 - shape);
+    }
+}
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Source {
+    pub(super) color: [f64; 4],
+    pub(super) alpha: f64,
+    pub(super) shape: f64,
+    pub(super) preserve: [bool; 4],
+    pub(super) spot: bool,
+}
+impl Source {
+    pub(super) fn new(color: [f64; 4], alpha: f64, shape: f64) -> Self {
+        Self {
+            color,
+            alpha,
+            shape,
+            preserve: [false; 4],
+            spot: false,
+        }
+    }
+    pub(super) fn covered(mut self, coverage: u8) -> Self {
+        let factor = f64::from(coverage) / 255.0;
+        self.alpha *= factor;
+        self.shape *= factor;
+        self
+    }
+    pub(super) fn apply(mut self, state: &Composite, mask: f64) -> Self {
+        let factor = state.alpha * mask;
+        self.alpha *= factor;
+        if state.alpha_is_shape {
+            self.shape *= factor;
+        }
+        self
+    }
+}
 
 pub(super) struct Surface {
     pub(super) tile: Tile,
@@ -121,6 +254,24 @@ impl Surface {
     pub(super) fn bytes(&self) -> usize {
         self.pixels.len() * size_of::<Pixel>()
             + self.narrow.as_ref().map_or(0, narrow::Buffer::bytes)
+    }
+}
+#[derive(Clone, Copy)]
+pub(super) enum Backdrop<'a> {
+    Transparent,
+    Color([f64; 4]),
+    Surface(&'a Surface),
+}
+impl Backdrop<'_> {
+    pub(super) fn pixel(self, x: u32, y: u32) -> Pixel {
+        let mut p = match self {
+            Self::Transparent => Pixel::default(),
+            Self::Color(c) => Pixel::source(c, 1.0),
+            Self::Surface(s) => s.pixel(x, y),
+        };
+        p.group = 0.0;
+        p.shape = 0.0;
+        p
     }
 }
 
