@@ -19,7 +19,7 @@ Dependencies point downward only and are fixed in the crate manifests.
 | Crate | Responsibility | Knows nothing about |
 |---|---|---|
 | `pagura-core` | `Value`, `Name`, `Dictionary`, `ObjectId`, `Rect`; bounded `syntax::Parser`; `Error`/`ErrorKind`/`Feature`/`Position`; `Diagnostic`/`DiagnosticKind`/`Repair`/`Recovery`; `Limits`; the primitives every parser shares (ADR 0017): `Meter`, `bytes::{Cursor, BitCursor}`, `text_string` | files, revisions, rendering |
-| `pagura-codec` | stream filters and predictors with streaming output caps | documents, references |
+| `pagura-codec` | stream filters and predictors with streaming output caps; the `filter.` and `predictor.` tags; the zlib and PNG encoders built from the same pieces (ADR 0020) | documents, references |
 | `pagura-crypto` | MD5, SHA-2, RC4, AES; the standard security handler from plain parameters | the object model beyond `ObjectId` |
 | `pagura-document` | immutable source bytes, cross-reference data and revisions, lazily parsed and cached objects, decoded streams, typed page tree, recovery | content streams, pixels |
 | `pagura-raster` | geometry, paths, flattening, exact-area fill, stroking, masks, `Pixmap` | PDF |
