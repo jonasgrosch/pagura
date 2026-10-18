@@ -3,6 +3,7 @@ use super::{BTreeSet, Budget, Dictionary, Document, Error, Name, Result, Value};
 
 /// Standard structure namespace, distinct from the PDF file's version (14.8.6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum StructureNamespace {
     /// The default standard namespace, including when NS is absent.
     Pdf17,
@@ -62,7 +63,7 @@ impl<'a> Types<'a> {
             }
             if super::entry(doc, ns, b"RoleMapNS")?.is_some() {
                 return Err(Error::unsupported(
-                    super::NAMESPACE,
+                    crate::features::STRUCTURE_NAMESPACE,
                     "text.structure-namespace: namespace-specific role maps are not implemented (14.8.6.2)",
                 ));
             }
@@ -79,7 +80,7 @@ impl<'a> Types<'a> {
                 "http://iso.org/pdf2/ssn" => StructureNamespace::Pdf20,
                 _ => {
                     return Err(Error::unsupported(
-                        super::NAMESPACE,
+                        crate::features::STRUCTURE_NAMESPACE,
                         "text.structure-namespace: nonstandard structure namespace is not implemented (14.7.4)",
                     ));
                 }

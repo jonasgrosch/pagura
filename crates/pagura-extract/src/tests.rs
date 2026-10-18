@@ -17,7 +17,7 @@ fn source(text: Option<&str>) -> PositionedText {
         axis: Point::new(10.0, 0.0),
         em: 10.0,
         advance_end: Point::new(5.0, 0.0),
-        render_mode: 3,
+        render_mode: TextRenderingMode::Invisible,
         hidden: false,
         marked_content: Arc::from([]),
         show: 1,

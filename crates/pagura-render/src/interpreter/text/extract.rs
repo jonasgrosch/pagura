@@ -342,7 +342,7 @@ impl Compiler<'_> {
             axis,
             em,
             advance_end,
-            render_mode: text.mode,
+            render_mode: pagura_extract::TextRenderingMode::try_from(text.mode)?,
             hidden: !self.visible,
             marked_content: Arc::clone(&extract.path),
             show: output.show,

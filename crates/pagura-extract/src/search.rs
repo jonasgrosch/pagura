@@ -4,6 +4,8 @@ use super::{Error, Quad, Range, Result, TextPage, charge};
 use std::collections::{HashSet, VecDeque};
 
 /// Search policy. Case mapping uses Rust's Unicode `char::to_uppercase`.
+/// Hosts build options from [`Default`] with struct update syntax, so the
+/// struct is exhaustive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SearchOptions {
     /// Match without case distinctions, including uppercase expansions.
@@ -24,6 +26,7 @@ impl Default for SearchOptions {
 }
 /// One match in reading-order UTF-8 bytes, with source selection cells.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct TextMatch {
     /// Byte range in [`TextPage::text`], including intervening line hyphens.
     pub range: Range<usize>,
