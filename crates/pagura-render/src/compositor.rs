@@ -10,6 +10,7 @@ mod patterns;
 mod reduced;
 mod regions;
 mod sampled;
+mod transfer;
 mod view;
 pub(crate) use regions::content_bounds;
 use regions::group_region;
@@ -188,6 +189,7 @@ struct Context {
     mask: Option<CachedMask>,
     function_work: usize,
     soft_source: bool,
+    transfers: Option<transfer::Regions>,
 }
 struct CachedMask {
     id: usize,
@@ -329,6 +331,9 @@ impl Context {
         };
         self.charge(commands.len())?;
         for command in commands {
+            if self.transfers.as_ref().is_some_and(|r| !r.suspended) {
+                transfer::validate(command)?;
+            }
             let result = match command {
                 Command::Path(path) if !path.color.paints() => Ok(()),
                 Command::Shading(s) if !s.shading.space.paints() => Ok(()),
@@ -448,6 +453,7 @@ impl Context {
                 && let Some(color) = color
                 && target.fill_solid(start, coverage.len(), color)?
             {
+                self.transfer_run(p.transfer.as_ref(), &p.composite, (x, y), coverage.len())?;
                 continue;
             }
             for (column, &coverage) in coverage.iter().enumerate() {
@@ -480,6 +486,7 @@ impl Context {
                 } else {
                     return Err(Error::invalid_argument("missing pattern source"));
                 };
+                self.transfer_mark(p.transfer.as_ref(), &p.composite, (x, y), source, true)?;
                 let source = source.apply(&p.composite, mask_value);
                 let pixel = target
                     .pixels
@@ -628,14 +635,7 @@ impl Context {
             Backdrop::Surface(parent)
         };
         let mut surface = self.surface(tile, initial)?;
-        self.commands(
-            &group.commands,
-            &mut surface,
-            initial,
-            model,
-            group.attributes.knockout,
-            depth + 1,
-        )?;
+        self.transfer_group(group, &mut surface, initial, model, depth)?;
         let soft = group
             .composite
             .mask
@@ -720,12 +720,6 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
-        if command.transfer.is_some() {
-            return Err(Error::unsupported(
-                crate::features::TRANSPARENCY_TRANSFER,
-                "shading transfer-region selection is not implemented",
-            ));
-        }
         let transform = command.transform.then(self.device);
         let inverse = transform.inverse().ok_or(Error::unsupported(
             crate::features::SHADING_TRANSFORM,
@@ -779,6 +773,13 @@ impl Context {
                     .and_then(|v| v.get(index))
                     .copied()
                     .unwrap_or(1.0);
+                self.transfer_mark(
+                    command.transfer.as_ref(),
+                    &command.composite,
+                    (x, y),
+                    source,
+                    true,
+                )?;
                 target
                     .pixels
                     .get_mut(index)
@@ -893,6 +894,10 @@ impl Context {
             // object later, not to the mask source (11.6.5.1).
             let previous = std::mem::replace(&mut self.soft_source, true);
             self.clip = None;
+            let suspended = self.transfers.as_ref().is_some_and(|r| r.suspended);
+            if let Some(regions) = &mut self.transfers {
+                regions.suspended = true;
+            }
             let result = self.commands(
                 &mask.group.commands,
                 surface,
@@ -902,6 +907,9 @@ impl Context {
                 depth + 1,
             );
             self.soft_source = previous;
+            if let Some(regions) = &mut self.transfers {
+                regions.suspended = suspended;
+            }
             self.clip = None;
             result?;
         }
@@ -986,7 +994,12 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
         mask: None,
         function_work: 0,
         soft_source: false,
+        transfers: transfer::Regions::new(&list.commands, list.limits)?,
     };
+    context.allocated = context
+        .transfers
+        .as_ref()
+        .map_or(0, transfer::Regions::bytes);
     let model = list.group.model.unwrap_or(Model::Rgb);
     let mut output =
         Pixmap::new_with_limits(tile.width, tile.height, options.background, list.limits)?;
@@ -1006,6 +1019,7 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
             };
             context.clip = None;
             context.discard_mask();
+            context.begin_transfers(region)?;
             let mut page = context.surface(region, Backdrop::Transparent)?;
             context.commands(
                 &list.commands,
@@ -1031,17 +1045,20 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
                     * stride
                     + usize::try_from(x - tile.x)
                         .map_err(|_| Error::limit("output column exceeds usize"))?;
-                for (target, pixel) in output.data_mut()[start * 4..(start + pixels.len()) * 4]
+                for (column, (target, pixel)) in output.data_mut()
+                    [start * 4..(start + pixels.len()) * 4]
                     .as_chunks_mut::<4>()
                     .0
                     .iter_mut()
                     .zip(pixels)
+                    .enumerate()
                 {
                     let alpha = pixel.alpha;
                     if alpha == 0.0 {
                         continue;
                     }
                     let color = model.rgb(pixel.straight());
+                    let color = context.transfer_color(row * pixels.len() + column, color)?;
                     for (i, out) in target.iter_mut().enumerate().take(3) {
                         *out = quantize(color[i] * alpha + f64::from(*out) / 255.0 * (1.0 - alpha));
                     }
@@ -1157,12 +1174,6 @@ fn path_active(p: &PathCommand, model: Model) -> Result<bool> {
     ) {
         return Ok(false);
     }
-    if p.transfer.is_some() {
-        return Err(Error::unsupported(
-            crate::features::TRANSPARENCY_TRANSFER,
-            "transfer selection across transparent artwork is not implemented",
-        ));
-    }
     if model == Model::Cmyk && p.composite.overprint {
         return Err(Error::unsupported(
             crate::features::TRANSPARENCY_OVERPRINT,
@@ -1244,6 +1255,7 @@ mod tests {
             mask: None,
             function_work: 0,
             soft_source: false,
+            transfers: None,
         };
         // Rectangles take a closed form without sweep scratch; warm it with a triangle.
         let mut warm = PathBuilder::new();

@@ -88,7 +88,7 @@ impl Compiler<'_> {
                 color.set(v)?;
             }
             b"SCN" | b"scn" => {
-                color.select_pattern(&context, resources, v, self.initial_ctm)?;
+                color.select_pattern(&context, resources, v, self.initial_ctm, self.position)?;
             }
             _ => {
                 color.validate_simple_operator(self.document, v, self.position)?;

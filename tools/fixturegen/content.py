@@ -207,6 +207,11 @@ def cases():
     yield from icc_cases()
     yield from invalid_compositing_cases()
     for name, command in [("syntax-unknown", b"future"), ("syntax-arity", b"1 q"), ("syntax-type", b"(bad) w"), ("syntax-Q", b"Q"), ("syntax-q-unclosed", b"q"), ("syntax-l", b"1 1 l"), ("syntax-TJ", b"[/Bad] TJ"), ("syntax-pending-clip", b"W"), ("syntax-reference", b"4 0 R"), ("syntax-zero-dash", b"[0 0] 0 d"), ("transfer", b"/GS gs")]:
+        if name == "syntax-q-unclosed":
+            yield Case(name, single_page([command], media_box=b"[0 0 64 64]"), RENDER,
+                       ("content-explicit-operators",), "Unmatched saved graphics state is reported at sequence end",
+                       oracle=opaque_rectangles(64,64,[]), repairs=("content.graphics-unclosed",), strict_valid=False)
+            continue
         yield Case(name, single_page([command], media_box=b"[0 0 8 8]" if name=="transfer" else b"[0 0 64 64]", resources=b"<< /ExtGState << /GS << /TR [] >> >> >>" if name=="transfer" else b"<< >>"), OPEN, ("content-explicit-operators",), "Valid file with malformed page content", extra={"api":"compile_page", "render_error":"Syntax"})
     yield Case("recursive-form", form_pdf(content=b"/Self Do", form_resources=b"<< /XObject << /Self 5 0 R >> >>"), OPEN, ("content-forms",), "Recursive form must return Cycle", extra={"api":"compile_page", "render_error":"Cycle"})
     yield render("annotation-no-normal", b"", page_extra=b"/Annots [<< /Subtype /Widget /Rect [0 0 0 0] >>]")
@@ -346,7 +351,7 @@ def function_cases():
         ('function-host-action',stream(b'{ pop (secret) file }',b'/FunctionType 4 /Domain [0 1] /Range [0 1]'),b'/C cs','Syntax'),
     ]:
         yield Case(name,function_pdf(gray,function,command),OPEN,('content-functions',),'Independent invalid function contract',extra={'render_error':error})
-    yield Case('function-order3',function_pdf(gray,stream(b'\xff\xaa\x55\0',sampled+b'/Size [4] /Order 3'),b'/C cs'),UNSUPPORTED,('content-functions',),'Cubic interpolation is explicitly unsupported',feature='function.cubic-samples')
+    yield strips('function-order3',gray,stream(b'\xff\xaa\x55\0',sampled+b'/Size [4] /Order 3'),[(t,) for t in ts],[(byte(1-min(1,t)),)*3 for t in ts])
     for kind,transform in [('type2',b'<< /FunctionType 2 /Domain [0 1] /C0 [1] /C1 [0] /N 1 >>'),('type4',b'5 0 R')]:
         if kind=='type2':
             yield render('transfer-'+kind,b'/GS gs .25 g 0 0 8 8 re f',[((0,0,8,8),(191,191,191))],resources=b'<< /ExtGState << /GS << /TR '+transform+b' >> >> >>',requirements=('content-functions',))
@@ -925,7 +930,10 @@ def tiling_cases():
     ]:
         yield Case(name,pdf(**options),RENDER,('content-tiling',),'8.6.6.2, 8.7.2–8.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite',oracle=opaque_rectangles(8,8,geometry))
     for name,options in [('tiling-zero-step',{'step':b'0 2'}),('tiling-missing-underlying',{'paint':2}),('tiling-coloured-underlying',{'space':b'[/Pattern /DeviceRGB]','body':b'/C cs 1 0 0 /P scn'})]:
-        yield Case(name,pdf(**options),OPEN,('content-tiling',),'Table 74 and 8.7.3.3: malformed lattice or colour operands',extra={'render_error':'Syntax'})
+        if name == 'tiling-coloured-underlying':
+            yield Case(name,pdf(**options),OPEN,('content-tiling',),'Coloured pattern ignores unused underlying colour with a repair',strict_valid=False,repairs=('content.pattern-underlying',))
+        else:
+            yield Case(name,pdf(**options),OPEN,('content-tiling',),'Table 74 and 8.7.3.3: malformed lattice or colour operands',extra={'render_error':'Syntax'})
 
 
 def generated_annotation_cases():

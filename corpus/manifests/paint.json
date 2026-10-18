@@ -1715,7 +1715,7 @@
     {
       "id": "paint/type3-inconsistent-width",
       "kind": "pdf",
-      "description": "CharProc width disagrees with Widths",
+      "description": "CharProc width disagrees with Widths; Widths advance retained with a repair",
       "expected": "open",
       "requirements": [
         "paint-text-errors"
@@ -1723,9 +1723,10 @@
       "path": "corpus/generated/paint/type3-inconsistent-width.pdf",
       "sha256": "93e4839b56d859fc8dfac2ef0714289b836f97b2c0424b25fc454c2283f1b24a",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "syntax"
+      "strict_valid": false,
+      "repairs": [
+        "font.type3-width"
+      ]
     },
     {
       "id": "paint/image-indexed-matte",

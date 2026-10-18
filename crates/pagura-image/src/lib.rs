@@ -36,6 +36,23 @@ pub mod tags {
     /// Decode fax rows using Columns, then crop or white-pad to the image
     /// Width (7.4.6 Table 11; 8.9.5.1 Table 87). Row padding is not a sample.
     pub const CCITT_COLUMNS: Repair = Repair::new("image.ccitt-columns");
+    /// Decode at the image's sample precision after a syntax failure with
+    /// conflicting valid predictor precision, only if the retry succeeds
+    /// (7.4.4.3 Table 10).
+    pub const PREDICTOR_PRECISION: Repair = Repair::new("image.predictor-precision");
+    /// T.800 A.4.2: ordered tile-parts exceeding their declared count use
+    /// their actual, length-delimited sequence through EOC.
+    pub const JPX_TILE_PART_COUNT: Repair = Repair::new("jpx.tile-part-count");
+    /// T.800 I.5.3.4–I.5.3.5: a sole top-level cmap before the codestream
+    /// supplies the header palette's missing component mapping.
+    pub const JPX_MAPPING_LOCATION: Repair = Repair::new("jpx.mapping-box-location");
+    /// 8.9.5 Table 87: Subtype Image identifies an image XObject despite a
+    /// malformed optional Type entry. Missing/invalid Subtype remains an error.
+    pub const XOBJECT_TYPE: Repair = Repair::new("image.xobject-type");
+    /// 7.4.4, 7.4.8: DCTDecode data with predictor parameters is decoded as
+    /// Flate only after strict framing/checksum/predictor validation and an
+    /// exact match to the declared eight-bit image sample count.
+    pub const FILTER_MISMATCH: Repair = Repair::new("image.filter-mismatch");
 }
 
 mod dispatch;
@@ -214,21 +231,29 @@ pub fn decode_xobject(document: &Document, image: &IndirectObject) -> Result<Dec
         let dictionary = image
             .dictionary()
             .ok_or(Error::syntax("image is not a dictionary"))?;
-        for (key, expected) in [
-            (b"Type".as_slice(), b"XObject".as_slice()),
-            (b"Subtype", b"Image"),
-        ] {
-            if let Some(value) = dictionary.get(key).filter(|v| !v.is_null())
-                && document
-                    .resolve(value)?
-                    .as_name()
-                    .is_none_or(|n| n != expected)
-            {
-                return Err(Error::syntax("invalid image XObject type"));
-            }
-        }
-        if dictionary.get(b"Subtype").is_none_or(Value::is_null) {
+        if dictionary
+            .get(b"Subtype")
+            .map(|v| document.resolve(v))
+            .transpose()?
+            .and_then(Value::as_name)
+            .is_none_or(|n| n != b"Image")
+        {
             return Err(Error::syntax("image XObject requires Subtype Image"));
+        }
+        if let Some(kind) = dictionary
+            .get(b"Type")
+            .map(|v| document.resolve(v))
+            .transpose()?
+            && !kind.is_null()
+            && kind.as_name().is_none_or(|n| n != b"XObject")
+        {
+            diagnostics.repair(
+                pagura_core::Diagnostic::new(
+                    tags::XOBJECT_TYPE,
+                    "Subtype Image identifies XObject; invalid Type ignored (8.9.5 Table 87)",
+                )
+                .at(pagura_core::Position::Buffer(0)),
+            )?;
         }
         let dictionary = parameters::resolved_dictionary(document, dictionary, &mut diagnostics)?;
         filter_rules::validate(document, &dictionary, false, &mut diagnostics)?;

@@ -141,6 +141,10 @@ pub(crate) fn components(space: &Value) -> Result<u8> {
         .and_then(Value::as_name)
         .map(pagura_core::Name::as_bytes)
     {
+        // 8.6.3 permits device spaces as names or one-name arrays.
+        Some(b"DeviceGray" | b"DeviceRGB" | b"DeviceCMYK") if array.len() == 1 => {
+            components(&array[0])
+        }
         Some(b"Indexed" | b"Separation" | b"CalGray") => Ok(1),
         Some(b"CalRGB" | b"Lab") => Ok(3),
         Some(b"DeviceN") => array

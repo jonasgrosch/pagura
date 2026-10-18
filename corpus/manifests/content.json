@@ -2036,7 +2036,7 @@
     {
       "id": "content/tiling-coloured-underlying",
       "kind": "pdf",
-      "description": "Table 74 and 8.7.3.3: malformed lattice or colour operands",
+      "description": "Coloured pattern ignores unused underlying colour with a repair",
       "expected": "open",
       "requirements": [
         "content-tiling"
@@ -2044,9 +2044,10 @@
       "path": "corpus/generated/content/tiling-coloured-underlying.pdf",
       "sha256": "bce8473cc0a3f888ec0c466510e27b62ed64681b6497d7670462238a31f071b8",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.pattern-underlying"
+      ]
     },
     {
       "id": "content/annotation-link-border",
@@ -9644,18 +9645,23 @@
     {
       "id": "content/syntax-q-unclosed",
       "kind": "pdf",
-      "description": "Valid file with malformed page content",
-      "expected": "open",
+      "description": "Unmatched saved graphics state is reported at sequence end",
+      "expected": "render",
       "requirements": [
         "content-explicit-operators"
       ],
       "path": "corpus/generated/content/syntax-q-unclosed.pdf",
       "sha256": "543decf318baafb58ec559ac2a55f1c219065e867cb8f39a441c450546f3130a",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "api": "compile_page",
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.graphics-unclosed"
+      ],
+      "oracle": "corpus/generated/content/syntax-q-unclosed.ppm",
+      "oracle_sha256": "d2f6d1ef302851a667adde508208fded2aea933d1c0b62941b9d0882a3461523",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
     },
     {
       "id": "content/syntax-l",
@@ -10508,17 +10514,22 @@
     {
       "id": "content/function-order3",
       "kind": "pdf",
-      "description": "Cubic interpolation is explicitly unsupported",
-      "expected": "unsupported",
+      "description": "Independent numeric tint-transform oracle",
+      "expected": "render",
       "requirements": [
         "content-functions"
       ],
       "path": "corpus/generated/content/function-order3.pdf",
-      "sha256": "14daf05240105aabcec3a7e93f7eee3c8006a6f64d6806e1b7b0ab5f4c86b83f",
+      "sha256": "e6e0fd0297a8fce324fe55aed1c27e697fe154daaa5a2cee3c956527aaf2ef26",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "function.cubic-samples"
+      "oracle": "corpus/generated/content/function-order3.ppm",
+      "oracle_sha256": "393ea6db127e4c8fdd30c8d5c750b619498ea7579efb8bf3e91d72b61afee6bc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
     },
     {
       "id": "content/transfer-type2",

@@ -122,8 +122,6 @@ pub const COLORSPACE_BLACKPOINT: Feature = Feature::new("colorspace.BlackPoint")
 
 /// PostScript-calculator functions.
 pub const FUNCTION_CALCULATOR: Feature = Feature::new("function.Type4");
-/// Cubic sampled-function interpolation.
-pub const FUNCTION_CUBIC: Feature = Feature::new("function.cubic-samples");
 /// Separation names None and All have special device semantics.
 pub const COLORSPACE_SPECIAL_INK: Feature = Feature::new("colorspace.special-ink");
 

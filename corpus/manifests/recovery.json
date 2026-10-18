@@ -1,0 +1,1294 @@
+{
+  "schema": 2,
+  "area": "recovery",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "recovery/pattern-coloured-base-no-operands",
+      "kind": "pdf",
+      "description": "pattern coloured base no operands",
+      "expected": "render",
+      "requirements": [
+        "recovery-patterns"
+      ],
+      "path": "corpus/generated/recovery/pattern-coloured-base-no-operands.pdf",
+      "sha256": "5ed06878d062fde17391bd906e3dae0f000c73531d3a0039598dafa283edef4a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/pattern-coloured-base-no-operands.ppm",
+      "oracle_sha256": "10e9b4fb32a6453d53c7aaee8e6b8cfd4835aea29b134ccc44c50c71514df4f2",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/pattern-coloured-underlying",
+      "kind": "pdf",
+      "description": "pattern coloured underlying",
+      "expected": "render",
+      "requirements": [
+        "recovery-patterns"
+      ],
+      "path": "corpus/generated/recovery/pattern-coloured-underlying.pdf",
+      "sha256": "45289838a0f1a5bd1443c38987faef5a79bb2420178bdf8f36eabe7cf5787d62",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.pattern-underlying"
+      ],
+      "oracle": "corpus/generated/recovery/pattern-coloured-underlying.ppm",
+      "oracle_sha256": "10e9b4fb32a6453d53c7aaee8e6b8cfd4835aea29b134ccc44c50c71514df4f2",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/pattern-underlying-retained",
+      "kind": "pdf",
+      "description": "pattern underlying retained",
+      "expected": "render",
+      "requirements": [
+        "recovery-patterns"
+      ],
+      "path": "corpus/generated/recovery/pattern-underlying-retained.pdf",
+      "sha256": "6dc9560894a8ccc721325c2eda79715f30b6338a71a2d0889ae35825d80167c7",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.pattern-underlying"
+      ],
+      "oracle": "corpus/generated/recovery/pattern-underlying-retained.ppm",
+      "oracle_sha256": "6f8264231c2500b0bf5605a60046b7dac9213c0b8bd06796976edc760c3262c9",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/pattern-wrong-unused-count",
+      "kind": "pdf",
+      "description": "Unused pattern operands must still match the selected base",
+      "expected": "open",
+      "requirements": [
+        "recovery-patterns"
+      ],
+      "path": "corpus/generated/recovery/pattern-wrong-unused-count.pdf",
+      "sha256": "dc62587ff2df811f5454b5f743e4cea9dd5e167c12837b76e8465b8d83e1b3fe",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/type3-vertical-metric",
+      "kind": "pdf",
+      "description": "type3 vertical metric",
+      "expected": "render",
+      "requirements": [
+        "recovery-type3"
+      ],
+      "path": "corpus/generated/recovery/type3-vertical-metric.pdf",
+      "sha256": "2d9d1a28152c52f33acdbcc1e3b2a98c7ce746b3db99645c99fc3a317129bdb9",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.type3-width"
+      ],
+      "oracle": "corpus/generated/recovery/type3-vertical-metric.ppm",
+      "oracle_sha256": "a68965c847b00309465b6611a5e66b16ac2c699886ca1832a37af89006d6506a",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type3-width-advance",
+      "kind": "pdf",
+      "description": "type3 width advance",
+      "expected": "render",
+      "requirements": [
+        "recovery-type3"
+      ],
+      "path": "corpus/generated/recovery/type3-width-advance.pdf",
+      "sha256": "18b4d24eff5d308e56924452ce9a684649cd056e05ea19b502235178b5919951",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.type3-width"
+      ],
+      "oracle": "corpus/generated/recovery/type3-width-advance.ppm",
+      "oracle_sha256": "a68965c847b00309465b6611a5e66b16ac2c699886ca1832a37af89006d6506a",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/cubic-interior",
+      "kind": "pdf",
+      "description": "cubic interior",
+      "expected": "render",
+      "requirements": [
+        "recovery-cubic"
+      ],
+      "path": "corpus/generated/recovery/cubic-interior.pdf",
+      "sha256": "97272f670cf78004530da0ba6b3ebca73a6186301001224e51c76bf56dd5a93c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/cubic-interior.ppm",
+      "oracle_sha256": "d771fda9bbb5068e88347b817623159ad0acbb20a1b5e005c33b85738d3506ce",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/cubic-clipped",
+      "kind": "pdf",
+      "description": "cubic clipped",
+      "expected": "render",
+      "requirements": [
+        "recovery-cubic"
+      ],
+      "path": "corpus/generated/recovery/cubic-clipped.pdf",
+      "sha256": "e0c575e838ccb44c482dbe403a7a44c06179650dd3d5d1c19efe9de56c57393f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/cubic-clipped.ppm",
+      "oracle_sha256": "2c778e3fe159d8330cf9ca42acf9a970374ebda1118a85f348956ea2228af304",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/cubic-12-reversed",
+      "kind": "pdf",
+      "description": "cubic 12 reversed",
+      "expected": "render",
+      "requirements": [
+        "recovery-cubic"
+      ],
+      "path": "corpus/generated/recovery/cubic-12-reversed.pdf",
+      "sha256": "663f525cf015aee9e98159aba50d628ff62ae72fa7ddd6c972179b7d57ebbfb0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/cubic-12-reversed.ppm",
+      "oracle_sha256": "37ae045b1e44b1e4079e27f48eecf71f8b39d17181e47100fd1ef8c98529eaca",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/cubic-32",
+      "kind": "pdf",
+      "description": "cubic 32",
+      "expected": "render",
+      "requirements": [
+        "recovery-cubic"
+      ],
+      "path": "corpus/generated/recovery/cubic-32.pdf",
+      "sha256": "e9abd3691f0d2792d4e41a347d1fc573e21cd55c29f648bcb1b886e6cef54e95",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/cubic-32.ppm",
+      "oracle_sha256": "3a193aac5c092520a5c40afba5190c9397c23acfd52c4aa55c9a68f3b108b0e5",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/cubic-two-inputs",
+      "kind": "pdf",
+      "description": "cubic two inputs",
+      "expected": "render",
+      "requirements": [
+        "recovery-cubic"
+      ],
+      "path": "corpus/generated/recovery/cubic-two-inputs.pdf",
+      "sha256": "309a970930ef4689ee04951bb344945e8d53e5b0276af7d7971425742768913b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/cubic-two-inputs.ppm",
+      "oracle_sha256": "7ad6d8c055ea3f81a51ace9eb1493f0a39750817592febf8c7ac86a2b7958a35",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/cubic-mixed-linear",
+      "kind": "pdf",
+      "description": "cubic mixed linear",
+      "expected": "render",
+      "requirements": [
+        "recovery-cubic"
+      ],
+      "path": "corpus/generated/recovery/cubic-mixed-linear.pdf",
+      "sha256": "8e75ff17ddae28d33f1a9cc2b69ccc6715b2a2f2c28ce5058bc0952b89dd5d3e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/cubic-mixed-linear.ppm",
+      "oracle_sha256": "7b5ffdf57659a71daeb8603868818d844e438995822d8df3d28e6c80e40ee86c",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/cubic-constant-many-inputs",
+      "kind": "pdf",
+      "description": "cubic constant many inputs",
+      "expected": "render",
+      "requirements": [
+        "recovery-cubic"
+      ],
+      "path": "corpus/generated/recovery/cubic-constant-many-inputs.pdf",
+      "sha256": "34ddea1218810d45524ca57dcb821e8422aa65a030d6287cdd9f17bf1317ece4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/cubic-constant-many-inputs.ppm",
+      "oracle_sha256": "75d3fd6018b437a9f0d0d191e2bde277dfbe47b02471a07c210678fa360f5a51",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/cubic-single-axis",
+      "kind": "pdf",
+      "description": "cubic single axis",
+      "expected": "render",
+      "requirements": [
+        "recovery-cubic"
+      ],
+      "path": "corpus/generated/recovery/cubic-single-axis.pdf",
+      "sha256": "2216426ce123adb7645f39f1619501f675502de8a8995af1b2499ac96ec73f12",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/cubic-single-axis.ppm",
+      "oracle_sha256": "bdfd2c7cad93622d16913c65faec4f03beba0204b653985b29c9aa54f34ac744",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/cubic-rgb-16",
+      "kind": "pdf",
+      "description": "cubic rgb 16",
+      "expected": "render",
+      "requirements": [
+        "recovery-cubic"
+      ],
+      "path": "corpus/generated/recovery/cubic-rgb-16.pdf",
+      "sha256": "43539f36ddc99465668290bc7d11ba5feafdeece92552cc94271950be1010177",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/cubic-rgb-16.ppm",
+      "oracle_sha256": "ac2465bdd943cbf35e7a65e20f4f90e01352349ced1406ec931690f13f881453",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/widget-empty-text",
+      "kind": "pdf",
+      "description": "widget empty text",
+      "expected": "render",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-empty-text.pdf",
+      "sha256": "3c0a87f0e20029e6bfa00fbe929bf36bda2fdf2fa680059b74b8fe234224a885",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/widget-empty-text.ppm",
+      "oracle_sha256": "211d551a25cc9d92089ef7966b55b05cf074bdb27c96568fabe11a48af59711e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/widget-empty-signature",
+      "kind": "pdf",
+      "description": "widget empty signature",
+      "expected": "render",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-empty-signature.pdf",
+      "sha256": "f52880dbe96cfd83aa6673dd53bdab9424aa91a5aa0d8b3495e3f8bb12a9fb26",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/widget-empty-signature.ppm",
+      "oracle_sha256": "211d551a25cc9d92089ef7966b55b05cf074bdb27c96568fabe11a48af59711e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/widget-parent-null",
+      "kind": "pdf",
+      "description": "widget parent null",
+      "expected": "render",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-parent-null.pdf",
+      "sha256": "88c0950c024d0293ee689e61e17b5cf9cbccd5b98c4bcb977889531a75a3bc41",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/widget-parent-null.ppm",
+      "oracle_sha256": "211d551a25cc9d92089ef7966b55b05cf074bdb27c96568fabe11a48af59711e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/widget-parent-undefined",
+      "kind": "pdf",
+      "description": "widget parent undefined",
+      "expected": "render",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-parent-undefined.pdf",
+      "sha256": "d7a088cd8476e326f0a9e54d55acd7ad60bf443346b50f5c55147d0a0e54a62b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/widget-parent-undefined.ppm",
+      "oracle_sha256": "211d551a25cc9d92089ef7966b55b05cf074bdb27c96568fabe11a48af59711e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/widget-inherited-empty",
+      "kind": "pdf",
+      "description": "widget inherited empty",
+      "expected": "render",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-inherited-empty.pdf",
+      "sha256": "a347438b6ef2925ca966f3b0dba7bf7cbe863be0ba8863e80c11401dce41346a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/widget-inherited-empty.ppm",
+      "oracle_sha256": "211d551a25cc9d92089ef7966b55b05cf074bdb27c96568fabe11a48af59711e",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/widget-styled-empty",
+      "kind": "pdf",
+      "description": "widget styled empty",
+      "expected": "render",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-styled-empty.pdf",
+      "sha256": "f66afe8fe80856c4603be6e4fb28907a8b0038c923b33179248782e7ec47390a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/widget-styled-empty.ppm",
+      "oracle_sha256": "8b9ce9b1592006d5b395e893c6b99ea61bb7e560325232d3e95ad982f9a2b229",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/widget-no-border-color",
+      "kind": "pdf",
+      "description": "widget no border color",
+      "expected": "render",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-no-border-color.pdf",
+      "sha256": "2a2eb33115b5223a742ea422da3eb1cc0c87ba066857a28e1d3d9f74d898390a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/widget-no-border-color.ppm",
+      "oracle_sha256": "a712f3267e81f28bdf1a4ae1367ab42b976ef224ec6cbea7b3c7701e0665f4cf",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/widget-rotated-background",
+      "kind": "pdf",
+      "description": "widget rotated background",
+      "expected": "render",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-rotated-background.pdf",
+      "sha256": "b37505d24c3b4fcb3e4c653f05b9ab73d473f15280c9681206ff31d15f0a858d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/widget-rotated-background.ppm",
+      "oracle_sha256": "a712f3267e81f28bdf1a4ae1367ab42b976ef224ec6cbea7b3c7701e0665f4cf",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/widget-value",
+      "kind": "pdf",
+      "description": "widget-value",
+      "expected": "unsupported",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-value.pdf",
+      "sha256": "fb7469ae0ff7b69e910b5dd534d925804e00e9d09acaef50553e7c6da0653b35",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "recovery/widget-inherited-value",
+      "kind": "pdf",
+      "description": "widget-inherited-value",
+      "expected": "unsupported",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-inherited-value.pdf",
+      "sha256": "6512e2a81a17d93eb02291c603d460c9d46a61d6134e4b7abc57d329a3bf8ac0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "recovery/widget-null-inherits-value",
+      "kind": "pdf",
+      "description": "widget-null-inherits-value",
+      "expected": "unsupported",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-null-inherits-value.pdf",
+      "sha256": "79cdc7e4c6e5f711414d07b6aaf27c4c20d060961c6cac1f094161df5b57377c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "recovery/widget-signed",
+      "kind": "pdf",
+      "description": "widget-signed",
+      "expected": "unsupported",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-signed.pdf",
+      "sha256": "d61e891cfb6d6b6c227912917e53b8ecc0c78a6affbeb63dc3bdb0329f58d00b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "recovery/widget-parent-cycle",
+      "kind": "pdf",
+      "description": "widget-parent-cycle",
+      "expected": "open",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-parent-cycle.pdf",
+      "sha256": "71de6053c02eca266f8de0f81a38f21096e86c5a90f517f337abd4d3241fd78b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "cycle"
+    },
+    {
+      "id": "recovery/widget-rotated-border",
+      "kind": "pdf",
+      "description": "widget-rotated-border",
+      "expected": "unsupported",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-rotated-border.pdf",
+      "sha256": "52eb21899717720fab51733aec84dd9b38d698e10f27c1331aeee4deff659e0f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "annotation.appearance"
+    },
+    {
+      "id": "recovery/widget-invalid-rotation",
+      "kind": "pdf",
+      "description": "widget-invalid-rotation",
+      "expected": "open",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-invalid-rotation.pdf",
+      "sha256": "8274be2396ea4c3a989af416c85da3f65e76a26154522f71e3b185d146100072",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/transfer-opaque",
+      "kind": "pdf",
+      "description": "transfer opaque",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-opaque.pdf",
+      "sha256": "1f880c320b7d61b25780c84f937837d57dcc2c74fe5453f84700d39099cf0bd6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-opaque.ppm",
+      "oracle_sha256": "dfa5837656571b306b26a9b6d1ced56ce3b937a67bbb6cfdc9ee398616d16ec2",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/transfer-translucent-default",
+      "kind": "pdf",
+      "description": "transfer translucent default",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-translucent-default.pdf",
+      "sha256": "3c783063783bab7b3e2b08afee9e8e14174b8b1fe6b68861d9b0a544cee01853",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-translucent-default.ppm",
+      "oracle_sha256": "005bacf4afa1ad5c2eed0181264a7ea29e42afd75cee03ffe939bc990ebcde10",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/transfer-reset-by-topmost",
+      "kind": "pdf",
+      "description": "transfer reset by topmost",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-reset-by-topmost.pdf",
+      "sha256": "f14e50cd82471904546fb579ca96bc45bb27fd4b15a651b713e8dffd686f7543",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-reset-by-topmost.ppm",
+      "oracle_sha256": "d7417177480bfac4a6eab15ced94f9984d46f31e09b63b2609310776de79f3da",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/transfer-identity-topmost",
+      "kind": "pdf",
+      "description": "transfer identity topmost",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-identity-topmost.pdf",
+      "sha256": "c4559297af2d15227b185e84e094ea3acfc973e2eda0507dff1eab5998e9ee0f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-identity-topmost.ppm",
+      "oracle_sha256": "d7417177480bfac4a6eab15ced94f9984d46f31e09b63b2609310776de79f3da",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/transfer-transparent-topmost",
+      "kind": "pdf",
+      "description": "transfer transparent topmost",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-transparent-topmost.pdf",
+      "sha256": "5f6c1f604f8bc2912c7583f12a563ab24e4c0b70df41110caa35743593223ddb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-transparent-topmost.ppm",
+      "oracle_sha256": "a41ba848cc5679a803127ac8cc9dc0e2e3d71ce799a55ce26e66a7c507c5fbc0",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/transfer-opaque-ancestor",
+      "kind": "pdf",
+      "description": "transfer opaque ancestor",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-opaque-ancestor.pdf",
+      "sha256": "38c4ce2cbb3e6b76ec0c7ab0303bbe98296507325b2a3bc12150e280ea96f785",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-opaque-ancestor.ppm",
+      "oracle_sha256": "21414f9176f04c873349b11fc7ce5422fdb382d16dc956627d5e46addc0b004a",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/transfer-translucent-ancestor",
+      "kind": "pdf",
+      "description": "transfer translucent ancestor",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-translucent-ancestor.pdf",
+      "sha256": "74b30cf317aa73ed866211ce4123b6b4857977e3e73b527418d3766680239133",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-translucent-ancestor.ppm",
+      "oracle_sha256": "005bacf4afa1ad5c2eed0181264a7ea29e42afd75cee03ffe939bc990ebcde10",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/transfer-image",
+      "kind": "pdf",
+      "description": "transfer image",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-image.pdf",
+      "sha256": "6e754cb9ddc3d9e563a83527d5a4543402d0e932cd027b017c0a751f1f5d2d09",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-image.ppm",
+      "oracle_sha256": "21414f9176f04c873349b11fc7ce5422fdb382d16dc956627d5e46addc0b004a",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/transfer-shading",
+      "kind": "pdf",
+      "description": "transfer shading",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-shading.pdf",
+      "sha256": "f6e3a6fe170a6644452d2289ab2aa163f21e12ab23fd3d774d7b7c16ffa35dd1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-shading.ppm",
+      "oracle_sha256": "21414f9176f04c873349b11fc7ce5422fdb382d16dc956627d5e46addc0b004a",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/transfer-soft-mask-source",
+      "kind": "pdf",
+      "description": "transfer soft mask source",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-soft-mask-source.pdf",
+      "sha256": "cea67ce9b6cdc8febfde3ec535ced3c34c0e6bd95bff222a8b4964f133e7acb8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-soft-mask-source.ppm",
+      "oracle_sha256": "fd5e945b5b47d489532fab475e1a4430e8a9b001d1bbed44e2232a29b26f6806",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/transfer-soft-mask-function",
+      "kind": "pdf",
+      "description": "transfer soft mask function",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-soft-mask-function.pdf",
+      "sha256": "9182b355e3604d324e1a672456b1427706c721806f55ba2f97aca468a7da6a99",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-soft-mask-function.ppm",
+      "oracle_sha256": "40cd2ff67345e8550537d395a4b33aa49b0c7f1080502a13f570d63236dc7998",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/transfer-soft-mask-pattern",
+      "kind": "pdf",
+      "description": "transfer soft mask pattern",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-soft-mask-pattern.pdf",
+      "sha256": "aaaa5a31cce7a24b4b22680b8f5282d316514f85fe1a3768882aa55e19a6f3a2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-soft-mask-pattern.ppm",
+      "oracle_sha256": "fd5e945b5b47d489532fab475e1a4430e8a9b001d1bbed44e2232a29b26f6806",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/transfer-soft-mask-overprint",
+      "kind": "pdf",
+      "description": "transfer soft mask overprint",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-soft-mask-overprint.pdf",
+      "sha256": "8b2860cb820262a80b3314342ed758e1ad6f4ece956d7ad047213c9f0f6cc61a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-soft-mask-overprint.ppm",
+      "oracle_sha256": "fd5e945b5b47d489532fab475e1a4430e8a9b001d1bbed44e2232a29b26f6806",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/transfer-pattern-cell-direct",
+      "kind": "pdf",
+      "description": "Transfers inside pattern cells require explicit pattern-region support",
+      "expected": "unsupported",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-pattern-cell-direct.pdf",
+      "sha256": "096884200cf8ad5f293194457e1d87cf0be4d564546f824bea9c8d832f96ddce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.transfer"
+    },
+    {
+      "id": "recovery/transfer-pattern-cell-group",
+      "kind": "pdf",
+      "description": "Transfers inside pattern cells require explicit pattern-region support",
+      "expected": "unsupported",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-pattern-cell-group.pdf",
+      "sha256": "a17e11a58f84f549544806093b79744b5f76dee67cd6a9e2a3f33e018328162d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.transfer"
+    },
+    {
+      "id": "recovery/transfer-soft-mask-image",
+      "kind": "pdf",
+      "description": "transfer soft mask image",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-soft-mask-image.pdf",
+      "sha256": "1547fc1a68e4ddc3268affc4d908e5548bc4040d42b9ed7d22833e4e9224d277",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-soft-mask-image.ppm",
+      "oracle_sha256": "005bacf4afa1ad5c2eed0181264a7ea29e42afd75cee03ffe939bc990ebcde10",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/transfer-identity-array-direct",
+      "kind": "pdf",
+      "description": "transfer identity array direct",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-identity-array-direct.pdf",
+      "sha256": "43be3a113edec6b07cc0d78d49c284bd858b9b027b9abfd2dd56250f1c195db7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-identity-array-direct.ppm",
+      "oracle_sha256": "005bacf4afa1ad5c2eed0181264a7ea29e42afd75cee03ffe939bc990ebcde10",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/transfer-identity-array-indirect",
+      "kind": "pdf",
+      "description": "transfer identity array indirect",
+      "expected": "render",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-identity-array-indirect.pdf",
+      "sha256": "06ef2dfdbeb3589ca732d48f35fee0b900aac9435679b2bf304bd299a6898002",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/transfer-identity-array-indirect.ppm",
+      "oracle_sha256": "005bacf4afa1ad5c2eed0181264a7ea29e42afd75cee03ffe939bc990ebcde10",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/transfer-fractional-region",
+      "kind": "pdf",
+      "description": "Fractional transfer boundaries require spatial colour correlation",
+      "expected": "unsupported",
+      "requirements": [
+        "recovery-transfer"
+      ],
+      "path": "corpus/generated/recovery/transfer-fractional-region.pdf",
+      "sha256": "a19ebdbcab12c11d15421e7dfb323d6359706e3b6e1371e64165b78f8aa17fae",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.transfer"
+    },
+    {
+      "id": "recovery/lzw-no-initial-clear",
+      "kind": "pdf",
+      "description": "lzw no initial clear",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/lzw-no-initial-clear.pdf",
+      "sha256": "aa4f66cf6e8ebf68f758cc42c332294c8573b202b15a9c6f59febba361de5471",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "filter.lzw-initial-clear"
+      ],
+      "oracle": "corpus/generated/recovery/lzw-no-initial-clear.ppm",
+      "oracle_sha256": "ca63e8c892f9c41f7d5b4bb10c464ed5bc9bbe7d3af7dcc3946334fc679c71dc",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/inline-empty-filters",
+      "kind": "pdf",
+      "description": "inline empty filters",
+      "expected": "render",
+      "requirements": [
+        "recovery-image-syntax"
+      ],
+      "path": "corpus/generated/recovery/inline-empty-filters.pdf",
+      "sha256": "c6752ae9600e2a135a8c6820446debcde6a111569928423db382602987b89dab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/inline-empty-filters.ppm",
+      "oracle_sha256": "ca63e8c892f9c41f7d5b4bb10c464ed5bc9bbe7d3af7dcc3946334fc679c71dc",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/image-device-array",
+      "kind": "pdf",
+      "description": "image device array",
+      "expected": "render",
+      "requirements": [
+        "recovery-image-syntax"
+      ],
+      "path": "corpus/generated/recovery/image-device-array.pdf",
+      "sha256": "80dbfea52e1af3af9d40196494666ca4a8b93fe5faf23519124eb8d24fac196b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/image-device-array.ppm",
+      "oracle_sha256": "ca63e8c892f9c41f7d5b4bb10c464ed5bc9bbe7d3af7dcc3946334fc679c71dc",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jpeg-trailing-restart",
+      "kind": "pdf",
+      "description": "jpeg trailing restart",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/jpeg-trailing-restart.pdf",
+      "sha256": "e4d8465397e24ff7d15b5a6dbe17b44cff15279ef9e84039c424e900aabfea7c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpeg.trailing-restart"
+      ],
+      "oracle": "corpus/generated/recovery/jpeg-trailing-restart.ppm",
+      "oracle_sha256": "fe58f0b2fadd3f51468594663f0d0b04ad2090d436505cfb68732e15ea1785a0",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 1
+    },
+    {
+      "id": "recovery/ccitt-cropped-columns",
+      "kind": "pdf",
+      "description": "ccitt cropped columns",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/ccitt-cropped-columns.pdf",
+      "sha256": "ea14ba1c3ea2d207c6e6d7bc0fe98ae717d123ed000d1a68c70c92b3addc8bcf",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "image.ccitt-columns"
+      ],
+      "oracle": "corpus/generated/recovery/ccitt-cropped-columns.ppm",
+      "oracle_sha256": "5bbf6b55016001cb4608f4903e628c613f695799c72770cbc1c81ca756bbb082",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/predictor-image-precision",
+      "kind": "pdf",
+      "description": "predictor image precision",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/predictor-image-precision.pdf",
+      "sha256": "a78c76cc7b532415a557dc1cf26e141daefcfe39deb349ca69fb9fadcf4e14c2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "image.predictor-precision"
+      ],
+      "oracle": "corpus/generated/recovery/predictor-image-precision.ppm",
+      "oracle_sha256": "8614220c775099e1e174b902c1941f0bc1811a4ab6f7349b54020c48677e7a1d",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/predictor-unusual-valid",
+      "kind": "pdf",
+      "description": "predictor unusual valid",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/predictor-unusual-valid.pdf",
+      "sha256": "e97173388cc9482b6a3e09888a0b498d166b78bccb06f098ffcab6bc1287c62f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/predictor-unusual-valid.ppm",
+      "oracle_sha256": "ca63e8c892f9c41f7d5b4bb10c464ed5bc9bbe7d3af7dcc3946334fc679c71dc",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/predictor-retry-invalid-tag",
+      "kind": "pdf",
+      "description": "A failed predictor retry leaves the original error and diagnostics",
+      "expected": "open",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/predictor-retry-invalid-tag.pdf",
+      "sha256": "2bc71277c39c6e6d0a0f3fe5fda018f3a05ccefd883468cec0cf75e6b6b7c891",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/jpx-part-count",
+      "kind": "pdf",
+      "description": "jpx part count",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/jpx-part-count.pdf",
+      "sha256": "f73e4bbcca0734ac27139a1d6bbd08d9b75ab344cad0a43e7334ae62ef65642d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.tile-part-count"
+      ],
+      "oracle": "corpus/generated/recovery/jpx-part-count.ppm",
+      "oracle_sha256": "b14f82414eb09e99bca870c1ac0021cd45fc0ee7609589ab8cd7ba940d9baf37",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jpx-pdf-palette",
+      "kind": "pdf",
+      "description": "jpx pdf palette",
+      "expected": "render",
+      "requirements": [
+        "recovery-image-syntax"
+      ],
+      "path": "corpus/generated/recovery/jpx-pdf-palette.pdf",
+      "sha256": "14c65cd77fd7f98831047528de38d81d91e61483b0a9d4017d157d677f76a7d7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/jpx-pdf-palette.ppm",
+      "oracle_sha256": "6d56f28a395d9f9f526ca00726d91a463125df7118092fb381eef9579c6b0ed0",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/jpx-misplaced-mapping",
+      "kind": "pdf",
+      "description": "jpx misplaced mapping",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/jpx-misplaced-mapping.pdf",
+      "sha256": "29d50f55700f748f44314ff7af95993174af6914867016f8b609c38ef8d83bbe",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "jpx.mapping-box-location"
+      ],
+      "oracle": "corpus/generated/recovery/jpx-misplaced-mapping.ppm",
+      "oracle_sha256": "6d56f28a395d9f9f526ca00726d91a463125df7118092fb381eef9579c6b0ed0",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/image-xobject-type",
+      "kind": "pdf",
+      "description": "image xobject type",
+      "expected": "render",
+      "requirements": [
+        "recovery-image-syntax"
+      ],
+      "path": "corpus/generated/recovery/image-xobject-type.pdf",
+      "sha256": "4c15a93b66a3c2280fd9c8836a0e10c06d4512440941412d2335f1799d7daa65",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "image.xobject-type"
+      ],
+      "oracle": "corpus/generated/recovery/image-xobject-type.ppm",
+      "oracle_sha256": "ca63e8c892f9c41f7d5b4bb10c464ed5bc9bbe7d3af7dcc3946334fc679c71dc",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/image-flate-mislabeled-dct",
+      "kind": "pdf",
+      "description": "image flate mislabeled dct",
+      "expected": "render",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/image-flate-mislabeled-dct.pdf",
+      "sha256": "15eb5abc1dc7f8f6aae133edd94eee9e7dcfc33f79ca2ea4978904037b9a6524",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "image.filter-mismatch"
+      ],
+      "oracle": "corpus/generated/recovery/image-flate-mislabeled-dct.ppm",
+      "oracle_sha256": "ca63e8c892f9c41f7d5b4bb10c464ed5bc9bbe7d3af7dcc3946334fc679c71dc",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/image-mislabeled-invalid-checksum",
+      "kind": "pdf",
+      "description": "Unproven alternate image encoding remains a syntax error",
+      "expected": "open",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/image-mislabeled-invalid-checksum.pdf",
+      "sha256": "66edf157535da2850a02c27ff160053745c88533a899d3d448aba53ca1488369",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/image-mislabeled-invalid-trailing",
+      "kind": "pdf",
+      "description": "Unproven alternate image encoding remains a syntax error",
+      "expected": "open",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/image-mislabeled-invalid-trailing.pdf",
+      "sha256": "0d8890f624b225d86c22090571164e5bc32d3c937d2a38524996db6b0bbaaa14",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/image-mislabeled-invalid-length",
+      "kind": "pdf",
+      "description": "Unproven alternate image encoding remains a syntax error",
+      "expected": "open",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/image-mislabeled-invalid-length.pdf",
+      "sha256": "5a03ae757cedd3932142bfa066068034dc31cbf8edb96758a91881bef82d8457",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/image-mislabeled-invalid-predictor",
+      "kind": "pdf",
+      "description": "Unproven alternate image encoding remains a syntax error",
+      "expected": "open",
+      "requirements": [
+        "recovery-codecs"
+      ],
+      "path": "corpus/generated/recovery/image-mislabeled-invalid-predictor.pdf",
+      "sha256": "ce01262a83871991d5f7482af7dab6f4435ac23c86c480c8d21598559e8b146e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/unclosed-graphics",
+      "kind": "pdf",
+      "description": "unclosed graphics",
+      "expected": "render",
+      "requirements": [
+        "recovery-content"
+      ],
+      "path": "corpus/generated/recovery/unclosed-graphics.pdf",
+      "sha256": "f0809d01f6a7bc2f994116bc959ee34faff0b4c5aca2cc7b11a13a5884834d95",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.graphics-unclosed"
+      ],
+      "oracle": "corpus/generated/recovery/unclosed-graphics.ppm",
+      "oracle_sha256": "0352e2f6d6120185ef56e86101cdb03d1974015565d722dc4fcd7ecdc15a0d99",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    }
+  ]
+}

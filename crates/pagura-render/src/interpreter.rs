@@ -1,6 +1,7 @@
 //! Content compilation. The only inputs are immutable document objects.
 
 mod annotation_shapes;
+mod annotation_widgets;
 mod annotations;
 mod forms;
 pub(crate) mod images;
@@ -49,6 +50,14 @@ pub(crate) mod tags {
     /// 7.9.5; 12.5.5: skip an appearance with a zero-sized source or target
     /// rectangle. Most readers paint nothing where fitting has no area.
     pub const APPEARANCE_EMPTY: Repair = Repair::new("annotation.appearance-empty");
+    /// 7.8.2; 8.4.2: discard unmatched saved graphics states at the end of a
+    /// content sequence, after all painting and text objects have finished.
+    pub const GRAPHICS_UNCLOSED: Repair = Repair::new("content.graphics-unclosed");
+    /// 9.6.4, Table 111: retain the horizontal Widths advance when d0/d1 disagrees.
+    pub const TYPE3_WIDTH: Repair = Repair::new("font.type3-width");
+    /// 8.7.3.2, Table 73: coloured patterns require only a name; discard extra
+    /// numeric operands supplied with an underlying pattern colour space.
+    pub const PATTERN_UNDERLYING: Repair = Repair::new("content.pattern-underlying");
 }
 
 pub(crate) fn repair(document: &Document, diagnostic: pagura_core::Diagnostic) -> Result<()> {
@@ -277,7 +286,6 @@ impl<'a> Compiler<'a> {
             result.map_err(|e| stream_error(e, offset, &origins))?;
         }
         if !self.operands.is_empty()
-            || !self.saved.is_empty()
             || self.compatibility != 0
             || !self.marked.is_empty()
             || !self.path.is_empty()
@@ -289,6 +297,26 @@ impl<'a> Compiler<'a> {
                 bytes.len().saturating_sub(1),
                 &origins,
             ));
+        }
+        if !self.saved.is_empty() {
+            let position = stream_error(
+                Error::syntax("unclosed saved graphics states"),
+                bytes.len().saturating_sub(1),
+                &origins,
+            );
+            repair(
+                self.document,
+                pagura_core::Diagnostic::new(
+                    tags::GRAPHICS_UNCLOSED,
+                    "unmatched q states discarded at end of content sequence (7.8.2, 8.4.2)",
+                )
+                .at(position.position)
+                .in_object(match position.position {
+                    Position::Stream { object, .. } => object,
+                    _ => return Err(position),
+                }),
+            )?;
+            self.saved.clear();
         }
         Ok(())
     }
