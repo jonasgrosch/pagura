@@ -32,12 +32,21 @@ def snapshot(node="node"):
     record["processes"] = probe(["ps", "-A", "-o", "pid=,ppid=,pcpu=,comm="])
     record["heavy_processes"] = None
     if record["processes"]["status"] == "available":
-        record["heavy_processes"] = []
+        processes, children = [], {}
         for line in record["processes"]["stdout"].splitlines():
             fields = line.split(None, 3)
             if len(fields) != 4:
                 raise ValueError("malformed process record")
             pid, parent, cpu = int(fields[0]), int(fields[1]), float(fields[2])
-            if pid != os.getpid() and cpu >= 25:
-                record["heavy_processes"].append({"pid": pid, "parent": parent, "cpu_percent": cpu, "command": fields[3]})
+            processes.append({"pid": pid, "parent": parent, "cpu_percent": cpu, "command": fields[3]})
+            children.setdefault(parent, []).append(pid)
+        # Probes and their descendants belong to the harness, even if ps sees them busy.
+        excluded, pending = set(), [os.getpid()]
+        while pending:
+            pid = pending.pop()
+            if pid not in excluded:
+                excluded.add(pid)
+                pending.extend(children.get(pid, []))
+        record["heavy_processes"] = [process for process in processes
+            if process["pid"] not in excluded and process["cpu_percent"] >= 25]
     return record
