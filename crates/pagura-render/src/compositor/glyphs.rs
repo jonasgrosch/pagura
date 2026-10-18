@@ -1,21 +1,17 @@
 //! Glyph runs: one cached geometry per outline, placed per glyph (9.3.8).
 
-use super::{Backdrop, Context, Model, Surface, path_active, regions};
+use super::{Context, Frame, Surface, path_active, regions};
 use crate::Tile;
 use pagura_core::{Error, Limits, Result};
 use std::sync::Arc;
 
 impl Context {
-    #[expect(clippy::too_many_arguments, reason = "explicit mark and group state")]
     pub(super) fn glyphs(
         &mut self,
         run: &crate::display::GlyphRun,
         tile: Tile,
         target: &mut Surface,
-        initial: Backdrop<'_>,
-        model: Model,
-        knockout: bool,
-        depth: usize,
+        frame: Frame<'_>,
     ) -> Result<()> {
         if !run.paint.color.paints() || !path_active(&run.paint) {
             return Ok(());
@@ -93,8 +89,7 @@ impl Context {
                     self.allocated -= bytes;
                     return Ok(());
                 };
-                let result =
-                    self.paint_path((&run.paint, &mask), target, initial, model, knockout, depth);
+                let result = self.paint_path(&run.paint, &mask, target, frame);
                 self.raster.recycle(mask);
                 self.allocated -= bytes;
                 self.trim_raster(0);

@@ -1,6 +1,6 @@
 //! Shading marks and shading patterns sampled per device pixel (8.7.4.5).
 
-use super::{Backdrop, Context, Model, Source, Surface};
+use super::{Context, Frame, Model, Source, Surface};
 use crate::display::PathCommand;
 use pagura_core::{Error, Result};
 use pagura_raster::{FillRule, Point, Transform};
@@ -13,10 +13,7 @@ impl Context {
         &mut self,
         command: &crate::display::ShadingCommand,
         target: &mut Surface,
-        initial: Backdrop<'_>,
-        model: Model,
-        knockout: bool,
-        depth: usize,
+        frame: Frame<'_>,
     ) -> Result<()> {
         let transform = command.transform.then(self.device);
         let inverse = transform.inverse().ok_or(Error::unsupported(
@@ -44,7 +41,7 @@ impl Context {
             .composite
             .mask
             .as_ref()
-            .map(|mask| self.soft_mask(mask, target.tile, model, depth + 1))
+            .map(|mask| self.soft_mask(mask, target.tile, frame.model, frame.depth + 1))
             .transpose()?;
         let origin = clip.origin();
         for (row, column, coverage) in clip.spans() {
@@ -55,7 +52,7 @@ impl Context {
                 let x = origin.0
                     + u32::try_from(column)
                         .map_err(|_| Error::limit("shading column exceeds u32"))?;
-                let source = self.shading_sample(command, inverse, (x, y), model, rate, None)?;
+                let source = self.shading_sample(command, inverse, (x, y), frame.model, rate, None)?;
                 let Some(mut source) = source else { continue };
                 let factor = f64::from(coverage) / 255.0;
                 source.alpha *= factor;
@@ -79,17 +76,16 @@ impl Context {
                     buffer.paint(index, source.apply(&command.composite, mask))?;
                     continue;
                 }
-                target
+                let pixel = target
                     .pixels_mut()
                     .get_mut(index)
-                    .ok_or(Error::invalid_argument("shading index outside surface"))?
-                    .paint(
-                        source.apply(&command.composite, mask),
-                        &command.composite,
-                        initial.pixel(x, y),
-                        knockout,
-                        model,
-                    );
+                    .ok_or(Error::invalid_argument("shading index outside surface"))?;
+                frame.paint(
+                    pixel,
+                    source.apply(&command.composite, mask),
+                    &command.composite,
+                    (x, y),
+                );
             }
         }
         Ok(())

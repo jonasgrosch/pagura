@@ -1,6 +1,6 @@
 //! Soft masks: the mask group rendered to per-pixel values (11.6.5).
 
-use super::{Backdrop, Context, Pixel};
+use super::{Backdrop, Context, Frame, Pixel};
 use crate::Tile;
 use crate::transparency::{MaskMethod, Model, SoftMask};
 use pagura_core::{Error, Result};
@@ -57,14 +57,8 @@ impl Context {
             }
             let spot_batch = self.spot_batch.take();
             let mask_colors = std::mem::replace(&mut self.mask_colors, true);
-            let result = self.commands(
-                &mask.group.commands,
-                surface,
-                initial,
-                model,
-                mask.group.attributes.knockout,
-                depth + 1,
-            );
+            let members = Frame::group(initial, model, mask.group.attributes.knockout, depth);
+            let result = self.commands(&mask.group.commands, surface, members);
             self.soft_source = previous;
             if let Some(regions) = &mut self.transfers {
                 regions.suspended = suspended;

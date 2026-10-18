@@ -6,7 +6,7 @@
 //! involving a nondefault transfer remain unsupported: averaging colours before
 //! selecting a nonlinear transfer loses their correlation with spatial regions.
 
-use super::{Backdrop, Context, Model, Source, Surface};
+use super::{Context, Frame, Source, Surface};
 use crate::Tile;
 use crate::display::Command;
 use crate::display::{ImageCommand, PathCommand};
@@ -242,22 +242,13 @@ impl Context {
         &mut self,
         group: &Group,
         surface: &mut Surface,
-        initial: Backdrop<'_>,
-        model: Model,
-        depth: usize,
+        members: Frame<'_>,
     ) -> Result<()> {
         let opaque = self.transfers.as_ref().is_none_or(|r| r.opaque);
         if let Some(regions) = &mut self.transfers {
             regions.opaque &= group.composite.simple();
         }
-        let result = self.commands(
-            &group.commands,
-            surface,
-            initial,
-            model,
-            group.attributes.knockout,
-            depth + 1,
-        );
+        let result = self.commands(&group.commands, surface, members);
         if let Some(regions) = &mut self.transfers {
             regions.opaque = opaque;
         }

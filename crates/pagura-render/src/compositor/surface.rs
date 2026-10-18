@@ -275,6 +275,49 @@ impl Backdrop<'_> {
     }
 }
 
+/// The group a mark composites into (11.4): the initial backdrop that
+/// knockout members read (11.4.6), the group's blending model, whether its
+/// members knock each other out, and the nesting depth.
+#[derive(Clone, Copy)]
+pub(super) struct Frame<'b> {
+    pub(super) initial: Backdrop<'b>,
+    pub(super) model: Model,
+    pub(super) knockout: bool,
+    pub(super) depth: usize,
+}
+impl<'b> Frame<'b> {
+    /// The frame of a group's members, one level deeper.
+    pub(super) const fn group(
+        initial: Backdrop<'b>,
+        model: Model,
+        knockout: bool,
+        depth: usize,
+    ) -> Self {
+        Self {
+            initial,
+            model,
+            knockout,
+            depth: depth + 1,
+        }
+    }
+    /// Composites `source` into `pixel` at device `(x, y)` of this group.
+    pub(super) fn paint(
+        self,
+        pixel: &mut Pixel,
+        source: Source,
+        state: &Composite,
+        (x, y): (u32, u32),
+    ) {
+        pixel.paint(
+            source,
+            state,
+            self.initial.pixel(x, y),
+            self.knockout,
+            self.model,
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

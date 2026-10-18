@@ -1,5 +1,5 @@
 //! Screen annotation fitting about Rect's upper-left anchor (12.5.3).
-use super::{Backdrop, Context, Model, Surface};
+use super::{Context, Frame, Surface};
 use crate::transparency::Group;
 use pagura_core::{Error, Result};
 use pagura_raster::Transform;
@@ -9,10 +9,7 @@ impl Context {
         &mut self,
         group: &Group,
         target: &mut Surface,
-        initial: Backdrop<'_>,
-        model: Model,
-        knockout: bool,
-        depth: usize,
+        frame: Frame<'_>,
     ) -> Result<()> {
         let device = self.device;
         if let Some(view) = group.attributes.view {
@@ -44,7 +41,7 @@ impl Context {
             self.clip = None;
             self.discard_mask();
         }
-        let result = self.group(group, target, initial, model, knockout, depth);
+        let result = self.group(group, target, frame);
         if group.attributes.view.is_some() {
             self.device = device;
             self.clip = None;

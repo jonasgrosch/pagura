@@ -28,7 +28,7 @@ pub(crate) use regions::content_bounds;
 use regions::group_region;
 use shading::pattern_source;
 use soft_mask::CachedMask;
-use surface::{Backdrop, Pixel, Source, Surface};
+use surface::{Backdrop, Frame, Pixel, Source, Surface};
 
 use crate::Tile;
 use crate::display::{Clip, Command, Mark, PathCommand};
@@ -216,20 +216,20 @@ impl Context {
         &mut self,
         commands: &[Command],
         target: &mut Surface,
-        initial: Backdrop<'_>,
-        model: Model,
-        knockout: bool,
-        depth: usize,
+        frame: Frame<'_>,
     ) -> Result<()> {
-        if depth >= self.limits.depth {
+        if frame.depth >= self.limits.depth {
             return Err(Error::limit("compositing depth exceeded"));
         }
         // Only knockout elements use the group's initial backdrop (11.4.6).
         // Select this once, so Normal source-over never reads unused pixels.
-        let initial = if knockout {
-            initial
+        let frame = if frame.knockout {
+            frame
         } else {
-            Backdrop::Transparent
+            Frame {
+                initial: Backdrop::Transparent,
+                ..frame
+            }
         };
         self.charge(commands.len())?;
         for command in commands {
@@ -247,54 +247,29 @@ impl Context {
                 {
                     Ok(())
                 }
-                Command::Glyphs(run) => self.glyphs(
-                    run,
-                    self.viewport.unwrap_or(target.tile),
+                Command::Glyphs(run) => self.glyphs(run, self.viewport.unwrap_or(target.tile), target, frame),
+                Command::Path(path) => self.path_in(path, self.viewport.unwrap_or(target.tile), target, frame),
+                Command::Image(image) => self.image(
+                    image,
                     target,
-                    initial,
-                    model,
-                    knockout,
-                    depth,
+                    frame.initial,
+                    frame.model,
+                    frame.knockout,
+                    frame.depth,
                 ),
-                Command::Path(path) => self.path(path, target, initial, model, knockout, depth),
-                Command::Image(image) => self.image(image, target, initial, model, knockout, depth),
-                Command::Shading(shading) => {
-                    self.shading(shading, target, initial, model, knockout, depth)
-                }
-                Command::Group(group) => {
-                    self.view_group(group, target, initial, model, knockout, depth)
-                }
+                Command::Shading(shading) => self.shading(shading, target, frame),
+                Command::Group(group) => self.view_group(group, target, frame),
             };
             result.map_err(|e| crate::display::contextual(e, command.position()))?;
         }
         Ok(())
     }
-    fn path(
-        &mut self,
-        p: &PathCommand,
-        target: &mut Surface,
-        initial: Backdrop<'_>,
-        model: Model,
-        knockout: bool,
-        depth: usize,
-    ) -> Result<()> {
-        self.path_in(
-            (p, self.viewport.unwrap_or(target.tile)),
-            target,
-            initial,
-            model,
-            knockout,
-            depth,
-        )
-    }
     fn path_in(
         &mut self,
-        (p, tile): (&PathCommand, Tile),
+        p: &PathCommand,
+        tile: Tile,
         target: &mut Surface,
-        initial: Backdrop<'_>,
-        model: Model,
-        knockout: bool,
-        depth: usize,
+        frame: Frame<'_>,
     ) -> Result<()> {
         if !path_active(p) {
             return Ok(());
@@ -302,7 +277,7 @@ impl Context {
         let Some(mask) = self.path_mask(p, tile)? else {
             return Ok(());
         };
-        let result = self.paint_path((p, &mask), target, initial, model, knockout, depth);
+        let result = self.paint_path(p, &mask, target, frame);
         self.raster.recycle(mask);
         result
     }
@@ -329,12 +304,10 @@ impl Context {
     }
     fn paint_path(
         &mut self,
-        (p, mask): (&PathCommand, &Mask),
+        p: &PathCommand,
+        mask: &Mask,
         target: &mut Surface,
-        initial: Backdrop<'_>,
-        model: Model,
-        knockout: bool,
-        depth: usize,
+        frame: Frame<'_>,
     ) -> Result<()> {
         if target.narrow().is_some() {
             return self.narrow_path(p, mask, target);
@@ -345,33 +318,21 @@ impl Context {
         } = &p.color
             && let crate::pattern::Kind::Tiling(tiling) = &pattern.kind
         {
-            return self.tiling(
-                p,
-                pattern.transform,
-                tiling,
-                mask,
-                target,
-                initial,
-                model,
-                knockout,
-                depth,
-            );
+            return self.tiling(p, pattern.transform, tiling, mask, target, frame);
         }
-        self.paint_color((p, mask), target, initial, model, knockout, depth)
+        self.paint_color(p, mask, target, frame)
     }
     fn paint_color(
         &mut self,
-        (p, mask): (&PathCommand, &Mask),
+        p: &PathCommand,
+        mask: &Mask,
         target: &mut Surface,
-        initial: Backdrop<'_>,
-        model: Model,
-        knockout: bool,
-        depth: usize,
+        frame: Frame<'_>,
     ) -> Result<()> {
         let pattern = pattern_source(p);
         self.charge(mask.coverage().len())?;
         let color = if pattern.is_none() {
-            Some(self.color(&p.color, model, &p.composite, true)?)
+            Some(self.color(&p.color, frame.model, &p.composite, true)?)
         } else {
             None
         };
@@ -394,7 +355,7 @@ impl Context {
             .composite
             .mask
             .as_ref()
-            .map(|m| self.soft_mask(m, target.tile, model, depth + 1))
+            .map(|m| self.soft_mask(m, target.tile, frame.model, frame.depth + 1))
             .transpose()?;
         let (ox, oy) = mask.origin();
         for (row, col, coverage) in mask.spans() {
@@ -405,7 +366,7 @@ impl Context {
                 .ok_or(Error::invalid_argument("mask outside group"))?;
             if coverage[0] == 255
                 && p.composite.simple()
-                && !knockout
+                && !frame.knockout
                 && let Some(color) = color
                 && color.preserve == [false; 4]
                 && target.fill_solid(start, coverage.len(), color.color)?
@@ -431,7 +392,7 @@ impl Context {
                         pattern,
                         inverse,
                         (x, y),
-                        model,
+                        frame.model,
                         rate,
                         boundary.as_ref().map(|mask| {
                             f64::from(mask.coverage()[row * boundary_width + col + column]) / 255.0
@@ -450,7 +411,7 @@ impl Context {
                     .pixels_mut()
                     .get_mut(index)
                     .ok_or(Error::invalid_argument("invalid group index"))?;
-                pixel.paint(source, &p.composite, initial.pixel(x, y), knockout, model);
+                frame.paint(pixel, source, &p.composite, (x, y));
             }
         }
         Ok(())
@@ -537,19 +498,15 @@ impl Context {
         &mut self,
         group: &Group,
         parent: &mut Surface,
-        model: Model,
         tile: Tile,
-        depth: usize,
+        frame: Frame<'_>,
     ) -> Result<()> {
         let viewport = self.viewport.replace(tile);
         self.clip = None;
         let result = self.commands(
             &group.commands,
             parent,
-            Backdrop::Transparent,
-            model,
-            false,
-            depth + 1,
+            Frame::group(Backdrop::Transparent, frame.model, false, frame.depth),
         );
         self.viewport = viewport;
         self.clip = None;
@@ -559,25 +516,17 @@ impl Context {
         &mut self,
         group: &Group,
         parent: &mut Surface,
-        parent_model: Model,
         tile: Tile,
-        depth: usize,
+        frame: Frame<'_>,
     ) -> Result<()> {
-        if depth + 1 >= self.limits.depth {
+        if frame.depth + 1 >= self.limits.depth {
             return Err(Error::limit("compositing depth exceeded"));
         }
         self.charge(group.commands.len())?;
+        let members = Frame::group(Backdrop::Transparent, frame.model, false, frame.depth);
         for command in &group.commands {
             if let Command::Glyphs(run) = command {
-                self.glyphs(
-                    run,
-                    tile,
-                    parent,
-                    Backdrop::Transparent,
-                    parent_model,
-                    false,
-                    depth + 1,
-                )?;
+                self.glyphs(run, tile, parent, members)?;
                 continue;
             }
             let Command::Path(p) = command else {
@@ -586,59 +535,45 @@ impl Context {
                 ));
             };
             if p.color.paints() {
-                self.path_in(
-                    (p, tile),
-                    parent,
-                    Backdrop::Transparent,
-                    parent_model,
-                    false,
-                    depth + 1,
-                )
-                .map_err(|e| crate::display::contextual(e, p.position))?;
+                self.path_in(p, tile, parent, members)
+                    .map_err(|e| crate::display::contextual(e, p.position))?;
             }
         }
         Ok(())
     }
-    fn group(
-        &mut self,
-        group: &Group,
-        parent: &mut Surface,
-        parent_initial: Backdrop<'_>,
-        parent_model: Model,
-        knockout: bool,
-        depth: usize,
-    ) -> Result<()> {
+    fn group(&mut self, group: &Group, parent: &mut Surface, frame: Frame<'_>) -> Result<()> {
         let Some(tile) = self.region(group, self.viewport.unwrap_or(parent.tile))? else {
             return Ok(());
         };
         if parent.narrow().is_some() {
-            return self.narrow_group(group, parent, parent_model, tile, depth);
+            return self.narrow_group(group, parent, tile, frame);
         }
         // For opaque Normal members, knockout's shape-weighted replacement
         // reduces to source-over (9.3.8, 11.4.6). Keep the group's mask viewport
         // even though its intermediate colour surface is unnecessary.
-        if self.elide_opaque_groups && !knockout && group.attributes.knockout {
-            return self.opaque_group(group, parent, parent_model, tile, depth);
+        if self.elide_opaque_groups && !frame.knockout && group.attributes.knockout {
+            return self.opaque_group(group, parent, tile, frame);
         }
         let model = if group.attributes.isolated {
-            group.attributes.model.unwrap_or(parent_model)
+            group.attributes.model.unwrap_or(frame.model)
         } else {
-            parent_model
+            frame.model
         };
         let initial = if group.attributes.isolated {
             Backdrop::Transparent
-        } else if knockout {
-            parent_initial
+        } else if frame.knockout {
+            frame.initial
         } else {
             Backdrop::Surface(parent)
         };
         let mut surface = self.surface(tile, initial)?;
-        self.transfer_group(group, &mut surface, initial, model, depth)?;
+        let members = Frame::group(initial, model, group.attributes.knockout, frame.depth);
+        self.transfer_group(group, &mut surface, members)?;
         let soft = group
             .composite
             .mask
             .as_ref()
-            .map(|m| self.soft_mask(m, parent.tile, parent_model, depth + 1))
+            .map(|m| self.soft_mask(m, parent.tile, frame.model, frame.depth + 1))
             .transpose()?;
         self.charge(surface.pixels().len())?;
         let width =
@@ -661,10 +596,10 @@ impl Context {
                 } else {
                     [0.0; 4]
                 };
-                pixel.color = if model == parent_model || self.spot_batch.is_some() {
+                pixel.color = if model == frame.model || self.spot_batch.is_some() {
                     color
                 } else {
-                    parent_model.encode_rgb(
+                    frame.model.encode_rgb(
                         model.rgb(color),
                         &group.composite.conversion,
                         &mut self.function_work,
@@ -692,17 +627,11 @@ impl Context {
                     ..Source::new(pixel.color, pixel.group, pixel.shape)
                 }
                 .apply(&group.composite, mask);
-                parent
+                let target = parent
                     .pixels_mut()
                     .get_mut(index)
-                    .ok_or(Error::invalid_argument("invalid parent index"))?
-                    .paint(
-                        source,
-                        &group.composite,
-                        parent_initial.pixel(x, y),
-                        knockout,
-                        parent_model,
-                    );
+                    .ok_or(Error::invalid_argument("invalid parent index"))?;
+                frame.paint(target, source, &group.composite, (x, y));
             }
         }
         self.allocated -= surface.bytes();

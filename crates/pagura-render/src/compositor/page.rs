@@ -1,6 +1,6 @@
 //! The page: chunked rendering, spot passes and conversion to output pixels.
 
-use super::{Backdrop, Context, Separations, Surface, colorants, plan, regions, scene, transfer};
+use super::{Backdrop, Context, Frame, Separations, Surface, colorants, plan, regions, scene, transfer};
 use crate::display::DisplayList;
 use crate::transparency::Model;
 use crate::{RenderOptions, Tile};
@@ -125,14 +125,13 @@ impl Context {
         self.discard_mask();
         self.begin_transfers(region)?;
         let mut page = self.page_surface(region, format, background)?;
-        self.commands(
-            &list.commands,
-            &mut page,
-            Backdrop::Transparent,
+        let frame = Frame {
+            initial: Backdrop::Transparent,
             model,
-            list.group.knockout,
-            0,
-        )?;
+            knockout: list.group.knockout,
+            depth: 0,
+        };
+        self.commands(&list.commands, &mut page, frame)?;
         // The page pass has selected every pixel's transfer; spot passes replay
         // the same marks for colourants only.
         if let Some(regions) = &mut self.transfers {
@@ -143,14 +142,7 @@ impl Context {
             self.spot_batch = Some(batch);
             self.clip = None;
             let mut surface = self.surface(region, Backdrop::Transparent)?;
-            self.commands(
-                &list.commands,
-                &mut surface,
-                Backdrop::Transparent,
-                model,
-                list.group.knockout,
-                0,
-            )?;
+            self.commands(&list.commands, &mut surface, frame)?;
             spots.push(surface);
         }
         self.spot_batch = None;

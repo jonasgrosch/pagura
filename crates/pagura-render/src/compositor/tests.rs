@@ -483,14 +483,7 @@ fn batched_spans_preserve_the_f64_fold_and_cache_blind_limits() {
                     .unwrap()
                 {
                     context
-                        .paint_path(
-                            (&run.paint, &mask),
-                            &mut reference,
-                            initial,
-                            Model::Rgb,
-                            knockout,
-                            0,
-                        )
+                        .paint_path(&run.paint, &mask, &mut reference, frame(initial, knockout))
                         .unwrap();
                     context.raster.recycle(mask);
                 }
@@ -500,15 +493,7 @@ fn batched_spans_preserve_the_f64_fold_and_cache_blind_limits() {
                 context.glyphs = crate::display::GlyphCache::new(capacity);
                 let mut actual = glyph_surface();
                 context
-                    .glyphs(
-                        &run,
-                        actual.tile,
-                        &mut actual,
-                        initial,
-                        Model::Rgb,
-                        knockout,
-                        0,
-                    )
+                    .glyphs(&run, actual.tile, &mut actual, frame(initial, knockout))
                     .unwrap();
                 for (a, b) in actual.pixels().iter().zip(reference.pixels()) {
                     assert_eq!(a.color.map(f64::to_bits), b.color.map(f64::to_bits));
@@ -532,18 +517,19 @@ fn batched_spans_preserve_the_f64_fold_and_cache_blind_limits() {
             let mut target = glyph_surface();
             outcomes.push(
                 context
-                    .glyphs(
-                        &run,
-                        target.tile,
-                        &mut target,
-                        initial,
-                        Model::Rgb,
-                        false,
-                        0,
-                    )
+                    .glyphs(&run, target.tile, &mut target, frame(initial, false))
                     .map_err(|e| (e.kind, e.position, e.object)),
             );
         }
         assert!(outcomes.windows(2).all(|pair| pair[0] == pair[1]));
+    }
+}
+
+fn frame(initial: Backdrop<'_>, knockout: bool) -> Frame<'_> {
+    Frame {
+        initial,
+        model: Model::Rgb,
+        knockout,
+        depth: 0,
     }
 }

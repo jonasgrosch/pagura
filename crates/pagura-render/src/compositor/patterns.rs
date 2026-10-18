@@ -1,6 +1,6 @@
 //! Evaluate visible tiling instances as one non-isolated, non-knockout group
 //! (8.7.3; 11.6.7). Outer path coverage, alpha and blend are applied once.
-use super::{Backdrop, Context, Model, Source, Surface};
+use super::{Backdrop, Context, Frame, Source, Surface};
 use crate::Tile;
 use crate::display::PathCommand;
 use crate::pattern::{Tiling, TilingType};
@@ -38,10 +38,6 @@ impl Context {
         .map(Some)
     }
 
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "explicit source, backdrop and geometry state"
-    )]
     pub(super) fn tiling(
         &mut self,
         command: &PathCommand,
@@ -49,10 +45,7 @@ impl Context {
         pattern: &Tiling,
         mask: &Mask,
         target: &mut Surface,
-        initial: Backdrop<'_>,
-        model: Model,
-        knockout: bool,
-        depth: usize,
+        frame: Frame<'_>,
     ) -> Result<()> {
         let transform = fit(transform.then(self.device), pattern)?;
         let inverse = transform.inverse().ok_or(Error::unsupported(
@@ -69,8 +62,8 @@ impl Context {
             (iy0, iy1),
             self.limits.display_commands,
         )?)?;
-        let backdrop = if knockout {
-            initial
+        let backdrop = if frame.knockout {
+            frame.initial
         } else {
             Backdrop::Surface(target)
         };
@@ -91,10 +84,7 @@ impl Context {
                     self.commands(
                         &pattern.commands,
                         &mut surface,
-                        backdrop,
-                        model,
-                        false,
-                        depth + 1,
+                        Frame::group(backdrop, frame.model, false, frame.depth),
                     )?;
                 }
             }
@@ -111,7 +101,7 @@ impl Context {
             .composite
             .mask
             .as_ref()
-            .map(|m| self.soft_mask(m, target.tile, model, depth + 1))
+            .map(|m| self.soft_mask(m, target.tile, frame.model, frame.depth + 1))
             .transpose()?;
         self.charge(surface.pixels().len())?;
         for (row, pixels) in surface.pixels().chunks_exact(width).enumerate() {
@@ -140,12 +130,11 @@ impl Context {
                         .unwrap_or(1.0),
                 );
                 // All reads of the initial parent pixel precede this pixel's write.
-                let base = initial.pixel(x, y);
-                target
+                let pixel = target
                     .pixels_mut()
                     .get_mut(index)
-                    .ok_or(Error::invalid_argument("pattern index outside target"))?
-                    .paint(source, &command.composite, base, knockout, model);
+                    .ok_or(Error::invalid_argument("pattern index outside target"))?;
+                frame.paint(pixel, source, &command.composite, (x, y));
             }
         }
         self.allocated -= surface.bytes();
