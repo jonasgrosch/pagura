@@ -1,7 +1,7 @@
 //! Path geometry: subpaths of lines and cubic Bézier curves.
 
 use crate::{FillRule, Point, Transform};
-use pagura_core::{Limits, Result};
+use pagura_core::{Limits, Rect, Result};
 use std::fmt;
 
 /// One path construction step (ISO 32000-2 clause 8.5.2 semantics).
@@ -43,6 +43,19 @@ pub struct Path {
 }
 
 impl Path {
+    /// A closed rectangle subpath through the corners of `rect`, in the
+    /// orientation `re` gives a positive width and height (8.5.2.1).
+    pub fn rect(rect: Rect) -> Self {
+        let mut builder = PathBuilder::new();
+        builder.polygon([
+            Point::new(rect.x0(), rect.y0()),
+            Point::new(rect.x1(), rect.y0()),
+            Point::new(rect.x1(), rect.y1()),
+            Point::new(rect.x0(), rect.y1()),
+        ]);
+        builder.finish()
+    }
+
     /// The segments in construction order. Every subpath starts with
     /// [`Segment::MoveTo`].
     pub fn segments(&self) -> &[Segment] {
@@ -274,6 +287,25 @@ impl PathBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rect_paths_match_re_and_keep_exact_corners() {
+        let rect = Rect::from_corners(7.0, 0.1, -3.0, 0.3).unwrap();
+        let mut re = PathBuilder::new();
+        re.rect(-3.0, 0.1, 10.0, 0.2);
+        let expected = re.finish();
+        let path = Path::rect(rect);
+        assert_eq!(path.segments()[..2], expected.segments()[..2]);
+        // 0.1 + 0.2 != 0.3 in f64: the corners come from the rectangle itself.
+        assert_eq!(
+            path.segments()[2..],
+            [
+                Segment::LineTo(Point::new(7.0, 0.3)),
+                Segment::LineTo(Point::new(-3.0, 0.3)),
+                Segment::Close
+            ]
+        );
+    }
 
     #[test]
     fn lines_and_curves_need_a_current_point() {
