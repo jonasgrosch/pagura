@@ -5,8 +5,8 @@ use crate::{RenderOptions, Tile};
 use pagura_core::{Error, Limits, Meter, Rect, Result};
 use pagura_document::{Page, Rotation};
 use pagura_raster::{
-    FillRule, Mask, Paint, Path, PathBuilder, Pixmap, Rasterizer, Stroke, Transform,
-    adjusted_stroke_outline, stroke_outline,
+    FillRule, Mask, Paint, Path, Pixmap, Rasterizer, Stroke, Transform, adjusted_stroke_outline,
+    stroke_outline,
 };
 use std::sync::{Arc, OnceLock};
 
@@ -20,7 +20,13 @@ pub(crate) struct Clip {
 #[derive(Debug)]
 pub(crate) enum Mark {
     Fill(FillRule),
-    Stroke(Stroke, Transform, bool),
+    /// A stroke with its pen, the CTM the pen is in (8.5.3.1) and whether
+    /// stroke adjustment applies (10.7.5).
+    Stroke {
+        pen: Stroke,
+        ctm: Transform,
+        adjust: bool,
+    },
 }
 
 #[derive(Debug)]
@@ -652,17 +658,11 @@ impl DisplayList {
         let mut target =
             Pixmap::new_with_limits(tile.width, tile.height, options.background, self.limits)?;
         // The crop is a geometric clip, including fractional final rows/columns.
-        let mut crop = PathBuilder::new();
-        crop.rect(
-            self.crop.x0(),
-            self.crop.y0(),
-            self.crop.width(),
-            self.crop.height(),
-        );
+        let crop = crate::device::rectangle(self.crop);
         let crop = Mask::from_path_with_limits(
             tile.width,
             tile.height,
-            &crop.finish(),
+            &crop,
             device,
             FillRule::NonZero,
             self.limits,
@@ -780,7 +780,11 @@ impl PathCommand {
             Mark::Fill(rule) => {
                 raster.fill_path(target, Arc::clone(&self.path), device, *rule, &paint, mask)?;
             }
-            Mark::Stroke(stroke, ctm, adjust) => {
+            Mark::Stroke {
+                pen: stroke,
+                ctm,
+                adjust,
+            } => {
                 let inverse = ctm.inverse().ok_or(Error::unsupported(
                     crate::features::SINGULAR_STROKE,
                     "singular stroke transform is not implemented",
@@ -852,7 +856,7 @@ impl Command {
 mod tests {
     use super::*;
     use pagura_core::Position;
-    use pagura_raster::Point;
+    use pagura_raster::{PathBuilder, Point};
 
     fn paint(alpha: f64) -> PathCommand {
         PathCommand {

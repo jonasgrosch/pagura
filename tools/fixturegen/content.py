@@ -529,6 +529,9 @@ def shading_cases():
     axial=b'/ShadingType 2 /Coords [0 0 8 0] '+function
     yield shade('shading-axial',axial,lambda x,y:(1-x/8,0,x/8))
     yield shade('shading-axial-clip',axial+b'/BBox [2 1 6 7]',lambda x,y:(1-x/8,0,x/8) if 2<x<6 and 1<y<7 else None)
+    # 8.7.4.2: a shading BBox clips like W, within the clip nesting budget;
+    # the default depth is 64, so 64 clips leave no room for the BBox.
+    yield Case('shading-bbox-clip-depth',single_page([b'0 0 8 8 re W n '*64+b'/S sh'],media_box=b'[0 0 8 8]',resources=b'<< /Shading << /S << /ColorSpace /DeviceRGB '+axial+b'/BBox [2 1 6 7] >> >> >>'),OPEN,('content-shadings',),'A shading BBox nests within the clip depth budget',extra={'render_error':'Limit'})
     yield shade('shading-background-ignored',b'/ShadingType 2 /Coords [2 0 6 0] /Background [0 1 0] '+function,lambda x,y:(1-(x-2)/4,0,(x-2)/4) if 2<x<6 else None)
     yield shade('shading-axial-extend',b'/ShadingType 2 /Coords [2 0 6 0] /Extend [true true] '+function,lambda x,y:(1-min(1,max(0,(x-2)/4)),0,min(1,max(0,(x-2)/4))))
     yield shade('shading-axial-empty',b'/ShadingType 2 /Coords [2 2 2 2] '+function,lambda x,y:None)

@@ -2,7 +2,7 @@
 //! Convex-hull subdivision isolates inverse images. A positive-definite
 //! symmetric transformed Jacobian certifies injectivity before accepting a
 //! Newton root. Unresolved numerical cases fail explicitly, never drop colour.
-use super::{Bounds, Decoder, Primitive, charge, push};
+use super::{Bounds, Decoder, Primitive, ShadingType, charge, push};
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::Point;
 #[derive(Debug)]
@@ -18,8 +18,10 @@ pub(super) fn decode(
     d: &mut Decoder<'_>,
     out: &mut Vec<Primitive>,
     limits: &Limits,
-    coons: bool,
+    kind: ShadingType,
 ) -> Result<()> {
+    // Coons patches carry 12 boundary points; tensor-product patches all 16.
+    let coons = kind == ShadingType::Coons;
     let mut previous = None;
     while d.more() {
         let flag = usize::from(d.flag()?);

@@ -4392,6 +4392,21 @@
       "tolerance": 1
     },
     {
+      "id": "content/shading-bbox-clip-depth",
+      "kind": "pdf",
+      "description": "A shading BBox nests within the clip depth budget",
+      "expected": "open",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-bbox-clip-depth.pdf",
+      "sha256": "566b35806fa67632974ee9aaabb1b38530714f9fb2005389b56654d3f6f918c5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Limit"
+    },
+    {
       "id": "content/shading-background-ignored",
       "kind": "pdf",
       "description": "Independent analytic function at device sample locations",

@@ -222,13 +222,6 @@ impl Context {
         plan: &plan::Plan,
         separations: Arc<Separations>,
     ) -> Result<Self> {
-        let mut crop = PathBuilder::new();
-        crop.rect(
-            list.crop.x0(),
-            list.crop.y0(),
-            list.crop.width(),
-            list.crop.height(),
-        );
         let transfers = transfer::Regions::new(&list.commands, list.limits)?;
         let allocated = transfers.as_ref().map_or(0, transfer::Regions::bytes);
         let elide_opaque_groups = plan.format == plan::Format::F64
@@ -253,7 +246,7 @@ impl Context {
             device: list.device_transform(options),
             page_device: list.device_transform(options),
             view_unit: list.user_unit,
-            crop: crop.finish(),
+            crop: crate::device::rectangle(list.crop),
             allocated,
             work: plan.work,
             clip: None,
@@ -757,7 +750,7 @@ impl Context {
         // Preserve the explicit singular-pen error even for off-tile marks.
         let inverse = match &p.mark {
             Mark::Fill(_) => Transform::IDENTITY,
-            Mark::Stroke(_, ctm, _) => ctm.inverse().ok_or(Error::unsupported(
+            Mark::Stroke { ctm, .. } => ctm.inverse().ok_or(Error::unsupported(
                 crate::features::SINGULAR_STROKE,
                 "singular stroke transform",
             ))?,
@@ -784,7 +777,11 @@ impl Context {
                 self.raster
                     .clipped_path(&clip, Arc::clone(&p.path), self.device, *rule, limits)?
             }
-            Mark::Stroke(stroke, ctm, adjust) => {
+            Mark::Stroke {
+                pen: stroke,
+                ctm,
+                adjust,
+            } => {
                 let path = p.path.transformed(inverse);
                 let outline = if *adjust {
                     adjusted_stroke_outline
@@ -1476,14 +1473,6 @@ fn mask_value(mask: &SoftMask, pixel: Pixel, model: Model) -> f64 {
 )]
 fn coordinate(v: f64, lo: u32, hi: u32) -> u32 {
     v.clamp(f64::from(lo), f64::from(hi)) as u32
-}
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "finite premultiplied channel clamped and rounded to 0..255"
-)]
-fn quantize(v: f64) -> u8 {
-    (v.clamp(0.0, 1.0) * 255.0 + 0.5 + 1e-9).floor().min(255.0) as u8
 }
 
 fn pattern_source(p: &PathCommand) -> Option<crate::display::ShadingCommand> {

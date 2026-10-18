@@ -1,7 +1,7 @@
 //! Mesh stream decoding and spatial queries (8.7.4.5.5–8.7.4.5.8).
 mod patches;
 mod spatial;
-use super::Functions;
+use super::{Functions, ShadingType};
 use crate::icc::ColorContext;
 use pagura_core::{Dictionary, Error, Limits, Result, Value};
 use pagura_raster::Point;
@@ -45,7 +45,7 @@ impl Mesh {
         document: &ColorContext<'_>,
         d: &Dictionary,
         value: &Value,
-        kind: i64,
+        kind: ShadingType,
         components: usize,
     ) -> Result<Self> {
         let id = value
@@ -57,9 +57,9 @@ impl Mesh {
         let mut decoder = Decoder::new(document, d, &data, kind, inputs)?;
         let mut primitives = Vec::new();
         let limits = document.limits();
-        if kind == 4 {
+        if kind == ShadingType::FreeTriangles {
             free_triangles(&mut decoder, &mut primitives, &limits)?;
-        } else if kind == 5 {
+        } else if kind == ShadingType::LatticeTriangles {
             lattice(
                 &mut decoder,
                 &mut primitives,
@@ -67,7 +67,7 @@ impl Mesh {
                 integer(document, d, b"VerticesPerRow")?,
             )?;
         } else {
-            patches::decode(&mut decoder, &mut primitives, &limits, kind == 6)?;
+            patches::decode(&mut decoder, &mut primitives, &limits, kind)?;
         }
         if primitives.is_empty() {
             return Err(Error::syntax("mesh shading has no complete geometry"));
@@ -255,19 +255,19 @@ impl<'a> Decoder<'a> {
         document: &ColorContext<'_>,
         d: &Dictionary,
         data: &'a [u8],
-        kind: i64,
+        kind: ShadingType,
         inputs: usize,
     ) -> Result<Self> {
         let coordinate = integer(document, d, b"BitsPerCoordinate")?;
         let component = integer(document, d, b"BitsPerComponent")?;
-        let flag = if kind == 5 {
+        let flag = if kind == ShadingType::LatticeTriangles {
             0
         } else {
             integer(document, d, b"BitsPerFlag")?
         };
         if !matches!(coordinate, 1 | 2 | 4 | 8 | 12 | 16 | 24 | 32)
             || !matches!(component, 1 | 2 | 4 | 8 | 12 | 16)
-            || !(if kind == 5 {
+            || !(if kind == ShadingType::LatticeTriangles {
                 flag == 0
             } else {
                 matches!(flag, 2 | 4 | 8)

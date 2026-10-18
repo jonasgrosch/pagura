@@ -56,13 +56,11 @@ impl Compiler<'_> {
                     .resolve(v)?
                     .as_integer()
                     .ok_or(Error::syntax("annotation F must be integer"))
+                    .and_then(AnnotationFlags::parse)
             })
             .transpose()?
-            .unwrap_or(0);
-        if flags < 0 || flags & !1023 != 0 {
-            return Err(Error::syntax("invalid annotation flags"));
-        }
-        if flags & (2 | 32) != 0 {
+            .unwrap_or_default();
+        if flags.intersects(AnnotationFlags::HIDDEN.union(AnnotationFlags::NO_VIEW)) {
             self.extract_annotation(value, true)?;
             return Ok(());
         }
@@ -78,7 +76,7 @@ impl Compiler<'_> {
             .transpose()?
             .and_then(Value::as_name)
             .ok_or(Error::syntax("annotation has no Subtype"))?;
-        if flags & 1 != 0 && !standard_type(subtype.as_bytes()) {
+        if flags.intersects(AnnotationFlags::INVISIBLE) && !standard_type(subtype.as_bytes()) {
             self.extract_annotation(value, true)?;
             return Ok(());
         }
@@ -111,32 +109,26 @@ impl Compiler<'_> {
         };
         let start = self.commands.len();
         self.paint_filled_appearance(&Appearance::Existing(id), rect, resources)?;
-        let flags = if subtype == b"Text" {
-            flags | 8 | 16
-        } else {
-            flags
-        };
-        self.annotation_view(start, rect, flags);
+        self.annotation_view(start, rect, flags.for_subtype(subtype.as_bytes()));
         Ok(())
     }
 
-    pub(super) fn annotation_view(&mut self, start: usize, rect: Rect, flags: i64) {
-        if flags & (8 | 16) == 0 {
+    pub(super) fn annotation_view(&mut self, start: usize, rect: Rect, flags: AnnotationFlags) {
+        if !flags.intersects(AnnotationFlags::NO_ZOOM.union(AnnotationFlags::NO_ROTATE)) {
             return;
         }
         let commands = self.commands.split_off(start);
-        let mut bounds = pagura_raster::PathBuilder::new();
-        bounds.rect(rect.x0(), rect.y0(), rect.width(), rect.height());
+        let bounds = crate::device::rectangle(rect);
         self.commands
             .push(crate::display::Command::Group(crate::transparency::Group {
                 position: self.position,
-                bounds: Some(std::sync::Arc::new(bounds.finish())),
+                bounds: Some(std::sync::Arc::new(bounds)),
                 commands,
                 attributes: crate::transparency::Attributes {
                     view: Some(crate::transparency::ViewFit {
                         anchor: Point::new(rect.x0(), rect.y1()),
-                        no_zoom: flags & 8 != 0,
-                        no_rotate: flags & 16 != 0,
+                        no_zoom: flags.intersects(AnnotationFlags::NO_ZOOM),
+                        no_rotate: flags.intersects(AnnotationFlags::NO_ROTATE),
                     }),
                     ..Default::default()
                 },
@@ -204,20 +196,54 @@ impl Compiler<'_> {
         let result = self.form_body(body, resources);
         self.extraction = extraction;
         if result.is_ok() && !form.contains_key(b"Group") {
-            let mut bounds = pagura_raster::PathBuilder::new();
-            bounds.rect(rect.x0(), rect.y0(), rect.width(), rect.height());
+            let bounds = crate::device::rectangle(rect);
             let commands = self.commands.split_off(start);
             self.commands
                 .push(crate::display::Command::Group(crate::transparency::Group {
                     position: self.position,
                     commands,
-                    bounds: Some(std::sync::Arc::new(bounds.finish())),
+                    bounds: Some(std::sync::Arc::new(bounds)),
                     attributes: crate::transparency::Attributes::default(),
                     composite: crate::transparency::Composite::default(),
                 }));
         }
         self.state = saved;
         result
+    }
+}
+
+/// Annotation flags (12.5.3, Table 167).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(super) struct AnnotationFlags(u16);
+impl AnnotationFlags {
+    const INVISIBLE: Self = Self(1);
+    const HIDDEN: Self = Self(1 << 1);
+    const NO_ZOOM: Self = Self(1 << 3);
+    const NO_ROTATE: Self = Self(1 << 4);
+    const NO_VIEW: Self = Self(1 << 5);
+    /// Table 167 defines bits 1 to 10.
+    const DEFINED: u16 = (1 << 10) - 1;
+
+    fn parse(value: i64) -> Result<Self> {
+        u16::try_from(value)
+            .ok()
+            .filter(|bits| bits & !Self::DEFINED == 0)
+            .map(Self)
+            .ok_or(Error::syntax("invalid annotation flags"))
+    }
+    const fn intersects(self, other: Self) -> bool {
+        self.0 & other.0 != 0
+    }
+    const fn union(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
+    /// Text annotations behave as if NoZoom and NoRotate were set (12.5.6.4).
+    pub(super) fn for_subtype(self, subtype: &[u8]) -> Self {
+        if subtype == b"Text" {
+            self.union(Self::NO_ZOOM).union(Self::NO_ROTATE)
+        } else {
+            self
+        }
     }
 }
 

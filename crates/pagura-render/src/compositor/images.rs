@@ -601,7 +601,7 @@ mod tests {
         assert_eq!(
             value.color[..3]
                 .iter()
-                .map(|&v| super::super::quantize(v))
+                .map(|&v| crate::device::quantize_unit(v))
                 .collect::<Vec<_>>(),
             [2, 129, 0]
         );
@@ -624,7 +624,7 @@ mod tests {
                     let numerator = if inverted { maximum - raw } else { raw };
                     let expected = u8::try_from((numerator * 255 + maximum / 2) / maximum).unwrap();
                     let alpha = samples.sample(&image, pixel).unwrap();
-                    assert_eq!(super::super::quantize(alpha), expected);
+                    assert_eq!(crate::device::quantize_unit(alpha), expected);
                 }
             }
         }
@@ -648,7 +648,7 @@ mod tests {
         let mut samples = MaskSamples { table: [None; 256] };
         for (pixel, expected) in [0, 128, 255].into_iter().enumerate() {
             assert_eq!(
-                super::super::quantize(samples.sample(&image, pixel).unwrap()),
+                crate::device::quantize_unit(samples.sample(&image, pixel).unwrap()),
                 expected
             );
         }
@@ -660,7 +660,7 @@ mod tests {
             bits: vec![8],
         };
         assert_eq!(
-            super::super::quantize(samples.sample(&image, 0).unwrap()),
+            crate::device::quantize_unit(samples.sample(&image, 0).unwrap()),
             128
         );
     }
@@ -695,7 +695,7 @@ mod tests {
             // (8.6.6.3; 8.9.5.2), independently fixing every expected channel.
             let expected = palette(raw);
             for (value, expected) in actual.color.iter().zip(expected) {
-                assert_eq!(super::super::quantize(*value), expected);
+                assert_eq!(crate::device::quantize_unit(*value), expected);
             }
             assert_eq!(actual.alpha, 1.0);
             assert_eq!(actual.shape, 1.0);

@@ -205,7 +205,7 @@ impl<'s> Compiler<'s> {
                 if group {
                     child.state.isolate();
                 }
-                let clip = rectangle(bbox).transformed(child.state.ctm);
+                let clip = crate::device::rectangle(bbox).transformed(child.state.ctm);
                 child.add_clip(Arc::new(clip), FillRule::NonZero)?;
                 child.extraction =
                     id.and_then(|id| self.extraction.as_ref().map(|scope| scope.within(id)));
@@ -226,7 +226,10 @@ impl<'s> Compiler<'s> {
                     child.state.fill.color = Color::clone(color);
                     child.state.stroke.color = Color::clone(color);
                 }
-                child.add_clip(Arc::new(rectangle(tiling.bbox)), FillRule::NonZero)?;
+                child.add_clip(
+                    Arc::new(crate::device::rectangle(tiling.bbox)),
+                    FillRule::NonZero,
+                )?;
             }
             Child::Glyph {
                 id,
@@ -254,11 +257,4 @@ impl<'s> Compiler<'s> {
         self.forms.push(id);
         Ok(())
     }
-}
-
-/// A closed rectangle path, until `pagura_raster` offers one.
-pub(super) fn rectangle(rect: Rect) -> pagura_raster::Path {
-    let mut path = PathBuilder::new();
-    path.rect(rect.x0(), rect.y0(), rect.width(), rect.height());
-    path.finish()
 }

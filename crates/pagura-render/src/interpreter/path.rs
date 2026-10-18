@@ -113,11 +113,11 @@ impl Compiler<'_> {
             self.commands.push(Command::Path(PathCommand {
                 path: Arc::clone(&path),
                 position: self.position,
-                mark: Mark::Stroke(
-                    self.state.pen.clone(),
-                    self.state.ctm,
-                    self.state.stroke_adjustment,
-                ),
+                mark: Mark::Stroke {
+                    pen: self.state.pen.clone(),
+                    ctm: self.state.ctm,
+                    adjust: self.state.stroke_adjustment,
+                },
                 clip: self.state.clip.clone(),
                 color: self.state.stroke.color.clone(),
                 transfer: self.state.transfer.clone(),

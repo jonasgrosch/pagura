@@ -22,6 +22,42 @@ pub(crate) struct Shading {
     functions: Functions,
     geometry: Geometry,
 }
+/// Table 77 `ShadingType`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ShadingType {
+    Function,
+    Axial,
+    Radial,
+    FreeTriangles,
+    LatticeTriangles,
+    Coons,
+    TensorProduct,
+}
+impl TryFrom<i64> for ShadingType {
+    type Error = Error;
+    fn try_from(value: i64) -> Result<Self> {
+        Ok(match value {
+            1 => Self::Function,
+            2 => Self::Axial,
+            3 => Self::Radial,
+            4 => Self::FreeTriangles,
+            5 => Self::LatticeTriangles,
+            6 => Self::Coons,
+            7 => Self::TensorProduct,
+            _ => return Err(Error::syntax("invalid ShadingType")),
+        })
+    }
+}
+impl ShadingType {
+    /// Types 4 to 7 describe colour by a mesh in a stream (8.7.4.5.5–8).
+    const fn is_mesh(self) -> bool {
+        matches!(
+            self,
+            Self::FreeTriangles | Self::LatticeTriangles | Self::Coons | Self::TensorProduct
+        )
+    }
+}
+
 #[derive(Debug)]
 enum Geometry {
     Mesh(Box<mesh::Mesh>),
@@ -70,10 +106,8 @@ impl Shading {
             .map(|v| document.resolve(v))
             .transpose()?
             .and_then(Value::as_integer)
-            .ok_or(Error::syntax("shading requires ShadingType"))?;
-        if !(1..=7).contains(&kind) {
-            return Err(Error::syntax("invalid ShadingType"));
-        }
+            .ok_or(Error::syntax("shading requires ShadingType"))
+            .and_then(ShadingType::try_from)?;
         let space = color::blending(
             document,
             resources,
@@ -81,7 +115,7 @@ impl Shading {
                 .ok_or(Error::syntax("shading requires ColorSpace"))?,
         )?;
         if matches!(space, Space::Pattern(_))
-            || (kind < 4 && matches!(space, Space::Indexed { .. }))
+            || (!kind.is_mesh() && matches!(space, Space::Indexed { .. }))
             || (matches!(space, Space::Indexed { .. }) && d.contains_key(b"Function"))
         {
             return Err(Error::syntax("analytic shading cannot use Indexed"));
@@ -101,11 +135,7 @@ impl Shading {
                 Ok(b)
             })
             .transpose()?;
-        let bbox_path = bbox.map(|b| {
-            let mut path = pagura_raster::PathBuilder::new();
-            path.rect(b.x0(), b.y0(), b.width(), b.height());
-            path.finish()
-        });
+        let bbox_path = bbox.map(crate::device::rectangle);
         let antialias = d
             .get(b"AntiAlias")
             .map(|v| {
@@ -134,7 +164,7 @@ impl Shading {
                 Ok(background)
             })
             .transpose()?;
-        if kind >= 4 {
+        if kind.is_mesh() {
             let mesh = mesh::Mesh::parse(document, d, value, kind, components)?;
             return Ok(Self {
                 space,
@@ -254,9 +284,9 @@ impl Shading {
 fn geometry(
     document: &ColorContext<'_>,
     d: &Dictionary,
-    kind: i64,
+    kind: ShadingType,
 ) -> Result<(Geometry, Vec<[f64; 2]>)> {
-    if kind == 1 {
+    if kind == ShadingType::Function {
         let domain = optional_numbers(document, d, b"Domain", [0.0, 1.0, 0.0, 1.0])?;
         if domain[0] >= domain[1] || domain[2] >= domain[3] {
             return Err(Error::syntax("invalid shading Domain"));
@@ -299,7 +329,7 @@ fn geometry(
     let coords = d
         .get(b"Coords")
         .ok_or(Error::syntax("shading requires Coords"))?;
-    let geometry = if kind == 2 {
+    let geometry = if kind == ShadingType::Axial {
         let c = numbers::<4>(document, coords)?;
         Geometry::Axial {
             start: Point::new(c[0], c[1]),

@@ -26,7 +26,7 @@ pub(super) struct TextState {
     horizontal: f64,
     leading: f64,
     rise: f64,
-    mode: u8,
+    mode: RenderMode,
     pub(super) knockout: bool,
 }
 impl Default for TextState {
@@ -39,7 +39,7 @@ impl Default for TextState {
             horizontal: 1.0,
             leading: 0.0,
             rise: 0.0,
-            mode: 0,
+            mode: RenderMode::Fill,
             knockout: true,
         }
     }
@@ -102,13 +102,10 @@ impl Compiler<'_> {
                 self.select_font(value, size)?;
             }
             TextOperation::RenderMode(mode) => {
-                let mode = u8::try_from(mode)
-                    .ok()
-                    .filter(|&v| v < 8)
-                    .ok_or(Error::syntax("text render mode outside 0..7"))?;
+                let mode = RenderMode::try_from(mode)?;
                 self.check_text_mode(mode)?;
                 if let Some(object) = &mut self.text_object {
-                    object.clipping |= mode >= 4;
+                    object.clipping |= mode.clips();
                 }
                 self.state.text.mode = mode;
             }
@@ -157,8 +154,8 @@ impl Compiler<'_> {
         Ok(())
     }
 
-    fn check_text_mode(&self, mode: u8) -> Result<()> {
-        if mode < 4 && self.text_object.as_ref().is_some_and(|o| o.clipping) {
+    fn check_text_mode(&self, mode: RenderMode) -> Result<()> {
+        if !mode.clips() && self.text_object.as_ref().is_some_and(|o| o.clipping) {
             self.repair(
                 crate::repairs::TEXT_CLIP_RESET,
                 "text clipping mode reset before ET; accumulated clip retained",
@@ -175,7 +172,7 @@ impl Compiler<'_> {
             matrix: Transform::IDENTITY,
             line: Transform::IDENTITY,
             clip: PathBuilder::new(),
-            clipping: self.state.text.mode >= 4,
+            clipping: self.state.text.mode.clips(),
             start: self.commands.len(),
             knockout: self.state.text.knockout,
             position: self.position,
@@ -305,12 +302,13 @@ impl Compiler<'_> {
                     program,
                     glyph,
                     matrix,
-                } if mode != 3 => {
+                } if mode != RenderMode::Invisible => {
                     let path = self.glyph_outline(font, glyph, &program)?;
                     let transform = checked(matrix.then(transform))?;
                     self.outline_text(path, transform, mode)?;
                 }
-                GlyphShape::Type3 { procedure, matrix } if mode != 3 && mode != 7 => {
+                // Type 3 glyphs only paint; they add nothing to the clip (9.3.6).
+                GlyphShape::Type3 { procedure, matrix } if mode.painting().is_some() => {
                     self.type3_glyph(
                         &font.font,
                         procedure,
@@ -327,12 +325,18 @@ impl Compiler<'_> {
         self.text_translate(dx, dy)
     }
 
-    fn outline_text(&mut self, outline: Arc<Path>, transform: Transform, mode: u8) -> Result<()> {
+    fn outline_text(
+        &mut self,
+        outline: Arc<Path>,
+        transform: Transform,
+        mode: RenderMode,
+    ) -> Result<()> {
         if outline.is_empty() {
             return Ok(());
         }
-        if matches!(mode, 0 | 4) {
-            if mode == 4 {
+        // Fill and fill-and-clip glyphs join the context's glyph run (9.3.8).
+        if matches!(mode, RenderMode::Fill | RenderMode::FillClip) {
+            if mode == RenderMode::FillClip {
                 self.paint_charge(path_bytes(&outline), 0)?;
                 let path = outline.transformed(transform);
                 validate_path(&path)?;
@@ -347,22 +351,20 @@ impl Compiler<'_> {
         self.text_run = None;
         // Painting plus clipping retains two separate paths; clip-only and
         // paint-only modes retain one (9.3.6).
-        let copies = if (4..=6).contains(&mode) { 2 } else { 1 };
+        let copies = if mode.clips() && mode.painting().is_some() {
+            2
+        } else {
+            1
+        };
         self.paint_charge(path_bytes(&outline).saturating_mul(copies), 0)?;
         let path = outline.transformed(transform);
         validate_path(&path)?;
-        if mode >= 4 {
+        if mode.clips() {
             let limit = self.document.limits().path_segments;
             let clip = &mut self.open_text()?.clip;
             append(clip, &path, limit)?;
         }
-        let paint = match mode % 4 {
-            0 => Some(Painting::FILL),
-            1 => Some(Painting::STROKE),
-            2 => Some(Painting::FILL_STROKE),
-            _ => None,
-        };
-        if let Some(painting) = paint {
+        if let Some(painting) = mode.painting() {
             let old = std::mem::take(&mut self.path);
             append(&mut self.path, &path, self.document.limits().path_segments)?;
             self.paint(painting)?;
@@ -396,6 +398,58 @@ impl Compiler<'_> {
         self.text_run = Some(self.commands.len());
         self.commands.push(super::Command::Glyphs(run));
         Ok(())
+    }
+}
+
+/// Text rendering modes (9.3.6, Table 104).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub(super) enum RenderMode {
+    Fill = 0,
+    Stroke = 1,
+    FillStroke = 2,
+    Invisible = 3,
+    FillClip = 4,
+    StrokeClip = 5,
+    FillStrokeClip = 6,
+    Clip = 7,
+}
+impl TryFrom<i64> for RenderMode {
+    type Error = Error;
+    fn try_from(value: i64) -> Result<Self> {
+        Ok(match value {
+            0 => Self::Fill,
+            1 => Self::Stroke,
+            2 => Self::FillStroke,
+            3 => Self::Invisible,
+            4 => Self::FillClip,
+            5 => Self::StrokeClip,
+            6 => Self::FillStrokeClip,
+            7 => Self::Clip,
+            _ => return Err(Error::syntax("text render mode outside 0..7")),
+        })
+    }
+}
+impl RenderMode {
+    /// How glyph outlines are painted, if at all.
+    pub(super) const fn painting(self) -> Option<Painting> {
+        match self {
+            Self::Fill | Self::FillClip => Some(Painting::FILL),
+            Self::Stroke | Self::StrokeClip => Some(Painting::STROKE),
+            Self::FillStroke | Self::FillStrokeClip => Some(Painting::FILL_STROKE),
+            Self::Invisible | Self::Clip => None,
+        }
+    }
+    /// Whether glyph outlines are added to the text clip.
+    pub(super) const fn clips(self) -> bool {
+        matches!(
+            self,
+            Self::FillClip | Self::StrokeClip | Self::FillStrokeClip | Self::Clip
+        )
+    }
+    /// The Table 104 code.
+    pub(super) const fn code(self) -> u8 {
+        self as u8
     }
 }
 

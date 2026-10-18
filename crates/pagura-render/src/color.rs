@@ -146,7 +146,7 @@ impl Color {
                     .ok_or(Error::syntax("transfer function has no output"))?;
             }
         }
-        let [r, g, b] = rgb.map(channel);
+        let [r, g, b] = rgb.map(crate::device::quantize_unit);
         Ok(Rgba8::opaque(r, g, b))
     }
 }
@@ -734,18 +734,6 @@ fn alternate_components(
         }
         _ => return Err(Error::syntax("invalid ICC alternate family")),
     })
-}
-
-/// Quantizes a colour component in `0..=1` to an 8-bit channel, rounding to
-/// nearest; out-of-range components are clamped first (clause 8.6.4.1).
-pub(crate) fn channel(value: f64) -> u8 {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "clamped to 0..=255 before conversion"
-    )]
-    let channel = (value.clamp(0.0, 1.0) * 255.0).round() as u8;
-    channel
 }
 
 fn indexed_space(

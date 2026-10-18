@@ -1,5 +1,6 @@
 //! Generated link/square borders and note icons (12.5.4, 12.5.6.4–12.5.6.8).
 //! Note icon outlines are device policy; no document font is required.
+use super::AnnotationFlags;
 use crate::color::{Color, Space};
 use crate::display::{Clip, Command, Mark, PathCommand};
 use crate::interpreter::Compiler;
@@ -13,11 +14,12 @@ impl Compiler<'_> {
         d: &Dictionary,
         subtype: &[u8],
         rect: Rect,
-        flags: i64,
+        flags: AnnotationFlags,
     ) -> Result<()> {
         let start = self.commands.len();
         match subtype {
-            b"Link" | b"Square" => self.annotation_border(d, rect, subtype == b"Square")?,
+            b"Link" => self.annotation_border(d, rect, BorderKind::Link)?,
+            b"Square" => self.annotation_border(d, rect, BorderKind::Square)?,
             b"Text" => self.annotation_icon(d, rect)?,
             b"Widget" => self.annotation_widget(d, rect)?,
             _ => {
@@ -27,18 +29,11 @@ impl Compiler<'_> {
                 ));
             }
         }
-        self.annotation_view(
-            start,
-            rect,
-            if subtype == b"Text" {
-                flags | 8 | 16
-            } else {
-                flags
-            },
-        );
+        self.annotation_view(start, rect, flags.for_subtype(subtype));
         Ok(())
     }
-    fn annotation_border(&mut self, d: &Dictionary, rect: Rect, square: bool) -> Result<()> {
+    fn annotation_border(&mut self, d: &Dictionary, rect: Rect, kind: BorderKind) -> Result<()> {
+        let square = kind == BorderKind::Square;
         if square && (d.contains_key(b"BE") || d.contains_key(b"RD")) {
             return Err(Error::unsupported(
                 crate::features::ANNOTATION_APPEARANCE,
@@ -63,7 +58,7 @@ impl Compiler<'_> {
         if square && let Some(color) = annotation_color(self.document, d, b"IC", None)? {
             self.annotation_mark(
                 d,
-                rect_path(inner),
+                crate::device::rectangle(inner),
                 Mark::Fill(FillRule::NonZero),
                 color,
                 rect,
@@ -90,7 +85,11 @@ impl Compiler<'_> {
         self.annotation_mark(
             d,
             path.finish(),
-            Mark::Stroke(stroke, Transform::IDENTITY, false),
+            Mark::Stroke {
+                pen: stroke,
+                ctm: Transform::IDENTITY,
+                adjust: false,
+            },
             color,
             rect,
         )
@@ -125,14 +124,14 @@ impl Compiler<'_> {
         self.annotation_mark(
             d,
             foreground.transformed(scale),
-            Mark::Stroke(
-                Stroke {
+            Mark::Stroke {
+                pen: Stroke {
                     width: 1.0,
                     ..Stroke::default()
                 },
-                scale,
-                false,
-            ),
+                ctm: scale,
+                adjust: false,
+            },
             Color::default(),
             rect,
         )
@@ -149,7 +148,7 @@ impl Compiler<'_> {
         let stroke_alpha = scalar(self.document, d, b"CA")?
             .unwrap_or(1.0)
             .clamp(0.0, 1.0);
-        let alpha = if matches!(mark, Mark::Stroke(..)) {
+        let alpha = if matches!(mark, Mark::Stroke { .. }) {
             stroke_alpha
         } else {
             scalar(self.document, d, b"ca")?
@@ -159,7 +158,7 @@ impl Compiler<'_> {
         if let Mark::Fill(rule) = mark {
             self.prepare_fill(&mut path, rule)?;
         }
-        let mut clip = rect_path(rect);
+        let mut clip = crate::device::rectangle(rect);
         self.prepare_fill(&mut clip, FillRule::NonZero)?;
         self.commands.push(Command::Path(PathCommand {
             path: Arc::new(path),
@@ -179,11 +178,6 @@ impl Compiler<'_> {
         }));
         Ok(())
     }
-}
-pub(super) fn rect_path(r: Rect) -> Path {
-    let mut p = PathBuilder::new();
-    p.rect(r.x0(), r.y0(), r.width(), r.height());
-    p.finish()
 }
 fn scalar(document: &pagura_document::Document, d: &Dictionary, key: &[u8]) -> Result<Option<f64>> {
     d.get(key)
@@ -220,6 +214,13 @@ pub(super) fn annotation_color(
         components: components.into(),
     }))
 }
+/// A generated border (12.5.6.5, 12.5.6.8): a square also fills its interior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BorderKind {
+    Link,
+    Square,
+}
+
 /// Seven predefined icons, specified as simple geometric symbols by device policy.
 fn icon(name: &[u8]) -> (Path, Path) {
     let mut bg = PathBuilder::new();

@@ -11,6 +11,7 @@ mod cie;
 mod color;
 mod compositor;
 mod context;
+mod device;
 mod display;
 mod functions;
 mod icc;
