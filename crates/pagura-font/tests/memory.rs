@@ -1,6 +1,11 @@
+#![forbid(unsafe_code)]
+#![expect(
+    clippy::unwrap_used,
+    reason = "fixture setup fails loudly on malformed expected data"
+)]
 //! Estimates describe retained representation, not parse or outline scratch.
-use crate::{FontFormat, FontProgram, GlyphId};
 use pagura_core::Limits;
+use pagura_font::{FontFormat, FontProgram, GlyphId};
 
 fn program(name: &str, format: FontFormat) -> FontProgram {
     FontProgram::parse(

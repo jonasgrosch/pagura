@@ -46,6 +46,3 @@ pub(crate) fn encoding(values: &[Option<Name>; 256]) -> usize {
             sum.saturating_add(name.len())
         })
 }
-
-#[cfg(test)]
-mod tests;

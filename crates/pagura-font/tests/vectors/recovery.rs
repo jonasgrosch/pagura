@@ -143,7 +143,7 @@ fn repair_diagnostics_are_bounded_and_repeated_calls_are_independent() {
     // The strict compatibility API admits no repair.
     assert_eq!(
         font.outline(GlyphId(3)).unwrap_err().repair,
-        Some(crate::repairs::COMPONENT_FLAGS)
+        Some(pagura_font::repairs::COMPONENT_FLAGS)
     );
     for _ in 0..2 {
         let mut diagnostics = Diagnostics::new(Recovery::Repair);
@@ -193,7 +193,7 @@ fn repair_mode_mutations_keep_work_and_diagnostics_bounded() {
                         font.outline_with_diagnostics(GlyphId(glyph), &mut diagnostics)
                     {
                         assert!(path.segments().len() <= limits.path_segments);
-                        assert!(crate::read::finite_path(&path).is_ok());
+                        assert!(finite(&path));
                     }
                     assert!(diagnostics.take().len() <= 9);
                 }
@@ -313,4 +313,12 @@ fn metadata_repairs_coalesce_and_identify_the_operator_or_record() {
     .unwrap();
     assert_eq!(diagnostics.as_slice().len(), 1);
     assert_eq!(diagnostics.as_slice()[0].position, Position::Buffer(op_at));
+}
+
+fn finite(path: &pagura_raster::Path) -> bool {
+    path.segments().iter().all(|segment| match *segment {
+        Segment::MoveTo(p) | Segment::LineTo(p) => p.is_finite(),
+        Segment::CubicTo(a, b, c) => a.is_finite() && b.is_finite() && c.is_finite(),
+        Segment::Close => true,
+    })
 }
