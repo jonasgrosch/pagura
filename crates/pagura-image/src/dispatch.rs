@@ -186,7 +186,7 @@ fn decode_dct(
             {
                 diagnostics.repair(
                     pagura_core::Diagnostic::new(
-                        crate::tags::FILTER_MISMATCH,
+                        crate::repairs::FILTER_MISMATCH,
                         "DCTDecode replaced by validated Flate image data (7.4.4, 7.4.8)",
                     )
                     .at(pagura_core::Position::Buffer(0)),

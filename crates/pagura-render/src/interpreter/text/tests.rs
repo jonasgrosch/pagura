@@ -30,7 +30,7 @@ fn independent_paint_oracles_and_device_tiles() {
             let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
             assert_eq!(
                 error.repair,
-                Some(pagura_image::tags::CCITT_COLUMNS),
+                Some(pagura_image::repairs::CCITT_COLUMNS),
                 "{name}"
             );
             assert!(document.diagnostics().is_empty(), "{name}");
@@ -46,7 +46,7 @@ fn independent_paint_oracles_and_device_tiles() {
                     .iter()
                     .filter_map(pagura_core::Diagnostic::repair)
                     .collect::<Vec<_>>(),
-                [pagura_image::tags::CCITT_COLUMNS],
+                [pagura_image::repairs::CCITT_COLUMNS],
                 "{name}"
             );
             list

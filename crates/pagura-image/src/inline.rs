@@ -154,7 +154,7 @@ pub(crate) fn data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usi
                 })
         {
             return Err(Error::unsupported(
-                crate::features::INLINE_COLOUR_LENGTH,
+                crate::features::INLINE_COLOR_LENGTH,
                 "inline image Length requires resource colour-space resolution",
             ));
         }

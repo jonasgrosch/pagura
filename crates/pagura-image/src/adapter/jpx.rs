@@ -327,7 +327,7 @@ fn embedded_space(color: jpx::JpxColor, count: u8) -> Result<ImageKind> {
         }
         (jpx::JpxColor::Enumerated(_), _) => {
             return Err(Error::unsupported(
-                features::JPX_COLOUR,
+                features::JPX_COLOR,
                 "JPX enumerated colour space is not implemented",
             ));
         }

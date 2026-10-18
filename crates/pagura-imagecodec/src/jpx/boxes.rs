@@ -146,7 +146,7 @@ fn misplaced_mapping(
     }
     budget.diagnostics.repair(
         pagura_core::Diagnostic::new(
-            crate::tags::JPX_MAPPING_LOCATION,
+            crate::repairs::JPX_MAPPING_LOCATION,
             "top-level JP2 mapping used for its header palette (T.800 I.5.3.4–I.5.3.5)",
         )
         .at(pagura_core::Position::Buffer(box_data.position)),

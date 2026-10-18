@@ -85,7 +85,10 @@ fn independent_vectors() {
             };
             if p["outcome"] == "repair" {
                 let error = ccitt::decode(&encoded, &params, &limits).unwrap_err();
-                assert_eq!(error.repair, Some(ccitt::tags::DAMAGED_ROW));
+                assert_eq!(
+                    error.repair,
+                    Some(pagura_imagecodec::repairs::CCITT_DAMAGED_ROW)
+                );
                 let mut diagnostics = pagura_core::Diagnostics::new(Recovery::Repair);
                 let decoded =
                     ccitt::decode_with_diagnostics(&encoded, &params, &limits, &mut diagnostics)

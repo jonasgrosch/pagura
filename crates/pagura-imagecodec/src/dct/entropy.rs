@@ -170,7 +170,7 @@ impl<'a> Bits<'a> {
         {
             diagnostics.repair(
                 Diagnostic::new(
-                    super::tags::ENTROPY_PADDING,
+                    crate::repairs::JPEG_ENTROPY_PADDING,
                     "non-one JPEG entropy padding ignored (T.81 B.1.1.5, E.1.4)",
                 )
                 .at(Position::Buffer(self.offset.saturating_sub(1))),

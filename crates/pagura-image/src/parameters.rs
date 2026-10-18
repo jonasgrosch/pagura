@@ -65,7 +65,7 @@ pub(crate) fn stencil_space(
     {
         diagnostics.repair(
             Diagnostic::new(
-                crate::tags::STENCIL_COLOR_SPACE,
+                crate::repairs::STENCIL_COLOR_SPACE,
                 "extraneous stencil ColorSpace ignored (8.9.5.1, Table 87)",
             )
             .at(Position::Buffer(0)),
@@ -251,12 +251,12 @@ pub(crate) fn packed_data<'a>(
     if data.len() != length {
         let (tag, message) = if data.len() < length {
             (
-                crate::tags::DATA_SHORT,
+                crate::repairs::DATA_SHORT,
                 "short image data padded with zero bytes (8.9.3, 8.9.5.1)",
             )
         } else {
             (
-                crate::tags::DATA_EXCESS,
+                crate::repairs::DATA_EXCESS,
                 "excess image data ignored (8.9.3, 8.9.5.1)",
             )
         };

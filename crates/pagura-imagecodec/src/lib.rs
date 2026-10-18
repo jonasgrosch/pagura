@@ -12,6 +12,7 @@ pub mod dct;
 pub mod features;
 pub mod jbig2;
 pub mod jpx;
+pub mod repairs;
 
 use pagura_core::{Error, Limits, Result};
 

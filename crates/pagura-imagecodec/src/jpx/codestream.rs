@@ -373,7 +373,7 @@ impl Tile {
                 if !budget.repaired_part_count {
                     budget.diagnostics.repair(
                         pagura_core::Diagnostic::new(
-                            crate::tags::JPX_TILE_PART_COUNT,
+                            crate::repairs::JPX_TILE_PART_COUNT,
                             "inconsistent JPEG 2000 tile-part count ignored (T.800 A.4.2)",
                         )
                         .at(Position::Buffer(position)),

@@ -14,7 +14,7 @@ pub(crate) fn decode(
 ) -> Result<Samples> {
     let params = params(dictionary)?;
     if params.columns != width {
-        diagnostics.repair(Diagnostic::new(crate::tags::CCITT_COLUMNS,
+        diagnostics.repair(Diagnostic::new(crate::repairs::CCITT_COLUMNS,
             "CCITT Columns retained for decoding; rows cropped or white-padded to image Width (7.4.6 Table 11; 8.9.5.1 Table 87)")
             .at(Position::Buffer(0)))?;
         parameters::budget(params.columns, height, 1, 1, limits)?;
@@ -108,7 +108,7 @@ mod tests {
         assert_eq!(error.kind, ErrorKind::Limit);
         assert_eq!(
             reports.as_slice()[0].repair(),
-            Some(crate::tags::CCITT_COLUMNS)
+            Some(crate::repairs::CCITT_COLUMNS)
         );
     }
 

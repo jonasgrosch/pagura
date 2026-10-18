@@ -8,7 +8,6 @@ use super::{
     integer::{Integer, symbol_id},
     reader::Reader,
     refinement::{self, Model, Parameters},
-    tags,
 };
 use pagura_core::{Error, Limits, Position, Result};
 use std::rc::Rc;
@@ -343,12 +342,8 @@ impl Config {
     }
     fn read(reader: &mut Reader<'_>) -> Result<(Self, Option<Parameters>)> {
         let flags = reader.u16()?;
-        if flags & 1 != 0 {
-            return Err(Error::unsupported(
-                tags::TEXT_REGION,
-                "JBIG2 Huffman text regions are not implemented",
-            ));
-        }
+        // The segment dispatcher routes Huffman text regions to `huffman`.
+        debug_assert_eq!(flags & 1, 0, "Huffman text region");
         if flags & 2 == 0 && flags & 0x8000 != 0 {
             return Err(Error::syntax("unused JBIG2 refinement template flag"));
         }

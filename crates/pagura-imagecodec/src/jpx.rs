@@ -32,10 +32,8 @@ mod termination;
 mod tier1;
 mod wavelet;
 
-use pagura_core::{Error, Feature, Limits, Position, Result};
-
-/// Stable tag for JPEG 2000 modes not yet implemented.
-const UNSUPPORTED: Feature = Feature::new("filter.JPXDecode");
+use pagura_codec::features::JPX as UNSUPPORTED;
+use pagura_core::{Error, Limits, Position, Result};
 
 /// Colour information carried by a JP2 file.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -30,46 +30,6 @@ use std::{
     rc::Rc,
 };
 
-/// Stable JBIG2 feature tags. Tags for arithmetic capabilities now supported
-/// remain available for compatibility.
-pub mod tags {
-    use pagura_core::Feature;
-    /// Compatibility tag for symbol dictionary decoding (T.88 clause 6.5).
-    pub const SYMBOL_DICTIONARY: Feature = Feature::new("jbig2.symbol-dictionary");
-    /// Compatibility tag for refinement and aggregate symbols.
-    pub const SYMBOL_REFINEMENT: Feature = Feature::new("jbig2.symbol-refinement");
-    /// Compatibility tag for retained arithmetic symbol contexts.
-    pub const SYMBOL_CONTEXT: Feature = Feature::new("jbig2.symbol-context");
-    /// Compatibility tag for text refinement decoding.
-    pub const TEXT_REFINEMENT: Feature = Feature::new("jbig2.text-refinement");
-    /// Compatibility tag for text reference corners and transposition.
-    pub const TEXT_LAYOUT: Feature = Feature::new("jbig2.text-layout");
-    /// Compatibility tag for text region decoding (T.88 clause 6.4).
-    pub const TEXT_REGION: Feature = Feature::new("jbig2.text-region");
-    /// Compatibility tag for pattern dictionaries (T.88 clause 6.7).
-    pub const PATTERN_DICTIONARY: Feature = Feature::new("jbig2.pattern-dictionary");
-    /// Compatibility tag for halftone regions (T.88 clause 6.6).
-    pub const HALFTONE_REGION: Feature = Feature::new("jbig2.halftone-region");
-    /// Compatibility tag for generic refinement.
-    pub const REFINEMENT_REGION: Feature = Feature::new("jbig2.refinement-region");
-    /// Compatibility tag for user Huffman tables (T.88 clause 7.4.13).
-    pub const HUFFMAN_TABLE: Feature = Feature::new("jbig2.huffman-table");
-    /// Unknown necessary extension segments (T.88 clause 7.4.14).
-    pub const EXTENSION: Feature = Feature::new("jbig2.extension");
-    /// Compatibility tag; conflicting fixed page operators are syntax errors.
-    pub const PAGE_COMBINATION: Feature = Feature::new("jbig2.page-combination");
-    /// Compatibility tag for profile metadata.
-    pub const PROFILE: Feature = Feature::new("jbig2.profile");
-    /// Compatibility tag; reserved segment types are syntax errors.
-    pub const SEGMENT_TYPE: Feature = Feature::new("jbig2.segment-type");
-    /// The extended adaptive template from the T.88 amendments.
-    pub const EXTENDED_TEMPLATE: Feature = Feature::new("jbig2.extended-template");
-    /// Compatibility tag; T.88 clause 6.2.6 forbids T.6 extensions.
-    pub const MMR_EXTENSION: Feature = Feature::new("jbig2.mmr-extension");
-    /// Compatibility tag for unspecified generic lengths (T.88 clause 7.2.7).
-    pub const UNKNOWN_LENGTH: Feature = Feature::new("jbig2.unknown-length");
-}
-
 /// A decoded page bitmap: 1-bit rows, MSB first, padded to bytes, 1 = black.
 /// Padding bits in every returned row are zero.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -885,7 +845,7 @@ fn extension(reader: &mut Reader<'_>) -> Result<()> {
             return Err(Error::syntax("invalid necessary JBIG2 extension flags"));
         }
         return Err(Error::unsupported(
-            tags::EXTENSION,
+            crate::features::JBIG2_EXTENSION,
             "unknown necessary JBIG2 extension",
         ));
     }

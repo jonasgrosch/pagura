@@ -1,8 +1,6 @@
 //! CCITT Group 3/4 fax (ITU-T T.4/T.6; ISO 32000-2 clause 7.4.6).
 mod codes;
-use pagura_core::{
-    Diagnostic, Diagnostics, Error, ErrorKind, Limits, Position, Recovery, Repair, Result,
-};
+use pagura_core::{Diagnostic, Diagnostics, Error, ErrorKind, Limits, Position, Recovery, Result};
 
 /// `CCITTFaxDecode` parameters (Table 11).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -157,17 +155,6 @@ impl Bits<'_> {
     }
 }
 
-/// Stable repair tags for fax data (ADR 0003).
-pub mod tags {
-    use super::Repair;
-    /// Substitute the previous good row, or white after a damaged row,
-    /// after locating the next EOL (ISO 32000-2 Table 11).
-    pub const DAMAGED_ROW: Repair = Repair::new("ccitt.damaged-row");
-    /// Accept up to seven zero fill bits before a byte-aligned Group 4 EOFB.
-    /// T.6 2.4.1.1-2 and ISO Table 11 permit padding after the EOFB instead.
-    pub const EOB_PADDING: Repair = Repair::new("ccitt.eob-padding");
-}
-
 /// Decodes packed one-bit rows, MSB first. Zero denotes black unless
 /// `black_is_1` is set. Unused low bits of each row are zero. Decoding is
 /// strict; use [`decode_with_diagnostics`] to request reported row recovery.
@@ -283,7 +270,7 @@ fn decode_inner(
             resynchronize(&mut bits)?;
             diagnostics.repair(
                 Diagnostic::new(
-                    tags::DAMAGED_ROW,
+                    crate::repairs::CCITT_DAMAGED_ROW,
                     "damaged fax row replaced after EOL resynchronization",
                 )
                 .at(error.position),
@@ -383,7 +370,7 @@ fn padded_block_end(bits: &mut Bits<'_>, diagnostics: &mut Diagnostics) -> Resul
     }
     diagnostics.repair(
         Diagnostic::new(
-            tags::EOB_PADDING,
+            crate::repairs::CCITT_EOB_PADDING,
             "zero fill before CCITT EOFB ignored (T.6 2.4.1.1-2; Table 11)",
         )
         .at(Position::Buffer(start / 8)),

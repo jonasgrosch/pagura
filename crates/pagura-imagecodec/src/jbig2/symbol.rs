@@ -9,7 +9,7 @@ use super::{
     integer::Integer,
     reader::Reader,
     refinement::{Model, Parameters},
-    tags, text,
+    text,
 };
 use pagura_core::{Error, Limits, Position, Result};
 use std::rc::Rc;
@@ -150,12 +150,8 @@ impl Config {
         if flags & 0xe000 != 0 {
             return Err(Error::syntax("reserved JBIG2 symbol dictionary flags"));
         }
-        if flags & 1 != 0 {
-            return Err(Error::unsupported(
-                tags::SYMBOL_DICTIONARY,
-                "JBIG2 Huffman symbol dictionaries are not implemented",
-            ));
-        }
+        // The segment dispatcher routes Huffman dictionaries to `huffman`.
+        debug_assert_eq!(flags & 1, 0, "Huffman symbol dictionary");
         let template = u8::try_from((flags >> 10) & 3)
             .map_err(|_| Error::syntax("invalid JBIG2 symbol template"))?;
         let generic = Template::read(reader, template)?;

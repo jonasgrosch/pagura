@@ -348,7 +348,7 @@ fn jpeg_reports_are_bounded_per_decode_and_do_not_authorize_strict_repairs() {
     .unwrap_err();
     assert_eq!(
         error.repair,
-        Some(pagura_imagecodec::dct::tags::ENTROPY_PADDING)
+        Some(pagura_imagecodec::repairs::JPEG_ENTROPY_PADDING)
     );
 }
 
@@ -403,6 +403,6 @@ fn zero_byte_fill_preserves_the_high_byte_of_an_incomplete_word() {
     assert_eq!(samples, Samples::Words(vec![0x1234, 0xab00]));
     assert_eq!(
         diagnostics.as_slice()[0].repair(),
-        Some(crate::tags::DATA_SHORT)
+        Some(crate::repairs::DATA_SHORT)
     );
 }

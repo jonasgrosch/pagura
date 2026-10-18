@@ -10,25 +10,7 @@ mod tests;
 mod transform;
 use entropy::Huffman;
 use frame::Frame;
-use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Position, Recovery, Repair, Result};
-
-/// Stable JPEG repairs (ADR 0003).
-pub mod tags {
-    use super::Repair;
-    /// Ignore non-one unused entropy bits at a scan/restart boundary
-    /// (T.81 B.1.1.5 and E.1.4); entropy symbols are never synthesized.
-    pub const ENTROPY_PADDING: Repair = Repair::new("jpeg.entropy-padding");
-    /// Use the known 12-byte Adobe APP14 prefix and ignore an extension
-    /// (ISO 32000-2 7.4.8, Table 13). The extended layout is reader policy;
-    /// Adobe Technical Note 5116 remains pending primary-text review.
-    pub const ADOBE_MARKER: Repair = Repair::new("jpeg.adobe-marker");
-    /// Ignore excess entropy bytes after the prescribed MCUs only when the
-    /// next unstuffed marker is EOI (T.81 B.2.1). Never skip another scan.
-    pub const ENTROPY_EXCESS: Repair = Repair::new("jpeg.entropy-excess");
-    /// Discard a restart marker immediately before EOI after all required
-    /// MCUs were decoded (T.81 B.2.1, B.2.4.4); no entropy is synthesized.
-    pub const TRAILING_RESTART: Repair = Repair::new("jpeg.trailing-restart");
-}
+use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Position, Recovery, Result};
 
 /// A decoded JPEG image.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,7 +62,7 @@ pub fn decode(data: &[u8], color_transform: Option<i64>, limits: &Limits) -> Res
 /// repairs. The default [`decode`] entry point remains strict. Reports at most
 /// one padding repair per image, at its first scan/restart boundary (T.81
 /// B.1.1.5, E.1.4). Extra entropy bytes can be discarded only after the required
-/// MCUs and immediately before EOI (T.81 B.2.1; [`tags::ENTROPY_EXCESS`]).
+/// MCUs and immediately before EOI (T.81 B.2.1; [`crate::repairs::JPEG_ENTROPY_EXCESS`]).
 ///
 /// # Errors
 /// As [`decode`], including stable repair tags when strict mode refuses a repair.
@@ -163,7 +145,7 @@ fn decode_inner(
                         );
                     }
                     if payload.len() > 12 && !decoder.adobe_reported {
-                        diagnostics.repair(Diagnostic::new(tags::ADOBE_MARKER,
+                        diagnostics.repair(Diagnostic::new(crate::repairs::JPEG_ADOBE_MARKER,
                         "extended Adobe JPEG marker uses its known prefix (7.4.8, Table 13)")
                         .at(Position::Buffer(at)))?;
                         decoder.adobe_reported = true;

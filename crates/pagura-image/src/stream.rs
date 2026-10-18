@@ -43,7 +43,7 @@ fn read_inner<'a>(
     };
     diagnostics.repair(
         Diagnostic::new(
-            crate::tags::DECODE_PARAMS,
+            crate::repairs::DECODE_PARAMS,
             "malformed image DecodeParms entry treated as absent (7.3.8.1 Table 5, 7.4.1, 7.4.9)",
         )
         .at(Position::Stream {
@@ -119,7 +119,7 @@ fn predictor_precision<'a>(
         diagnostics
             .repair(
                 Diagnostic::new(
-                    crate::tags::PREDICTOR_PRECISION,
+                    crate::repairs::PREDICTOR_PRECISION,
                     "predictor data decoded at image BitsPerComponent (7.4.4.3)",
                 )
                 .at(Position::Stream {
