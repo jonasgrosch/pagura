@@ -2,7 +2,7 @@
 use super::adler;
 use super::tables::{DIST_BASE, DIST_EXTRA, LENGTH_BASE, LENGTH_EXTRA};
 use crate::report::{repair, syntax, trailing};
-use crate::{Predictor, output::Output, tags};
+use crate::{Predictor, output::Output, repairs};
 use pagura_core::{Diagnostics, Error, Result};
 
 #[derive(Debug)]
@@ -31,7 +31,7 @@ pub(crate) fn decode(
     if !wrapped {
         repair(
             diagnostics,
-            tags::RAW_DEFLATE,
+            repairs::RAW_DEFLATE,
             "FlateDecode data lacks the zlib wrapper; decoded as raw DEFLATE",
             0,
         )?;
@@ -58,7 +58,7 @@ fn inflate(
     if wrapped && input.len() < 2 {
         repair(
             diagnostics,
-            tags::TRUNCATED,
+            repairs::TRUNCATED,
             "zlib header truncated",
             input.len(),
         )?;
@@ -93,7 +93,7 @@ fn inflate(
                 else {
                     repair(
                         diagnostics,
-                        tags::TRUNCATED,
+                        repairs::TRUNCATED,
                         "zlib checksum truncated",
                         input.len(),
                     )?;
@@ -107,7 +107,7 @@ fn inflate(
                 if expected != (inflater.adler_b << 16) | inflater.adler_a {
                     repair(
                         diagnostics,
-                        tags::CHECKSUM_MISMATCH,
+                        repairs::CHECKSUM_MISMATCH,
                         "zlib Adler-32 mismatch",
                         checksum_offset,
                     )?;
@@ -120,7 +120,7 @@ fn inflate(
         Err(Fault::End) => {
             repair(
                 diagnostics,
-                tags::TRUNCATED,
+                repairs::TRUNCATED,
                 "DEFLATE input truncated",
                 input.len(),
             )?;

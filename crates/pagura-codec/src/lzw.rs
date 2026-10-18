@@ -1,6 +1,6 @@
 //! PDF LZW, MSB-first codes and EarlyChange (ISO 32000-2 7.4.4.2).
 use crate::report::{repair, syntax, trailing};
-use crate::{Predictor, output::Output, tags};
+use crate::{Predictor, output::Output, repairs};
 use pagura_core::{Diagnostics, Result};
 
 pub(crate) fn decode(
@@ -30,7 +30,7 @@ pub(crate) fn decode(
             }
             repair(
                 diagnostics,
-                tags::LZW_INITIAL_CLEAR,
+                repairs::LZW_INITIAL_CLEAR,
                 "LZW initial clear code missing; initial dictionary retained (7.4.4.2)",
                 0,
             )?;
@@ -47,7 +47,7 @@ pub(crate) fn decode(
                 if reader.buffer & ((1 << reader.bits) - 1) != 0 {
                     repair(
                         diagnostics,
-                        tags::LZW_PADDING,
+                        repairs::LZW_PADDING,
                         "nonzero LZW end padding ignored",
                         reader.position(),
                     )?;
@@ -63,7 +63,7 @@ pub(crate) fn decode(
                 if table.next >= 4095 && !full_table_reported {
                     repair(
                         diagnostics,
-                        tags::LZW_FULL_TABLE,
+                        repairs::LZW_FULL_TABLE,
                         "LZW full table not cleared; dictionary frozen",
                         reader.position(),
                     )?;
@@ -97,7 +97,7 @@ pub(crate) fn decode(
     }
     repair(
         diagnostics,
-        tags::TRUNCATED,
+        repairs::TRUNCATED,
         "LZW end code missing",
         input.len(),
     )?;
