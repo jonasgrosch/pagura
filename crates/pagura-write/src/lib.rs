@@ -6,6 +6,10 @@
 //! by number, dictionary entries keep their insertion order, and strings
 //! are written in hexadecimal. Output intentionally targets PDF 1.7; it is not
 //! a PDF 2.0 writer (7.5.2). Incremental saving is not implemented yet.
+//!
+//! The [`Limits`](pagura_core::Limits) given to [`Builder::new`] bound the
+//! written file as they bound reading it (ADR 0029): a file written under
+//! some limits is read back under the same limits.
 
 mod builder;
 mod object;
