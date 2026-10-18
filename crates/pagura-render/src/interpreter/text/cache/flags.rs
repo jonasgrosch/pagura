@@ -57,7 +57,7 @@ fn report(
 ) -> Result<()> {
     let mut diagnostics = Diagnostics::new(document.recovery());
     let mut diagnostic = Diagnostic::new(
-        pagura_font::tags::DESCRIPTOR_FLAGS,
+        pagura_font::repairs::DESCRIPTOR_FLAGS,
         "font descriptor must set exactly one of Symbolic and Nonsymbolic (9.8.2, Table 121)",
     )
     .at(position);

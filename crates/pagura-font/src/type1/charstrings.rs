@@ -5,7 +5,7 @@ use crate::{
     GlyphId,
     read::{bad, cap},
     recovery::repair,
-    tags,
+    repairs,
 };
 use pagura_core::{Diagnostics, Limits, Name, Position, Result};
 use std::collections::{BTreeMap, btree_map::Entry};
@@ -60,7 +60,7 @@ impl CharStrings {
                 match self.names.entry(Name::new(name)) {
                     Entry::Occupied(_) => repair(
                         diagnostics,
-                        tags::TYPE1_DUPLICATE_GLYPH,
+                        repairs::TYPE1_DUPLICATE_GLYPH,
                         "later duplicate Type 1 glyph name ignored",
                         Position::Buffer(at),
                     )?,

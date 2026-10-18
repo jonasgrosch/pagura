@@ -2,7 +2,7 @@
 use super::Sfnt;
 use crate::GlyphId;
 use crate::read::{Read, bad, cap};
-use crate::{recovery::repair, tags};
+use crate::{recovery::repair, repairs};
 use pagura_core::{Diagnostics, Limits, Position, Result};
 use pagura_raster::{Path, PathBuilder, Point, Segment, Transform};
 
@@ -356,7 +356,7 @@ fn component(r: &mut Read<'_>, diagnostics: &mut Diagnostics) -> Result<Componen
     if raw & !0x1fef != 0 {
         repair(
             diagnostics,
-            tags::COMPONENT_FLAGS,
+            repairs::COMPONENT_FLAGS,
             "reserved composite glyph flags ignored",
             Position::Buffer(r.at() - 2),
         )?;

@@ -495,7 +495,7 @@ fn cached_font(
         ) {
             error.position = position;
         }
-        if error.repair == Some(pagura_font::tags::DESCRIPTOR_FLAGS) {
+        if error.repair == Some(pagura_font::repairs::DESCRIPTOR_FLAGS) {
             error
         } else if let Some(id) = key {
             error.in_object(id)
