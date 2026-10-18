@@ -1,12 +1,14 @@
 //! Deterministic layout policy: .2-em gaps, .35-em baselines, 1.8-em paragraphs.
 //! Unmarked lines cluster by inline anchors (1.5 em), then run top to bottom;
 //! marked sequences keep content order. Orientation groups keep discovery order.
-use super::{
-    Arc, Error, LayoutOptions, Limits, Point, PositionedGlyph, PositionedText, Range, Result,
-    TextPage,
+use crate::{LayoutOptions, PositionedGlyph, PositionedText, TextPage};
+use pagura_core::{Error, Limits, Meter, Result};
+use pagura_raster::Point;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ops::Range,
+    sync::Arc,
 };
-use pagura_core::Meter;
-use std::collections::{BTreeMap, BTreeSet};
 pub(super) mod copy;
 pub(super) mod geometry;
 use copy::{Origin, append, export};

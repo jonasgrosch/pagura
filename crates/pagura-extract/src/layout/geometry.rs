@@ -1,5 +1,7 @@
 //! Geometric line/column policy; marked occurrences stay in content order.
-use super::{Atom, LayoutOptions, Line, Point, PositionedGlyph, PositionedText, Replacement};
+use super::{Atom, Line, Replacement};
+use crate::{LayoutOptions, PositionedGlyph, PositionedText};
+use pagura_raster::Point;
 use std::collections::BTreeMap;
 /// Directions whose cosine exceeds this are parallel: within about 11°.
 pub(crate) const PARALLEL: f64 = 0.98;
