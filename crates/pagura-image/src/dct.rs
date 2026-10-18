@@ -1,9 +1,12 @@
-//! Huffman sequential and progressive JPEG (ITU-T T.81, Annexes B, F and G),
+//! Huffman and arithmetic sequential/progressive JPEG (T.81 B, D, F and G),
 //! used by ISO 32000-2 clause 7.4.8. Samples use a separable floating-point
 //! IDCT; independently encoded fixtures allow an absolute error of one level.
+mod arithmetic;
 mod entropy;
 mod frame;
 mod scan;
+#[cfg(test)]
+mod tests;
 mod transform;
 use entropy::Huffman;
 use frame::Frame;
@@ -41,6 +44,7 @@ struct Decoder {
     frame: Option<Frame>,
     quant: [Option<[u16; 64]>; 4],
     huffman: [Option<Huffman>; 8],
+    conditioning: arithmetic::Conditioning,
     restart: usize,
     adobe: Option<u8>,
     work: usize,
@@ -48,13 +52,18 @@ struct Decoder {
     adobe_reported: bool,
 }
 
-/// Decodes 8-bit baseline, extended sequential or progressive Huffman JPEG.
+/// Decodes baseline, extended sequential and progressive JPEG, with Huffman
+/// or arithmetic entropy coding and eight or twelve bit sample precision.
+/// Twelve-bit samples are reconstructed and clamped in 0..4095. Colour
+/// transforms retain that precision (chroma centre 2048), then samples are
+/// scaled to 0..255 with a single rounding. This normalization is reader policy:
+/// PDF 7.4.8 specifies bytes, but no twelve-to-eight bit conversion.
 /// APP14 takes precedence over `color_transform` (Table 13). Chroma uses
 /// nearest-neighbour expansion; no smoothing is applied to the encoded data.
 ///
 /// # Errors
 /// Returns positioned syntax/limit errors, or stable Unsupported tags for
-/// arithmetic coding, non-8-bit precision and other unsupported processes.
+/// lossless/hierarchical coding and precision other than eight or twelve bits.
 pub fn decode(data: &[u8], color_transform: Option<i64>, limits: &Limits) -> Result<DctImage> {
     decode_with_diagnostics(
         data,
@@ -97,6 +106,7 @@ fn decode_inner(
         frame: None,
         quant: [None; 4],
         huffman: std::array::from_fn(|_| None),
+        conditioning: arithmetic::Conditioning::default(),
         restart: 0,
         adobe: None,
         work: 0,
@@ -117,14 +127,14 @@ fn decode_inner(
         let payload = segment(data, &mut offset)?;
         let result =
             match marker {
-                0xc0..=0xc2 => {
+                0xc0..=0xc2 | 0xc9 | 0xca => {
                     if decoder.frame.is_some() {
                         return Err(Error::syntax("multiple JPEG frames").at(Position::Buffer(at)));
                     }
                     decoder.frame = Some(Frame::parse(payload, marker, limits)?);
                     Ok(())
                 }
-                0xc9..=0xcf => Err(Error::unsupported(
+                0xcb | 0xcd..=0xcf => Err(Error::unsupported(
                     crate::features::JPEG_ARITHMETIC,
                     "arithmetic JPEG coding is unsupported",
                 )),
@@ -134,6 +144,7 @@ fn decode_inner(
                 )),
                 0xdb => quant_tables(payload, &mut decoder.quant),
                 0xc4 => entropy::tables(payload, &mut decoder.huffman),
+                0xcc => decoder.conditioning.define(payload),
                 0xdd if payload.len() == 2 => {
                     decoder.restart = usize::from(u16::from_be_bytes([payload[0], payload[1]]));
                     Ok(())

@@ -4,6 +4,8 @@
 //! sample lanes. This lets the compiler vectorize across samples without
 //! reassociating a sum. Both passes retain the reference's increasing-frequency
 //! addition order and separate multiplications, including exact rounding ties.
+use super::Sample;
+#[cfg(test)]
 use super::sample;
 
 pub(super) struct Idct {
@@ -23,11 +25,11 @@ impl Idct {
         Self { basis }
     }
 
-    pub(super) fn block(&self, coefficients: &[f64; 64]) -> [[u8; 8]; 8] {
+    pub(super) fn block<T: Sample>(&self, coefficients: &[f64; 64]) -> [[T; 8]; 8] {
         // Keep the two reference multiplications: replacing them by /8 moves
         // negative DC values across exact half ties in the existing decoder.
         if coefficients[1..].iter().all(|&v| v == 0.0) {
-            return [[sample(coefficients[0] * self.basis[0][0] * self.basis[0][0] + 128.0); 8]; 8];
+            return [[T::from_idct(coefficients[0] * self.basis[0][0] * self.basis[0][0]); 8]; 8];
         }
         let mut horizontal = [[0.0f64; 8]; 8];
         for (input, output) in coefficients.as_chunks::<8>().0.iter().zip(&mut horizontal) {
@@ -45,7 +47,7 @@ impl Idct {
                 }
             }
         }
-        vertical.map(|row| row.map(|value| sample(value + 128.0)))
+        vertical.map(|row| row.map(T::from_idct))
     }
 
     #[cfg(test)]
@@ -108,7 +110,7 @@ mod tests {
             [124, 128, 128, 124, 124, 128, 128, 124],
             [138, 126, 126, 138, 138, 126, 126, 138],
         ];
-        assert_eq!(idct.block(&coefficients), expected);
+        assert_eq!(idct.block::<u8>(&coefficients), expected);
     }
 
     #[test]
@@ -118,7 +120,7 @@ mod tests {
             let mut coefficients = [0.0; 64];
             coefficients[0] = f64::from(dc);
             assert_eq!(
-                idct.block(&coefficients),
+                idct.block::<u8>(&coefficients),
                 idct.reference(&coefficients),
                 "DC {dc}"
             );
@@ -140,7 +142,7 @@ mod tests {
                 }
             }
             assert_eq!(
-                idct.block(&coefficients),
+                idct.block::<u8>(&coefficients),
                 idct.reference(&coefficients),
                 "block {block}"
             );
@@ -157,7 +159,10 @@ mod tests {
                 coefficients[4] = f64::from(ac * 8);
                 coefficients[32] = f64::from((ac + 1) * 8);
                 coefficients[36] = f64::from((ac - 1) * 8);
-                assert_eq!(idct.block(&coefficients), idct.reference(&coefficients));
+                assert_eq!(
+                    idct.block::<u8>(&coefficients),
+                    idct.reference(&coefficients)
+                );
             }
         }
     }

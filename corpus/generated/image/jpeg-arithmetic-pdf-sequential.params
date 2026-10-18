@@ -1,0 +1,8 @@
+kind=pdf-image
+outcome=valid
+width=24
+height=16
+components=1
+bits=8
+space=DeviceGray
+tolerance=1
