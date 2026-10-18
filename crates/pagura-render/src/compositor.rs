@@ -1516,6 +1516,19 @@ mod tests {
     }
 
     #[test]
+    fn rendering_enforces_its_own_work_budget() {
+        // Compiling within budget does not exempt the render from its own.
+        let mut list = overprint_list(include_bytes!(
+            "../../../corpus/generated/content/group-i1-k0.pdf"
+        ));
+        list.limits.raster_work = 1;
+        assert_eq!(
+            list.render(&RenderOptions::default()).unwrap_err().kind,
+            pagura_core::ErrorKind::Limit
+        );
+    }
+
+    #[test]
     fn simulation_requires_painted_colorants_and_is_shared_across_tiles() {
         for (bytes, needed) in [
             (

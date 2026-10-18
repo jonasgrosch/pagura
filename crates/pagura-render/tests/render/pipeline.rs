@@ -600,7 +600,8 @@ fn compositing_memory_work_and_shared_function_budgets_are_bounded() {
         let error = list.render(&RenderOptions::default()).expect_err(name);
         assert_eq!(error.kind, ErrorKind::Limit, "{name}: {error}");
     }
-    // Preparation and rendering each enforce their page work budget.
+    // Preparation enforces the page work budget; the compositor tests check
+    // that rendering does too.
     let document = Document::open(
         pagura_testkit::fixture("content", "group-i1-k0.pdf"),
         &OpenOptions {
@@ -615,13 +616,6 @@ fn compositing_memory_work_and_shared_function_budgets_are_bounded() {
     let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
     assert!(error.object.is_some());
-    let document = open("group-i1-k0");
-    let mut list = compile_page(&document, document.page(0).unwrap()).unwrap();
-    list.limits.raster_work = 1;
-    assert_eq!(
-        list.render(&RenderOptions::default()).unwrap_err().kind,
-        ErrorKind::Limit
-    );
     // The F32 page now fits the former F64-sized threshold. Keep a
     // successful admission beside the smaller-budget rejection above.
     let document = Document::open(
