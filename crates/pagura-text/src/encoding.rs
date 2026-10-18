@@ -284,6 +284,9 @@ fn upper_hex(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::test_support::{expected, integer, rows, text};
+    use pagura_testkit::fixture;
     #[test]
     fn dingbats_names_require_a_recognized_font_family() {
         for &(name, _) in tables::DINGBATS_UNICODE {
@@ -345,5 +348,101 @@ mod tests {
             mac[219].as_ref().map(Name::as_bytes),
             Some(b"currency".as_slice())
         );
+    }
+    #[test]
+    fn base_encoding_vectors() -> Result<()> {
+        for name in [
+            "winansi",
+            "macroman",
+            "standard",
+            "macexpert",
+            "symbol",
+            "dingbats",
+            "pdfdoc",
+            "table-winansi",
+            "table-macroman",
+        ] {
+            let name = format!("encoding-{name}");
+            let base = fixture("text", &format!("{name}.base"));
+            let encoding = BaseEncoding::from_table_name(&base)
+                .ok_or_else(|| Error::syntax("unknown base encoding"))?
+                .names();
+            for value in expected(&name)? {
+                let row = rows(&value)?;
+                let code = usize::try_from(integer(&row[0])?)
+                    .map_err(|_| Error::syntax("invalid code"))?;
+                let unicode = encoding[code]
+                    .as_ref()
+                    .and_then(|name| unicode_for_font(name.as_bytes(), &base));
+                assert_eq!(unicode.as_deref(), text(&row[4]), "{name}: {code}");
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn annex_code_name_vectors() -> Result<()> {
+        for name in [
+            "StandardEncoding",
+            "MacRomanEncoding",
+            "WinAnsiEncoding",
+            "PDFDocEncoding",
+            "MacExpertEncoding",
+            "Symbol",
+            "ZapfDingbats",
+        ] {
+            let encoding = BaseEncoding::from_table_name(name.as_bytes())
+                .ok_or_else(|| Error::syntax("unknown base encoding"))?
+                .names();
+            for value in expected(&format!("annex-{name}"))? {
+                let row = rows(&value)?;
+                let code = usize::try_from(integer(&row[0])?)
+                    .map_err(|_| Error::syntax("invalid code"))?;
+                assert_eq!(
+                    encoding[code].as_ref().map(Name::as_bytes),
+                    row[1].as_string(),
+                    "{name}: {code}"
+                );
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn glyph_name_known_answers() -> Result<()> {
+        for value in expected("glyph-name-forms")? {
+            let row = rows(&value)?;
+            let name = row[0]
+                .as_string()
+                .ok_or_else(|| Error::syntax("invalid glyph name oracle"))?;
+            assert_eq!(unicode(name).as_deref(), text(&row[1]), "{name:?}");
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn cyrillic_names_agree_with_all_sixty_six_independent_records() -> Result<()> {
+        for value in expected("glyph-name-cyrillic")? {
+            let row = value
+                .as_array()
+                .ok_or_else(|| Error::syntax("expected name row"))?;
+            let name = row[0]
+                .as_string()
+                .ok_or_else(|| Error::syntax("expected glyph name"))?;
+            assert_eq!(
+                unicode(name).as_deref().map(str::as_bytes),
+                row[1].as_string()
+            );
+        }
+        for name in [
+            b"afii010017".as_slice(),
+            b"afii+0017",
+            b"afii10016",
+            b"afii10050",
+            b"afii10098",
+        ] {
+            assert!(unicode(name).is_none());
+        }
+        Ok(())
     }
 }
