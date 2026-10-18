@@ -34,6 +34,9 @@ impl Idct {
         let mut horizontal = [[0.0f64; 8]; 8];
         for (input, output) in coefficients.as_chunks::<8>().0.iter().zip(&mut horizontal) {
             for (&value, basis) in input.iter().zip(&self.basis) {
+                if value == 0.0 {
+                    continue;
+                }
                 for (out, &weight) in output.iter_mut().zip(basis) {
                     *out += value * weight;
                 }
@@ -41,6 +44,9 @@ impl Idct {
         }
         let mut vertical = [[0.0f64; 8]; 8];
         for (input, basis) in horizontal.iter().zip(&self.basis) {
+            if input.iter().all(|&value| value == 0.0) {
+                continue;
+            }
             for (output, &weight) in vertical.iter_mut().zip(basis) {
                 for (out, &value) in output.iter_mut().zip(input) {
                     *out += value * weight;
