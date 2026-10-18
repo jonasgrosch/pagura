@@ -96,14 +96,9 @@ impl<'f, 'd> FilledAnnotations<'f, 'd> {
                     field.kind,
                     FieldKind::Text { .. } | FieldKind::Choice { .. }
                 );
-        if !regenerate
-            && matches!(
-                field.kind,
-                FieldKind::Text { .. } | FieldKind::Choice { .. } | FieldKind::Button { .. }
-            )
-            && rect.width() != 0.0
-            && rect.height() != 0.0
-        {
+        // An untouched widget renders exactly as compile_page renders it,
+        // whatever its field type; only edits and NeedAppearances differ.
+        if !regenerate && rect.width() != 0.0 && rect.height() != 0.0 {
             return Ok(None);
         }
         let original = form_appearance::original(self.filler, index)?;

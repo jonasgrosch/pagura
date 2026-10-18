@@ -15,9 +15,9 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
 
-def page(content, objects=(), resources=b"<< >>", extra=b"", size=16):
+def page(content, objects=(), resources=b"<< >>", extra=b"", size=16, catalog=b""):
     return document([
-        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Catalog /Pages 2 0 R " + catalog + b">>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %d %d] /Resources " % (size, size)
         + resources + b" /Contents 4 0 R " + extra + b" >>",
@@ -26,8 +26,9 @@ def page(content, objects=(), resources=b"<< >>", extra=b"", size=16):
 
 
 def render(name, content, objects=(), resources=b"<< >>", rectangles=(), *,
-           requirement="recovery-content", repairs=(), extra=b"", size=16, oracle=None, tolerance=0):
-    return Case(name, page(content, objects, resources, extra, size), RENDER,
+           requirement="recovery-content", repairs=(), extra=b"", size=16, oracle=None, tolerance=0,
+           catalog=b""):
+    return Case(name, page(content, objects, resources, extra, size, catalog), RENDER,
                 (requirement,), name.replace("-", " "),
                 oracle=oracle if oracle is not None else opaque_rectangles(size, size, rectangles),
                 repairs=repairs, strict_valid=not repairs, extra={"tolerance": tolerance})
@@ -118,6 +119,13 @@ def widget_cases():
         objects=[b'<< /Type /Annot /Subtype /Widget /Rect [1 1 7 7] '+field+b' >>']
         if parent: objects.append(parent)
         yield render(name,b'',objects,rectangles=rectangles,extra=b'/Annots [5 0 R]',requirement='recovery-widgets')
+    # 12.7.4.5: an unsigned signature field in the form, without an appearance;
+    # its MK background is generated as for any other widget, and filling an
+    # untouched form must not change that.
+    yield render('widget-unsigned-signature-background',b'',
+                 [b'<< /Type /Annot /Subtype /Widget /FT /Sig /T (Approval) /Rect [1 1 7 7] /MK << /BG [1 0 0] >> >>'],
+                 rectangles=[((1,1,6,6),(255,0,0))],extra=b'/Annots [5 0 R]',
+                 catalog=b'/AcroForm << /Fields [5 0 R] >> ',requirement='recovery-widgets')
     for name, field, parent, error in [
         ('widget-value', b'/FT /Tx /V (visible)', b'', 'unsupported'),
         ('widget-inherited-value', b'/FT /Tx /Parent 6 0 R', b'<< /V (visible) >>','unsupported'),
