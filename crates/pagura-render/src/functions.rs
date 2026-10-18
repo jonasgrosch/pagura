@@ -389,19 +389,7 @@ fn numbers(
             .map(<[f64]>::to_vec)
             .ok_or(Error::syntax("missing function parameter"));
     };
-    let array = document
-        .resolve(value)?
-        .as_array()
-        .ok_or(Error::syntax("function parameter must be an array"))?;
-    array
-        .iter()
-        .map(|v| {
-            document
-                .resolve(v)?
-                .as_number()
-                .ok_or(Error::syntax("function parameter must be numeric"))
-        })
-        .collect()
+    crate::numbers::list(document, value, f64::MAX)
 }
 fn pairs_unordered(
     document: &Document,

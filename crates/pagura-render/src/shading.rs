@@ -386,28 +386,8 @@ fn roots(a: f64, b: f64, c: f64) -> [f64; 2] {
         [q / a, c / q]
     }
 }
-pub(crate) fn numbers<const N: usize>(
-    document: &ColorContext<'_>,
-    value: &Value,
-) -> Result<[f64; N]> {
-    let values = document
-        .resolve(value)?
-        .as_array()
-        .filter(|v| v.len() == N)
-        .ok_or(Error::syntax("wrong shading parameter array length"))?;
-    let mut out = [0.0; N];
-    for (out, v) in out.iter_mut().zip(values) {
-        *out = document
-            .resolve(v)?
-            .as_number()
-            .ok_or(Error::syntax("shading parameter must be numeric"))?;
-        if out.abs() > 1e12 {
-            return Err(Error::limit(
-                "shading parameter exceeds numeric working range",
-            ));
-        }
-    }
-    Ok(out)
+fn numbers<const N: usize>(document: &ColorContext<'_>, value: &Value) -> Result<[f64; N]> {
+    crate::numbers::array(document, value, crate::numbers::GEOMETRY)
 }
 fn optional_numbers<const N: usize>(
     document: &ColorContext<'_>,

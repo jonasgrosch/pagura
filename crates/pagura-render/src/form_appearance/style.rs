@@ -176,21 +176,8 @@ fn paint_color(out: &mut Program, color: &[f64], stroke: bool) -> Result<()> {
     })
 }
 fn numbers(document: &Document, value: &Value) -> Result<Vec<f64>> {
-    let values = document
-        .resolve(value)?
-        .as_array()
-        .ok_or(Error::syntax("widget entry must be an array"))?;
-    if values.len() > document.limits().value_nodes
-        || values.len().saturating_mul(size_of::<f64>()) > document.limits().document_bytes
-    {
-        return Err(Error::limit("widget array budget exceeded"));
-    }
-    values.iter().map(|v| number(document, v)).collect()
+    crate::numbers::list(document, value, f64::MAX)
 }
 fn number(document: &Document, value: &Value) -> Result<f64> {
-    document
-        .resolve(value)?
-        .as_number()
-        .filter(|v| v.is_finite())
-        .ok_or(Error::syntax("widget entry must be finite numeric"))
+    crate::numbers::number(document, value, f64::MAX)
 }

@@ -63,23 +63,7 @@ impl Compiler<'_> {
         let model = group.attributes.model.unwrap_or(Model::Rgb);
         let backdrop = if matches!(method, MaskMethod::Luminosity) {
             d.get(b"BC")
-                .map(|v| {
-                    let values = self
-                        .document
-                        .resolve(v)?
-                        .as_array()
-                        .ok_or(Error::syntax("mask BC must be an array"))?;
-                    let numbers = values
-                        .iter()
-                        .map(|v| {
-                            self.document
-                                .resolve(v)?
-                                .as_number()
-                                .ok_or(Error::syntax("mask BC must be numeric"))
-                        })
-                        .collect::<Result<Vec<_>>>()?;
-                    model.values(&numbers)
-                })
+                .map(|v| model.values(&crate::numbers::list(self.document, v, f64::MAX)?))
                 .transpose()?
                 .unwrap_or(model.black())
         } else {
