@@ -298,6 +298,11 @@ impl GlyphRun {
         let source = self.source(placement)?;
         let d = Transform::new(device.a, device.b, device.c, device.d, 0.0, 0.0);
         let l = source.linear.then(d);
+        // Text matrices are finite in user space; the device scale can still
+        // overflow them, which is the document's extent, not a caller error.
+        if !l.is_finite() {
+            return Err(Error::limit("glyph device transform overflow"));
+        }
         Ok(Arc::new(pagura_raster::GlyphGeometry::new(
             &source.outline,
             [l.a, l.b, l.c, l.d],
@@ -903,6 +908,32 @@ mod tests {
             group: crate::transparency::Attributes::default(),
             print_intent: false,
             separations: OnceLock::new(),
+        }
+    }
+    #[test]
+    fn a_glyph_transform_that_overflows_in_device_space_is_a_limit() {
+        let mut path = PathBuilder::new();
+        path.rect(0.0, 0.0, 1.0, 1.0);
+        let path = Arc::new(path.finish());
+        for alpha in [1.0, 0.5] {
+            let mut run = GlyphRun::new(paint(alpha));
+            run.push(
+                Arc::clone(&path),
+                Transform::new(1e308, 0.0, 0.0, 1e308, 0.0, 0.0),
+                Position::Unknown,
+            )
+            .unwrap();
+            let error = list(run, false)
+                .render(&RenderOptions {
+                    scale: 4.0,
+                    ..RenderOptions::default()
+                })
+                .unwrap_err();
+            assert_eq!(
+                error.kind,
+                pagura_core::ErrorKind::Limit,
+                "alpha {alpha}: {error}"
+            );
         }
     }
     #[test]
