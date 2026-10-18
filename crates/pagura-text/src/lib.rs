@@ -33,12 +33,6 @@ mod font;
 mod memory;
 mod metrics;
 mod objects;
-mod page;
-pub use page::{
-    Character, LayoutOptions, LogicalText, MarkedContent, MarkedSpan, PositionedGlyph,
-    PositionedText, Quad, SearchOptions, StructureElement, StructureNamespace, TextFont, TextLine,
-    TextMatch, TextObject, TextPage, TextWord,
-};
 mod program;
 mod provider;
 pub mod repairs;

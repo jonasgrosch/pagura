@@ -2,7 +2,8 @@
 use crate::{DisplayList, Pixmap, RenderOptions, Tile, interpreter};
 use pagura_core::Result;
 use pagura_document::{Document, Page};
-use pagura_text::{Provider, TextPage};
+use pagura_extract::TextPage;
+use pagura_text::Provider;
 use std::sync::{Arc, Mutex};
 
 /// Immutable document and provider, with bounded fonts and glyph outlines shared

@@ -72,7 +72,7 @@ impl<'a> Types<'a> {
                 .and_then(Value::as_string)
                 .ok_or(Error::syntax("namespace NS must be a string"))?;
             budget.store(value.len())?;
-            let name = crate::decode_text_string(value, doc.limits())?;
+            let name = pagura_text::decode_text_string(value, doc.limits())?;
             let namespace = match name.as_str() {
                 "http://iso.org/pdf/ssn" => StructureNamespace::Pdf17,
                 "http://iso.org/pdf2/ssn" => StructureNamespace::Pdf20,

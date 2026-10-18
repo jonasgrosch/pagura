@@ -2,7 +2,7 @@
 //! paragraph/heading boundaries use two LFs, cells/items one LF; geometry supplies
 //! spacing within blocks. Consecutive ActualText replacements have no break.
 use super::{BTreeMap, Budget, Error, LogicalText, Plan, Range, Reference, Result, TextPage};
-use crate::page::layout::{
+use crate::layout::{
     Atom, Replacement, atoms,
     copy::append,
     geometry::{gap, same_line},
@@ -98,7 +98,7 @@ pub(super) fn export(page: &TextPage, plan: &Plan<'_>, budget: &mut Budget) -> R
         elements.push(element);
     }
     output.logical.structure = elements;
-    output.logical.retained = crate::page::memory::logical_bytes(&output.logical);
+    output.logical.retained = crate::memory::logical_bytes(&output.logical);
     Ok(output.logical)
 }
 fn encoded_len(atom: &Atom) -> usize {
@@ -345,7 +345,7 @@ impl Output<'_> {
             return Err(Error::limit("logical text string budget exceeded"));
         }
         budget.work(1)?;
-        budget.store(size_of::<crate::page::Character>() + bytes * 2)
+        budget.store(size_of::<crate::Character>() + bytes * 2)
     }
     fn separator(&mut self, c: char, budget: &mut Budget) -> Result<()> {
         self.check(budget, c.len_utf8())?;

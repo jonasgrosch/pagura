@@ -13,7 +13,7 @@
 use pagura::{
     DisplayList, Document, OpenOptions, Recovery, RenderOptions, SearchOptions, TextPage,
 };
-use pagura_text::Character;
+use pagura_extract::Character;
 
 /// The most characters of the extracted text searched for.
 const QUERY_CHARS: usize = 8;

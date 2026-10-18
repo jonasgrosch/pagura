@@ -16,6 +16,7 @@ pagura-font.workspace = true
 pagura-core.workspace = true
 pagura-crypto.workspace = true
 pagura-document.workspace = true
+pagura-extract.workspace = true
 pagura-raster.workspace = true
 pagura-text.workspace = true
 pagura-image.workspace = true
