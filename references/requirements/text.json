@@ -781,7 +781,15 @@
         "text/bundled-substitute-inventory",
         "text/substitute-unsafe-symbolic",
         "text/substitute-unsafe-symbolic-both",
-        "text/substitute-unsafe-symbolic-known-base"
+        "text/substitute-unsafe-symbolic-known-base",
+        "text/substitute-style-angle",
+        "text/substitute-style-medium-weight",
+        "text/substitute-style-bold-weight",
+        "text/substitute-style-symbol-italic",
+        "text/substitute-style-symbol-bold",
+        "text/substitute-style-symbol-subset",
+        "text/substitute-style-dingbats-italic",
+        "text/substitute-style-inventory"
       ],
       "gaps": "Non-embedded composite and multiple-master fonts remain unsupported.",
       "verification": {
@@ -791,7 +799,8 @@
         "verdict": "Descriptor fields checked against ISO; substitute choice is documented policy. All 24 family/style/subtype vectors preserve PDF widths and report substitution; unsafe symbolic substitutes fail.",
         "choices": [
           "Fixed-pitch selects Courier ahead of serif; serif selects Times; otherwise Helvetica. Italic flag or nonzero ItalicAngle selects the italic style; FontWeight >= 600 or ForceBold selects bold.",
-          "Unknown Type1/TrueType fonts without an Encoding use the substitute AFM built-in encoding. No guess is made for unknown symbolic fonts."
+          "Unknown Type1/TrueType fonts without an Encoding use the substitute AFM built-in encoding. No guess is made for unknown symbolic fonts.",
+          "Known Symbol and ZapfDingbats style suffixes retain the regular bundled program and its encoding without synthetic slant or weight. Substitution is reported in both recovery modes; explicit PDF widths take precedence over AFM widths. Indirect Flags are resolved before symbolic TrueType encodings are ignored."
         ]
       }
     },

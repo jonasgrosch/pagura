@@ -1072,6 +1072,7 @@ def bundled_cases():
         yield Vector("collection-"+collection,{".collection":collection.encode(),".out":expected([(cid,values[cid]) for cid in dict.fromkeys(chosen)])},("text-collection-unicode",),"Independent collection Unicode rows, ambiguity choices and vertical aliases",{"driver":"collection"})
     yield from substitution_cases(data,lock)
     yield from substitution_recovery_cases(data,lock)
+    yield from style_substitution_cases(data,lock)
 
 
 def substitution_cases(data, lock):
@@ -1091,6 +1092,61 @@ def substitution_cases(data, lock):
     for name,base,flags in [("unsafe-symbolic","UnknownSymbol",4),("unsafe-symbolic-both","UnknownSymbol",36),("unsafe-symbolic-known-base","Arial",4)]:
         font = b"<< /Type /Font /Subtype /TrueType /BaseFont /"+base.encode()+b" /FontDescriptor 5 0 R /Encoding /WinAnsiEncoding /FirstChar 65 /LastChar 65 /Widths [731] >>"
         yield Vector("substitute-"+name,{".pdf":pdf(font,[b"<< /Flags %d >>" % flags]),".error":b"font.non-embedded\n"},("text-font-substitution",),"Unsafe symbolic substitution fails explicitly",{"driver":"provider-error"})
+
+
+def style_substitution_cases(data, lock):
+    """Descriptor styles and known symbol aliases retain PDF advances."""
+    inventory = []
+    for suffix, attributes, selected in [
+        ("angle", b"/ItalicAngle -11 /FontFamily /Ignored", "Helvetica-Oblique"),
+        ("medium-weight", b"/FontWeight 500", "Helvetica"),
+        ("bold-weight", b"/FontWeight 600", "Helvetica-Bold"),
+    ]:
+        name = "substitute-style-"+suffix
+        inventory.append(name)
+        font = b"<< /Subtype /TrueType /BaseFont /Unbundled /FontDescriptor 5 0 R /Encoding /WinAnsiEncoding /FirstChar 65 /LastChar 67 /Widths [731 187 923] >>"
+        descriptor = b"<< /Flags 32 "+attributes+b" /MissingWidth 251 >>"
+        program = data/lock["standard_14"][selected]["outline"]
+        binary = program.read_bytes()
+        head = next(offset for tag,_,offset,_ in (struct.unpack_from(">4sIII",binary,12+16*i) for i in range(struct.unpack_from(">H",binary,4)[0])) if tag == b"head")
+        unit = 1/struct.unpack_from(">H",binary,head+18)[0]
+        rows = [(code,width/1000,chr(code),bundled_tt_glyph(program,code))
+                for code,width in zip(range(65,69),(731,187,923,251))]
+        yield Vector(name,{".pdf":pdf(font,[descriptor]),".input":b"ABCD",".out":expected(rows),
+                           ".positions":b"[0 .731 .918 1.841]\n",".base":selected.encode(),
+                           ".matrix":expected([(unit,0,0,unit,0,0)])},
+                     ("text-font-substitution",),
+                     "Descriptor angle and weight choose bundled outlines; Widths and MissingWidth set positions; unused FontFamily is ignored",{"driver":"style-substitution"})
+    for name, base_name, subtype, selected, explicit, indirect in [
+        ("symbol-italic", b"Symbol,Italic", b"TrueType", "Symbol", False, False),
+        ("symbol-bold", b"Symbol-Bold", b"Type1", "Symbol", True, False),
+        ("symbol-subset", b"ABCDEF+Symbol,BoldItalic", b"TrueType", "Symbol", True, True),
+        ("dingbats-italic", b"ZapfDingbats,Italic", b"Type1", "ZapfDingbats", False, False),
+    ]:
+        name = "substitute-style-"+name
+        inventory.append(name)
+        _, afm = bundled_afm(data/lock["standard_14"][selected]["metrics"])
+        charset = bundled_cff_charset(data/lock["standard_14"][selected]["outline"])
+        entries = {code:(glyph,width) for code,glyph,width in afm if code >= 0}
+        font = b"<< /Subtype /"+subtype+b" /BaseFont /"+base_name
+        font += b" /FontDescriptor 5 0 R /FirstChar 65 /LastChar 67 /Widths [731 187 923]" if explicit else b""
+        if indirect:
+            font += b" /Encoding << /BaseEncoding /MacRomanEncoding /Differences [65 /theta1] >>"
+        font += b" >>"
+        scalars = "ΑΒΧ" if selected=="Symbol" else "✡✢✣"
+        widths = (731,187,923) if explicit else [entries[c][1] for c in range(65,68)]
+        rows = [(code,width/1000,scalar,charset[entries[code][0]])
+                for code,width,scalar in zip(range(65,68),widths,scalars)]
+        positions = [0]
+        for _,width,_,_ in rows[:-1]: positions.append(positions[-1]+width)
+        descriptors = ([b"<< /Flags 6 0 R >>",b"4"] if indirect else [b"<< /Flags 4 >>"]) if explicit else []
+        yield Vector(name,{".pdf":pdf(font,descriptors),".input":b"ABC",".out":expected(rows),
+                           ".positions":("["+" ".join(format(p,".12g") for p in positions)+"]\n").encode(),
+                           ".base":selected.encode(),".matrix":expected([(.001,0,0,.001,0,0)])},
+                     ("text-font-substitution",),
+                     "Known symbol style aliases use reported regular outlines; PDF widths override AFM and indirect symbolic Flags suppress Differences",{"driver":"style-substitution"})
+    yield Vector("substitute-style-inventory",{".out":expected([(name,) for name in inventory])},
+                 ("text-font-substitution",),"Descriptor style and symbol alias cases",{"driver":"inventory"})
 
 
 def cyrillic_names():

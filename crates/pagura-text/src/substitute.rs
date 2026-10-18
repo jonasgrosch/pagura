@@ -11,6 +11,10 @@ use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Repair, Result, Value
 use pagura_document::Document;
 use std::sync::Arc;
 
+mod family;
+use family::Family;
+pub(crate) use family::standard_name;
+
 /// Diagnostic tag for an explicitly provided replacement outline.
 pub const SUBSTITUTED: Repair = Repair::new("font.substituted");
 
@@ -28,12 +32,14 @@ pub(crate) fn load(
         .as_name()
         .ok_or_else(|| Error::syntax("invalid BaseFont"))?;
     let standard = standard_name(base.as_bytes());
-    if let Some(descriptor) = descriptor
-        && optional(document, descriptor, b"Flags")?
+    let symbolic = if let Some(descriptor) = descriptor {
+        optional(document, descriptor, b"Flags")?
             .and_then(Value::as_integer)
             .is_some_and(|flags| flags & 4 != 0)
-        && !matches!(standard, Some(b"Symbol" | b"ZapfDingbats"))
-    {
+    } else {
+        false
+    };
+    if symbolic && !matches!(standard, Some(b"Symbol" | b"ZapfDingbats")) {
         return Err(unavailable());
     }
 
@@ -46,12 +52,7 @@ pub(crate) fn load(
         )?,
     };
     let data = provider.standard_font(selected)?.ok_or_else(unavailable)?;
-    let encoding = if kind == FontKind::TrueType
-        && descriptor.is_some_and(|d| {
-            d.get(b"Flags")
-                .and_then(Value::as_integer)
-                .is_some_and(|f| f & 4 != 0)
-        }) {
+    let encoding = if kind == FontKind::TrueType && symbolic {
         None
     } else {
         font.get(b"Encoding")
@@ -139,14 +140,7 @@ fn closest(
     let italic = flags & 64 != 0 || number(document, descriptor, b"ItalicAngle", 0.0)? != 0.0;
     let weight = weight(document, descriptor, id)?;
     let bold = flags & 262_144 != 0 || weight >= 600.0;
-    let family = if flags & 1 != 0 {
-        0
-    } else if flags & 2 != 0 {
-        1
-    } else {
-        2
-    };
-    Ok(canonical(family, bold, italic))
+    Ok(Family::from_flags(flags).canonical(bold, italic))
 }
 
 fn weight(document: &Document, descriptor: &Dictionary, id: Option<ObjectId>) -> Result<f64> {
@@ -168,73 +162,6 @@ fn weight(document: &Document, descriptor: &Dictionary, id: Option<ObjectId>) ->
     diagnostic.object = id;
     crate::repairs::Report::new(document).diagnostic(diagnostic)?;
     Ok(400.0)
-}
-
-/// Recognizes only known family/style spellings. A subset tag is exactly six
-/// uppercase ASCII letters followed by `+` (9.9.2); aliases are a host choice.
-pub(crate) fn standard_name(name: &[u8]) -> Option<&'static [u8]> {
-    let name = if name.get(6) == Some(&b'+') && name.get(..6)?.iter().all(u8::is_ascii_uppercase) {
-        name.get(7..)?
-    } else {
-        name
-    };
-    if name == b"Symbol" {
-        return Some(b"Symbol");
-    }
-    if name == b"ZapfDingbats" {
-        return Some(b"ZapfDingbats");
-    }
-    // The fixed maximum avoids allocating proportionally to arbitrary PDF names.
-    if name.len() > 80 {
-        return None;
-    }
-    let normalized: Vec<_> = name
-        .iter()
-        .filter(|b| !matches!(b, b'-' | b',' | b' '))
-        .map(u8::to_ascii_lowercase)
-        .collect();
-    let normalized = normalized.strip_suffix(b"mt").unwrap_or(&normalized);
-    for (prefix, family) in [
-        (b"timesnewromanps".as_slice(), 1),
-        (b"timesnewroman", 1),
-        (b"couriernewps", 0),
-        (b"couriernew", 0),
-        (b"helvetica", 2),
-        (b"arial", 2),
-        (b"courier", 0),
-        (b"times", 1),
-    ] {
-        if let Some(style) = normalized.strip_prefix(prefix) {
-            let (bold, italic) = match style {
-                b"" | b"roman" | b"regular" => (false, false),
-                // Short style names are a host alias policy (9.6.2.1).
-                // Repeated b represents an already-bold face selected as bold.
-                b"bold" | b"b" | b"bb" => (true, false),
-                b"italic" | b"oblique" | b"i" => (false, true),
-                b"bolditalic" | b"boldoblique" | b"bi" | b"ib" => (true, true),
-                _ => continue,
-            };
-            return Some(canonical(family, bold, italic));
-        }
-    }
-    None
-}
-
-fn canonical(family: u8, bold: bool, italic: bool) -> &'static [u8] {
-    match (family, bold, italic) {
-        (0, false, false) => b"Courier",
-        (0, true, false) => b"Courier-Bold",
-        (0, false, true) => b"Courier-Oblique",
-        (0, true, true) => b"Courier-BoldOblique",
-        (1, false, false) => b"Times-Roman",
-        (1, true, false) => b"Times-Bold",
-        (1, false, true) => b"Times-Italic",
-        (1, true, true) => b"Times-BoldItalic",
-        (_, false, false) => b"Helvetica",
-        (_, true, false) => b"Helvetica-Bold",
-        (_, false, true) => b"Helvetica-Oblique",
-        (_, true, true) => b"Helvetica-BoldOblique",
-    }
 }
 
 fn substitution_message(name: &[u8]) -> &'static str {
