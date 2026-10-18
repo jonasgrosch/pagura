@@ -63,6 +63,9 @@ pub mod tags {
     /// Ignore nonzero unused bits after LZW EOD. ISO 32000-2 clause 7.4.4.2
     /// requires the encoder to zero them; Strict rejects this repair.
     pub const LZW_PADDING: Repair = Repair::new("filter.lzw-padding");
+    /// Start with the initial literal dictionary when the leading clear code
+    /// is absent and the first code is a literal or EOD (7.4.4.2).
+    pub const LZW_INITIAL_CLEAR: Repair = Repair::new("filter.lzw-initial-clear");
     /// Keep decoded bytes despite a mismatched zlib Adler-32 checksum.
     pub const CHECKSUM_MISMATCH: Repair = Repair::new("filter.checksum-mismatch");
     /// Ignore bytes after the first end marker. ASCII filters permit trailing

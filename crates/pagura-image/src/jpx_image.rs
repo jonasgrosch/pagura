@@ -7,6 +7,7 @@ pub(crate) fn decode(
     dictionary: &Dictionary,
     image: &mut DecodedImage,
     limits: &Limits,
+    diagnostics: &mut pagura_core::Diagnostics,
 ) -> Result<()> {
     let mode = parameters::integer(dictionary, b"SMaskInData", 0)?;
     if !(0..=2).contains(&mode)
@@ -23,7 +24,15 @@ pub(crate) fn decode(
         ignore_color: !matches!(image.kind, ImageKind::Color { color_space: None }),
         ignore_opacity: mode == 0,
     };
-    let mut decoded = jpx::decode_with_options(data, limits, &options)?;
+    let indexed = matches!(&image.kind, ImageKind::Color { color_space: Some(Value::Array(space)) }
+        if space.first().and_then(Value::as_name).is_some_and(|name| name == b"Indexed"));
+    if indexed && mode != 0 {
+        return Err(Error::unsupported(
+            features::JPX_SAMPLE_LAYOUT,
+            "Indexed JPX opacity requires channel mapping",
+        ));
+    }
+    let mut decoded = jpx::decode_pdf(data, limits, &options, diagnostics, indexed)?;
     if mode == 0 {
         super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
     }

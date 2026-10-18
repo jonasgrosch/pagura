@@ -109,6 +109,7 @@ pub(super) fn parse<'a>(
                     codestream = Some((b.body, b.position));
                 }
             }
+            b"cmap" => misplaced_mapping(&b, header.as_mut(), codestream.is_some(), budget)?,
             b"jP  " | b"ftyp" => {
                 return Err(syntax("repeated JP2 signature or file type", b.position));
             }
@@ -122,6 +123,37 @@ pub(super) fn parse<'a>(
         position,
         header.ok_or_else(|| syntax("missing JP2 header", 0))?,
     ))
+}
+
+/// A sole misplaced mapping has one matching header palette. Conflicting
+/// definitions, missing palettes and mappings after the codestream stay errors.
+fn misplaced_mapping(
+    box_data: &BoxData<'_>,
+    header: Option<&mut Header>,
+    after_stream: bool,
+    budget: &mut Budget<'_>,
+) -> Result<()> {
+    let header = header
+        .filter(|h| h.palette.is_some() && h.mapping.is_none() && !after_stream)
+        .ok_or_else(|| {
+            syntax(
+                "misplaced or repeated JP2 component mapping",
+                box_data.position,
+            )
+        })?;
+    if box_data.body.is_empty() || !box_data.body.len().is_multiple_of(4) {
+        return Err(syntax("invalid JP2 component mapping", box_data.position));
+    }
+    budget.diagnostics.repair(
+        pagura_core::Diagnostic::new(
+            crate::tags::JPX_MAPPING_LOCATION,
+            "top-level JP2 mapping used for its header palette (T.800 I.5.3.4–I.5.3.5)",
+        )
+        .at(pagura_core::Position::Buffer(box_data.position)),
+    )?;
+    let mut fields = Reader::new(box_data.body, box_data.position);
+    header.mapping = Some(read_mapping(&mut fields, budget)?);
+    fields.finish()
 }
 
 fn parse_header(
@@ -426,6 +458,18 @@ impl Header {
                 }
             }
         }
+        Ok(())
+    }
+
+    /// PDF 7.4.9: an explicit Indexed space interprets the stored indices.
+    /// Applying the container's palette too would expand those indices twice.
+    pub fn use_pdf_palette(&mut self) -> Result<()> {
+        if self.palette.is_some() != self.mapping.is_some() {
+            return Err(syntax("JP2 palette and mapping disagree", 0));
+        }
+        self.palette = None;
+        self.mapping = None;
+        self.channels = None;
         Ok(())
     }
 

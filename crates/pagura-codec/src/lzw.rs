@@ -24,7 +24,15 @@ pub(crate) fn decode(
     let mut stack = [0; 4096];
     while let Some(code) = reader.read(width) {
         if first_code && code != 256 {
-            return Err(syntax("LZW must start with clear code", 0));
+            if code > 257 {
+                return Err(syntax("LZW must start with clear code", 0));
+            }
+            repair(
+                diagnostics,
+                tags::LZW_INITIAL_CLEAR,
+                "LZW initial clear code missing; initial dictionary retained (7.4.4.2)",
+                0,
+            )?;
         }
         first_code = false;
         match code {

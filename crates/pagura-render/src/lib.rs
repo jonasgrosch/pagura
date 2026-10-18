@@ -184,3 +184,6 @@ pub fn render_tile_with(
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod recovery_tests;

@@ -270,7 +270,7 @@
         "content/function-domain-negative",
         "content/function-domain-fractional"
       ],
-      "gaps": "sampled cubic interpolation with size >=4; transfer-region selection under transparency",
+      "gaps": "fractional, pattern and per-colourant transfer-region selection under transparency",
       "rule": "Functions clip inputs and outputs to declared bounds and follow their type-specific definitions; transfer functions operate after conversion to the output device space."
     },
     {

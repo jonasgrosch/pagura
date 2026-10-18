@@ -155,18 +155,59 @@ pub fn decode(data: &[u8], limits: &Limits) -> Result<JpxImage> {
 /// implemented, and limit errors beyond `limits`. Per-colour or multiple
 /// opacity channels require a richer output model and return `Unsupported`.
 pub fn decode_with_options(data: &[u8], limits: &Limits, options: &Options) -> Result<Decoded> {
+    decode_with_diagnostics(
+        data,
+        limits,
+        options,
+        &mut pagura_core::Diagnostics::new(pagura_core::Recovery::Strict),
+    )
+}
+
+/// Decodes JPEG 2000 with reported, bounded tile-part count recovery (T.800 A.4.2).
+/// Lengths, ordered part numbers, packet syntax and EOC remain authoritative.
+///
+/// # Errors
+/// As [`decode_with_options`]; strict diagnostics reject malformed counts.
+pub fn decode_with_diagnostics(
+    data: &[u8],
+    limits: &Limits,
+    options: &Options,
+    diagnostics: &mut pagura_core::Diagnostics,
+) -> Result<Decoded> {
+    decode_pdf(data, limits, options, diagnostics, false)
+}
+
+pub(crate) fn decode_pdf(
+    data: &[u8],
+    limits: &Limits,
+    options: &Options,
+    diagnostics: &mut pagura_core::Diagnostics,
+    indexed: bool,
+) -> Result<Decoded> {
     if data.len() > limits.stream_bytes {
         return Err(Error::limit("JPEG 2000 input budget exceeded").at(Position::Buffer(0)));
     }
     let mut budget = io::Budget::new(limits);
-    decode_bounded(data, &mut budget, options).map_err(|error| error.at(Position::Buffer(0)))
+    budget.diagnostics = pagura_core::Diagnostics::new(diagnostics.mode());
+    let result = decode_bounded(data, &mut budget, options, indexed)
+        .map_err(|error| error.at(Position::Buffer(0)));
+    diagnostics.extend(budget.diagnostics.take());
+    result
 }
 
-fn decode_bounded(data: &[u8], budget: &mut io::Budget<'_>, options: &Options) -> Result<Decoded> {
+fn decode_bounded(
+    data: &[u8],
+    budget: &mut io::Budget<'_>,
+    options: &Options,
+    indexed: bool,
+) -> Result<Decoded> {
     if data.starts_with(&[255, 79]) {
         codestream::decode(data, 0, budget)
     } else {
-        let (stream, base, header) = boxes::parse(data, budget, options)?;
+        let (stream, base, mut header) = boxes::parse(data, budget, options)?;
+        if indexed {
+            header.use_pdf_palette()?;
+        }
         let mut decoded = codestream::decode(stream, base, budget)?;
         header.apply(&mut decoded, budget)?;
         Ok(decoded)

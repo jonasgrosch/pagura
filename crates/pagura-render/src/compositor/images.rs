@@ -99,6 +99,7 @@ impl Context {
                     .and_then(|m| m.get(index))
                     .copied()
                     .unwrap_or(1.0);
+                self.image_transfer(command, (x, y), source)?;
                 target
                     .pixels
                     .get_mut(index)
@@ -225,12 +226,6 @@ fn prepare(
 }
 
 fn validate(command: &ImageCommand, model: Model) -> Result<()> {
-    if command.transfer.is_some() {
-        return Err(Error::unsupported(
-            crate::features::TRANSPARENCY_TRANSFER,
-            "image transfer selection in transparency is not implemented",
-        ));
-    }
     if model == Model::Cmyk && command.composite.overprint {
         return Err(Error::unsupported(
             crate::features::TRANSPARENCY_OVERPRINT,
@@ -481,6 +476,7 @@ mod tests {
             mask: None,
             function_work: 0,
             soft_source: false,
+            transfers: None,
         }
     }
 

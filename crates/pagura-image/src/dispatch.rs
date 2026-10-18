@@ -68,19 +68,14 @@ pub(crate) fn decode(
             )?;
         }
         Some(ImageCodec::Dct) => {
-            let transform = color_transform(params)?;
-            let decoded = dct::decode_with_diagnostics(data, transform, &limits, diagnostics)?;
-            if decoded.width != width
-                || decoded.height != height
-                || decoded.components != components
-                || bits != 8
-            {
-                return Err(Error::syntax(
-                    "JPEG metadata disagrees with image dictionary",
-                ));
-            }
+            image.samples = decode_dct(
+                data,
+                params,
+                (width, height, components, bits),
+                &limits,
+                diagnostics,
+            )?;
             image.bits_per_component = 8;
-            image.samples = Samples::Bytes(decoded.samples);
         }
         Some(ImageCodec::CcittFax) => {
             if bits != 1 || components != 1 {
@@ -95,7 +90,9 @@ pub(crate) fn decode(
             }
             image.samples = decode_jbig2(document, dict, data, params, width, height)?;
         }
-        Some(ImageCodec::Jpx) => crate::jpx_image::decode(data, dict, &mut image, &limits)?,
+        Some(ImageCodec::Jpx) => {
+            crate::jpx_image::decode(data, dict, &mut image, &limits, diagnostics)?;
+        }
     }
     let mut dictionary = dict.clone();
     if matches!(codec, Some((ImageCodec::Jpx, _)))
@@ -165,4 +162,75 @@ fn color_transform(params: Option<&Dictionary>) -> Result<Option<i64>> {
                 .ok_or(Error::syntax("invalid DCT ColorTransform"))
         })
         .transpose()
+}
+
+/// An independently validated lossless image cannot be a JPEG with a damaged
+/// SOI: all Flate framing, checksums, row tags and sample counts must agree.
+fn decode_dct(
+    data: &[u8],
+    params: Option<&Dictionary>,
+    dimensions: (u32, u32, u8, u8),
+    limits: &pagura_core::Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<Samples> {
+    let (width, height, components, bits) = dimensions;
+    let transform = color_transform(params)?;
+    let decoded = match dct::decode_with_diagnostics(data, transform, limits, diagnostics) {
+        Ok(decoded) => decoded,
+        Err(error) => {
+            if !data.starts_with(&[0xff, 0xd8])
+                && bits == 8
+                && let Some(samples) =
+                    predicted_flate(data, params, (width, height, components), limits)
+            {
+                diagnostics.repair(
+                    pagura_core::Diagnostic::new(
+                        crate::tags::FILTER_MISMATCH,
+                        "DCTDecode replaced by validated Flate image data (7.4.4, 7.4.8)",
+                    )
+                    .at(pagura_core::Position::Buffer(0)),
+                )?;
+                return Ok(Samples::Bytes(samples));
+            }
+            return Err(error);
+        }
+    };
+    if decoded.width != width
+        || decoded.height != height
+        || decoded.components != components
+        || bits != 8
+    {
+        return Err(Error::syntax(
+            "JPEG metadata disagrees with image dictionary",
+        ));
+    }
+    Ok(Samples::Bytes(decoded.samples))
+}
+
+fn predicted_flate(
+    data: &[u8],
+    params: Option<&Dictionary>,
+    dimensions: (u32, u32, u8),
+    limits: &pagura_core::Limits,
+) -> Option<Vec<u8>> {
+    let (width, height, components) = dimensions;
+    let predictor = pagura_codec::Predictor::from_params(params).ok()?;
+    if predictor.kind == pagura_codec::PredictorKind::None
+        || predictor.columns != width
+        || predictor.colors != components
+        || predictor.bits_per_component != 8
+    {
+        return None;
+    }
+    let expected = usize::try_from(
+        u64::from(width)
+            .checked_mul(u64::from(height))?
+            .checked_mul(u64::from(components))?,
+    )
+    .ok()?;
+    let mut strict = Diagnostics::new(pagura_core::Recovery::Strict);
+    let samples = pagura_codec::Filter::Flate { predictor }
+        .decode(data, limits.decoded_bytes, &mut strict)
+        .ok()?;
+    (samples.len() == expected).then_some(samples)
 }

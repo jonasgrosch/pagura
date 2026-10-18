@@ -204,6 +204,7 @@ const RENDER: &[&str] = &[
     "function-sampled-24",
     "function-sampled-32",
     "function-order3-small",
+    "function-order3",
     "transfer-type2",
     "transfer-type4",
     "transfer-precedence",
@@ -548,10 +549,6 @@ fn invalid_function_graphs_and_evaluation_errors_preserve_context() {
         ("function-host-action", ErrorKind::Syntax),
         ("function-undefined", ErrorKind::Syntax),
         ("function-cycle", ErrorKind::Cycle),
-        (
-            "function-order3",
-            ErrorKind::Unsupported(crate::features::FUNCTION_CUBIC),
-        ),
     ] {
         let document = open(name);
         let error = compile_page(&document, document.page(0).unwrap())

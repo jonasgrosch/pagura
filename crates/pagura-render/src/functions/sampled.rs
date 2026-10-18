@@ -1,7 +1,13 @@
-//! Packed sampled functions with multilinear interpolation (7.10.2).
+//! Packed sampled functions with linear and cubic spline interpolation (7.10.2).
+//!
+//! Order 3 uses a local interpolating Catmull–Rom spline: centred differences
+//! determine interior tangents, and one-sided differences determine endpoint
+//! tangents. This preserves samples and affine functions, including at the
+//! boundaries. Clause 7.10.2 does not prescribe the spline's boundary conditions.
+//! The project's reading of 7.10.2 applies the fewer-than-four-samples linear
+//! fallback independently to each axis.
 
 use super::{interpolate, numbers, pairs_unordered};
-use crate::features;
 use pagura_core::{Dictionary, Error, Limits, Result, Value};
 use pagura_document::Document;
 use std::sync::Arc;
@@ -10,6 +16,7 @@ use std::sync::Arc;
 pub(super) struct Sampled {
     size: Vec<usize>,
     bits: u32,
+    cubic: bool,
     data: Arc<[u8]>,
     encode: Vec<[f64; 2]>,
     decode: Vec<[f64; 2]>,
@@ -55,19 +62,16 @@ impl Sampled {
             .and_then(|v| u32::try_from(v).ok())
             .filter(|v| matches!(v, 1 | 2 | 4 | 8 | 12 | 16 | 24 | 32))
             .ok_or(Error::syntax("invalid function BitsPerSample"))?;
-        if let Some(order) = d.get(b"Order") {
-            match document.resolve(order)?.as_integer() {
-                Some(1) => {}
-                Some(3) if size.iter().all(|&n| n < 4) => {}
-                Some(3) => {
-                    return Err(Error::unsupported(
-                        features::FUNCTION_CUBIC,
-                        "cubic sampled interpolation is not implemented",
-                    ));
-                }
-                _ => return Err(Error::syntax("invalid sampled interpolation order")),
-            }
-        }
+        let cubic = match d
+            .get(b"Order")
+            .map(|v| document.resolve(v))
+            .transpose()?
+            .map(Value::as_integer)
+        {
+            None | Some(Some(1)) => false,
+            Some(Some(3)) => true,
+            _ => return Err(Error::syntax("invalid sampled interpolation order")),
+        };
         let mut count = outputs;
         for &size in &size {
             count = count
@@ -95,6 +99,7 @@ impl Sampled {
         Ok(Self {
             size,
             bits,
+            cubic,
             data: data
                 .get(..required)
                 .ok_or(Error::syntax("truncated sampled function"))?
@@ -111,13 +116,8 @@ impl Sampled {
         work: &mut usize,
         limits: &Limits,
     ) -> Result<Vec<f64>> {
-        let dimension = u32::try_from(input.len())
-            .map_err(|_| Error::limit("sampled dimension exceeds u32"))?;
-        let vertices = 1_usize
-            .checked_shl(dimension)
-            .filter(|&v| v <= limits.operations)
-            .ok_or(Error::limit("sampled interpolation corner budget exceeded"))?;
-        let mut positions = Vec::new();
+        let mut positions = Vec::with_capacity(input.len());
+        let mut vertices = 1_usize;
         for (((&x, domain), encode), &size) in
             input.iter().zip(domain).zip(&self.encode).zip(&self.size)
         {
@@ -125,13 +125,12 @@ impl Sampled {
             if !x.is_finite() {
                 return Err(Error::syntax("sample encode arithmetic overflow"));
             }
-            #[expect(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                reason = "sample coordinate clamped to the allocated grid extent"
-            )]
-            let low = x.floor() as usize;
-            positions.push((low, (low + 1).min(size - 1), x - low as f64));
+            let position = Weights::new(x, size, self.cubic);
+            vertices = vertices
+                .checked_mul(position.len)
+                .filter(|&n| n <= limits.operations)
+                .ok_or(Error::limit("sampled interpolation corner budget exceeded"))?;
+            positions.push(position);
         }
         let mut result = vec![0.0; outputs];
         for corner in 0..vertices {
@@ -140,21 +139,18 @@ impl Sampled {
                 .filter(|&v| v <= limits.operations)
                 .ok_or(Error::limit("sample evaluation work exceeded"))?;
             let (mut offset, mut stride, mut weight) = (0_usize, outputs, 1.0);
-            for (dimension, (&(low, high, t), &size)) in
-                positions.iter().zip(&self.size).enumerate()
-            {
-                let upper = (corner >> dimension) & 1 != 0;
-                offset = offset
-                    .checked_add(
-                        if upper { high } else { low }
-                            .checked_mul(stride)
-                            .ok_or(Error::limit("sample index overflow"))?,
-                    )
+            let mut remaining = corner;
+            for (position, &size) in positions.iter().zip(&self.size) {
+                let (index, factor) = position.values[remaining % position.len];
+                remaining /= position.len;
+                offset = index
+                    .checked_mul(stride)
+                    .and_then(|n| offset.checked_add(n))
                     .ok_or(Error::limit("sample index overflow"))?;
                 stride = stride
                     .checked_mul(size)
                     .ok_or(Error::limit("sample stride overflow"))?;
-                weight *= if upper { t } else { 1.0 - t };
+                weight *= factor;
             }
             if weight == 0.0 {
                 continue;
@@ -193,5 +189,92 @@ impl Sampled {
             value = (value << 1) | u64::from((byte >> (7 - bit % 8)) & 1);
         }
         Ok(value as f64 / ((1_u64 << self.bits) - 1) as f64)
+    }
+}
+
+/// Nonzero support in one sample dimension; tensor products are budgeted above.
+struct Weights {
+    values: [(usize, f64); 4],
+    len: usize,
+}
+impl Weights {
+    fn new(x: f64, size: usize, cubic: bool) -> Self {
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "sample coordinate clamped to the allocated grid extent"
+        )]
+        let low = x.floor() as usize;
+        let t = x - low as f64;
+        let high = (low + 1).min(size - 1);
+        if size == 1 || t == 0.0 {
+            return Self {
+                values: [(low, 1.0), (0, 0.0), (0, 0.0), (0, 0.0)],
+                len: 1,
+            };
+        }
+        if !cubic || size < 4 {
+            return Self {
+                values: [(low, 1.0 - t), (high, t), (0, 0.0), (0, 0.0)],
+                len: 2,
+            };
+        }
+        let t2 = t * t;
+        let t3 = t2 * t;
+        let mut values = [
+            (low.saturating_sub(1), -0.5 * t + t2 - 0.5 * t3),
+            (low, 1.0 - 2.5 * t2 + 1.5 * t3),
+            (high, 0.5 * t + 2.0 * t2 - 1.5 * t3),
+            ((high + 1).min(size - 1), -0.5 * t2 + 0.5 * t3),
+        ];
+        // Extrapolate a missing neighbour linearly, so its contribution can be
+        // folded into the two real endpoints without allocating ghost samples.
+        if low == 0 {
+            values[1].1 += 2.0 * values[0].1;
+            values[2].1 -= values[0].1;
+            values[0].1 = 0.0;
+        }
+        if high == size - 1 {
+            values[1].1 -= values[3].1;
+            values[2].1 += 2.0 * values[3].1;
+            values[3].1 = 0.0;
+        }
+        Self { values, len: 4 }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pagura_core::{ErrorKind, ObjectId};
+    use pagura_document::OpenOptions;
+    use pagura_testkit::fixture;
+
+    #[test]
+    fn singleton_dimensions_need_one_sample_and_keep_the_work_budget() {
+        let bytes = fixture("recovery", "cubic-constant-many-inputs.pdf");
+        let document = Document::open(bytes.clone(), &OpenOptions::default()).unwrap();
+        let function =
+            super::super::Function::parse(&document, &Value::Reference(ObjectId::new(5, 0)), 32, 1)
+                .unwrap();
+        assert_eq!(function.evaluate(&[0.0; 32]).unwrap(), [128.0 / 255.0]);
+        let limited = Document::open(
+            bytes,
+            &OpenOptions {
+                limits: Limits {
+                    operations: 32,
+                    ..Limits::default()
+                },
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        let function =
+            super::super::Function::parse(&limited, &Value::Reference(ObjectId::new(5, 0)), 32, 1)
+                .unwrap();
+        assert_eq!(
+            function.evaluate(&[0.0; 32]).unwrap_err().kind,
+            ErrorKind::Limit
+        );
     }
 }

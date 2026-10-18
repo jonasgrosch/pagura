@@ -25,6 +25,9 @@ pub mod tags {
     /// Ignore excess entropy bytes after the prescribed MCUs only when the
     /// next unstuffed marker is EOI (T.81 B.2.1). Never skip another scan.
     pub const ENTROPY_EXCESS: Repair = Repair::new("jpeg.entropy-excess");
+    /// Discard a restart marker immediately before EOI after all required
+    /// MCUs were decoded (T.81 B.2.1, B.2.4.4); no entropy is synthesized.
+    pub const TRAILING_RESTART: Repair = Repair::new("jpeg.trailing-restart");
 }
 
 /// A decoded JPEG image.
