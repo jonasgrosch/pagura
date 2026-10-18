@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/pagura-core",
+    "crates/pagura-pki",
     "crates/pagura-codec",
     "crates/pagura-crypto",
     "crates/pagura-document",
@@ -35,6 +36,7 @@ pagura-document = { path = "crates/pagura-document" }
 pagura-font = { path = "crates/pagura-font" }
 pagura-host = { path = "crates/pagura-host" }
 pagura-image = { path = "crates/pagura-image" }
+pagura-pki = { path = "crates/pagura-pki" }
 pagura-raster = { path = "crates/pagura-raster" }
 pagura-render = { path = "crates/pagura-render" }
 pagura-testkit = { path = "crates/pagura-testkit" }

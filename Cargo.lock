@@ -93,6 +93,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "pagura-pki"
+version = "0.1.0"
+dependencies = [
+ "pagura-core",
+]
+
+[[package]]
 name = "pagura-raster"
 version = "0.1.0"
 dependencies = [
