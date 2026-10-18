@@ -524,6 +524,7 @@ def cases():
     yield from recovery_cases()
     yield from static_font_cases()
     yield from metadata_recovery_cases()
+    yield from descriptor_flag_cases()
 
     yield vector("cff-nonfinite",cff_font(conforming=True,hostile="nonfinite"),"outline-error 1\n","font-bounds","cff")
 
@@ -944,7 +945,7 @@ def recovery_cases():
 
 
 def static_type1(aliases=(b"-|", b"|-", b"|"), subrs=1, clear_definitions=False,
-                 qualifier=b"executeonly", short=False, comments=False, computed=None, duplicate=None):
+                 qualifier=b"executeonly", short=False, comments=False, computed=None, duplicate=None, glyph_name=b"A"):
     """Type 1 2.4/7.3/10.3: explicit procedures and length-delimited cipher bytes."""
     reader, define, put = aliases
     bodies = [b"string currentfile exch readstring pop", b"def" if short else b"noaccess def",
@@ -972,7 +973,7 @@ def static_type1(aliases=(b"-|", b"|-", b"|"), subrs=1, clear_definitions=False,
     private += define+b"\n2 index /CharStrings "+(b"4" if duplicate==b"" else b"3" if duplicate is not None else b"2")+b" dict dup begin\n"
     width = operands(0,600)+b"\x0d"
     glyphs = [(b".notdef",width+b"\x0e"),
-              (b"A",width+operands(0,0)+b"\x15"+operands(0)+b"\x0a\x0e")]
+              (glyph_name,width+operands(0,0)+b"\x15"+operands(0)+b"\x0a\x0e")]
     if duplicate is not None:
         if duplicate==b"":
             glyphs.append((b"",width+b"\x0e"))
@@ -1092,3 +1093,63 @@ def metadata_recovery_cases():
     ]:
         yield recovery_vector("cff-supplement-"+name,reviewed_cff(rect,private=width,encoding=encoding),
                               expected+mappings,"font.cff-encoding-supplement",fmt="cff",requirement="font-cff-encoding-supplement")
+
+
+def descriptor_flag_cases():
+    """PDF 9.8.2/Table 121, 9.6.5.2/4: explicit evidence and exact rectangles."""
+    from .pdf import document, stream
+    def vector_case(name, program, flags, *, encoding=b"/Encoding /WinAnsiEncoding",
+                    subtype=b"TrueType", code=65, text="A", repaired=True, symbolic=False, objects=()):
+        font = (b"<< /Type /Font /Subtype /"+subtype+b" /BaseFont /Rect /FontDescriptor 6 0 R "
+                b"/FirstChar "+str(code).encode()+b" /LastChar "+str(code).encode()+b" /Widths [600] "+encoding+b" >>")
+        descriptor = (b"<< /Type /FontDescriptor /FontName /Rect /Flags "+str(flags).encode()+
+                      b" /FontBBox [0 0 100 200] /ItalicAngle 0 /Ascent 200 /Descent 0 /CapHeight 200 /StemV 50 ")
+        if subtype==b"Type1":
+            descriptor += b"/FontFile 7 0 R >>"
+            marker = program.index(b"currentfile eexec\n")+len(b"currentfile eexec\n")
+            extra = b"/Length1 %d /Length2 %d /Length3 0" % (marker,len(program)-marker)
+        else:
+            descriptor += b"/FontFile2 7 0 R >>"
+            extra = b"/Length1 "+str(len(program)).encode()
+        pdf = document([b"<< /Type /Catalog /Pages 2 0 R >>",
+                        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+                        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 16 16] /Resources << /Font << /F 5 0 R >> >> /Contents 4 0 R >>",
+                        stream(b"BT /F 20 Tf 4 4 Td <"+bytes([code]).hex().encode()+b"> Tj ET"),
+                        font,descriptor,stream(program,extra),*objects])
+        # The writer's 100x200 glyph at 20 points is [4,6] x [4,8].
+        pixels = bytes(v for y in range(16) for x in range(16)
+                       for v in ([0,0,0] if 4<=x<6 and 8<=y<12 else [255,255,255]))
+        expect = f"glyph 1\ntext {text}\nadvance 0.6\nsymbolic {int(symbolic)}\n".encode()
+        files={".pdf":pdf,".ppm":b"P6\n16 16\n255\n"+pixels,".expect":expect,
+               ".strict":b"font.descriptor-flags\n" if repaired else b"valid\n"}
+        return Vector("descriptor-"+name,files,("font-descriptor-flags",),
+                      "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+                      extra={"repairs":["font.descriptor-flags"] if repaired else []})
+    # Strip post metadata so only the writer's cmap supplies selection evidence.
+    unicode = truetype(omit_tables=(b"post",))
+    symbol = truetype(fmt=6,omit_tables=(b"post",))
+    for name,flags in [("both",36),("neither",0),("symbolic-latin",4)]:
+        yield vector_case(name,unicode,flags)
+    yield vector_case("nonsymbolic-symbol",symbol,32,encoding=b"",text="",symbolic=True)
+    yield vector_case("symbol-post-named",truetype(fmt=6),32,repaired=False)
+    yield vector_case("valid-latin",unicode,32,repaired=False)
+    yield vector_case("valid-symbol",symbol,4,encoding=b"",text="",symbolic=True,repaired=False)
+    yield vector_case("ignored-encoding-cycle",symbol,4,encoding=b"/Encoding 8 0 R",
+                      text="",symbolic=True,repaired=False,objects=(b"8 0 R",))
+    # A dual cmap is ambiguous. Preserve the existing Symbolic route and ignore
+    # PDF Differences, as 9.6.5.4 requires, rather than guessing Latin intent.
+    c0,c1 = cmap(6)[12:],cmap(4)[12:]
+    dual = u16(0)+u16(2)+u16(3)+u16(0)+u32(20)+u16(3)+u16(1)+u32(20+len(c0))+c0+c1
+    dual_font = truetype(omit_tables=(b"post",),table_overrides={b"cmap":dual})
+    yield vector_case("both-ambiguous",dual_font,36,text="",symbolic=True)
+    yield vector_case("neither-ambiguous",dual_font,0,symbolic=False)
+    yield vector_case("ambiguous-symbol",dual_font,4,
+                      encoding=b"/Encoding << /BaseEncoding /WinAnsiEncoding /Differences [65 /B] >>",
+                      text="",symbolic=True,repaired=False)
+    # Literal bytes stay the route without Encoding, even with Unicode cmaps.
+    yield vector_case("unicode-no-encoding",unicode,4,encoding=b"",text="",symbolic=True,repaired=False)
+    for name,glyph,flags,sym,text in [("type1-symbolic-latin",b"A",4,False,"A"),
+                                      ("type1-nonsymbolic-symbol",b"alpha",32,True,"α")]:
+        program=static_type1(glyph_name=glyph)
+        program=program.replace(b"/Encoding StandardEncoding def",b"/Encoding 256 array 0 1 255 {1 index exch /.notdef put} for dup 65 /"+glyph+b" put readonly def")
+        yield vector_case(name,program,flags,encoding=b"",subtype=b"Type1",symbolic=sym,text=text)

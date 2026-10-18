@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "font",
-  "scope": "Reviewed the supported font-program behavior against the local Adobe Type 1 Font Format (chapters 2, 3, 5-8 and 10), TN 5176 CFF (sections 2-19, appendices A-C/F/H), TN 5177 Type 2 (sections 2-4, appendices A-C), and TN 5014 CIDFont (sections 2.3/2.4, 3.2 and 4.1/4.2). The itemized verdicts below distinguish corrected behavior, agreement, unhinted outline policy and incomplete structural validation; this is not full PostScript or font conformance certification. The previous PDF-side review remains ISO 32000-2:2020 sponsored EC3, 9.6.3, 9.6.5.1/2/4, 9.7.4.1/2/3, 9.9.1/2 and Tables 124/125. Only unavailable primary texts remain pending: OpenType/ISO 14496-22 and TrueType Reference Manual (including CFF2), TN 5015 Type 1 supplements including lenIV -1, and TN 5040 PFB packaging. Project budgets are separate from format limits. Reported recovery is checked as ADR 0003 project policy against ISO 9.9.1/Table 124 and PDF cmap selection in 9.6.5.4; unknown charstring escape policy is checked against Type 1 6.3/Appendix 2 and TN 5177 3.3/Appendix A. The sfnt alignment, extent, loca, component-flag and cmap layout details still await the unavailable TrueType/OpenType primary texts; corpus inspection is secondary evidence, not primary-format verification. Static Type 1 RD/ND/NP aliases and bounded procedure definitions have additionally been checked against Type 1 2.4, 7.3 and 10.3. CFF blue-hint ordering recovery is checked against TN 5176 section 15/Table 23 and Type 1 5.3-5.5: each zone pair ascends, while zones themselves need not be globally sorted. FontProgram retained_bytes is an ADR 0012 accounting model, not a format requirement or allocator measurement. DICT recovery was additionally reviewed against TN 5176 section 4/Table 6, section 15/Table 23 and Appendix H; encoding supplement recovery against section 12/Tables 14-15; repeated Type 1 CharStrings names against chapters 6 and 10. First-definition retention and dropping malformed metadata are explicit ADR 0003 choices, not claims that the format standards prescribe those recoveries.",
+  "scope": "Reviewed the supported font-program behavior against the local Adobe Type 1 Font Format (chapters 2, 3, 5-8 and 10), TN 5176 CFF (sections 2-19, appendices A-C/F/H), TN 5177 Type 2 (sections 2-4, appendices A-C), and TN 5014 CIDFont (sections 2.3/2.4, 3.2 and 4.1/4.2). The itemized verdicts below distinguish corrected behavior, agreement, unhinted outline policy and incomplete structural validation; this is not full PostScript or font conformance certification. The previous PDF-side review remains ISO 32000-2:2020 sponsored EC3, 9.6.3, 9.6.5.1/2/4, 9.7.4.1/2/3, 9.9.1/2 and Tables 124/125. Only unavailable primary texts remain pending: OpenType/ISO 14496-22 and TrueType Reference Manual (including CFF2), TN 5015 Type 1 supplements including lenIV -1, and TN 5040 PFB packaging. Project budgets are separate from format limits. Reported recovery is checked as ADR 0003 project policy against ISO 9.9.1/Table 124 and PDF cmap selection in 9.6.5.4; unknown charstring escape policy is checked against Type 1 6.3/Appendix 2 and TN 5177 3.3/Appendix A. The sfnt alignment, extent, loca, component-flag and cmap layout details still await the unavailable TrueType/OpenType primary texts; corpus inspection is secondary evidence, not primary-format verification. Static Type 1 RD/ND/NP aliases and bounded procedure definitions have additionally been checked against Type 1 2.4, 7.3 and 10.3. CFF blue-hint ordering recovery is checked against TN 5176 section 15/Table 23 and Type 1 5.3-5.5: each zone pair ascends, while zones themselves need not be globally sorted. FontProgram retained_bytes is an ADR 0012 accounting model, not a format requirement or allocator measurement. DICT recovery was additionally reviewed against TN 5176 section 4/Table 6, section 15/Table 23 and Appendix H; encoding supplement recovery against section 12/Tables 14-15; repeated Type 1 CharStrings names against chapters 6 and 10. First-definition retention and dropping malformed metadata are explicit ADR 0003 choices, not claims that the format standards prescribe those recoveries. Descriptor-flag resolution was reviewed against ISO 32000-2:2020 EC3 9.8.2/Table 121, 9.6.5.1/Table 112, 9.6.5.2, 9.6.5.4 and Annex D.2/Table D.2. The flags are PDF character-set declarations; routing evidence and preservation of Symbolic when ambiguous are documented reader choices under ADR 0003, not complete repertoire validation.",
   "requirements": [
     {
       "id": "font-truetype",
@@ -1959,6 +1959,65 @@
             "font/repair-cff-supplement-conflict",
             "font/repair-cff-supplement-truncated",
             "font/repair-cff-supplement-missing-count"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-descriptor-flags",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.8.2",
+        "9.6.5.1",
+        "9.6.5.2",
+        "9.6.5.4",
+        "D.2"
+      ],
+      "tables": [
+        "121",
+        "112",
+        "D.2"
+      ],
+      "status": "Reported descriptor normalization in the renderer font-loading path shared by painting and positioned extraction.",
+      "tests": [
+        "font/descriptor-both",
+        "font/descriptor-neither",
+        "font/descriptor-symbolic-latin",
+        "font/descriptor-nonsymbolic-symbol",
+        "font/descriptor-symbol-post-named",
+        "font/descriptor-valid-latin",
+        "font/descriptor-valid-symbol",
+        "font/descriptor-ignored-encoding-cycle",
+        "font/descriptor-both-ambiguous",
+        "font/descriptor-neither-ambiguous",
+        "font/descriptor-ambiguous-symbol",
+        "font/descriptor-unicode-no-encoding",
+        "font/descriptor-type1-symbolic-latin",
+        "font/descriptor-type1-nonsymbolic-symbol"
+      ],
+      "gaps": "Direct pagura-text PdfFont::load calls keep their current strict validation because that crate is outside this API. Unencoded or incompletely named repertoires and mixed cmap evidence do not justify classifying a font from its names or base-name spelling. TrueType/OpenType binary layouts retain their pending primary-text review.",
+      "verification": {
+        "primary_text": "Local ISO 32000-2:2020 sponsored EC3",
+        "locator": "9.8.2/Table 121; 9.6.5.1/Table 112; 9.6.5.2; 9.6.5.4; D.2/Table D.2; ADR 0003",
+        "rule": "Exactly one of Symbolic and Nonsymbolic is set. Symbolic is the primary reader bit. Type 1 Encoding overrides the built-in name mapping. TrueType selection distinguishes named Latin encodings and symbol/raw cmap routes; missing mappings permit reader-selected alternatives.",
+        "verdict": "primary-text rule reviewed; reported resolution is explicit project policy, with exact independent glyph, width, text and pixel expectations",
+        "implementation": "A temporary descriptor dictionary preserves all other flags and all immutable source data. Both/neither is first normalized from Symbolic. Complete Type 1 built-in repertoires establish standard Latin membership by the names in D.2. A TrueType symbol-only cmap without Mac/Unicode routes or a standard Latin post name route establishes raw intent; a Latin Encoding plus Unicode cmap without a symbol cmap establishes the named route. Mixed evidence and Unicode without an Encoding retain Symbolic. Ignored Symbolic Encoding references are not traversed for speculative evidence. Invalid flag pairs are also normalized on CID descendants without changing CMap/CID selection.",
+        "expectations": "The independent writer supplies explicit code/name/glyph mappings, rectangles, PDF widths and expected Unicode. Strict rejects with the stable tag; Repair verifies selected glyphs, exact pixels, positioning, descriptor identity and unchanged original objects."
+      },
+      "repairs": [
+        {
+          "tag": "font.descriptor-flags",
+          "locator": "9.8.2/Table 121; 9.6.5.2/4; ADR 0003",
+          "rule": "Resolve invalid pairs or concrete mapping contradictions, report through Document::report, and leave ambiguous valid declarations unchanged.",
+          "vectors": [
+            "font/descriptor-both",
+            "font/descriptor-neither",
+            "font/descriptor-symbolic-latin",
+            "font/descriptor-nonsymbolic-symbol",
+            "font/descriptor-both-ambiguous",
+            "font/descriptor-neither-ambiguous",
+            "font/descriptor-type1-symbolic-latin",
+            "font/descriptor-type1-nonsymbolic-symbol"
           ]
         }
       ]
