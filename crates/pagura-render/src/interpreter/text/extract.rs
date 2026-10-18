@@ -490,31 +490,37 @@ fn property(
     let Some(value) = dictionary.and_then(|d| d.get(name)) else {
         return Ok(None);
     };
-    let result = (|| {
-        let value = document.resolve(value)?;
-        if value.is_null() {
-            return Ok(None);
-        }
-        let message = match name {
-            b"ActualText" => "non-string marked ActualText ignored (14.9.4)",
-            b"Alt" => "non-string marked Alt ignored (14.9.3)",
-            _ => "non-string marked E ignored (14.9.5)",
-        };
-        let bytes = value.as_string().ok_or(Error::syntax(message))?;
-        // E is speech metadata, not replacement text in either exported view.
-        // Validate its type without repeatedly decoding an unused resource.
-        if name == b"E" {
-            return Ok(None);
-        }
-        pagura_text::decode_text_string(bytes, document.limits()).map(Some)
-    })();
-    match result {
+    match property_text(document, value, name) {
         Err(error) => {
             ignore_metadata_fault(document, error, position, MARKED_PROPERTY)?;
             Ok(None)
         }
         result => result,
     }
+}
+
+/// The text of marked-content property `name` (14.9.3–14.9.5), if it has any.
+fn property_text(
+    document: &pagura_document::Document,
+    value: &Value,
+    name: &[u8],
+) -> Result<Option<String>> {
+    let value = document.resolve(value)?;
+    if value.is_null() {
+        return Ok(None);
+    }
+    let message = match name {
+        b"ActualText" => "non-string marked ActualText ignored (14.9.4)",
+        b"Alt" => "non-string marked Alt ignored (14.9.3)",
+        _ => "non-string marked E ignored (14.9.5)",
+    };
+    let bytes = value.as_string().ok_or(Error::syntax(message))?;
+    // E is speech metadata, not replacement text in either exported view.
+    // Validate its type without repeatedly decoding an unused resource.
+    if name == b"E" {
+        return Ok(None);
+    }
+    pagura_text::decode_text_string(bytes, document.limits()).map(Some)
 }
 
 /// Tolerates a malformed or missing object in metadata only extraction
@@ -600,19 +606,18 @@ mod tests {
     fn string(value: &Value) -> &str {
         std::str::from_utf8(value.as_string().unwrap()).unwrap()
     }
-    fn names() -> Vec<&'static str> {
-        include_str!("../../../../../corpus/manifests/text.json")
-            .split("\"id\": \"text/")
-            .skip(1)
-            .filter_map(|s| s.split('"').next())
-            .filter(|s| s.starts_with("tagged-"))
+    fn names() -> Vec<String> {
+        pagura_testkit::Manifest::load("text")
+            .cases()
+            .map(|case| case.name().to_owned())
+            .filter(|name| name.starts_with("tagged-"))
             .collect()
     }
     #[test]
     fn tagged_copy_ranges_quads_and_parent_ownership_match_independent_graphs() {
         let names = names();
         assert_eq!(names.len(), 58);
-        for name in names {
+        for name in names.iter().map(String::as_str) {
             if fixture_path("text", &format!("{name}.error")).exists() {
                 continue;
             }
@@ -833,7 +838,7 @@ mod tests {
                             .any(|d| d.tag().as_bytes() == tag)
                     );
                     assert!(text.structure_fallback().is_none());
-                    check_glyphs(name, &text);
+                    check_glyphs(&name, &text);
                 }
             }
         }

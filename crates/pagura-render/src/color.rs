@@ -496,7 +496,7 @@ fn device_n_space(
         .get(4)
         .map(|v| document.resolve_dictionary(v))
         .transpose()?;
-    let count = device_n_components(document, names)?;
+    let names = device_n_names(document, names)?;
     if let Some(attributes) = attributes
         && attributes
             .get(b"Subtype")
@@ -504,28 +504,14 @@ fn device_n_space(
             .transpose()?
             .and_then(Value::as_name)
             .is_some_and(|n| n == b"NChannel")
+        && names.iter().any(|n| n == b"None")
     {
-        for name in document.resolve(names)?.as_array().unwrap_or_default() {
-            if document
-                .resolve(name)?
-                .as_name()
-                .is_some_and(|n| n == b"None")
-            {
-                return Err(Error::syntax("None is forbidden in NChannel"));
-            }
-        }
+        return Err(Error::syntax("None is forbidden in NChannel"));
     }
-    if document.resolve(names)?.as_array().is_some_and(|names| {
-        names.iter().all(|n| {
-            document
-                .resolve(n)
-                .ok()
-                .and_then(Value::as_name)
-                .is_some_and(|n| n == b"None")
-        })
-    }) {
+    // 8.6.6.5: a DeviceN space naming only None paints nothing.
+    if names.iter().all(|n| n == b"None") {
         return Ok(Space::Special {
-            inputs: count,
+            inputs: names.len(),
             all: false,
         });
     }
@@ -534,24 +520,13 @@ fn device_n_space(
         resources,
         base,
         function,
-        document
-            .resolve(names)?
-            .as_array()
-            .unwrap_or_default()
-            .iter()
-            .map(|value| {
-                document
-                    .resolve(value)?
-                    .as_name()
-                    .cloned()
-                    .ok_or(Error::syntax("DeviceN colourant must be a name"))
-            })
-            .collect::<Result<Vec<_>>>()?,
+        names,
         (depth, defaults),
     )
 }
 
-fn device_n_components(document: &ColorContext<'_>, names: &Value) -> Result<usize> {
+/// The colourant names of a DeviceN space, validated once (8.6.6.5).
+fn device_n_names(document: &ColorContext<'_>, names: &Value) -> Result<Vec<pagura_core::Name>> {
     let names = document
         .resolve(names)?
         .as_array()
@@ -563,6 +538,7 @@ fn device_n_components(document: &ColorContext<'_>, names: &Value) -> Result<usi
         ));
     }
     let mut seen = std::collections::BTreeSet::new();
+    let mut out = Vec::with_capacity(names.len());
     for name in names {
         let name = document
             .resolve(name)?
@@ -574,8 +550,9 @@ fn device_n_components(document: &ColorContext<'_>, names: &Value) -> Result<usi
         if name != b"None" && !seen.insert(name.as_bytes()) {
             return Err(Error::syntax("duplicate DeviceN colourant"));
         }
+        out.push(name.clone());
     }
-    Ok(names.len())
+    Ok(out)
 }
 
 fn tint_space(

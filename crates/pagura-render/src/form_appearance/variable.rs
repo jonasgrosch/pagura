@@ -8,6 +8,10 @@ use super::{
 use pagura_core::{Error, Rect, Result};
 use pagura_document::forms::{FieldKind, FieldValue, FilledField, FilledValue, FormFiller};
 
+/// Text field flag bits (Table 231).
+const FILE_SELECT: u32 = 21;
+const DO_NOT_SCROLL: u32 = 24;
+
 pub(super) fn write(
     out: &mut Program,
     filler: &FormFiller<'_>,
@@ -73,7 +77,7 @@ fn text(
         && (max_length.is_none_or(|n| n == 0)
             || *multiline
             || *password
-            || field.flags.contains(21))
+            || field.flags.contains(FILE_SELECT))
     {
         return Err(Error::syntax("invalid Comb flags or MaxLen"));
     }
@@ -83,7 +87,7 @@ fn text(
         comb: if *comb { *max_length } else { None },
         password: *password,
         quadding: field.justification,
-        no_scroll: field.flags.contains(24),
+        no_scroll: field.flags.contains(DO_NOT_SCROLL),
     };
     out.text("BT\n")?;
     layout::write(out, font, da, area, &layout, filler.document().limits())?;
