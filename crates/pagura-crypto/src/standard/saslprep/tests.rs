@@ -1,19 +1,11 @@
 use super::*;
+use crate::tests::decode;
 use pagura_core::ErrorKind;
 use pagura_testkit::fixture;
 
+/// A hex-encoded UTF-8 fixture field; `-` is the empty string.
 fn text(encoded: &str) -> String {
-    if encoded == "-" {
-        return String::new();
-    }
-    let bytes: Vec<_> = encoded
-        .as_bytes()
-        .as_chunks::<2>()
-        .0
-        .iter()
-        .map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap())
-        .collect();
-    String::from_utf8(bytes).unwrap()
+    String::from_utf8(decode(encoded)).unwrap()
 }
 
 #[test]
