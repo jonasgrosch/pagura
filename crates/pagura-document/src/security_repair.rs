@@ -122,7 +122,7 @@ fn literal_hashes(
     let Some(bytes) = document.original_bytes().get(..range.end) else {
         return Ok(());
     };
-    let mut parser = Parser::at(bytes, range.start, Origin::File, document.limits())?
+    let mut parser = Parser::with_offset(bytes, range.start, Origin::File, document.limits())?
         .with_recovery(document.recovery());
     parser.unsigned()?;
     parser.unsigned()?;

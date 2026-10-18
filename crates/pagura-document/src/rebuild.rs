@@ -203,7 +203,7 @@ fn skip_stream(
     diagnostics: &mut Diagnostics,
 ) -> Result<bool> {
     let before = parser.offset();
-    let mut exact = Parser::at(parser.data(), before, Origin::File, limits)?;
+    let mut exact = Parser::with_offset(parser.data(), before, Origin::File, limits)?;
     let mut attempt = Diagnostics::new(diagnostics.mode());
     match crate::xref_stream::direct_stream(&mut exact, dictionary, limits, &mut attempt) {
         Ok(_) => {
@@ -233,7 +233,7 @@ fn skip_stream(
     {
         let at = start + relative;
         let line_boundary = relative == 0 || matches!(bytes.get(relative - 1), Some(b'\n' | b'\r'));
-        let mut probe = Parser::at(parser.data(), at, Origin::File, limits)?;
+        let mut probe = Parser::with_offset(parser.data(), at, Origin::File, limits)?;
         if probe.keyword(b"endstream") {
             let after = probe.offset();
             if probe.keyword(b"endobj") {

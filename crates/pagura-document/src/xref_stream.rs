@@ -12,7 +12,7 @@ pub(crate) fn read(
     diagnostics: &mut Diagnostics,
 ) -> Result<(BTreeMap<u32, XrefEntry>, Dictionary)> {
     let mut parser =
-        Parser::at(bytes, offset, Origin::File, limits)?.with_recovery(diagnostics.mode());
+        Parser::with_offset(bytes, offset, Origin::File, limits)?.with_recovery(diagnostics.mode());
     let number = u32::try_from(parser.unsigned()?)
         .map_err(|_| Error::syntax("xref stream number out of range"))?;
     let generation = u16::try_from(parser.unsigned()?)
