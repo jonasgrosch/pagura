@@ -1,6 +1,6 @@
 # ADR 0014: Text extraction and search
 
-Status: accepted, 2026-10-18.
+Status: accepted, 2026-10-18. Amended 2026-10-18 (decision 5).
 
 ## Context
 
@@ -49,6 +49,20 @@ word, line or reading order for untagged pages, and no search semantics.
      document's fonts.
    - The facade's `text_page` uses the feature-selected data.
    - The CLI has `pagura text` and `pagura find`.
+5. **Two views.** Search, selection and copy always use the page text in
+   the geometric order of item 2, artifacts included, so tags never change
+   what can be found or selected. Tagged pages also get a separate logical
+   view for assistive technology, reflow and copying in reading order
+   (14.7–14.8):
+   - structure order through role maps and the ParentTree;
+   - artifacts excluded, structure ActualText and Alt applied (14.8.2.2,
+     14.9.3–14.9.4);
+   - each character linked to its page glyphs;
+   - independent of layout options.
+
+   An unusable or unsupported structure tree leaves the page without a
+   logical view and reports `text.structure-fallback`; strict mode rejects
+   it. Retained-memory accounting covers both views.
 
 ## Consequences
 
@@ -56,9 +70,7 @@ word, line or reading order for untagged pages, and no search semantics.
   produces both.
 - Extraction needs the page to compile; an unsupported feature on the page
   fails extraction too.
-- Structure-tree reading order (14.7), bidirectional text and normalization
-  are later work.
-- Viewer search, selection and copy need a protocol extension in a later
-  round.
+- Bidirectional text, normalization and structure namespaces
+  (`text.structure-namespace`) are later work.
 - The policy thresholds are tunable; changing them is a documented policy
   change with fixture updates, not a silent tweak.

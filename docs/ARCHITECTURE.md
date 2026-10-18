@@ -81,7 +81,9 @@ See ADR 0014.
 - **Text:** the content interpreter optionally records positioned glyphs as
   output separate from the display list. `pagura-text` lays them out into
   words, lines and a reading order and searches them; replacement text
-  follows 14.9.4, and the rest is documented policy.
+  follows 14.9.4, and the rest is documented policy. Tagged pages also get
+  a separate logical view in structure order (14.7–14.8) for assistive
+  technology; search and selection never depend on it.
 - **Navigation:** `pagura_document::navigation` reads outlines, destinations,
   links, actions and page labels as bounded views. Actions are inert data: the
   engine never follows a URI, opens a file or runs a script, and the host
