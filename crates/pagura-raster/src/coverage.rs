@@ -101,13 +101,22 @@ impl Windings {
     }
 }
 
+/// An active edge in bottom order, with its top-order index and its x at
+/// the current evaluation height.
+#[derive(Debug, Clone, Copy)]
+struct Ordered {
+    owner: usize,
+    edge: Edge,
+    x: f64,
+}
+
 // Scratch belongs to one coverage sweep and retains capacity between strips.
 #[derive(Debug, Default)]
 struct Sweep {
     // Certified at the previous strip end; admissions invalidate this order.
     sorted: bool,
     events: Vec<(usize, f64)>,
-    ordered: Vec<(usize, Edge, f64)>,
+    ordered: Vec<Ordered>,
     winding: Windings,
 }
 
@@ -237,7 +246,15 @@ fn fill_run(output: &mut [u8], cover: f64) {
     }
 }
 
-type BoundaryEvent = (usize, f64, f64, i64, FillRule);
+/// One end of a vertical edge on the viewport's left or right side.
+#[derive(Debug, Clone, Copy)]
+struct BoundaryEvent {
+    group: usize,
+    x: f64,
+    y: f64,
+    delta: i64,
+    rule: FillRule,
+}
 
 /// Temporary sweep storage; no path or coverage is cached.
 #[derive(Debug, Default)]
@@ -777,7 +794,11 @@ fn strip(
     sweep.ordered.clear();
     sweep
         .ordered
-        .extend(top.iter().enumerate().map(|(i, &e)| (i, e, e.x(hi))));
+        .extend(top.iter().enumerate().map(|(owner, &edge)| Ordered {
+            owner,
+            edge,
+            x: edge.x(hi),
+        }));
     row.charge(top.len())?;
     // One bottom-order insertion pass discovers every inversion once. The
     // inserted edge keeps its original top index throughout its exchanges;
@@ -786,8 +807,12 @@ fn strip(
         let mut j = i;
         while j > 0 {
             row.charge(1)?;
-            let (_, a, ax) = sweep.ordered[j - 1];
-            let (owner, b, bx) = sweep.ordered[j];
+            let Ordered { edge: a, x: ax, .. } = sweep.ordered[j - 1];
+            let Ordered {
+                owner,
+                edge: b,
+                x: bx,
+            } = sweep.ordered[j];
             if cached(a, ax, b, bx, true).is_le() {
                 break;
             }
@@ -807,7 +832,7 @@ fn strip(
     let mut events = sweep.events.as_mut_slice();
     let (mut start, mut end) = (0, 0);
     for i in 0..sweep.ordered.len() {
-        end = end.max(sweep.ordered[i].0);
+        end = end.max(sweep.ordered[i].owner);
         if end != i {
             continue;
         }
@@ -821,8 +846,8 @@ fn strip(
             let (current, rest) = events.split_at_mut(count);
             events = rest;
             let ordered = &mut sweep.ordered[start..=i];
-            for ((_, edge, _), &original) in ordered.iter_mut().zip(block) {
-                *edge = original;
+            for (entry, &original) in ordered.iter_mut().zip(block) {
+                entry.edge = original;
             }
             crossing(ordered, current, lo, hi, winding, row, &mut sweep.winding)?;
             for &edge in block {
@@ -832,8 +857,8 @@ fn strip(
         start = i + 1;
     }
     // Each block now retains its last interval's order for the next strip.
-    for (edge, &(_, ordered, _)) in top.iter_mut().zip(&sweep.ordered) {
-        *edge = ordered;
+    for (edge, ordered) in top.iter_mut().zip(&sweep.ordered) {
+        *edge = ordered.edge;
     }
     Ok(())
 }
@@ -876,7 +901,7 @@ fn cached(a: Edge, ax: f64, b: Edge, bx: f64, bottom: bool) -> std::cmp::Orderin
 }
 
 fn crossing(
-    ordered: &mut [(usize, Edge, f64)],
+    ordered: &mut [Ordered],
     events: &mut [(usize, f64)],
     lo: f64,
     hi: f64,
@@ -892,18 +917,14 @@ fn crossing(
             continue;
         }
         let mid = start.midpoint(end);
-        for (_, edge, x) in ordered.iter_mut() {
-            *x = edge.x(mid);
+        for entry in ordered.iter_mut() {
+            entry.x = entry.edge.x(mid);
         }
-        repair(
-            ordered,
-            |(_, a, x), (_, b, y)| cached(*a, *x, *b, *y, false),
-            row,
-        )?;
+        repair(ordered, |a, b| cached(a.edge, a.x, b.edge, b.x, false), row)?;
         winding.values.clone_from(&initial.values);
         winding.outside = initial.outside;
-        for &(_, edge, _) in ordered.iter() {
-            row.edge(edge, start, end, winding.step(edge)?)?;
+        for entry in ordered.iter() {
+            row.edge(entry.edge, start, end, winding.step(entry.edge)?)?;
         }
         start = end;
     }
@@ -1005,15 +1026,7 @@ fn emit_contour(
             let next = Point::new(next.x - anchor.x, next.y - anchor.y);
             row.charge(3)?;
             if !bounds.is_empty() {
-                clipped(
-                    edges,
-                    previous,
-                    next,
-                    group,
-                    rule,
-                    [bounds.left, bounds.top, bounds.right, bounds.bottom],
-                    limits,
-                )?;
+                clipped(edges, previous, next, group, rule, bounds, limits)?;
             }
             previous = next;
         }
@@ -1037,21 +1050,38 @@ fn normalize_boundaries(
 ) -> Result<()> {
     for edge in edges.drain(..) {
         if edge.a.x == edge.b.x && (edge.a.x == left || edge.a.x == right) {
-            events.push((edge.group, edge.a.x, edge.a.y, edge.winding, edge.rule));
-            events.push((edge.group, edge.a.x, edge.b.y, -edge.winding, edge.rule));
+            let event = |y, delta| BoundaryEvent {
+                group: edge.group,
+                x: edge.a.x,
+                y,
+                delta,
+                rule: edge.rule,
+            };
+            events.extend([
+                event(edge.a.y, edge.winding),
+                event(edge.b.y, -edge.winding),
+            ]);
         } else {
             output.push(edge);
         }
     }
     row.sorted(events.len())?;
     events.sort_unstable_by(|a, b| {
-        a.0.cmp(&b.0)
-            .then(a.1.total_cmp(&b.1))
-            .then(a.2.total_cmp(&b.2))
+        a.group
+            .cmp(&b.group)
+            .then(a.x.total_cmp(&b.x))
+            .then(a.y.total_cmp(&b.y))
     });
     let mut previous = None;
     let mut winding = 0_i64;
-    for (group, x, y, delta, rule) in events.drain(..) {
+    for BoundaryEvent {
+        group,
+        x,
+        y,
+        delta,
+        rule,
+    } in events.drain(..)
+    {
         row.charge(1)?;
         if let Some((previous_group, previous_x, previous_y)) = previous {
             if previous_group == group && previous_x == x {
@@ -1089,7 +1119,7 @@ fn clipped(
     b: Point,
     group: usize,
     rule: FillRule,
-    bounds: [f64; 4],
+    bounds: Rectangle,
     limits: &Limits,
 ) -> Result<()> {
     if a.y == b.y {
@@ -1104,8 +1134,8 @@ fn clipped(
         rule,
         id: 0,
     };
-    let lo = a.y.max(bounds[1]);
-    let hi = b.y.min(bounds[3]);
+    let lo = a.y.max(bounds.top);
+    let hi = b.y.min(bounds.bottom);
     if lo >= hi {
         return Ok(());
     }
@@ -1113,7 +1143,7 @@ fn clipped(
     let mut events = [lo, hi, 0.0, 0.0];
     let mut count = 2;
     if a.x != b.x {
-        for x in [bounds[0], bounds[2]] {
+        for x in [bounds.left, bounds.right] {
             let y = a.y + (b.y - a.y) * ((x - a.x) / (b.x - a.x));
             if y > lo && y < hi {
                 events[count] = y;
@@ -1128,8 +1158,14 @@ fn clipped(
             return Err(Error::limit("clipped edge budget exceeded"));
         }
         out.push(Edge {
-            a: Point::new(edge.x(interval[0]).clamp(bounds[0], bounds[2]), interval[0]),
-            b: Point::new(edge.x(interval[1]).clamp(bounds[0], bounds[2]), interval[1]),
+            a: Point::new(
+                edge.x(interval[0]).clamp(bounds.left, bounds.right),
+                interval[0],
+            ),
+            b: Point::new(
+                edge.x(interval[1]).clamp(bounds.left, bounds.right),
+                interval[1],
+            ),
             id: out.len(),
             ..edge
         });
