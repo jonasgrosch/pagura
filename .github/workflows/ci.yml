@@ -14,5 +14,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.99.1 --profile minimal --component clippy,rustfmt --target wasm32-wasip1
+      # The host checks run the WASI module and worker threads under Node; the
+      # runner images' default Node versions crashed intermittently there.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26.8.1
       - name: Verify all product contracts
         run: python tools/check.py
