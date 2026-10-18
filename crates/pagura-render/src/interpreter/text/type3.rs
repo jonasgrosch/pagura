@@ -67,7 +67,7 @@ impl Compiler<'_> {
             super::super::repair(
                 self.document,
                 pagura_core::Diagnostic::new(
-                    super::super::tags::TYPE3_WIDTH,
+                    crate::repairs::TYPE3_WIDTH,
                     "d0/d1 metrics disagree with Widths or declare a vertical advance; Widths retained",
                 )
                 .at(self.position)

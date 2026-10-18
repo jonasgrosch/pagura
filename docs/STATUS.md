@@ -141,7 +141,7 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   fonts and reports extraction repairs or discarded maps. Null ToUnicode
   values, including indirect and
   undefined references, are absent without repairs (7.3.9–7.3.10).
-- `content.colour-operator` (8.6.8, Table 73): `sc`/`SC` on a space that needs
+- `content.color-operator` (8.6.8, Table 73): `sc`/`SC` on a space that needs
   `scn`/`SCN` reads matching numeric operands as `scn`/`SCN`;
   `content.empty-path` (8.5.3.1): painting with no current path paints nothing
   and discards a pending clip; `content.clip-order` (8.5.4): construction after
@@ -160,7 +160,7 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   discarded; `image.stencil-color-space` (8.9.5.1, Table 87): an image mask's
   extraneous ColorSpace is ignored; `image.filter-abbreviation` (8.9.7, Table
   92): the inline-image filter abbreviations are accepted on image XObjects.
-- `text.clip-mode-reset` (9.3.6, 9.4.1): a text rendering mode reset to a
+- `content.text-clip-reset` (9.3.6, 9.4.1): a text rendering mode reset to a
   non-clipping mode before `ET` keeps the clip already accumulated.
 - `text.marked-property` (14.6.2, 14.9.3–14.9.5): an unusable marked-content
   property list, or a wrong-typed ActualText, Alt or E, is ignored; glyphs

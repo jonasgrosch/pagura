@@ -12,7 +12,6 @@
 mod buttons;
 mod choice;
 mod da;
-pub mod features;
 mod font;
 mod layout;
 mod style;

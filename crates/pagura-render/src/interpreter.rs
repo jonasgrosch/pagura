@@ -23,47 +23,6 @@ use pagura_document::{Document, IndirectObject, Page};
 use pagura_raster::{FillRule, LineCap, LineJoin, PathBuilder, Point, Stroke, Transform};
 use std::sync::Arc;
 
-/// Stable reported content repair and information tags (ADR 0003).
-pub(crate) mod tags {
-    use pagura_core::Repair;
-
-    /// Information, not a repair: an untouched field keeps its valid stored AP
-    /// because generating a replacement is unsupported.
-    pub const APPEARANCE_KEPT: &str = "form.appearance-kept";
-    /// Table 73: numeric SC/sc operands are interpreted as SCN/scn only
-    /// when their count and types fit the selected non-pattern space.
-    pub const COLOUR_OPERATOR: Repair = Repair::new("content.colour-operator");
-    /// 8.5.3: an undefined path paints nothing; any pending clip is discarded.
-    pub const EMPTY_PATH: Repair = Repair::new("content.empty-path");
-    /// 8.5.4: defer clipping until painting, including subsequent construction.
-    pub const CLIP_ORDER: Repair = Repair::new("content.clip-order");
-    /// 8.6.6.3: ignore bytes beyond the complete, declared palette.
-    pub const INDEXED_EXCESS: Repair = Repair::new("content.indexed-excess");
-    /// Table 98: ignore optional-content structures without a default config.
-    pub const OPTIONAL_CONFIG: Repair = Repair::new("content.optional-config");
-    /// Table 98: ignore optional-content structures without a group registry.
-    pub const OPTIONAL_GROUPS: Repair = Repair::new("content.optional-groups");
-    /// 8.11.4.2: ignore optional structures when required OCProperties is absent.
-    pub const OPTIONAL_PROPERTIES: Repair = Repair::new("content.optional-properties");
-    /// 8.11.4.3: use the initial ON state for an unregistered, valid OCG.
-    /// This also applies under OCMD negation; readers differ on this policy.
-    pub const OPTIONAL_GROUP: Repair = Repair::new("content.optional-group");
-    /// 9.3.6: retain accumulated glyph clips through ET after a nonclipping reset.
-    /// Most readers keep the clip when recovering this prohibited transition.
-    pub const TEXT_CLIP_RESET: Repair = Repair::new("text.clip-mode-reset");
-    /// 7.9.5; 12.5.5: skip an appearance with a zero-sized source or target
-    /// rectangle. Most readers paint nothing where fitting has no area.
-    pub const APPEARANCE_EMPTY: Repair = Repair::new("annotation.appearance-empty");
-    /// 7.8.2; 8.4.2: discard unmatched saved graphics states at the end of a
-    /// content sequence, after all painting and text objects have finished.
-    pub const GRAPHICS_UNCLOSED: Repair = Repair::new("content.graphics-unclosed");
-    /// 9.6.4, Table 111: retain the horizontal Widths advance when d0/d1 disagrees.
-    pub const TYPE3_WIDTH: Repair = Repair::new("font.type3-width");
-    /// 8.7.3.2, Table 73: coloured patterns require only a name; discard extra
-    /// numeric operands supplied with an underlying pattern colour space.
-    pub const PATTERN_UNDERLYING: Repair = Repair::new("content.pattern-underlying");
-}
-
 pub(crate) fn repair(document: &Document, diagnostic: pagura_core::Diagnostic) -> Result<()> {
     let mut diagnostics = pagura_core::Diagnostics::new(document.recovery());
     diagnostics.repair(diagnostic)?;
@@ -332,7 +291,7 @@ impl<'a> Compiler<'a> {
             repair(
                 self.document,
                 pagura_core::Diagnostic::new(
-                    tags::GRAPHICS_UNCLOSED,
+                    crate::repairs::GRAPHICS_UNCLOSED,
                     "unmatched q states discarded at end of content sequence (7.8.2, 8.4.2)",
                 )
                 .at(position.position)
@@ -422,7 +381,10 @@ impl<'a> Compiler<'a> {
             b"w" | b"J" | b"j" | b"M" | b"d" | b"i" | b"ri" => self.parameter(word, v)?,
             b"m" | b"l" | b"c" | b"v" | b"y" | b"h" | b"re" => {
                 if self.pending_clip.is_some() {
-                    self.repair(tags::CLIP_ORDER, "construction follows clipping operator")?;
+                    self.repair(
+                        crate::repairs::CLIP_ORDER,
+                        "construction follows clipping operator",
+                    )?;
                 }
                 let pending = self.pending_clip.take();
                 let result = self.construct(word, v);
@@ -431,7 +393,10 @@ impl<'a> Compiler<'a> {
             }
             b"S" | b"s" | b"f" | b"F" | b"f*" | b"B" | b"B*" | b"b" | b"b*" | b"n" => {
                 if self.path.is_empty() {
-                    self.repair(tags::EMPTY_PATH, "painting requires a current path")?;
+                    self.repair(
+                        crate::repairs::EMPTY_PATH,
+                        "painting requires a current path",
+                    )?;
                     self.pending_clip = None;
                 } else {
                     self.paint(word)?;
@@ -640,19 +605,20 @@ fn stream_error(mut error: Error, fallback: usize, origins: &[(usize, ObjectId)]
 
 #[cfg(test)]
 mod recovery_tests {
-    use super::{compile_page, tags};
+    use super::compile_page;
+    use crate::repairs as tags;
     use pagura_core::Recovery;
     use pagura_document::{Document, OpenOptions};
 
     #[test]
     fn content_repairs_are_reported_and_strictly_rejected() {
         for (name, tag) in [
-            ("repair-empty-stroke", tags::EMPTY_PATH),
-            ("repair-empty-clip", tags::EMPTY_PATH),
-            ("repair-clip-construction", tags::CLIP_ORDER),
-            ("repair-colour-Separation-fill", tags::COLOUR_OPERATOR),
-            ("repair-colour-DeviceN-stroke", tags::COLOUR_OPERATOR),
-            ("repair-icc-colour", tags::COLOUR_OPERATOR),
+            ("repair-empty-stroke", crate::repairs::EMPTY_PATH),
+            ("repair-empty-clip", crate::repairs::EMPTY_PATH),
+            ("repair-clip-construction", crate::repairs::CLIP_ORDER),
+            ("repair-colour-Separation-fill", tags::COLOR_OPERATOR),
+            ("repair-colour-DeviceN-stroke", tags::COLOR_OPERATOR),
+            ("repair-icc-colour", tags::COLOR_OPERATOR),
             ("repair-indexed-string", tags::INDEXED_EXCESS),
             ("repair-indexed-stream", tags::INDEXED_EXCESS),
             ("repair-optional-config-AnyOff", tags::OPTIONAL_CONFIG),

@@ -92,14 +92,14 @@ def recovery_cases():
         for stroke in (False, True):
             command = b'/C CS 1 SC 8 w 0 4 m 8 4 l S' if stroke else b'/C cs 1 sc 0 0 8 8 re f'
             yield repaired('repair-colour-' + family.split()[0].decode() + ('-stroke' if stroke else '-fill'),
-                           page(command, resources), 'colour-operator', full)
+                           page(command, resources), 'color-operator', full)
         for label, operands in [('count', b'1 1'), ('type', b'/Name')]:
             yield Case('repair-colour-reject-' + family.split()[0].decode() + '-' + label,
                        page(b'/C cs ' + operands + b' sc', resources), OPEN,
                        ('content-reported-recovery',), 'Incompatible operands cannot be repaired',
                        extra={'render_error': 'Syntax'})
     yield repaired('repair-icc-colour', icc_pdf(icc_profile(4, version=5), 4,
-                   b'/C cs 0 1 1 0 sc 0 0 8 8 re f'), 'colour-operator', full)
+                   b'/C cs 0 1 1 0 sc 0 0 8 8 re f'), 'color-operator', full)
     for indirect in (False, True):
         palette = b'ff0000aabbcc'
         if indirect:
@@ -761,7 +761,7 @@ def icc_cases():
     colours=[cie_rgb('CalRGB',tuple(x**(int(g*256+.5)/256) for x,g in zip(v,gammas)),white=ICC_D50,matrix=tuple(icc_fixed(v)/65536 for v in ICC_RGB_MATRIX)) for v in rgb_values]
     yield Case('icc-rgb-columns',pdf(profile,command=command),RENDER,('content-icc-matrix',),'Independent unequal per-channel TRCs and PCS matrix columns',oracle=opaque_rectangles(8,8,[((i,0,1,8),c) for i,c in enumerate(colours)]),extra={'tolerance':1})
     yield Case('icc-initial-zero',pdf(icc_profile(4,version=5),4,b'/C cs 0 0 8 8 re f',b'/DeviceCMYK'),RENDER,('content-icc-matrix',),'Later-version fallback retains ICCBased all-zero initialization, rather than DeviceCMYK black',oracle=opaque_rectangles(8,8,[]))
-    yield repaired('icc-simple-operator',pdf(icc_profile(),command=b'/C cs .5 .5 .5 sc'),'colour-operator',requirements=('content-icc-matrix',))
+    yield repaired('icc-simple-operator',pdf(icc_profile(),command=b'/C cs .5 .5 .5 sc'),'color-operator',requirements=('content-icc-matrix',))
     yield Case('icc-invalid-data',pdf(b'not a profile'),OPEN,('content-icc-matrix',),'Non-profile data cannot establish ICC fallback',extra={'render_error':'Syntax'})
     yield from icc_validation_cases()
     yield from icc_lut_cases()
@@ -807,7 +807,7 @@ def standard_semantics_cases():
         ('DeviceN-forbidden-All',b'/C cs',b'<< /ColorSpace << /C [/DeviceN [/All] /DeviceGray << /FunctionType 2 /Domain [0 1] /N 1 >>] >> >>'),
     ]:
         if name in ('indexed-excess','tint-simple-operator'):
-            yield repaired(name,single_page([command],media_box=b'[0 0 8 8]',resources=resources),'indexed-excess' if name=='indexed-excess' else 'colour-operator',requirements=('content-colour',))
+            yield repaired(name,single_page([command],media_box=b'[0 0 8 8]',resources=resources),'indexed-excess' if name=='indexed-excess' else 'color-operator',requirements=('content-colour',))
         else:
             yield invalid(name,command,resources,requirement='content-colour')
     for exponent,domain,label in [(-1,b'[0 1]','negative'),(.5,b'[-1 1]','fractional')]:
@@ -901,7 +901,7 @@ def remaining_vector_cases():
     yield Case('ink-NChannel-None',single_page([b'/C cs'],media_box=b'[0 0 8 8]',resources=b'<< /ColorSpace << /C [/DeviceN [/None] /DeviceGray << /FunctionType 2 /Domain [0 1] /N 1 >> << /Subtype /NChannel >>] >> >>'),OPEN,('content-special-inks',),'8.6.6.5 forbids None components in NChannel spaces',extra={'render_error':'Syntax'})
     extension=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ExtGState << /A << /PrivateKey 5 0 R >> >> >> /Contents 4 0 R >>',stream(b'/A gs 0 0 8 8 re f'),b'5 0 R'])
     yield Case('gstate-extension-cycle',extension,RENDER,('content-extgstate-extensions',),'7.3.7: ignored extension values are not dereferenced',oracle=opaque_rectangles(8,8,[((0,0,8,8),BLACK)]))
-    yield Case('gstate-black-compensation-on',single_page([b'/A gs'],resources=b'<< /ExtGState << /A << /UseBlackPtComp /ON >> >> >>'),UNSUPPORTED,('content-extgstate-extensions',),'8.6.5.9 and Table 58: defined black point compensation must not be silently ignored',feature='extgstate.unknown')
+    yield Case('gstate-black-compensation-on',single_page([b'/A gs'],resources=b'<< /ExtGState << /A << /UseBlackPtComp /ON >> >> >>'),UNSUPPORTED,('content-extgstate-extensions',),'8.6.5.9 and Table 58: defined black point compensation must not be silently ignored',feature='extgstate.UseBlackPtComp')
     yield from group_region_cases()
     yield from note_icon_cases()
     yield from tiling_cases()

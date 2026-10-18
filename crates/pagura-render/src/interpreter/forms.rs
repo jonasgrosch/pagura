@@ -62,8 +62,8 @@ impl Compiler<'_> {
             .get_name(b"Subtype")
             .map(pagura_core::Name::as_bytes)
         {
-            Some(b"Image") => return Err(unsupported(features::IMAGE_XOBJECT)),
             Some(b"Form") => {}
+            Some(b"Image") => return Err(Error::syntax("XObject is not a form")),
             _ => return Err(unsupported(features::XOBJECT_SUBTYPE)),
         }
         // Table 93 (8.10.2): skip an invisible form in its entirety.

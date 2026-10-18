@@ -1,4 +1,4 @@
 mode=text
 error=
-appearance=error:unsupported:form.text-matrix
+appearance=error:unsupported:appearance.text-matrix
 changed=true

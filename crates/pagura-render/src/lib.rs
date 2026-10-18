@@ -37,10 +37,10 @@ use pagura_raster::Rgba8;
 pub use pagura_raster::Pixmap;
 pub use pagura_text::{Provider, SearchOptions, TextMatch, TextPage};
 
-/// Stable tags for rendering capabilities not implemented yet.
 pub mod features;
 /// In-memory form appearance programs and resource dictionaries (12.7.4.3).
 pub mod form_appearance;
+pub mod repairs;
 
 /// Options for rendering a page.
 #[derive(Debug, Clone, Copy, PartialEq)]

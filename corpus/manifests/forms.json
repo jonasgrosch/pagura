@@ -1514,7 +1514,7 @@
         },
         ".params": {
           "path": "corpus/generated/forms/text-missing-font-character.params",
-          "sha256": "58b609abc11600e14e0c47d58588b9658ccef353e1a8814ac42fb0443b8755e2"
+          "sha256": "dcaa47b0fc8fdc7c7808a345b8aaddd7dbf6c913e5be7be9dbb44b70adbe1e04"
         },
         ".pdf": {
           "path": "corpus/generated/forms/text-missing-font-character.pdf",
@@ -1566,7 +1566,7 @@
         },
         ".params": {
           "path": "corpus/generated/forms/text-oblique-matrix.params",
-          "sha256": "794ccecb38400fa991fbacbf5c705167fc8186e1f62485df5e26672385eb7c30"
+          "sha256": "375b2523f845dc9b9a7d2f8480dc6c4834fb50ea67b33c064ed2f150c8c8ae32"
         },
         ".pdf": {
           "path": "corpus/generated/forms/text-oblique-matrix.pdf",
@@ -1592,7 +1592,7 @@
         },
         ".params": {
           "path": "corpus/generated/forms/text-rotated-widget.params",
-          "sha256": "981e1bf01f70377daba2071d0d41ce10d8a5d90c56eec8509d8925f08d7a512d"
+          "sha256": "4e9cdd4ef84346bf3f88a0e825f3aac752d2639dcfde9564e02697bc398f60bb"
         },
         ".pdf": {
           "path": "corpus/generated/forms/text-rotated-widget.pdf",
@@ -1786,7 +1786,7 @@
         },
         ".params": {
           "path": "corpus/generated/forms/text-negative-font-size.params",
-          "sha256": "794ccecb38400fa991fbacbf5c705167fc8186e1f62485df5e26672385eb7c30"
+          "sha256": "375b2523f845dc9b9a7d2f8480dc6c4834fb50ea67b33c064ed2f150c8c8ae32"
         },
         ".pdf": {
           "path": "corpus/generated/forms/text-negative-font-size.pdf",
@@ -1812,7 +1812,7 @@
         },
         ".params": {
           "path": "corpus/generated/forms/text-existing-inside-text-object.params",
-          "sha256": "5dc5733c8c755e1932dd96a3c78a2dee80e4393826263809032d56bc412604f4"
+          "sha256": "6944553d5dd9168e336c435eac6af70367fad848b8bdd4a46ecac678d889ae5f"
         },
         ".pdf": {
           "path": "corpus/generated/forms/text-existing-inside-text-object.pdf",

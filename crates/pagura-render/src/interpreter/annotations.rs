@@ -184,7 +184,7 @@ impl Compiler<'_> {
                     offset: 0,
                 });
             let diagnostic = pagura_core::Diagnostic::new(
-                super::tags::APPEARANCE_EMPTY,
+                crate::repairs::APPEARANCE_EMPTY,
                 "zero-sized appearance or annotation rectangle; appearance skipped",
             )
             .in_object_opt(body.id())
@@ -404,7 +404,7 @@ mod tests {
             .unwrap();
             let error = compile_page(&strict, strict.page(0).unwrap()).unwrap_err();
             assert_eq!(error.kind, ErrorKind::Syntax);
-            assert_eq!(error.repair, Some(super::super::tags::APPEARANCE_EMPTY));
+            assert_eq!(error.repair, Some(crate::repairs::APPEARANCE_EMPTY));
             assert_eq!(error.object, Some(object));
             assert_eq!(error.position, position);
             assert_eq!(strict.diagnostics(), []);
@@ -431,7 +431,7 @@ mod tests {
             assert_eq!(diagnostics.len(), 1);
             assert_eq!(
                 diagnostics[0].repair(),
-                Some(super::super::tags::APPEARANCE_EMPTY)
+                Some(crate::repairs::APPEARANCE_EMPTY)
             );
             assert_eq!(diagnostics[0].object, Some(object));
             assert_eq!(diagnostics[0].position, position);

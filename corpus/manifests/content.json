@@ -1753,7 +1753,7 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "extgstate.unknown"
+      "feature": "extgstate.UseBlackPtComp"
     },
     {
       "id": "content/group-small-clip",
@@ -5990,7 +5990,7 @@
     {
       "id": "content/tint-simple-operator",
       "kind": "pdf",
-      "description": "Reported recovery: colour-operator",
+      "description": "Reported recovery: color-operator",
       "expected": "render",
       "requirements": [
         "content-reported-recovery",
@@ -6001,7 +6001,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "content.colour-operator"
+        "content.color-operator"
       ],
       "oracle": "corpus/generated/content/tint-simple-operator.ppm",
       "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
@@ -6685,7 +6685,7 @@
     {
       "id": "content/repair-colour-Separation-fill",
       "kind": "pdf",
-      "description": "Reported recovery: colour-operator",
+      "description": "Reported recovery: color-operator",
       "expected": "render",
       "requirements": [
         "content-reported-recovery"
@@ -6695,7 +6695,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "content.colour-operator"
+        "content.color-operator"
       ],
       "oracle": "corpus/generated/content/repair-colour-Separation-fill.ppm",
       "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
@@ -6707,7 +6707,7 @@
     {
       "id": "content/repair-colour-Separation-stroke",
       "kind": "pdf",
-      "description": "Reported recovery: colour-operator",
+      "description": "Reported recovery: color-operator",
       "expected": "render",
       "requirements": [
         "content-reported-recovery"
@@ -6717,7 +6717,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "content.colour-operator"
+        "content.color-operator"
       ],
       "oracle": "corpus/generated/content/repair-colour-Separation-stroke.ppm",
       "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
@@ -6759,7 +6759,7 @@
     {
       "id": "content/repair-colour-DeviceN-fill",
       "kind": "pdf",
-      "description": "Reported recovery: colour-operator",
+      "description": "Reported recovery: color-operator",
       "expected": "render",
       "requirements": [
         "content-reported-recovery"
@@ -6769,7 +6769,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "content.colour-operator"
+        "content.color-operator"
       ],
       "oracle": "corpus/generated/content/repair-colour-DeviceN-fill.ppm",
       "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
@@ -6781,7 +6781,7 @@
     {
       "id": "content/repair-colour-DeviceN-stroke",
       "kind": "pdf",
-      "description": "Reported recovery: colour-operator",
+      "description": "Reported recovery: color-operator",
       "expected": "render",
       "requirements": [
         "content-reported-recovery"
@@ -6791,7 +6791,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "content.colour-operator"
+        "content.color-operator"
       ],
       "oracle": "corpus/generated/content/repair-colour-DeviceN-stroke.ppm",
       "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
@@ -6833,7 +6833,7 @@
     {
       "id": "content/repair-icc-colour",
       "kind": "pdf",
-      "description": "Reported recovery: colour-operator",
+      "description": "Reported recovery: color-operator",
       "expected": "render",
       "requirements": [
         "content-reported-recovery"
@@ -6843,7 +6843,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "content.colour-operator"
+        "content.color-operator"
       ],
       "oracle": "corpus/generated/content/repair-icc-colour.ppm",
       "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
@@ -7472,7 +7472,7 @@
     {
       "id": "content/icc-simple-operator",
       "kind": "pdf",
-      "description": "Reported recovery: colour-operator",
+      "description": "Reported recovery: color-operator",
       "expected": "render",
       "requirements": [
         "content-reported-recovery",
@@ -7483,7 +7483,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "content.colour-operator"
+        "content.color-operator"
       ],
       "oracle": "corpus/generated/content/icc-simple-operator.ppm",
       "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",

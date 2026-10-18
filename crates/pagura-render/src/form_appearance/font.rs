@@ -30,7 +30,7 @@ impl Font {
         let dictionary = document.resolve_dictionary(dictionary)?;
         if font.kind() == FontKind::Type0 || font.writing_mode() != WritingMode::Horizontal {
             return Err(Error::unsupported(
-                crate::form_appearance::features::FONT_ENCODING,
+                crate::features::APPEARANCE_FONT_ENCODING,
                 "appearance generation requires a horizontal simple font",
             ));
         }
@@ -74,7 +74,7 @@ impl Font {
     }
     pub fn encode(&self, c: char) -> Result<(u8, f64)> {
         self.codes.get(&c).copied().ok_or(Error::unsupported(
-            crate::form_appearance::features::FONT_ENCODING,
+            crate::features::APPEARANCE_FONT_ENCODING,
             "field character has no reversible font encoding",
         ))
     }
