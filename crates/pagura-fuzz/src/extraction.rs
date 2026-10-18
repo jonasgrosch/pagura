@@ -154,7 +154,7 @@ fn assert_text(page: &TextPage) {
                 && glyph.em.is_finite()
                 && glyph.em >= 0.0
                 && glyph.font < page.fonts().len()
-                && glyph.render_mode <= 7,
+                && u8::from(glyph.render_mode) <= 7,
             "glyph {index}: {glyph:?}"
         );
     }

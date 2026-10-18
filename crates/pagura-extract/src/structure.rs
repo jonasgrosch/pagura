@@ -1,6 +1,6 @@
 //! Logical content references, ISO 32000-2 14.7.2–14.7.5 and 14.8.
 use super::{LogicalText, Name, ObjectId, Range, Result, TextPage};
-use pagura_core::{Diagnostics, Dictionary, Error, Feature, Position, Value};
+use pagura_core::{Diagnostics, Dictionary, Error, Position, Value};
 use pagura_document::{Document, Page};
 use std::collections::{BTreeMap, BTreeSet};
 mod content;
@@ -11,6 +11,7 @@ pub use roles::StructureNamespace;
 
 /// One structure element contributing to this page, in logical preorder.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct StructureElement {
     /// Indirect identity, or None for a direct grouping dictionary.
     pub object: Option<ObjectId>,
@@ -27,9 +28,6 @@ pub struct StructureElement {
     pub range: Range<usize>,
 }
 
-pub(super) const CONTENT: Feature = Feature::new("text.structure-content");
-pub(super) const NAMESPACE: Feature = Feature::new("text.structure-namespace");
-pub(super) const REPLACEMENT: Feature = Feature::new("text.structure-replacement");
 struct ReplacementText {
     text: String,
     kind: super::layout::Replacement,
@@ -91,9 +89,7 @@ fn can_fallback(error: &Error) -> bool {
         pagura_core::ErrorKind::Syntax
         | pagura_core::ErrorKind::Cycle
         | pagura_core::ErrorKind::MissingObject => true,
-        pagura_core::ErrorKind::Unsupported(feature) => {
-            [CONTENT, NAMESPACE, REPLACEMENT].contains(&feature)
-        }
+        pagura_core::ErrorKind::Unsupported(feature) => crate::features::ALL.contains(&feature),
         _ => false,
     }
 }

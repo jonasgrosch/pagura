@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(unreachable_pub)]
 //! PDF page text: positioned text, geometric layout policy, search and the
 //! logical structure view (9.10, 14.7–14.9; ADR 0014, ADR 0025).
 //!
@@ -11,6 +12,7 @@ use pagura_raster::Point;
 use pagura_text::{FontKind, WritingMode};
 use std::{ops::Range, sync::Arc};
 
+pub mod features;
 mod layout;
 mod memory;
 pub mod repairs;
@@ -20,6 +22,9 @@ mod search;
 #[cfg(test)]
 mod tests;
 pub use search::{SearchOptions, TextMatch};
+
+// The interpreter in `pagura-render` builds the positioned-text records
+// below with struct literals, so they are plain, exhaustive records.
 
 /// A selection quadrilateral in default user space, in cell-corner order.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -87,8 +92,8 @@ pub struct PositionedGlyph {
     pub em: f64,
     /// End of the intrinsic advance, excluding Tc and Tw.
     pub advance_end: Point,
-    /// Text rendering mode 0–7; mode 3 remains extractable.
-    pub render_mode: u8,
+    /// Text rendering mode; invisible text remains extractable.
+    pub render_mode: TextRenderingMode,
     /// Hidden by optional content. This is independent of render mode/clipping.
     pub hidden: bool,
     /// Marked-content path, outermost first.
@@ -123,7 +128,83 @@ pub struct PositionedText {
     pub objects: Vec<TextObject>,
 }
 
-/// Explicit, deterministic layout policy, independent of rendering.
+/// A text rendering mode, the operand of `Tr` (9.3.6, Table 106). The
+/// standard closes the set, so the enum is exhaustive.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[repr(u8)]
+pub enum TextRenderingMode {
+    /// Fill glyphs.
+    #[default]
+    Fill = 0,
+    /// Stroke glyphs.
+    Stroke = 1,
+    /// Fill, then stroke glyphs.
+    FillStroke = 2,
+    /// Neither fill nor stroke: invisible, for example OCR text.
+    Invisible = 3,
+    /// Fill glyphs and add them to the clipping path.
+    FillClip = 4,
+    /// Stroke glyphs and add them to the clipping path.
+    StrokeClip = 5,
+    /// Fill, stroke and add glyphs to the clipping path.
+    FillStrokeClip = 6,
+    /// Add glyphs to the clipping path only.
+    Clip = 7,
+}
+
+impl TextRenderingMode {
+    /// Whether glyphs are filled.
+    pub const fn fills(self) -> bool {
+        matches!(
+            self,
+            Self::Fill | Self::FillStroke | Self::FillClip | Self::FillStrokeClip
+        )
+    }
+
+    /// Whether glyphs are stroked.
+    pub const fn strokes(self) -> bool {
+        matches!(
+            self,
+            Self::Stroke | Self::FillStroke | Self::StrokeClip | Self::FillStrokeClip
+        )
+    }
+
+    /// Whether glyphs are added to the clipping path.
+    pub const fn clips(self) -> bool {
+        matches!(
+            self,
+            Self::FillClip | Self::StrokeClip | Self::FillStrokeClip | Self::Clip
+        )
+    }
+}
+
+impl TryFrom<u8> for TextRenderingMode {
+    type Error = Error;
+
+    fn try_from(mode: u8) -> Result<Self> {
+        Ok(match mode {
+            0 => Self::Fill,
+            1 => Self::Stroke,
+            2 => Self::FillStroke,
+            3 => Self::Invisible,
+            4 => Self::FillClip,
+            5 => Self::StrokeClip,
+            6 => Self::FillStrokeClip,
+            7 => Self::Clip,
+            _ => return Err(Error::syntax("text rendering mode outside 0 to 7")),
+        })
+    }
+}
+
+impl From<TextRenderingMode> for u8 {
+    fn from(mode: TextRenderingMode) -> Self {
+        mode as u8
+    }
+}
+
+/// Explicit, deterministic layout policy, independent of rendering. Callers
+/// build options from [`Default`] with struct update syntax, so the struct
+/// is exhaustive.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LayoutOptions {
     /// Include optional-content-hidden glyphs. Default false; mode 3 is included.
@@ -148,6 +229,7 @@ impl Default for LayoutOptions {
 
 /// One semantic character. Unknown Unicode is `None`, exported as U+FFFD.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Character {
     /// Unicode scalar; no character code is guessed when Unicode is missing.
     pub unicode: Option<char>,
@@ -161,6 +243,7 @@ pub struct Character {
 
 /// An exported text line; its range excludes the trailing LF separator.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct TextLine {
     /// UTF-8 byte range in [`TextPage::text`].
     pub range: Range<usize>,
@@ -172,6 +255,7 @@ pub struct TextLine {
 
 /// A word under the alphanumeric/underscore policy (not Unicode UAX #29).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct TextWord {
     /// UTF-8 byte range in [`TextPage::text`].
     pub range: Range<usize>,
@@ -403,10 +487,6 @@ impl TextPage {
     /// Word byte ranges under the documented boundary policy.
     pub fn words(&self) -> &[TextWord] {
         &self.words
-    }
-    /// Default search options, convenient for callers using inferred page types.
-    pub fn search_options(&self) -> SearchOptions {
-        SearchOptions::default()
     }
 }
 

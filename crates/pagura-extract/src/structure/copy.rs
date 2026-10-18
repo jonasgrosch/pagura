@@ -166,7 +166,7 @@ fn groups(page: &TextPage, plan: &Plan<'_>, budget: &mut Budget) -> Result<Vec<V
             budget.work(atom.glyphs.len())?;
             if owners[atom.glyphs.clone()].iter().any(|n| *n != owner) {
                 return Err(Error::unsupported(
-                    super::REPLACEMENT,
+                    crate::features::STRUCTURE_REPLACEMENT,
                     "text.structure-replacement: marked replacement crosses logical content items",
                 ));
             }
@@ -199,7 +199,7 @@ fn replacement_atom(
     let node = &plan.nodes[index];
     if node.other_page {
         return Err(Error::unsupported(
-            super::REPLACEMENT,
+            crate::features::STRUCTURE_REPLACEMENT,
             "text.structure-replacement: structure replacement spans multiple pages",
         ));
     }
@@ -229,7 +229,7 @@ fn replacement_atom(
     selected.dedup();
     if selected.windows(2).any(|w| w[1] != w[0] + 1) {
         return Err(Error::unsupported(
-            super::REPLACEMENT,
+            crate::features::STRUCTURE_REPLACEMENT,
             "text.structure-replacement: structure replacement needs noncontiguous glyph associations",
         ));
     }

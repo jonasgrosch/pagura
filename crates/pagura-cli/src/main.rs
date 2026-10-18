@@ -254,7 +254,7 @@ fn extract(input: &str, selected: Option<usize>, query: Option<&str>, flags: &Fl
     for (ordinal, index) in range.enumerate() {
         let text = context.text_page(document.page(index)?)?;
         if let Some(query) = query {
-            for found in text.find(query, text.search_options())? {
+            for found in text.find(query, pagura::SearchOptions::default())? {
                 let mut quads = String::new();
                 for (i, quad) in found.quads.iter().enumerate() {
                     if i > 0 {

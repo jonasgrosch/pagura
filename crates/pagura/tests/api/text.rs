@@ -157,7 +157,10 @@ fn check_glyphs(name: &str, text: &pagura_extract::TextPage) {
             glyph.writing_mode == pagura_text::WritingMode::Vertical,
             boolean(&row[10])
         );
-        assert_eq!(glyph.render_mode, u8::try_from(integer(&row[11])).unwrap());
+        assert_eq!(
+            u8::from(glyph.render_mode),
+            u8::try_from(integer(&row[11])).unwrap()
+        );
         assert_eq!(glyph.hidden, boolean(&row[12]));
         let path = glyph
             .marked_content
