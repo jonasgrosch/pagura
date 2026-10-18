@@ -434,7 +434,7 @@ impl Context {
         self.charge(commands.len())?;
         for command in commands {
             if self.transfers.as_ref().is_some_and(|r| !r.suspended) {
-                transfer::validate(command)?;
+                transfer::validate(command, self.overprint)?;
             }
             let result = match command {
                 Command::Path(path) if !path.color.paints() => Ok(()),
