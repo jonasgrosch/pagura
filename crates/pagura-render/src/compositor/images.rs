@@ -17,7 +17,6 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
-        validate(command, model)?;
         let transform = command.transform.then(self.device);
         if !transform.is_finite() {
             return Err(Error::limit("image transform overflow"));
@@ -40,6 +39,7 @@ impl Context {
             .map(|m| self.soft_mask(m, target.tile, model, depth + 1))
             .transpose()?;
         let stencil = self.stencil_color(command, model)?;
+        let template = self.image_source(command, model, stencil)?;
         let image = &command.image;
         let origin = clip.origin();
         self.charge(clip.coverage().len())?;
@@ -90,6 +90,7 @@ impl Context {
                     },
                     alpha: value.alpha * factor,
                     shape: value.shape * factor,
+                    ..template
                 };
                 let index = target
                     .index(x, y)
@@ -116,7 +117,23 @@ impl Context {
         self.allocated -= sampling_bytes;
         Ok(())
     }
-    fn stencil_color(&mut self, command: &ImageCommand, model: Model) -> Result<Option<[f64; 4]>> {
+    fn image_source(
+        &mut self,
+        command: &ImageCommand,
+        model: Model,
+        stencil: Option<Source>,
+    ) -> Result<Source> {
+        if let Some(stencil) = stencil {
+            return Ok(stencil);
+        }
+        let space = command
+            .image
+            .space
+            .as_ref()
+            .ok_or(Error::syntax("image missing colour space"))?;
+        Ok(self.sampled_source(space, model, &command.composite))
+    }
+    fn stencil_color(&mut self, command: &ImageCommand, model: Model) -> Result<Option<Source>> {
         let stencil = if command.image.space.is_none() {
             if matches!(command.stencil, crate::color::Color::Pattern { .. }) {
                 return Err(Error::unsupported(
@@ -124,11 +141,7 @@ impl Context {
                     "pattern-coloured image stencils are not implemented",
                 ));
             }
-            Some(model.color(
-                &command.stencil,
-                &command.composite.conversion,
-                &mut self.function_work,
-            )?)
+            Some(self.color(&command.stencil, model, &command.composite, true)?)
         } else {
             None
         };
@@ -139,12 +152,12 @@ impl Context {
         command: &ImageCommand,
         pixel: usize,
         model: Model,
-        stencil: Option<[f64; 4]>,
+        stencil: Option<Source>,
     ) -> Result<Texel> {
         let image = &command.image;
         if let Some(color) = stencil {
             let mut value = mask_texel(image, pixel)?;
-            value.color = color.map(|v| v * value.alpha);
+            value.color = color.color.map(|v| v * value.alpha);
             return Ok(value);
         }
         let mut components = [0.0; 32];
@@ -194,12 +207,15 @@ impl Context {
                 };
             }
         }
-        let color = model.source(
-            space,
-            &components[..count],
-            &command.composite.conversion,
-            &mut self.function_work,
-        )?;
+        let color = self
+            .source(
+                space,
+                &components[..count],
+                model,
+                &command.composite,
+                false,
+            )?
+            .color;
         Ok(Texel {
             color: color.map(|v| v * alpha),
             alpha,
@@ -223,16 +239,6 @@ fn prepare(
         })
         .transpose()?;
     Ok((sampler, mask))
-}
-
-fn validate(command: &ImageCommand, model: Model) -> Result<()> {
-    if model == Model::Cmyk && command.composite.overprint {
-        return Err(Error::unsupported(
-            crate::features::TRANSPARENCY_OVERPRINT,
-            "CMYK image overprint is not implemented",
-        ));
-    }
-    Ok(())
 }
 
 fn sampler_for(image: &Image, inverse: Transform) -> Sampler {
@@ -286,18 +292,8 @@ fn expand_indexed<'a>(
         .as_ref()
         .ok_or(Error::syntax("colour image missing space"))?;
     if let Space::Indexed { base, high, lookup } = space {
-        let value = values[0].round().clamp(0.0, f64::from(*high));
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "index rounded and clamped to 0..255"
-        )]
-        let index = value as usize;
         let n = base.components();
-        let bytes = lookup
-            .get(index * n..(index + 1) * n)
-            .ok_or(Error::syntax("truncated image palette"))?;
-        let decoded = base.decode_lookup(bytes);
+        let decoded = crate::color::indexed_components(base, *high, lookup, values[0])?;
         for (out, value) in values.iter_mut().zip(decoded) {
             *out = value;
         }
@@ -390,7 +386,7 @@ impl<'a> Texels<'a> {
         command: &ImageCommand,
         pixel: usize,
         model: Model,
-        stencil: Option<[f64; 4]>,
+        stencil: Option<Source>,
     ) -> Result<Texel> {
         let values = match self {
             Self::Gray { pixels, colors } => {
@@ -462,6 +458,10 @@ mod tests {
         let limits = pagura_core::Limits::default();
         Context {
             elide_opaque_groups: false,
+            separations: Arc::new(super::super::Separations::default()),
+            preview: super::super::colorants::Preview::default(),
+            spot_batch: None,
+            mask_colors: false,
             raster: pagura_raster::Rasterizer::default(),
             bounds: super::super::regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
             glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),

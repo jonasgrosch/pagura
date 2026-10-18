@@ -1,0 +1,152 @@
+{
+  "schema": 2,
+  "area": "overprint",
+  "scope": "Verified against the local ISO 32000-2:2020 EC3 text. Colorant selection and compositing are normative; native CMYK display simulation and alternate-based spot ink equivalents are documented device policy.",
+  "requirements": [
+    {
+      "id": "overprint-flags",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.6.7",
+        "8.4.5 Table 57"
+      ],
+      "status": "implemented with display simulation policy",
+      "rule": "OP updates op only when op is absent in the same dictionary; fill and stroke flags, OPM and save/restore are independent.",
+      "tests": [
+        "overprint/noop-rgb-multiply-off",
+        "overprint/noop-rgb-multiply-on",
+        "overprint/fill-on",
+        "overprint/fill-zero",
+        "overprint/fill-off",
+        "overprint/fill-fill",
+        "overprint/fill-stroke",
+        "overprint/stroke-on",
+        "overprint/stroke-off",
+        "overprint/stroke-fill",
+        "overprint/stroke-stroke",
+        "overprint/mode-default-zero",
+        "overprint/state-restored",
+        "overprint/explicit-op-precedes-OP",
+        "overprint/opm-inherited",
+        "overprint/spot-mode-zero",
+        "overprint/spot-mode-on",
+        "overprint/text-glyph-overprint"
+      ],
+      "gaps": "Display approximation uses CMYK ink equivalents with saturation; physical ink spectra and output-intent ICC destination transforms are not modeled. Spot plates have a per-page budget of 32. Transfer selection remains explicitly unsupported."
+    },
+    {
+      "id": "overprint-process",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.6.7",
+        "11.7.4.3",
+        "11.7.4.5 Table 146"
+      ],
+      "status": "implemented with display simulation policy",
+      "rule": "Compatible overprinting preserves unspecified components. OPM 1 selects nonzero direct DeviceCMYK tints before quantization, excluding sampled images and shadings. Other blend modes apply to the implicit non-isolated group result.",
+      "tests": [
+        "overprint/fill-on",
+        "overprint/fill-zero",
+        "overprint/fill-off",
+        "overprint/fill-fill",
+        "overprint/fill-stroke",
+        "overprint/stroke-on",
+        "overprint/stroke-off",
+        "overprint/stroke-fill",
+        "overprint/stroke-stroke",
+        "overprint/mode-default-zero",
+        "overprint/state-restored",
+        "overprint/explicit-op-precedes-OP",
+        "overprint/opm-inherited",
+        "overprint/zero-tint-is-not-quantized",
+        "overprint/indexed-base-cmyk",
+        "overprint/partial-opacity",
+        "overprint/screen-implicit-group",
+        "overprint/named-process-separation",
+        "overprint/named-process-devicen",
+        "overprint/combined-fill-stroke-on",
+        "overprint/combined-fill-stroke-half",
+        "overprint/combined-fill-stroke-off",
+        "overprint/fractional-coverage",
+        "overprint/group-process-inherited",
+        "overprint/group-process-isolated",
+        "overprint/image-ignores-nonzero-mode",
+        "overprint/shading-ignores-nonzero-mode",
+        "overprint/stencil-uses-current-nonzero-mode",
+        "overprint/text-glyph-overprint",
+        "overprint/named-process-in-rgb-group-uses-alternate",
+        "overprint/sampled-tint-evaluates-only-pixels"
+      ],
+      "gaps": "Display approximation uses CMYK ink equivalents with saturation; physical ink spectra and output-intent ICC destination transforms are not modeled. Spot plates have a per-page budget of 32. Transfer selection remains explicitly unsupported."
+    },
+    {
+      "id": "overprint-spot",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.6.6.4",
+        "8.6.6.5",
+        "11.7.3",
+        "11.7.4.2",
+        "11.7.4.5 Table 146"
+      ],
+      "status": "implemented with display simulation policy",
+      "rule": "Named spot plates retain identity across groups. OP controls unspecified plates; named zero tints still paint. Non-white-preserving or non-separable blend modes substitute Normal on spot plates.",
+      "tests": [
+        "overprint/separation-on",
+        "overprint/devicen-on",
+        "overprint/separation-off",
+        "overprint/devicen-off",
+        "overprint/process-preserves-spot",
+        "overprint/process-erases-spot",
+        "overprint/spot-replaces-same-name",
+        "overprint/devicen-reuses-separation-name",
+        "overprint/spot-over-spot",
+        "overprint/spot-difference-uses-normal",
+        "overprint/named-process-separation",
+        "overprint/named-process-devicen",
+        "overprint/named-zero-tint-erases",
+        "overprint/group-spot-inherited",
+        "overprint/group-spot-isolated",
+        "overprint/group-opacity",
+        "overprint/spot-mode-zero",
+        "overprint/spot-mode-on",
+        "overprint/spot-inline-image",
+        "overprint/spot-shading",
+        "overprint/spot-luminosity-mask-uses-alternate",
+        "overprint/spot-passes-rgb-group",
+        "overprint/all-paints-process-and-spot",
+        "overprint/spot-batches-6",
+        "overprint/spot-batches-32",
+        "overprint/spot-budget"
+      ],
+      "gaps": "Display approximation uses CMYK ink equivalents with saturation; physical ink spectra and output-intent ICC destination transforms are not modeled. Spot plates have a per-page budget of 32. Transfer selection remains explicitly unsupported."
+    },
+    {
+      "id": "overprint-groups",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "11.7.3",
+        "11.7.4.3",
+        "11.7.4.4",
+        "11.7.4.5 Table 146"
+      ],
+      "status": "implemented with display simulation policy",
+      "rule": "Elementary overprinting occurs within group colorants. Completed groups paint every component, ignoring invocation overprint flags; isolated groups begin without backdrop ink.",
+      "tests": [
+        "overprint/combined-fill-stroke-on",
+        "overprint/combined-fill-stroke-half",
+        "overprint/combined-fill-stroke-off",
+        "overprint/group-process-inherited",
+        "overprint/group-spot-inherited",
+        "overprint/group-process-isolated",
+        "overprint/group-spot-isolated",
+        "overprint/group-invocation-does-not-overprint",
+        "overprint/group-opacity",
+        "overprint/spot-luminosity-mask-uses-alternate",
+        "overprint/spot-passes-rgb-group",
+        "overprint/named-process-in-rgb-group-uses-alternate"
+      ],
+      "gaps": "Display approximation uses CMYK ink equivalents with saturation; physical ink spectra and output-intent ICC destination transforms are not modeled. Spot plates have a per-page budget of 32. Transfer selection remains explicitly unsupported."
+    }
+  ]
+}

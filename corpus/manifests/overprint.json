@@ -1,0 +1,1188 @@
+{
+  "schema": 2,
+  "area": "overprint",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "overprint/noop-rgb-multiply-off",
+      "kind": "pdf",
+      "description": "RGB Multiply is independent of no-op overprint flags",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags"
+      ],
+      "path": "corpus/generated/overprint/noop-rgb-multiply-off.pdf",
+      "sha256": "b05789b5bf39568350c8a5fc8ccf5c8a5297fb7782542304e08f7c252592f16d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/noop-rgb-multiply-off.ppm",
+      "oracle_sha256": "3c489c658a31609dabab37d74164125631ade9ac80aee13d3eaaf7e16fdaaa33",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "overprint/noop-rgb-multiply-on",
+      "kind": "pdf",
+      "description": "RGB Multiply is independent of no-op overprint flags",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags"
+      ],
+      "path": "corpus/generated/overprint/noop-rgb-multiply-on.pdf",
+      "sha256": "d9b1e500f9b69991a54a74d34aab3e6d3074f85b811040c9c0c37dba308ab44b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/noop-rgb-multiply-on.ppm",
+      "oracle_sha256": "3c489c658a31609dabab37d74164125631ade9ac80aee13d3eaaf7e16fdaaa33",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "overprint/fill-on",
+      "kind": "pdf",
+      "description": "fill-on",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/fill-on.pdf",
+      "sha256": "d9103d2b82548911dcadcdc0f833221baf2abdc2024c27cfdc8c40de0bffc94b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/fill-on.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/fill-zero",
+      "kind": "pdf",
+      "description": "fill-zero",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/fill-zero.pdf",
+      "sha256": "c53932e77e0be593c471a9e4fba99becc872d38fd3d5fe380a68e7ee52a8f69a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/fill-zero.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/fill-off",
+      "kind": "pdf",
+      "description": "fill-off",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/fill-off.pdf",
+      "sha256": "156a84f36ddba8674552d275948a99f319a210f99f484966f3dae9eeca6e8515",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/fill-off.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/fill-fill",
+      "kind": "pdf",
+      "description": "fill-fill",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/fill-fill.pdf",
+      "sha256": "a3d202f2184220298068b19f53b19a0096b0128b79574c7898bad5b69b650468",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/fill-fill.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/fill-stroke",
+      "kind": "pdf",
+      "description": "fill-stroke",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/fill-stroke.pdf",
+      "sha256": "1b7a6f5bbc07128d410c3a04fe6592a769bbf6644660a6d4dbf6670f5b6c8437",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/fill-stroke.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/stroke-on",
+      "kind": "pdf",
+      "description": "stroke-on",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/stroke-on.pdf",
+      "sha256": "d243ca8f1cb99d8d02ec5700a110b17d68401291b95bec54e3f436fde20b5d6d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/stroke-on.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/stroke-off",
+      "kind": "pdf",
+      "description": "stroke-off",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/stroke-off.pdf",
+      "sha256": "6192831ea8af48f6fc54c42bd9efb5057454ad09d06a984430259b8c5a459769",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/stroke-off.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/stroke-fill",
+      "kind": "pdf",
+      "description": "stroke-fill",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/stroke-fill.pdf",
+      "sha256": "5425124d085a31fa5164ca861403a516dcbe140d5e0f1e82db36230afc03c9c3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/stroke-fill.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/stroke-stroke",
+      "kind": "pdf",
+      "description": "stroke-stroke",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/stroke-stroke.pdf",
+      "sha256": "76099f2d7b23bc453d13a5579b1d9a9206baf32cc318c98048f682a84d5e6395",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/stroke-stroke.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/mode-default-zero",
+      "kind": "pdf",
+      "description": "mode-default-zero",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/mode-default-zero.pdf",
+      "sha256": "9d6ebb3415804badad007842f6b788ba9f0e9ab3fd69bc9e7a72d537e197232d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/mode-default-zero.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/state-restored",
+      "kind": "pdf",
+      "description": "state-restored",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/state-restored.pdf",
+      "sha256": "81da18abf806c05a115e95f2f09f6913a97c6ff2eef534fe939b858e7a1fce07",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/state-restored.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/explicit-op-precedes-OP",
+      "kind": "pdf",
+      "description": "explicit-op-precedes-OP",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/explicit-op-precedes-OP.pdf",
+      "sha256": "48d7dafe1a025b83be502e46e2d2198f233424ec003560a40d87d28de75e6a41",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/explicit-op-precedes-OP.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/opm-inherited",
+      "kind": "pdf",
+      "description": "opm-inherited",
+      "expected": "render",
+      "requirements": [
+        "overprint-flags",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/opm-inherited.pdf",
+      "sha256": "6908c73d85b1778be2d37171acf9ffb17c36f54150b6a2375bfd92b32040b635",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/opm-inherited.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/zero-tint-is-not-quantized",
+      "kind": "pdf",
+      "description": "zero-tint-is-not-quantized",
+      "expected": "render",
+      "requirements": [
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/zero-tint-is-not-quantized.pdf",
+      "sha256": "93e3c996c576a5d800f6465363c53b63cf8b54dddc0c440f5d94ca00ca482175",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/zero-tint-is-not-quantized.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/indexed-base-cmyk",
+      "kind": "pdf",
+      "description": "indexed-base-cmyk",
+      "expected": "render",
+      "requirements": [
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/indexed-base-cmyk.pdf",
+      "sha256": "cb3edd986216019d5ba376733f04239998a3459a295b91f3a984d35328413cd7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/indexed-base-cmyk.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/partial-opacity",
+      "kind": "pdf",
+      "description": "partial-opacity",
+      "expected": "render",
+      "requirements": [
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/partial-opacity.pdf",
+      "sha256": "ca9fa84714eeece9b51374421dc5f994f51eeada5a3aa7039c4c3ae236ca731c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/partial-opacity.ppm",
+      "oracle_sha256": "0c8619b0aa0fe31758954789264e208523e19ffa2113d4ef654a3625e2636d9c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/screen-implicit-group",
+      "kind": "pdf",
+      "description": "screen-implicit-group",
+      "expected": "render",
+      "requirements": [
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/screen-implicit-group.pdf",
+      "sha256": "93cea5af24daf9f0c22c8308e03e6e8c2763e8f9c1652ccc89110be7ccf9fcfc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/screen-implicit-group.ppm",
+      "oracle_sha256": "aba0d6b0e166c3d98ec893f055042da906505bf070ce2893f9c43f7184dd114c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/separation-on",
+      "kind": "pdf",
+      "description": "separation-on",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/separation-on.pdf",
+      "sha256": "ae76a63e0b6a0336850948f82936e031e3fa84663d997f8afd35c0217d0d3287",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/separation-on.ppm",
+      "oracle_sha256": "d63de5255558c46ca41c0c6bc537688e0bd0d40e6f2bdcd6af04949aca856e2e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/devicen-on",
+      "kind": "pdf",
+      "description": "devicen-on",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/devicen-on.pdf",
+      "sha256": "03383e3fd27ebcea310950226e8d5cc9c6709e4344e50419aaaae351a5cd26ed",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/devicen-on.ppm",
+      "oracle_sha256": "d63de5255558c46ca41c0c6bc537688e0bd0d40e6f2bdcd6af04949aca856e2e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/separation-off",
+      "kind": "pdf",
+      "description": "separation-off",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/separation-off.pdf",
+      "sha256": "c740bbf8d7e91b01cf2417a47576b03867709332fa13d7ef7cca3acf481afc48",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/separation-off.ppm",
+      "oracle_sha256": "c4997f486097a5410e53966f6e42672380179c6b31332cb77980db20d8a23b69",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/devicen-off",
+      "kind": "pdf",
+      "description": "devicen-off",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/devicen-off.pdf",
+      "sha256": "c9696b7ab81eec3e78fe39778b3241ba602cb471ee4c73ba94a82da96846259e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/devicen-off.ppm",
+      "oracle_sha256": "ee0316a998d656aa0b53fe207622cc95a5a6636dc476361980109be9ea5d0bce",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/process-preserves-spot",
+      "kind": "pdf",
+      "description": "process-preserves-spot",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/process-preserves-spot.pdf",
+      "sha256": "e71ac15e96c6a558285d250f54a29b208a84dc3b8fb5e7ef69b7e07c4dd76a6c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/process-preserves-spot.ppm",
+      "oracle_sha256": "d63de5255558c46ca41c0c6bc537688e0bd0d40e6f2bdcd6af04949aca856e2e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/process-erases-spot",
+      "kind": "pdf",
+      "description": "process-erases-spot",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/process-erases-spot.pdf",
+      "sha256": "5a415fdad5e6e5924052dc76a57a7c4c1f754e3f983984daa80af68144308073",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/process-erases-spot.ppm",
+      "oracle_sha256": "8ddd8e61ade1db47251aac7039917aa34b603251edf58b6ee3734ebe63a99d7b",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/spot-replaces-same-name",
+      "kind": "pdf",
+      "description": "spot-replaces-same-name",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/spot-replaces-same-name.pdf",
+      "sha256": "aab1664f6c11e78456ebf63a152ef05e86bef953b49ebfdb9ade9b4d1df2e4d7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/spot-replaces-same-name.ppm",
+      "oracle_sha256": "9ddc033aaf70d19545035c1d6c75a1c5de26a45e73b1207f1575ab1411ceffb2",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/devicen-reuses-separation-name",
+      "kind": "pdf",
+      "description": "devicen-reuses-separation-name",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/devicen-reuses-separation-name.pdf",
+      "sha256": "479d1c53a654944e1b507b9f686498deb7a6dcbe5f0d4cd03cb67343b37fe6a4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/devicen-reuses-separation-name.ppm",
+      "oracle_sha256": "7bdcb164272ce878c21573379da794d768b9367aefc178d94b7b00fc22233433",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/spot-over-spot",
+      "kind": "pdf",
+      "description": "spot-over-spot",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/spot-over-spot.pdf",
+      "sha256": "a261650062795490d8e80ad2d2c361c1173712ed345353b20cc57f354f67a047",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/spot-over-spot.ppm",
+      "oracle_sha256": "6083ff36d16f47a528ac0e78d34c744ce32510bd25bf32993b9a09b62e9273b4",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/spot-difference-uses-normal",
+      "kind": "pdf",
+      "description": "spot-difference-uses-normal",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/spot-difference-uses-normal.pdf",
+      "sha256": "5fefa0587dbc4b0341350a9e05a25a34cdbf72cea81870676d558a21312fb57b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/spot-difference-uses-normal.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/named-process-separation",
+      "kind": "pdf",
+      "description": "named-process-separation",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/named-process-separation.pdf",
+      "sha256": "9175e2ef48ba8f79c641abe0a463b63962dbe93e248a60f8e5dd0736f39a711c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/named-process-separation.ppm",
+      "oracle_sha256": "d63de5255558c46ca41c0c6bc537688e0bd0d40e6f2bdcd6af04949aca856e2e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/named-process-devicen",
+      "kind": "pdf",
+      "description": "named-process-devicen",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/named-process-devicen.pdf",
+      "sha256": "380826fed70cc232c9308ee966a851a71773f03e75437f0e7580458f91de7b78",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/named-process-devicen.ppm",
+      "oracle_sha256": "1207cece7c5dc04e6898c1e849f1c947f2372b0358633e4453b7f1f207a3527a",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/named-zero-tint-erases",
+      "kind": "pdf",
+      "description": "named-zero-tint-erases",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/named-zero-tint-erases.pdf",
+      "sha256": "2f9cb50e72b3f3f4c49ea5d0037fc66aa6373393924af9a9daecc6389254fb3d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/named-zero-tint-erases.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/combined-fill-stroke-on",
+      "kind": "pdf",
+      "description": "combined-fill-stroke-on",
+      "expected": "render",
+      "requirements": [
+        "overprint-groups",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/combined-fill-stroke-on.pdf",
+      "sha256": "942336ec04a801ab577ce48a6169ea5f09ef6f0889f4b749ad98b7c291f5364f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/combined-fill-stroke-on.ppm",
+      "oracle_sha256": "a783f4c781e7a5a4b287fc2c253d08364ec6c2cd8313994700dbc0c2039704b5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/combined-fill-stroke-half",
+      "kind": "pdf",
+      "description": "combined-fill-stroke-half",
+      "expected": "render",
+      "requirements": [
+        "overprint-groups",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/combined-fill-stroke-half.pdf",
+      "sha256": "8bd0b477e71699b2389b98a70808d7812d1e9d7c0734015ae3c10532f5bb16b9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/combined-fill-stroke-half.ppm",
+      "oracle_sha256": "a60a08a321fc1cb39c7f972037ad642f4c5fe6189c0b2fa1adfdb6f27ab3dedf",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/combined-fill-stroke-off",
+      "kind": "pdf",
+      "description": "combined-fill-stroke-off",
+      "expected": "render",
+      "requirements": [
+        "overprint-groups",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/combined-fill-stroke-off.pdf",
+      "sha256": "03d60bb004838d39ab2dff8170849a5fb33302772ef81feb4fcc20834f7939f1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/combined-fill-stroke-off.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/fractional-coverage",
+      "kind": "pdf",
+      "description": "Exact half-cell area before composition; coverage quantization has a one-level bound",
+      "expected": "render",
+      "requirements": [
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/fractional-coverage.pdf",
+      "sha256": "7aab7ad49146055e089508cd333f43de574c355bd36bd354f497b19c9e600594",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/fractional-coverage.ppm",
+      "oracle_sha256": "8cbc463a06673383fdc288453653e24d1f341e9db1b53bd9567b2acb994e6ff1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "overprint/group-process-inherited",
+      "kind": "pdf",
+      "description": "group-process-inherited",
+      "expected": "render",
+      "requirements": [
+        "overprint-groups",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/group-process-inherited.pdf",
+      "sha256": "ab515d810d480d0a029d37bd816ecc5d608980ec1530b8aa4f752e5eaa5e836b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/group-process-inherited.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/group-spot-inherited",
+      "kind": "pdf",
+      "description": "group-spot-inherited",
+      "expected": "render",
+      "requirements": [
+        "overprint-groups",
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/group-spot-inherited.pdf",
+      "sha256": "e2efe747ff42bb546e801a8c5242e4d23c3be61dabbe82da50c2669c99633f3f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/group-spot-inherited.ppm",
+      "oracle_sha256": "d63de5255558c46ca41c0c6bc537688e0bd0d40e6f2bdcd6af04949aca856e2e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/group-process-isolated",
+      "kind": "pdf",
+      "description": "group-process-isolated",
+      "expected": "render",
+      "requirements": [
+        "overprint-groups",
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/group-process-isolated.pdf",
+      "sha256": "f423383aba1db473236a08159f7c76297ab9281102bedc681410d69f038fb6e3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/group-process-isolated.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/group-spot-isolated",
+      "kind": "pdf",
+      "description": "group-spot-isolated",
+      "expected": "render",
+      "requirements": [
+        "overprint-groups",
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/group-spot-isolated.pdf",
+      "sha256": "35c2a74f1262d108adba625855581a589aa6e74e179436962486e681c62e181e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/group-spot-isolated.ppm",
+      "oracle_sha256": "c4997f486097a5410e53966f6e42672380179c6b31332cb77980db20d8a23b69",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/group-invocation-does-not-overprint",
+      "kind": "pdf",
+      "description": "group-invocation-does-not-overprint",
+      "expected": "render",
+      "requirements": [
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/overprint/group-invocation-does-not-overprint.pdf",
+      "sha256": "9f498fdef9f963ae2946d9e884de7e41c394d3df1e0c485b4d20b1eb2f5735b0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/group-invocation-does-not-overprint.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/group-opacity",
+      "kind": "pdf",
+      "description": "group-opacity",
+      "expected": "render",
+      "requirements": [
+        "overprint-groups",
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/group-opacity.pdf",
+      "sha256": "78a958a08a60e930fd32ba29c27fd0206ea1016cf412247331f3e0b9bde80e07",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/group-opacity.ppm",
+      "oracle_sha256": "a65624789f584f81a2f7c4aa3ca2ad83a2d5d1cdd9bb91a1a1cffdf37865bd34",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/image-ignores-nonzero-mode",
+      "kind": "pdf",
+      "description": "image-ignores-nonzero-mode",
+      "expected": "render",
+      "requirements": [
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/image-ignores-nonzero-mode.pdf",
+      "sha256": "534a8d5c810850907d0ed3ad4d21f6646ca34a75f2dfd197a7b9a6eca0cc8eae",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/image-ignores-nonzero-mode.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/shading-ignores-nonzero-mode",
+      "kind": "pdf",
+      "description": "shading-ignores-nonzero-mode",
+      "expected": "render",
+      "requirements": [
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/shading-ignores-nonzero-mode.pdf",
+      "sha256": "b075905fb80c9cb520f8294ebcb1169589ae93266733beb6930dcae6d5a4d427",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/shading-ignores-nonzero-mode.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/stencil-uses-current-nonzero-mode",
+      "kind": "pdf",
+      "description": "stencil-uses-current-nonzero-mode",
+      "expected": "render",
+      "requirements": [
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/stencil-uses-current-nonzero-mode.pdf",
+      "sha256": "f73236b5eaa93d13b84ac856561b158ba7360b4e2c38bbed132d4fd16c9efd17",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/stencil-uses-current-nonzero-mode.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/spot-mode-zero",
+      "kind": "pdf",
+      "description": "spot-mode-zero",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot",
+        "overprint-flags"
+      ],
+      "path": "corpus/generated/overprint/spot-mode-zero.pdf",
+      "sha256": "5014337565f8966a6dd60fe4224a5b7e74034d828dde513dd46aaf4285aac4d9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/spot-mode-zero.ppm",
+      "oracle_sha256": "d63de5255558c46ca41c0c6bc537688e0bd0d40e6f2bdcd6af04949aca856e2e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/spot-mode-on",
+      "kind": "pdf",
+      "description": "spot-mode-on",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot",
+        "overprint-flags"
+      ],
+      "path": "corpus/generated/overprint/spot-mode-on.pdf",
+      "sha256": "ae76a63e0b6a0336850948f82936e031e3fa84663d997f8afd35c0217d0d3287",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/spot-mode-on.ppm",
+      "oracle_sha256": "d63de5255558c46ca41c0c6bc537688e0bd0d40e6f2bdcd6af04949aca856e2e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/spot-inline-image",
+      "kind": "pdf",
+      "description": "spot-inline-image",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/spot-inline-image.pdf",
+      "sha256": "ccd978781bc3f407526d1999fbed291ec73443d2812a7d7ffe0fe899fb0bc273",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/spot-inline-image.ppm",
+      "oracle_sha256": "d63de5255558c46ca41c0c6bc537688e0bd0d40e6f2bdcd6af04949aca856e2e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/spot-shading",
+      "kind": "pdf",
+      "description": "spot-shading",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/spot-shading.pdf",
+      "sha256": "0772f08ab55e71dcb7e7f1112ecda611d7341c51fc8d178da18ebcb79ea08de4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/spot-shading.ppm",
+      "oracle_sha256": "d63de5255558c46ca41c0c6bc537688e0bd0d40e6f2bdcd6af04949aca856e2e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/text-glyph-overprint",
+      "kind": "pdf",
+      "description": "text-glyph-overprint",
+      "expected": "render",
+      "requirements": [
+        "overprint-process",
+        "overprint-flags"
+      ],
+      "path": "corpus/generated/overprint/text-glyph-overprint.pdf",
+      "sha256": "c21297c9f7e15391d2d80f2393d32a16bea1f7cd82c546398cc3206a25ee00d5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/text-glyph-overprint.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/spot-luminosity-mask-uses-alternate",
+      "kind": "pdf",
+      "description": "spot-luminosity-mask-uses-alternate",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/overprint/spot-luminosity-mask-uses-alternate.pdf",
+      "sha256": "46a7e8ab6e2d8e380778e8ab1f224ddf4077db70ab5fc801e7cff3711797d06d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/spot-luminosity-mask-uses-alternate.ppm",
+      "oracle_sha256": "847278d21981d7adda434003a73842424535549d64edb12dafce3127ec7b5661",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/spot-passes-rgb-group",
+      "kind": "pdf",
+      "description": "spot-passes-rgb-group",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/overprint/spot-passes-rgb-group.pdf",
+      "sha256": "569390d6f74e963b525eb52fed7b57db3d78fc47a99ae11a118937c85cdafb0f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/spot-passes-rgb-group.ppm",
+      "oracle_sha256": "c4997f486097a5410e53966f6e42672380179c6b31332cb77980db20d8a23b69",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/named-process-in-rgb-group-uses-alternate",
+      "kind": "pdf",
+      "description": "named-process-in-rgb-group-uses-alternate",
+      "expected": "render",
+      "requirements": [
+        "overprint-process",
+        "overprint-groups"
+      ],
+      "path": "corpus/generated/overprint/named-process-in-rgb-group-uses-alternate.pdf",
+      "sha256": "bcf94ab02483ef2feecd1833d328318eddf0fb094ab5adbf15700a5b8dc24ba0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/named-process-in-rgb-group-uses-alternate.ppm",
+      "oracle_sha256": "c4997f486097a5410e53966f6e42672380179c6b31332cb77980db20d8a23b69",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/all-paints-process-and-spot",
+      "kind": "pdf",
+      "description": "all-paints-process-and-spot",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/all-paints-process-and-spot.pdf",
+      "sha256": "5ef6869b5fa3304ff899dcd89b82303744af331df342627f8893a8ef8bdeade2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/all-paints-process-and-spot.ppm",
+      "oracle_sha256": "c9a4c151e923bd0b55d43ac3b907f6be51f7ca440a6575efdf87bc4713e66209",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/sampled-tint-evaluates-only-pixels",
+      "kind": "pdf",
+      "description": "sampled-tint-evaluates-only-pixels",
+      "expected": "render",
+      "requirements": [
+        "overprint-process"
+      ],
+      "path": "corpus/generated/overprint/sampled-tint-evaluates-only-pixels.pdf",
+      "sha256": "237f9711c295a87f22b42fb0c9cc8012e00a6ef4d3ebdfb07a7ccd9c373c4381",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/sampled-tint-evaluates-only-pixels.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/spot-batches-6",
+      "kind": "pdf",
+      "description": "Multiple batches share process shape and opacity without conversions",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/spot-batches-6.pdf",
+      "sha256": "fd9de2064af0ae8282a3947a1f1da6cb289686ec0de43309a89126c4d0ba145e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/spot-batches-6.ppm",
+      "oracle_sha256": "3fcc2687e4617624d42d0b487259bb5b846d3e209e68cb12fb6c578980456908",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "overprint/spot-batches-32",
+      "kind": "pdf",
+      "description": "Multiple batches share process shape and opacity without conversions",
+      "expected": "render",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/spot-batches-32.pdf",
+      "sha256": "6b476fbec0d75022a15021f5f1e5f77851493bcdfdd59d5391d098a67136c29d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/spot-batches-32.ppm",
+      "oracle_sha256": "34331c8cd437ce160ad056d75bc1bb28cb10a4f348eac411b8547a123ea41cac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "overprint/spot-budget",
+      "kind": "pdf",
+      "description": "A page with more than 32 simulated spot plates is a bounded failure",
+      "expected": "open",
+      "requirements": [
+        "overprint-spot"
+      ],
+      "path": "corpus/generated/overprint/spot-budget.pdf",
+      "sha256": "0b7232fa4003d9d4118ddef13c2bb88b598293d6ad25e8f29d51b5448291d696",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Limit"
+    }
+  ]
+}
