@@ -504,3 +504,48 @@ fn common_extensions_are_typed_and_unknown_values_remain_accessible() {
         }
     }
 }
+
+#[test]
+fn prefix_parsing_preserves_value_zeros_and_suffix() {
+    let bytes = [4, 3, 1, 0, 0, 0, 0];
+    let (tree, consumed) = Document::parse_prefix(&bytes, &Limits::default()).unwrap();
+    assert_eq!(consumed, 5);
+    assert_eq!(tree.root().content(), [1, 0, 0]);
+    assert_eq!(tree.root().encoded(), &bytes[..5]);
+    assert!(Document::parse(&bytes, &Limits::default()).is_err());
+    let bytes = [0x30, 0x80, 4, 1, 0, 0, 0, 0, 0];
+    let mut diagnostics = Diagnostics::new(Recovery::Repair);
+    let (tree, consumed) =
+        Document::parse_ber_prefix(&bytes, &Limits::default(), &mut diagnostics).unwrap();
+    assert_eq!(consumed, 7);
+    assert_eq!(tree.root().encoded(), &bytes[..7]);
+    assert_eq!(
+        diagnostics.as_slice()[0].repair(),
+        Some(crate::tags::BER_INDEFINITE)
+    );
+}
+
+#[test]
+fn ber_set_order_is_reported_and_der_stays_strict() {
+    let bytes = [0x31, 6, 2, 1, 2, 2, 1, 1];
+    let mut diagnostics = Diagnostics::new(Recovery::Repair);
+    let tree = Document::parse_ber(&bytes, &Limits::default(), &mut diagnostics).unwrap();
+    assert_eq!(
+        tree.root()
+            .set_of_reported(&mut diagnostics)
+            .unwrap()
+            .count(),
+        2
+    );
+    assert_eq!(
+        diagnostics.as_slice()[0].repair(),
+        Some(crate::tags::BER_SET_ORDER)
+    );
+    assert!(
+        tree.root()
+            .set_of_reported(&mut Diagnostics::new(Recovery::Strict))
+            .is_err()
+    );
+    let tree = Document::parse(&bytes, &Limits::default()).unwrap();
+    assert!(tree.root().set_of_reported(&mut diagnostics).is_err());
+}

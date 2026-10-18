@@ -14,6 +14,7 @@ workspace = true
 [dependencies]
 pagura-data = { workspace = true, optional = true }
 pagura-crypto.workspace = true
+pagura-pki.workspace = true
 pagura-core.workspace = true
 pagura-document.workspace = true
 pagura-raster.workspace = true

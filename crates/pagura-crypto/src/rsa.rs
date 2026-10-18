@@ -60,10 +60,12 @@ impl HashAlgorithm {
 
     /// Hashes a message using the selected algorithm.
     pub fn digest(self, message: &[u8]) -> Vec<u8> {
-        self.digest_parts(&[message])
+        self.digest_parts([message])
     }
 
-    fn digest_parts(self, parts: &[&[u8]]) -> Vec<u8> {
+    /// Hashes borrowed message parts in iteration order without concatenating them.
+    /// Empty parts and an empty iterator are permitted (FIPS 180-4).
+    pub fn digest_parts<'a>(self, parts: impl IntoIterator<Item = &'a [u8]>) -> Vec<u8> {
         macro_rules! digest {
             ($hash:ty) => {{
                 let mut hash = <$hash>::new();

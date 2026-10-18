@@ -92,7 +92,7 @@ impl<'a> Document<'a> {
 
     pub(crate) fn parse_at(bytes: &'a [u8], base: usize, limits: &Limits) -> Result<Self> {
         let mut diagnostics = Diagnostics::new(pagura_core::Recovery::Strict);
-        Self::read(bytes, base, limits, false, &mut diagnostics)
+        Self::read(bytes, base, limits, false, false, &mut diagnostics)
     }
 
     /// Parses the BER subset needed by CMS, reporting each DER deviation.
@@ -110,7 +110,33 @@ impl<'a> Document<'a> {
         limits: &Limits,
         diagnostics: &mut Diagnostics,
     ) -> Result<Self> {
-        Self::read(bytes, 0, limits, true, diagnostics)
+        Self::read(bytes, 0, limits, true, false, diagnostics)
+    }
+
+    /// Parses the first DER value, returning its consumed length. Suffix bytes
+    /// are left to the caller, e.g. PDF Contents zero padding (12.8.3.3.1).
+    ///
+    /// # Errors
+    /// Rejects malformed, noncanonical, unsupported or over-budget input.
+    pub fn parse_prefix(bytes: &'a [u8], limits: &Limits) -> Result<(Self, usize)> {
+        let mut diagnostics = Diagnostics::new(pagura_core::Recovery::Strict);
+        let document = Self::read(bytes, 0, limits, false, true, &mut diagnostics)?;
+        let consumed = document.bytes.len();
+        Ok((document, consumed))
+    }
+
+    /// BER counterpart of [`Self::parse_prefix`], with reported deviations.
+    ///
+    /// # Errors
+    /// As [`Self::parse_ber`]; suffix bytes are not interpreted as ASN.1.
+    pub fn parse_ber_prefix(
+        bytes: &'a [u8],
+        limits: &Limits,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<(Self, usize)> {
+        let document = Self::read(bytes, 0, limits, true, true, diagnostics)?;
+        let consumed = document.bytes.len();
+        Ok((document, consumed))
     }
 
     fn read(
@@ -118,6 +144,7 @@ impl<'a> Document<'a> {
         base: usize,
         limits: &Limits,
         ber: bool,
+        prefix: bool,
         diagnostics: &mut Diagnostics,
     ) -> Result<Self> {
         if bytes.len() > limits.file_bytes || base.checked_add(bytes.len()).is_none() {
@@ -153,7 +180,9 @@ impl<'a> Document<'a> {
                     return Err(document.error(pos, "missing end-of-contents"));
                 }
             } else if !document.nodes.is_empty() {
-                if pos != bytes.len() {
+                if prefix {
+                    document.bytes = &bytes[..pos];
+                } else if pos != bytes.len() {
                     return Err(document.error(pos, "trailing ASN.1 data"));
                 }
                 break;
@@ -324,6 +353,22 @@ impl<'a> Element<'a> {
         }
         Ok(self.children())
     }
+    /// Iterates SET OF in source order, reporting BER misordering (§11.6).
+    /// Signed attributes must use the strict [`Self::set_of`] entry point.
+    ///
+    /// # Errors
+    /// Rejects primitive values, DER misordering and repairs in strict mode.
+    pub fn set_of_reported(self, diagnostics: &mut Diagnostics) -> Result<Children<'a>> {
+        if let Err(error) = self.set_of() {
+            if !self.is_ber() || !self.tag().constructed {
+                return Err(error);
+            }
+            diagnostics
+                .repair(Diagnostic::new(tags::BER_SET_ORDER, error.message).at(error.position))?;
+        }
+        Ok(self.children())
+    }
+
     /// A syntax error located at this identifier.
     pub fn error(self, message: &'static str) -> Error {
         Error::syntax(message).at(Position::Buffer(self.range().start))
@@ -381,28 +426,39 @@ impl<'a> Iterator for Children<'a> {
 
 /// A schema cursor over an already bounded constructed value.
 #[derive(Debug)]
-pub(crate) struct Fields<'a> {
+pub struct Fields<'a> {
     parent: Element<'a>,
     children: std::iter::Peekable<Children<'a>>,
 }
 
 impl<'a> Fields<'a> {
-    pub(crate) fn sequence(parent: Element<'a>) -> Result<Self> {
+    /// Starts a cursor over a SEQUENCE's fields.
+    ///
+    /// # Errors
+    /// Rejects a value whose tag is not SEQUENCE.
+    pub fn sequence(parent: Element<'a>) -> Result<Self> {
         parent.expect(SEQUENCE)?;
         Ok(Self::new(parent))
     }
-    pub(crate) fn new(parent: Element<'a>) -> Self {
+    /// Starts a cursor over direct children, including IMPLICIT wrappers.
+    /// The caller checks the schema's constructed tag before using this cursor.
+    pub fn new(parent: Element<'a>) -> Self {
         Self {
             parent,
             children: parent.children().peekable(),
         }
     }
-    pub(crate) fn take(&mut self) -> Result<Element<'a>> {
+    /// Takes the next mandatory field.
+    ///
+    /// # Errors
+    /// Rejects an absent field at the parent value's position.
+    pub fn take(&mut self) -> Result<Element<'a>> {
         self.children
             .next()
             .ok_or_else(|| self.parent.error("missing ASN.1 field"))
     }
-    pub(crate) fn optional(&mut self, tag: Tag) -> Option<Element<'a>> {
+    /// Takes the next field only when its tag matches, without advancing otherwise.
+    pub fn optional(&mut self, tag: Tag) -> Option<Element<'a>> {
         if self
             .children
             .peek()
@@ -413,10 +469,15 @@ impl<'a> Fields<'a> {
             None
         }
     }
-    pub(crate) fn rest(&mut self) -> Option<Element<'a>> {
+    /// Takes the next optional field regardless of tag.
+    pub fn rest(&mut self) -> Option<Element<'a>> {
         self.children.next()
     }
-    pub(crate) fn finish(mut self) -> Result<()> {
+    /// Requires every field to have been consumed.
+    ///
+    /// # Errors
+    /// Rejects an extra field at that field's position.
+    pub fn finish(mut self) -> Result<()> {
         if let Some(extra) = self.children.next() {
             Err(extra.error("unexpected ASN.1 field"))
         } else {
@@ -425,7 +486,11 @@ impl<'a> Fields<'a> {
     }
 }
 
-pub(crate) fn single(element: Element<'_>) -> Result<Element<'_>> {
+/// Returns the sole child of a schema's constructed wrapper.
+///
+/// # Errors
+/// Rejects absent or additional children with their original positions.
+pub fn single(element: Element<'_>) -> Result<Element<'_>> {
     let mut fields = Fields::new(element);
     let value = fields.take()?;
     fields.finish()?;

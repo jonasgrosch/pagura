@@ -27,6 +27,10 @@ buffer, including when an extension value is parsed with `Extension::value_der`.
 
 - `der::{Document,Element,Tag,Class}`: strict DER, identifiers, exact ranges,
   direct-child and preorder iterators, schema-directed SET OF ordering.
+  `Fields` and `single` share positional schema checks with verification callers.
+  `Document::{parse_prefix,parse_ber_prefix}` return the consumed length without
+  trimming legitimate zero octets; PDF callers separately check zero padding.
+- `oids`: named digest, signature, curve and ESS/CMS attribute identifiers.
 - `types::{Integer,ObjectIdentifier,BitString,StringValue,Time}` and
   `types::{boolean,octets}`: borrowed primitive views. INTEGER preserves
   minimal signed big-endian bytes; `unsigned()` removes only a positive sign
@@ -48,7 +52,10 @@ buffer, including when an extension value is parsed with `Extension::value_der`.
 - `cms::SignedData::{from_content_info,parse}`: outer ContentInfo or bare
   SignedData; detached/encapsulated content, digest algorithms, certificate
   choices, CRLs/other revocation evidence and signer infos. Certificate and
-  revocation choices not interpreted here remain explicit variants.
+  revocation choices not interpreted here remain explicit variants. Malformed
+  certificate schemas are retained as `CertificateChoice::Malformed`, including
+  the original element and error; a limit failure still aborts. The reported
+  entry points route BER set ordering through the caller's diagnostics.
 - `cms::SignedAttributes`: DER-only attributes, exact SET signature input,
   unique attribute lookup and required content-type/message-digest shapes.
   Signature input replaces only the original IMPLICIT [0] identifier with the
@@ -90,9 +97,11 @@ pass through `Diagnostics::repair`, so a strict sink rejects them:
 | `asn1.ber-indefinite` | Constructed indefinite length, bounded and EOC-terminated |
 | `asn1.ber-length` | Redundant definite-length octets, including long form below 128 |
 | `asn1.ber-octets` | Constructed OCTET STRING, with octet-string children only |
+| `asn1.ber-set-order` | SET OF members retained in noncanonical source order, through `set_of_reported` |
 
-Primitive canonicality and schema SET OF ordering remain strict. BER sets
-that are not in DER order are outside this compatibility subset. Certificates, CRLs, TSTInfo and ECDSA
+Primitive canonicality remains strict. `set_of` always checks DER order;
+`set_of_reported` admits BER misordering only with a reported repair.
+Certificates, CRLs, TSTInfo and ECDSA
 signature envelopes are DER even in a BER tree. Signed attributes are always
 rechecked as DER. This entry point is not a complete BER decoder.
 

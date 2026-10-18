@@ -33,8 +33,7 @@ pub use pagura_document::forms;
 /// Outlines, destinations, links, actions and page labels (12.3, 12.4, 12.5.6.5, 12.6).
 /// Actions are data: Pagura never follows a URI, opens a file or runs a script.
 pub use pagura_document::navigation;
-/// Inert PDF signature views and independent validation result states.
-pub use pagura_document::signatures;
+pub mod signatures;
 pub use pagura_document::{Document, IndirectObject, OpenOptions, Page, Rotation};
 pub use pagura_raster::{Pixmap, Rgba8};
 /// Form appearance programs and resources kept as data (12.7.4.3).
@@ -144,7 +143,8 @@ pub fn data_notices() -> impl Iterator<Item = (&'static str, &'static str)> {
 }
 
 /// Inspects signature fields, byte ranges and revision coverage (12.7.5.5, 12.8).
-/// Cryptography, trust, modification analysis and revocation remain unchecked.
+/// Checks CMS integrity for supported encodings. Trust, modification analysis,
+/// validation time and revocation remain unchecked.
 ///
 /// ```
 /// # fn main() -> pagura::Result<()> {
@@ -163,5 +163,5 @@ pub fn data_notices() -> impl Iterator<Item = (&'static str, &'static str)> {
 /// # Errors
 /// As [`Document::signatures`].
 pub fn signatures(document: &Document) -> Result<signatures::Signatures<'_>> {
-    document.signatures()
+    signatures::verify(document)
 }

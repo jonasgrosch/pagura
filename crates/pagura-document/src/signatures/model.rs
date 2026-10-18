@@ -1,7 +1,7 @@
 //! Borrowed PDF signature data and separate validation aspects (ADR 0015).
 use super::{ByteRange, ByteRangeError};
 use crate::Revision;
-use pagura_core::{Dictionary, Name, ObjectId, Position, Value};
+use pagura_core::{Diagnostic, Dictionary, Error, Name, ObjectId, Position, Value};
 
 /// Signature encoding (Table 255). Recognition does not imply verification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,7 +78,7 @@ pub struct SignatureReference<'a> {
     /// Original Data reference; required for FieldMDP, never followed here.
     pub data: Option<&'a Value>,
 }
-/// Signed-byte integrity. This stage never produces cryptographic success.
+/// Signed-byte integrity, separate from trust and algorithm policy (ADR 0015).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Integrity {
@@ -86,6 +86,22 @@ pub enum Integrity {
     NotCheckedYet,
     /// Exactly two source-bound ranges checked; digest and CMS not checked yet.
     ByteRangeCheckedCryptographyNotChecked,
+    /// Byte ranges, CMS signature and required attributes verified mathematically.
+    Verified,
+    /// Signed content, a CMS messageDigest or timestamp imprint differs.
+    DigestMismatch,
+    /// The signature equation or ESS signer-certificate binding failed.
+    SignatureInvalid,
+    /// No usable embedded certificate matches the signer identifier.
+    SignerCertificateMissing,
+    /// A digest, signature or public-key algorithm is unsupported.
+    UnsupportedAlgorithm,
+    /// The PDF sub-filter or an ASN.1 encoding is outside the implemented set.
+    UnsupportedEncoding,
+    /// Malformed CMS, parameters or signature encoding; see the detailed error.
+    Malformed,
+    /// An explicit parsing or verification budget was exhausted.
+    ResourceLimit,
     /// A byte-range structure check failed.
     InvalidByteRange(ByteRangeError),
 }
@@ -145,6 +161,14 @@ pub enum RevocationStatus {
 pub enum AlgorithmStatus {
     /// The encoding is recognized, but actual CMS algorithms are unchecked.
     NotCheckedYet,
+    /// All examined algorithms are implemented; this is not a strength policy.
+    Supported,
+    /// SHA-1 was encountered in content, attributes, an imprint or a PSS mask.
+    WeakSha1,
+    /// At least one examined algorithm is unsupported.
+    UnsupportedAlgorithm,
+    /// An unsupported algorithm occurred alongside an examined SHA-1 hash.
+    WeakSha1UnsupportedAlgorithm,
     /// Legacy SHA-1 encoding is weak and is not verified by this reader.
     WeakSha1Unsupported,
     /// Deprecated PKCS #1 encoding; its name alone does not identify the digest.
@@ -157,6 +181,13 @@ pub enum AlgorithmStatus {
 pub struct SignatureResults<'a> {
     /// Signed-byte integrity.
     pub integrity: Integrity,
+    /// Positioned failure when parsing or verification could not proceed.
+    pub error: Option<Error>,
+    /// Reported CMS BER deviations. No signed bytes are normalized.
+    pub diagnostics: Vec<Diagnostic>,
+    /// Malformed embedded certificate schemas or identifier extensions, retained
+    /// while selecting a usable signer certificate.
+    pub certificate_errors: Vec<Error>,
     /// Revision coverage.
     pub revision_coverage: RevisionCoverage<'a>,
     /// Permission analysis.
@@ -184,7 +215,7 @@ pub struct Signature<'a> {
     /// Signature encoding.
     pub sub_filter: SubFilter<'a>,
     /// Decoded Contents, including zero padding (12.8.3.3.1).
-    /// This is unauthenticated data and has not been parsed as CMS.
+    /// Presence alone authenticates nothing; consult the separate result states.
     pub contents: &'a [u8],
     /// Checked source ranges, or None when structure checks failed.
     pub byte_range: Option<ByteRange<'a>>,
@@ -204,7 +235,7 @@ pub struct Signature<'a> {
 impl<'a> Signature<'a> {
     /// Extracted CMS bytes for a recognized CMS encoding, including PDF zero
     /// padding. The CMS reader must frame DER before interpreting them; trimming
-    /// trailing zero octets would corrupt legitimate DER values. This stage does
+    /// trailing zero octets would corrupt legitimate DER values. This accessor does
     /// not parse CMS or establish any CMS integrity (12.8.3.3.1).
     pub fn cms_blob(&self) -> Option<&'a [u8]> {
         matches!(
@@ -228,7 +259,11 @@ pub struct SignatureField<'a> {
     pub qualified_name: String,
     /// Optional inert Lock dictionary.
     pub lock: Option<FieldLock<'a>>,
-    /// None for an empty field; appearances do not make a field signed.
+    /// A malformed field/lock/signature error, isolated from other signatures.
+    /// When present, `signature == None` does not mean an unsigned field.
+    pub error: Option<Error>,
+    /// None for an empty or malformed field; consult `error` first.
+    /// Appearances do not make a field signed.
     pub signature: Option<Signature<'a>>,
 }
 /// The signature fields and optional catalog usage-rights signature.
@@ -236,6 +271,13 @@ pub struct SignatureField<'a> {
 pub struct Signatures<'a> {
     /// Terminal signature fields in form preorder, including empty fields.
     pub fields: Vec<SignatureField<'a>>,
+    /// Certification signature linked directly from catalog Perms/DocMDP.
+    /// Its object identity links it to a matching signature field, if any.
+    pub certification: Option<Signature<'a>>,
+    /// Error reading the catalog certification signature.
+    pub certification_error: Option<Error>,
+    /// Error reading the catalog usage-rights signature.
+    pub usage_rights_error: Option<Error>,
     /// UR3 signature, which is referenced from Perms rather than a form field.
     pub usage_rights: Option<Signature<'a>>,
 }
