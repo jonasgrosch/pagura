@@ -1,43 +1,51 @@
 //! Legacy PDF RC4, corroborated by RFC 6229 section 2 test vectors.
 //! RFC 6229 is informational; it does not specify the cipher algorithm.
-use pagura_core::{Error, Result};
 
-/// Stateful legacy RC4 cipher. Debug output never includes its state.
+use crate::secret::wipe;
+
+/// Stateful legacy RC4 cipher. Debug output never includes its state, which
+/// is cleared when dropped.
 #[derive(Clone)]
-pub struct Rc4 {
+pub(crate) struct Rc4 {
     state: [u8; 256],
     i: u8,
     j: u8,
 }
+
 impl std::fmt::Debug for Rc4 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("Rc4 { .. }")
     }
 }
+
+impl Drop for Rc4 {
+    fn drop(&mut self) {
+        wipe(&mut self.state);
+    }
+}
+
 impl Rc4 {
-    /// Runs the RC4 key scheduling algorithm for a 1–256 byte key.
-    ///
-    /// # Errors
-    /// Returns `InvalidArgument` for an empty or overlong key.
-    pub fn new(key: &[u8]) -> Result<Self> {
-        if key.is_empty() || key.len() > 256 {
-            return Err(Error::invalid_argument(
-                "RC4 key must contain 1 to 256 bytes",
-            ));
-        }
+    /// Runs the RC4 key scheduling algorithm. The security handler passes
+    /// keys of 5–16 bytes; RC4 accepts 1–256.
+    pub(crate) fn new(key: &[u8]) -> Self {
+        debug_assert!(
+            (1..=256).contains(&key.len()),
+            "RC4 keys have 1 to 256 bytes"
+        );
         let mut state = [0; 256];
         for (slot, value) in state.iter_mut().zip(0..=u8::MAX) {
             *slot = value;
         }
         let mut j = 0u8;
-        for i in 0..256 {
-            j = j.wrapping_add(state[i]).wrapping_add(key[i % key.len()]);
+        for (i, &byte) in (0..256).zip(key.iter().cycle()) {
+            j = j.wrapping_add(state[i]).wrapping_add(byte);
             state.swap(i, usize::from(j));
         }
-        Ok(Self { state, i: 0, j: 0 })
+        Self { state, i: 0, j: 0 }
     }
+
     /// XORs bytes with the next keystream bytes, preserving streaming state.
-    pub fn apply_keystream(&mut self, data: &mut [u8]) {
+    pub(crate) fn apply_keystream(&mut self, data: &mut [u8]) {
         for byte in data {
             self.i = self.i.wrapping_add(1);
             self.j = self.j.wrapping_add(self.state[usize::from(self.i)]);
@@ -52,35 +60,20 @@ impl Rc4 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pagura_testkit::{assert_bytes_eq, fixture, fixture_text, hex, unhex};
+
     #[test]
     fn rfc6229_key1_offsets_and_streaming() {
-        let mut cipher = Rc4::new(&[1, 2, 3, 4, 5]).unwrap();
+        let mut cipher = Rc4::new(&[1, 2, 3, 4, 5]);
         let mut data = [0; 272];
         for chunk in data.chunks_mut(7) {
             cipher.apply_keystream(chunk);
         }
-        assert_eq!(
-            &data[..16],
-            &[
-                0xb2, 0x39, 0x63, 0x05, 0xf0, 0x3d, 0xc0, 0x27, 0xcc, 0xc3, 0x52, 0x4a, 0x0a, 0x11,
-                0x18, 0xa8
-            ]
-        );
-        assert_eq!(
-            &data[16..32],
-            &[
-                0x69, 0x82, 0x94, 0x4f, 0x18, 0xfc, 0x82, 0xd5, 0x89, 0xc4, 0x03, 0xa4, 0x7a, 0x0d,
-                0x09, 0x19
-            ]
-        );
-        assert_eq!(
-            &data[256..272],
-            &[
-                0x1c, 0xfc, 0xf6, 0x2b, 0x03, 0xed, 0xdb, 0x64, 0x1d, 0x77, 0xdf, 0xcf, 0x7f, 0x8d,
-                0x8c, 0x93
-            ]
-        );
+        assert_eq!(hex(&data[..16]), "b2396305f03dc027ccc3524a0a1118a8");
+        assert_eq!(hex(&data[16..32]), "6982944f18fc82d589c403a47a0d0919");
+        assert_eq!(hex(&data[256..272]), "1cfcf62b03eddb641d77dfcf7f8d8c93");
     }
+
     #[test]
     fn rfc6229_key_sizes() {
         for (size, expected) in [
@@ -93,44 +86,36 @@ mod tests {
         ] {
             let key: Vec<u8> = (1..=size).collect();
             let mut output = [0; 16];
-            Rc4::new(&key).unwrap().apply_keystream(&mut output);
-            for (actual, pair) in output.iter().zip(expected.as_bytes().as_chunks::<2>().0) {
-                assert_eq!(
-                    *actual,
-                    u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap()
-                );
-            }
+            Rc4::new(&key).apply_keystream(&mut output);
+            assert_eq!(hex(&output), expected, "{size}-byte key");
         }
     }
+
     #[test]
     fn rfc6229_both_key_families_at_every_listed_offset() {
         for bits in [40, 128, 256] {
             for family in [1, 2] {
                 let name = format!("rc4-rfc6229-{bits}-key{family}");
-                let key = pagura_testkit::fixture("crypto", &format!("{name}.key"));
-                let samples = pagura_testkit::fixture("crypto", &format!("{name}.samples"));
+                let key = fixture("crypto", &format!("{name}.key"));
                 let mut contiguous = vec![0; 4112];
-                Rc4::new(&key).unwrap().apply_keystream(&mut contiguous);
+                Rc4::new(&key).apply_keystream(&mut contiguous);
                 let mut streamed = vec![0; 4112];
-                let mut rc4 = Rc4::new(&key).unwrap();
+                let mut rc4 = Rc4::new(&key);
                 for chunk in streamed.chunks_mut(13) {
                     rc4.apply_keystream(chunk);
                     rc4.apply_keystream(&mut []);
                 }
-                assert_eq!(streamed, contiguous, "{name}");
+                assert_bytes_eq(&streamed, &contiguous, &name);
                 let mut count = 0;
-                for line in std::str::from_utf8(&samples).unwrap().lines() {
-                    let (offset, hex) = line.split_once(' ').unwrap();
+                for line in fixture_text("crypto", &format!("{name}.samples")).lines() {
+                    let (offset, expected) = line.split_once(' ').unwrap();
                     let offset: usize = offset.parse().unwrap();
-                    for (index, pair) in hex.as_bytes().as_chunks::<2>().0.iter().enumerate() {
-                        let expected =
-                            u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap();
-                        assert_eq!(
-                            contiguous[offset + index],
-                            expected,
-                            "{name} offset {offset}"
-                        );
-                    }
+                    let expected = unhex(expected);
+                    assert_bytes_eq(
+                        &contiguous[offset..offset + expected.len()],
+                        &expected,
+                        &format!("{name} offset {offset}"),
+                    );
                     count += 1;
                 }
                 assert_eq!(count, 18);
@@ -139,9 +124,13 @@ mod tests {
     }
 
     #[test]
-    fn invalid_keys_and_debug_redaction() {
-        assert!(Rc4::new(&[]).is_err());
-        assert!(Rc4::new(&[0; 257]).is_err());
-        assert_eq!(format!("{:?}", Rc4::new(b"secret").unwrap()), "Rc4 { .. }");
+    #[should_panic(expected = "RC4 keys have 1 to 256 bytes")]
+    fn empty_keys_violate_the_key_contract() {
+        let _ = Rc4::new(&[]);
+    }
+
+    #[test]
+    fn debug_is_redacted() {
+        assert_eq!(format!("{:?}", Rc4::new(b"secret")), "Rc4 { .. }");
     }
 }
