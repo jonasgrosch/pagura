@@ -6,20 +6,21 @@ use super::{
     TextPage, charge,
 };
 use std::collections::{BTreeMap, BTreeSet};
-mod copy;
-mod geometry;
+pub(super) mod copy;
+pub(super) mod geometry;
 use copy::{append, export};
 use geometry::{content_lines, order};
 
-struct Atom {
-    chars: Vec<Option<char>>,
-    glyphs: Range<usize>,
-    geometry: Option<usize>,
-    marked: Option<usize>,
-    replacement: Option<Replacement>,
+pub(super) struct Atom {
+    pub(super) chars: Vec<Option<char>>,
+    pub(super) glyphs: Range<usize>,
+    pub(super) geometry: Option<usize>,
+    pub(super) marked: Option<usize>,
+    pub(super) replacement: Option<Replacement>,
+    pub(super) occurrence: Option<usize>,
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Replacement {
+pub(super) enum Replacement {
     Actual,
     Alt,
 }
@@ -33,8 +34,13 @@ pub(super) fn build(
     source: Arc<PositionedText>,
     options: LayoutOptions,
     limits: Limits,
+    source_retained: Option<usize>,
 ) -> Result<TextPage> {
     validate(&source, options, limits)?;
+    let source_retained = source_retained.unwrap_or_else(|| super::memory::source_bytes(&source));
+    if source_retained > limits.document_bytes {
+        return Err(Error::limit("positioned text retained budget exceeded"));
+    }
     let atoms = atoms(&source, options, limits)?;
     let mut page = TextPage {
         positioned: source,
@@ -45,6 +51,11 @@ pub(super) fn build(
         lines: Vec::new(),
         words: Vec::new(),
         limits,
+        retained: 0,
+        source_retained,
+        options,
+        logical: None,
+        structure_fallback: None,
     };
     let mut alternate = false;
     for atom in &atoms {
@@ -79,24 +90,15 @@ pub(super) fn build(
     let lines = content_lines(&page.positioned, &atoms, options);
     let ordered = order(&page.positioned, lines);
     export(&mut page, &atoms, ordered, options)?;
+    page.retained = super::memory::estimate(&page);
+    if page.retained > limits.document_bytes {
+        return Err(Error::limit("text page retained budget exceeded"));
+    }
     Ok(page)
 }
 
 fn validate(source: &PositionedText, options: LayoutOptions, limits: Limits) -> Result<()> {
-    if [
-        options.space_gap,
-        options.baseline_tolerance,
-        options.paragraph_gap,
-    ]
-    .into_iter()
-    .any(|n| !n.is_finite() || n < 0.0)
-    {
-        return Err(Error::invalid_argument("invalid text layout thresholds"));
-    }
-    if source.glyphs.len() > limits.value_nodes || source.marked.len() > limits.value_nodes {
-        return Err(Error::limit("positioned text entry budget exceeded"));
-    }
-    let count = source.glyphs.len().saturating_add(source.marked.len());
+    let count = validate_records(source, options, limits)?;
     let mut work = count.saturating_mul(
         usize::try_from(count.bit_width())
             .unwrap_or(usize::MAX)
@@ -185,7 +187,51 @@ fn validate(source: &PositionedText, options: LayoutOptions, limits: Limits) -> 
     Ok(())
 }
 
-fn atoms(source: &PositionedText, options: LayoutOptions, limits: Limits) -> Result<Vec<Atom>> {
+fn validate_records(
+    source: &PositionedText,
+    options: LayoutOptions,
+    limits: Limits,
+) -> Result<usize> {
+    if [
+        options.space_gap,
+        options.baseline_tolerance,
+        options.paragraph_gap,
+    ]
+    .into_iter()
+    .any(|n| !n.is_finite() || n < 0.0)
+    {
+        return Err(Error::invalid_argument("invalid text layout thresholds"));
+    }
+    if source.glyphs.len() > limits.value_nodes
+        || source.marked.len() > limits.value_nodes
+        || source.objects.len() > limits.value_nodes
+        || source.fonts.len() > limits.value_nodes
+    {
+        return Err(Error::limit("positioned text entry budget exceeded"));
+    }
+    let count = source
+        .glyphs
+        .len()
+        .saturating_add(source.marked.len())
+        .saturating_add(source.objects.len());
+    for object in &source.objects {
+        if object.glyphs.start > object.glyphs.end || object.glyphs.end > source.glyphs.len() {
+            return Err(Error::invalid_argument(
+                "invalid extraction object glyph range",
+            ));
+        }
+        if object.marked_content.len() > limits.depth {
+            return Err(Error::limit("text object marked-content depth exceeded"));
+        }
+    }
+    Ok(count)
+}
+
+pub(super) fn atoms(
+    source: &PositionedText,
+    options: LayoutOptions,
+    limits: Limits,
+) -> Result<Vec<Atom>> {
     let mut replacements = BTreeMap::new();
     let mut selected = BTreeSet::new();
     for span in &source.marked {
@@ -212,6 +258,7 @@ fn atoms(source: &PositionedText, options: LayoutOptions, limits: Limits) -> Res
                         .as_ref()
                         .or(span.content.alt.as_ref());
                     result.push(Atom {
+                        occurrence: Some(span.content.id),
                         chars: text.into_iter().flat_map(|s| s.chars()).map(Some).collect(),
                         glyphs: span.glyphs.clone(),
                         geometry: (span.glyphs.start < span.glyphs.end)
@@ -266,6 +313,7 @@ fn atoms(source: &PositionedText, options: LayoutOptions, limits: Limits) -> Res
                 .as_ref()
                 .map_or_else(|| vec![None], |s| s.chars().map(Some).collect());
             result.push(Atom {
+                occurrence: None,
                 chars,
                 glyphs: g..g + 1,
                 geometry: Some(g),

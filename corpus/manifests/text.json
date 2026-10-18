@@ -5,6 +5,2880 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "text/tagged-nested-order",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-nested-order.content",
+          "sha256": "cad4c5623efc0ae67dbe8274e7ffc184ca91df37a8e844624240f8eef1300ce7"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-nested-order.glyphs",
+          "sha256": "8983fcf20953e1ac5a5e7774f7d543888bb9dba97bd87821c156769f09307c66"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-nested-order.logical",
+          "sha256": "b2795b4eb0f4679b23e99299be84b9f32e822ad74c9b3c05db126d8a4842f775"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-nested-order.logical-characters",
+          "sha256": "b11a51be3d21d925b6dbd73558acfe2181fcf896df8c6578b50cf1dff3dd6668"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-nested-order.pdf",
+          "sha256": "80c69cc314248b1338df815d6aebaa03fa5e13e6e43538ffa85462a92edc142e"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-nested-order.structure",
+          "sha256": "655ae600dbec71b1fa823dd4c0150fd098de3ce57c05ddfda9991887826136d7"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-nested-order.text",
+          "sha256": "519b924a46b9d18172a559e47ed4980f35b0d32cc5de2c31fc6a846ff94cd3d8"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-stream-span",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-stream-span.content",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-stream-span.glyphs",
+          "sha256": "957f2eb4c504ffeea3dbd6e74d4f9a00134e356b028977bc8b7f992ebc1cd995"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-stream-span.logical",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-stream-span.logical-characters",
+          "sha256": "78db8c911969f885d9b956cbd40a9fa0b2865858a5166c0a2f0dc550b70005a5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-stream-span.pdf",
+          "sha256": "8d6a7c44a2d0610515af44cebb3cd5e60b321a1966204dcc6470ba4771e3fc31"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-stream-span.structure",
+          "sha256": "8da4cd6c568c68aebc11ebad10886ae0f7c8fca7122d5e5cfb7bdd640eec4293"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-stream-span.text",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-form-mcid",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-form-mcid.content",
+          "sha256": "d040bfc6661b2fc42e4919816943b918f8358b6bff4458cc1fbddc1eab7477b7"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-form-mcid.glyphs",
+          "sha256": "6973e69d5c3b0102e8fbb34b2014804dd286bb5c50dc2c2fd3120e33d7badd7f"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-form-mcid.logical",
+          "sha256": "e3f031078c5cb0a6b752acdbd63507ae12951c62f906559bcee8a74611c13b04"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-form-mcid.logical-characters",
+          "sha256": "f03ff36dcf49a1bbe35b237e357fb895757c6dd0cbd7bdaf1d3dc73252528917"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-form-mcid.pdf",
+          "sha256": "5a477da7f3aa4211e0e29260b8f09ab5f277928bbefdfd79d3a53dc64c912c65"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-form-mcid.structure",
+          "sha256": "9e54bca413bb7a89d78ebf8358f491e5c75f369498119c228afd4b5e89d26687"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-form-mcid.text",
+          "sha256": "addc5e7b3eab21a217a6053c987e0bee152dbcaa6fafc6d222b0b2d5ff3586f8"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-object-reference",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-object-reference.content",
+          "sha256": "d040bfc6661b2fc42e4919816943b918f8358b6bff4458cc1fbddc1eab7477b7"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-object-reference.glyphs",
+          "sha256": "fb5b560171f0a39908f096e9792b4f030e9c9f4405d8192e5223582381d362c8"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-object-reference.logical",
+          "sha256": "e3f031078c5cb0a6b752acdbd63507ae12951c62f906559bcee8a74611c13b04"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-object-reference.logical-characters",
+          "sha256": "f03ff36dcf49a1bbe35b237e357fb895757c6dd0cbd7bdaf1d3dc73252528917"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-object-reference.pdf",
+          "sha256": "4cfef0d015a96d011a94affdbb9dc9c71e90ef923d4bec5f2f69871f0daa3600"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-object-reference.structure",
+          "sha256": "9e54bca413bb7a89d78ebf8358f491e5c75f369498119c228afd4b5e89d26687"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-object-reference.text",
+          "sha256": "addc5e7b3eab21a217a6053c987e0bee152dbcaa6fafc6d222b0b2d5ff3586f8"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-role-artifact",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-role-artifact.content",
+          "sha256": "5f14d09f47bc4e257ed011dbe9ea0d13145b1a3ae039557b3849ceb1fedc922a"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-role-artifact.glyphs",
+          "sha256": "50b420423a24ebca040b065410640ddd5a486dcf407732395e4e5d07c5d2cdc1"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-role-artifact.logical",
+          "sha256": "3948546c91bc5f5cd5c93662618eb611a5815347e6123bcb714f50188ee34f4f"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-role-artifact.logical-characters",
+          "sha256": "6cd0f6d00c5e6bec1d7ebcdb0363417581de3ff50b2c9c011d756e3bbc95dd77"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-role-artifact.pdf",
+          "sha256": "b979aeedc5c9e825336dd779bb6a1cfa9a98b077a1b34ff0b6ec52d813e959ef"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-role-artifact.structure",
+          "sha256": "fbbd90315898b46e0ff29abad8a716dab199a1c03941a3f5d972cd0c15bbb3ef"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-role-artifact.text",
+          "sha256": "ba9ef5cada57b6943a1f99465d5fc524301f8988dcf9a8e3cbf66b0943ea9e66"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-actual-text",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-actual-text.content",
+          "sha256": "6fe7d7112caaba1b1bc7bfa656974ac4016cc525a7286117494f5b29dfec1f77"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-actual-text.glyphs",
+          "sha256": "138d4eead4d0588fda2204cb6cdac336aadfcee817e76d5804ba8543699cc191"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-actual-text.logical",
+          "sha256": "aca01a1a3a27d35c264a8104b0f2817aa31a8a29f8eec1e6cceddc6ac208c723"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-actual-text.logical-characters",
+          "sha256": "5f704af9b465d691cbacfd61e732fdd785c2e2cc2026173a2e924dc38c57d15e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-actual-text.pdf",
+          "sha256": "b315487c9ea4f37e4784c68e810014cca62cf69ac5062c72e2581af1d5861f74"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-actual-text.structure",
+          "sha256": "38b632224d181cd9d65348b7f83820c42645ef5e78162359a194a2cb92913f8a"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-actual-text.text",
+          "sha256": "6fe7d7112caaba1b1bc7bfa656974ac4016cc525a7286117494f5b29dfec1f77"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-alt",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-alt.content",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-alt.glyphs",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-alt.logical",
+          "sha256": "c659a0d0edc26cd3f94c4cd097b65ffd1bd0fbcaa291fbb09604749dc2c5122c"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-alt.logical-characters",
+          "sha256": "632da2ef8713e292009941013fa14b5c9e4159c9583d4606bc4c4e583646d686"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-alt.pdf",
+          "sha256": "c128e210113a0aeaab040fe5311e5c7a930c98b627b4a77c1f20166e3c9ce6e3"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-alt.structure",
+          "sha256": "7e8d20fc5058bfc51a55b8e5135e1e44e23b5b390d9a2dde9d487136f30cfa0f"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-alt.text",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-actual-adjacent",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-actual-adjacent.content",
+          "sha256": "3ed6bb9133af9052c69643994f1ed12bc5dbdfa49e43854884c229b563b6bb8b"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-actual-adjacent.glyphs",
+          "sha256": "b1f9625a73675e0e5d36093f6fcd5f5efcd6255b21e7b38c26af3dce2c007433"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-actual-adjacent.logical",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-actual-adjacent.logical-characters",
+          "sha256": "0e7d8abe7b09422eef93cf07f4dd714ee84b145031c7f2ec057c0bbc23bbd0f1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-actual-adjacent.pdf",
+          "sha256": "bab538b18b5b8a538d5c34cc50d96ac6d538e19c04353b1c7275f51406d8fdee"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-actual-adjacent.structure",
+          "sha256": "4d13daa99a3d01c127f9c63f1f335142c23d422894944b218884d5767472fa42"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-actual-adjacent.text",
+          "sha256": "fd53649b35b74a609ea62f4df472e25b81ad63a8935d625869efa01ce4ac9762"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-role-loop",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-role-loop.content",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-role-loop.glyphs",
+          "sha256": "376c1f937dffeeb6acc9316a017674a590b997c473945c3f590ef1fd9c275028"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-role-loop.logical",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-role-loop.logical-characters",
+          "sha256": "0ce99087d6be3c63df70f92250185935af69fe7a2e89ea2791652bd4939eaaad"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-role-loop.pdf",
+          "sha256": "f306651c7035e4f4ba0787f1347b1786449e5af7f4bc42ad9592d2bfeabcc828"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-role-loop.structure",
+          "sha256": "91ed19f34b6baf85ca6b44fa2e23f8f3b79b7347f21c9f7e6e58aee467c7ee2f"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-role-loop.text",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-standard-role-remap",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-standard-role-remap.content",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-standard-role-remap.glyphs",
+          "sha256": "376c1f937dffeeb6acc9316a017674a590b997c473945c3f590ef1fd9c275028"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-standard-role-remap.logical",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-standard-role-remap.logical-characters",
+          "sha256": "0ce99087d6be3c63df70f92250185935af69fe7a2e89ea2791652bd4939eaaad"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-standard-role-remap.pdf",
+          "sha256": "7d4131ea0f92e71e0bae8dc755e13953b0ed91c875f44cc7ae4f2fc3d2af890e"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-standard-role-remap.structure",
+          "sha256": "82ac338c5ebb24e513c1b6bf4fb480994deaf7f67b267e15d545ae8e8407f86a"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-standard-role-remap.text",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-mixed-kids",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-mixed-kids.content",
+          "sha256": "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-mixed-kids.glyphs",
+          "sha256": "bb5ad8891f2ee0b2d549e85afa35b603b1d8f6f76e643dd36d13e1875e48c753"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-mixed-kids.logical",
+          "sha256": "322f7db21cbf1b6f634dc9aaa6a16ceb38ff220e2d9ae9986f45446f1ca936ab"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-mixed-kids.logical-characters",
+          "sha256": "4d6ef8713d3df89c49e5f66446078cfbf1cca73f625f50c777d67d19f5ddcb17"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-mixed-kids.pdf",
+          "sha256": "e34a6fe7a574674cf915704b1e74bcc3db52426b344545f5b02aa7954db5133c"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-mixed-kids.structure",
+          "sha256": "127eca036f17e984d29024d5ca51050b79d201bf9c6da5f4e99ce5194edc3da4"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-mixed-kids.text",
+          "sha256": "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-empty-actual",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-empty-actual.content",
+          "sha256": "c3812fc4acb861d5182fc2b8155f327f736fbe5e5eb86a7bd7afcb6dc5497282"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-empty-actual.glyphs",
+          "sha256": "36a7bc41fd60371c211cb724f114624375ae4ac5b7a5d8096009b21caeed753d"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-empty-actual.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-empty-actual.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-empty-actual.pdf",
+          "sha256": "cb9179d33990f6728a2a960cdc4a2d686bd190f113b853185c317310031101cf"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-empty-actual.structure",
+          "sha256": "3d313b57d3f077c71c73bc0396df82a2c14d055ce2e7aed8f7e456a1376acb36"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-empty-actual.text",
+          "sha256": "c3812fc4acb861d5182fc2b8155f327f736fbe5e5eb86a7bd7afcb6dc5497282"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-hidden-actual",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-hidden-actual.content",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-hidden-actual.glyphs",
+          "sha256": "e5a619a97eecce9f9e8290b25ac56877cbab58aeaeeca689cddb3451eb6ab03d"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-hidden-actual.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-hidden-actual.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-hidden-actual.pdf",
+          "sha256": "32ad7bd3668d1edec7ee8fc1c791c64c0808349ee86f55bf6943b2a88e32ba81"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-hidden-actual.structure",
+          "sha256": "3d313b57d3f077c71c73bc0396df82a2c14d055ce2e7aed8f7e456a1376acb36"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-hidden-actual.text",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-hidden-object-alt",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-hidden-object-alt.content",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-hidden-object-alt.glyphs",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-hidden-object-alt.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-hidden-object-alt.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-hidden-object-alt.pdf",
+          "sha256": "3b9bcfd566a46f343238cfcb27defb2e18ac25964498e2238f8d25c2b04c3a76"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-hidden-object-alt.structure",
+          "sha256": "1ebc62af911b839f5789225588a1fd45273a092986af52ee6deb817d6c7605a4"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-hidden-object-alt.text",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-unsupported-replacement",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-unsupported-replacement.content",
+          "sha256": "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-unsupported-replacement.error",
+          "sha256": "8426d6fc17818a4c9a956da78bf142a2731969e32248e34211a639643e9633e7"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-unsupported-replacement.fallback",
+          "sha256": "d73a468ba0fef18509df247a5ef02ef5fd5f384b9852a989ee0097062c9b4aad"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-unsupported-replacement.glyphs",
+          "sha256": "95efeca535211a138ea714d4861d59394a92ad53f23eeeb92452474c309c8929"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-unsupported-replacement.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-unsupported-replacement.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-unsupported-replacement.pdf",
+          "sha256": "2479cdca2692cf2b7d3591be3af12243f76860bcf2a0890c8043f93e633f08b0"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-unsupported-replacement.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-unsupported-replacement.structure",
+          "sha256": "134ed634ec36e3407ebb379af38b77acfd870385d6b67d5326e093eced0fc8c5"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-unsupported-replacement.text",
+          "sha256": "d73a468ba0fef18509df247a5ef02ef5fd5f384b9852a989ee0097062c9b4aad"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-heading-seven",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-heading-seven.content",
+          "sha256": "b34f17f02ecf0307437429f667421d119aaf1bf819694236efe15c538850445c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-heading-seven.glyphs",
+          "sha256": "514a4a6a9f5fa940a9dbc13336b33de39a9167dc8168f4b08235acd5c7dc3b63"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-heading-seven.logical",
+          "sha256": "b34f17f02ecf0307437429f667421d119aaf1bf819694236efe15c538850445c"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-heading-seven.logical-characters",
+          "sha256": "c9f1428bfc3cb9a81e8a3ec0cc7c706c6ca707cedaca457e91321c3395a47ba0"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-heading-seven.pdf",
+          "sha256": "4103b3db94c3d2b91faf0b460044cda4082c2c05a8e5816cb544d193f0f7b795"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-heading-seven.structure",
+          "sha256": "ca73da60a77ad6373224d0196a9742df4d7c86b8d1b0e6412efd23f03ec15b3f"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-heading-seven.text",
+          "sha256": "b34f17f02ecf0307437429f667421d119aaf1bf819694236efe15c538850445c"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-namespace-pdf17",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-namespace-pdf17.content",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-namespace-pdf17.glyphs",
+          "sha256": "376c1f937dffeeb6acc9316a017674a590b997c473945c3f590ef1fd9c275028"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-namespace-pdf17.logical",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-namespace-pdf17.logical-characters",
+          "sha256": "0ce99087d6be3c63df70f92250185935af69fe7a2e89ea2791652bd4939eaaad"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-namespace-pdf17.pdf",
+          "sha256": "af37be601bbf954515f2e0d8b493a69261b768fd6962668b1dce10c0a438da6b"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-namespace-pdf17.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-namespace-pdf17.text",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-annotation-alt",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-annotation-alt.content",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-annotation-alt.glyphs",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-annotation-alt.logical",
+          "sha256": "a6a32dbc5618ea39f6df5b0f9808e3588b19e00d5f6f96c69492e40386e5aeab"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-annotation-alt.logical-characters",
+          "sha256": "1db337c09f1e5ec3575b3268e6e62d9d269a7cd4f59066347860f62fd1fd1b15"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-annotation-alt.pdf",
+          "sha256": "5c349c8117e172312c375cf2c48337454648cd1ea826ad08e9f614f480aeadcc"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-annotation-alt.structure",
+          "sha256": "87ce2f1afb049886967cc761c2680bed9b7c78b79ad577fe0201365829b2b774"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-annotation-alt.text",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-hidden-annotation-alt",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-hidden-annotation-alt.content",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-hidden-annotation-alt.glyphs",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-hidden-annotation-alt.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-hidden-annotation-alt.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-hidden-annotation-alt.pdf",
+          "sha256": "4aa2860486947eccb502e5e1c1b09d4a3af685a2850cf3e382447432f685b6a5"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-hidden-annotation-alt.structure",
+          "sha256": "1ebc62af911b839f5789225588a1fd45273a092986af52ee6deb817d6c7605a4"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-hidden-annotation-alt.text",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-malformed-role",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-malformed-role.content",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-malformed-role.error",
+          "sha256": "93b8edb0066d58b98bcf1f5e223a186f231ab09ae359ceb2e771fa381c5f9dc5"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-malformed-role.fallback",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-malformed-role.glyphs",
+          "sha256": "376c1f937dffeeb6acc9316a017674a590b997c473945c3f590ef1fd9c275028"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-malformed-role.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-malformed-role.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-malformed-role.pdf",
+          "sha256": "46ed5bc3d69961fda268425103c85a86fe7cb416ec2f129e3b58d1ef04ce84ae"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-malformed-role.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-malformed-role.structure",
+          "sha256": "a47a583ccf066b2748ea61af7ecbc6daa083152d22d4eff0aa066ff12208aff6"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-malformed-role.text",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-unsupported-appearance",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-unsupported-appearance.content",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-unsupported-appearance.error",
+          "sha256": "79ca43fbe7fee54a25cf8be09e70662d6e227d75af243de8ddf432a2d145ad80"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-unsupported-appearance.fallback",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-unsupported-appearance.glyphs",
+          "sha256": "a5a8fbd52362870e495415b54753e2a123b9fccf0bb027722169f8cc1951da43"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-unsupported-appearance.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-unsupported-appearance.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-unsupported-appearance.pdf",
+          "sha256": "ddc8b9e41f78f7e6b6b4c93bafc4997bd12532dde2dea073ad50edd8d0d6819c"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-unsupported-appearance.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-unsupported-appearance.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-unsupported-appearance.text",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-unsupported-crosspage-replacement",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-unsupported-crosspage-replacement.content",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-unsupported-crosspage-replacement.error",
+          "sha256": "8426d6fc17818a4c9a956da78bf142a2731969e32248e34211a639643e9633e7"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-unsupported-crosspage-replacement.fallback",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-unsupported-crosspage-replacement.glyphs",
+          "sha256": "61b0c3becbd606f41efafb7648eff35ba28f061c8a2b84c77699d8049f671fe0"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-unsupported-crosspage-replacement.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-unsupported-crosspage-replacement.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-unsupported-crosspage-replacement.pdf",
+          "sha256": "0f6202f141abdb1ebc5bc6c881fb3516e488ac18d70b077bb56658f3085232a6"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-unsupported-crosspage-replacement.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-unsupported-crosspage-replacement.structure",
+          "sha256": "65980975bc9d92065006140f4d9bcc63cd8167be7cffb79c348e4095c6e154fe"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-unsupported-crosspage-replacement.text",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-image-alt",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-image-alt.content",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-image-alt.glyphs",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-image-alt.logical",
+          "sha256": "1aa4cb0bcca76e92e30677e809bb3d4b5c066715ef4d558184e319496bcc5125"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-image-alt.logical-characters",
+          "sha256": "46becb9a8d8e1b21c66033d7be7e2d40508a7b0551afbd121d14781db550b4a8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-image-alt.pdf",
+          "sha256": "02d2b8ce13872514c1a68ff787e622e078608d403c25478c2cef46d778a26b13"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-image-alt.structure",
+          "sha256": "6245b114304f7570ef4dc8c23cbee7131520a5fb2aa910a6ab57b304ef7a5048"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-image-alt.text",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-hidden-image-alt",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-hidden-image-alt.content",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-hidden-image-alt.glyphs",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-hidden-image-alt.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-hidden-image-alt.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-hidden-image-alt.pdf",
+          "sha256": "978102d3f77f5309f6eadc35e5d9de1391f6587ac1da171919802ea5743f9e46"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-hidden-image-alt.structure",
+          "sha256": "1ebc62af911b839f5789225588a1fd45273a092986af52ee6deb817d6c7605a4"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-hidden-image-alt.text",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-null-optionals",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-null-optionals.content",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-null-optionals.glyphs",
+          "sha256": "376c1f937dffeeb6acc9316a017674a590b997c473945c3f590ef1fd9c275028"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-null-optionals.logical",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-null-optionals.logical-characters",
+          "sha256": "0ce99087d6be3c63df70f92250185935af69fe7a2e89ea2791652bd4939eaaad"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-null-optionals.pdf",
+          "sha256": "ebedde9916121ddef11f503319b60c872a5c5d3a618bc37360be99fb0eff3bac"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-null-optionals.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-null-optionals.text",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-indirect-null-optionals",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-indirect-null-optionals.content",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-indirect-null-optionals.glyphs",
+          "sha256": "376c1f937dffeeb6acc9316a017674a590b997c473945c3f590ef1fd9c275028"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-indirect-null-optionals.logical",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-indirect-null-optionals.logical-characters",
+          "sha256": "0ce99087d6be3c63df70f92250185935af69fe7a2e89ea2791652bd4939eaaad"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-indirect-null-optionals.pdf",
+          "sha256": "1c3e1f6d4169db18bd57406624df24da317f6b0eaa799da1ad1ae1296ffcbb47"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-indirect-null-optionals.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-indirect-null-optionals.text",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-null-kids",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-null-kids.content",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-null-kids.glyphs",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-null-kids.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-null-kids.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-null-kids.pdf",
+          "sha256": "a9645275b7e71007fad45aeabf2415c1d969357ab5f37ae8cf0119cfc59424a1"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-null-kids.structure",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-null-kids.text",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-negative-parent-key",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-negative-parent-key.content",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-negative-parent-key.glyphs",
+          "sha256": "376c1f937dffeeb6acc9316a017674a590b997c473945c3f590ef1fd9c275028"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-negative-parent-key.logical",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-negative-parent-key.logical-characters",
+          "sha256": "0ce99087d6be3c63df70f92250185935af69fe7a2e89ea2791652bd4939eaaad"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-negative-parent-key.pdf",
+          "sha256": "40fa7cf27c6cd0e432e7770bc6b7fdda19fbe17c3000f5fd0ebd1213b3aeb2ec"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-negative-parent-key.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-negative-parent-key.text",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-indirect-types",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-indirect-types.content",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-indirect-types.glyphs",
+          "sha256": "376c1f937dffeeb6acc9316a017674a590b997c473945c3f590ef1fd9c275028"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-indirect-types.logical",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-indirect-types.logical-characters",
+          "sha256": "0ce99087d6be3c63df70f92250185935af69fe7a2e89ea2791652bd4939eaaad"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-indirect-types.pdf",
+          "sha256": "186f0e3c0c1fae1dc4cf02f4c8f4055eb2e63ebe257832b270c73fcf083a52d1"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-indirect-types.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-indirect-types.text",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-malformed-type",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-malformed-type.content",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-malformed-type.error",
+          "sha256": "93b8edb0066d58b98bcf1f5e223a186f231ab09ae359ceb2e771fa381c5f9dc5"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-malformed-type.fallback",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-malformed-type.glyphs",
+          "sha256": "376c1f937dffeeb6acc9316a017674a590b997c473945c3f590ef1fd9c275028"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-malformed-type.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-malformed-type.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-malformed-type.pdf",
+          "sha256": "e0de8fbae20eb650ea7dd5339485bdc2fd409113a861c72c802ca33c36bd3882"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-malformed-type.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-malformed-type.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-malformed-type.text",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-deep-tree",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-deep-tree.content",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-deep-tree.error",
+          "sha256": "55ea09e5715d0a8d9d94018d473bf23b2d7e630c2adb1f1acad3bada74c6fd05"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-deep-tree.fallback",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-deep-tree.glyphs",
+          "sha256": "376c1f937dffeeb6acc9316a017674a590b997c473945c3f590ef1fd9c275028"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-deep-tree.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-deep-tree.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-deep-tree.pdf",
+          "sha256": "90846215423c641624b11c0f5a5eae170526a46c1fb16d625144b22a1dffb481"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-deep-tree.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-deep-tree.structure",
+          "sha256": "c9b90fd5351832b0519b2fbd1c552f79a5d2921681a496332ac2fc37d5ec6896"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-deep-tree.text",
+          "sha256": "71988c4d8e0803ba4519f0b2864c1331c14a1890bf8694e251379177bfedb5c3"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-malformed-parent",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-malformed-parent.content",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-malformed-parent.error",
+          "sha256": "93b8edb0066d58b98bcf1f5e223a186f231ab09ae359ceb2e771fa381c5f9dc5"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-malformed-parent.fallback",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-malformed-parent.glyphs",
+          "sha256": "9d7aab1269a06454149ca0fefdcc541fd676b078249a03ece6e320a473aeb9d2"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-malformed-parent.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-malformed-parent.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-malformed-parent.pdf",
+          "sha256": "765b8a9c957d3237a3118fe7b33928b625f3a32dec3c871000213a52bb5e069c"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-malformed-parent.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-malformed-parent.structure",
+          "sha256": "57b7a93539ac8e495344afd43eee1e50a8dbb56a9eb33e2175632d73ce8f5041"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-malformed-parent.text",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-malformed-cycle",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-malformed-cycle.content",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-malformed-cycle.error",
+          "sha256": "c501935a6b2b247d007e9860becbe4c13d6561af9fc8b73ba24c8b2a7a80cb22"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-malformed-cycle.fallback",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-malformed-cycle.glyphs",
+          "sha256": "9d7aab1269a06454149ca0fefdcc541fd676b078249a03ece6e320a473aeb9d2"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-malformed-cycle.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-malformed-cycle.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-malformed-cycle.pdf",
+          "sha256": "c84722f80af2bea99ed92b4bcfecc829c6b0f92411c636810c5826c15933fd66"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-malformed-cycle.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-malformed-cycle.structure",
+          "sha256": "57b7a93539ac8e495344afd43eee1e50a8dbb56a9eb33e2175632d73ce8f5041"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-malformed-cycle.text",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-malformed-namespace",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-malformed-namespace.content",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-malformed-namespace.error",
+          "sha256": "9f9152d7a6e99ea39d912087ddd2ddbe81ea0f99c41e03438381b27d4d60e77b"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-malformed-namespace.fallback",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-malformed-namespace.glyphs",
+          "sha256": "9d7aab1269a06454149ca0fefdcc541fd676b078249a03ece6e320a473aeb9d2"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-malformed-namespace.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-malformed-namespace.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-malformed-namespace.pdf",
+          "sha256": "bced178583aeb9da7b161fae9a551e51549467d312366384547600cea4d1a49c"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-malformed-namespace.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-malformed-namespace.structure",
+          "sha256": "57b7a93539ac8e495344afd43eee1e50a8dbb56a9eb33e2175632d73ce8f5041"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-malformed-namespace.text",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-malformed-root",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-malformed-root.content",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-malformed-root.error",
+          "sha256": "93b8edb0066d58b98bcf1f5e223a186f231ab09ae359ceb2e771fa381c5f9dc5"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-malformed-root.fallback",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-malformed-root.glyphs",
+          "sha256": "9d7aab1269a06454149ca0fefdcc541fd676b078249a03ece6e320a473aeb9d2"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-malformed-root.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-malformed-root.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-malformed-root.pdf",
+          "sha256": "085e1e0cf8709354fa1b228a05327c961651b9b0de2dfd7adaceceeb4a485d89"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-malformed-root.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-malformed-root.structure",
+          "sha256": "57b7a93539ac8e495344afd43eee1e50a8dbb56a9eb33e2175632d73ce8f5041"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-malformed-root.text",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-fallback-malformed",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-fallback-malformed.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-fallback-malformed.error",
+          "sha256": "93b8edb0066d58b98bcf1f5e223a186f231ab09ae359ceb2e771fa381c5f9dc5"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-fallback-malformed.fallback",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-fallback-malformed.glyphs",
+          "sha256": "c0cb1ce30c1cd50a3003e5ee9795d27de38698f19de17cebcb7cec067612e769"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-fallback-malformed.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-fallback-malformed.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-fallback-malformed.pdf",
+          "sha256": "aa50ec451647057c29fe7bc6ae982d06c1e4f1c3c950fce8dd9eee3cd9ad0c4b"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-fallback-malformed.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-fallback-malformed.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-fallback-malformed.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-fallback-unsupported",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-fallback-unsupported.content",
+          "sha256": "49c266baaaa70981ea188fa714d5c40cf13830d786a861c9943ae0d26a7f3fe9"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-fallback-unsupported.error",
+          "sha256": "9f9152d7a6e99ea39d912087ddd2ddbe81ea0f99c41e03438381b27d4d60e77b"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-fallback-unsupported.fallback",
+          "sha256": "49c266baaaa70981ea188fa714d5c40cf13830d786a861c9943ae0d26a7f3fe9"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-fallback-unsupported.glyphs",
+          "sha256": "5619a8e5813979386e2dc550075995f9e3b57d96904cbb0937101b1e74e15dab"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-fallback-unsupported.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-fallback-unsupported.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-fallback-unsupported.pdf",
+          "sha256": "8916b30af7dcf54c075e65579f7c6e776a4a31c65113072fae85f8f4f05fa019"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-fallback-unsupported.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-fallback-unsupported.structure",
+          "sha256": "65980975bc9d92065006140f4d9bcc63cd8167be7cffb79c348e4095c6e154fe"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-fallback-unsupported.text",
+          "sha256": "49c266baaaa70981ea188fa714d5c40cf13830d786a861c9943ae0d26a7f3fe9"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-fallback-rolemapns",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-fallback-rolemapns.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-fallback-rolemapns.error",
+          "sha256": "9f9152d7a6e99ea39d912087ddd2ddbe81ea0f99c41e03438381b27d4d60e77b"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-fallback-rolemapns.fallback",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-fallback-rolemapns.glyphs",
+          "sha256": "c0cb1ce30c1cd50a3003e5ee9795d27de38698f19de17cebcb7cec067612e769"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-fallback-rolemapns.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-fallback-rolemapns.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-fallback-rolemapns.pdf",
+          "sha256": "3ecd279135224fc512bcca28cd2025e88b6a55847c29c89f74a359584861227b"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-fallback-rolemapns.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-fallback-rolemapns.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-fallback-rolemapns.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-fallback-partial",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-fallback-partial.content",
+          "sha256": "6cc1420ba45b8357b6dcbf044ff5adf01f45c94013b4c3244ea90d2fec3056f2"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-fallback-partial.error",
+          "sha256": "8426d6fc17818a4c9a956da78bf142a2731969e32248e34211a639643e9633e7"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-fallback-partial.fallback",
+          "sha256": "cfea0c0efff83cef9c9b625c2bda097dbf47ca7e8c52022fe12d677dd94373b4"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-fallback-partial.glyphs",
+          "sha256": "cb863aa0ef26f9d5cee37f72df686af5bd9532cf57155bdbeda9b0b351f4e3fa"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-fallback-partial.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-fallback-partial.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-fallback-partial.pdf",
+          "sha256": "3bb6b672109e54bc833ab4209404a402968ed2f446dcd0a3adc7f3b5b8931ab4"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-fallback-partial.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-fallback-partial.structure",
+          "sha256": "fbe8b75dd74464dee6d9ac8baf380174ecae8968d43b22864501eae58c29a7e1"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-fallback-partial.text",
+          "sha256": "cfea0c0efff83cef9c9b625c2bda097dbf47ca7e8c52022fe12d677dd94373b4"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-all-artifact",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-all-artifact.content",
+          "sha256": "26c87bb51e6978fe3987340c0056537a696a85a7d46c8bf3291ed13c45b34958"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-all-artifact.glyphs",
+          "sha256": "33278a956fb3edd2dfc681eb0767f0f98a13e0c550f93c8e09a7a159c4d9769f"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-all-artifact.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-all-artifact.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-all-artifact.pdf",
+          "sha256": "73b764b094617caf27077fa5a9f9abb9040ba250d916057336bd07cc48535859"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-all-artifact.structure",
+          "sha256": "6ea14182e6ef5f2980f3741049e3821b84b7609aae103fbbca1f450e2b552d97"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-all-artifact.text",
+          "sha256": "26c87bb51e6978fe3987340c0056537a696a85a7d46c8bf3291ed13c45b34958"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-property-actual",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-property-actual.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-property-actual.glyphs",
+          "sha256": "c0cb1ce30c1cd50a3003e5ee9795d27de38698f19de17cebcb7cec067612e769"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-property-actual.logical",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-property-actual.logical-characters",
+          "sha256": "4f25eb1d6168e50db520b65772dd9d42a2b5540ec03810d8754627692ee37a29"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-property-actual.pdf",
+          "sha256": "482ffae998d04cde1143cc549e418819b85c1c455fdd02c750ff3207df5decb0"
+        },
+        ".property-repair": {
+          "path": "corpus/generated/text/tagged-property-actual.property-repair",
+          "sha256": "ee5eae46ebdd85d91fac7aebdeab363782a87082c97ecde1d72ba721e4bbb224"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-property-actual.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-property-actual.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-property-alt",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-property-alt.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-property-alt.glyphs",
+          "sha256": "c0cb1ce30c1cd50a3003e5ee9795d27de38698f19de17cebcb7cec067612e769"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-property-alt.logical",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-property-alt.logical-characters",
+          "sha256": "4f25eb1d6168e50db520b65772dd9d42a2b5540ec03810d8754627692ee37a29"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-property-alt.pdf",
+          "sha256": "ec23dd1240ab87a74792c1473fc51b7716b6030cfd2520b05976981e373771e5"
+        },
+        ".property-repair": {
+          "path": "corpus/generated/text/tagged-property-alt.property-repair",
+          "sha256": "ee5eae46ebdd85d91fac7aebdeab363782a87082c97ecde1d72ba721e4bbb224"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-property-alt.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-property-alt.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-property-expansion",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-property-expansion.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-property-expansion.glyphs",
+          "sha256": "c0cb1ce30c1cd50a3003e5ee9795d27de38698f19de17cebcb7cec067612e769"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-property-expansion.logical",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-property-expansion.logical-characters",
+          "sha256": "4f25eb1d6168e50db520b65772dd9d42a2b5540ec03810d8754627692ee37a29"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-property-expansion.pdf",
+          "sha256": "72108ef9d764efc38b9663ed1e65538141af7665c45527e28ef79f41f1f17e17"
+        },
+        ".property-repair": {
+          "path": "corpus/generated/text/tagged-property-expansion.property-repair",
+          "sha256": "ee5eae46ebdd85d91fac7aebdeab363782a87082c97ecde1d72ba721e4bbb224"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-property-expansion.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-property-expansion.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-property-invalid-string",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-property-invalid-string.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-property-invalid-string.glyphs",
+          "sha256": "c0cb1ce30c1cd50a3003e5ee9795d27de38698f19de17cebcb7cec067612e769"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-property-invalid-string.logical",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-property-invalid-string.logical-characters",
+          "sha256": "4f25eb1d6168e50db520b65772dd9d42a2b5540ec03810d8754627692ee37a29"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-property-invalid-string.pdf",
+          "sha256": "5951517f68526cb08f2cf6fce8300f0644e8091bc08c95c77d7d0e5f1b198562"
+        },
+        ".property-repair": {
+          "path": "corpus/generated/text/tagged-property-invalid-string.property-repair",
+          "sha256": "ee5eae46ebdd85d91fac7aebdeab363782a87082c97ecde1d72ba721e4bbb224"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-property-invalid-string.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-property-invalid-string.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-mcid-name",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-mcid-name.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-mcid-name.error",
+          "sha256": "93b8edb0066d58b98bcf1f5e223a186f231ab09ae359ceb2e771fa381c5f9dc5"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-mcid-name.fallback",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-mcid-name.glyphs",
+          "sha256": "45c224031bccd7eba367c416844411a12cca2df7685982421d22cdb14b03800a"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-mcid-name.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-mcid-name.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-mcid-name.pdf",
+          "sha256": "23927f304befd3c1971802557fe36cd6de008b9d568184700d4249ded1416736"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-mcid-name.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-mcid-name.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-mcid-name.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-mcid-unused-name",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-mcid-unused-name.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-mcid-unused-name.glyphs",
+          "sha256": "45c224031bccd7eba367c416844411a12cca2df7685982421d22cdb14b03800a"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-mcid-unused-name.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-mcid-unused-name.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-mcid-unused-name.pdf",
+          "sha256": "e322b23b7bd7c8186f56baa612904a91c4ff392aa99cd15dccec4ab709a737ba"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-mcid-unused-name.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-mcid-unused-name.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".unstructured": {
+          "path": "corpus/generated/text/tagged-mcid-unused-name.unstructured",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-mcid-negative",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-mcid-negative.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-mcid-negative.error",
+          "sha256": "93b8edb0066d58b98bcf1f5e223a186f231ab09ae359ceb2e771fa381c5f9dc5"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-mcid-negative.fallback",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-mcid-negative.glyphs",
+          "sha256": "45c224031bccd7eba367c416844411a12cca2df7685982421d22cdb14b03800a"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-mcid-negative.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-mcid-negative.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-mcid-negative.pdf",
+          "sha256": "4f0f8cc5371f913585f85a67797070df899c7e5154fa72a669c48acca5eda245"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-mcid-negative.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-mcid-negative.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-mcid-negative.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-mcid-unused-negative",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-mcid-unused-negative.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-mcid-unused-negative.glyphs",
+          "sha256": "45c224031bccd7eba367c416844411a12cca2df7685982421d22cdb14b03800a"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-mcid-unused-negative.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-mcid-unused-negative.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-mcid-unused-negative.pdf",
+          "sha256": "db0903f3690ef3964dc84fca780c22312253478ba783d975ec14317f17fb6898"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-mcid-unused-negative.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-mcid-unused-negative.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".unstructured": {
+          "path": "corpus/generated/text/tagged-mcid-unused-negative.unstructured",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-mcid-boolean",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-mcid-boolean.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-mcid-boolean.error",
+          "sha256": "93b8edb0066d58b98bcf1f5e223a186f231ab09ae359ceb2e771fa381c5f9dc5"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-mcid-boolean.fallback",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-mcid-boolean.glyphs",
+          "sha256": "45c224031bccd7eba367c416844411a12cca2df7685982421d22cdb14b03800a"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-mcid-boolean.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-mcid-boolean.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-mcid-boolean.pdf",
+          "sha256": "df41b3f1cfecc8d40bc2200702e430824f7ec8a71388957c2416f66299ee6e8a"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-mcid-boolean.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-mcid-boolean.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-mcid-boolean.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-mcid-unused-boolean",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-mcid-unused-boolean.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-mcid-unused-boolean.glyphs",
+          "sha256": "45c224031bccd7eba367c416844411a12cca2df7685982421d22cdb14b03800a"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-mcid-unused-boolean.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-mcid-unused-boolean.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-mcid-unused-boolean.pdf",
+          "sha256": "a5b05e91ffc9c6e76bcbd9e2581f9310e54dae890114cd4eaa56b6c78d56a195"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-mcid-unused-boolean.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-mcid-unused-boolean.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".unstructured": {
+          "path": "corpus/generated/text/tagged-mcid-unused-boolean.unstructured",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-mcid-missing",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-mcid-missing.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".error": {
+          "path": "corpus/generated/text/tagged-mcid-missing.error",
+          "sha256": "93b8edb0066d58b98bcf1f5e223a186f231ab09ae359ceb2e771fa381c5f9dc5"
+        },
+        ".fallback": {
+          "path": "corpus/generated/text/tagged-mcid-missing.fallback",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-mcid-missing.glyphs",
+          "sha256": "45c224031bccd7eba367c416844411a12cca2df7685982421d22cdb14b03800a"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-mcid-missing.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-mcid-missing.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-mcid-missing.pdf",
+          "sha256": "d5fe31fbc30a0ba6aaf5ccdf84fae81920cfc8ad4e2141e9c9d9c928fc623180"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/tagged-mcid-missing.repair",
+          "sha256": "89bb2b8f5fbac34cd47b0a5075cb78c192a99d038621f9091a35639643dd0f95"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-mcid-missing.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-mcid-missing.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-mcid-unused-missing",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-mcid-unused-missing.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-mcid-unused-missing.glyphs",
+          "sha256": "45c224031bccd7eba367c416844411a12cca2df7685982421d22cdb14b03800a"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-mcid-unused-missing.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-mcid-unused-missing.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-mcid-unused-missing.pdf",
+          "sha256": "c1925ebbb930f4110ec38bb4434c4fa289b9963c5227f05feae2cac1b6f0af23"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-mcid-unused-missing.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-mcid-unused-missing.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".unstructured": {
+          "path": "corpus/generated/text/tagged-mcid-unused-missing.unstructured",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-annotation-hidden",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-annotation-hidden.content",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-annotation-hidden.glyphs",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-annotation-hidden.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-annotation-hidden.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-annotation-hidden.pdf",
+          "sha256": "45256088cb6305594162abf0e827feaf3dcb8f6221809643e45117806808c097"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-annotation-hidden.structure",
+          "sha256": "1ebc62af911b839f5789225588a1fd45273a092986af52ee6deb817d6c7605a4"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-annotation-hidden.text",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-annotation-no-view",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-annotation-no-view.content",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-annotation-no-view.glyphs",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-annotation-no-view.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-annotation-no-view.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-annotation-no-view.pdf",
+          "sha256": "14d9e7f5e9da63b503e093445efdcb611ac995fbca1f814203a0abd58ab64419"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-annotation-no-view.structure",
+          "sha256": "1ebc62af911b839f5789225588a1fd45273a092986af52ee6deb817d6c7605a4"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-annotation-no-view.text",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-annotation-invisible-custom",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-annotation-invisible-custom.content",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-annotation-invisible-custom.glyphs",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-annotation-invisible-custom.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-annotation-invisible-custom.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-annotation-invisible-custom.pdf",
+          "sha256": "a3b900276291037c989dd25e0ea77b04d41fa758fbfaf02844cb4040c1ff91d6"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-annotation-invisible-custom.structure",
+          "sha256": "1ebc62af911b839f5789225588a1fd45273a092986af52ee6deb817d6c7605a4"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-annotation-invisible-custom.text",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-annotation-invisible-standard",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-annotation-invisible-standard.content",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-annotation-invisible-standard.glyphs",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-annotation-invisible-standard.logical",
+          "sha256": "a6a32dbc5618ea39f6df5b0f9808e3588b19e00d5f6f96c69492e40386e5aeab"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-annotation-invisible-standard.logical-characters",
+          "sha256": "1db337c09f1e5ec3575b3268e6e62d9d269a7cd4f59066347860f62fd1fd1b15"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-annotation-invisible-standard.pdf",
+          "sha256": "d3c3635d177823d7b3db522cfd46127731d97bed6ca479532e2022e756ce5c89"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-annotation-invisible-standard.structure",
+          "sha256": "87ce2f1afb049886967cc761c2680bed9b7c78b79ad577fe0201365829b2b774"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-annotation-invisible-standard.text",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-property-list-integer",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-property-list-integer.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-property-list-integer.glyphs",
+          "sha256": "45c224031bccd7eba367c416844411a12cca2df7685982421d22cdb14b03800a"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-property-list-integer.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-property-list-integer.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-property-list-integer.pdf",
+          "sha256": "eee9d52a5f3a1786c124e55c4ad42e6a9879918a0fe90b55d9d84e5c036cbacf"
+        },
+        ".property-repair": {
+          "path": "corpus/generated/text/tagged-property-list-integer.property-repair",
+          "sha256": "ee5eae46ebdd85d91fac7aebdeab363782a87082c97ecde1d72ba721e4bbb224"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-property-list-integer.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-property-list-integer.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".unstructured": {
+          "path": "corpus/generated/text/tagged-property-list-integer.unstructured",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
+      "id": "text/tagged-property-list-missing",
+      "kind": "vector",
+      "description": "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",
+      "requirements": [
+        "text-structure",
+        "text-structure-references",
+        "text-structure-replacement",
+        "text-structure-fallback",
+        "text-logical-view",
+        "text-marked-properties",
+        "text-annotation-references"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/tagged-property-list-missing.content",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/tagged-property-list-missing.glyphs",
+          "sha256": "45c224031bccd7eba367c416844411a12cca2df7685982421d22cdb14b03800a"
+        },
+        ".logical": {
+          "path": "corpus/generated/text/tagged-property-list-missing.logical",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".logical-characters": {
+          "path": "corpus/generated/text/tagged-property-list-missing.logical-characters",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/tagged-property-list-missing.pdf",
+          "sha256": "71e317ca326778563de1b4620f7bdd8c7a1e6fdee2a503f3d68671a834b15e4d"
+        },
+        ".property-repair": {
+          "path": "corpus/generated/text/tagged-property-list-missing.property-repair",
+          "sha256": "ee5eae46ebdd85d91fac7aebdeab363782a87082c97ecde1d72ba721e4bbb224"
+        },
+        ".structure": {
+          "path": "corpus/generated/text/tagged-property-list-missing.structure",
+          "sha256": "7bd575d01d0137ab1595b3350ad47a8b18d325ca8d0441dc312743f0d64eb24d"
+        },
+        ".text": {
+          "path": "corpus/generated/text/tagged-property-list-missing.text",
+          "sha256": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+        },
+        ".unstructured": {
+          "path": "corpus/generated/text/tagged-property-list-missing.unstructured",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "text-structure"
+    },
+    {
       "id": "text/extract-spacing",
       "kind": "vector",
       "description": "Independent selection geometry, semantic text, layout boundaries and search",

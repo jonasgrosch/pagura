@@ -16,6 +16,7 @@ pub(in crate::interpreter) struct Extraction {
     output: Rc<RefCell<Output>>,
     path: Arc<[Arc<MarkedContent>]>,
     spans: Vec<usize>,
+    container: ObjectId,
 }
 #[derive(Default)]
 struct Output {
@@ -79,19 +80,81 @@ pub(crate) fn compile_with_text(
         output: Rc::clone(&output),
         path: Arc::from([]),
         spans: Vec::new(),
+        container: page.id(),
     });
     compiler.page(page).map_err(|e| e.in_object(page.id()))?;
     let text = std::mem::take(&mut output.borrow_mut().text);
-    let text = TextPage::from_positioned(text, LayoutOptions::default(), document.limits())?;
+    let text = TextPage::from_positioned(text, LayoutOptions::default(), document.limits())?
+        .with_structure(document, page)?;
     Ok((compiler.list, text))
 }
 
 impl Compiler<'_> {
     pub(in crate::interpreter) fn inherit_extraction(&self, child: &mut Self, hidden: bool) {
         if let Some(extraction) = &self.extraction {
-            child.extraction = Some(extraction.clone());
+            let mut inherited = extraction.clone();
+            inherited.container = child.forms.last().copied().unwrap_or(extraction.container);
+            child.extraction = Some(inherited);
             child.visible &= !hidden;
         }
+    }
+
+    pub(in crate::interpreter) fn extract_form_sequence(
+        &mut self,
+        object: &pagura_document::IndirectObject,
+        resources: &Dictionary,
+    ) -> Result<()> {
+        let start = self
+            .extraction
+            .as_ref()
+            .map(|e| e.output.borrow().text.glyphs.len());
+        self.sequence(&[object], resources)?;
+        if let Some(extract) = &self.extraction
+            && let Some(start) = start
+        {
+            let mut output = extract.output.borrow_mut();
+            output.charge(size_of::<pagura_text::TextObject>(), self.document.limits())?;
+            let end = output.text.glyphs.len();
+            output.text.objects.push(pagura_text::TextObject {
+                marked_content: Arc::clone(&extract.path),
+                object: object.id(),
+                glyphs: start..end,
+                hidden: !self.visible,
+            });
+        }
+        Ok(())
+    }
+
+    pub(in crate::interpreter) fn extract_graphic_object(
+        &self,
+        object: ObjectId,
+        hidden: bool,
+    ) -> Result<()> {
+        if let Some(extract) = &self.extraction {
+            let mut output = extract.output.borrow_mut();
+            output.charge(size_of::<pagura_text::TextObject>(), self.document.limits())?;
+            let end = output.text.glyphs.len();
+            output.text.objects.push(pagura_text::TextObject {
+                object,
+                glyphs: end..end,
+                hidden: hidden || !self.visible,
+                marked_content: Arc::clone(&extract.path),
+            });
+        }
+        Ok(())
+    }
+
+    // Called only by the renderer's annotation walk, after its flags and OC
+    // decisions. Appearance operators remain excluded from page glyph records.
+    pub(in crate::interpreter) fn extract_annotation(
+        &self,
+        value: &Value,
+        hidden: bool,
+    ) -> Result<()> {
+        if let Some(object) = value.as_reference() {
+            self.extract_graphic_object(object, hidden)?;
+        }
+        Ok(())
     }
 
     pub(super) fn extract_font(
@@ -253,17 +316,28 @@ impl Compiler<'_> {
             let properties = v
                 .get(1)
                 .ok_or(Error::syntax("marked content properties expected"))?;
-            let properties = if let Some(name) = properties.as_name() {
-                resource(self.document, resources, b"Properties", name.as_bytes())?
-            } else {
-                properties
-            };
-            Some(self.document.resolve_dictionary(properties)?)
+            let result = (|| {
+                let properties = if let Some(name) = properties.as_name() {
+                    resource(self.document, resources, b"Properties", name.as_bytes())?
+                } else {
+                    properties
+                };
+                self.document.resolve_dictionary(properties)
+            })();
+            match result {
+                Ok(dictionary) => Some(dictionary),
+                Err(error) => {
+                    ignore_metadata_fault(self.document, error, self.position)?;
+                    None
+                }
+            }
         } else {
             None
         };
-        let actual_text = property(self.document, dictionary, b"ActualText")?;
-        let alt = property(self.document, dictionary, b"Alt")?;
+        let actual_text = property(self.document, dictionary, b"ActualText", self.position)?;
+        let alt = property(self.document, dictionary, b"Alt", self.position)?;
+        // Expansion text is metadata for speech, not a page replacement.
+        let _ = property(self.document, dictionary, b"E", self.position)?;
         let mut output = extract.output.borrow_mut();
         if output.text.marked.len() >= self.document.limits().value_nodes {
             return Err(Error::limit("marked content count exceeded"));
@@ -279,10 +353,8 @@ impl Compiler<'_> {
         let content = Arc::new(MarkedContent {
             id,
             tag,
-            mcid: dictionary
-                .and_then(|d| d.get(b"MCID"))
-                .and_then(|v| self.document.resolve(v).ok())
-                .and_then(Value::as_integer),
+            container: Some(extract.container),
+            mcid: marked_id(self.document, dictionary)?,
             actual_text,
             alt,
         });
@@ -356,19 +428,439 @@ fn property(
     document: &pagura_document::Document,
     dictionary: Option<&Dictionary>,
     name: &[u8],
+    position: pagura_core::Position,
 ) -> Result<Option<String>> {
-    dictionary
-        .and_then(|d| d.get(name))
-        .map(|v| {
-            let value = document.resolve(v)?;
-            let bytes = value
-                .as_string()
-                .ok_or(Error::syntax("marked text property must be a text string"))?;
-            pagura_text::decode_text_string(bytes, document.limits())
-        })
-        .transpose()
+    let Some(value) = dictionary.and_then(|d| d.get(name)) else {
+        return Ok(None);
+    };
+    let result = (|| {
+        let value = document.resolve(value)?;
+        if value.is_null() {
+            return Ok(None);
+        }
+        let message = match name {
+            b"ActualText" => "non-string marked ActualText ignored (14.9.4)",
+            b"Alt" => "non-string marked Alt ignored (14.9.3)",
+            _ => "non-string marked E ignored (14.9.5)",
+        };
+        let bytes = value.as_string().ok_or(Error::syntax(message))?;
+        // E is speech metadata, not replacement text in either exported view.
+        // Validate its type without repeatedly decoding an unused resource.
+        if name == b"E" {
+            return Ok(None);
+        }
+        pagura_text::decode_text_string(bytes, document.limits()).map(Some)
+    })();
+    match result {
+        Err(error) => {
+            ignore_metadata_fault(document, error, position)?;
+            Ok(None)
+        }
+        result => result,
+    }
+}
+
+fn ignore_metadata_fault(
+    document: &pagura_document::Document,
+    error: Error,
+    position: pagura_core::Position,
+) -> Result<()> {
+    if !matches!(
+        error.kind,
+        pagura_core::ErrorKind::Syntax
+            | pagura_core::ErrorKind::MissingObject
+            | pagura_core::ErrorKind::Cycle
+    ) {
+        return Err(error);
+    }
+    let mut diagnostic =
+        pagura_core::Diagnostic::new(pagura_text::repairs::MARKED_PROPERTY, error.message)
+            .at(position);
+    if let pagura_core::Position::Stream { object, .. } = position {
+        diagnostic = diagnostic.in_object(object);
+    }
+    crate::interpreter::repair(document, diagnostic)
+}
+
+fn marked_id(
+    document: &pagura_document::Document,
+    dictionary: Option<&Dictionary>,
+) -> Result<Option<i64>> {
+    let Some(value) = dictionary.and_then(|d| d.get(b"MCID")) else {
+        return Ok(None);
+    };
+    match document.resolve(value) {
+        Ok(value) => Ok(value.as_integer().filter(|n| *n >= 0)),
+        Err(error)
+            if matches!(
+                error.kind,
+                pagura_core::ErrorKind::Syntax
+                    | pagura_core::ErrorKind::MissingObject
+                    | pagura_core::ErrorKind::Cycle
+            ) =>
+        {
+            Ok(None)
+        }
+        Err(error) => Err(error),
+    }
 }
 
 fn cell(x0: f64, y0: f64, x1: f64, y1: f64) -> Rect {
     Rect { x0, y0, x1, y1 }
+}
+
+#[cfg(test)]
+mod tests {
+    use pagura_core::{
+        Limits, Recovery, Value,
+        syntax::{Origin, Parser},
+    };
+    use pagura_document::{Document, OpenOptions};
+    use pagura_testkit::{fixture, fixture_path};
+
+    fn expected(name: &str, extension: &str) -> Value {
+        let bytes = fixture("text", &format!("{name}.{extension}"));
+        Parser::new(&bytes, Origin::Buffer, Limits::default())
+            .parse()
+            .unwrap()
+    }
+    fn integer(value: &Value) -> usize {
+        usize::try_from(value.as_integer().unwrap()).unwrap()
+    }
+    fn string(value: &Value) -> &str {
+        std::str::from_utf8(value.as_string().unwrap()).unwrap()
+    }
+    fn names() -> Vec<&'static str> {
+        include_str!("../../../../../corpus/manifests/text.json")
+            .split("\"id\": \"text/")
+            .skip(1)
+            .filter_map(|s| s.split('"').next())
+            .filter(|s| s.starts_with("tagged-"))
+            .collect()
+    }
+    #[test]
+    fn tagged_copy_ranges_quads_and_parent_ownership_match_independent_graphs() {
+        let names = names();
+        assert_eq!(names.len(), 58);
+        for name in names {
+            if fixture_path("text", &format!("{name}.error")).exists() {
+                continue;
+            }
+            let doc = Document::open(
+                fixture("text", &format!("{name}.pdf")),
+                &OpenOptions::default(),
+            )
+            .unwrap();
+            let page = doc.page(0).unwrap();
+            let (list, text) = super::compile_page_with_text(&doc, page, None)
+                .unwrap_or_else(|e| panic!("{name}: {e}"));
+            assert_eq!(
+                text.text().as_bytes(),
+                fixture("text", &format!("{name}.text")),
+                "{name}"
+            );
+            assert_eq!(
+                text.content_text().as_bytes(),
+                fixture("text", &format!("{name}.content")),
+                "{name}"
+            );
+            check_logical(name, &text);
+            check_glyphs(name, &text);
+            let relaid = text
+                .with_layout(pagura_text::LayoutOptions {
+                    include_hidden: true,
+                    space_gap: 1.0,
+                    ..pagura_text::LayoutOptions::default()
+                })
+                .unwrap();
+            assert_eq!(
+                text.logical().map(std::ptr::from_ref),
+                relaid.logical().map(std::ptr::from_ref)
+            );
+
+            let normal = crate::compile_page(&doc, page).unwrap();
+            let options = crate::RenderOptions::default();
+            assert_eq!(
+                list.render(&options).unwrap().data(),
+                normal.render(&options).unwrap().data(),
+                "{name}: paint changed"
+            );
+            assert!(
+                text.retained_bytes()
+                    >= size_of_val(text.glyphs()) + size_of_val(text.reading_characters())
+            );
+            if name == "tagged-nested-order" {
+                let found = text
+                    .find("First Second", pagura_text::SearchOptions::default())
+                    .unwrap();
+                assert_eq!(found.len(), 1);
+                assert_eq!(found[0].quads.first(), Some(&text.glyphs()[0].quad));
+                assert_eq!(found[0].quads.len(), 11);
+                assert_eq!(
+                    text.find("Second First", pagura_text::SearchOptions::default())
+                        .unwrap(),
+                    [] as [pagura_text::TextMatch; 0]
+                );
+            }
+            if name == "tagged-all-artifact" {
+                assert_eq!(text.text(), "Footer");
+                assert_eq!(text.logical().unwrap().text(), "");
+                assert_eq!(
+                    text.find("Footer", pagura_text::SearchOptions::default())
+                        .unwrap()[0]
+                        .quads
+                        .len(),
+                    6
+                );
+            }
+        }
+    }
+    fn check_logical(name: &str, text: &pagura_text::TextPage) {
+        if let Some(logical) = text.logical() {
+            assert_eq!(
+                logical.text().as_bytes(),
+                fixture("text", &format!("{name}.logical")),
+                "{name}"
+            );
+            let chars = expected(name, "logical-characters");
+            let chars = chars.as_array().unwrap();
+            assert_eq!(logical.characters().len(), chars.len(), "{name}");
+            for (character, row) in logical.characters().iter().zip(chars) {
+                let row = row.as_array().unwrap();
+                assert_eq!(character.unicode, string(&row[0]).chars().next());
+                assert_eq!(character.range, integer(&row[1])..integer(&row[2]));
+                assert_eq!(
+                    character.glyphs,
+                    integer(&row[3])..integer(&row[4]),
+                    "{name}"
+                );
+                assert_eq!(character.inserted, row[5].as_bool().unwrap());
+            }
+            let rows = expected(name, "structure");
+            let rows = rows.as_array().unwrap();
+            let elements = logical.structure();
+            assert_eq!(elements.len(), rows.len(), "{name}");
+            for (element, row) in elements.iter().zip(rows) {
+                let row = row.as_array().unwrap();
+                assert_eq!(
+                    element.object.unwrap().number as usize,
+                    integer(&row[0]),
+                    "{name}"
+                );
+                assert_eq!(
+                    element.parent,
+                    usize::try_from(row[1].as_integer().unwrap()).ok()
+                );
+                assert_eq!(element.role.as_bytes(), string(&row[2]).as_bytes());
+                assert_eq!(
+                    element
+                        .standard_type
+                        .as_ref()
+                        .map(pagura_core::Name::as_bytes),
+                    row[3].as_string()
+                );
+                assert_eq!(
+                    element.namespace == pagura_text::StructureNamespace::Pdf20,
+                    row[6].as_bool().unwrap()
+                );
+                assert_eq!(
+                    element.range,
+                    integer(&row[4])..integer(&row[5]),
+                    "{name}: {:?}",
+                    element.role
+                );
+            }
+        } else {
+            assert!(
+                fixture_path("text", &format!("{name}.unstructured")).exists(),
+                "{name}"
+            );
+        }
+    }
+    fn check_glyphs(name: &str, text: &pagura_text::TextPage) {
+        let rows = expected(name, "glyphs");
+        let rows = rows.as_array().unwrap();
+        assert_eq!(text.glyphs().len(), rows.len());
+        for (glyph, row) in text.glyphs().iter().zip(rows) {
+            let row = row.as_array().unwrap();
+            assert_eq!(glyph.unicode.as_deref(), Some(string(&row[0])));
+            for (point, xy) in glyph
+                .quad
+                .0
+                .iter()
+                .zip(row[1].as_array().unwrap().as_chunks::<2>().0)
+            {
+                assert!((point.x - xy[0].as_number().unwrap()).abs() < 1e-9);
+                assert!((point.y - xy[1].as_number().unwrap()).abs() < 1e-9);
+            }
+            if let Some(mcid) = row[3].as_integer() {
+                let mark = glyph
+                    .marked_content
+                    .iter()
+                    .find(|m| m.mcid.is_some())
+                    .unwrap();
+                assert_eq!(mark.mcid, Some(mcid));
+                assert_eq!(mark.container.unwrap().number as usize, integer(&row[2]));
+            } else {
+                assert!(glyph.marked_content.iter().all(|m| m.mcid.is_none()));
+            }
+        }
+    }
+    #[test]
+    fn null_structure_entries_are_absent_without_repairs_in_strict_mode() {
+        for name in [
+            "tagged-null-optionals",
+            "tagged-indirect-null-optionals",
+            "tagged-null-kids",
+        ] {
+            let doc = Document::open(
+                fixture("text", &format!("{name}.pdf")),
+                &OpenOptions {
+                    recovery: Recovery::Strict,
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap();
+            let text = super::text_page(&doc, doc.page(0).unwrap(), None).unwrap();
+            assert_eq!(
+                text.text().as_bytes(),
+                fixture("text", &format!("{name}.text"))
+            );
+            assert_eq!(doc.diagnostics(), []);
+        }
+    }
+    #[test]
+    fn malformed_marked_properties_are_reported_without_changing_page_glyphs() {
+        for name in names()
+            .into_iter()
+            .filter(|n| fixture_path("text", &format!("{n}.property-repair")).exists())
+        {
+            for recovery in [Recovery::Strict, Recovery::Repair] {
+                let document = Document::open(
+                    fixture("text", &format!("{name}.pdf")),
+                    &OpenOptions {
+                        recovery,
+                        ..OpenOptions::default()
+                    },
+                )
+                .unwrap();
+                let page = document.page(0).unwrap();
+                assert!(crate::compile_page(&document, page).is_ok());
+                let result = super::text_page(&document, page, None);
+                let tag = fixture("text", &format!("{name}.property-repair"));
+                if recovery == Recovery::Strict {
+                    assert_eq!(result.unwrap_err().repair.unwrap().as_str().as_bytes(), tag);
+                } else {
+                    let text = result.unwrap();
+                    assert_eq!(
+                        text.text().as_bytes(),
+                        fixture("text", &format!("{name}.text"))
+                    );
+                    assert!(
+                        document
+                            .diagnostics()
+                            .iter()
+                            .any(|d| d.repair.as_str().as_bytes() == tag)
+                    );
+                    assert!(text.structure_fallback().is_none());
+                    check_glyphs(name, &text);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn compilation_budget_errors_are_not_structure_repairs() {
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            let document = Document::open(
+                fixture("text", "tagged-nested-order.pdf"),
+                &OpenOptions {
+                    recovery,
+                    limits: Limits {
+                        operations: 1,
+                        ..Limits::default()
+                    },
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap();
+            let page = document.page(0).unwrap();
+            let ordinary = crate::compile_page(&document, page).unwrap_err();
+            let extraction = super::text_page(&document, page, None).unwrap_err();
+            assert_eq!(ordinary.kind, pagura_core::ErrorKind::Limit);
+            assert_eq!(extraction, ordinary);
+            assert_eq!(extraction.repair, None);
+            assert!(
+                document
+                    .diagnostics()
+                    .iter()
+                    .all(|d| d.repair != pagura_text::repairs::STRUCTURE_FALLBACK)
+            );
+        }
+    }
+
+    #[test]
+    fn structure_failures_report_geometric_fallback_and_strict_rejection() {
+        for name in names()
+            .into_iter()
+            .filter(|n| fixture_path("text", &format!("{n}.error")).exists())
+        {
+            let expected = fixture("text", &format!("{name}.error"));
+            for recovery in [Recovery::Strict, Recovery::Repair] {
+                let doc = Document::open(
+                    fixture("text", &format!("{name}.pdf")),
+                    &OpenOptions {
+                        recovery,
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+                let result = super::text_page(&doc, doc.page(0).unwrap(), None);
+                if recovery == Recovery::Strict {
+                    let error = result.unwrap_err();
+                    assert_eq!(
+                        error.repair.unwrap().as_str().as_bytes(),
+                        fixture("text", &format!("{name}.repair"))
+                    );
+                    assert!(error.object.is_some());
+                    assert_ne!(error.position, pagura_core::Position::Unknown);
+                } else {
+                    let text = result.unwrap();
+                    assert!(text.structure().is_none());
+                    let error = text.structure_fallback().unwrap();
+                    let kind = error
+                        .feature()
+                        .map_or(error.kind.name(), pagura_core::Feature::as_str);
+                    assert_eq!(kind.as_bytes(), expected, "{name}: {error}");
+                    assert_eq!(
+                        text.text().as_bytes(),
+                        fixture("text", &format!("{name}.fallback")),
+                        "{name}"
+                    );
+                    let geometric = text
+                        .with_layout(pagura_text::LayoutOptions::default())
+                        .unwrap();
+                    assert_eq!(text.reading_characters(), geometric.reading_characters());
+                    assert_eq!(text.lines(), geometric.lines());
+                    assert_eq!(text.words(), geometric.words());
+                    assert_eq!(text.retained_bytes(), geometric.retained_bytes());
+                    let reports = doc.diagnostics();
+                    let report = reports
+                        .iter()
+                        .find(|d| d.repair == pagura_text::repairs::STRUCTURE_FALLBACK)
+                        .unwrap();
+                    assert_eq!(report.message, error.message);
+                    assert_eq!(report.position, error.position);
+                    assert_eq!(report.object, error.object);
+                    if let Some(feature) = error.feature() {
+                        assert!(report.message.contains(feature.as_str()));
+                    }
+                    assert_eq!(text.clone().structure_fallback(), Some(error));
+                    assert_eq!(geometric.structure_fallback(), Some(error));
+                    assert!(text.logical().is_none());
+                }
+                assert!(crate::compile_page(&doc, doc.page(0).unwrap()).is_ok());
+            }
+        }
+    }
 }

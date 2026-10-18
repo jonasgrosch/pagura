@@ -91,6 +91,7 @@ def error_case(name, font, tag, objects=()):
 
 
 def cases():
+    yield from structure_cases()
     yield from extraction_cases()
     yield from tolerance_paint_cases()
     yield from tolerance_cases()
@@ -1396,3 +1397,324 @@ def extraction_cases():
         descendant=b"<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Rect /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 6 0 R /CIDToGIDMap /Identity /DW 500 /DW2 [800 -1000] >>"
         yield vector("vertical" if vertical else "composite",b"BT /F 10 Tf 100 100 Td <00010002> Tj ET",
                      records("AB",100,100,vertical=vertical,height=.6),"AB",objs=[font0,*base[1:],descendant,stream(cmap)])
+
+
+def structure_cases():
+    """Logical order comes from an authored /K graph, never a renderer.
+
+    Quads use the declared .001 FontMatrix, 500-unit advance, ten-point size
+    and explicit origins. Paragraph separators are the documented copy policy.
+    """
+    def val(item):
+        if isinstance(item, (list, tuple)):
+            return b"[" + b" ".join(val(x) for x in item) + b"]"
+        return scalar(item)
+
+    def case(name, elements, runs, *, roles=None, actual=None, alt=None,
+             malformed=None, split=False, object_form=False, hidden=False, explicit17=False, object_annotation=False, object_image=False, nulls=False, empty_root=False, marked=b"", invalid_mcid=None, untagged=False, annotation_flags=0, annotation_subtype="Link", property_list=None):
+        roles, actual, alt = roles or {}, actual or {}, alt or {}
+        excluded = hidden or bool(annotation_flags & (2|32)) or (bool(annotation_flags & 1) and annotation_subtype == "Custom")
+        ids = {key: 12+i for i,(key,_,_) in enumerate(elements)}
+        parent = {kid:key for key,_,kids in elements for kid in kids if isinstance(kid,str)}
+        entries = {key:(role,kids) for key,role,kids in elements}
+        ancestors = {}
+        for key,_,_ in elements:
+            ancestors[key] = parent.get(key, "document")
+        charprocs = b" ".join(b"/uni%04X 6 0 R" % i for i in range(32,127))
+        encoding = b" ".join(b"%d /uni%04X" % (i,i) for i in range(32,127))
+        font = (b"<< /Type /Font /Subtype /Type3 /FontBBox [0 0 500 1000] /FontMatrix [.001 0 0 .001 0 0] "
+                b"/FirstChar 32 /LastChar 126 /Widths [" + b"500 "*95 + b"] /Encoding << /Differences [" + encoding +
+                b"] >> /CharProcs << " + charprocs + b" >> /Resources << >> >>")
+        contents = {"page":[], "form":[], "second":[]}
+        glyphs=[]; source=""; run_text={}; run_indices={}
+        for owner,mcid,text,x,y in runs:
+            prefix = b"/Artifact BMC " if mcid is None else b"/P << /MCID %d >> BDC " % mcid
+            if mcid == -1: prefix=b""
+            if mcid is not None and mcid != -1:
+                if invalid_mcid is not None: prefix = b"/P << /MCID " + invalid_mcid + marked + b" >> BDC "
+                elif marked: prefix = prefix.replace(b" >> BDC ", marked+b" >> BDC ")
+            if invalid_mcid == b"99999 0 R": prefix=b"/P /MCIDProperties BDC "
+            if property_list is not None: prefix=b"/P "+(b"/InvalidProperties" if property_list==b"42" else property_list)+b" BDC "
+            command = prefix + b"BT /F 10 Tf 1 0 0 1 %d %d Tm (" % (x,y) + text.encode() + b") Tj ET" + (b"" if mcid == -1 else b" EMC")
+            contents[owner].append(command)
+            container = 8 if owner=="form" else 3
+            key=("form" if owner=="form" else "page",(0 if object_form and owner=="form" else mcid))
+            run_indices[key]=list(range(len(glyphs),len(glyphs)+len(text)))
+            for index,c in enumerate(text):
+                gx=x+index*5
+                glyphs.append([c, [gx,y,gx+5,y,gx+5,y+10,gx,y+10], container,None if mcid == -1 or invalid_mcid is not None or property_list is not None else mcid])
+            source+=text
+            run_text[("form" if owner=="form" else "page",(0 if object_form and owner=="form" else mcid))]=text
+        # Stream ordering, rather than dictionary/object numbering, determines
+        # glyph indices. Forms are invoked between the two page streams.
+        first=b"\n".join(contents["page"])
+        second=b"\n".join(contents["second"])
+        if (contents["form"] or object_form) and not object_annotation and malformed!="appearance": first += b" /X Do"
+        if split:
+            first=b"/P << /MCID 0 >> BDC BT /F 10 Tf 10 20 Td (A) Tj ET"
+            second=b"BT /F 10 Tf 15 20 Td (B) Tj ET EMC"
+            glyphs=[[c,[x,20,x+5,20,x+5,30,x,30],3,0] for c,x in [("A",10),("B",15)]]
+            source="AB"; run_text[("page",0)]="AB"; run_indices[("page",0)]=[0,1]
+        root_kids=[key for key,_,_ in elements if key not in parent]
+        page_parents={};form_parents={}
+        for key,_,kids in elements:
+            for kid in kids:
+                if isinstance(kid,tuple):
+                    kind,mcid=kid
+                    if kind=="m": page_parents[mcid]=ids[key]
+                    elif kind=="f":form_parents[mcid]=ids[key]
+        def reference(number): return b"%d 0 R" % number
+        def parent_array(table):
+            return b"["+b" ".join(reference(table[i]) if i in table else b"null" for i in range(max(table,default=-1)+1))+b"]"
+        nums=b"0 "+parent_array(page_parents)
+        if form_parents:nums+=b" 1 "+parent_array(form_parents)
+        if object_form:
+            owner=next(ids[k] for k,_,kids in elements if ("o",0) in kids)
+            nums+=b" 1 "+reference(owner)
+        role_map=b" /RoleMap << "+b" ".join(b"/"+a.encode()+b" /"+b.encode() for a,b in roles.items())+b" >>" if roles else b""
+        struct_root=b"<< /Type /StructTreeRoot /K 10 0 R /ParentTree 11 0 R"+role_map+b" >>"
+        objects=[b"<< /Type /Catalog /Pages 2 0 R /StructTreeRoot 9 0 R /MarkInfo << /Marked true >> >>",
+                 b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+                 b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 120 120] /StructParents 0 /Contents [4 0 R 7 0 R] "
+                 b"/Resources << /Font << /F 5 0 R >> /XObject << /X 8 0 R >> >> >>",
+                 stream(first), font, stream(b"500 0 d0 0 0 500 1000 re f"),stream(second),
+                 stream(b"\n".join(contents["form"]), b"/Type /XObject /Subtype /Form /BBox [0 0 120 120] /Resources << /Font << /F 5 0 R >> >> " +
+                        (b"/StructParent 1" if object_form else b"/StructParents 1")),
+                 struct_root,b"<< /Type /StructElem /S /Document /P 9 0 R /K ["+b" ".join(reference(ids[k]) for k in root_kids)+b"] >>",
+                 b"<< /Nums ["+nums+b"] >>"]
+        for key,role,kids in elements:
+            def kid_value(kid):
+                if isinstance(kid,str):return reference(ids[kid])
+                kind,mcid=kid
+                if kind=="m":return str(mcid).encode()
+                if kind=="f":return b"<< /Type /MCR /Pg 3 0 R /Stm 8 0 R /MCID %d >>" % mcid
+                return b"<< /Type /OBJR /Pg 3 0 R /Obj 8 0 R >>"
+            properties=b""
+            if key in actual:properties+=b" /ActualText "+scalar(actual[key])
+            if key in alt:properties+=b" /Alt "+scalar(alt[key])
+            objects.append(b"<< /Type /StructElem /S /"+role.encode()+b" /P "+reference(ids[parent[key]] if key in parent else 10)+
+                           b" /Pg 3 0 R /K ["+b" ".join(kid_value(k) for k in kids)+b"]"+properties+b" >>")
+        if invalid_mcid == b"99999 0 R":
+            objects[2]=objects[2].replace(b"/Resources <<",b"/Resources << /Properties << /MCIDProperties << /MCID 99999 0 R >> >>",1)
+        if property_list == b"42":
+            objects[2]=objects[2].replace(b"/Resources <<",b"/Resources << /Properties << /InvalidProperties 42 >>",1)
+        if name=="negative-parent-key":
+            objects[2]=objects[2].replace(b"/StructParents 0",b"/StructParents -7")
+            objects[10]=objects[10].replace(b"/Nums [0 ",b"/Nums [-7 ")
+        if name=="indirect-types":
+            n=len(objects)+1
+            objects[8]=objects[8].replace(b"/Type /StructTreeRoot",b"/Type "+reference(n))
+            objects[9]=objects[9].replace(b"/Type /StructElem",b"/Type "+reference(n+1))
+            objects[11]=objects[11].replace(b"/Type /StructElem",b"/Type "+reference(n+1)).replace(b"/K [0]",b"/K [<< /Type "+reference(n+2)+b" /Pg 3 0 R /MCID 0 >>]")
+            objects.extend([b"/StructTreeRoot",b"/StructElem",b"/MCR"])
+        if malformed=="type":objects[11]=objects[11].replace(b"/Type /StructElem",b"/Type false")
+        if nulls or empty_root:
+            nil=b"null"
+            if nulls=="indirect":
+                nil=reference(len(objects)+1);objects.append(b"null")
+            objects[8]=objects[8][:-2]+b" /RoleMap "+nil+b" /Namespaces "+nil+b" >>"
+            objects[9]=objects[9][:-2]+b" /ActualText "+nil+b" /Alt "+nil+b" /NS "+nil+b" >>"
+            if nulls:
+                objects[2]=objects[2][:-2]+b" /StructParent "+nil+b" >>"
+                objects[11]=objects[11].replace(b"/K [0]",b"/K [<< /Type /MCR /Pg "+nil+b" /Stm "+nil+b" /MCID 0 >>]")
+                objects[11]=objects[11][:-2]+b" /NS "+nil+b" /ActualText "+nil+b" /Alt "+nil+b" >>"
+                nested=first.replace(b" BDC ",b" BDC /Span << /MCID null /ActualText null /Alt null >> BDC ",1)+b" EMC"
+                objects[3]=stream(nested)
+            if empty_root:
+                objects[8]=objects[8].replace(b"/K 10 0 R /ParentTree 11 0 R",b"/K null /ParentTree null")
+                objects[2]=objects[2].replace(b"/StructParents 0",b"/StructParents null")
+        if malformed=="crosspage":
+            other=len(objects)+1
+            objects[1]=b"<< /Type /Pages /Kids [3 0 R "+reference(other)+b"] /Count 2 >>"
+            objects[11]=objects[11].replace(b"/K [0]",b"/K [0 << /Type /MCR /Pg "+reference(other)+b" /MCID 0 >>]")
+            objects[10]=objects[10].replace(b"] >>",b" 2 [12 0 R]] >>")
+            objects.append(b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 120 120] /Resources << /Font << /F 5 0 R >> >> /StructParents 2 /Contents "+reference(other+1)+b" >>")
+            objects.append(stream(b"/P << /MCID 0 >> BDC BT /F 10 Tf 10 90 Td (B) Tj ET EMC"))
+        if malformed=="appearance":
+            annotation=len(objects)+1
+            objects[2]=objects[2][:-2]+b" /Annots ["+reference(annotation)+b"] >>"
+            objects.append(b"<< /Type /Annot /Subtype /Link /Rect [0 0 120 120] /Border [0 0 0] /P 3 0 R /AP << /N 8 0 R >> >>")
+        if name=="role-loop":objects[0]=objects[0].replace(b"/Marked true",b"/Marked false")
+        if object_image:
+            objects[7]=stream(b"\0",b"/Type /XObject /Subtype /Image /Width 1 /Height 1 /BitsPerComponent 8 /ColorSpace /DeviceGray /StructParent 1")
+        if object_annotation:
+            objects[7]=b"<< /Type /Annot /Subtype /"+annotation_subtype.encode()+b" /F %d /Rect [0 0 20 20] /Border [0 0 0] /P 3 0 R /StructParent 1 >>" % annotation_flags
+            objects[2]=objects[2][:-2]+b" /Annots [8 0 R] >>"
+        if hidden:
+            ocg=len(objects)+1
+            objects[0]=objects[0][:-2]+b" /OCProperties << /OCGs ["+reference(ocg)+b"] /D << /BaseState /ON /OFF ["+reference(ocg)+b"] >> >> >>"
+            if object_form:
+                subtype=b"/Subtype /Image" if object_image else b"/Subtype /Link" if object_annotation else b"/Subtype /Form"
+                objects[7]=objects[7].replace(subtype,subtype+b" /OC "+reference(ocg))
+            else:
+                first=b"/OC "+reference(ocg)+b" BDC "+first+b" EMC"
+                # A direct OCG dictionary is a property list, not a stream reference.
+                first=first.replace(b"/OC "+reference(ocg)+b" BDC",b"/OC /Hidden BDC")
+                objects[2]=objects[2].replace(b"/Resources <<",b"/Resources << /Properties << /Hidden "+reference(ocg)+b" >>",1)
+                objects[3]=stream(first)
+            objects.append(b"<< /Type /OCG /Name (Hidden) >>")
+        modern={key for key,role,_ in elements if role=="Artifact" or (role.startswith("H") and role[1:].isdigit() and int(role[1:])>6)}
+        namespace_keys=modern | ({elements[0][0]} if explicit17 or malformed in ("namespace","rolemapns") else set())
+        if namespace_keys:
+            ns=len(objects)+1
+            objects[8]=objects[8][:-2]+b" /Namespaces ["+reference(ns)+b"] >>"
+            for key in namespace_keys:
+                objects[ids[key]-1]=objects[ids[key]-1][:-2]+b" /NS "+reference(ns)+b" >>"
+            uri="custom" if malformed=="namespace" else "http://iso.org/pdf/ssn" if explicit17 else "http://iso.org/pdf2/ssn"
+            objects.append(b"<< /Type /Namespace /NS "+scalar(uri)+(b" /RoleMapNS << >>" if malformed=="rolemapns" else b"")+b" >>")
+        if malformed=="root":
+            objects[0]=objects[0].replace(b" /StructTreeRoot 9 0 R",b"")
+            objects[2]=objects[2].replace(b" /StructParents 0",b"")
+        if malformed=="parent":objects[10]=b"<< /Nums [0 [10 0 R]] >>"
+        if malformed=="cycle":objects[11]=objects[11].replace(b"/K [0]",b"/K [12 0 R]")
+
+        if untagged:
+            objects[0]=objects[0].replace(b" /StructTreeRoot 9 0 R",b"").replace(b" /MarkInfo << /Marked true >>",b"")
+            objects[2]=objects[2].replace(b" /StructParents 0",b"")
+
+        def standard(role):
+            seen=set()
+            # These generated roles either end in a known role or a valid loop.
+            if role in roles and not explicit17:role=roles[role]
+            while not explicit17 and role in roles and role not in ("P","Span","Sect","Document","Artifact") and role not in seen:
+                seen.add(role);role=roles[role]
+            return role if role in ("P","Span","Sect","Document","Artifact") or (role.startswith("H") and role[1:].isdigit() and not role[1:].startswith("0")) else None
+        def block_for(key):
+            while key!="document":
+                if standard(entries[key][0])=="P":return key
+                key=parent.get(key,"document")
+            return None
+        # Independently traverse the generated hierarchy and assemble text and
+        # element ranges. Paragraph leaf nodes are separated by two LFs.
+        order=[]; chunks=[]; output=""; logical_chars=[]
+        def emit(value, indices=(), replacement=False, inserted=False):
+            nonlocal output
+            for offset,c in enumerate(value):
+                start=len(output.encode()); output+=c
+                source_range=(min(indices),max(indices)+1) if replacement and indices else ((indices[offset],indices[offset]+1) if indices else (0,0))
+                logical_chars.append([c,start,len(output.encode()),*source_range,inserted])
+        def associated(key):
+            result=[]
+            for child in entries[key][1]:
+                if isinstance(child,str):
+                    if standard(entries[child][0])!="Artifact":result.extend(associated(child))
+                else:
+                    kind,mcid=child
+                    result.extend(run_indices.get(("form" if kind in ("f","o") else "page",mcid),[]))
+            return result
+        def walk(key, parent_index):
+            nonlocal output
+            role,kids=("Document",root_kids) if key=="document" else entries[key]
+            role_type=standard(role)
+            if role_type=="Artifact":return
+            index=len(order);order.append([10 if key=="document" else ids[key],parent_index,role,role_type,0,0,key in modern])
+            if key in actual or key in alt:
+                if output and key in alt and not output[-1].isspace():emit(" ",inserted=True)
+                start=len(output.encode());emit("" if excluded else actual.get(key,alt.get(key,"")),associated(key),replacement=True);end=len(output.encode());chunks.append(block_for(key))
+                order[index][4:6]=[start,end]
+                def suppressed(child,p):
+                    if isinstance(child,tuple):return
+                    r,ks=entries[child]
+                    if standard(r)=="Artifact":return
+                    n=len(order);order.append([ids[child],p,r,standard(r),start,start,child in modern])
+                    for sub in ks:suppressed(sub,n)
+                for child in kids:suppressed(child,index)
+                return
+            starts=[];ends=[]
+            for child in kids:
+                before=len(order)
+                if isinstance(child,str):
+                    walk(child,index)
+                    if len(order)>before:
+                        starts.append(order[before][4]);ends.append(order[before][5])
+                else:
+                    kind,mcid=child
+                    value=run_text.get(("form" if kind in ("f","o") else "page",mcid),"")
+                    if value:
+                        if output and chunks and chunks[-1]!=block_for(key) and block_for(key) is not None:emit("\n\n",inserted=True)
+                        starts.append(len(output.encode()));emit(value,run_indices.get(("form" if kind in ("f","o") else "page",mcid),[]));ends.append(len(output.encode()));chunks.append(block_for(key))
+            order[index][4:6]=[min(starts,default=len(output.encode())),max(ends,default=len(output.encode()))]
+        walk("document",-1)
+        if empty_root:order=[];output="";logical_chars=[]
+        # Explicit horizontal selection-cell arithmetic for the page view.
+        # Unlike the logical oracle, this includes every artifact glyph.
+        visible = [] if hidden or malformed == "appearance" else glyphs
+        geometric = ""; previous = None
+        for c, quad, container, mcid in sorted(visible, key=lambda g: (-g[1][1],g[1][0])):
+            if previous is not None:
+                x,y = quad[:2]; px,py = previous
+                if y != py: geometric += "\n\n" if abs(y-py)>18 else "\n"
+                elif x-px>2: geometric += " "
+            geometric += c; previous=(quad[2],quad[1])
+        files={".pdf":document(objects).replace(b"%PDF-1.7",b"%PDF-2.0",1),".text":geometric.encode(),".logical":output.encode(),".logical-characters":val(logical_chars)+b"\n",".content":("" if hidden else source).encode(),
+               ".structure":val(order)+b"\n",".glyphs":val(glyphs)+b"\n"}
+        if malformed:files[".error"]=("cycle" if malformed=="cycle" else "text.structure-namespace" if malformed in ("namespace","rolemapns") else "text.structure-replacement" if malformed in ("replacement","crosspage") else "limit" if malformed=="depth" else "text.structure-content" if malformed=="appearance" else "syntax").encode()
+        if malformed:
+            files[".fallback"] = geometric.encode()
+            files[".repair"] = b"text.structure-fallback"
+        if marked or property_list is not None: files[".property-repair"] = b"text.marked-property"
+        if untagged: files[".unstructured"] = b""
+        if malformed or untagged:
+            files[".logical"] = b""
+            files[".logical-characters"] = val([])+b"\n"
+
+        return Vector("tagged-"+name,files,("text-structure","text-structure-references","text-structure-replacement","text-structure-fallback","text-logical-view","text-marked-properties","text-annotation-references"),
+                      "Independent logical /K graph, ParentTree ownership, replacement text and selection geometry",{"driver":"text-structure"})
+
+    yield case("nested-order",[("section","Sect",["second","first"]),("first","P",[("m",0)]),("second","P",[("m",1)])],
+               [("page",0,"First",10,90),("page",1,"Second",10,70)])
+    yield case("stream-span",[("p","P",[("m",0)])],[],split=True)
+    yield case("form-mcid",[("form","P",[("f",0)]),("page","P",[("m",0)])],
+               [("page",0,"Page",10,90),("form",0,"Form",10,50)])
+    yield case("object-reference",[("form","P",[("o",0)]),("page","P",[("m",0)])],
+               [("page",0,"Page",10,90),("form",-1,"Form",10,50)],object_form=True)
+    yield case("role-artifact",[("first","Custom",[("m",1)]),("artifact","Artifact",[("m",2)]),("last","P",[("m",0)])],
+               [("page",0,"Last",10,90),("page",1,"First",10,70),("page",2,"Footer",10,10),("page",None,"Decoration",10,5)],roles={"Custom":"Intermediate","Intermediate":"P"})
+    yield case("actual-text",[("outer","Sect",["child"]),("child","P",[("m",0)])],
+               [("page",0,"Bad",10,90)],actual={"outer":"Correct"},alt={"outer":"ignored"})
+    yield case("alt",[("figure","Span",[("o",0)])],[],object_form=True,alt={"figure":"Illustration"})
+    yield case("actual-adjacent",[("first","P",[("m",0)]),("last","P",[("m",1)])],
+               [("page",0,"XX",10,90),("page",1,"YY",10,10)],actual={"first":"A","last":"B"})
+    yield case("role-loop",[("custom","Custom",[("m",0)])],[("page",0,"Text",10,90)],roles={"Custom":"Other","Other":"Custom"})
+    yield case("standard-role-remap",[("custom","P",[("m",0)])],[("page",0,"Text",10,90)],roles={"P":"Span"})
+    yield case("mixed-kids",[("p","P",[("m",2),"span",("m",0)]),("span","Span",[("m",1)])],
+               [("page",0,"A",10,90),("page",1,"B",15,90),("page",2,"C",20,90)])
+    yield case("empty-actual",[("p","P",[("m",0)])],[("page",0,"Remove",10,90)],actual={"p":""},alt={"p":"ignored"})
+    yield case("hidden-actual",[("p","P",[("m",0)])],[("page",0,"Secret",10,90)],actual={"p":"Secret"},hidden=True)
+    yield case("hidden-object-alt",[("figure","Span",[("o",0)])],[],object_form=True,alt={"figure":"Hidden"},hidden=True)
+    yield case("unsupported-replacement",[("outer","Sect",["first","last"]),("first","P",[("m",0)]),("middle","P",[("m",1)]),("last","P",[("m",2)])],
+               [("page",0,"A",10,90),("page",1,"B",10,70),("page",2,"C",10,50)],actual={"outer":"Combined"},malformed="replacement")
+    yield case("heading-seven",[("heading","H7",[("m",0)])],[("page",0,"Heading",10,90)])
+    yield case("namespace-pdf17",[("p","P",[("m",0)])],[("page",0,"Text",10,90)],roles={"P":"Span"},explicit17=True)
+    yield case("annotation-alt",[("link","Span",[("o",0)])],[],object_form=True,object_annotation=True,alt={"link":"Link"})
+    yield case("hidden-annotation-alt",[("link","Span",[("o",0)])],[],object_form=True,object_annotation=True,alt={"link":"Hidden"},hidden=True)
+    yield case("malformed-role",[("custom","UnknownCustomRole",[("m",0)])],[("page",0,"Text",10,90)],malformed="role")
+    yield case("unsupported-appearance",[("p","P",[("f",0)])],[("form",0,"Text",10,50)],malformed="appearance")
+    yield case("unsupported-crosspage-replacement",[("p","P",[("m",0)])],[("page",0,"A",10,90)],actual={"p":"Across"},malformed="crosspage")
+    yield case("image-alt",[("figure","Span",[("o",0)])],[],object_form=True,object_image=True,alt={"figure":"Image"})
+    yield case("hidden-image-alt",[("figure","Span",[("o",0)])],[],object_form=True,object_image=True,alt={"figure":"Hidden"},hidden=True)
+    yield case("null-optionals",[("p","P",[("m",0)])],[("page",0,"Text",10,90)],nulls=True)
+    yield case("indirect-null-optionals",[("p","P",[("m",0)])],[("page",0,"Text",10,90)],nulls="indirect")
+    yield case("null-kids",[],[],empty_root=True)
+    yield case("negative-parent-key",[("p","P",[("m",0)])],[("page",0,"Text",10,90)])
+    yield case("indirect-types",[("p","P",[("m",0)])],[("page",0,"Text",10,90)])
+    yield case("malformed-type",[("p","P",[("m",0)])],[("page",0,"Text",10,90)],malformed="type")
+    deep=[("s%d" % i,"Sect",["s%d" % (i+1)]) for i in range(70)]+[("s70","P",[("m",0)])]
+    yield case("deep-tree",deep,[("page",0,"Text",10,90)],malformed="depth")
+    for fault in ("parent","cycle","namespace","root"):
+        yield case("malformed-"+fault,[("p","P",[("m",0)])],[("page",0,"A",10,20)],malformed=fault)
+    yield case("fallback-malformed",[("p","P",[("m",0)])],[("page",0,"Copy",10,90)],malformed="parent")
+    yield case("fallback-unsupported",[("p","P",[("m",0)])],[("page",0,"Search",10,90)],malformed="namespace")
+    yield case("fallback-rolemapns",[("p","P",[("m",0)])],[("page",0,"Copy",10,90)],malformed="rolemapns")
+    yield case("fallback-partial",[("early","P",[("m",0)]),("outer","Sect",["first","last"]),("first","P",[("m",1)]),("middle","P",[("m",2)]),("last","P",[("m",3)])],
+               [("page",0,"Before",10,110),("page",1,"A",10,90),("page",2,"B",10,70),("page",3,"C",10,50)],actual={"outer":"Combined"},malformed="replacement")
+    yield case("all-artifact",[("artifact","Artifact",[("m",0)])],[("page",0,"Footer",10,90)])
+    for name,value in [("actual",b" /ActualText 42"),("alt",b" /Alt false"),("expansion",b" /E /Invalid"),("invalid-string",b" /ActualText <FEFF00>")]:
+        yield case("property-"+name,[("p","P",[("m",0)])],[("page",0,"Copy",10,90)],marked=value)
+    for name,value in [("name",b"/Invalid"),("negative",b"-1"),("boolean",b"false"),("missing",b"99999 0 R")]:
+        yield case("mcid-"+name,[("p","P",[("m",0)])],[("page",0,"Copy",10,90)],invalid_mcid=value,malformed="mcid")
+        yield case("mcid-unused-"+name,[("p","P",[("m",0)])],[("page",0,"Copy",10,90)],invalid_mcid=value,untagged=True)
+    for name,flags,subtype in [("hidden",2,"Link"),("no-view",32,"Link"),("invisible-custom",1,"Custom"),("invisible-standard",1,"Link")]:
+        yield case("annotation-"+name,[("link","Span",[("o",0)])],[],object_form=True,object_annotation=True,annotation_flags=flags,annotation_subtype=subtype,alt={"link":"Link"})
+    for name,value in [("integer",b"42"),("missing",b"/UnknownProperties")]:
+        yield case("property-list-"+name,[("p","P",[("m",0)])],[("page",0,"Copy",10,90)],untagged=True,property_list=value)

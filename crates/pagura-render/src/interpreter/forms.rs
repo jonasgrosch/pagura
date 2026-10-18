@@ -88,7 +88,7 @@ impl Compiler<'_> {
             };
             child.state.stroke_alpha = 1.0;
         }
-        child.sequence(&[object], resources)?;
+        child.extract_form_sequence(object, resources)?;
         self.operations = child.operations;
         self.marks = child.marks;
         if self

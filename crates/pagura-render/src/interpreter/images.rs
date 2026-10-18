@@ -53,6 +53,7 @@ impl Compiler<'_> {
                 .map(|v| self.visibility.visible(self.document, v))
                 .transpose()?
                 .unwrap_or(true);
+            self.extract_graphic_object(id, !visible)?;
             let image = self.image_resource(id, resources, &mut Vec::new())?;
             if self.visible && visible {
                 self.image_mark(image)?;

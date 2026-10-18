@@ -1,3 +1,4 @@
+use super::TextObject;
 use super::*;
 
 fn source(text: Option<&str>) -> PositionedText {
@@ -29,6 +30,7 @@ fn source(text: Option<&str>) -> PositionedText {
         }],
         glyphs: vec![glyph],
         marked: Vec::new(),
+        objects: Vec::new(),
     }
 }
 fn page(text: &str) -> Result<TextPage> {
@@ -128,11 +130,13 @@ fn empty_and_graphical_replacements_and_literal_line_breaks_are_retained() -> Re
     let content = Arc::new(MarkedContent {
         id: 0,
         tag: Name::new(b"Span"),
+        container: None,
         mcid: None,
         actual_text: Some("two\nlines".to_owned()),
         alt: None,
     });
     let source = PositionedText {
+        objects: Vec::new(),
         marked: vec![MarkedSpan {
             content,
             ancestors: Arc::from([]),
@@ -147,5 +151,167 @@ fn empty_and_graphical_replacements_and_literal_line_breaks_are_retained() -> Re
     let found = text.find("two lines", SearchOptions::default())?;
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].quads.len(), 0);
+    Ok(())
+}
+
+#[test]
+fn retained_bytes_follow_capacity_arithmetic_and_shared_paths_once() -> Result<()> {
+    let mut input = source(Some("AB"));
+    input.glyphs.reserve_exact(13);
+    input.fonts.reserve_exact(5);
+    input.objects.reserve_exact(7);
+    let mark = Arc::new(MarkedContent {
+        id: 0,
+        tag: Name::new(b"Span"),
+        mcid: None,
+        container: None,
+        actual_text: Some(String::with_capacity(37)),
+        alt: None,
+    });
+    let path: Arc<[Arc<MarkedContent>]> = Arc::from([Arc::clone(&mark)]);
+    input.glyphs[0].marked_content = Arc::clone(&path);
+    input.glyphs.push(input.glyphs[0].clone());
+    input.marked.push(MarkedSpan {
+        content: mark,
+        ancestors: Arc::clone(&path),
+        glyphs: 0..2,
+        hidden: false,
+    });
+    let text = TextPage::from_positioned(input, LayoutOptions::default(), Limits::default())?;
+    let p = &text.positioned;
+    let expected = size_of::<PositionedText>()
+        + 2 * size_of::<usize>()
+        + p.fonts.capacity() * size_of::<TextFont>()
+        + p.glyphs.capacity() * size_of::<PositionedGlyph>()
+        + p.marked.capacity() * size_of::<MarkedSpan>()
+        + p.objects.capacity() * size_of::<TextObject>()
+        + text.content.capacity() * size_of::<Character>()
+        + text.reading.capacity() * size_of::<Character>()
+        + text.lines.capacity() * size_of::<TextLine>()
+        + text.words.capacity() * size_of::<TextWord>()
+        + text.text.capacity()
+        + text.content_text.capacity()
+        + p.glyphs
+            .iter()
+            .map(|g| g.unicode.as_ref().map_or(0, String::capacity))
+            .sum::<usize>()
+        + 2 * size_of::<usize>()
+        + size_of::<Arc<MarkedContent>>()
+        + 2 * size_of::<usize>()
+        + size_of::<MarkedContent>()
+        + 37;
+    assert_eq!(text.retained_bytes(), expected);
+    assert_eq!(text.retained_bytes(), memory::estimate(&text));
+    let cloned = text.clone();
+    assert_eq!(cloned.retained_bytes(), memory::estimate(&cloned));
+    assert!(cloned.retained_bytes() <= text.retained_bytes());
+    let relaid = text.with_layout(LayoutOptions::default())?;
+    assert_eq!(relaid.retained_bytes(), memory::estimate(&relaid));
+    Ok(())
+}
+
+#[test]
+fn retained_bytes_include_long_names_empty_arc_paths_and_string_spare_capacity() -> Result<()> {
+    let mut input = source(Some("X"));
+    input.fonts[0].base_name = Some(Name::new(&[b'A'; 43]));
+    let mut unicode = String::with_capacity(101);
+    unicode.push('X');
+    input.glyphs[0].unicode = Some(unicode);
+    let text = TextPage::from_positioned(input, LayoutOptions::default(), Limits::default())?;
+    let base = page("X")?;
+    assert_eq!(text.retained_bytes() - base.retained_bytes(), 43 + 100);
+    let empty = TextPage::from_positioned(
+        PositionedText::default(),
+        LayoutOptions::default(),
+        Limits::default(),
+    )?;
+    assert_eq!(
+        empty.retained_bytes(),
+        size_of::<PositionedText>() + 2 * size_of::<usize>()
+    );
+    Ok(())
+}
+
+#[test]
+fn structure_work_budget_and_document_identity_are_enforced() -> Result<()> {
+    use pagura_document::{Document, OpenOptions};
+    let bytes = pagura_testkit::fixture("text", "tagged-nested-order.pdf");
+    let doc = Document::open(bytes.clone(), &OpenOptions::default())?;
+    let other = Document::open(bytes.clone(), &OpenOptions::default())?;
+    assert_eq!(
+        page("X")?
+            .with_structure(&other, doc.page(0)?)
+            .err()
+            .map(|e| e.kind),
+        Some(pagura_core::ErrorKind::InvalidArgument)
+    );
+    let limited = Document::open(
+        bytes,
+        &OpenOptions {
+            limits: Limits {
+                operations: 1,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    )?;
+    let text = TextPage::from_positioned(
+        PositionedText::default(),
+        LayoutOptions::default(),
+        Limits::default(),
+    )?;
+    let error = text.with_structure(&limited, limited.page(0)?).err();
+    assert_eq!(error.map(|e| e.kind), Some(pagura_core::ErrorKind::Limit));
+    Ok(())
+}
+
+#[test]
+fn structure_metadata_capacity_and_heap_roles_are_accounted() -> Result<()> {
+    let mut text = page("X")?;
+    let base = text.retained_bytes();
+    let clone_base = text.clone().retained_bytes();
+    let mut elements = Vec::with_capacity(11);
+    elements.push(StructureElement {
+        object: None,
+        parent: None,
+        role: Name::new(&[b'X'; 47]),
+        standard_type: Some(Name::new(b"P")),
+        namespace: StructureNamespace::Pdf17,
+        range: 0..1,
+    });
+    let mut value = String::with_capacity(101);
+    value.push('X');
+    let mut characters = Vec::with_capacity(17);
+    characters.push(text.characters()[0].clone());
+    let logical = LogicalText {
+        text: value,
+        characters,
+        structure: elements,
+        retained: 0,
+    };
+    let extra = size_of::<LogicalText>()
+        + 2 * size_of::<usize>()
+        + logical.text.capacity()
+        + logical.characters.capacity() * size_of::<Character>()
+        + logical.structure.capacity() * size_of::<StructureElement>()
+        + 47;
+    let mut logical = logical;
+    logical.retained = memory::logical_bytes(&logical);
+    assert_eq!(logical.retained, extra);
+    let expected = base + extra;
+    text.logical = Some(Arc::new(logical));
+    text.retained = memory::estimate(&text);
+    assert_eq!(text.retained_bytes(), expected);
+    assert_eq!(text.clone().retained_bytes(), clone_base + extra);
+    let relaid = text.with_layout(LayoutOptions {
+        include_hidden: true,
+        space_gap: 1.0,
+        ..LayoutOptions::default()
+    })?;
+    assert!(Arc::ptr_eq(
+        text.logical.as_ref().unwrap(),
+        relaid.logical.as_ref().unwrap()
+    ));
+    assert_eq!(relaid.retained_bytes(), memory::estimate(&relaid));
     Ok(())
 }

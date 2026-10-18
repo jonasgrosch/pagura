@@ -213,14 +213,7 @@ impl<'a> Compiler<'a> {
         self.state.stroke_color = self.state.fill.clone();
         let streams = self.document.content_streams(page)?;
         self.sequence(&streams, page.resources())?;
-        if self.extraction.is_some() {
-            let extraction = self.extraction.take();
-            let result = self.annotations(page);
-            self.extraction = extraction;
-            result
-        } else {
-            self.annotations(page)
-        }
+        self.annotations(page)
     }
 
     fn sequence(&mut self, streams: &[&IndirectObject], resources: &Dictionary) -> Result<()> {

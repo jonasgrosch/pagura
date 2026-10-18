@@ -35,8 +35,9 @@ mod metrics;
 mod objects;
 mod page;
 pub use page::{
-    Character, LayoutOptions, MarkedContent, MarkedSpan, PositionedGlyph, PositionedText, Quad,
-    SearchOptions, TextFont, TextLine, TextMatch, TextPage, TextWord,
+    Character, LayoutOptions, LogicalText, MarkedContent, MarkedSpan, PositionedGlyph,
+    PositionedText, Quad, SearchOptions, StructureElement, StructureNamespace, TextFont, TextLine,
+    TextMatch, TextObject, TextPage, TextWord,
 };
 mod program;
 mod provider;

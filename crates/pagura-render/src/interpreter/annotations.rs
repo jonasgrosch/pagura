@@ -47,11 +47,13 @@ impl Compiler<'_> {
             return Err(Error::syntax("invalid annotation flags"));
         }
         if flags & (2 | 32) != 0 {
+            self.extract_annotation(value, true)?;
             return Ok(());
         }
         if let Some(oc) = d.get(b"OC")
             && !self.visibility.visible(self.document, oc)?
         {
+            self.extract_annotation(value, true)?;
             return Ok(());
         }
         let subtype = d
@@ -61,8 +63,10 @@ impl Compiler<'_> {
             .and_then(Value::as_name)
             .ok_or(Error::syntax("annotation has no Subtype"))?;
         if flags & 1 != 0 && !standard_type(subtype.as_bytes()) {
+            self.extract_annotation(value, true)?;
             return Ok(());
         }
+        self.extract_annotation(value, false)?;
         let rect = rectangle(self.document, d, b"Rect")?;
         let Some(ap) = d.get(b"AP") else {
             if rect.width() == 0.0 && rect.height() == 0.0 {
@@ -163,7 +167,9 @@ impl Compiler<'_> {
             },
         );
         let start = self.list.commands.len();
+        let extraction = self.extraction.take();
         let result = self.form_object(id, resources);
+        self.extraction = extraction;
         if result.is_ok() && !form.contains_key(b"Group") {
             let mut bounds = pagura_raster::PathBuilder::new();
             bounds.rect(rect.x0, rect.y0, rect.width(), rect.height());

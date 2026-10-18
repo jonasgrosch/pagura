@@ -21,6 +21,15 @@ pub const CMAP_CODESPACE: Repair = Repair::new("font.cmap-codespace");
 /// (9.8.1, Table 120); normal weight and the independent ForceBold flag apply.
 pub const DESCRIPTOR_WEIGHT: Repair = Repair::new("font.descriptor-weight");
 
+/// Unusable marked-content property lists or ActualText, Alt or E values
+/// are ignored (14.6.2; 14.9.3–14.9.5).
+/// This never supplies a guessed replacement or changes glyph painting.
+pub const MARKED_PROPERTY: Repair = Repair::new("text.marked-property");
+
+/// Logical structure is unusable: the page has no logical view, and its page
+/// text is unaffected (14.7–14.8; reader recovery policy, ADR 0003 and ADR 0014).
+pub const STRUCTURE_FALLBACK: Repair = Repair::new("text.structure-fallback");
+
 /// Reports one item at a time so malformed maps cannot grow a temporary
 /// diagnostic vector beyond Document's bounded/deduplicating sink.
 #[derive(Clone, Copy)]
