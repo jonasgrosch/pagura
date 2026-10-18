@@ -4,7 +4,7 @@
 //! Heuristics follow the ADR 0003 repair catalogue and the damage classes seen
 //! in the real-world corpus.
 
-use crate::object::header;
+use crate::object::recovery::{self, header};
 use crate::tags;
 use crate::xref::{Location, XrefEntry, XrefTable};
 use pagura_core::syntax::{Origin, Parser};
@@ -130,7 +130,7 @@ fn object(
             }
         }
     }
-    crate::object::end(parser, limits, id, diagnostics)?;
+    recovery::end(parser, limits, id, diagnostics)?;
     if value
         .as_dictionary()
         .is_some_and(|dictionary| dictionary.is_name(b"Type", b"ObjStm"))
@@ -177,7 +177,7 @@ fn skip_direct(
         }
     }
     let (marker, _) =
-        crate::object::terminator_in(parser.data(), limits, id, start, parser.data().len(), true)?;
+        recovery::terminator_in(parser.data(), limits, id, start, parser.data().len(), true)?;
     if let Some(end) = declared {
         diagnostics.repair(
             Diagnostic::new(

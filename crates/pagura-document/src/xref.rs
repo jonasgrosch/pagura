@@ -274,7 +274,7 @@ fn validate_identities(bytes: &[u8], table: &XrefTable, limits: Limits) -> Resul
             // This eager check uses a fixed-size lookahead. Longer headers
             // remain lazy, avoiding repeated scans of hostile overlapping tokens.
             let header = |offset: usize| {
-                crate::object::header(
+                crate::object::recovery::header(
                     &bytes[..offset.saturating_add(1024).min(bytes.len())],
                     offset,
                     limits,
