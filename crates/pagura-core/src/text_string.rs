@@ -188,15 +188,12 @@ impl Text<'_> {
             let second = units
                 .get(index + 1)
                 .map_or(0, |&unit| u16::from_be_bytes(unit));
-            match char::decode_utf16([first, second]).next() {
-                Some(Ok(character)) => {
-                    self.push(character)?;
-                    index += character.len_utf16();
-                }
-                _ => {
-                    self.invalid()?;
-                    index += 1;
-                }
+            if let Some(Ok(character)) = char::decode_utf16([first, second]).next() {
+                self.push(character)?;
+                index += character.len_utf16();
+            } else {
+                self.invalid()?;
+                index += 1;
             }
         }
         if odd.is_empty() {
@@ -223,12 +220,11 @@ impl Text<'_> {
             let Some((_, after)) = tail.split_first() else {
                 return Ok(());
             };
-            rest = match utf8_language(after) {
-                Some(length) => after.get(length + 1..).unwrap_or_default(),
-                None => {
-                    self.malformed_escape()?;
-                    after
-                }
+            rest = if let Some(length) = utf8_language(after) {
+                after.get(length + 1..).unwrap_or_default()
+            } else {
+                self.malformed_escape()?;
+                after
             };
         }
     }

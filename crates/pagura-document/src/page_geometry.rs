@@ -5,10 +5,11 @@ use crate::{Document, tags};
 use pagura_core::{Diagnostic, Diagnostics, ObjectId, Rect, Result, Value};
 
 /// US Letter, the viewing convention for a page without a usable MediaBox.
-const LETTER: Rect = match Rect::from_corners(0.0, 0.0, 612.0, 792.0) {
-    Some(rect) => rect,
+const LETTER: Rect = if let Some(rect) = Rect::from_corners(0.0, 0.0, 612.0, 792.0) {
+    rect
+} else {
     // Evaluated at compile time: finite corners always form a rectangle.
-    None => unreachable!(),
+    unreachable!()
 };
 
 /// The Letter fallback is a viewing convention also used by PDF.js, not an

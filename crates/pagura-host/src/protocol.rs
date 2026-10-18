@@ -483,12 +483,11 @@ impl Encoder {
             self.object(object)?;
         }
         let (kind, offset, stream) = match position {
-            Position::Unknown => (0, None, None),
             Position::File(offset) => (1, Some(offset), None),
             Position::Stream { object, offset } => (2, Some(offset), Some(object)),
             Position::Buffer(offset) => (3, Some(offset), None),
-            // A position kind added to pagura-core is sent as unknown until a
-            // protocol version gives it a code.
+            // Unknown, or a position kind added to pagura-core that has no
+            // code until a protocol version gives it one.
             _ => (0, None, None),
         };
         self.push(&[kind])?;
