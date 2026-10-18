@@ -15,6 +15,8 @@ FLAGS = "overprint-flags"
 PROCESS = "overprint-process"
 SPOT = "overprint-spot"
 GROUP = "overprint-groups"
+PREVIEW = "overprint-preview"
+PDFX = b"/OutputIntents [<< /Type /OutputIntent /S /GTS_PDFX /OutputConditionIdentifier (Test print) >>]"
 WHITE = ([F(0)] * 6, F(0))  # transparent, premultiplied
 CYAN = {0: F(1), 1: F(0), 2: F(0), 3: F(0)}
 MAGENTA = {0: F(0), 1: F(1), 2: F(0), 3: F(0)}
@@ -84,12 +86,13 @@ def rgb(pixel):
                  for i in range(3))
 
 
-def pdf(content, *, form=b"", form_group=b"", page_group=b"", extra_resources=b"", extra_colors=b"", objects=()):
+def pdf(content, *, form=b"", form_group=b"", page_group=b"", extra_resources=b"", extra_colors=b"", objects=(), intent=PDFX, trailer=b""):
+    # Simulation oracles declare print intent; policy cases opt out explicitly.
     resources = (RESOURCES.replace(STATE, extra_resources) if extra_resources.startswith(b"/ExtGState")
                  else RESOURCES[:-2] + extra_resources + b">>")
     resources = resources.replace(COLORS, COLORS[:-3] + extra_colors + b">> ")
     return document([
-        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Catalog /Pages 2 0 R " + intent + b" >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources " + resources
         + b" /Contents 4 0 R " + page_group + b">>",
@@ -99,7 +102,7 @@ def pdf(content, *, form=b"", form_group=b"", page_group=b"", extra_resources=b"
         stream(form, b"/Type /XObject /Subtype /Form /BBox [0 0 8 8] /Resources "
                + RESOURCES + b" " + form_group),
         *objects,
-    ])
+    ], trailer_extra=trailer)
 
 
 def case(name, content, expected, requirements=(PROCESS,), **options):
@@ -110,6 +113,48 @@ def case(name, content, expected, requirements=(PROCESS,), **options):
 
 
 def cases():
+    # Identical paint commands: cyan replaces magenta without preview, whereas
+    # OPM 1 preserves the magenta plate during simulation, giving blue.
+    content = BACK + b"/On gs 1 0 0 0 k " + RECT
+    for name, options, simulate in [
+        ("preview-pdfx-intent", {}, True),
+        ("preview-cmyk-group", {"page_group": b"/Group << /S /Transparency /CS /DeviceCMYK /I true >>"}, True),
+        ("preview-no-intent", {"intent": b""}, False),
+        ("preview-pdfx-info", {"intent": b"", "trailer": b"/Info 8 0 R",
+                               "objects": [b"<< /GTS_PDFXVersion (PDF/X-1a:2003) >>"]}, True),
+        ("preview-other-intent", {"intent": b"/OutputIntents [<< /S /GTS_PDFA1 >>]"}, False),
+        ("preview-indirect-intent", {"intent": b"/OutputIntents 8 0 R",
+                                     "objects": [b"[9 0 R]", b"<< /S 10 0 R >>", b"/GTS_PDFX"]}, True),
+        ("preview-page-intent", {"intent": b"", "page_group": PDFX}, True),
+        ("preview-page-overrides-catalog", {"page_group": b"/OutputIntents [<< /S /GTS_PDFA1 >>]"}, False),
+        ("preview-empty-page-intents", {"page_group": b"/OutputIntents []"}, False),
+        ("preview-indirect-page-intents", {"page_group": b"/OutputIntents 8 0 R",
+                                          "objects": [b"[<< /S /GTS_PDFA1 >>]"]}, False),
+        ("preview-invalid-page-intents", {"page_group": b"/OutputIntents null"}, True),
+        ("preview-unresolved-page-intents", {"page_group": b"/OutputIntents 8 0 R",
+                                            "objects": [b"8 0 R"]}, True),
+        ("preview-page-intent-with-pdfx-info", {"page_group": b"/OutputIntents [<< /S /GTS_PDFA1 >>]",
+                                              "trailer": b"/Info 8 0 R",
+                                              "objects": [b"<< /GTS_PDFXVersion (PDF/X-1a:2003) >>"]}, True),
+        ("preview-malformed-intent", {"intent": b"/OutputIntents [null 9 0 R << /S /Other >>]",
+                                      "objects": [b"null", b"9 0 R"],
+                                      "trailer": b"/Info 9 0 R"}, False),
+        ("preview-malformed-info", {"intent": b"", "trailer": b"/Info 8 0 R",
+                                    "objects": [b"<< /GTS_PDFXVersion /NotAString >>"]}, False),
+    ]:
+        yield case(name, content, compose(compose(WHITE, MAGENTA), CYAN, op=simulate, nonzero=True),
+                   (PREVIEW,), **options)
+    # A luminosity mask uses its own CMYK group even when the page needs no
+    # simulated plates. Blue has luminosity .11; ordinary cyan has .70.
+    for name, intent, luminosity in [("preview-cmyk-mask", PDFX, F(11, 100)),
+                                     ("preview-cmyk-mask-no-intent", b"", F(7, 10))]:
+        gray = int((1 - luminosity) * 255 + F(1, 2))
+        yield Case(name, pdf(b"/M gs 0 g " + RECT, intent=intent,
+                   extra_resources=b"/ExtGState << /M << /SMask << /S /Luminosity /G 7 0 R >> >> >>",
+                   form=BACK + b"/On gs 1 0 0 0 k " + RECT,
+                   form_group=b"/Group << /S /Transparency /CS /DeviceCMYK /I true >>"),
+                   RENDER, (PREVIEW,), "Preview policy also controls compatible overprinting inside luminosity masks",
+                   oracle=b"P6\n8 8\n255\n" + bytes([gray] * 3) * 64, extra={"tolerance": 1})
     # RGB Multiply has no subtractive or spot interaction. OP cannot change its
     # process model: (.5,.5,.5) * (.5,1,1) = (.25,.5,.5), rounded once.
     for flag in (False, True):
@@ -253,6 +298,9 @@ def cases():
             yield Case("spot-budget", pdf(content, extra_colors=colors), OPEN, (SPOT,),
                        "A page with more than 32 simulated spot plates is a bounded failure",
                        extra={"render_error": "Limit"})
+            yield Case("spot-budget-no-intent", pdf(content, extra_colors=colors, intent=b""), RENDER, (PREVIEW,),
+                       "Auto without print intent bypasses the simulated plate limit and paints ordinary content",
+                       oracle=b"P6\n8 8\n255\n" + bytes([252, 255, 255]) * 64)
         else:
             expected = (int((1 - F(count, 100)) * 255 + F(1, 2)), 0, 255)
             yield Case("spot-batches-" + str(count), pdf(content, extra_colors=colors), RENDER,

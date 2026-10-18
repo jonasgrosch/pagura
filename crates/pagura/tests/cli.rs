@@ -232,3 +232,51 @@ fn scan_separates_information_from_repairs() {
         assert!(text.contains("\"failures\":[]"), "{text}");
     }
 }
+
+#[test]
+fn overprint_option_selects_the_preview_and_validates_its_value() {
+    let scratch = Scratch::new().unwrap();
+    for input in ["preview-pdfx-intent", "preview-no-intent"] {
+        for mode in ["auto", "always", "never"] {
+            let image = scratch.0.join(format!("{input}-{mode}.ppm"));
+            let output = pagura()
+                .args(["render", "--overprint", mode])
+                .arg(fixture_path("overprint", &format!("{input}.pdf")))
+                .arg(&image)
+                .output()
+                .unwrap();
+            assert!(output.status.success(), "{:?}", output.stderr);
+            let simulate = mode == "always" || (mode == "auto" && input == "preview-pdfx-intent");
+            let oracle = if simulate {
+                "preview-pdfx-intent"
+            } else {
+                "preview-no-intent"
+            };
+            assert_bytes_eq(
+                &std::fs::read(image).unwrap(),
+                &fixture("overprint", &format!("{oracle}.ppm")),
+                mode,
+            );
+        }
+    }
+    for mode in [Some("invalid"), None] {
+        let mut command = pagura();
+        command.args(["render", "--overprint"]);
+        if let Some(mode) = mode {
+            command.arg(mode);
+        }
+        assert!(!command.output().unwrap().status.success());
+    }
+    // Scan must honor the policy too, including simulated resource limits.
+    let scan = pagura()
+        .args(["scan", "--overprint", "never"])
+        .arg(fixture_path("overprint", "spot-budget.pdf"))
+        .output()
+        .unwrap();
+    assert!(scan.status.success());
+    assert!(
+        String::from_utf8(scan.stdout)
+            .unwrap()
+            .contains("\"failures\":[]")
+    );
+}

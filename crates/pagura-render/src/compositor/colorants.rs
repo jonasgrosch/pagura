@@ -10,7 +10,7 @@
 
 use super::{Context, Source};
 use crate::color::{Color, Space};
-use crate::display::Command;
+use crate::display::{Command, PathCommand};
 use crate::transparency::{Composite, Conversion, Model};
 use pagura_core::{Error, Limits, Name, Result};
 use std::collections::BTreeSet;
@@ -131,26 +131,8 @@ impl Discovery {
             .ok_or(Error::limit("colourant nesting exceeded"))?;
         for command in commands {
             match command {
-                Command::Path(p) => match &p.color {
-                    Color::Solid { space, .. } => self.paint(space, &p.composite, true),
-                    Color::Pattern {
-                        selected: Some(pattern),
-                        ..
-                    } => {
-                        self.overprint |= p.composite.overprint;
-                        if self.patterns.insert(Arc::as_ptr(pattern) as usize) {
-                            match &pattern.kind {
-                                crate::pattern::Kind::Tiling(t) => {
-                                    self.visit(&t.commands, remaining, work)?;
-                                }
-                                crate::pattern::Kind::Shading(s) => {
-                                    self.paint(&s.space, &p.composite, false);
-                                }
-                            }
-                        }
-                    }
-                    Color::Pattern { .. } => {}
-                },
+                Command::Path(p) => self.path(p, remaining, work)?,
+                Command::Glyphs(run) => self.path(&run.paint, remaining, work)?,
                 Command::Image(i) => {
                     if let Some(space) = &i.image.space {
                         self.paint(space, &i.composite, false);
@@ -161,6 +143,30 @@ impl Discovery {
                 Command::Shading(s) => self.paint(&s.shading.space, &s.composite, false),
                 Command::Group(g) => self.visit(&g.commands, remaining, work)?,
             }
+        }
+        Ok(())
+    }
+    /// A path or glyph-run paint, including the content of its pattern.
+    fn path(&mut self, p: &PathCommand, remaining: usize, work: &mut usize) -> Result<()> {
+        match &p.color {
+            Color::Solid { space, .. } => self.paint(space, &p.composite, true),
+            Color::Pattern {
+                selected: Some(pattern),
+                ..
+            } => {
+                self.overprint |= p.composite.overprint;
+                if self.patterns.insert(Arc::as_ptr(pattern) as usize) {
+                    match &pattern.kind {
+                        crate::pattern::Kind::Tiling(t) => {
+                            self.visit(&t.commands, remaining, work)?;
+                        }
+                        crate::pattern::Kind::Shading(s) => {
+                            self.paint(&s.space, &p.composite, false);
+                        }
+                    }
+                }
+            }
+            Color::Pattern { .. } => {}
         }
         Ok(())
     }
@@ -277,7 +283,8 @@ impl Context {
                 }
             }
         }
-        if model == Model::Cmyk
+        if self.overprint == crate::overprint::Policy::Simulate
+            && model == Model::Cmyk
             && !result.spot
             && direct
             && state.overprint
@@ -356,7 +363,7 @@ mod tests {
         path.rect(0.0, 0.0, 1.0, 1.0);
         let path = Arc::new(path.finish());
         let command = |color| {
-            Command::Path(crate::display::PathCommand {
+            Command::Path(PathCommand {
                 path: Arc::clone(&path),
                 mark: crate::display::Mark::Fill(pagura_raster::FillRule::NonZero),
                 clip: None,

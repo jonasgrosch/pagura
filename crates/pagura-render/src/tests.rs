@@ -317,6 +317,7 @@ fn all_supported_fixtures_assemble_as_single_pixel_tiles() {
         let options = RenderOptions {
             scale: 1.25,
             background: Rgba8::new(17, 35, 61, 96),
+            ..RenderOptions::default()
         };
         let full = list.render(&options).unwrap();
         for y in 0..full.height() {
@@ -793,6 +794,7 @@ fn mesh_patterns_and_view_fitting_preserve_global_tile_coordinates() {
         let options = RenderOptions {
             scale: 1.25,
             background: Rgba8::new(17, 35, 61, 96),
+            ..RenderOptions::default()
         };
         let full = list.render(&options).unwrap();
         for y in 0..full.height() {

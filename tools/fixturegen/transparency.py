@@ -89,10 +89,10 @@ def form(content, space=None, resources=b"<< >>", isolated=True, knockout=False)
                   + attributes + b" >> /Resources " + resources)
 
 
-def pdf(content, resources=b"<< >>", space=None, objects=()):
+def pdf(content, resources=b"<< >>", space=None, objects=(), intent=b""):
     page_group = b" /Group << /S /Transparency /CS " + space + b" >>" if space else b""
     return document([
-        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Catalog /Pages 2 0 R" + (b" " + intent if intent else b"") + b" >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources " + resources
         + b" /Contents 4 0 R" + page_group + b" >>",
@@ -347,7 +347,7 @@ def unsupported_spaces():
 
 
 def overprint_boundaries():
-    from .overprint import WHITE, compose, rgb as separation_rgb
+    from .overprint import PDFX, WHITE, compose, rgb as separation_rgb
 
     state = b"/ExtGState << /A << /op true /OP true /OPM 1 >> >>"
     back = (F(0), F(3, 5), F(1, 5), F(1, 10))
@@ -364,7 +364,7 @@ def overprint_boundaries():
         ("shading", b"/S sh", shading, []),
     ]:
         data = pdf(paint("cmyk", back) + b"/A gs " + command, b"<< " + state + b" " + resources + b" >>",
-                   b"[/ICCBased 5 0 R]", [stream(profile(4), b"/N 4"), *objects])
+                   b"[/ICCBased 5 0 R]", [stream(profile(4), b"/N 4"), *objects], intent=PDFX)
         pixel = compose(compose(WHITE, dict(enumerate(back))), dict(enumerate(source)),
                         op=True, nonzero=name == "path")
         expected = tuple(F(v, 255) for v in separation_rgb(pixel))
@@ -381,7 +381,7 @@ def overprint_boundaries():
         numbers = b" ".join(format(float(v), ".24f").rstrip("0").rstrip(".").encode() for v in source)
         resources = b"<< " + state + b" /ColorSpace << /C [/ICCBased 5 0 R] /DefaultCMYK [/ICCBased 5 0 R] >> >>"
         data = pdf(paint("cmyk", back) + b"/A gs " + space + b" " + numbers + b" scn 0 0 8 8 re f",
-                   resources, b"[/ICCBased 5 0 R]", [stream(profile(4), b"/N 4")])
+                   resources, b"[/ICCBased 5 0 R]", [stream(profile(4), b"/N 4")], intent=PDFX)
         # DefaultCMYK also colour-manages the backdrop; a supported ICC
         # source is not a native device overprint source (11.7.4.3).
         expected = managed(4, source)
@@ -401,7 +401,7 @@ def overprint_boundaries():
                   b"<< /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [1 0 0 0] /N 1 >>] >>")
         resources = b"<< " + state + b" " + colors + b" >>"
         data = pdf(paint("cmyk", back) + b"/A gs " + space + b" cs " + components + b" scn 0 0 8 8 re f",
-                   resources, b"[/ICCBased 5 0 R]", [stream(profile(4), b"/N 4")])
+                   resources, b"[/ICCBased 5 0 R]", [stream(profile(4), b"/N 4")], intent=PDFX)
         expected = separation_rgb(compose(compose(WHITE, dict(enumerate(back))), tints, op=True))
         yield uniform("icc-cmyk-overprint-" + name, data, tuple(F(v, 255) for v in expected),
                       "transparency-overprint-boundary", "11.7.3–11.7.4: named process and spot components use the shared group compositor")

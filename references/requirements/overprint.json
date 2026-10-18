@@ -147,6 +147,39 @@
         "overprint/named-process-in-rgb-group-uses-alternate"
       ],
       "gaps": "Display approximation uses CMYK ink equivalents with saturation; physical ink spectra and output-intent ICC destination transforms are not modeled. Spot plates have a per-page budget of 32. Transfer selection remains explicitly unsupported."
+    },
+    {
+      "id": "overprint-preview",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "14.11.5",
+        "14.11.5 Table 401",
+        "8.6.7",
+        "11.7.4"
+      ],
+      "status": "implemented display policy",
+      "rule": "Auto (default) enables simulation only for a PDF/X declaration: OutputIntents with S GTS_PDFX or an Info GTS_PDFXVersion string. A resolved page OutputIntents array overrides the catalog, including an empty array; otherwise use the catalog. The Info declaration remains an independent OR. Always enables applicable simulation; Never paints ordinary composite content. Preview selection is reader policy, not PDF/X validation.",
+      "tests": [
+        "overprint/preview-pdfx-intent",
+        "overprint/preview-no-intent",
+        "overprint/preview-pdfx-info",
+        "overprint/preview-other-intent",
+        "overprint/preview-indirect-intent",
+        "overprint/preview-page-intent",
+        "overprint/preview-malformed-intent",
+        "overprint/preview-malformed-info",
+        "overprint/spot-budget-no-intent",
+        "overprint/preview-cmyk-group",
+        "overprint/preview-cmyk-mask",
+        "overprint/preview-cmyk-mask-no-intent",
+        "overprint/preview-page-overrides-catalog",
+        "overprint/preview-empty-page-intents",
+        "overprint/preview-indirect-page-intents",
+        "overprint/preview-invalid-page-intents",
+        "overprint/preview-unresolved-page-intents",
+        "overprint/preview-page-intent-with-pdfx-info"
+      ],
+      "gaps": "The host protocol and viewer currently use Auto; a versioned render option and viewer toggle remain."
     }
   ]
 }

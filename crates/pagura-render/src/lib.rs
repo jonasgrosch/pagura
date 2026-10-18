@@ -17,6 +17,7 @@ mod icc;
 mod interpreter;
 mod operators;
 mod optional;
+mod overprint;
 mod pattern;
 mod shading;
 mod transparency;
@@ -26,6 +27,7 @@ pub use display::DisplayList;
 pub use interpreter::{
     compile_filled_page, compile_page, compile_page_with, compile_page_with_text, text_page,
 };
+pub use overprint::OverprintPreview;
 
 use pagura_core::{Error, Rect, Result};
 use pagura_document::{Document, Page, Rotation};
@@ -46,6 +48,8 @@ pub struct RenderOptions {
     pub scale: f64,
     /// Colour the page is composited onto.
     pub background: Rgba8,
+    /// Whether to simulate overprinting (8.6.7; 11.7.4).
+    pub overprint: OverprintPreview,
 }
 
 impl Default for RenderOptions {
@@ -53,6 +57,7 @@ impl Default for RenderOptions {
         Self {
             scale: 1.0,
             background: Rgba8::WHITE,
+            overprint: OverprintPreview::Auto,
         }
     }
 }

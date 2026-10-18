@@ -1313,7 +1313,7 @@
         "transparency-overprint-boundary"
       ],
       "path": "corpus/generated/transparency/icc-cmyk-overprint-path.pdf",
-      "sha256": "13e709480e935f5019eaff3dd9d0949c100c45745bed10c40c3d6c416d208c3a",
+      "sha256": "fffab927e08f9f8b2598c62abc52755f8ac514c1b4ee5f94f6c7100ea227ee26",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1333,7 +1333,7 @@
         "transparency-overprint-boundary"
       ],
       "path": "corpus/generated/transparency/icc-cmyk-overprint-image.pdf",
-      "sha256": "f4b41af0bbf261258fa2be429390dbe3a4d12e915efd367b10507931fe58dcb4",
+      "sha256": "d350987bd60fba14b0383554ac02ddf638b86c53c1e3807b01b43232f370e530",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1353,7 +1353,7 @@
         "transparency-overprint-boundary"
       ],
       "path": "corpus/generated/transparency/icc-cmyk-overprint-shading.pdf",
-      "sha256": "77d5e33be7e44331de114101238544ac41115b3c9aa2f236b352e4ae301e60ba",
+      "sha256": "1ad8866d2bc0213f43eaeb469890b950dfe262f402167fe7a2daf909b41b0223",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1373,7 +1373,7 @@
         "transparency-overprint-boundary"
       ],
       "path": "corpus/generated/transparency/icc-cmyk-overprint-matching-profile.pdf",
-      "sha256": "b4d2c26bff405b44772809a6dd3ca22720b2b5d1a69546d66310a41078c67fc0",
+      "sha256": "74beffa18e27c85571b5acf80e14fe26a15020b72c5b0d2467867d75a28cb012",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1393,7 +1393,7 @@
         "transparency-overprint-boundary"
       ],
       "path": "corpus/generated/transparency/icc-cmyk-overprint-tiny-nonzero.pdf",
-      "sha256": "49e1ca09e16ceb8bad54821ba80e89b739506d50042995b440b452ed0ca1f22a",
+      "sha256": "7a44fb640a125b4df608602a968ca3706a6ea6925ef009d28195c75c05d041fe",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1413,7 +1413,7 @@
         "transparency-overprint-boundary"
       ],
       "path": "corpus/generated/transparency/icc-cmyk-overprint-clipped-tints.pdf",
-      "sha256": "88be83d4abb072fb1a0b6cc8b8acf99a829bbd3366451c304eed42baa8640909",
+      "sha256": "6505abc33976c001daa50b17e5d427f4beec4272012b22acda21e8799a7bc7c6",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1433,7 +1433,7 @@
         "transparency-overprint-boundary"
       ],
       "path": "corpus/generated/transparency/icc-cmyk-overprint-default-remap.pdf",
-      "sha256": "c522c36670e1c5ca05b92202262679d453bc9ba46ce13377cac4382f7e1be69b",
+      "sha256": "ce8e3ff9d9a98cd6a0a1f68db844b749d21ab7a765c7896b3bb41eb8a86ef911",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1453,7 +1453,7 @@
         "transparency-overprint-boundary"
       ],
       "path": "corpus/generated/transparency/icc-cmyk-overprint-named-process.pdf",
-      "sha256": "959f7a1a91352e8f3260ccc6d2a0e6e263b86e7beb3b0ef53032920900fc004e",
+      "sha256": "17bcb713ffb02232e60b1f9f32e38fedf092b1943d515e557225f5610e9daeb8",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1473,7 +1473,7 @@
         "transparency-overprint-boundary"
       ],
       "path": "corpus/generated/transparency/icc-cmyk-overprint-spot.pdf",
-      "sha256": "b1e30d9cd595dab2a85779ee9cf57ece84b8d217e2b5927ee4c41f0e6827eb7d",
+      "sha256": "7590be8e7e7951d90cf1e91d7787f5acffcbc96ce5f17aaeaa0c0cbdd1da7a9c",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
