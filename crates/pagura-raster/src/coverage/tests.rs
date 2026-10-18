@@ -112,3 +112,164 @@ fn finish_budget_failure_preserves_state_for_a_smaller_reset() {
     row.maximum = Limits::default().raster_work;
     assert_eq!(compare_dense(&mut row), [0]);
 }
+
+#[test]
+fn many_subpixel_slivers_keep_their_combined_area() {
+    // 8.5.3.3.2–3: disjoint interiors have the same union under either rule.
+    // All coordinates are binary fractions. Each rectangle has area
+    // (3/4) * 2^-21; 2^15 rectangles therefore cover 3/256 of one pixel.
+    // Independent half-up rounding gives round(255 * 3/256) = 3. In
+    // particular, discarding individually sub-grid contours is not harmless.
+    let grid = f64::from(1_u32 << 20);
+    for transpose in [false, true] {
+        let mut builder = crate::PathBuilder::new();
+        for i in 0..(1_u32 << 15) {
+            let center = f64::from(4 * i + 2) / grid;
+            let lo = center - 0.25 / grid;
+            let thickness = 0.5 / grid;
+            if transpose {
+                builder.rect(lo, 0.125, thickness, 0.75);
+            } else {
+                builder.rect(0.125, lo, 0.75, thickness);
+            }
+        }
+        let path = Arc::new(builder.finish());
+        for rule in [FillRule::NonZero, FillRule::EvenOdd] {
+            for origin in [(0, 0), (17, 29), (1 << 30, 1 << 30)] {
+                let shapes = [Shape {
+                    geometry: Geometry::Path(Arc::clone(&path)),
+                    transform: Transform::translate(f64::from(origin.0), f64::from(origin.1)),
+                    rule,
+                }];
+                let mut scratch = Scratch::default();
+                let mut whole = [0; 6];
+                coverage(
+                    3,
+                    2,
+                    &shapes,
+                    &mut whole,
+                    origin,
+                    &Limits::default(),
+                    &mut scratch,
+                )
+                .unwrap();
+                assert_eq!(whole, [3, 0, 0, 0, 0, 0]);
+                let mut accumulated = [0; 6];
+                scratch
+                    .accumulator()
+                    .unwrap()
+                    .render(
+                        &shapes,
+                        &mut accumulated,
+                        origin,
+                        (3, 2),
+                        &Limits::default(),
+                        0,
+                    )
+                    .unwrap();
+                assert_eq!(accumulated, whole);
+                let mut accumulated_tile = [0];
+                scratch
+                    .accumulator()
+                    .unwrap()
+                    .render(
+                        &shapes,
+                        &mut accumulated_tile,
+                        origin,
+                        (1, 1),
+                        &Limits::default(),
+                        0,
+                    )
+                    .unwrap();
+                assert_eq!(accumulated_tile, [3]);
+                for y in 0..2 {
+                    for x in 0..3 {
+                        let mut tile = [0];
+                        coverage(
+                            1,
+                            1,
+                            &shapes,
+                            &mut tile,
+                            (origin.0 + x, origin.1 + y),
+                            &Limits::default(),
+                            &mut scratch,
+                        )
+                        .unwrap();
+                        assert_eq!(tile[0], whole[usize::try_from(y * 3 + x).unwrap()]);
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn retained_storage_tracks_backend_switches_and_partial_errors() {
+    let mut builder = crate::PathBuilder::new();
+    builder.rect(0.0, 0.0, 8.0, 8.0);
+    let rectangle = builder.finish();
+    builder.move_to(Point::new(0.0, 0.0));
+    builder
+        .cubic_to(
+            Point::new(8.0, 0.0),
+            Point::new(8.0, 8.0),
+            Point::new(0.0, 8.0),
+        )
+        .unwrap();
+    builder.close();
+    let curved = builder.finish();
+    builder.rect(0.25, 0.25, 3.5, 3.5);
+    builder.rect(2.25, 2.25, 3.5, 3.5);
+    let components = builder.finish();
+    let mut scratch = Scratch::default();
+    let mut output = [0; 64];
+    for path in [&rectangle, &curved, &components, &rectangle] {
+        let shapes = [Shape {
+            geometry: Geometry::Path(Arc::new(path.clone())),
+            transform: Transform::IDENTITY,
+            rule: FillRule::NonZero,
+        }];
+        coverage(
+            8,
+            8,
+            &shapes,
+            &mut output,
+            (0, 0),
+            &Limits::default(),
+            &mut scratch,
+        )
+        .unwrap();
+        assert_eq!(
+            scratch.retained_bytes(),
+            scratch.exact.retained_bytes()
+                + bytes(&scratch.accumulation)
+                + scratch
+                    .accumulation
+                    .iter()
+                    .map(accumulation::Accumulator::retained_bytes)
+                    .sum::<usize>()
+        );
+    }
+    let mut scratch = Scratch::default();
+    let shapes = [Shape {
+        geometry: Geometry::Path(Arc::new(curved)),
+        transform: Transform::IDENTITY,
+        rule: FillRule::NonZero,
+    }];
+    let limits = Limits {
+        raster_work: 16,
+        ..Limits::default()
+    };
+    assert!(coverage(8, 8, &shapes, &mut output, (0, 0), &limits, &mut scratch).is_err());
+    assert!(scratch.retained_bytes() > 0);
+    assert_eq!(
+        scratch.retained_bytes(),
+        scratch.exact.retained_bytes()
+            + bytes(&scratch.accumulation)
+            + scratch
+                .accumulation
+                .iter()
+                .map(accumulation::Accumulator::retained_bytes)
+                .sum::<usize>()
+    );
+}

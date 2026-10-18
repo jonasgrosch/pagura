@@ -155,3 +155,31 @@ and destination ICC output transforms are not modelled.
 
 An ICC-based transparency group composites in its N-component device base
 without inverse ICC transforms; its sources keep their forward transforms.
+
+## Amendment: certified accumulation (2026-10-18)
+
+Rasterization may select certified integer accumulation or the unsnapped strip
+sweep. Admission and the sweep's shape-anchored integer frame must be
+deterministic and independent of tile boundaries and redundant rectangle-clip
+omission. Both backends feed the common coverage-span compositor path. Revisit
+the admission rule once single-outline strokes land.
+
+Accumulation snaps flattened device geometry to a page-anchored grid of
+spacing u = 2^-20 pixels, with ties-to-even and consistently rounded shared
+crossings. The count n conservatively counts original flattened segments
+meeting the cell, including ghosts, not merely surviving snapped pieces.
+
+A segment whose snapped image has zero length, or becomes horizontal while its
+original was nonhorizontal, remains as a zero-cover, zero-area ghost. Ghosts
+count toward n and make affected cells uncertified. A snapped contour that
+degenerates makes every cell touched by its closed original bounding box
+uncertified. Ghost cells and cells with n > 512 use unsnapped original
+geometry.
+
+Eligible cells may use one-chain, closed-cell boundary-walk, constant-fill and
+group-intersection certificates. Failed certificates use the local resolver;
+snapped resolution requires passing the ghost and density guards. For
+n <= 512, snapping and crossing error is at most (2.5n + 7)u; including byte
+quantization, error remains below 0.813 levels. Curve flattening retains its
+separate tolerance. Originally degenerate subpaths retain the existing
+floor-cell policy before snapping. Tiles must assemble byte-identically.

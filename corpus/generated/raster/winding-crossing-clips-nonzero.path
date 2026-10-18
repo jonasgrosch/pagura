@@ -1,0 +1,10 @@
+nonzero
+m 0 0
+l 1 0
+l 0 1
+h
+clip
+m 0 0
+l 1 1
+l 0 1
+h

@@ -12,6 +12,8 @@ use crate::{FillRule, Path, Point, Transform};
 use pagura_core::{Error, Limits, Result};
 use std::sync::Arc;
 
+mod accumulation;
+mod admission;
 mod rectangle;
 use rectangle::Rectangle;
 
@@ -111,7 +113,7 @@ struct Row {
     areas: Vec<f64>,
     covers: Vec<f64>,
     touched: Vec<u64>,
-    origin: u32,
+    origin: f64,
     work: usize,
     maximum: usize,
     maximum_events: usize,
@@ -134,25 +136,21 @@ impl Row {
                 .map_err(|_| Error::limit("scanline allocation failed"))?;
             buffer.resize(width, 0.0);
         }
-        self.origin = origin;
+        self.origin = f64::from(origin);
         Ok(())
     }
     fn charge(&mut self, amount: usize) -> Result<()> {
         charge(&mut self.work, amount, self.maximum)
     }
     fn sorted(&mut self, count: usize) -> Result<()> {
-        self.charge(
-            count
-                .checked_mul(count.max(1).ilog2() as usize + 1)
-                .ok_or(Error::limit("sort work overflow"))?,
-        )
+        self.charge(sort_work(count)?)
     }
     fn edge(&mut self, edge: Edge, lo: f64, hi: f64, sign: i32) -> Result<()> {
         if sign == 0 {
             return Ok(());
         }
-        let a = edge.x(lo) - f64::from(self.origin);
-        let b = edge.x(hi) - f64::from(self.origin);
+        let a = edge.x(lo) - self.origin;
+        let b = edge.x(hi) - self.origin;
         let start = index(a.min(b).floor(), self.areas.len());
         let end = index(a.max(b).ceil(), self.areas.len());
         let area = (hi - lo) * f64::from(sign);
@@ -226,7 +224,7 @@ type BoundaryEvent = (usize, f64, f64, i64, FillRule);
 
 /// Temporary sweep storage; no path or coverage is cached.
 #[derive(Debug, Default)]
-pub(crate) struct Scratch {
+pub(crate) struct Exact {
     row: Row,
     contours: Vec<Polyline>,
     curves: CurveStack,
@@ -238,7 +236,7 @@ pub(crate) struct Scratch {
     winding: Windings,
     sweep: Sweep,
 }
-impl Scratch {
+impl Exact {
     pub(crate) fn retained_bytes(&self) -> usize {
         let buffers = [
             bytes(&self.row.areas),
@@ -267,6 +265,31 @@ fn bytes<T>(values: &Vec<T>) -> usize {
     values.capacity().saturating_mul(size_of::<T>())
 }
 
+/// Reused sweep storage; the larger integer workspace is initialized on demand.
+#[derive(Debug, Default)]
+pub(crate) struct Scratch {
+    exact: Exact,
+    accumulation: Vec<accumulation::Accumulator>,
+    exact_bytes: usize,
+    accumulation_bytes: usize,
+}
+
+impl Scratch {
+    fn accumulator(&mut self) -> Result<&mut accumulation::Accumulator> {
+        if self.accumulation.is_empty() {
+            self.accumulation
+                .try_reserve_exact(1)
+                .map_err(|_| Error::limit("raster accumulator allocation failed"))?;
+            self.accumulation.push(accumulation::Accumulator::default());
+        }
+        Ok(&mut self.accumulation[0])
+    }
+
+    pub(crate) fn retained_bytes(&self) -> usize {
+        self.exact_bytes.saturating_add(self.accumulation_bytes)
+    }
+}
+
 pub(crate) fn coverage(
     width: u32,
     height: u32,
@@ -276,98 +299,217 @@ pub(crate) fn coverage(
     limits: &Limits,
     scratch: &mut Scratch,
 ) -> Result<()> {
-    let Scratch {
-        row,
-        contours,
-        curves,
-        edges,
-        raw,
-        boundary,
-        vertices,
-        active,
-        winding,
-        sweep,
-    } = scratch;
-    let stride = usize::try_from(width).map_err(|_| Error::limit("mask width exceeds usize"))?;
-    row.work = 0;
-    row.maximum = limits.raster_work;
-    row.maximum_events = limits.path_segments;
-    let (bounds, groups) = Rectangle::intersection(shapes, origin, (width, height), row, limits)?;
-    if groups == 0 && !shapes.is_empty() {
-        row.charge(out.len())?;
-        bounds.write(out, stride, origin)?;
-        return Ok(());
+    let prepared = scratch
+        .exact
+        .prepare(shapes, origin, (width, height), limits)?;
+    if prepared.1 == 0 && !shapes.is_empty() {
+        scratch.exact.row.charge(out.len())?;
+        return prepared.0.write(out, width as usize, origin);
     }
-    row.reset(stride, origin.0)?;
-    edges.clear();
-    raw.clear();
-    boundary.clear();
-    build_edges(shapes, bounds, limits, row, raw, contours, curves)?;
-    normalize_boundaries(raw, edges, boundary, bounds.left, bounds.right, limits, row)?;
-    // A shared vertical extent has just two vertex events, already ordered.
-    // Keep them inline instead of allocating and sorting duplicate endpoints.
-    row.charge(edges.len())?;
-    let extent = edges
-        .first()
-        .map(|e| [e.a.y, e.b.y])
-        .filter(|&[lo, hi]| edges.iter().all(|e| e.a.y == lo && e.b.y == hi));
-    vertices.clear();
-    if extent.is_none() {
-        row.sorted(edges.len())?;
-        edges.sort_unstable_by(|a, b| a.a.y.total_cmp(&b.a.y));
-        vertices.extend(edges.iter().flat_map(|e| [e.a.y, e.b.y]));
-        row.sorted(vertices.len())?;
-        vertices.sort_unstable_by(f64::total_cmp);
-        vertices.dedup();
+    if let Some(anchor) = admission::sweep_anchor(shapes, limits.path_segments) {
+        let result = scratch.exact.render(
+            width,
+            shapes,
+            out,
+            origin,
+            limits,
+            (prepared.0, prepared.1, anchor),
+        );
+        scratch.exact_bytes = scratch.exact.retained_bytes();
+        result
+    } else {
+        let work = scratch.exact.row.work;
+        let result =
+            scratch
+                .accumulator()?
+                .render(shapes, out, origin, (width, height), limits, work);
+        scratch.accumulation_bytes =
+            bytes(&scratch.accumulation).saturating_add(scratch.accumulation[0].retained_bytes());
+        result
     }
-    let mut vertices = extent
-        .into_iter()
-        .flatten()
-        .chain(vertices.iter().copied())
-        .peekable();
-    active.clear();
-    let mut admitted = 0;
-    winding.values.resize(groups, 0);
-    sweep.sorted = false;
-    out.fill(0);
-    for (y, output) in out.chunks_exact_mut(stride).enumerate() {
-        let lo = f64::from(u32::try_from(y).map_err(|_| Error::limit("row exceeds u32"))?)
-            + f64::from(origin.1);
-        let hi = lo + 1.0;
-        while vertices.next_if(|&y| y <= lo).is_some() {}
-        if active.is_empty() && edges.get(admitted).is_none_or(|e| e.a.y >= hi) {
-            continue;
+}
+
+#[cfg(test)]
+pub(crate) fn coverage_accumulated(
+    width: u32,
+    height: u32,
+    shapes: &[Shape],
+    out: &mut [u8],
+    origin: (u32, u32),
+    limits: &Limits,
+    scratch: &mut Scratch,
+) -> Result<()> {
+    // Exercise accumulation even for rectangles and short component contours.
+    scratch
+        .accumulator()?
+        .render(shapes, out, origin, (width, height), limits, 0)
+}
+
+#[cfg(test)]
+fn coverage_exact(
+    width: u32,
+    height: u32,
+    shapes: &[Shape],
+    out: &mut [u8],
+    origin: (u32, u32),
+    limits: &Limits,
+    scratch: &mut Exact,
+) -> Result<()> {
+    let prepared = scratch.prepare(shapes, origin, (width, height), limits)?;
+    scratch.render(
+        width,
+        shapes,
+        out,
+        origin,
+        limits,
+        (prepared.0, prepared.1, Point::new(0.0, 0.0)),
+    )
+}
+
+impl Exact {
+    fn prepare(
+        &mut self,
+        shapes: &[Shape],
+        origin: (u32, u32),
+        size: (u32, u32),
+        limits: &Limits,
+    ) -> Result<(Rectangle, usize)> {
+        self.row.work = 0;
+        self.row.maximum = limits.raster_work;
+        self.row.maximum_events = limits.path_segments;
+        Rectangle::intersection(shapes, origin, size, &mut self.row, limits)
+    }
+
+    fn render(
+        &mut self,
+        width: u32,
+        shapes: &[Shape],
+        out: &mut [u8],
+        origin: (u32, u32),
+        limits: &Limits,
+        (bounds, groups, anchor): (Rectangle, usize, Point),
+    ) -> Result<()> {
+        let stride =
+            usize::try_from(width).map_err(|_| Error::limit("mask width exceeds usize"))?;
+        if groups == 0 && !shapes.is_empty() {
+            self.row.charge(out.len())?;
+            return bounds.write(out, stride, origin);
         }
-        let mut start = lo;
-        loop {
-            let end = vertices.peek().copied().unwrap_or(hi).min(hi);
-            let mid = start.midpoint(end);
-            row.charge(active.len())?;
-            active.retain(|e| e.b.y > mid);
-            // One starting-y stream admits each edge once per mask. Surviving
-            // edges retain the previous interval's order, including across rows.
-            while let Some(&edge) = edges.get(admitted)
-                && edge.a.y < mid
-            {
-                row.charge(1)?;
-                if edge.b.y > mid {
-                    sweep.sorted = false;
-                    active.push(edge);
+        let bounds = Rectangle {
+            left: bounds.left - anchor.x,
+            right: bounds.right - anchor.x,
+            top: bounds.top - anchor.y,
+            bottom: bounds.bottom - anchor.y,
+        };
+        self.row.reset(stride, origin.0)?;
+        self.row.origin -= anchor.x;
+        self.edges.clear();
+        self.raw.clear();
+        self.boundary.clear();
+        build_edges(
+            shapes,
+            (bounds, anchor),
+            limits,
+            &mut self.row,
+            &mut self.raw,
+            &mut self.contours,
+            &mut self.curves,
+        )?;
+        normalize_boundaries(
+            &mut self.raw,
+            &mut self.edges,
+            &mut self.boundary,
+            bounds.left,
+            bounds.right,
+            limits,
+            &mut self.row,
+        )?;
+        self.sweep_edges(stride, out, origin, groups, anchor.y)
+    }
+
+    fn sweep_edges(
+        &mut self,
+        stride: usize,
+        out: &mut [u8],
+        origin: (u32, u32),
+        groups: usize,
+        anchor_y: f64,
+    ) -> Result<()> {
+        let Self {
+            row,
+            edges,
+            vertices,
+            active,
+            winding,
+            sweep,
+            ..
+        } = self;
+        // A shared vertical extent has just two vertex events, already ordered.
+        // Keep them inline instead of allocating and sorting duplicate endpoints.
+        row.charge(edges.len())?;
+        let extent = edges
+            .first()
+            .map(|e| [e.a.y, e.b.y])
+            .filter(|&[lo, hi]| edges.iter().all(|e| e.a.y == lo && e.b.y == hi));
+        vertices.clear();
+        if extent.is_none() {
+            row.sorted(edges.len())?;
+            edges.sort_unstable_by(|a, b| a.a.y.total_cmp(&b.a.y));
+            vertices.extend(edges.iter().flat_map(|e| [e.a.y, e.b.y]));
+            row.sorted(vertices.len())?;
+            vertices.sort_unstable_by(f64::total_cmp);
+            vertices.dedup();
+        }
+        let mut vertices = extent
+            .into_iter()
+            .flatten()
+            .chain(vertices.iter().copied())
+            .peekable();
+        active.clear();
+        let mut admitted = 0;
+        winding.values.resize(groups, 0);
+        sweep.sorted = false;
+        out.fill(0);
+        for (y, output) in out.chunks_exact_mut(stride).enumerate() {
+            let lo = f64::from(u32::try_from(y).map_err(|_| Error::limit("row exceeds u32"))?)
+                + f64::from(origin.1)
+                - anchor_y;
+            let hi = lo + 1.0;
+            while vertices.next_if(|&y| y <= lo).is_some() {}
+            if active.is_empty() && edges.get(admitted).is_none_or(|e| e.a.y >= hi) {
+                continue;
+            }
+            let mut start = lo;
+            loop {
+                let end = vertices.peek().copied().unwrap_or(hi).min(hi);
+                let mid = start.midpoint(end);
+                row.charge(active.len())?;
+                active.retain(|e| e.b.y > mid);
+                // One starting-y stream admits each edge once per mask. Surviving
+                // edges retain the previous interval's order, including across rows.
+                while let Some(&edge) = edges.get(admitted)
+                    && edge.a.y < mid
+                {
+                    row.charge(1)?;
+                    if edge.b.y > mid {
+                        sweep.sorted = false;
+                        active.push(edge);
+                    }
+                    admitted += 1;
                 }
-                admitted += 1;
+                if !active.is_empty() {
+                    strip(active, start, end, winding, row, sweep)?;
+                }
+                if end == hi {
+                    break;
+                }
+                vertices.next();
+                start = end;
             }
-            if !active.is_empty() {
-                strip(active, start, end, winding, row, sweep)?;
-            }
-            if end == hi {
-                break;
-            }
-            vertices.next();
-            start = end;
+            row.finish(output)?;
         }
-        row.finish(output)?;
+        Ok(())
     }
-    Ok(())
 }
 
 fn strip(
@@ -535,7 +677,7 @@ fn crossing(
 
 fn build_edges(
     shapes: &[Shape],
-    bounds: Rectangle,
+    (bounds, anchor): (Rectangle, Point),
     limits: &Limits,
     row: &mut Row,
     edges: &mut Vec<Edge>,
@@ -565,7 +707,7 @@ fn build_edges(
                         contour.points().iter().map(|&p| p * shape.transform),
                         contour.is_degenerate(),
                         (group, shape.rule),
-                        bounds,
+                        (bounds, anchor),
                         limits,
                         row,
                         edges,
@@ -583,7 +725,7 @@ fn build_edges(
                         contour.points.iter().map(|&p| p * shape.transform),
                         contour.degenerate,
                         (group, shape.rule),
-                        bounds,
+                        (bounds, anchor),
                         limits,
                         row,
                         edges,
@@ -599,7 +741,7 @@ fn emit_contour(
     mut points: impl Iterator<Item = Point>,
     degenerate: bool,
     (group, rule): (usize, FillRule),
-    bounds: Rectangle,
+    (bounds, anchor): (Rectangle, Point),
     limits: &Limits,
     row: &mut Row,
     edges: &mut Vec<Edge>,
@@ -622,9 +764,10 @@ fn emit_contour(
         let Some(first) = points.next() else {
             return Ok(());
         };
-        let mut previous = first;
+        let mut previous = Point::new(first.x - anchor.x, first.y - anchor.y);
         for next in points.chain(std::iter::once(first)) {
             bounded(next)?;
+            let next = Point::new(next.x - anchor.x, next.y - anchor.y);
             row.charge(3)?;
             if !bounds.is_empty() {
                 clipped(
@@ -801,6 +944,12 @@ fn quantize(area: f64) -> u8 {
         .floor()
         .min(255.0) as u8
 }
+fn sort_work(count: usize) -> Result<usize> {
+    count
+        .checked_mul(count.max(1).ilog2() as usize + 1)
+        .ok_or(Error::limit("sort work overflow"))
+}
+
 pub(crate) fn charge(work: &mut usize, amount: usize, maximum: usize) -> Result<()> {
     *work = work
         .checked_add(amount)
@@ -811,3 +960,6 @@ pub(crate) fn charge(work: &mut usize, amount: usize, maximum: usize) -> Result<
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod glyph_tests;

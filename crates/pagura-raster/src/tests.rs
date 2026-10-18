@@ -1,14 +1,106 @@
 //! Independent generated-vector and API invariant tests.
 
+use crate::coverage::{self, Scratch, Shape};
 use crate::{
-    FillRule, LineCap, LineJoin, Mask, Paint, PathBuilder, Pixmap, Point, Rgba8, Stroke, Transform,
-    fill_path, stroke_path,
+    FillRule, LineCap, LineJoin, Mask, Paint, Path, PathBuilder, Pixmap, Point, Rgba8, Stroke,
+    Transform, fill_path, stroke_path,
 };
-use pagura_core::ErrorKind;
+use pagura_core::{ErrorKind, Limits, Result};
+use std::sync::Arc;
 
 fn vector(name: &str, tolerance: u8) {
     let text =
         String::from_utf8(pagura_testkit::fixture("raster", &format!("{name}.path"))).unwrap();
+    let (path, rule, stroke, clips) = vector_geometry(&text);
+    let expected = pagura_testkit::fixture("raster", &format!("{name}.pgm"));
+    let expected = expected.strip_prefix(b"P5\n8 8\n255\n").unwrap();
+    let (path, transform, rule) = if let Some(stroke) = stroke {
+        let mut target = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
+        stroke_path(
+            &mut target,
+            &path,
+            Transform::IDENTITY,
+            &stroke,
+            &Paint::Solid(Rgba8::BLACK),
+            None,
+        )
+        .unwrap();
+        let actual: Vec<_> = target
+            .data()
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| p[3])
+            .collect();
+        assert_vector_samples(name, "stroke API", &actual, expected, tolerance);
+        let (outline, transform) =
+            crate::stroke_outline(&path, Transform::IDENTITY, &stroke, &Limits::default()).unwrap();
+        (outline, transform, FillRule::NonZero)
+    } else {
+        (path, Transform::IDENTITY, rule)
+    };
+    // Fill and clips are intersected geometrically in one call. In particular,
+    // the forced backend cannot admit a short first contour to the strip sweep.
+    let shapes: Vec<_> = std::iter::once(Shape {
+        geometry: coverage::Geometry::Path(Arc::new(path)),
+        transform,
+        rule,
+    })
+    .chain(clips.into_iter().map(|path| Shape {
+        geometry: coverage::Geometry::Path(Arc::new(path)),
+        transform: Transform::IDENTITY,
+        rule,
+    }))
+    .collect();
+    let glyphs: Vec<_> = shapes
+        .iter()
+        .map(|shape| {
+            let coverage::Geometry::Path(path) = &shape.geometry else {
+                unreachable!()
+            };
+            let t = shape.transform;
+            Shape {
+                geometry: coverage::Geometry::Glyph(Arc::new(
+                    crate::GlyphGeometry::new(path, [t.a, t.b, t.c, t.d], &Limits::default())
+                        .unwrap(),
+                )),
+                transform: Transform::translate(t.e, t.f),
+                rule: shape.rule,
+            }
+        })
+        .collect();
+    for (backend, render, shapes) in [
+        (
+            "path dispatch",
+            coverage::coverage as CoverageRenderer,
+            shapes.as_slice(),
+        ),
+        (
+            "glyph dispatch",
+            coverage::coverage as CoverageRenderer,
+            glyphs.as_slice(),
+        ),
+        (
+            "glyph accumulator",
+            coverage::coverage_accumulated as CoverageRenderer,
+            glyphs.as_slice(),
+        ),
+        (
+            "accumulator",
+            coverage::coverage_accumulated as CoverageRenderer,
+            shapes.as_slice(),
+        ),
+    ] {
+        let mut whole = [0; 64];
+        let mut scratch = Scratch::default();
+        let limits = Limits::default();
+        render(8, 8, shapes, &mut whole, (0, 0), &limits, &mut scratch).unwrap();
+        assert_vector_samples(name, backend, &whole, expected, tolerance);
+        assert_vector_tiles(name, backend, render, shapes, &whole, &limits, &mut scratch);
+    }
+}
+
+fn vector_geometry(text: &str) -> (Path, FillRule, Option<Stroke>, Vec<Path>) {
     let mut builder = PathBuilder::new();
     let mut rule = FillRule::NonZero;
     let mut stroke = None;
@@ -63,66 +155,39 @@ fn vector(name: &str, tolerance: u8) {
             _ => unreachable!(),
         }
     }
-    let path = builder.finish();
-    let expected = pagura_testkit::fixture("raster", &format!("{name}.pgm"));
-    let expected = expected.strip_prefix(b"P5\n8 8\n255\n").unwrap();
-    let actual = if let Some(stroke) = stroke {
-        let mut target = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
-        stroke_path(
-            &mut target,
-            &path,
-            Transform::IDENTITY,
-            &stroke,
-            &Paint::Solid(Rgba8::BLACK),
-            None,
-        )
-        .unwrap();
-        target
-            .data()
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .map(|p| p[3])
-            .collect::<Vec<_>>()
-    } else {
-        let mut mask = Mask::from_path(8, 8, &path, Transform::IDENTITY, rule, 64).unwrap();
-        for clip in &clips {
-            mask.intersect(&Mask::from_path(8, 8, clip, Transform::IDENTITY, rule, 64).unwrap())
-                .unwrap();
-        }
-        assert_mask_tiles(&path, rule, &clips, &mask, name);
-        mask.coverage().to_vec()
-    };
+    (builder.finish(), rule, stroke, clips)
+}
+
+type CoverageRenderer =
+    fn(u32, u32, &[Shape], &mut [u8], (u32, u32), &Limits, &mut Scratch) -> Result<()>;
+
+fn assert_vector_samples(name: &str, backend: &str, actual: &[u8], expected: &[u8], tolerance: u8) {
+    assert_eq!(actual.len(), expected.len(), "{name} {backend}");
     for (i, (&actual, &expected)) in actual.iter().zip(expected).enumerate() {
         assert!(
             actual.abs_diff(expected) <= tolerance,
-            "{name} pixel {i}: {actual} vs {expected}"
+            "{name} {backend} pixel {i}: {actual} vs {expected}"
         );
     }
 }
 
-fn assert_mask_tiles(
-    path: &crate::Path,
-    rule: FillRule,
-    clips: &[crate::Path],
-    mask: &Mask,
+fn assert_vector_tiles(
     name: &str,
+    backend: &str,
+    render: CoverageRenderer,
+    shapes: &[Shape],
+    whole: &[u8],
+    limits: &Limits,
+    scratch: &mut Scratch,
 ) {
     for y in 0..8 {
         for x in 0..8 {
-            let mut tile =
-                Mask::from_path_at(1, 1, path, Transform::IDENTITY, rule, 1, (x, y)).unwrap();
-            for clip in clips {
-                tile.intersect(
-                    &Mask::from_path_at(1, 1, clip, Transform::IDENTITY, rule, 1, (x, y)).unwrap(),
-                )
-                .unwrap();
-            }
+            let mut pixel = [0];
+            render(1, 1, shapes, &mut pixel, (x, y), limits, scratch).unwrap();
             assert_eq!(
-                tile.coverage(),
-                &mask.coverage()
-                    [usize::try_from(y * 8 + x).unwrap()..usize::try_from(y * 8 + x + 1).unwrap()],
-                "{name} tile ({x},{y})"
+                pixel[0],
+                whole[(y * 8 + x) as usize],
+                "{name} {backend} tile {x},{y}"
             );
         }
     }
@@ -259,13 +324,8 @@ fn stroke_transform_hairline_dash_and_miter() {
         dash_array: vec![1.0, 1.0],
         ..Stroke::default()
     };
-    let (outline, _) = crate::stroke::outline(
-        &path,
-        Transform::IDENTITY,
-        &stroke,
-        &pagura_core::Limits::default(),
-    )
-    .unwrap();
+    let (outline, _) =
+        crate::stroke::outline(&path, Transform::IDENTITY, &stroke, &Limits::default()).unwrap();
     let mask = Mask::from_path(8, 8, &outline, Transform::IDENTITY, FillRule::NonZero, 64).unwrap();
     assert_eq!(
         mask.coverage().iter().map(|&n| u32::from(n)).sum::<u32>(),
@@ -285,7 +345,7 @@ fn stroke_transform_hairline_dash_and_miter() {
                 join,
                 ..Stroke::default()
             },
-            &pagura_core::Limits::default(),
+            &Limits::default(),
         )
         .unwrap();
         assert!(!outline.is_empty());
@@ -313,7 +373,7 @@ fn invalid_geometry_and_budgets_return_errors() {
         Mask::from_path(
             8,
             8,
-            &crate::Path::default(),
+            &Path::default(),
             Transform::IDENTITY,
             FillRule::NonZero,
             63
@@ -330,7 +390,7 @@ fn invalid_geometry_and_budgets_return_errors() {
     assert!(
         stroke_path(
             &mut target,
-            &crate::Path::default(),
+            &Path::default(),
             Transform::IDENTITY,
             &stroke,
             &Paint::Solid(Rgba8::BLACK),
@@ -412,17 +472,17 @@ fn large_compound_triangles_and_caller_budgets() {
         }
     }
     for limits in [
-        pagura_core::Limits {
+        Limits {
             path_segments: 10,
-            ..pagura_core::Limits::default()
+            ..Limits::default()
         },
-        pagura_core::Limits {
+        Limits {
             raster_work: 0,
-            ..pagura_core::Limits::default()
+            ..Limits::default()
         },
-        pagura_core::Limits {
+        Limits {
             mask_sources: 0,
-            ..pagura_core::Limits::default()
+            ..Limits::default()
         },
     ] {
         assert_eq!(
@@ -446,5 +506,46 @@ fn large_compound_triangles_and_caller_budgets() {
 fn independent_crossing_and_clip_sets() {
     for i in 0..16 {
         vector(&format!("crossing-set-{i}"), 1);
+    }
+}
+
+#[test]
+fn independent_winding_and_collapsing_contours() {
+    for rule in ["nonzero", "evenodd"] {
+        for name in [
+            "boundary-triangle",
+            "opposite-chains",
+            "crossed-rules",
+            "tiny-bowtie",
+            "overlapping-contours",
+            "coincident-opposite",
+            "touching-contours",
+            "same-clip",
+            "nested-clips",
+            "crossing-clips",
+            "star-in-cell",
+            "double-crossing-chains",
+            "thin-rule",
+            "coincident-same",
+            "collinear",
+            "huge-endpoints",
+            "rounding-threshold",
+            "translated-half-tie",
+        ] {
+            vector(&format!("winding-{name}-{rule}"), 1);
+        }
+        for case in 0..16 {
+            vector(&format!("winding-random-{case}-{rule}"), 1);
+        }
+        for axis in ["horizontal", "vertical"] {
+            vector(&format!("dense-micro-slivers-{axis}-{rule}"), 0);
+        }
+        for count in [127, 128, 129, 512, 513] {
+            for axis in ["horizontal", "vertical"] {
+                for direction in ["forward", "reverse"] {
+                    vector(&format!("collapse-{axis}-{direction}-{count}-{rule}"), 0);
+                }
+            }
+        }
     }
 }
