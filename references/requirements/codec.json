@@ -158,7 +158,7 @@
         }
       ],
       "tests": [
-        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+        "pagura-codec tests/vectors/decode.rs independent_vectors_exact_errors_repairs_and_caps"
       ],
       "gaps": "Colors>255 and Columns>u32::MAX exceed the public predictor fields and return Unsupported(predictor.dimensions). General incomplete-tree validity is unspecified in the supplied RFC and is documented as policy, not a pending primary-text review.",
       "documented_choices": [
@@ -251,7 +251,7 @@
         }
       ],
       "tests": [
-        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+        "pagura-codec tests/vectors/decode.rs independent_vectors_exact_errors_repairs_and_caps"
       ],
       "gaps": "TIFF strip boundaries, FillOrder metadata and TIFF container byte order are outside this PDF decoder. Positive dimensions beyond the public predictor fields remain unsupported.",
       "documented_choices": [
@@ -305,7 +305,7 @@
         }
       ],
       "tests": [
-        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+        "pagura-codec tests/vectors/decode.rs independent_vectors_exact_errors_repairs_and_caps"
       ],
       "gaps": "",
       "documented_choices": [
@@ -335,7 +335,7 @@
         }
       ],
       "tests": [
-        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+        "pagura-codec tests/vectors/decode.rs independent_vectors_exact_errors_repairs_and_caps"
       ],
       "gaps": ""
     },
@@ -360,7 +360,7 @@
         }
       ],
       "tests": [
-        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+        "pagura-codec tests/vectors/decode.rs independent_vectors_exact_errors_repairs_and_caps"
       ],
       "gaps": ""
     },
@@ -423,7 +423,7 @@
         }
       ],
       "tests": [
-        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+        "pagura-codec tests/vectors/decode.rs independent_vectors_exact_errors_repairs_and_caps"
       ],
       "gaps": "Colors>255 and Columns>u32::MAX exceed the current public fields. This verifies the PDF predictor subset, not PNG containers, interlacing or chunk validation.",
       "documented_choices": [
@@ -485,7 +485,7 @@
         }
       ],
       "tests": [
-        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+        "pagura-codec tests/vectors/decode.rs independent_vectors_exact_errors_repairs_and_caps"
       ],
       "gaps": "Colors>255 and Columns>u32::MAX exceed the public fields. This verifies the PDF Predictor 2 arithmetic, not TIFF containers or other TIFF sample layouts.",
       "documented_choices": [
@@ -518,7 +518,7 @@
         }
       ],
       "tests": [
-        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+        "pagura-codec tests/vectors/decode.rs independent_vectors_exact_errors_repairs_and_caps"
       ],
       "gaps": "",
       "documented_choices": [
@@ -542,7 +542,7 @@
         }
       ],
       "tests": [
-        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+        "pagura-codec tests/vectors/decode.rs independent_vectors_exact_errors_repairs_and_caps"
       ],
       "gaps": "",
       "documented_choices": [
@@ -575,7 +575,7 @@
         }
       ],
       "tests": [
-        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+        "pagura-codec tests/vectors/decode.rs independent_vectors_exact_errors_repairs_and_caps"
       ],
       "gaps": "",
       "documented_choices": [
@@ -606,7 +606,7 @@
         }
       ],
       "tests": [
-        "pagura-codec vectors::independent_vectors_exact_errors_repairs_and_caps"
+        "pagura-codec tests/vectors/decode.rs independent_vectors_exact_errors_repairs_and_caps"
       ],
       "gaps": "Security-handler algorithm selection, CF name resolution and private security-handler parameters are delegated outside this codec boundary and were not audited here."
     },
@@ -649,8 +649,9 @@
         }
       ],
       "tests": [
-        "pagura-codec encoding_tests",
-        "pagura-codec flate::huffman::tests"
+        "pagura-codec tests/vectors/encode.rs",
+        "pagura-codec flate::huffman::tests",
+        "tools/verify_encoders.py (Python zlib inflates every encoded vector)"
       ],
       "gaps": "",
       "documented_choices": [
@@ -711,14 +712,14 @@
         {
           "locator": "CONTRIBUTING.md, Rust quality bar; Limits",
           "rule": "Check pixel and byte budgets, dimensions and the exact input byte count before encoding.",
-          "implementation": "Agrees: pixels and decoded_bytes bound input, stream_bytes bounds complete PNG including framing; a filtered-image buffer adds one bounded tag per row. Invalid dimensions and pixel counts return InvalidArgument; budgets/overflow/allocation return Limit, all positioned.",
+          "implementation": "Agrees: pixels and decoded_bytes bound input, stream_bytes bounds complete PNG including framing; a filtered-image buffer adds one bounded tag per row. Invalid dimensions and pixel counts return InvalidArgument; budgets/overflow/allocation return Limit, without positions, since the input has no meaningful byte offsets.",
           "fixtures": "Dimension, short/long pixel slice, overflow and exact output cap tests.",
           "verdict": "verified"
         }
       ],
       "tests": [
-        "pagura-codec encoding_tests",
-        "tools.fixturegen.codec independent PNG decoder"
+        "pagura-codec tests/vectors/encode.rs",
+        "tools/verify_encoders.py with the tools.fixturegen.codec independent PNG decoder"
       ],
       "gaps": "Only eight-bit Gray/RGB/straight RGBA, non-interlaced; no palette, ancillary colour metadata or streaming encoder API.",
       "documented_choices": [
