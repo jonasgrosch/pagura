@@ -186,7 +186,7 @@ fn prepare_inner(
     }
     if filler.form().has_xfa {
         return Err(Error::unsupported(
-            pagura_document::forms::features::XFA,
+            pagura_document::features::XFA,
             "XFA appearance generation is unavailable",
         ));
     }

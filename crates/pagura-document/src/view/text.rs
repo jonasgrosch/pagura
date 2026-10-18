@@ -1,5 +1,5 @@
 //! Text strings (7.9.2.2, Annex D.3), decoded independently of page fonts.
-use crate::tags;
+use crate::repairs;
 use crate::view::{Context, Source};
 use pagura_core::{Error, Result};
 
@@ -47,7 +47,7 @@ fn collect<I: Iterator<Item = Option<char>>>(
     }
     if invalid {
         ctx.repair(
-            tags::NAVIGATION_TEXT,
+            repairs::NAVIGATION_TEXT,
             "invalid navigation Unicode or undefined PDFDocEncoding byte replaced (7.9.2.2, D.3)",
             source,
         )?;

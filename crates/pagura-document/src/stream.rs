@@ -1,6 +1,6 @@
 //! Encoded stream access, decryption and bounded filter application (7.3.8, 7.4, 7.6).
 
-use crate::{Document, IndirectObject, tags};
+use crate::{Document, IndirectObject, features, repairs};
 use pagura_codec::{Filter, FilterChain};
 use pagura_core::{Diagnostics, Error, ObjectId, Result, Value};
 use pagura_crypto::standard::CryptMethod;
@@ -124,7 +124,7 @@ impl Document {
             .ok_or_else(|| Error::syntax("stream has no dictionary").in_object(id))?;
         if dictionary.contains_key(b"F") {
             return Err(Error::unsupported(
-                tags::EXTERNAL_STREAM,
+                features::EXTERNAL_STREAM,
                 "external stream data is not supported",
             )
             .in_object(id));
@@ -254,7 +254,7 @@ pub(crate) fn start(
         Some([b'\n', ..]) => Ok(offset + 1),
         Some([b'\r', ..]) => {
             let mut diagnostic = pagura_core::Diagnostic::new(
-                tags::STREAM_EOL,
+                repairs::STREAM_EOL,
                 "bare CR after stream keyword; one CR used as the line terminator",
             )
             .at(parser.position());
@@ -354,7 +354,7 @@ mod tests {
         let error = document
             .image_stream_with_parameters(&external, None)
             .unwrap_err();
-        assert_eq!(error.feature(), Some(crate::tags::EXTERNAL_STREAM));
+        assert_eq!(error.feature(), Some(crate::features::EXTERNAL_STREAM));
         assert_eq!(error.object, Some(object.id()));
 
         let document = open("params-crypt-string-null", Limits::default().decoded_bytes);

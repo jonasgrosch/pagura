@@ -3,7 +3,7 @@
 pub(crate) mod contents;
 pub(crate) mod geometry;
 
-use crate::{Document, tags};
+use crate::{Document, repairs};
 use pagura_core::syntax::PathComponent;
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ObjectId, Rect, Result, Value};
 use std::collections::{BTreeMap, BTreeSet};
@@ -154,7 +154,7 @@ pub(crate) fn read(document: &Document) -> Result<Vec<Page>> {
             .diagnostics
             .as_slice()
             .iter()
-            .any(|item| item.repair() == Some(tags::PAGE_CYCLE));
+            .any(|item| item.repair() == Some(repairs::PAGE_CYCLE));
         return Err(if cyclic {
             Error::cycle("cyclic page tree contains no usable leaves")
         } else {
@@ -215,7 +215,7 @@ impl<'a> Walk<'a> {
         }
         if self.active.contains(&id) {
             self.diagnostics.repair(
-                Diagnostic::new(tags::PAGE_CYCLE, "cyclic page-tree child edge omitted")
+                Diagnostic::new(repairs::PAGE_CYCLE, "cyclic page-tree child edge omitted")
                     .in_object(id),
             )?;
             self.omitted = true;
@@ -229,7 +229,7 @@ impl<'a> Walk<'a> {
         if repeated {
             self.diagnostics.repair(
                 Diagnostic::new(
-                    tags::PAGE_REPEAT,
+                    repairs::PAGE_REPEAT,
                     "repeated page-tree node retained in Kids order",
                 )
                 .in_object(id),
@@ -264,7 +264,7 @@ impl<'a> Walk<'a> {
         {
             self.diagnostics.repair(
                 Diagnostic::new(
-                    tags::PAGE_PARENT,
+                    repairs::PAGE_PARENT,
                     "Parent disagrees with traversed Kids edge; Kids ancestry used",
                 )
                 .in_object(id),
@@ -289,7 +289,7 @@ impl<'a> Walk<'a> {
         {
             self.diagnostics.repair(
                 Diagnostic::new(
-                    tags::PAGE_TYPE_INVALID,
+                    repairs::PAGE_TYPE_INVALID,
                     "Template in Kids displayed as a Page",
                 )
                 .in_object(id),
@@ -309,7 +309,7 @@ impl<'a> Walk<'a> {
             }
             self.diagnostics.repair(
                 Diagnostic::new(
-                    tags::PAGE_TYPE,
+                    repairs::PAGE_TYPE,
                     "missing page-tree Type inferred from Kids or leaf attributes",
                 )
                 .at(match self.document.object(id)?.source() {
@@ -357,7 +357,7 @@ impl<'a> Walk<'a> {
                     if let Value::Dictionary(dictionary) = kid {
                         self.diagnostics.repair(
                             Diagnostic::new(
-                                tags::PAGE_DIRECT,
+                                repairs::PAGE_DIRECT,
                                 "direct Kids dictionary used with its containing object's identity",
                             )
                             .in_object(id),
@@ -382,8 +382,11 @@ impl<'a> Walk<'a> {
                         continue;
                     }
                     self.diagnostics.repair(
-                        Diagnostic::new(tags::PAGE_KIDS, "invalid or undefined Kids entry omitted")
-                            .in_object(id),
+                        Diagnostic::new(
+                            repairs::PAGE_KIDS,
+                            "invalid or undefined Kids entry omitted",
+                        )
+                        .in_object(id),
                     )?;
                     self.omitted = true;
                 }
@@ -396,47 +399,54 @@ impl<'a> Walk<'a> {
             {
                 self.diagnostics.repair(
                     Diagnostic::new(
-                        tags::PAGE_KIDS,
+                        repairs::PAGE_KIDS,
                         "single Kids reference treated as a one-element array",
                     )
                     .in_object(id),
                 )?;
                 self.node(owner, inherited, Some(id), depth + 1)?;
             }
-            _ => {
-                if !source_path.is_empty() {
-                    return Err(
-                        Error::syntax("direct Pages dictionary has no usable Kids").in_object(id)
-                    );
-                }
-                let kids = self.backlinks(id)?.to_vec();
-                if kids.is_empty() {
-                    return Err(Error::syntax(
-                        "Pages node has no Kids or explicit Parent backlinks",
-                    )
-                    .in_object(id));
-                }
-                self.diagnostics.repair(
-                    Diagnostic::new(
-                        tags::PAGE_KIDS_REBUILT,
-                        "Kids recovered from explicit Parent backlinks in object-number order",
-                    )
-                    .in_object(id),
-                )?;
-                for kid in kids {
-                    self.node(kid, inherited, Some(id), depth + 1)?;
-                }
-            }
+            _ => self.backlinked_kids(id, inherited, depth, source_path)?,
         }
         let found = i64::try_from(self.pages.len() - before).unwrap_or(i64::MAX);
         if dictionary.get(b"Count").and_then(Value::as_integer) != Some(found) {
             self.diagnostics.repair(
                 Diagnostic::new(
-                    tags::PAGE_COUNT,
+                    repairs::PAGE_COUNT,
                     "Pages Count disagrees with its leaves; leaves used",
                 )
                 .in_object(id),
             )?;
+        }
+        Ok(())
+    }
+
+    /// Walks the explicit Parent backlinks of a Pages node without usable Kids.
+    fn backlinked_kids(
+        &mut self,
+        id: ObjectId,
+        inherited: Inherited<'a>,
+        depth: usize,
+        source_path: &[PathComponent],
+    ) -> Result<()> {
+        if !source_path.is_empty() {
+            return Err(Error::syntax("direct Pages dictionary has no usable Kids").in_object(id));
+        }
+        let kids = self.backlinks(id)?.to_vec();
+        if kids.is_empty() {
+            return Err(
+                Error::syntax("Pages node has no Kids or explicit Parent backlinks").in_object(id),
+            );
+        }
+        self.diagnostics.repair(
+            Diagnostic::new(
+                repairs::PAGE_KIDS_REBUILT,
+                "Kids recovered from explicit Parent backlinks in object-number order",
+            )
+            .in_object(id),
+        )?;
+        for kid in kids {
+            self.node(kid, inherited, Some(id), depth + 1)?;
         }
         Ok(())
     }

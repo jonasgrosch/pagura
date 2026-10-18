@@ -182,7 +182,7 @@ pub(super) fn resolve<'a>(
                     .and_then(|n| usize::try_from(n).ok())
                     .filter(|n| *n < page_count)
                 {
-                    ctx.repair(crate::tags::DESTINATION_PAGE_NUMBER,"local destination page number interpreted as zero-based index (12.3.2.2, Table 149)",source)?;
+                    ctx.repair(crate::repairs::DESTINATION_PAGE_NUMBER,"local destination page number interpreted as zero-based index (12.3.2.2, Table 149)",source)?;
                     page
                 } else {
                     return Err(
@@ -283,7 +283,7 @@ pub(super) fn target<'a>(
     let dest = ctx.present(dictionary, b"Dest", source)?;
     if action.is_some() && dest.is_some() {
         ctx.repair(
-            crate::tags::TARGET_CONFLICT,
+            crate::repairs::TARGET_CONFLICT,
             "A and Dest coexist; action takes precedence (12.3.3, 12.5.6.5)",
             source,
         )?;

@@ -464,21 +464,21 @@ mod reconstruction {
 }
 
 mod field_recovery {
-    use crate::{Document, OpenOptions, tags};
+    use crate::{Document, OpenOptions, repairs};
     use pagura_core::{ErrorKind, ObjectId, Recovery};
     use pagura_testkit::fixture;
 
     #[test]
     fn minimized_repair_pairs_keep_source_bytes_and_exact_stream_plaintext() {
         for (name, tag) in [
-            ("header-text", tags::HEADER_FORMAT),
-            ("header-space", tags::HEADER_FORMAT),
-            ("header-tab", tags::HEADER_FORMAT),
-            ("catalog-type-missing", tags::CATALOG_TYPE),
-            ("stream-bare-cr", tags::STREAM_EOL),
-            ("permissions-unsigned", tags::PERMISSIONS_UNSIGNED),
-            ("hash-literal-eol", tags::LITERAL_HASH),
-            ("hash-zero-padding", tags::HASH_PADDING),
+            ("header-text", repairs::HEADER_FORMAT),
+            ("header-space", repairs::HEADER_FORMAT),
+            ("header-tab", repairs::HEADER_FORMAT),
+            ("catalog-type-missing", repairs::CATALOG_TYPE),
+            ("stream-bare-cr", repairs::STREAM_EOL),
+            ("permissions-unsigned", repairs::PERMISSIONS_UNSIGNED),
+            ("hash-literal-eol", repairs::LITERAL_HASH),
+            ("hash-zero-padding", repairs::HASH_PADDING),
         ] {
             let bytes = fixture("document", &format!("{name}.pdf"));
             let strict = Document::open(
@@ -531,7 +531,7 @@ mod field_recovery {
                 .iter()
                 .filter_map(pagura_core::Diagnostic::repair)
                 .collect::<Vec<_>>(),
-            [tags::HEADER_OFFSET, tags::HEADER_FORMAT]
+            [repairs::HEADER_OFFSET, repairs::HEADER_FORMAT]
         );
     }
 
@@ -558,7 +558,7 @@ mod field_recovery {
                 document
                     .diagnostics()
                     .iter()
-                    .any(|item| item.repair() == Some(tags::XREF_REBUILT))
+                    .any(|item| item.repair() == Some(repairs::XREF_REBUILT))
             );
         }
     }

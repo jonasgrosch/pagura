@@ -1,7 +1,7 @@
 //! Link annotations, their hit geometry and inert targets (12.5.6.5).
 use super::destinations::{self, Target};
 use crate::view::{Context, Source, number};
-use crate::{Document, Page, tags};
+use crate::{Document, Page, repairs};
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
 
 /// Link feedback while the user presses it (Table 176).
@@ -149,7 +149,7 @@ fn quads(
         Ok(values) if values.len() % 8 == 0 => values,
         Ok(_) => {
             ctx.repair(
-                tags::LINK_QUADS,
+                repairs::LINK_QUADS,
                 "malformed link QuadPoints ignored; Rect used (12.5.6.5, Table 176)",
                 source,
             )?;
@@ -157,7 +157,7 @@ fn quads(
         }
         Err(error) if error.kind == pagura_core::ErrorKind::Syntax => {
             ctx.repair(
-                tags::LINK_QUADS,
+                repairs::LINK_QUADS,
                 "malformed link QuadPoints ignored; Rect used (12.5.6.5, Table 176)",
                 source,
             )?;

@@ -1,7 +1,7 @@
 //! Lazy object-stream decoding and indexed access, clause 7.5.7.
 
 use crate::xref::integer_offset;
-use crate::{Document, IndirectObject, Location, ObjectSource, tags};
+use crate::{Document, IndirectObject, Location, ObjectSource, repairs};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Diagnostic, Diagnostics, Error, ObjectId, Result, Value};
 use std::collections::BTreeSet;
@@ -157,7 +157,7 @@ fn physical<'a>(
             let mut error =
                 Error::syntax("object-stream self entry requires its physical stream definition")
                     .in_object(stream_id);
-            error.repair = Some(tags::OBJECT_STREAM_SELF_ENTRY);
+            error.repair = Some(repairs::OBJECT_STREAM_SELF_ENTRY);
             return Err(error);
         }
         return Err(Error::syntax("object streams cannot be compressed").in_object(stream_id));
@@ -223,7 +223,7 @@ pub(crate) fn headers(
             }
             diagnostics.repair(
                 Diagnostic::new(
-                    tags::OBJECT_STREAM_SELF_ENTRY,
+                    repairs::OBJECT_STREAM_SELF_ENTRY,
                     "leading object-stream self entry discarded; physical definition retained",
                 )
                 .at(parser.position())
@@ -251,7 +251,7 @@ pub(crate) fn headers(
         return Err(Error::syntax("first ObjStm object offset must be zero").in_object(id));
     }
     if !dictionary.is_name(b"Type", b"ObjStm") {
-        diagnostics.repair(Diagnostic::new(tags::OBJECT_STREAM_TYPE,
+        diagnostics.repair(Diagnostic::new(repairs::OBJECT_STREAM_TYPE,
             "object-stream Type inferred from cross-reference entries and validated N/First header")
             .in_object(id))?;
     }

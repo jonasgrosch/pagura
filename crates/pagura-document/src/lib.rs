@@ -10,6 +10,7 @@
 
 mod catalog;
 mod diagnostics;
+pub mod features;
 pub mod forms;
 mod history;
 mod load;
@@ -17,11 +18,11 @@ mod memory;
 pub mod navigation;
 mod object;
 mod pages;
+pub mod repairs;
 mod revision_bounds;
 mod security;
 pub mod signatures;
 mod stream;
-pub mod tags;
 mod view;
 mod xref;
 

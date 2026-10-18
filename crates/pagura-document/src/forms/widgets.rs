@@ -2,7 +2,7 @@
 use super::{Widget, attributes};
 use crate::{
     navigation::actions,
-    tags,
+    repairs,
     view::{Context, Source, number},
 };
 use pagura_core::{Dictionary, Error, Name, Rect, Result};
@@ -16,7 +16,7 @@ pub(super) fn read<'a>(
 ) -> Result<Widget<'a>> {
     if !is_widget(ctx, d, source)? {
         ctx.repair(
-            tags::FORM_STRUCTURE,
+            repairs::FORM_STRUCTURE,
             "unnamed field child read as Widget (12.7.4.2)",
             source,
         )?;

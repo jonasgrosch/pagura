@@ -1,7 +1,7 @@
 //! Flat, bounded outline traversal (12.3.3, Tables 150–152).
 use super::destinations::{self, Target};
 use crate::view::{Context, Source, identity, number, text};
-use crate::{Document, tags};
+use crate::{Document, repairs};
 use pagura_core::{Dictionary, Error, Result, Value};
 use std::collections::BTreeSet;
 
@@ -51,7 +51,7 @@ fn edge<'a>(
     }
     if !matches!(value, Value::Reference(_)) {
         ctx.repair(
-            tags::OUTLINE_LINKS,
+            repairs::OUTLINE_LINKS,
             "direct outline link accepted (12.3.3, Tables 150–151)",
             source,
         )?;
@@ -73,7 +73,7 @@ fn child_level<'a>(
         .flatten();
     if first.is_some() != last.is_some() {
         ctx.repair(
-            tags::OUTLINE_LINKS,
+            repairs::OUTLINE_LINKS,
             "inconsistent outline First/Last; forward chain used (12.3.3)",
             source,
         )?;
@@ -104,7 +104,7 @@ fn check_link<'a>(
         .flatten();
     if actual != expected {
         ctx.repair(
-            tags::OUTLINE_LINKS,
+            repairs::OUTLINE_LINKS,
             "outline Parent/Prev disagrees with forward chain; forward chain used (12.3.3)",
             source,
         )?;
@@ -153,7 +153,7 @@ pub(super) fn read(doc: &Document) -> Result<Vec<OutlineItem<'_>>> {
         .entry(root_dictionary, b"Type", source)?
         .is_some_and(|v| v.as_name().is_none_or(|n| n != b"Outlines"))
     {
-        ctx.repair(tags::OUTLINE_TYPE,"incorrect optional outline Type ignored in catalog Outlines context (12.3.3, Table 150)",source)?;
+        ctx.repair(repairs::OUTLINE_TYPE,"incorrect optional outline Type ignored in catalog Outlines context (12.3.3, Table 150)",source)?;
     }
     let mut items = Vec::new();
     let mut counts = Vec::new();
@@ -168,7 +168,7 @@ pub(super) fn read(doc: &Document) -> Result<Vec<OutlineItem<'_>>> {
         ctx.allocate::<usize>(8, source)?;
         if !visited.insert(identity(value)) {
             ctx.repair(
-                tags::OUTLINE_CYCLE,
+                repairs::OUTLINE_CYCLE,
                 "repeated outline item omitted (12.3.3)",
                 source,
             )?;
@@ -210,7 +210,7 @@ pub(super) fn read(doc: &Document) -> Result<Vec<OutlineItem<'_>>> {
             stack.push((next, level, Some(identity(value))));
         } else if level.last != Some(identity(value)) {
             ctx.repair(
-                tags::OUTLINE_LINKS,
+                repairs::OUTLINE_LINKS,
                 "outline Last differs from forward-chain endpoint; endpoint used (12.3.3)",
                 level.source,
             )?;
@@ -241,7 +241,7 @@ fn validate_counts<'a>(
                 .is_some_and(|n| n.unsigned_abs() != u64::try_from(children).unwrap_or(u64::MAX))
         {
             ctx.repair(
-                tags::OUTLINE_COUNT,
+                repairs::OUTLINE_COUNT,
                 "outline Count magnitude corrected; sign retained (12.3.3)",
                 source,
             )?;
@@ -260,7 +260,7 @@ fn validate_counts<'a>(
         && declared.and_then(|n| usize::try_from(n).ok()) != Some(visible)
     {
         ctx.repair(
-            tags::OUTLINE_COUNT,
+            repairs::OUTLINE_COUNT,
             "outline root Count corrected to visible items (12.3.3)",
             source,
         )?;
@@ -277,7 +277,7 @@ fn reciprocal<'a>(
         Ok((value, _)) => Ok(Some(identity(value))),
         Err(error) if error.kind == pagura_core::ErrorKind::MissingObject => {
             ctx.repair(
-                tags::OUTLINE_LINKS,
+                repairs::OUTLINE_LINKS,
                 "dangling reciprocal outline link ignored; forward chain used (12.3.3)",
                 source,
             )?;

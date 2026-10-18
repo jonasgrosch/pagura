@@ -22,7 +22,7 @@ pub(super) fn validate(field: &Field<'_>, text: &str, limits: &Limits) -> Result
     }
     if rich_text {
         return Err(Error::unsupported(
-            crate::forms::features::RICH_TEXT,
+            crate::features::RICH_TEXT,
             "rich text filling is unavailable",
         ));
     }

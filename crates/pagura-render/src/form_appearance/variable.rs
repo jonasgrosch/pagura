@@ -30,7 +30,7 @@ pub(super) fn write(
             &choice::values(filler, field, index),
         ),
         _ => Err(Error::unsupported(
-            pagura_document::forms::features::FIELD_TYPE,
+            pagura_document::features::FIELD_TYPE,
             "field has no variable text appearance",
         )),
     }
@@ -57,7 +57,7 @@ fn text(
     };
     if *rich_text {
         return Err(Error::unsupported(
-            pagura_document::forms::features::RICH_TEXT,
+            pagura_document::features::RICH_TEXT,
             "rich text appearance generation is unavailable",
         ));
     }

@@ -3,7 +3,7 @@
 pub(crate) mod rebuild;
 pub(crate) mod stream;
 
-use crate::tags;
+use crate::repairs;
 use pagura_core::syntax::{Origin, Parser, is_whitespace};
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Limits, Position, Result};
 use std::collections::{BTreeMap, BTreeSet};
@@ -294,7 +294,7 @@ fn validate_identities(bytes: &[u8], table: &XrefTable, limits: Limits) -> Resul
                     Error::syntax("cross-reference offset has no matching object header")
                         .at(Position::File(at))
                         .in_object(id);
-                error.repair = Some(tags::XREF_REBUILT);
+                error.repair = Some(repairs::XREF_REBUILT);
                 return Err(error);
             }
         }
@@ -409,7 +409,7 @@ fn check_header(bytes: &[u8], diagnostics: &mut Diagnostics) -> Result<usize> {
     if offset != 0 {
         diagnostics.repair(
             Diagnostic::new(
-                tags::HEADER_OFFSET,
+                repairs::HEADER_OFFSET,
                 "PDF header follows leading junk; offsets adjusted when necessary",
             )
             .at(Position::File(offset)),
@@ -428,7 +428,7 @@ fn check_header(bytes: &[u8], diagnostics: &mut Diagnostics) -> Result<usize> {
         }
         diagnostics.repair(
             Diagnostic::new(
-                tags::HEADER_FORMAT,
+                repairs::HEADER_FORMAT,
                 "extra bytes in the PDF header line; version retained",
             )
             .at(Position::File(offset + 8)),
@@ -464,7 +464,7 @@ fn find_startxref(
     if !after_eof.iter().all(|&b| is_whitespace(b)) {
         diagnostics.repair(
             Diagnostic::new(
-                tags::TRAILING_BYTES,
+                repairs::TRAILING_BYTES,
                 "data follows the final %%EOF; ignored",
             )
             .at(Position::File(bytes.len() - after_eof.len())),
