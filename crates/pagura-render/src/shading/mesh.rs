@@ -289,8 +289,8 @@ impl<'a> Decoder<'a> {
             .iter()
             .map(|[low, high]| {
                 Ok([
-                    crate::numbers::number(document, low, crate::numbers::GEOMETRY)?,
-                    crate::numbers::number(document, high, crate::numbers::GEOMETRY)?,
+                    crate::numbers::number(document.document(), low, crate::numbers::GEOMETRY)?,
+                    crate::numbers::number(document.document(), high, crate::numbers::GEOMETRY)?,
                 ])
             })
             .collect::<Result<Vec<_>>>()?;

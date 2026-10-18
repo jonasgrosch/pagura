@@ -159,7 +159,7 @@ impl Color {
                 if let pagura_core::Position::Stream { object, .. } = position {
                     diagnostic = diagnostic.in_object(object);
                 }
-                crate::interpreter::repair(document, diagnostic)?;
+                crate::interpreter::repair(document.document(), diagnostic)?;
             }
             _ => {}
         }
@@ -458,7 +458,7 @@ fn array_space(
         (b"CalGray" | b"CalRGB" | b"Lab", [_, parameters]) => {
             let parameters = document.resolve_dictionary(parameters)?;
             Ok(Space::Cie(Arc::new(crate::cie::parse(
-                document,
+                document.document(),
                 family.as_bytes(),
                 parameters,
             )?)))
@@ -589,8 +589,12 @@ fn tint_space(
     ) {
         return Err(Error::syntax("invalid tint alternate space"));
     }
-    let function =
-        crate::functions::Function::parse(document, function, names.len(), base.components())?;
+    let function = crate::functions::Function::parse(
+        document.document(),
+        function,
+        names.len(),
+        base.components(),
+    )?;
     Ok(Space::Tint {
         names: names.into(),
         base: Arc::new(base),
@@ -626,7 +630,7 @@ fn icc_space(
         4 => Space::Cmyk,
         _ => return Err(Error::syntax("invalid ICC component count")),
     };
-    let component_range = icc_range(document, dictionary, default.components())?;
+    let component_range = icc_range(document.document(), dictionary, default.components())?;
     let profile = document.profile(id, default.components())?;
     // Validate Alternate independently of whether its rendering model is used.
     // A supported ICC profile must not require support for an unused alternate.
@@ -851,7 +855,7 @@ fn indexed_space(
         if let Some(id) = lookup_id {
             diagnostic = diagnostic.in_object(id);
         }
-        crate::interpreter::repair(document, diagnostic)?;
+        crate::interpreter::repair(document.document(), diagnostic)?;
         lookup.truncate(required);
     }
     Ok(Space::Indexed {
