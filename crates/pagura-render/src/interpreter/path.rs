@@ -204,9 +204,8 @@ mod tests {
         )
         .unwrap();
         let page = document.page(0).unwrap();
-        let fonts = std::sync::Mutex::new(super::super::text::cache::FontCache::new(
-            document.limits(),
-        ));
+        let fonts =
+            std::sync::Mutex::new(super::super::text::cache::FontCache::new(document.limits()));
         let visibility = crate::optional::Visibility::new(&document).unwrap();
         let shared = super::super::Shared {
             provider: None,
@@ -223,7 +222,9 @@ mod tests {
         assert!(first > 0);
         compiler.prepare_fill(&mut path, FillRule::NonZero).unwrap();
         assert_eq!(session.fill_work.get(), first);
-        let child = compiler.child(super::super::session::Child::SoftMask).unwrap();
+        let child = compiler
+            .child(super::super::session::Child::SoftMask)
+            .unwrap();
         let mut other = path.transformed(pagura_raster::Transform::IDENTITY);
         child.prepare_fill(&mut other, FillRule::NonZero).unwrap();
         assert_eq!(session.fill_work.get(), first * 2);

@@ -2,21 +2,66 @@
 mod patches;
 mod spatial;
 use super::{Functions, ShadingType};
+use crate::color::Components;
 use crate::icc::ColorContext;
-use pagura_core::{Dictionary, Error, Limits, Result, Value};
+use pagura_core::bytes::{BitCursor, Cursor};
+use pagura_core::syntax::Origin;
+use pagura_core::{Dictionary, Error, Meter, Result, Value};
 use pagura_raster::Point;
 use patches::Patch;
 use spatial::{Bounds, Index};
 
+/// A decoded vertex; `color` holds the mesh's inputs.
 #[derive(Debug, Clone, Copy)]
 struct Vertex {
     point: Point,
-    color: [f64; 32],
+    color: Components,
+}
+/// Corner points and their colours, `inputs` values per corner.
+#[derive(Debug)]
+struct Triangle {
+    points: [Point; 3],
+    colors: Box<[f64]>,
 }
 #[derive(Debug)]
 enum Primitive {
-    Triangle(Box<[Vertex; 3]>),
+    Triangle(Triangle),
     Patch(Box<Patch>),
+}
+impl Primitive {
+    fn triangle(vertices: &[Vertex; 3], bytes: &mut Meter) -> Result<Self> {
+        Ok(Self::Triangle(Triangle {
+            points: vertices.map(|v| v.point),
+            colors: colors(&vertices.map(|v| v.color), bytes)?,
+        }))
+    }
+    /// Heap bytes beyond the primitive itself.
+    fn owned_bytes(&self) -> usize {
+        match self {
+            Self::Triangle(t) => size_of_val(&*t.colors),
+            Self::Patch(p) => size_of::<Patch>() + size_of_val(&*p.colors),
+        }
+    }
+}
+/// The corner colours of one primitive, flattened, charged to `bytes`.
+fn colors(corners: &[Components], bytes: &mut Meter) -> Result<Box<[f64]>> {
+    let mut values = Vec::new();
+    let count = corners.iter().map(|c| c.len()).sum();
+    bytes.reserve(&mut values, count)?;
+    for corner in corners {
+        values.extend_from_slice(corner);
+    }
+    Ok(values.into_boxed_slice())
+}
+/// Barycentric or bilinear interpolation of corner colours into `out`.
+fn interpolate(colors: &[f64], weights: &[f64], out: &mut [f64]) {
+    let inputs = out.len();
+    out.fill(0.0);
+    for (corner, weight) in colors.chunks_exact(inputs).zip(weights) {
+        for (out, value) in out.iter_mut().zip(corner) {
+            *out += weight * value;
+        }
+    }
 }
 #[derive(Debug)]
 pub(super) struct Mesh {
@@ -33,12 +78,15 @@ impl Mesh {
             + self
                 .primitives
                 .iter()
-                .map(|p| match p {
-                    Primitive::Triangle(_) => size_of::<[Vertex; 3]>(),
-                    Primitive::Patch(_) => size_of::<Patch>(),
-                })
+                .map(Primitive::owned_bytes)
                 .sum::<usize>()
             + self.index.retained_bytes()
+    }
+
+    /// Colour values per vertex: the shading's components, or the one
+    /// parameter of its Function.
+    pub(super) const fn inputs(&self) -> usize {
+        self.inputs
     }
 
     pub(super) fn parse(
@@ -54,21 +102,32 @@ impl Mesh {
         let data = document.stream_data(document.object(id)?)?;
         let function = d.get(b"Function");
         let inputs = if function.is_some() { 1 } else { components };
-        let mut decoder = Decoder::new(document, d, &data, kind, inputs)?;
-        let mut primitives = Vec::new();
+        let cursor = Cursor::new(&data)
+            .with_origin(Origin::Stream(id))
+            .with_message("truncated mesh record");
+        let mut decoder = Decoder::new(document, d, BitCursor::new(cursor), kind, inputs)?;
         let limits = document.limits();
+        let mut out = Decoded {
+            primitives: Vec::new(),
+            bytes: Meter::new(limits.decoded_bytes, "mesh memory budget exceeded"),
+            maximum: limits.path_segments,
+        };
         if kind == ShadingType::FreeTriangles {
-            free_triangles(&mut decoder, &mut primitives, &limits)?;
+            free_triangles(&mut decoder, &mut out)?;
         } else if kind == ShadingType::LatticeTriangles {
             lattice(
                 &mut decoder,
-                &mut primitives,
-                &limits,
+                &mut out,
                 integer(document, d, b"VerticesPerRow")?,
             )?;
         } else {
-            patches::decode(&mut decoder, &mut primitives, &limits, kind)?;
+            patches::decode(&mut decoder, &mut out, kind)?;
         }
+        let Decoded {
+            primitives,
+            mut bytes,
+            ..
+        } = out;
         if primitives.is_empty() {
             return Err(Error::syntax("mesh shading has no complete geometry"));
         }
@@ -83,7 +142,7 @@ impl Mesh {
         } else {
             Functions::Identity
         };
-        let index = Index::new(&primitives, &limits)?;
+        let index = Index::new(&primitives, &mut bytes)?;
         Ok(Self {
             primitives,
             index,
@@ -92,12 +151,9 @@ impl Mesh {
             maximum: limits.raster_work,
         })
     }
-    pub(super) fn sample(
-        &self,
-        point: Point,
-        out: &mut [f64; 32],
-        work: &mut usize,
-    ) -> Result<bool> {
+    /// Writes the colour at `point` of the last primitive in stream order
+    /// covering it into `out`, which holds [`Mesh::inputs`] values.
+    pub(super) fn sample(&self, point: Point, out: &mut [f64], work: &mut usize) -> Result<bool> {
         let mut hit = None;
         self.index.query(
             point,
@@ -106,12 +162,14 @@ impl Mesh {
                 if hit.is_some_and(|previous| previous > index) {
                     return Ok(());
                 }
-                let value = match &self.primitives[index] {
-                    Primitive::Triangle(v) => triangle(v, point, self.inputs),
-                    Primitive::Patch(p) => p.sample(point, self.inputs, work, self.maximum)?,
+                let Some(primitive) = self.primitives.get(index) else {
+                    return Ok(());
                 };
-                if let Some(value) = value {
-                    *out = value;
+                let found = match primitive {
+                    Primitive::Triangle(t) => triangle(t, point, out),
+                    Primitive::Patch(p) => p.sample(point, out, work, self.maximum)?,
+                };
+                if found {
                     hit = Some(index);
                 }
                 Ok(())
@@ -122,56 +180,70 @@ impl Mesh {
         Ok(hit.is_some())
     }
 }
-fn triangle(v: &[Vertex; 3], p: Point, n: usize) -> Option<[f64; 32]> {
+fn triangle(t: &Triangle, p: Point, out: &mut [f64]) -> bool {
     let cross =
         |a: Point, b: Point, c: Point| (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-    let area = cross(v[0].point, v[1].point, v[2].point);
+    let [a, b, c] = t.points;
+    let area = cross(a, b, c);
     if area == 0.0 {
-        return None;
+        return false;
     }
-    let w1 = cross(v[0].point, p, v[2].point) / area;
-    let w2 = cross(v[0].point, v[1].point, p) / area;
+    let w1 = cross(a, p, c) / area;
+    let w2 = cross(a, b, p) / area;
     let w0 = 1.0 - w1 - w2;
     if w0.min(w1).min(w2) < -1e-12 {
-        return None;
+        return false;
     }
-    let mut out = [0.0; 32];
-    for (i, out) in out.iter_mut().enumerate().take(n) {
-        *out = w0 * v[0].color[i] + w1 * v[1].color[i] + w2 * v[2].color[i];
-    }
-    Some(out)
+    interpolate(&t.colors, &[w0, w1, w2], out);
+    true
 }
-fn push(out: &mut Vec<Primitive>, v: Primitive, limits: &Limits) -> Result<()> {
-    let bytes = size_of::<Primitive>()
-        + size_of::<Patch>()
-        + 2 * size_of::<spatial::Node>()
-        + size_of::<usize>();
-    let maximum = limits.path_segments.min(limits.decoded_bytes / bytes);
-    if out.len() >= maximum {
-        return Err(Error::limit("mesh geometry memory budget exceeded"));
-    }
-    if out.len() == out.capacity() {
-        let capacity = out.capacity().saturating_mul(2).max(8).min(maximum);
-        out.try_reserve_exact(capacity - out.len())
-            .map_err(|_| Error::limit("mesh allocation failed"))?;
-    }
-    out.push(v);
-    Ok(())
+/// Decoded primitives in stream order, their memory budget and count cap.
+struct Decoded {
+    primitives: Vec<Primitive>,
+    bytes: Meter,
+    maximum: usize,
 }
-fn free_triangles(d: &mut Decoder<'_>, out: &mut Vec<Primitive>, limits: &Limits) -> Result<()> {
+impl Decoded {
+    fn push(&mut self, primitive: Primitive) -> Result<()> {
+        if self.primitives.len() >= self.maximum {
+            return Err(Error::limit("mesh geometry budget exceeded"));
+        }
+        // The colours are already charged; charge the primitive and its box.
+        self.bytes.charge(
+            size_of::<Primitive>()
+                + match &primitive {
+                    Primitive::Triangle(_) => 0,
+                    Primitive::Patch(_) => size_of::<Patch>(),
+                },
+        )?;
+        if self.primitives.len() == self.primitives.capacity() {
+            let capacity = self
+                .primitives
+                .capacity()
+                .saturating_mul(2)
+                .clamp(8, self.maximum);
+            self.primitives
+                .try_reserve_exact(capacity - self.primitives.len())
+                .map_err(|_| Error::limit("mesh allocation failed"))?;
+        }
+        self.primitives.push(primitive);
+        Ok(())
+    }
+}
+fn free_triangles(d: &mut Decoder<'_>, out: &mut Decoded) -> Result<()> {
     let mut previous = None;
     while d.more() {
         let flag = d.flag()?;
         let v = d.vertex()?;
-        d.align();
+        d.align()?;
         let vertices = match flag {
             0 => {
                 d.flag()?;
                 let b = d.vertex()?;
-                d.align();
+                d.align()?;
                 d.flag()?;
                 let c = d.vertex()?;
-                d.align();
+                d.align()?;
                 [v, b, c]
             }
             1 | 2 => {
@@ -183,54 +255,33 @@ fn free_triangles(d: &mut Decoder<'_>, out: &mut Vec<Primitive>, limits: &Limits
             _ => return Err(Error::syntax("invalid triangle edge flag")),
         };
         previous = Some(vertices);
-        push(out, Primitive::Triangle(Box::new(vertices)), limits)?;
+        let triangle = Primitive::triangle(&vertices, &mut out.bytes)?;
+        out.push(triangle)?;
     }
     Ok(())
 }
-fn lattice(
-    d: &mut Decoder<'_>,
-    out: &mut Vec<Primitive>,
-    limits: &Limits,
-    row: usize,
-) -> Result<()> {
+fn lattice(d: &mut Decoder<'_>, out: &mut Decoded, row: usize) -> Result<()> {
     if row < 2 {
         return Err(Error::syntax("VerticesPerRow must be at least two"));
     }
-    if row
-        .checked_mul(2 * size_of::<Vertex>())
-        .is_none_or(|n| n > limits.decoded_bytes)
-    {
-        return Err(Error::limit("invalid or excessive mesh row width"));
-    }
+    // Two rows of vertices are held while their triangles are built.
+    let mut rows = Meter::new(out.bytes.remaining(), "invalid or excessive mesh row width");
     let mut previous = Vec::new();
     let mut current = Vec::new();
-    previous
-        .try_reserve_exact(row)
-        .map_err(|_| Error::limit("mesh row allocation failed"))?;
-    current
-        .try_reserve_exact(row)
-        .map_err(|_| Error::limit("mesh row allocation failed"))?;
+    rows.reserve(&mut previous, row)?;
+    rows.reserve(&mut current, row)?;
     while d.more() {
         current.push(d.vertex()?);
-        d.align();
+        d.align()?;
         if current.len() == row {
-            if !previous.is_empty() {
-                for i in 0..row - 1 {
-                    push(
-                        out,
-                        Primitive::Triangle(Box::new([previous[i], previous[i + 1], current[i]])),
-                        limits,
-                    )?;
-                    push(
-                        out,
-                        Primitive::Triangle(Box::new([
-                            previous[i + 1],
-                            current[i],
-                            current[i + 1],
-                        ])),
-                        limits,
-                    )?;
-                }
+            for (above, below) in previous.windows(2).zip(current.windows(2)) {
+                let ([a, b], [c, e]) = (above, below) else {
+                    continue;
+                };
+                let first = Primitive::triangle(&[*a, *b, *c], &mut out.bytes)?;
+                out.push(first)?;
+                let second = Primitive::triangle(&[*b, *c, *e], &mut out.bytes)?;
+                out.push(second)?;
             }
             std::mem::swap(&mut current, &mut previous);
             current.clear();
@@ -242,11 +293,10 @@ fn lattice(
     Ok(())
 }
 struct Decoder<'a> {
-    data: &'a [u8],
-    bit: usize,
-    coordinate: usize,
-    component: usize,
-    flag: usize,
+    bits: BitCursor<'a>,
+    coordinate: u32,
+    component: u32,
+    flag: u32,
     inputs: usize,
     decode: Vec<[f64; 2]>,
 }
@@ -254,7 +304,7 @@ impl<'a> Decoder<'a> {
     fn new(
         document: &ColorContext<'_>,
         d: &Dictionary,
-        data: &'a [u8],
+        bits: BitCursor<'a>,
         kind: ShadingType,
         inputs: usize,
     ) -> Result<Self> {
@@ -294,46 +344,36 @@ impl<'a> Decoder<'a> {
                 ])
             })
             .collect::<Result<Vec<_>>>()?;
+        let width =
+            |bits: usize| u32::try_from(bits).map_err(|_| Error::syntax("invalid mesh bit width"));
         Ok(Self {
-            data,
-            bit: 0,
-            coordinate,
-            component,
-            flag,
+            bits,
+            coordinate: width(coordinate)?,
+            component: width(component)?,
+            flag: width(flag)?,
             inputs,
             decode,
         })
     }
-    fn more(&self) -> bool {
-        self.bit / 8 < self.data.len()
+    /// Whether another record starts; records begin byte-aligned.
+    const fn more(&self) -> bool {
+        self.bits.remaining_bits() > 0
     }
-    fn align(&mut self) {
-        self.bit = self.bit.div_ceil(8) * 8;
-    }
-    fn bits(&mut self, n: usize) -> Result<u32> {
-        let end = self
-            .bit
-            .checked_add(n)
-            .filter(|n| n.div_ceil(8) <= self.data.len())
-            .ok_or(Error::syntax("truncated mesh record"))?;
-        let mut value = 0;
-        while self.bit < end {
-            value = (value << 1) | u32::from((self.data[self.bit / 8] >> (7 - self.bit % 8)) & 1);
-            self.bit += 1;
-        }
-        Ok(value)
+    fn align(&mut self) -> Result<()> {
+        self.bits.align().map(|_| ())
     }
     fn flag(&mut self) -> Result<u8> {
-        u8::try_from(self.bits(self.flag)? & 3).map_err(|_| Error::syntax("invalid mesh edge flag"))
+        // Only the low two bits carry an edge flag (8.7.4.5.5).
+        Ok(self.bits.bits(self.flag)?.to_le_bytes()[0] & 3)
     }
-    fn value(&mut self, bits: usize, index: usize) -> Result<f64> {
-        let raw = self.bits(bits)?;
-        let [lo, hi] = self.decode[index];
-        let max = if bits == 32 {
-            u32::MAX
-        } else {
-            (1u32 << bits) - 1
-        };
+    fn value(&mut self, bits: u32, index: usize) -> Result<f64> {
+        let raw = self.bits.bits(bits)?;
+        let [lo, hi] = self
+            .decode
+            .get(index)
+            .copied()
+            .ok_or(Error::syntax("invalid mesh Decode dimensions"))?;
+        let max = u32::MAX >> (32 - bits);
         Ok(lo + (hi - lo) * f64::from(raw) / f64::from(max))
     }
     fn point(&mut self) -> Result<Point> {
@@ -342,9 +382,9 @@ impl<'a> Decoder<'a> {
             self.value(self.coordinate, 1)?,
         ))
     }
-    fn color(&mut self) -> Result<[f64; 32]> {
-        let mut c = [0.0; 32];
-        for (i, c) in c.iter_mut().enumerate().take(self.inputs) {
+    fn color(&mut self) -> Result<Components> {
+        let mut c = Components::zeros(self.inputs);
+        for (i, c) in c.iter_mut().enumerate() {
             *c = self.value(self.component, 2 + i)?;
         }
         Ok(c)

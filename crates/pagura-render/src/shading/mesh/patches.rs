@@ -2,39 +2,36 @@
 //! Convex-hull subdivision isolates inverse images. A positive-definite
 //! symmetric transformed Jacobian certifies injectivity before accepting a
 //! Newton root. Unresolved numerical cases fail explicitly, never drop colour.
-use super::{Bounds, Decoder, Primitive, ShadingType, charge, push};
-use pagura_core::{Error, Limits, Result};
+use super::{Bounds, Decoded, Decoder, Primitive, ShadingType, charge, colors, interpolate};
+use crate::color::Components;
+use pagura_core::{Error, Result};
 use pagura_raster::Point;
 #[derive(Debug)]
 pub(super) struct Patch {
     pub(super) points: [Point; 16],
-    colors: [[f64; 32]; 4],
+    /// Corner colours in stream order, `inputs` values per corner.
+    pub(super) colors: Box<[f64]>,
     regular: bool,
     bounds: Bounds,
 }
 const ORDER: [usize; 16] = [0, 4, 8, 12, 13, 14, 15, 11, 7, 3, 2, 1, 5, 9, 10, 6];
 
-pub(super) fn decode(
-    d: &mut Decoder<'_>,
-    out: &mut Vec<Primitive>,
-    limits: &Limits,
-    kind: ShadingType,
-) -> Result<()> {
+pub(super) fn decode(d: &mut Decoder<'_>, out: &mut Decoded, kind: ShadingType) -> Result<()> {
     // Coons patches carry 12 boundary points; tensor-product patches all 16.
     let coons = kind == ShadingType::Coons;
     let mut previous = None;
     while d.more() {
         let flag = usize::from(d.flag()?);
         let mut raw = [Point::default(); 16];
-        let mut colors = [[0.0; 32]; 4];
+        let mut corners = [Components::zeros(0); 4];
         if flag != 0 {
-            let (points, old): ([Point; 16], [[f64; 32]; 4]) =
+            let (points, old): ([Point; 16], [Components; 4]) =
                 previous.ok_or(Error::syntax("patch continuation has no preceding patch"))?;
             for (i, p) in raw.iter_mut().enumerate().take(4) {
                 *p = points[(flag * 3 + i) % 12];
             }
-            colors[0] = old[flag];
-            colors[1] = old[(flag + 1) % 4];
+            corners[0] = old[flag];
+            corners[1] = old[(flag + 1) % 4];
         }
         for p in raw
             .iter_mut()
@@ -43,11 +40,11 @@ pub(super) fn decode(
         {
             *p = d.point()?;
         }
-        for c in colors.iter_mut().skip(if flag == 0 { 0 } else { 2 }) {
+        for c in corners.iter_mut().skip(if flag == 0 { 0 } else { 2 }) {
             *c = d.color()?;
         }
-        d.align();
-        previous = Some((raw, colors));
+        d.align()?;
+        previous = Some((raw, corners));
         let mut points = [Point::default(); 16];
         for (i, &index) in ORDER.iter().enumerate() {
             points[index] = raw[i];
@@ -68,29 +65,27 @@ pub(super) fn decode(
                 points[j * 4 + i] = Point::new(sc.x + sd.x - sb.x, sc.y + sd.y - sb.y);
             }
         }
-        push(
-            out,
-            Primitive::Patch(Box::new(Patch {
-                points,
-                colors,
-                regular: injective(&points),
-                bounds: Bounds::points(points),
-            })),
-            limits,
-        )?;
+        let colors = colors(&corners, &mut out.bytes)?;
+        out.push(Primitive::Patch(Box::new(Patch {
+            points,
+            colors,
+            regular: injective(&points),
+            bounds: Bounds::points(points),
+        })))?;
     }
     Ok(())
 }
 impl Patch {
+    /// Writes the colour at `p` into `out` if the patch covers it.
     pub(super) fn sample(
         &self,
         p: Point,
-        n: usize,
+        out: &mut [f64],
         work: &mut usize,
         maximum: usize,
-    ) -> Result<Option<[f64; 32]>> {
+    ) -> Result<bool> {
         if !self.bounds.contains(p) {
-            return Ok(None);
+            return Ok(false);
         }
         charge(work, maximum)?;
         let mut best = if self.regular {
@@ -109,15 +104,12 @@ impl Patch {
                 maximum,
             )?;
         }
-        let Some((u, v)) = best else { return Ok(None) };
-        let mut out = [0.0; 32];
-        for (i, out) in out.iter_mut().enumerate().take(n) {
-            *out = (1.0 - u) * (1.0 - v) * self.colors[0][i]
-                + (1.0 - u) * v * self.colors[1][i]
-                + u * v * self.colors[2][i]
-                + u * (1.0 - v) * self.colors[3][i];
-        }
-        Ok(Some(out))
+        let Some((u, v)) = best else {
+            return Ok(false);
+        };
+        let weights = [(1.0 - u) * (1.0 - v), (1.0 - u) * v, u * v, u * (1.0 - v)];
+        interpolate(&self.colors, &weights, out);
+        Ok(true)
     }
 }
 fn search(

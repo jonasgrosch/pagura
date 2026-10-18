@@ -1,6 +1,6 @@
 //! Median-split bounds hierarchy; stream order resolves overlapping primitives.
 use super::{Primitive, charge};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Meter, Result};
 use pagura_raster::Point;
 #[derive(Debug, Clone, Copy)]
 pub(super) struct Bounds {
@@ -31,7 +31,7 @@ impl Bounds {
 impl Primitive {
     fn bounds(&self) -> Bounds {
         match self {
-            Self::Triangle(v) => Bounds::points(v.iter().map(|v| v.point)),
+            Self::Triangle(t) => Bounds::points(t.points),
             Self::Patch(p) => Bounds::points(p.points),
         }
     }
@@ -56,26 +56,14 @@ impl Index {
         self.nodes.capacity() * size_of::<Node>() + self.order.capacity() * size_of::<usize>()
     }
 
-    pub(super) fn new(primitives: &[Primitive], limits: &Limits) -> Result<Self> {
+    pub(super) fn new(primitives: &[Primitive], bytes: &mut Meter) -> Result<Self> {
         let count = primitives.len();
-        if count
-            .checked_mul(size_of::<Node>() * 2 + size_of::<usize>())
-            .is_none_or(|n| n > limits.decoded_bytes)
-        {
-            return Err(Error::limit("mesh index memory budget exceeded"));
-        }
         let mut index = Self {
             nodes: Vec::new(),
             order: Vec::new(),
         };
-        index
-            .nodes
-            .try_reserve_exact(2 * count)
-            .map_err(|_| Error::limit("mesh index allocation failed"))?;
-        index
-            .order
-            .try_reserve_exact(count)
-            .map_err(|_| Error::limit("mesh index allocation failed"))?;
+        bytes.reserve(&mut index.nodes, count.saturating_mul(2))?;
+        bytes.reserve(&mut index.order, count)?;
         index.order.extend(0..count);
         index.build(primitives, 0, count);
         Ok(index)

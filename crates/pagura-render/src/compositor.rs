@@ -1096,11 +1096,11 @@ impl Context {
         boundary: Option<f64>,
     ) -> Result<Option<Source>> {
         let background = boundary
-            .and(command.shading.background)
+            .and(command.shading.background.as_ref())
             .map(|values| {
                 self.source(
                     &command.shading.space,
-                    &values[..command.shading.space.components()],
+                    values,
                     model,
                     &command.composite,
                     false,
@@ -1111,7 +1111,7 @@ impl Context {
             path.fill_region(FillRule::NonZero)
                 .is_some_and(|region| region != pagura_raster::FillRegion::Ordinary)
         });
-        let mut values = [0.0; 32];
+        let mut values = crate::color::Components::zeros(command.shading.space.components());
         let mut color = [0.0; 4];
         let mut covered = 0;
         let divisor =
@@ -1149,7 +1149,7 @@ impl Context {
                 }
                 let sample = self.source(
                     &command.shading.space,
-                    &values[..command.shading.space.components()],
+                    &values,
                     model,
                     &command.composite,
                     false,

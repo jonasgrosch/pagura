@@ -6,7 +6,7 @@
 
 mod mesh;
 
-use crate::color::{self, Space};
+use crate::color::{self, Components, Space};
 use crate::functions::Function;
 use crate::icc::ColorContext;
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
@@ -18,7 +18,7 @@ pub(crate) struct Shading {
     pub(crate) bbox: Option<Rect>,
     pub(crate) bbox_path: Option<pagura_raster::Path>,
     pub(crate) antialias: bool,
-    pub(crate) background: Option<[f64; 32]>,
+    pub(crate) background: Option<Components>,
     functions: Functions,
     geometry: Geometry,
 }
@@ -154,7 +154,7 @@ impl Shading {
                     .as_array()
                     .filter(|v| v.len() == components)
                     .ok_or(Error::syntax("wrong shading Background dimension"))?;
-                let mut background = [0.0; 32];
+                let mut background = Components::zeros(components);
                 for (out, v) in background.iter_mut().zip(values) {
                     *out = document
                         .resolve(v)?
@@ -194,33 +194,23 @@ impl Shading {
             geometry,
         })
     }
+    /// Writes the colour at `point` into `output`, which holds the shading
+    /// space's components, if the shading covers the point.
     pub(crate) fn sample(
         &self,
         point: Point,
-        output: &mut [f64; 32],
+        output: &mut [f64],
         work: &mut usize,
         raster_work: &mut usize,
     ) -> Result<bool> {
-        if let Geometry::Mesh(mesh) = &self.geometry {
-            if !mesh.sample(point, output, raster_work)? {
-                return Ok(false);
-            }
-            let input = *output;
-            let count = if matches!(mesh.functions, Functions::Identity) {
-                self.space.components()
-            } else {
-                1
-            };
-            mesh.functions.evaluate(
-                &input[..count],
-                &mut output[..self.space.components()],
-                work,
-            )?;
-            return Ok(true);
-        }
         let (input, count) = match self.geometry {
-            Geometry::Mesh(_) => {
-                return Err(Error::invalid_argument("invalid analytic shading geometry"));
+            Geometry::Mesh(ref mesh) => {
+                let mut input = Components::zeros(mesh.inputs());
+                if !mesh.sample(point, &mut input, raster_work)? {
+                    return Ok(false);
+                }
+                mesh.functions.evaluate(&input, output, work)?;
+                return Ok(true);
             }
             Geometry::Function { domain, inverse } => {
                 let p = point * inverse;
@@ -272,11 +262,7 @@ impl Shading {
                 ([domain[0] + t * (domain[1] - domain[0]), 0.0], 1)
             }
         };
-        self.functions.evaluate(
-            &input[..count],
-            &mut output[..self.space.components()],
-            work,
-        )?;
+        self.functions.evaluate(&input[..count], output, work)?;
         Ok(true)
     }
 }
