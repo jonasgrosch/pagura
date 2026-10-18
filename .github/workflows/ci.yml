@@ -13,12 +13,16 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   check:
+    # Keep the check names that branch protection requires.
+    name: check (${{ matrix.os }})
     strategy:
       # Report every platform; one failure must not cancel the others.
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    # Same-repository integrate/* pull requests run their macOS job on the project's
+    # own Mac runners; forks and every other branch use the hosted runners.
+    runs-on: ${{ (matrix.os == 'macos-latest' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'integrate/')) && fromJSON('["self-hosted", "macOS", "ARM64", "pagura-mac"]') || matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install pinned Rust toolchain
