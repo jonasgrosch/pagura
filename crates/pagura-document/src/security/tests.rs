@@ -201,3 +201,418 @@ fn padded_key_choice_precedes_cached_strings_and_obeys_decoding_limits() {
         assert_eq!(error.object, Some(ObjectId::new(5, 0)));
     }
 }
+
+mod unit {
+    use super::super::lookup;
+    fn methods<'a>(
+        dictionary: &'a Dictionary,
+        params: &pagura_crypto::standard::SecurityParams,
+        resolve: impl Fn(&'a Value) -> pagura_core::Result<&'a Value>,
+    ) -> pagura_core::Result<super::super::Methods> {
+        super::super::methods(
+            dictionary,
+            params,
+            resolve,
+            &mut crate::security::policy::Policy::permissive(),
+        )
+    }
+    use crate::stream::validate_crypt;
+    use crate::{Document, OpenOptions};
+    use pagura_core::syntax::{Origin, Parser};
+    use pagura_core::{Dictionary, ErrorKind, Limits, Value};
+    use pagura_crypto::standard::CryptMethod;
+    use pagura_testkit::fixture;
+
+    fn parameters(
+        dictionary: &Dictionary,
+        trailer: &Dictionary,
+    ) -> pagura_core::Result<pagura_crypto::standard::SecurityParams> {
+        super::super::parameters(dictionary, trailer, None)
+    }
+
+    fn dictionary(bytes: &[u8]) -> Dictionary {
+        Parser::new(bytes, Origin::Buffer, Limits::default())
+            .parse()
+            .unwrap()
+            .as_dictionary()
+            .unwrap()
+            .clone()
+    }
+
+    fn trailer() -> Dictionary {
+        dictionary(b"<< /ID [<00112233> <44556677>] >>")
+    }
+
+    #[test]
+    fn versions_key_lengths_and_plain_parameters_match_the_standard() {
+        for (version, revision, length) in
+            [(1, 2, 5), (2, 3, 16), (4, 4, 16), (5, 5, 32), (5, 6, 32)]
+        {
+            let encryption = dictionary(format!("<< /V {version} /R {revision} /Length 128 /O (owner) /U (user) /P -4 /OE (oe) /UE (ue) /Perms (perms) /EncryptMetadata false >>").as_bytes());
+            let params = parameters(&encryption, &trailer()).unwrap();
+            assert_eq!(params.version, version);
+            assert_eq!(params.revision, revision);
+            assert_eq!(params.key_length, length);
+            assert_eq!(params.permissions, -4);
+            assert_eq!(params.owner_hash, b"owner");
+            assert_eq!(params.user_hash, b"user");
+            assert_eq!(params.owner_encrypted_key.as_deref(), Some(&b"oe"[..]));
+            assert_eq!(params.user_encrypted_key.as_deref(), Some(&b"ue"[..]));
+            assert_eq!(params.encrypted_permissions.as_deref(), Some(&b"perms"[..]));
+            assert_eq!(params.document_id, [0, 0x11, 0x22, 0x33]);
+            assert_eq!(params.encrypt_metadata, version < 4);
+        }
+    }
+
+    #[test]
+    fn crypt_filter_defaults_identity_and_embedded_file_events() {
+        let encryption = dictionary(b"<< /V 4 /R 4 /Length 128 /O () /U () /P -4 /CF << /RC << /CFM /V2 /Length 16 >> /AES << /CFM /AESV2 >> /EF << /CFM /V2 /AuthEvent /EFOpen >> >> /StrF /Identity /StmF /AES /EFF /EF >>");
+        let params = parameters(&encryption, &trailer()).unwrap();
+        let (filters, strings, streams, embedded) = methods(&encryption, &params, Ok).unwrap();
+        assert_eq!(strings, CryptMethod::Identity);
+        assert_eq!(streams, CryptMethod::AesV2);
+        assert_eq!(embedded, CryptMethod::Rc4);
+        assert_eq!(lookup(&filters, b"RC", false).unwrap(), CryptMethod::Rc4);
+        assert_eq!(
+            lookup(&filters, b"Identity", false).unwrap(),
+            CryptMethod::Identity
+        );
+        assert_eq!(
+            lookup(&filters, b"EF", false).unwrap_err().kind,
+            ErrorKind::Syntax
+        );
+        let mut encryption = encryption;
+        encryption.remove(b"StrF");
+        encryption.remove(b"StmF");
+        encryption.remove(b"EFF");
+        let (_, strings, streams, embedded) = methods(&encryption, &params, Ok).unwrap();
+        assert_eq!(
+            (strings, streams, embedded),
+            (
+                CryptMethod::Identity,
+                CryptMethod::Identity,
+                CryptMethod::Identity
+            )
+        );
+    }
+
+    #[test]
+    fn invalid_security_parameters_are_never_silently_defaulted() {
+        for entry in [
+            b"/Length 41".as_slice(),
+            b"/Length -8",
+            b"/EncryptMetadata 1",
+            b"/P 2147483648",
+            b"/U 9",
+        ] {
+            let base = b"<< /V 4 /R 4 /Length 128 /O () /U () /P -4 >>";
+            let mut encryption = dictionary(base);
+            encryption.extend(dictionary(&[b"<< ".as_slice(), entry, b" >>"].concat()));
+            assert_eq!(
+                parameters(&encryption, &trailer()).unwrap_err().kind,
+                ErrorKind::Syntax
+            );
+        }
+        for entry in [
+            b"/CF << /X << /CFM 1 >> >>".as_slice(),
+            b"/StmF /Missing",
+            b"/StrF 1",
+            b"/CF << /X << /CFM /V2 /Length 16 /AuthEvent /Wrong >> >>",
+        ] {
+            let mut encryption = dictionary(b"<< /V 4 /R 4 /Length 128 /O () /U () /P -4 >>");
+            encryption.extend(dictionary(&[b"<< ".as_slice(), entry, b" >>"].concat()));
+            let params = parameters(&encryption, &trailer()).unwrap();
+            assert_eq!(
+                methods(&encryption, &params, Ok).unwrap_err().kind,
+                ErrorKind::Syntax
+            );
+        }
+        assert_eq!(
+            validate_crypt(
+                Some(&Value::name(b"Crypt")),
+                Some(&Value::Dictionary(dictionary(b"<< /Name 7 >>")))
+            )
+            .unwrap_err()
+            .kind,
+            ErrorKind::Syntax
+        );
+    }
+
+    #[test]
+    fn handler_errors_propagate_and_password_debug_is_redacted() {
+        let mut document =
+            Document::open(fixture("classic", "rectangle.pdf"), &OpenOptions::default()).unwrap();
+        document.trailer.insert(
+            pagura_core::Name::new(b"Encrypt"),
+            Value::Dictionary(dictionary(
+                b"<< /Filter /Standard /V 1 /R 2 /O () /U () /P -4 >>",
+            )),
+        );
+        document.trailer.extend(trailer());
+        let parameters = parameters(
+            document
+                .trailer
+                .get(b"Encrypt")
+                .unwrap()
+                .as_dictionary()
+                .unwrap(),
+            document.trailer(),
+        )
+        .unwrap();
+        let expected = pagura_crypto::standard::authenticate(&parameters, b"").unwrap_err();
+        assert_eq!(super::super::read(&document).unwrap_err(), expected);
+        *document.trailer.get_mut(b"Encrypt").unwrap() =
+            Value::Dictionary(dictionary(b"<< /Filter /Adobe.PubSec >>"));
+        assert_eq!(
+            super::super::read(&document).unwrap_err().feature(),
+            Some(crate::tags::PUBSEC)
+        );
+        let options = OpenOptions {
+            password: b"private-password".to_vec(),
+            ..OpenOptions::default()
+        };
+        assert!(!format!("{options:?}").contains("private-password"));
+    }
+}
+
+mod indirect_filters {
+    use crate::{Document, OpenOptions};
+    use pagura_core::{ErrorKind, ObjectId, Recovery};
+    use pagura_testkit::fixture;
+
+    #[test]
+    fn indirect_filter_dictionaries_authenticate_in_strict_mode() {
+        for name in ["security-indirect-cf", "security-indirect-filter"] {
+            let bytes = fixture("document", &format!("{name}.pdf"));
+            for password in [b"".as_slice(), b"owner"] {
+                let document = Document::open(
+                    bytes.clone(),
+                    &OpenOptions {
+                        recovery: Recovery::Strict,
+                        password: password.to_vec(),
+                        ..OpenOptions::default()
+                    },
+                )
+                .unwrap();
+                assert_eq!(
+                    document
+                        .stream_data(document.object(ObjectId::new(4, 0)).unwrap())
+                        .unwrap()
+                        .as_ref(),
+                    b"1 0 0 rg 8 8 48 32 re f\n"
+                );
+                assert_eq!(document.diagnostics(), []);
+            }
+            assert_eq!(
+                Document::open(
+                    bytes,
+                    &OpenOptions {
+                        password: b"wrong".to_vec(),
+                        ..OpenOptions::default()
+                    }
+                )
+                .unwrap_err()
+                .kind,
+                ErrorKind::Password
+            );
+        }
+    }
+}
+
+mod authorization_events {
+    use crate::{Document, OpenOptions};
+    use pagura_core::{ErrorKind, ObjectId, Recovery};
+    use pagura_testkit::fixture;
+
+    #[test]
+    fn embedded_file_authorization_does_not_block_identity_page_data() {
+        for name in ["security-embedded-event"] {
+            let bytes = fixture("document", &format!("{name}.pdf"));
+            assert_eq!(
+                Document::open(
+                    bytes.clone(),
+                    &OpenOptions {
+                        recovery: Recovery::Strict,
+                        ..OpenOptions::default()
+                    }
+                )
+                .unwrap_err()
+                .repair,
+                Some(crate::tags::CRYPT_EVENT)
+            );
+            for recovery in [Recovery::Repair] {
+                for password in [b"".as_slice(), b"wrong"] {
+                    let document = Document::open(
+                        bytes.clone(),
+                        &OpenOptions {
+                            recovery,
+                            password: password.to_vec(),
+                            ..OpenOptions::default()
+                        },
+                    )
+                    .unwrap();
+                    assert_eq!(document.page_count().unwrap(), 1);
+                    assert_eq!(
+                        document
+                            .catalog()
+                            .unwrap()
+                            .get(b"Marker")
+                            .unwrap()
+                            .as_string(),
+                        Some(b"independent".as_slice())
+                    );
+                    let content = document.object(ObjectId::new(4, 0)).unwrap();
+                    assert_eq!(
+                        document.stream_data(content).unwrap().as_ref(),
+                        b"1 0 0 rg 8 8 48 32 re f\n"
+                    );
+                    let embedded = document.object(ObjectId::new(6, 0)).unwrap();
+                    let error = document.stream_data(embedded).unwrap_err();
+                    assert_eq!(error.kind, ErrorKind::Password);
+                    assert_eq!(error.object, Some(embedded.id()));
+                    let retained = document.retained.used();
+                    assert_eq!(document.stream_data(embedded).unwrap_err(), error);
+                    assert_eq!(document.retained.used(), retained);
+                    assert!(
+                        document
+                            .diagnostics()
+                            .iter()
+                            .any(|d| d.repair() == Some(crate::tags::CRYPT_EVENT))
+                    );
+                }
+                for password in [b"attachment".as_slice(), b"owner"] {
+                    let document = Document::open(
+                        bytes.clone(),
+                        &OpenOptions {
+                            recovery,
+                            password: password.to_vec(),
+                            ..OpenOptions::default()
+                        },
+                    )
+                    .unwrap();
+                    assert_eq!(
+                        document
+                            .stream_data(document.object(ObjectId::new(6, 0)).unwrap())
+                            .unwrap()
+                            .as_ref(),
+                        b"attached file bytes"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn doc_open_is_required_for_default_filters_and_explicit_doc_open_events() {
+        let bytes = fixture("document", "security-embedded-doc-open.pdf");
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            assert_eq!(
+                Document::open(
+                    bytes.clone(),
+                    &OpenOptions {
+                        recovery,
+                        ..OpenOptions::default()
+                    }
+                )
+                .unwrap_err()
+                .kind,
+                ErrorKind::Password
+            );
+            let document = Document::open(
+                bytes.clone(),
+                &OpenOptions {
+                    recovery,
+                    password: b"attachment".to_vec(),
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(document.page_count().unwrap(), 1);
+            let default = Document::open(
+                fixture("document", "security-default-event-override.pdf"),
+                &OpenOptions {
+                    recovery,
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(
+                default
+                    .stream_data(default.object(ObjectId::new(4, 0)).unwrap())
+                    .unwrap()
+                    .as_ref(),
+                b"1 0 0 rg 8 8 48 32 re f\n"
+            );
+            assert_eq!(default.diagnostics(), []);
+        }
+    }
+}
+
+mod missing_length {
+    use crate::{Document, OpenOptions, tags};
+    use pagura_core::{ErrorKind, ObjectId, Recovery};
+    use pagura_testkit::fixture;
+
+    #[test]
+    fn only_a_unique_authenticated_size_replaces_the_missing_default() {
+        let bytes = fixture("document", "security-length-missing.pdf");
+        for password in [b"".as_slice(), b"owner"] {
+            let options = OpenOptions {
+                password: password.to_vec(),
+                ..OpenOptions::default()
+            };
+            let strict = Document::open(
+                bytes.clone(),
+                &OpenOptions {
+                    recovery: Recovery::Strict,
+                    ..options.clone()
+                },
+            )
+            .unwrap_err();
+            assert_eq!(strict.repair, Some(tags::KEY_LENGTH_MISSING));
+            assert_eq!(strict.object, Some(ObjectId::new(5, 0)));
+            let document = Document::open(bytes.clone(), &options).unwrap();
+            assert_eq!(document.page_count().unwrap(), 1);
+            assert_eq!(
+                document
+                    .catalog()
+                    .unwrap()
+                    .get(b"Marker")
+                    .unwrap()
+                    .as_string(),
+                Some(b"independent".as_slice())
+            );
+            assert_eq!(
+                document
+                    .stream_data(document.object(ObjectId::new(4, 0)).unwrap())
+                    .unwrap()
+                    .as_ref(),
+                b"1 0 0 rg 8 8 48 32 re f\n"
+            );
+            assert_eq!(
+                document
+                    .diagnostics()
+                    .iter()
+                    .filter(|d| d.repair() == Some(tags::KEY_LENGTH_MISSING))
+                    .count(),
+                1
+            );
+        }
+        for name in [
+            "security-length-missing",
+            "security-length-missing-password",
+        ] {
+            let bytes = fixture("document", &format!("{name}.pdf"));
+            let error = Document::open(
+                bytes,
+                &OpenOptions {
+                    password: b"wrong".to_vec(),
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Password);
+            assert_eq!(error.repair, None);
+        }
+    }
+}
