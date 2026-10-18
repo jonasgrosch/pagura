@@ -1,6 +1,6 @@
 //! ASCII filters (ISO 32000-2 7.4.2, 7.4.3).
 use crate::report::{repair, syntax, trailing};
-use crate::{Predictor, output::Output, tags};
+use crate::{Predictor, output::Output, repairs};
 use pagura_core::syntax::is_whitespace;
 use pagura_core::{Diagnostics, Result};
 
@@ -33,7 +33,7 @@ pub(crate) fn hex(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -> Re
     if !terminated {
         repair(
             diagnostics,
-            tags::TRUNCATED,
+            repairs::TRUNCATED,
             "ASCIIHex end marker missing",
             end,
         )?;
@@ -95,7 +95,7 @@ pub(crate) fn ascii85(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -
     if !terminated {
         repair(
             diagnostics,
-            tags::TRUNCATED,
+            repairs::TRUNCATED,
             "ASCII85 end marker missing",
             end,
         )?;

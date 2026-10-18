@@ -1,6 +1,6 @@
 //! The run-length filter (ISO 32000-2 7.4.5).
 use crate::report::{repair, syntax, trailing};
-use crate::{Predictor, output::Output, tags};
+use crate::{Predictor, output::Output, repairs};
 use pagura_core::{Diagnostics, Result};
 
 pub(crate) fn decode(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -> Result<Vec<u8>> {
@@ -38,7 +38,7 @@ pub(crate) fn decode(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) ->
     }
     repair(
         diagnostics,
-        tags::TRUNCATED,
+        repairs::TRUNCATED,
         "RunLength input truncated",
         input.len(),
     )?;
