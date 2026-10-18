@@ -156,7 +156,7 @@ impl Row {
                 self.touched[start / 64] |= 1 << (start % 64);
             }
         }
-        for (x, target) in self.areas.iter_mut().enumerate().take(end).skip(start) {
+        for (x, target) in (start..end).zip(&mut self.areas[start..end]) {
             let column =
                 f64::from(u32::try_from(x).map_err(|_| Error::limit("column exceeds u32"))?);
             *target += area * ramp(a - column, b - column);
