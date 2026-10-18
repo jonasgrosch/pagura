@@ -103,7 +103,10 @@ fn validates_parameters_and_preserves_image_and_security_boundaries() {
         None,
     )
     .unwrap();
-    assert_eq!(chain.take_crypt(), Some(None));
+    assert_eq!(
+        chain.take_crypt(),
+        Some(pagura_codec::CryptFilter::default())
+    );
     assert_eq!(chain.take_crypt(), None);
     assert_eq!(
         chain
@@ -136,6 +139,79 @@ fn chained_filters_use_ordered_steps_with_a_cap_at_each_step() {
             .unwrap_err()
             .kind,
         pagura_core::ErrorKind::Limit
+    );
+}
+
+#[test]
+fn crypt_and_image_filters_leave_the_chain_with_their_parameters() {
+    use pagura_codec::{ImageCodec, features};
+    use pagura_core::{Diagnostics, ErrorKind};
+    let crypt: Dictionary = [(Name::new(b"Name"), Value::name(b"StdCF"))]
+        .into_iter()
+        .collect();
+    let mut chain = FilterChain::from_entries(
+        Some(&Value::Array(vec![
+            Value::name(b"Crypt"),
+            Value::name(b"Fl"),
+        ])),
+        Some(&Value::Array(vec![Value::Dictionary(crypt), Value::Null])),
+    )
+    .unwrap();
+    let taken = chain.take_crypt().unwrap();
+    assert_eq!(taken.name().map(Name::as_bytes), Some(b"StdCF".as_slice()));
+    assert!(matches!(chain.filters(), [Filter::Flate { .. }]));
+    assert_eq!(chain.take_crypt(), None);
+    // A Crypt filter after the first is rejected while the chain is built.
+    assert_eq!(
+        FilterChain::from_entries(
+            Some(&Value::Array(vec![
+                Value::name(b"Fl"),
+                Value::name(b"Crypt")
+            ])),
+            None,
+        )
+        .unwrap_err()
+        .kind,
+        ErrorKind::Syntax
+    );
+
+    let params: Dictionary = [(Name::new(b"ColorTransform"), Value::Integer(0))]
+        .into_iter()
+        .collect();
+    let mut chain = FilterChain::from_entries(
+        Some(&Value::Array(vec![
+            Value::name(b"AHx"),
+            Value::name(b"DCT"),
+        ])),
+        Some(&Value::Array(vec![
+            Value::Null,
+            Value::Dictionary(params.clone()),
+        ])),
+    )
+    .unwrap();
+    assert_eq!(chain.split_image(), Some((ImageCodec::Dct, Some(params))));
+    assert_eq!(chain.filters(), [Filter::AsciiHex]);
+    assert_eq!(chain.split_image(), None);
+    // An image codec before another filter stays and cannot be decoded here.
+    let mut chain = FilterChain::from_entries(
+        Some(&Value::Array(vec![
+            Value::name(b"DCT"),
+            Value::name(b"AHx"),
+        ])),
+        None,
+    )
+    .unwrap();
+    assert_eq!(chain.split_image(), None);
+    assert_eq!(
+        chain
+            .decode(b"", 0, &mut Diagnostics::default())
+            .unwrap_err()
+            .kind,
+        ErrorKind::Unsupported(features::DCT)
+    );
+    assert_eq!(
+        Filter::from_pdf(b"BrotliDecode", None).unwrap_err().kind,
+        ErrorKind::Unsupported(features::UNKNOWN)
     );
 }
 

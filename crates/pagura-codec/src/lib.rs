@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(unreachable_pub)]
 //! Bounded PDF stream filters (ISO 32000-2 clause 7.4).
 //!
 //! This crate turns encoded stream bytes into decoded bytes. It knows the
@@ -26,7 +27,7 @@ pub mod repairs;
 mod report;
 mod run_length;
 
-pub use filter::{EarlyChange, Filter, FilterChain, ImageCodec};
+pub use filter::{CryptFilter, EarlyChange, Filter, FilterChain, ImageCodec};
 pub use predictor::{Predictor, PredictorKind};
 
 use pagura_core::{Diagnostics, Result};

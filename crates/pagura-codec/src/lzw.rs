@@ -1,5 +1,5 @@
 //! PDF LZW: MSB-first codes of 9 to 12 bits with `/EarlyChange` (7.4.4.2).
-use crate::report::{repair, syntax, trailing};
+use crate::report::{Trailer, repair, syntax, trailing};
 use crate::{EarlyChange, Predictor, output::Output, repairs};
 use pagura_core::{Diagnostics, Result};
 
@@ -73,7 +73,7 @@ pub(crate) fn decode(
                         reader.position(),
                     )?;
                 }
-                trailing(input, reader.offset, false, diagnostics)?;
+                trailing(input, reader.offset, Trailer::Nothing, diagnostics)?;
                 return output.finish(reader.offset);
             }
             _ => {

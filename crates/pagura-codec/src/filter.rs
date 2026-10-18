@@ -1,10 +1,14 @@
-//! Filter names, parameters and chains (clause 7.4.1, Tables 5 and 6).
+//! Filter names, parameters and chains (7.4.1, Tables 5 and 6).
 use crate::{Predictor, ascii, features, flate, lzw, run_length};
 use pagura_core::{Diagnostics, Dictionary, Error, Feature, Name, Result, Value};
 use std::borrow::Cow;
 
-/// One decoding step.
+/// One decoding step: a filter of 7.4.1, Table 6.
+///
+/// Non-exhaustive, because a later edition or an extension can define
+/// further filters.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum Filter {
     /// `ASCIIHexDecode` / `AHx`.
     AsciiHex,
@@ -32,11 +36,31 @@ pub enum Filter {
         /// The codec's parameter dictionary, if any.
         params: Option<Dictionary>,
     },
-    /// `Crypt`, applied by the security handler. Carries `/Name`, if any.
-    Crypt(Option<Name>),
+    /// `Crypt`, applied by the security handler.
+    Crypt(CryptFilter),
 }
 
-/// When LZW codes grow by one bit: the `/EarlyChange` parameter (Table 8).
+/// The parameters of a `Crypt` filter (7.4.10, Table 14).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct CryptFilter {
+    name: Option<Name>,
+}
+
+impl CryptFilter {
+    /// The `/Name` entry: the crypt filter to apply. `None` means the
+    /// default, `Identity`.
+    pub const fn name(&self) -> Option<&Name> {
+        self.name.as_ref()
+    }
+
+    /// The `/Name` entry, consuming the parameters.
+    pub fn into_name(self) -> Option<Name> {
+        self.name
+    }
+}
+
+/// When LZW codes grow by one bit: the `/EarlyChange` parameter (Table 8),
+/// which admits only these two values.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum EarlyChange {
     /// `1`, the default: one code early, as TIFF LZW does.
@@ -46,7 +70,8 @@ pub enum EarlyChange {
     Postponed,
 }
 
-/// The image codecs of clause 7.4 (Table 6), decoded by `pagura-image`.
+/// The image codecs of 7.4.1, Table 6, decoded by `pagura-image`. Table 6
+/// closes the set, and `pagura-image` matches it exhaustively.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ImageCodec {
     /// `DCTDecode`: JPEG (ITU-T T.81).
@@ -96,7 +121,7 @@ impl FilterChain {
                 .map(|value| {
                     value
                         .as_name()
-                        .ok_or(Error::syntax("filter must be a name"))
+                        .ok_or(Error::syntax("Filter array entry must be a name"))
                 })
                 .collect::<Result<_>>()?,
             Some(_) => return Err(Error::syntax("Filter must be a name or array")),
@@ -141,29 +166,28 @@ impl FilterChain {
         self.filters.is_empty()
     }
 
-    /// Removes a leading `Crypt` filter for the security handler, returning
-    /// its `/Name` (`None` means the default, `Identity`).
-    pub fn take_crypt(&mut self) -> Option<Option<Name>> {
-        match self.filters.first() {
-            Some(Filter::Crypt(_)) => match self.filters.remove(0) {
-                Filter::Crypt(name) => Some(name),
-                _ => None,
-            },
-            _ => None,
-        }
+    /// Removes a leading `Crypt` filter for the security handler and
+    /// returns its parameters. [`FilterChain::from_entries`] rejects a
+    /// `Crypt` filter anywhere else.
+    pub fn take_crypt(&mut self) -> Option<CryptFilter> {
+        let Some(Filter::Crypt(crypt)) = self.filters.first_mut() else {
+            return None;
+        };
+        let crypt = std::mem::take(crypt);
+        self.filters.remove(0);
+        Some(crypt)
     }
 
     /// Removes a trailing image codec, returning it with its parameters, so
     /// the image layer can decode it after the preceding filters ran. An
     /// image codec anywhere but last stays in the chain and fails decoding.
     pub fn split_image(&mut self) -> Option<(ImageCodec, Option<Dictionary>)> {
-        if !matches!(self.filters.last(), Some(Filter::Image { .. })) {
+        let Some(Filter::Image { codec, params }) = self.filters.last_mut() else {
             return None;
-        }
-        match self.filters.pop() {
-            Some(Filter::Image { codec, params }) => Some((codec, params)),
-            _ => None,
-        }
+        };
+        let image = (*codec, params.take());
+        self.filters.pop();
+        Some(image)
     }
 
     /// Applies every filter in order. Unencoded input is borrowed.
@@ -174,6 +198,12 @@ impl FilterChain {
     /// `max_output` bytes, a syntax error for corrupt data, and
     /// `Unsupported` for image codecs. Under [`pagura_core::Recovery::Strict`],
     /// damage that would otherwise be repaired is a syntax error.
+    ///
+    /// Errors and repairs are positioned at [`Position::Buffer`] offsets in
+    /// the input of the filter that found them: the encoded data for the
+    /// first filter, and the previous filter's output for later ones.
+    ///
+    /// [`Position::Buffer`]: pagura_core::Position::Buffer
     pub fn decode<'a>(
         &self,
         input: &'a [u8],
@@ -219,7 +249,7 @@ impl Filter {
             b"JBIG2Decode" => Self::image(ImageCodec::Jbig2, params),
             b"CCITTFaxDecode" | b"CCF" => Self::image(ImageCodec::CcittFax, params),
             b"Crypt" => {
-                // ISO 32000-2 7.4.10, Table 14; null entries are absent (7.3.7).
+                // 7.4.10, Table 14; null entries are absent (7.3.7).
                 match params.and_then(|p| p.get(b"Type")) {
                     None | Some(Value::Null) => {}
                     Some(Value::Name(name)) if name.as_bytes() == b"CryptFilterDecodeParms" => {}
@@ -230,7 +260,7 @@ impl Filter {
                     Some(Value::Name(name)) => Some(name.clone()),
                     Some(_) => return Err(Error::syntax("Crypt parameter Name must be a name")),
                 };
-                Self::Crypt(name)
+                Self::Crypt(CryptFilter { name })
             }
             _ => {
                 return Err(Error::unsupported(
@@ -245,7 +275,7 @@ impl Filter {
     ///
     /// # Errors
     ///
-    /// See [`FilterChain::decode`].
+    /// See [`FilterChain::decode`]; positions are offsets in `input`.
     pub fn decode(
         &self,
         input: &[u8],
@@ -270,9 +300,7 @@ impl Filter {
             } => lzw::decode(input, max_output, *predictor, *early_change, diagnostics),
         }
     }
-}
 
-impl Filter {
     fn image(codec: ImageCodec, params: Option<&Dictionary>) -> Self {
         Self::Image {
             codec,
