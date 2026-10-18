@@ -31,6 +31,36 @@ NATIVE = tuple(name for name in ("pagura", "pdfium", "mupdf", "quartz", "hayro",
                if name != "quartz" or sys.platform == "darwin")
 WASM = ("v8-wasi", "wasmtime")
 CONTENT = ("text-heavy", "image-heavy", "vector-heavy", "mixed")
+X86_V3 = "pagura-x86-64-v3"
+
+
+def target_features(toolchain, host, env, *flags):
+    """Record enabled compiler features, rather than all supported features."""
+    cfg = subprocess.check_output(toolchain + ["rustc", "--print", "cfg", "--target", host, *flags],
+                                  cwd=ROOT, env=env, text=True)
+    return sorted(line.removeprefix('target_feature="').removesuffix('"')
+                  for line in cfg.splitlines() if line.startswith('target_feature="'))
+
+
+def build_x86_v3(output, toolchain, host, env):
+    """Keep the optional ISA track isolated from the portable headline build."""
+    track = {"status": "unavailable", "target": host, "rustflags": "-C target-cpu=x86-64-v3"}
+    if not host.startswith("x86_64-"):
+        return {**track, "reason": "x86-64-v3 requires an x86_64 host"}
+    track["target_features"] = target_features(toolchain, host, env, "-C", "target-cpu=x86-64-v3")
+    native_features = target_features(toolchain, host, env, "-C", "target-cpu=native")
+    track["host_target_features"] = native_features
+    missing = set(track["target_features"]) - set(native_features)
+    if missing:
+        return {**track, "reason": "host lacks x86-64-v3 features: " + ", ".join(sorted(missing))}
+    variant_env = dict(env, CARGO_TARGET_DIR=str(output / "build-x86-64-v3"),
+                       RUSTFLAGS=track["rustflags"])
+    variant_env.pop("CARGO_ENCODED_RUSTFLAGS", None)
+    checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "--target", host,
+                         "-p", "pagura", "--features", "bundled-data"], output / "build.log", env=variant_env)
+    executable = "pagura.exe" if "windows" in host else "pagura"
+    binary = output / "build-x86-64-v3" / host / "release" / executable
+    return {**track, "status": "available", "binary": str(binary)}
 
 
 def required(name):
@@ -66,7 +96,7 @@ def checked(command, log, *, env=None):
                        env=env, check=True, timeout=900)
 
 
-def build(output, wasmtime, *, include_wasm=True):
+def build(output, wasmtime, *, include_wasm=True, x86_v3=False):
     """Offline clean targets and explicit identical bundled-data features."""
     artifacts = output / "artifacts"
     artifacts.mkdir()
@@ -79,9 +109,7 @@ def build(output, wasmtime, *, include_wasm=True):
     for name in ("RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS"):
         env.pop(name, None)
     env["CARGO_ENCODED_RUSTFLAGS"] = ""  # override per-target/global Cargo config too
-    cfg = subprocess.check_output(toolchain + ["rustc", "--print", "cfg", "--target", host],
-                                  cwd=ROOT, text=True, env=env)
-    features = sorted(line.split('"')[1] for line in cfg.splitlines() if line.startswith('target_feature="'))
+    features = target_features(toolchain, host, env)
     log = output / "build.log"
     checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "--target", host,
              "-p", "pagura", "-p", "pagura-host", "--features", "pagura-host/bundled-data"], log, env=env)
@@ -104,9 +132,14 @@ def build(output, wasmtime, *, include_wasm=True):
     if include_wasm:
         checked([wasmtime, "compile", "-C", "cache=n", "-C", "parallel-compilation=n",
                  artifacts / "convert.wasm", "-o", artifacts / "convert.cwasm"], log)
-    atomic_json(output / "compiler.json", {"rustc": info, "host": host,
+    tracks = {"pagura": {"status": "available", "target": host,
+                         "target_features": features}}
+    if x86_v3:
+        tracks[X86_V3] = build_x86_v3(output, toolchain, host, env)
+    atomic_json(output / "compiler.json", {"rustc": info, "host": host, "native_tracks": tracks,
         "features": ["bundled-data"], "native_rustflags": "target baseline; inherited RUSTFLAGS cleared",
         "native_target_features": features,
+        "wasm_target_features": target_features(toolchain, "wasm32-wasip1", env, "-C", "target-feature=+simd128") if include_wasm else None,
         "wasm_rustflags": "-C target-feature=+simd128" if include_wasm else None,
         "wasmtime": "Cranelift AOT opt-level=2; parallel-compilation=n" if include_wasm else None,
         "product_host_wasm_sha256": sha((target / "wasm32-wasip1/release/pagura-host.wasm").read_bytes()) if include_wasm else None})
@@ -234,11 +267,20 @@ def idle_record(machine, path, node, *, smoke):
         time.sleep(30)
 
 
+def timed_engines(selected, bases):
+    """The optional x86-64-v3 build is a Pagura row, timed whenever portable Pagura is."""
+    if X86_V3 not in bases or "pagura" not in selected:
+        return selected
+    native = tuple(name for name in selected if name not in WASM)
+    return (*native, X86_V3, *selected[len(native):])
+
+
 def measurement(report, jobs, bases, node, wasmtime, artifacts, policy, output, machine, args):
     """Each engine runs exactly once per complete block; no retry/filtering."""
     rng = random.Random(args.seed)
     rng.shuffle(jobs)
-    selected_names = args.engines or (*NATIVE, *WASM)
+    selected_names = timed_engines(args.engines or (*NATIVE, *WASM), bases)
+    parity_names = (*WASM, X86_V3) if X86_V3 in bases else WASM
     documents.run_process = run_process
     documents.preserve_failure = failure_sink(output / "failures")
     temporary = output / "temporary"
@@ -277,7 +319,7 @@ def measurement(report, jobs, bases, node, wasmtime, artifacts, policy, output, 
                     timeout = min(policy["timeout_seconds"], remaining_time(args))
                     destination = temporary / name
                     destination.mkdir()
-                    command = (document_command(name, bases[name], pages, destination) if name in NATIVE else
+                    command = (document_command("pagura" if name == X86_V3 else name, bases[name], pages, destination) if name in bases else
                                wasm_command(name, node, wasmtime, artifacts, pages, destination))
                     decoded = {}
                     run = measure_document(command, destination, expected, {**policy, "timeout_seconds": timeout},
@@ -294,14 +336,17 @@ def measurement(report, jobs, bases, node, wasmtime, artifacts, policy, output, 
                                 target.write_bytes(f"P6\n{width} {height}\n255\n".encode() + pixels)
                                 retained[name, page] = target
                 by_page = {name: {page["page"]: page for page in run["pages"]} for name, run in runs.items()}
-                for name in WASM:
+                for name in parity_names:
                     if name not in runs or "pagura" not in runs:
                         continue
                     for page in expected:
                         match = verify_runtime_parity(by_page["pagura"][page], by_page[name][page])
-                        report["runtime_parity"].append({"block_id": block_id, "case": case["id"], "dpi": case["dpi"], "page": page, "engine": name,
+                        comparison = {"block_id": block_id, "case": case["id"], "dpi": case["dpi"], "page": page, "engine": name,
                             "exact": match, "native_pixels_sha256": by_page["pagura"][page].get("pixels_sha256"),
-                            "wasm_pixels_sha256": by_page[name][page].get("pixels_sha256")})
+                            "comparison_pixels_sha256": by_page[name][page].get("pixels_sha256")}
+                        if name in WASM:
+                            comparison["wasm_pixels_sha256"] = comparison["comparison_pixels_sha256"]
+                        report["runtime_parity"].append(comparison)
                         if not match:
                             # Failed parity suppresses ratios. It does not call either engine a PDF oracle.
                             source = images[name].get(page)
@@ -393,6 +438,8 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--smoke", action="store_true", help="two pages, 72 dpi, three samples and one warmup")
+    parser.add_argument("--pagura-x86-64-v3", action="store_true",
+                        help="add a separate x86-64-v3 row when the host supports it; portable Pagura stays the reference")
     parser.add_argument("--dpi300-pages", type=int, choices=(20, 40), default=20)
     parser.add_argument("--seed", type=int, default=52018)
     parser.add_argument("--timebox-seconds", type=int, default=7200)
@@ -406,6 +453,8 @@ def parse_args(argv=None):
         parser.error("control requires --reference")
     if args.reference and args.control < 1:
         parser.error("reference requires --control >= 1")
+    if args.pagura_x86_64_v3 and args.engines is not None and "pagura" not in args.engines:
+        parser.error("pagura-x86-64-v3 requires pagura in --engines as its parity reference")
     if args.timebox_seconds <= 0:
         parser.error("timebox-seconds must be positive")
     return args
@@ -465,7 +514,10 @@ def main(argv=None):
         controls = compare.select_controls(reference, args.control) if reference else []
         if reference:
             atomic_json(output / "reference.json", reference["provenance"])
-        native, artifacts = build(output, wasmtime, include_wasm=include_wasm)
+        native, artifacts = build(output, wasmtime, include_wasm=include_wasm, x86_v3=args.pagura_x86_64_v3)
+        compiler = read_json(output / "compiler.json")
+        machine["compiler"] = compiler
+        atomic_json(output / "machine.json", machine)
         if source_digest() != pinned or harness_sources() != harness_before:
             raise ValueError("source changed during build")
         bases = {name: engines()[name] for name in NATIVE if name in needed}
@@ -477,6 +529,16 @@ def main(argv=None):
         if any(value["status"] != "available" for value in identities.values()):
             atomic_json(output / "engines.json", identities)
             raise ValueError("all applicable competitors must be installed and available; see engines.json")
+        if args.pagura_x86_64_v3:
+            track = compiler["native_tracks"][X86_V3]
+            if track["status"] == "available":
+                bases[X86_V3] = [track["binary"]]
+                identities[X86_V3] = identify("pagura", bases[X86_V3])
+                if identities[X86_V3]["status"] != "available":
+                    raise ValueError("x86-64-v3 build failed its executable preflight")
+            else:
+                identities[X86_V3] = track
+        names = timed_engines(names, bases)
         for name, runtime in (("v8-wasi", node), ("wasmtime", wasmtime)):
             if name not in needed:
                 continue
@@ -531,7 +593,6 @@ def main(argv=None):
         report["suite"] = "round5-smoke" if args.smoke else "round5-real-documents"
         report.update(runtime_parity=[], completed_jobs=0, planned_jobs=len(jobs),
                       measurement_options=options if options is not None else measurement_options())
-        compiler = read_json(output / "compiler.json")
         report["round5"] = {"smoke": args.smoke, "manifest_external_path": str(manifest), "corpus_external_path": str(corpus),
             "validated_full_plan": {"page_dpi_cases": len(full_plan), "document_dpi_jobs": len(document_jobs(full_plan, bases)),
                                     "pages_at_300_dpi": len(high_resolution)},
@@ -539,7 +600,8 @@ def main(argv=None):
             "stage_boundaries": "open=load/parse/enumerate; render=load page+compile+paint; emit=convert/encode/write",
             "wasm_features": ["bundled-data", "simd128"], "v8_flags": ["--single-threaded", "--no-liftoff", "--wasm-num-compilation-tasks=1"],
             "wasmtime_flags": ["Cranelift AOT opt-level=2", "parallel-compilation=n"], "agreement_backend": f"Pillow {PIL.__version__}",
-            "simd": {"pagura": native_simd(compiler["host"], compiler["native_target_features"]), "wasm": "SIMD128",
+            "simd": {"pagura": native_simd(compiler["host"], compiler["native_target_features"]),
+                     "native_tracks": compiler["native_tracks"], "wasm": "SIMD128",
                      "hayro": "runtime-detected SIMD; ISA dispatch not independently audited", "other_engines": "ISA dispatch not independently audited"},
             "threading": {"hayro": "0.8.0 forces num_threads=0; isolated vello_cpu multithreading feature disabled",
                           "pdfium_mupdf": "synchronous calling-thread render APIs",
@@ -570,7 +632,7 @@ def main(argv=None):
         if sha(manifest.read_bytes()) != digest:
             raise ValueError("manifest changed during measurement")
         if any(sha(Path(path).read_bytes()) != expected_hash for identity in identities.values()
-               for path, expected_hash in identity["artifacts"].items()):
+               for path, expected_hash in identity.get("artifacts", {}).items()):
             raise ValueError("an engine/module artifact changed during measurement")
         report["gate"] = {"pass": False, "reasons": ["exploratory real pages without independent oracles; insufficient release samples; release matrix incomplete"]}
         atomic_json(output / "conversion.json", report)
@@ -590,6 +652,10 @@ def main(argv=None):
             print(summary, flush=True)
         else:
             write_summary(output / "conversion.json", output / "summary.md")
+        if args.pagura_x86_64_v3 and identities[X86_V3]["status"] != "available":
+            with (output / "summary.md").open("a") as stream:
+                stream.write(f"\n| Optional native track | Status | Reason |\n|---|---|---|\n"
+                             f"| {X86_V3} | unavailable | {identities[X86_V3]['reason']} |\n")
         exact = all(item["exact"] for item in report["runtime_parity"])
         bad = any(sample[key]["status"] not in GOOD for cell in report["document_cells"]
                   for sample in cell["samples"] + cell["warmup_failures"] for key in ("pagura", "baseline"))

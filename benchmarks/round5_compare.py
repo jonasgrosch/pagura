@@ -180,7 +180,7 @@ def comparison(selection, current, reference, rerun):
     """Median of per-cell ratios, with per-cell best chosen before aggregation."""
     old = reference["medians"] if reference else {}
     names = sorted({cell[3] for cell in old} | set(rerun))
-    competitors = [name for name in names if name not in ("pagura", "v8-wasi", "wasmtime")]
+    competitors = [name for name in names if name not in ("pagura", "pagura-x86-64-v3", "v8-wasi", "wasmtime")]
     combined = {cell_key: value for cell_key, value in old.items() if cell_key[3] not in rerun}
     # Controls are diagnostics; they never replace the reference's competitor medians.
     combined.update({cell_key: value for cell_key, value in current.items() if cell_key[3] in rerun})
@@ -235,7 +235,7 @@ def markdown(result, drift, provenance):
                     lines.append(f"{row['content']} | {row['dpi']} | {row['cells']} | " + " | ".join("unavailable" if value is None else f"{value:.4f}" for value in values))
             lines.append("")
     lines += ["Render cells are pages. Engine/process cells are complete document/DPI jobs; open is counted once.",
-              "Each category shows the median of its cell ratios. Best is the fastest competitor per cell, excluding Pagura's WASM builds.",
+              "Each category shows the median of its cell ratios. Best is the fastest competitor per cell, excluding Pagura's WASM and x86-64-v3 builds.",
               "Poppler has process timings only. Missing or failed measurements suppress ratios; samples are never filtered.",
               "Control samples are diagnostic and do not replace stored competitor medians.", "", "## Control drift", ""]
     for metric, values in drift["metrics"].items():

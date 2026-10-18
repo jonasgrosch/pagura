@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import round5_compare as compare
-from round5 import NATIVE, WASM, measurement, parse_args, result_exit_status
+from round5 import NATIVE, WASM, X86_V3, measurement, parse_args, result_exit_status, timed_engines
 
 MACHINE = {"cpu_model": "test CPU", "platform": "test OS", "architecture": "x86_64"}
 PROTOCOL = {"samples_requested": 2, "warmups": 1, "policy_sha256": "policy",
@@ -45,6 +45,35 @@ class Round5CompareTests(unittest.TestCase):
                         ["--reference", "old", "--control", "0"], ["--timebox-seconds", "0"]):
             with self.subTest(options=options), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                 parse_args(["--output", "out", *options])
+
+    def test_x86_track_requires_and_follows_selected_pagura(self):
+        self.assertFalse(parse_args(["--output", "out"]).pagura_x86_64_v3)
+        args = parse_args(["--output", "out", "--engines", "pagura", "--pagura-x86-64-v3",
+                           "--reference", "old", "--control", "4"])
+        self.assertEqual(args.engines, ("pagura",))
+        self.assertTrue(args.pagura_x86_64_v3)
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            parse_args(["--output", "out", "--engines", "hayro", "--pagura-x86-64-v3"])
+        track = {"pagura": ["portable"], X86_V3: ["v3"]}
+        self.assertEqual(timed_engines(("pagura",), track), ("pagura", X86_V3))
+        self.assertEqual(timed_engines((*NATIVE, *WASM), track), (*NATIVE, X86_V3, *WASM))
+        self.assertEqual(timed_engines(("pagura", "hayro", "wasmtime"), {"pagura": ["portable"]}),
+                         ("pagura", "hayro", "wasmtime"))
+        self.assertEqual(timed_engines(("hayro",), track), ("hayro",))
+
+    def test_x86_track_uses_stored_competitors_but_is_never_best(self):
+        selection = [{"case": "a", "page": 0, "dpi": 72, "content": "mixed"}]
+        old = [cell("a", 0, 72, "pagura", 40), cell("a", 0, 72, "hayro", 20)]
+        current = [cell("a", 0, 72, "pagura", 10), cell("a", 0, 72, X86_V3, 5)]
+        result = compare.comparison(selection, {compare.key(value): value for value in current},
+                                    {"medians": {compare.key(value): value for value in old}}, ("pagura", X86_V3))
+        ratios = result["rows"][0]["ratios"]
+        self.assertEqual(ratios["hayro"], .5)
+        self.assertEqual(ratios[X86_V3], 2)
+        self.assertEqual(ratios["best"], .5)
+        self.assertEqual(ratios["reference_pagura"], .25)
+        self.assertEqual(result["engine_sources"], {"hayro": "reference", "pagura": "measured", X86_V3: "measured"})
+        self.assertIn(f"Pagura ÷ {X86_V3}", compare.markdown(result, {"status": "stable", "metrics": {}}, None))
 
     def reference(self, root):
         identities = {"hayro": {"version": "1", "artifacts": {"binary": "abc"}}}

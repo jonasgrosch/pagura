@@ -10,7 +10,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from round5 import CONTENT, cpu_summary, failure_sink, idle_record, native_simd, parity, remaining_time, subset_300, verify_runtime_parity
+from round5 import (CONTENT, X86_V3, build_x86_v3, cpu_summary, failure_sink, idle_record, measurement,
+                    native_simd, parity, remaining_time, sha, subset_300, target_features, verify_runtime_parity)
 from machine_record import probe, snapshot
 from benchkit.engines import identify
 
@@ -69,6 +70,78 @@ class MatrixContracts(unittest.TestCase):
         with patch("machine_record.probe", side_effect=stub), patch("machine_record.os.getpid", return_value=100):
             record = snapshot()
         self.assertEqual(record["heavy_processes"], [{"pid": 101, "parent": 99, "cpu_percent": 25.0, "command": "render"}])
+
+    def test_x86_variant_is_unavailable_without_building_on_arm(self):
+        with patch("round5.checked") as build, patch("round5.target_features") as features:
+            track = build_x86_v3(Path("run"), ["rustup", "run", "1.99.1"], "aarch64-unknown-linux-gnu", {})
+        self.assertEqual(track["status"], "unavailable")
+        self.assertIn("x86_64 host", track["reason"])
+        build.assert_not_called()
+        features.assert_not_called()
+
+    def test_x86_variant_refuses_hosts_missing_required_instructions(self):
+        with patch("round5.target_features", side_effect=[["avx2", "sse2"], ["sse2"]]), patch("round5.checked") as build:
+            track = build_x86_v3(Path("run"), [], "x86_64-unknown-linux-gnu", {})
+        self.assertEqual(track["status"], "unavailable")
+        self.assertIn("avx2", track["reason"])
+        build.assert_not_called()
+
+    def test_x86_variant_isolated_target_flags_and_feature_record(self):
+        env = {"CARGO_TARGET_DIR": "portable", "CARGO_ENCODED_RUSTFLAGS": "", "PATH": "bin"}
+        host = "x86_64-unknown-linux-gnu"
+        features = ["avx2", "fma", "sse2"]
+        with patch("round5.target_features", return_value=features), patch("round5.checked") as build:
+            track = build_x86_v3(Path("run"), ["rustup", "run", "1.99.1"], host, env)
+        self.assertEqual(track["status"], "available")
+        self.assertEqual(track["target_features"], features)
+        self.assertEqual(track["binary"], "run/build-x86-64-v3/x86_64-unknown-linux-gnu/release/pagura")
+        command = build.call_args.args[0]
+        self.assertIn("--offline", command)
+        self.assertIn("bundled-data", command)
+        variant_env = build.call_args.kwargs["env"]
+        self.assertEqual(variant_env["RUSTFLAGS"], "-C target-cpu=x86-64-v3")
+        self.assertEqual(variant_env["CARGO_TARGET_DIR"], "run/build-x86-64-v3")
+        self.assertNotIn("CARGO_ENCODED_RUSTFLAGS", variant_env)
+        self.assertEqual(env["CARGO_TARGET_DIR"], "portable")
+
+    def test_target_features_records_only_enabled_cfg_features(self):
+        with patch("round5.subprocess.check_output", return_value='debug_assertions\ntarget_feature="sse2"\ntarget_arch="x86_64"\ntarget_feature="avx2"\n'):
+            self.assertEqual(target_features([], "x86_64-unknown-linux-gnu", {}), ["avx2", "sse2"])
+
+    def test_optional_row_uses_convert_and_fails_closed_on_pixel_mismatch(self):
+        from types import SimpleNamespace
+        for mismatch in (False, True):
+            with self.subTest(mismatch=mismatch), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source = root / "input.pdf"
+                source.write_bytes(b"independent input")
+                case = {"id": "one", "path": str(source), "page": 0, "dpi": 72,
+                        "sha256": sha(source.read_bytes())}
+                report = {"cells": [], "document_cells": [], "runtime_parity": [], "agreement": []}
+                bases = {"pagura": ["portable"], X86_V3: ["v3"]}
+                args = SimpleNamespace(seed=17, samples=1, warmups=0, smoke=True, deadline=float("inf"),
+                                       engines=("pagura",), main_jobs={("one", 72)}, control_jobs=set())
+                commands = []
+
+                def run(command, *unused, **kwargs):
+                    commands.append(command)
+                    return {"status": "unverified", "pages": [{"page": 0, "status": "unverified",
+                            "width": 1, "height": 1,
+                            "pixels_sha256": "changed" if mismatch and command[0] == "v3" else "same"}]}
+
+                with patch("round5.idle_record"), patch("round5.expected_pages", return_value={0: None}), \
+                     patch("round5.measure_document", side_effect=run):
+                    measurement(report, [[case]], bases, "node", "wasmtime", root,
+                                {"timeout_seconds": 10}, root, {}, args)
+                self.assertIn(["v3", "convert", "--timings", str(source), str(root / "temporary" / X86_V3),
+                               "72", "0", "0"], commands)
+                self.assertEqual(sorted(command[0] for command in commands), ["portable", "v3"])
+                cell = next(cell for cell in report["document_cells"] if cell["engine"] == X86_V3)
+                sample = cell["samples"][0]
+                self.assertEqual(sample["pagura"]["status"], "unverified")
+                self.assertEqual(sample["baseline"]["status"], "runtime-parity-mismatch" if mismatch else "unverified")
+                self.assertEqual(next(item for item in report["runtime_parity"] if item["engine"] == X86_V3)["exact"],
+                                 not mismatch)
 
     def candidates(self):
         cases, metadata, geometry = [], {}, {}
