@@ -5,6 +5,10 @@ use pagura_core::{Diagnostics, Dictionary, ErrorKind, Name, Position, Recovery, 
 use pagura_testkit::{assert_bytes_eq, fixture, fixture_names};
 use std::collections::BTreeMap;
 
+#[expect(
+    clippy::unwrap_used,
+    reason = "generated parameters are names, integers or null"
+)]
 fn chain(params: &BTreeMap<String, String>) -> pagura_core::Result<FilterChain> {
     let value = |text: &str| match text {
         "null" => Value::Null,
