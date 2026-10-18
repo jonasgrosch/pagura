@@ -1,6 +1,6 @@
 [package]
 name = "pagura-testkit"
-description = "Test-only helpers: fixture access and readable byte comparisons"
+description = "Test-only helpers: fixtures, manifests, byte assertions and protocol frames"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
