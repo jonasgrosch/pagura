@@ -11,7 +11,7 @@ use crate::{
     metrics::{GLYPH_SPACE_UNITS, Metrics},
     objects::{array, optional, required},
 };
-use pagura_core::{Diagnostic, Dictionary, Error, Name, ObjectId, Position, Result, Value};
+use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result, Value};
 use pagura_document::Document;
 use pagura_raster::Transform;
 use std::{collections::BTreeMap, sync::Arc};
@@ -139,19 +139,10 @@ pub(super) fn load_with(
 }
 
 fn kind(document: &Document, font: &Dictionary) -> Result<FontKind> {
-    Ok(
-        match required(document, font, b"Subtype")?
-            .as_name()
-            .map(Name::as_bytes)
-        {
-            Some(b"Type1") => FontKind::Type1,
-            Some(b"MMType1") => FontKind::MmType1,
-            Some(b"TrueType") => FontKind::TrueType,
-            Some(b"Type3") => FontKind::Type3,
-            Some(b"Type0") => FontKind::Type0,
-            _ => return Err(Error::syntax("invalid font Subtype")),
-        },
-    )
+    required(document, font, b"Subtype")?
+        .as_name()
+        .and_then(|name| FontKind::from_subtype(name.as_bytes()))
+        .ok_or(Error::syntax("invalid font Subtype"))
 }
 
 fn composite_mapping(
@@ -320,6 +311,7 @@ pub(super) fn cid_map(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pagura_core::Name;
     use pagura_document::OpenOptions;
     use pagura_testkit::fixture;
 

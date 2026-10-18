@@ -69,6 +69,6 @@ fn shape(document: &Document, shape: &GlyphShape) {
                 super::checked(document.stream_data(object));
             }
         }
-        GlyphShape::Blank => {}
+        _ => {}
     }
 }
