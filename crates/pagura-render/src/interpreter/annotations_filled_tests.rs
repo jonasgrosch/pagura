@@ -358,3 +358,38 @@ impl pagura_text::Provider for RectangleProvider {
 
 mod cache;
 mod fallback;
+
+#[test]
+fn an_untouched_form_renders_as_compile_page_renders_it() {
+    let mut compared = 0;
+    for area in ["forms", "signatures", "recovery"] {
+        for name in pagura_testkit::fixture_names(area, "pdf") {
+            let Ok(document) = Document::open(
+                fixture(area, &format!("{name}.pdf")),
+                &OpenOptions::default(),
+            ) else {
+                continue;
+            };
+            let Ok(Some(filler)) = document.form_filler() else {
+                continue;
+            };
+            if filler.form().need_appearances {
+                continue;
+            }
+            for page in document.pages().unwrap() {
+                let Ok(plain) = compile_page(&document, page) else {
+                    continue;
+                };
+                let filled = compile_filled_page(&filler, page, None).unwrap();
+                let options = RenderOptions::default();
+                assert_eq!(
+                    filled.render(&options).map(|p| p.data().to_vec()).ok(),
+                    plain.render(&options).map(|p| p.data().to_vec()).ok(),
+                    "{area}/{name}"
+                );
+                compared += 1;
+            }
+        }
+    }
+    assert!(compared > 20, "{compared}");
+}
