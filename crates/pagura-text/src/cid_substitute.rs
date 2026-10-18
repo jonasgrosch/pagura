@@ -3,6 +3,7 @@ use crate::{
     CidToUnicode, FontKind, PdfFont, Provider, WritingMode, features,
     font::{Mapping, Source, cid_collection, to_unicode},
     metrics::Metrics,
+    report::Report,
 };
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Result};
 use pagura_document::Document;
@@ -48,26 +49,29 @@ pub(crate) fn load(
     let metrics = Metrics::composite(document, descendant)?;
     // Inspect reachable CIDs, not the substitute's own CID charset. Stop at the
     // first hole; the diagnostic covers incomplete font coverage as a whole.
+    let report = Report::new(document);
     let mut work = 0;
     for cid in map.cids() {
         crate::cmap::charge(&mut work, 1, document.limits().operations)?;
         if glyph(&program, Some(&unicode), cid).is_none() {
-            report(
-                document,
-                id,
-                crate::information::CID_GLYPH_MISSING,
-                "CID substitute has incomplete Unicode/glyph coverage; missing CIDs paint nothing and retain PDF advances",
-            );
+            report.diagnostic(
+                Diagnostic::information(
+                    crate::information::CID_GLYPH_MISSING,
+                    "CID substitute has incomplete Unicode/glyph coverage; missing CIDs paint nothing and retain PDF advances",
+                )
+                .in_object_opt(id),
+            )?;
             break;
         }
     }
     let to_unicode = to_unicode(document, font, &mapping)?;
-    report(
-        document,
-        id,
-        crate::information::SUBSTITUTED,
-        "non-embedded CID font uses a collection-specific Unicode substitute (9.7.4.2); PDF widths retained",
-    );
+    report.diagnostic(
+        Diagnostic::information(
+            crate::information::SUBSTITUTED,
+            "non-embedded CID font uses a collection-specific Unicode substitute (9.7.4.2); PDF widths retained",
+        )
+        .in_object_opt(id),
+    )?;
     Ok(PdfFont {
         kind: FontKind::Type0,
         writing_mode: WritingMode::Horizontal,
@@ -105,12 +109,6 @@ pub(crate) fn glyph(
             .glyph_for_code(table, u32::from(scalar))
             .filter(|gid| gid.0 != 0)
     })
-}
-
-fn report(document: &Document, id: Option<ObjectId>, tag: &'static str, message: &'static str) {
-    let mut diagnostic = Diagnostic::information(tag, message);
-    diagnostic.object = id;
-    document.report([diagnostic]);
 }
 
 fn unavailable() -> Error {
