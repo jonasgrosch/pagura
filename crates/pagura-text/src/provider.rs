@@ -159,7 +159,7 @@ impl PredefinedCMap {
         Ok((
             code.value,
             code.len,
-            cid.unwrap_or(self.0.notdef(code, &mut work, *limits)?),
+            u32::from(cid.unwrap_or(self.0.notdef(code, &mut work, *limits)?)),
         ))
     }
 }
@@ -179,10 +179,8 @@ impl CidToUnicode {
         if values.len() > limits.value_nodes {
             return Err(Error::limit("CID Unicode entry budget exceeded"));
         }
-        for (cid, text) in &values {
-            if *cid > 65535 {
-                return Err(Error::syntax("CID outside 16-bit range"));
-            }
+        for (&cid, text) in &values {
+            crate::cid::Cid::try_from(cid)?;
             crate::cmap::charge(&mut bytes, text.len(), limits.decoded_bytes)?;
         }
         Ok(Self(values))

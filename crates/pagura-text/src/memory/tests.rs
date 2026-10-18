@@ -153,18 +153,15 @@ fn arithmetic_saturates() {
 }
 
 #[test]
-fn cid_to_gid_spare_capacity_is_owned_storage() -> Result<()> {
+fn cid_to_gid_maps_are_owned_storage() -> Result<()> {
     let (document, dict) = load("embedded-cid-variable-codes")?;
     let mut font = PdfFont::load(&document, &dict)?;
     let before = font.retained_bytes();
-    let mut bytes = Vec::with_capacity(128);
-    bytes.extend([0, 1]);
-    let capacity = bytes.capacity();
     let font::Source::Program { cid_map, .. } = &mut font.source else {
         return Err(Error::syntax("expected program"));
     };
-    *cid_map = Some(bytes);
-    assert_eq!(font.accounted().retained_bytes(), before + capacity);
+    *cid_map = Some(cid::CidToGidMap::new(vec![0; 128].into())?);
+    assert_eq!(font.accounted().retained_bytes(), before + 128);
     Ok(())
 }
 
@@ -190,7 +187,7 @@ fn embedded_program_storage_uses_the_programs_retained_accounting() -> Result<()
                 .retained_bytes()
                 .saturating_add(size_of_val(program.as_ref()))
                 .saturating_add(2 * size_of::<usize>())
-                .saturating_add(cid_map.as_ref().map_or(0, Vec::capacity))
+                .saturating_add(cid_map.as_ref().map_or(0, cid::CidToGidMap::heap_bytes))
         );
     }
     Ok(())
