@@ -21,8 +21,13 @@ COMMANDS = [
     # changing the default WASI host's data footprint.
     (CARGO + ["build", *OFFLINE, "--release", "-p", "pagura-host", "--features", "bundled-data", "--target-dir", "target/host-bundled"], {}),
     (CARGO + ["build", *OFFLINE, "--release", "-p", "pagura-host", "--features", "bundled-data", "--target", "wasm32-wasip1", "--target-dir", "target/host-bundled"], {}),
-    # Native/WASI parity, the browser shim and the viewer harness (Node, no npm packages).
-    (["node", "tools/host_test.ts"], {}),
+    # Dev-only JavaScript tools installed by `npm ci` (ADR 0019); the viewer never loads them.
+    (["node", "node_modules/typescript/bin/tsc", "-p", "web"], {}),
+    (["node", "node_modules/typescript/bin/tsc", "-p", "."], {}),
+    (["node", "node_modules/@biomejs/biome/bin/biome", "ci", "."], {}),
+    # Native/WASI parity, the browser shim and the viewer harness: node:test cases using
+    # only Node built-ins; web/test_server.py runs under this interpreter.
+    (["node", "--test", "--test-reporter=spec", "tools/host_test.ts"], {"PAGURA_PYTHON": sys.executable}),
     ([sys.executable, "-m", "unittest", "discover", "-s", "tools", "-p", "test_*.py"], {}),
     ([sys.executable, "tools/conformance.py"], {}),
 ]

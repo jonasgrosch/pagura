@@ -33,4 +33,5 @@ jobs:
         with:
           node-version: 26.8.1
       - name: Verify all product contracts
-        run: python tools/check.py
+        # npm ci installs the dev-only JavaScript tools exactly as package-lock.json pins them.
+        run: npm ci && python tools/check.py
