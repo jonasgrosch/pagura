@@ -1,0 +1,728 @@
+{
+  "schema": 2,
+  "area": "zero_area",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "zero_area/zero-width-rectangle",
+      "kind": "pdf",
+      "description": "Empty fill boundary: zero-width-rectangle",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/zero-width-rectangle.pdf",
+      "sha256": "87c8b1eb781be9838b39428219af8764801b428ee47e583678e9b30cfbb96cfd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/zero-width-rectangle.ppm",
+      "oracle_sha256": "a46f033350eaf9f06729c2b5dc716e396a3ef5f5e1c086fbbb6bdd0bbe31d8ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/zero-width-rectangle-reversed",
+      "kind": "pdf",
+      "description": "Empty fill boundary: zero-width-rectangle-reversed",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/zero-width-rectangle-reversed.pdf",
+      "sha256": "24f7155175d4d470a94bfaf418417ea1ce1cef252c2eb1891770f45bb63808cf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/zero-width-rectangle-reversed.ppm",
+      "oracle_sha256": "a46f033350eaf9f06729c2b5dc716e396a3ef5f5e1c086fbbb6bdd0bbe31d8ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/zero-height-rectangle",
+      "kind": "pdf",
+      "description": "Empty fill boundary: zero-height-rectangle",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/zero-height-rectangle.pdf",
+      "sha256": "375d614aa488b8cc17529ef1cf4e820b23763a3138b5799d4421d781ba898455",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/zero-height-rectangle.ppm",
+      "oracle_sha256": "48a9a1feb35951651700a845cdd29278837dfc73fa00f31ba45bad4d95460176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/zero-height-rectangle-reversed",
+      "kind": "pdf",
+      "description": "Empty fill boundary: zero-height-rectangle-reversed",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/zero-height-rectangle-reversed.pdf",
+      "sha256": "148ed428131860c687a9e11dd4ad535319241bfb50471901c65a3dd8534b6d7d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/zero-height-rectangle-reversed.ppm",
+      "oracle_sha256": "48a9a1feb35951651700a845cdd29278837dfc73fa00f31ba45bad4d95460176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/integral-boundary",
+      "kind": "pdf",
+      "description": "Empty fill boundary: integral-boundary",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/integral-boundary.pdf",
+      "sha256": "08665379f3fb28c8740fad747a34f07d47cc4e82bb2e82c507d6e344b28ecaae",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/integral-boundary.ppm",
+      "oracle_sha256": "c8ca9a14ce4ac040951887030712c45bf9515f6d355893876d7e09f7de8c62fc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/collinear-triangle",
+      "kind": "pdf",
+      "description": "Empty fill boundary: collinear-triangle",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/collinear-triangle.pdf",
+      "sha256": "a3653b0e2982daaeba11e6bd8ed1694862bf54e1a0d5517675783167a601914e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/collinear-triangle.ppm",
+      "oracle_sha256": "a46f033350eaf9f06729c2b5dc716e396a3ef5f5e1c086fbbb6bdd0bbe31d8ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/oblique-collinear-triangle",
+      "kind": "pdf",
+      "description": "Empty fill boundary: oblique-collinear-triangle",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/oblique-collinear-triangle.pdf",
+      "sha256": "c0d84031ce8828c07547032a0abe99dd5a964b559cef56cbd55a05ae130b1cdc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/oblique-collinear-triangle.ppm",
+      "oracle_sha256": "e934615be4d831d7f4f6d6230e97dd06c9f72e1ba345cb0be45e7fd4005e2e70",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "zero_area/open-segment-evenodd",
+      "kind": "pdf",
+      "description": "Empty fill boundary: open-segment-evenodd",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/open-segment-evenodd.pdf",
+      "sha256": "d400ecbe369a1b88dc6b1b449e5819075e6f36a9735cdae4562bbd0915dd06bb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/open-segment-evenodd.ppm",
+      "oracle_sha256": "48a9a1feb35951651700a845cdd29278837dfc73fa00f31ba45bad4d95460176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/collinear-cubic",
+      "kind": "pdf",
+      "description": "Empty fill boundary: collinear-cubic",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/collinear-cubic.pdf",
+      "sha256": "5b60c0b1fd7c62f46512c916e1a1a0cb5fc29ba9a06c51cb819f3a75efff0ea1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/collinear-cubic.ppm",
+      "oracle_sha256": "a46f033350eaf9f06729c2b5dc716e396a3ef5f5e1c086fbbb6bdd0bbe31d8ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/singular-transform",
+      "kind": "pdf",
+      "description": "Empty fill boundary: singular-transform",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/singular-transform.pdf",
+      "sha256": "fac8addbee4ee9815e0c46bc26f646f5fc5b7d82f01fcbfa30be41242f3074a4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/singular-transform.ppm",
+      "oracle_sha256": "a46f033350eaf9f06729c2b5dc716e396a3ef5f5e1c086fbbb6bdd0bbe31d8ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/multiple-subpaths",
+      "kind": "pdf",
+      "description": "Empty fill boundary: multiple-subpaths",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/multiple-subpaths.pdf",
+      "sha256": "3bfe1e02827aa2e0e832d6c17263b1a1e43f0f49d3ee547dc4fbd5424c15c65b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/multiple-subpaths.ppm",
+      "oracle_sha256": "d8730e24eabf392847ab8b89ec07543a98b6810d5245e8d68034a98915fc1893",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/point-and-segment",
+      "kind": "pdf",
+      "description": "Empty fill boundary: point-and-segment",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/point-and-segment.pdf",
+      "sha256": "82fac2be2078406d9d45258f723ca2b7567812ab3e6c76d905777267e9584da2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/point-and-segment.ppm",
+      "oracle_sha256": "a9343f233cbf37a6ced21c7c882f388068b2bfb5d9c4ed87329b2c8b4bcdd792",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/point-pair-evenodd",
+      "kind": "pdf",
+      "description": "Empty fill boundary: point-pair-evenodd",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/point-pair-evenodd.pdf",
+      "sha256": "5ee447682990929fa62986ada34b72a26b6347a0c2c7da0bc30a8819f10cb70c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/point-pair-evenodd.ppm",
+      "oracle_sha256": "a46f033350eaf9f06729c2b5dc716e396a3ef5f5e1c086fbbb6bdd0bbe31d8ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/point-pair-nonzero",
+      "kind": "pdf",
+      "description": "Empty fill boundary: point-pair-nonzero",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/point-pair-nonzero.pdf",
+      "sha256": "6fedc9b71eb5ecb37e7e5d8f1f24f7b59f8d22c710534d892b0d1fa5c6bfc734",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/point-pair-nonzero.ppm",
+      "oracle_sha256": "a9343f233cbf37a6ced21c7c882f388068b2bfb5d9c4ed87329b2c8b4bcdd792",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/trailing-move",
+      "kind": "pdf",
+      "description": "Empty fill boundary: trailing-move",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/trailing-move.pdf",
+      "sha256": "9a93db7cb652fcaa27707d134ef4c6924c61932619be3004f94d335faa98de00",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/trailing-move.ppm",
+      "oracle_sha256": "a46f033350eaf9f06729c2b5dc716e396a3ef5f5e1c086fbbb6bdd0bbe31d8ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/stroke-state-independent",
+      "kind": "pdf",
+      "description": "Empty fill boundary: stroke-state-independent",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/stroke-state-independent.pdf",
+      "sha256": "0d1e750b8d957e2551a360dc1fc9cff7d7b9520b2e6fbc4e534713770cc1f476",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/stroke-state-independent.ppm",
+      "oracle_sha256": "a46f033350eaf9f06729c2b5dc716e396a3ef5f5e1c086fbbb6bdd0bbe31d8ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/degenerate-clip",
+      "kind": "pdf",
+      "description": "Empty fill boundary: degenerate-clip",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/degenerate-clip.pdf",
+      "sha256": "e5a32f4a123ce3f4d22e154fee31c4883880bf6e1a6e78494111e9599fc8286b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/degenerate-clip.ppm",
+      "oracle_sha256": "a46f033350eaf9f06729c2b5dc716e396a3ef5f5e1c086fbbb6bdd0bbe31d8ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/degenerate-clip-evenodd",
+      "kind": "pdf",
+      "description": "Empty fill boundary: degenerate-clip-evenodd",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/degenerate-clip-evenodd.pdf",
+      "sha256": "7fa943534496573d4dba565ab22f8fd654cdeb243d3e87a111c21cd6d75efcf9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/degenerate-clip-evenodd.ppm",
+      "oracle_sha256": "48a9a1feb35951651700a845cdd29278837dfc73fa00f31ba45bad4d95460176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/paint-before-clip",
+      "kind": "pdf",
+      "description": "Empty fill boundary: paint-before-clip",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/paint-before-clip.pdf",
+      "sha256": "93e48f0e8bfc7d45a0165ceddb9f54d38f5f64aafbd2155f885a7b536ed6a421",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/paint-before-clip.ppm",
+      "oracle_sha256": "a46f033350eaf9f06729c2b5dc716e396a3ef5f5e1c086fbbb6bdd0bbe31d8ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/hairline-clipped-geometrically",
+      "kind": "pdf",
+      "description": "Empty fill boundary: hairline-clipped-geometrically",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/hairline-clipped-geometrically.pdf",
+      "sha256": "c9a60971b4210db029ef88de3b1b73483a64fbd9888b5460073f7252b83efa36",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/hairline-clipped-geometrically.ppm",
+      "oracle_sha256": "0cfdf8391098cae05a2f39636aecf29fd09edb4a8317cef932fd978f2637f336",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/cancelled-evenodd",
+      "kind": "pdf",
+      "description": "Empty fill boundary: cancelled-evenodd",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/cancelled-evenodd.pdf",
+      "sha256": "a30e19e7975d15c476491febe1330e6c0a8aed0a13d509aa11a81d37ef9ee51e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/cancelled-evenodd.ppm",
+      "oracle_sha256": "c502920295a2ce11ce2a67985f0930ee2184d90ec6a9c683637b24915c098533",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/cancelled-nonzero-subdivided",
+      "kind": "pdf",
+      "description": "Empty fill boundary: cancelled-nonzero-subdivided",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/cancelled-nonzero-subdivided.pdf",
+      "sha256": "8fb7048b4604a155a55b39eb33556e033fdffe4e2fedfab53147fcbae338a1e1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/cancelled-nonzero-subdivided.ppm",
+      "oracle_sha256": "c502920295a2ce11ce2a67985f0930ee2184d90ec6a9c683637b24915c098533",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/positive-sliver",
+      "kind": "pdf",
+      "description": "Empty fill boundary: positive-sliver",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/positive-sliver.pdf",
+      "sha256": "24b005b7b170982bd581b2954d56f9c35dd2c9b34a5f8e529cb815a1313c6fa3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/positive-sliver.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/tiny-nonpoint-curve",
+      "kind": "pdf",
+      "description": "Empty fill boundary: tiny-nonpoint-curve",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/tiny-nonpoint-curve.pdf",
+      "sha256": "6fc83ea056fc2f10bbc248936166d90d676aae9e8c94168251d21be1abaafd75",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/tiny-nonpoint-curve.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/positive-bow-tie",
+      "kind": "pdf",
+      "description": "Empty fill boundary: positive-bow-tie",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/positive-bow-tie.pdf",
+      "sha256": "809e5060af1bebd5935de7299378e43e2ca6b47b2da822992a797fcd9fdf78de",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/positive-bow-tie.ppm",
+      "oracle_sha256": "1297ca8049715579f25a0793f8d8d4be4cde07d27ef4a4d2c11850e8ccbe44ad",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/transparent-compositor",
+      "kind": "pdf",
+      "description": "Empty fill boundary: transparent-compositor",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/transparent-compositor.pdf",
+      "sha256": "ed0b6f8744b4368aa03bd6fee58e48e50a981e53421e1f8d2c10b87a9340e2f8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/transparent-compositor.ppm",
+      "oracle_sha256": "a46f033350eaf9f06729c2b5dc716e396a3ef5f5e1c086fbbb6bdd0bbe31d8ee",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/half-alpha",
+      "kind": "pdf",
+      "description": "Empty fill boundary: half-alpha",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/half-alpha.pdf",
+      "sha256": "7b1fd29f0d2706a83e0fd2563c7f365625065fe17f284efdbdf2315c99420e03",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/half-alpha.ppm",
+      "oracle_sha256": "ed9425fdbe5e0e45ca6e8550551ea88175698f84e1bc30e9c877f1a8e9ecdcac",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/zero-area-clip-content",
+      "kind": "pdf",
+      "description": "Empty fill boundary: zero-area-clip-content",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/zero-area-clip-content.pdf",
+      "sha256": "42622738b61df9c32d509b98ab28dc08bf879239c04238a5cf75527f7411314a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/zero-area-clip-content.ppm",
+      "oracle_sha256": "437c395ab4258b2c483015c001f4dbbd71b7be733287b23ddcb3e5cecba9f5f8",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/zero-width-pattern-bbox",
+      "kind": "pdf",
+      "description": "Empty cell BBox: zero-width-pattern-bbox",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/zero-width-pattern-bbox.pdf",
+      "sha256": "6d77592f00763bd601ba9c3b7c4068d9c9b03b7f2e0ae65f4e42f9e124ad91fb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/zero-width-pattern-bbox.ppm",
+      "oracle_sha256": "c8ca9a14ce4ac040951887030712c45bf9515f6d355893876d7e09f7de8c62fc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/zero-size-pattern-bbox",
+      "kind": "pdf",
+      "description": "Empty cell BBox: zero-size-pattern-bbox",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/zero-size-pattern-bbox.pdf",
+      "sha256": "03c11b49851d456895af6983fa909e79fb9f12a5d4ff2c352aa01d9858ac5f5b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/zero-size-pattern-bbox.ppm",
+      "oracle_sha256": "3fd89143773a8e5ad1680f1e029579cd16706c2c1df3a51b1a3539eb6bc8c32c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/zero-width-shading-bbox",
+      "kind": "pdf",
+      "description": "Empty fill boundary: zero-width-shading-bbox",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/zero-width-shading-bbox.pdf",
+      "sha256": "adef8970039d01c058d150f6412a4ebef91d9fe2b4f3f2d6fc0d54aa76ec61cc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/zero-width-shading-bbox.ppm",
+      "oracle_sha256": "c8ca9a14ce4ac040951887030712c45bf9515f6d355893876d7e09f7de8c62fc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/zero-width-shading-pattern-bbox",
+      "kind": "pdf",
+      "description": "Empty fill boundary: zero-width-shading-pattern-bbox",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/zero-width-shading-pattern-bbox.pdf",
+      "sha256": "3931e18492d5f2e79830ed0abe4b7ad8e2b832e544c73f37d503ac7ebe2fae7b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/zero-width-shading-pattern-bbox.ppm",
+      "oracle_sha256": "c8ca9a14ce4ac040951887030712c45bf9515f6d355893876d7e09f7de8c62fc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/zero-width-shading-pattern-background",
+      "kind": "pdf",
+      "description": "Empty fill boundary: zero-width-shading-pattern-background",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/zero-width-shading-pattern-background.pdf",
+      "sha256": "0b188b58a9b7175f918dd7e08cf3b9ca2beb823faceb1da32a90460411c83a22",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/zero-width-shading-pattern-background.ppm",
+      "oracle_sha256": "c8ca9a14ce4ac040951887030712c45bf9515f6d355893876d7e09f7de8c62fc",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/zero-size-shading-bbox",
+      "kind": "pdf",
+      "description": "Empty fill boundary: zero-size-shading-bbox",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/zero-size-shading-bbox.pdf",
+      "sha256": "0c3e39e5ffa51bdbd8bdb64ca154c650bd6ff86a3ffd4585c4c5621eb28d2ccc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/zero-size-shading-bbox.ppm",
+      "oracle_sha256": "3fd89143773a8e5ad1680f1e029579cd16706c2c1df3a51b1a3539eb6bc8c32c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/zero-size-shading-pattern-bbox",
+      "kind": "pdf",
+      "description": "Empty fill boundary: zero-size-shading-pattern-bbox",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/zero-size-shading-pattern-bbox.pdf",
+      "sha256": "d7b32fe0e30147bdafc012a13557e6363e37abf2a18864cb5e5ff41bb3f72161",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/zero-size-shading-pattern-bbox.ppm",
+      "oracle_sha256": "3fd89143773a8e5ad1680f1e029579cd16706c2c1df3a51b1a3539eb6bc8c32c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "zero_area/zero-size-shading-pattern-background",
+      "kind": "pdf",
+      "description": "Empty fill boundary: zero-size-shading-pattern-background",
+      "expected": "render",
+      "requirements": [
+        "raster-zero-area-fill"
+      ],
+      "path": "corpus/generated/zero_area/zero-size-shading-pattern-background.pdf",
+      "sha256": "fa4d6358a328d3abf37cc382133f17456e2e91c19753c55a2d1203bbeae9f4bc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/zero_area/zero-size-shading-pattern-background.ppm",
+      "oracle_sha256": "3fd89143773a8e5ad1680f1e029579cd16706c2c1df3a51b1a3539eb6bc8c32c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    }
+  ]
+}

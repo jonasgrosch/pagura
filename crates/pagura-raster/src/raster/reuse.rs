@@ -196,6 +196,20 @@ impl Rasterizer {
         limits: Limits,
         (size, origin, clip): ((u32, u32), (u32, u32), Option<&Mask>),
     ) -> Result<Option<Mask>> {
+        // Only retained fill/clip certificates opt into boundary scan conversion.
+        // Ordinary paths and stroke outlines take the original raster path.
+        let (path, transform, rule) =
+            if path.path().fill_region(rule) == Some(crate::FillRegion::EmptyBoundary) {
+                let outline =
+                    crate::empty_fill::outline_boundary(path.path(), transform, rule, &limits)?;
+                (
+                    PathSource::Shared(Arc::new(outline)),
+                    Transform::IDENTITY,
+                    FillRule::NonZero,
+                )
+            } else {
+                (path, transform, rule)
+            };
         let Some((x, y, width, height)) =
             crate::bounds::region(path.path(), transform, size, origin, &limits)?
         else {

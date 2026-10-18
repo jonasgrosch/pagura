@@ -608,13 +608,6 @@ fn compositing_memory_work_and_shared_function_budgets_are_bounded() {
             },
         ),
         (
-            "group-i1-k0",
-            pagura_core::Limits {
-                raster_work: 1,
-                ..pagura_core::Limits::default()
-            },
-        ),
-        (
             "shading-axial",
             pagura_core::Limits {
                 operations: 2,
@@ -634,6 +627,28 @@ fn compositing_memory_work_and_shared_function_budgets_are_bounded() {
         let error = list.render(&RenderOptions::default()).expect_err(name);
         assert_eq!(error.kind, ErrorKind::Limit, "{name}: {error}");
     }
+    // Preparation and rendering each enforce their page work budget.
+    let document = Document::open(
+        pagura_testkit::fixture("content", "group-i1-k0.pdf"),
+        &OpenOptions {
+            limits: pagura_core::Limits {
+                raster_work: 1,
+                ..pagura_core::Limits::default()
+            },
+            ..OpenOptions::default()
+        },
+    )
+    .unwrap();
+    let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
+    assert!(error.object.is_some());
+    let document = open("group-i1-k0");
+    let mut list = compile_page(&document, document.page(0).unwrap()).unwrap();
+    list.limits.raster_work = 1;
+    assert_eq!(
+        list.render(&RenderOptions::default()).unwrap_err().kind,
+        ErrorKind::Limit
+    );
     for name in ["group-i1-k0", "soft-Alpha", "annotation"] {
         let document = Document::open(
             pagura_testkit::fixture("content", &format!("{name}.pdf")),
@@ -859,6 +874,84 @@ fn group_bounds_and_page_chunks_fit_a_small_surface_budget() {
                 &piece.data()[local..local + 4],
                 &full.data()[offset..offset + 4]
             );
+        }
+    }
+}
+
+#[test]
+fn empty_fill_boundaries_match_oracles_and_device_tiles() {
+    for (name, tolerance) in [
+        ("zero-width-rectangle", 0),
+        ("zero-width-rectangle-reversed", 0),
+        ("zero-height-rectangle", 0),
+        ("zero-height-rectangle-reversed", 0),
+        ("integral-boundary", 0),
+        ("collinear-triangle", 0),
+        ("oblique-collinear-triangle", 1),
+        ("open-segment-evenodd", 0),
+        ("collinear-cubic", 0),
+        ("singular-transform", 0),
+        ("multiple-subpaths", 0),
+        ("point-and-segment", 0),
+        ("point-pair-evenodd", 0),
+        ("point-pair-nonzero", 0),
+        ("half-alpha", 0),
+        ("trailing-move", 0),
+        ("stroke-state-independent", 0),
+        ("degenerate-clip", 0),
+        ("degenerate-clip-evenodd", 0),
+        ("zero-area-clip-content", 0),
+        ("zero-width-pattern-bbox", 0),
+        ("zero-size-pattern-bbox", 0),
+        ("zero-width-shading-bbox", 0),
+        ("zero-width-shading-pattern-bbox", 0),
+        ("zero-width-shading-pattern-background", 0),
+        ("zero-size-shading-bbox", 0),
+        ("zero-size-shading-pattern-bbox", 0),
+        ("zero-size-shading-pattern-background", 0),
+        ("paint-before-clip", 0),
+        ("hairline-clipped-geometrically", 0),
+        ("cancelled-evenodd", 0),
+        ("cancelled-nonzero-subdivided", 0),
+        ("positive-sliver", 0),
+        ("tiny-nonpoint-curve", 0),
+        ("positive-bow-tie", 0),
+        ("transparent-compositor", 0),
+    ] {
+        let document = Document::open(
+            pagura_testkit::fixture("zero_area", &format!("{name}.pdf")),
+            &OpenOptions {
+                recovery: Recovery::Strict,
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        let list = compile_page(&document, document.page(0).unwrap()).unwrap();
+        let options = RenderOptions::default();
+        let full = list.render(&options).unwrap();
+        let actual =
+            pagura_testkit::ppm(full.width(), full.height(), &full.to_rgb_over(Rgba8::WHITE));
+        let expected = pagura_testkit::fixture("zero_area", &format!("{name}.ppm"));
+        assert_eq!(actual.len(), expected.len(), "{name}");
+        for (i, (&a, &e)) in actual.iter().zip(&expected).enumerate() {
+            assert!(a.abs_diff(e) <= tolerance, "{name} byte {i}: {a} vs {e}");
+        }
+        for y in 0..8 {
+            for x in 0..8 {
+                let tile = list
+                    .render_tile(
+                        &options,
+                        Tile {
+                            x,
+                            y,
+                            width: 1,
+                            height: 1,
+                        },
+                    )
+                    .unwrap();
+                let i = usize::try_from((y * 8 + x) * 4).unwrap();
+                assert_eq!(tile.data(), &full.data()[i..i + 4], "{name} ({x},{y})");
+            }
         }
     }
 }

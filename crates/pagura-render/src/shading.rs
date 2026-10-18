@@ -16,6 +16,7 @@ use pagura_raster::{Point, Transform};
 pub(crate) struct Shading {
     pub(crate) space: Space,
     pub(crate) bbox: Option<Rect>,
+    pub(crate) bbox_path: Option<pagura_raster::Path>,
     pub(crate) antialias: bool,
     pub(crate) background: Option<[f64; 32]>,
     functions: Functions,
@@ -97,15 +98,14 @@ impl Shading {
                 let n = numbers::<4>(document, v)?;
                 let b = Rect::from_corners(n[0], n[1], n[2], n[3])
                     .ok_or(Error::syntax("invalid shading BBox"))?;
-                if b.is_empty() {
-                    return Err(Error::unsupported(
-                        crate::features::SHADING_BOUNDS,
-                        "degenerate shading bounds are not implemented",
-                    ));
-                }
                 Ok(b)
             })
             .transpose()?;
+        let bbox_path = bbox.map(|b| {
+            let mut path = pagura_raster::PathBuilder::new();
+            path.rect(b.x0, b.y0, b.width(), b.height());
+            path.finish()
+        });
         let antialias = d
             .get(b"AntiAlias")
             .map(|v| {
@@ -139,6 +139,7 @@ impl Shading {
             return Ok(Self {
                 space,
                 bbox,
+                bbox_path,
                 antialias,
                 background,
                 functions: Functions::Identity,
@@ -156,6 +157,7 @@ impl Shading {
         Ok(Self {
             space,
             bbox,
+            bbox_path,
             antialias,
             background,
             functions,

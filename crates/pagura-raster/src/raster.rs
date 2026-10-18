@@ -188,8 +188,14 @@ impl Mask {
         if path.segments().len() > limits.path_segments {
             return Err(Error::limit("path segment budget exceeded"));
         }
+        let outline = crate::empty_fill::outline(path, transform, rule, &limits)?;
+        let (path, transform, rule) = if let Some(outline) = outline {
+            (outline, Transform::IDENTITY, FillRule::NonZero)
+        } else {
+            (path.clone(), transform, rule)
+        };
         let shapes = vec![Shape {
-            geometry: Geometry::Path(Arc::new(path.clone())),
+            geometry: Geometry::Path(Arc::new(path)),
             transform,
             rule,
         }];
@@ -324,6 +330,8 @@ impl Mask {
 
 /// Fills the area of `path` (mapped by `transform`) with `paint`,
 /// antialiased by exact area coverage, optionally restricted by `clip`.
+/// Retained [`Path::classify_fill`] certificates opt into empty-boundary
+/// hairlines; unprepared geometry uses ordinary scan conversion.
 ///
 /// # Errors
 ///
@@ -401,6 +409,26 @@ pub fn stroke_outline(
     limits: &Limits,
 ) -> Result<(Path, Transform)> {
     crate::stroke::outline(path, transform, stroke, limits)
+}
+
+/// Constructs a device-space outline for an empty polygon filling region
+/// with nonempty extent (ISO 32000-2, 10.7.4). Its boundary uses the solid
+/// one-device-pixel hairline policy of 8.4.3.2, independently of stroke state.
+/// Fill the returned outline with [`FillRule::NonZero`]. Point contours retain
+/// their floor cells. Returns `None` for point-only paths, ordinary fills or geometry whose
+/// emptiness cannot be certified; positive-area slivers are never widened.
+/// Requires a retained [`Path::classify_fill`] certificate. The same outline
+/// defines painting and clipping (8.5.4, 10.7.4).
+///
+/// # Errors
+/// Returns invalid geometry or exhausted geometry and work budgets.
+pub fn empty_fill_outline(
+    path: &Path,
+    transform: Transform,
+    rule: FillRule,
+    limits: &Limits,
+) -> Result<Option<Path>> {
+    crate::empty_fill::outline(path, transform, rule, limits)
 }
 
 /// Converts an automatically grid-fitted stroke to a fill outline (10.7.5).

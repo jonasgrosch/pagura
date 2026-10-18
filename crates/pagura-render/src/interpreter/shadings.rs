@@ -13,7 +13,11 @@ impl Compiler<'_> {
             .ok_or(Error::syntax("shading name expected"))?;
         let value = resource(self.document, resources, b"Shading", name.as_bytes())?;
         let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
-        let shading = Arc::new(crate::shading::Shading::parse(&context, resources, value)?);
+        let mut shading = crate::shading::Shading::parse(&context, resources, value)?;
+        if let Some(path) = &mut shading.bbox_path {
+            self.prepare_fill(path, FillRule::NonZero)?;
+        }
+        let shading = Arc::new(shading);
         self.paint_charge(shading.mesh_bytes(), 0)?;
         if !self.visible {
             return Ok(());
@@ -27,9 +31,11 @@ impl Compiler<'_> {
         if let Some(b) = shading.bbox {
             let mut path = PathBuilder::new();
             path.rect(b.x0, b.y0, b.width(), b.height());
+            let mut path = path.finish().transformed(self.state.ctm);
+            self.prepare_fill(&mut path, FillRule::NonZero)?;
             clip = Some(Arc::new(Clip {
                 parent: clip,
-                path: Arc::new(path.finish().transformed(self.state.ctm)),
+                path: Arc::new(path),
                 rule: FillRule::NonZero,
             }));
         }

@@ -9,6 +9,7 @@
 mod adjust;
 mod bounds;
 mod coverage;
+mod empty_fill;
 mod flatten;
 mod geometry;
 mod glyph;
@@ -21,11 +22,12 @@ mod stroke;
 pub use geometry::{Point, Transform};
 pub use glyph::{GlyphContour, GlyphGeometry};
 pub use paint::{Paint, Rgba8};
-pub use path::{Path, PathBuilder, Segment};
+pub use path::{FillRegion, Path, PathBuilder, Segment};
 pub use pixmap::Pixmap;
 pub use raster::{
-    FillRule, LineCap, LineJoin, Mask, Rasterizer, Stroke, adjusted_stroke_outline, fill_path,
-    fill_path_at, stroke_outline, stroke_path, stroke_path_adjusted_at, stroke_path_at,
+    FillRule, LineCap, LineJoin, Mask, Rasterizer, Stroke, adjusted_stroke_outline,
+    empty_fill_outline, fill_path, fill_path_at, stroke_outline, stroke_path,
+    stroke_path_adjusted_at, stroke_path_at,
 };
 
 #[cfg(test)]
