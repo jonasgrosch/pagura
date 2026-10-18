@@ -2,7 +2,6 @@
 use super::{LogicalText, Name, ObjectId, Range, Result, TextPage};
 use pagura_core::{Diagnostics, Dictionary, Error, Meter, Position, Value};
 use pagura_document::{Document, Page};
-use std::collections::{BTreeMap, BTreeSet};
 mod content;
 mod copy;
 mod roles;
@@ -176,15 +175,22 @@ fn apply_root(
         limits,
         depth_exhausted: false,
     };
-    let result = (|| {
-        let mut plan = tree::read(document, root, page.id(), &mut budget)?;
-        content::resolve(&mut plan, document, root, page, text, &mut budget)?;
-        copy::export(text, &plan, &mut budget)
-    })();
-    result.map_err(|error| Failure {
+    logical_text(text, document, page, root, &mut budget).map_err(|error| Failure {
         recoverable: budget.depth_exhausted || can_fallback(&error),
         error,
     })
+}
+
+fn logical_text(
+    text: &TextPage,
+    document: &Document,
+    page: &Page,
+    root: &Dictionary,
+    budget: &mut Budget,
+) -> Result<LogicalText> {
+    let mut plan = tree::read(document, root, page.id(), budget)?;
+    content::resolve(&mut plan, document, root, page, text, budget)?;
+    copy::export(text, &plan, budget)
 }
 
 // Null-valued dictionary entries are absent, including indirect null (7.3.9).

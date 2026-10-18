@@ -1,7 +1,10 @@
 //! Forward /K references and reverse ParentTree entries must agree (14.7.5.4).
-use super::{
-    BTreeMap, BTreeSet, Budget, Dictionary, Document, Error, Page, Plan, Range, Reference, Result,
-    TextPage, Value,
+use super::{Budget, Plan, Reference, TextPage};
+use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_document::{Document, Page};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ops::Range,
 };
 
 pub(super) fn resolve(
@@ -75,13 +78,7 @@ pub(super) fn resolve(
     }
     for (glyph, covered) in text.glyphs().iter().zip(covered) {
         budget.work(glyph.marked_content.len() + 1)?;
-        if !covered
-            && !glyph.hidden
-            && !glyph
-                .marked_content
-                .iter()
-                .any(|m| m.tag.as_bytes() == b"Artifact")
-        {
+        if !covered && !glyph.hidden && !glyph.marked_content.iter().any(|m| m.is_artifact()) {
             return Err(Error::syntax(
                 "tagged page has text outside its logical structure (14.8.2.2)",
             ));
@@ -145,11 +142,8 @@ fn occurrences(text: &TextPage, page: &Page, budget: &mut Budget) -> Result<Occu
     for object in &text.positioned.objects {
         *visible
             .entry(Reference::Object(object.object))
-            .or_insert(false) |= (!object.hidden)
-            && !object
-                .marked_content
-                .iter()
-                .any(|m| m.tag.as_bytes() == b"Artifact");
+            .or_insert(false) |=
+            (!object.hidden) && !object.marked_content.iter().any(|m| m.is_artifact());
         budget.store(2 * size_of::<Range<usize>>() + super::OCCURRENCE_BYTES)?;
         marked
             .entry(Reference::Object(object.object))
