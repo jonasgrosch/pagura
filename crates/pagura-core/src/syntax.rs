@@ -67,7 +67,11 @@ pub const fn hex_digit(byte: u8) -> Option<u8> {
 }
 
 /// What the parsed bytes are, so offsets become meaningful [`Position`]s.
+///
+/// New origins may be added along with new [`Position`] kinds, so matches
+/// outside this crate need a wildcard arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Origin {
     /// The complete original file.
     File,

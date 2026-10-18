@@ -6,6 +6,7 @@
 //! This crate has no knowledge of files, revisions or rendering. It is the
 //! vocabulary the other crates speak.
 
+pub mod bytes;
 mod diagnostic;
 mod dictionary;
 mod error;
