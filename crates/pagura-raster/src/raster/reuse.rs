@@ -6,6 +6,26 @@ use crate::{Paint, Path, Pixmap, Transform};
 use pagura_core::{Error, Limits, Result};
 use std::sync::Arc;
 
+// Borrowed callers acquire ownership only after bounds and budget validation.
+pub(super) enum PathSource<'a> {
+    Borrowed(&'a Path),
+    Shared(Arc<Path>),
+}
+impl PathSource<'_> {
+    fn path(&self) -> &Path {
+        match self {
+            Self::Borrowed(path) => path,
+            Self::Shared(path) => path,
+        }
+    }
+    fn into_shared(self) -> Arc<Path> {
+        match self {
+            Self::Borrowed(path) => Arc::new(path.clone()),
+            Self::Shared(path) => path,
+        }
+    }
+}
+
 /// Owns temporary raster storage for one rendering context, without caching
 /// geometry or quantizing positions. Independent fills retain their own masks;
 /// return a consumed mask with [`Self::recycle`] to reuse its allocation too.
@@ -70,9 +90,26 @@ impl Rasterizer {
         rule: FillRule,
         limits: Limits,
     ) -> Result<Option<Mask>> {
+        self.path_mask(
+            PathSource::Shared(path),
+            transform,
+            rule,
+            limits,
+            ((clip.width, clip.height), clip.origin, Some(clip)),
+        )
+    }
+
+    pub(super) fn path_mask(
+        &mut self,
+        path: PathSource<'_>,
+        transform: Transform,
+        rule: FillRule,
+        limits: Limits,
+        viewport: ((u32, u32), (u32, u32), Option<&Mask>),
+    ) -> Result<Option<Mask>> {
         self.maximum = limits.decoded_bytes;
         self.trim();
-        let result = self.fill(clip, path, transform, rule, limits);
+        let result = self.fill(path, transform, rule, limits, viewport);
         self.shapes.clear();
         if result.is_err() {
             self.clear();
@@ -84,19 +121,14 @@ impl Rasterizer {
 
     fn fill(
         &mut self,
-        clip: &Mask,
-        path: Arc<Path>,
+        path: PathSource<'_>,
         transform: Transform,
         rule: FillRule,
         limits: Limits,
+        (size, origin, clip): ((u32, u32), (u32, u32), Option<&Mask>),
     ) -> Result<Option<Mask>> {
-        let Some((x, y, width, height)) = crate::bounds::region(
-            &path,
-            transform,
-            (clip.width, clip.height),
-            clip.origin,
-            &limits,
-        )?
+        let Some((x, y, width, height)) =
+            crate::bounds::region(path.path(), transform, size, origin, &limits)?
         else {
             return Ok(None);
         };
@@ -105,11 +137,11 @@ impl Rasterizer {
             return Err(Error::limit("mask source budget exceeded"));
         }
         self.shapes.push(Shape {
-            path,
+            path: path.into_shared(),
             transform,
             rule,
         });
-        for shape in &clip.shapes {
+        for shape in clip.into_iter().flat_map(|clip| &clip.shapes) {
             if !shape.covers((x, y), (width, height)) {
                 if self.shapes.len() >= limits.mask_sources {
                     return Err(Error::limit("mask source budget exceeded"));

@@ -1,6 +1,6 @@
 //! Conservative group allocation bounds: source geometry, hard clips and tile.
 //! Cubic control hulls contain the curve; stroke padding includes miters/caps.
-//! Prepared bounds and reusable raster storage belong to one render context.
+//! Prepared bounds belong to one render context.
 use super::{Group, Tile};
 use crate::display::{Clip, Command, Mark, PathCommand};
 use pagura_core::{Error, Result};
@@ -13,7 +13,6 @@ use std::{
 // Weak identities prevent address reuse without retaining temporary path buffers.
 // Optional bookkeeping is bounded independently of the group surfaces.
 pub(super) struct Prepared {
-    pub(super) raster: pagura_raster::Rasterizer,
     device: Transform,
     maximum: usize,
     hulls: HashMap<usize, (Weak<Path>, [Point; 2])>,
@@ -21,7 +20,6 @@ pub(super) struct Prepared {
 impl Prepared {
     pub(super) fn new(device: Transform, bytes: usize) -> Self {
         Self {
-            raster: pagura_raster::Rasterizer::default(),
             device,
             maximum: bytes
                 / 16

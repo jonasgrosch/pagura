@@ -369,28 +369,13 @@ fn fill_mask(
     origin: (u32, u32),
     limits: Limits,
 ) -> Result<Option<Mask>> {
-    let Some((x, y, width, height)) =
-        crate::bounds::region(path, transform, size, origin, &limits)?
-    else {
-        return Ok(None);
-    };
-    let mut shapes = vec![Shape {
-        path: Arc::new(path.clone()),
+    Rasterizer::default().path_mask(
+        reuse::PathSource::Borrowed(path),
         transform,
         rule,
-    }];
-    if let Some(clip) = clip {
-        for shape in &clip.shapes {
-            if !shape.covers((x, y), (width, height)) {
-                if shapes.len() >= limits.mask_sources {
-                    return Err(Error::limit("mask source budget exceeded"));
-                }
-                shapes.push(shape.clone());
-            }
-        }
-    }
-    let mask = Mask::from_shapes(width, height, shapes, limits, (x, y))?;
-    Ok(Some(mask))
+        limits,
+        (size, origin, clip),
+    )
 }
 
 /// Converts a user-space stroke to a fill outline and its device transform.

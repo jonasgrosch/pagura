@@ -1,6 +1,7 @@
 //! Floating-point group composition; quantization occurs at the output boundary.
 //!
-//! All intermediate channels, alpha and shape use f64 (11.7.2). Non-isolated
+//! Intermediate channels, alpha and shape use f64 by project policy. Group
+//! blending spaces follow 11.7.2. Non-isolated
 //! group colours have their initial backdrop removed before final composition
 //! (11.4.4). Knockout replaces prior contributions according to shape, not alpha.
 
@@ -149,6 +150,7 @@ impl Backdrop<'_> {
 
 struct Context {
     bounds: regions::Prepared,
+    raster: pagura_raster::Rasterizer,
     limits: Limits,
     device: Transform,
     page_device: Transform,
@@ -190,10 +192,10 @@ impl Context {
         if self
             .allocated
             .saturating_add(bytes)
-            .saturating_add(self.bounds.raster.retained_bytes())
+            .saturating_add(self.raster.retained_bytes())
             > self.limits.decoded_bytes
         {
-            self.bounds.raster.clear();
+            self.raster.clear();
         }
     }
     fn surface(&mut self, tile: Tile, initial: Backdrop<'_>) -> Result<Surface> {
@@ -341,7 +343,7 @@ impl Context {
             return Ok(());
         };
         let result = self.paint_path((p, &mask), target, initial, model, knockout, depth);
-        self.bounds.raster.recycle(mask);
+        self.raster.recycle(mask);
         result
     }
     fn paint_path(
@@ -470,13 +472,10 @@ impl Context {
             ..self.limits
         };
         let mask = match &p.mark {
-            Mark::Fill(rule) => self.bounds.raster.clipped_path(
-                &clip,
-                Arc::clone(&p.path),
-                self.device,
-                *rule,
-                limits,
-            )?,
+            Mark::Fill(rule) => {
+                self.raster
+                    .clipped_path(&clip, Arc::clone(&p.path), self.device, *rule, limits)?
+            }
             Mark::Stroke(stroke, ctm, adjust) => {
                 let path = p.path.transformed(inverse);
                 let outline = if *adjust {
@@ -486,7 +485,7 @@ impl Context {
                 };
                 let (path, transform) =
                     outline(&path, ctm.then(self.device), stroke, &self.limits)?;
-                self.bounds.raster.clipped_path(
+                self.raster.clipped_path(
                     &clip,
                     Arc::new(path),
                     transform,
@@ -887,6 +886,7 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
         list.crop.height(),
     );
     let mut context = Context {
+        raster: pagura_raster::Rasterizer::default(),
         bounds: regions::Prepared::new(list.device_transform(options), list.limits.decoded_bytes),
         limits: list.limits,
         device: list.device_transform(options),
@@ -1057,6 +1057,7 @@ mod tests {
         let path = Arc::new(path.finish());
         let clip = Mask::from_path(2, 2, &path, Transform::IDENTITY, FillRule::NonZero, 4).unwrap();
         let mut context = Context {
+            raster: pagura_raster::Rasterizer::default(),
             bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
             limits,
             device: Transform::IDENTITY,
@@ -1071,13 +1072,12 @@ mod tests {
             soft_source: false,
         };
         let mask = context
-            .bounds
             .raster
             .clipped_path(&clip, path, Transform::IDENTITY, FillRule::NonZero, limits)
             .unwrap()
             .unwrap();
-        context.bounds.raster.recycle(mask);
-        let retained = context.bounds.raster.retained_bytes();
+        context.raster.recycle(mask);
+        let retained = context.raster.retained_bytes();
         assert!(retained >= 512);
         context.limits.decoded_bytes = retained + 64;
         let mask = Arc::new(SoftMask {
@@ -1101,7 +1101,7 @@ mod tests {
         let values = context.soft_mask(&mask, tile, Model::Rgb, 0).unwrap();
         // An empty alpha-mask group contributes no opacity (11.6.5.1).
         assert_eq!(values.as_slice(), [0.0; 64]);
-        assert_eq!(context.bounds.raster.retained_bytes(), 0);
+        assert_eq!(context.raster.retained_bytes(), 0);
         assert_eq!(context.allocated, 512);
         assert!(context.allocated <= context.limits.decoded_bytes);
     }
