@@ -2,6 +2,7 @@
 
 use crate::{FillRule, Point, Transform};
 use pagura_core::{Limits, Result};
+use std::fmt;
 
 /// One path construction step (ISO 32000-2 clause 8.5.2 semantics).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -93,6 +94,21 @@ impl Path {
     }
 }
 
+/// A line or curve was added without a current point.
+///
+/// PDF content (8.5.2.1) and font charstrings treat this as malformed input;
+/// each caller reports it with its own error kind and position.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct NoCurrentPoint;
+
+impl fmt::Display for NoCurrentPoint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("path segment has no current point")
+    }
+}
+
+impl std::error::Error for NoCurrentPoint {}
+
 /// Builds a [`Path`] with PDF's implicit-subpath rules.
 #[derive(Debug, Clone, Default)]
 pub struct PathBuilder {
@@ -130,21 +146,34 @@ impl PathBuilder {
         self
     }
 
-    /// Appends a line (`l`). Returns `None` without a current point, which
-    /// PDF content treats as an error.
-    pub fn line_to(&mut self, point: Point) -> Option<&mut Self> {
-        self.current?;
+    /// Appends a line (`l`).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`NoCurrentPoint`] and leaves the builder unchanged if no
+    /// subpath is open.
+    pub fn line_to(&mut self, point: Point) -> Result<&mut Self, NoCurrentPoint> {
+        self.current.ok_or(NoCurrentPoint)?;
         self.segments.push(Segment::LineTo(point));
         self.current = Some(point);
-        Some(self)
+        Ok(self)
     }
 
-    /// Appends a cubic curve (`c`). Returns `None` without a current point.
-    pub fn cubic_to(&mut self, first: Point, second: Point, end: Point) -> Option<&mut Self> {
-        self.current?;
+    /// Appends a cubic curve (`c`).
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::line_to`].
+    pub fn cubic_to(
+        &mut self,
+        first: Point,
+        second: Point,
+        end: Point,
+    ) -> Result<&mut Self, NoCurrentPoint> {
+        self.current.ok_or(NoCurrentPoint)?;
         self.segments.push(Segment::CubicTo(first, second, end));
         self.current = Some(end);
-        Some(self)
+        Ok(self)
     }
 
     /// Closes the current subpath (`h`). The current point returns to the
@@ -169,6 +198,54 @@ impl PathBuilder {
         self
     }
 
+    /// Appends an open subpath of lines through `points` in order. Adds
+    /// nothing for no points.
+    pub fn polyline(&mut self, points: impl IntoIterator<Item = Point>) -> &mut Self {
+        let mut points = points.into_iter();
+        if let Some(first) = points.next() {
+            self.move_to(first);
+            for point in points {
+                self.segments.push(Segment::LineTo(point));
+                self.current = Some(point);
+            }
+        }
+        self
+    }
+
+    /// Appends a closed polygon subpath through `points` in order. Adds
+    /// nothing for no points.
+    pub fn polygon(&mut self, points: impl IntoIterator<Item = Point>) -> &mut Self {
+        self.polyline(points).close()
+    }
+
+    /// Appends every subpath of `path`, with each point mapped by
+    /// `transform`. A path starts each subpath with [`Segment::MoveTo`], so
+    /// the result never depends on this builder's open subpath.
+    pub fn append(&mut self, path: &Path, transform: Transform) -> &mut Self {
+        for segment in path.segments() {
+            match *segment {
+                Segment::MoveTo(p) => {
+                    self.move_to(p * transform);
+                }
+                Segment::LineTo(p) => {
+                    let p = p * transform;
+                    self.segments.push(Segment::LineTo(p));
+                    self.current = Some(p);
+                }
+                Segment::CubicTo(a, b, end) => {
+                    let end = end * transform;
+                    self.segments
+                        .push(Segment::CubicTo(a * transform, b * transform, end));
+                    self.current = Some(end);
+                }
+                Segment::Close => {
+                    self.close();
+                }
+            }
+        }
+        self
+    }
+
     /// Finishes the path and resets the builder.
     pub fn finish(&mut self) -> Path {
         self.start = None;
@@ -177,5 +254,73 @@ impl PathBuilder {
             segments: std::mem::take(&mut self.segments),
             fill_certificates: [None; 2],
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lines_and_curves_need_a_current_point() {
+        let mut path = PathBuilder::new();
+        assert_eq!(
+            path.line_to(Point::new(1.0, 0.0)).err(),
+            Some(NoCurrentPoint)
+        );
+        assert_eq!(
+            path.cubic_to(Point::default(), Point::default(), Point::default())
+                .err(),
+            Some(NoCurrentPoint)
+        );
+        assert!(path.close().is_empty());
+        path.move_to(Point::new(1.0, 1.0)).close();
+        // Close returns the current point to the subpath start (8.5.2.1).
+        path.line_to(Point::new(2.0, 1.0)).unwrap();
+        assert_eq!(path.current_point(), Some(Point::new(2.0, 1.0)));
+    }
+
+    #[test]
+    fn polylines_polygons_and_appended_paths_keep_their_order() {
+        let mut path = PathBuilder::new();
+        path.polygon([]);
+        assert!(path.is_empty());
+        let [a, b, c] = [
+            Point::new(0.0, 0.0),
+            Point::new(2.0, 0.0),
+            Point::new(0.0, 2.0),
+        ];
+        path.polyline([a, b, c]);
+        assert_eq!(path.current_point(), Some(c));
+        let open = path.finish();
+        path.polygon([a, b, c]);
+        assert_eq!(path.current_point(), Some(a));
+        let triangle = path.finish();
+        assert_eq!(
+            triangle.segments(),
+            [
+                Segment::MoveTo(a),
+                Segment::LineTo(b),
+                Segment::LineTo(c),
+                Segment::Close
+            ]
+        );
+        assert_eq!(open.segments(), &triangle.segments()[..3]);
+        let mut curve = PathBuilder::new();
+        curve.move_to(a).cubic_to(b, c, b).unwrap();
+        let curve = curve.finish();
+        let shift = Transform::translate(1.0, -1.0);
+        let mut combined = PathBuilder::new();
+        combined
+            .move_to(c)
+            .append(&triangle, shift)
+            .append(&curve, shift);
+        assert_eq!(combined.current_point(), Some(b * shift));
+        let expected: Vec<_> = [Segment::MoveTo(c)]
+            .into_iter()
+            .chain(triangle.transformed(shift).segments().iter().copied())
+            .chain(curve.transformed(shift).segments().iter().copied())
+            .collect();
+        assert_eq!(combined.finish().segments(), expected);
     }
 }
