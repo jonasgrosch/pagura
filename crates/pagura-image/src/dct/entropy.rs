@@ -2,6 +2,7 @@
 use pagura_core::{Diagnostic, Diagnostics, Error, Position, Result};
 
 pub(super) struct Huffman {
+    short: [(u8, u8); 256],
     first: [u32; 16],
     count: [u8; 16],
     offset: [usize; 16],
@@ -9,6 +10,13 @@ pub(super) struct Huffman {
 }
 impl Huffman {
     pub(super) fn symbol(&self, bits: &mut Bits<'_>) -> Result<u8> {
+        if let Some(prefix) = bits.prefix() {
+            let (symbol, length) = self.short[usize::from(prefix)];
+            if length != 0 {
+                bits.read(length)?;
+                return Ok(symbol);
+            }
+        }
         let mut code = 0;
         for length in 0..16 {
             code = code * 2 + bits.read(1)?;
@@ -38,6 +46,7 @@ pub(super) fn tables(mut payload: &[u8], tables: &mut [Option<Huffman>; 8]) -> R
         let symbols = rest
             .get(16..16 + total)
             .ok_or(Error::syntax("truncated JPEG Huffman symbols"))?;
+        let mut short = [(0, 0); 256];
         let mut first = [0; 16];
         let mut count_by_length = [0; 16];
         let mut offsets = [0; 16];
@@ -59,12 +68,17 @@ pub(super) fn tables(mut payload: &[u8], tables: &mut [Option<Huffman>; 8]) -> R
                     return Err(Error::syntax("duplicate JPEG Huffman symbol"));
                 }
                 seen[usize::from(symbol)] = true;
+                if length <= 8 {
+                    let start = (code << (8 - length)) as usize;
+                    short[start..start + (1 << (8 - length))].fill((symbol, length));
+                }
                 index += 1;
                 code += 1;
             }
             code *= 2;
         }
         tables[usize::from(info >> 4) * 4 + usize::from(info & 15)] = Some(Huffman {
+            short,
             first,
             count: count_by_length,
             offset: offsets,
@@ -93,9 +107,26 @@ impl<'a> Bits<'a> {
     pub(super) fn error(&self, message: &'static str) -> Error {
         Error::syntax(message).at(Position::Buffer(self.offset))
     }
-    pub(super) fn read(&mut self, count: u8) -> Result<u32> {
+    /// Inspect eight bits without fetching beyond a marker or advancing the
+    /// entropy cursor. Short codes at the final byte retain the canonical path.
+    fn prefix(&self) -> Option<u8> {
+        if self.left == 8 {
+            return Some(self.byte);
+        }
+        let next = *self.data.get(self.offset)?;
+        if next == 255 && self.data.get(self.offset + 1) != Some(&0) {
+            return None;
+        }
+        if self.left == 0 {
+            Some(next)
+        } else {
+            Some((self.byte << (8 - self.left)) | (next >> self.left))
+        }
+    }
+
+    pub(super) fn read(&mut self, mut count: u8) -> Result<u32> {
         let mut value = 0;
-        for _ in 0..count {
+        while count != 0 {
             if self.left == 0 {
                 self.byte = *self
                     .data
@@ -110,8 +141,10 @@ impl<'a> Bits<'a> {
                 self.offset += 1;
                 self.left = 8;
             }
-            self.left -= 1;
-            value = (value << 1) | u32::from((self.byte >> self.left) & 1);
+            let take = count.min(self.left);
+            self.left -= take;
+            value = (value << take) | (u32::from(self.byte >> self.left) & ((1 << take) - 1));
+            count -= take;
         }
         Ok(value)
     }
@@ -156,5 +189,66 @@ impl<'a> Bits<'a> {
         } else {
             value
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Bits, tables};
+
+    #[test]
+    fn every_code_length_and_alignment_stops_before_the_marker() {
+        // One canonical code of length L is L zero bits (T.81 C.2).
+        for length in 1..=16u8 {
+            let mut payload = vec![0; 17];
+            payload[usize::from(length)] = 1;
+            payload.push(122);
+            let mut books = std::array::from_fn(|_| None);
+            tables(&payload, &mut books).unwrap();
+            let book = books[0].as_ref().unwrap();
+            for leading in 0..8usize {
+                let size = (leading + usize::from(length)).div_ceil(8);
+                let mut data = vec![255; size];
+                for bit in leading..leading + usize::from(length) {
+                    data[bit / 8] &= !(1 << (7 - bit % 8));
+                }
+                data.extend_from_slice(&[255, 217]);
+                let mut bits = Bits::new(&data, 0);
+                bits.read(u8::try_from(leading).unwrap()).unwrap();
+                assert_eq!(book.symbol(&mut bits).unwrap(), 122);
+                assert_eq!(bits.offset, size);
+                assert_eq!(
+                    usize::from(bits.left),
+                    size * 8 - leading - usize::from(length)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn byte_reads_match_the_logical_bits_and_preserve_stuffing() {
+        let source = [0xa5, 255, 0, 0x51, 0x09];
+        let expected = 0xa5ff_5109u32;
+        for first in 0..=16 {
+            for second in 0..=16 {
+                let mut bits = Bits::new(&source, 0);
+                let a = bits.read(first).unwrap();
+                let b = bits.read(second).unwrap();
+                let consumed = first + second;
+                let actual = (a << second) | b;
+                assert_eq!(
+                    actual,
+                    if consumed == 0 {
+                        0
+                    } else {
+                        expected >> (32 - consumed)
+                    }
+                );
+            }
+        }
+        let mut bits = Bits::new(&[255, 217], 0);
+        assert_eq!(bits.prefix(), None);
+        assert!(bits.read(1).is_err());
+        assert_eq!(bits.offset, 0);
     }
 }

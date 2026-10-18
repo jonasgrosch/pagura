@@ -23,10 +23,16 @@ fn sample(value: f64) -> u8 {
 
 trait Sample: Copy + Default {
     fn from_idct(value: f64) -> Self;
+    fn fused(_frame: &Frame, _planes: &[Vec<Self>], _samples: &mut [Self]) -> bool {
+        false
+    }
     fn finish(samples: Vec<Self>, components: usize, convert: bool) -> Vec<u8>;
 }
 
 impl Sample for u8 {
+    fn fused(frame: &Frame, planes: &[Vec<Self>], samples: &mut [Self]) -> bool {
+        fused_rgb(frame, planes, samples)
+    }
     fn from_idct(value: f64) -> Self {
         sample(value + 128.0)
     }
@@ -167,6 +173,14 @@ fn output_native<T: Sample>(
         return Err(Error::syntax("Adobe YCCK marker requires four components"));
     }
     let mut samples = vec![T::default(); count];
+    if convert && T::fused(frame, &planes, &mut samples) {
+        return Ok(DctImage {
+            width: frame.width,
+            height: frame.height,
+            components: n,
+            samples: T::finish(samples, usize::from(n), false),
+        });
+    }
     let components = usize::from(n);
     let width = frame.width as usize;
     for (i, c) in frame.components.iter().enumerate() {
@@ -183,6 +197,53 @@ fn output_native<T: Sample>(
         components: n,
         samples: T::finish(samples, components, convert),
     })
+}
+
+/// Expand matching chroma planes directly into RGB. Chroma contributions are
+/// evaluated once per source run; each output keeps the byte-domain rounding
+/// and the original multiplication/subtraction order (7.4.8, Table 13).
+fn fused_rgb(frame: &Frame, planes: &[Vec<u8>], samples: &mut [u8]) -> bool {
+    let [y, cb, cr] = frame.components.as_slice() else {
+        return false;
+    };
+    if y.h != frame.max_h
+        || y.v != frame.max_v
+        || cb.h != cr.h
+        || cb.v != cr.v
+        || !frame.max_h.is_multiple_of(cb.h)
+    {
+        return false;
+    }
+    let repeat = frame.max_h / cb.h;
+    let width = frame.width as usize;
+    let pitch = y.stride * 8;
+    let chroma_pitch = cb.stride * 8;
+    for (line, output) in samples.chunks_exact_mut(width * 3).enumerate() {
+        let luminance = &planes[0][line * pitch..line * pitch + width];
+        let start = line * cb.v / frame.max_v * chroma_pitch;
+        let blue = &planes[1][start..start + chroma_pitch];
+        let red = &planes[2][start..start + chroma_pitch];
+        for (((run, yy), &cb), &cr) in output
+            .chunks_mut(repeat * 3)
+            .zip(luminance.chunks(repeat))
+            .zip(blue)
+            .zip(red)
+        {
+            let cb = f64::from(cb) - 128.0;
+            let cr = f64::from(cr) - 128.0;
+            let (red, green_cb, green_cr, blue) =
+                (1.402 * cr, 0.344_136 * cb, 0.714_136 * cr, 1.772 * cb);
+            for (pixel, &y) in run.as_chunks_mut::<3>().0.iter_mut().zip(yy) {
+                let y = f64::from(y);
+                *pixel = [
+                    sample(y + red),
+                    sample(y - green_cb - green_cr),
+                    sample(y + blue),
+                ];
+            }
+        }
+    }
+    true
 }
 
 /// T.81 A.1.1 sampling factors: each source sample occupies a contiguous run.
@@ -215,6 +276,82 @@ fn expand<T: Copy>(source: &[T], destination: &mut [T], components: usize, h: us
 #[cfg(test)]
 mod tests {
     use super::expand;
+
+    #[test]
+    fn fused_chroma_runs_keep_byte_rounding_and_cropped_coordinates() {
+        let limits = pagura_core::Limits::default();
+        for yh in 1..=4 {
+            for yv in 1..=4 {
+                for ch in 1..=yh {
+                    for cv in 1..=yv {
+                        let frame = super::Frame::parse(
+                            &[
+                                8,
+                                0,
+                                11,
+                                0,
+                                9,
+                                3,
+                                1,
+                                yh * 16 + yv,
+                                0,
+                                2,
+                                ch * 16 + cv,
+                                0,
+                                3,
+                                ch * 16 + cv,
+                                0,
+                            ],
+                            0xc0,
+                            &limits,
+                        )
+                        .unwrap();
+                        let planes: Vec<Vec<_>> = frame
+                            .components
+                            .iter()
+                            .enumerate()
+                            .map(|(i, c)| {
+                                (0..c.stride * c.rows * 64)
+                                    .map(|p| u8::try_from((p * 37 + i * 71) % 256).unwrap())
+                                    .collect()
+                            })
+                            .collect();
+                        let mut actual = vec![0; 9 * 11 * 3];
+                        assert_eq!(super::fused_rgb(&frame, &planes, &mut actual), yh % ch == 0);
+                        if yh % ch != 0 {
+                            continue;
+                        }
+                        for y in 0..11 {
+                            for x in 0..9 {
+                                let source: Vec<_> = frame
+                                    .components
+                                    .iter()
+                                    .zip(&planes)
+                                    .map(|(c, p)| {
+                                        f64::from(
+                                            p[(y * c.v / frame.max_v) * (c.stride * 8)
+                                                + x * c.h / frame.max_h],
+                                        )
+                                    })
+                                    .collect();
+                                let (yy, cb, cr) =
+                                    (source[0], source[1] - 128.0, source[2] - 128.0);
+                                let expected = [
+                                    super::sample(yy + 1.402 * cr),
+                                    super::sample(yy - 0.344_136 * cb - 0.714_136 * cr),
+                                    super::sample(yy + 1.772 * cb),
+                                ];
+                                assert_eq!(
+                                    &actual[(y * 9 + x) * 3..(y * 9 + x + 1) * 3],
+                                    &expected
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     #[test]
     fn native_reconstruction_and_reduction_preserve_the_full_range() {

@@ -216,24 +216,34 @@ pub(crate) fn unpack_with_diagnostics(
         .ok_or(Error::limit("image size overflow"))?;
     let data = packed_data(data, length, diagnostics)?;
     if bits == 16 {
-        return Ok(Samples::Words(
-            (0..count)
-                .map(|i| {
-                    u16::from_be_bytes([
-                        data.get(2 * i).copied().unwrap_or(0),
-                        data.get(2 * i + 1).copied().unwrap_or(0),
-                    ])
-                })
-                .collect(),
-        ));
+        let mut values = Vec::with_capacity(count);
+        values.extend(
+            data.as_chunks::<2>()
+                .0
+                .iter()
+                .map(|&bytes| u16::from_be_bytes(bytes)),
+        );
+        if data.len() % 2 != 0 {
+            values.push(u16::from(data[data.len() - 1]) << 8);
+        }
+        values.resize(count, 0);
+        return Ok(Samples::Words(values));
     }
-    let mut values = Vec::with_capacity(count);
-    let mask = 255 >> (8 - bits);
-    for y in 0..height as usize {
-        for index in 0..row_values {
-            let bit = index * usize::from(bits);
-            let byte = data.get(y * row_bytes + bit / 8).copied().unwrap_or(0);
-            values.push((byte >> (8 - usize::from(bits) - bit % 8)) & mask);
+    let mut values = vec![0; count];
+    if bits == 8 {
+        values[..data.len()].copy_from_slice(data);
+    } else {
+        let per_byte = 8 / usize::from(bits);
+        let mask = 255 >> (8 - bits);
+        for (row, output) in data
+            .chunks(row_bytes)
+            .zip(values.chunks_exact_mut(row_values))
+        {
+            for (&byte, group) in row.iter().zip(output.chunks_mut(per_byte)) {
+                for (value, shift) in group.iter_mut().zip((0..per_byte).rev()) {
+                    *value = (byte >> (shift * usize::from(bits))) & mask;
+                }
+            }
         }
     }
     Ok(Samples::Bytes(values))
