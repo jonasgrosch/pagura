@@ -348,7 +348,7 @@ async function main() {
   }
   assert.deepEqual(outputs[0], outputs[1], 'All successful tile hashes must match across runtimes');
   report.pixelParity = true;
-  process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 }
 
 if (!isMainThread) {

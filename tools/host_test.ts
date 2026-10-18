@@ -1,5 +1,5 @@
 import { externalUrl, activateTarget, targetLabel } from '../web/link_actions.mjs';
-import { textLayer, selectedText } from '../web/text_layer.mjs';
+import { textLayer } from '../web/text_layer.mjs';
 import { pagePoint } from '../web/page_geometry.mjs';
 import { destinationView } from '../web/destinations.mjs';
 import { readingWorkload } from '../web/reading_workload.mjs';
@@ -32,7 +32,7 @@ import {
   VERSION_1_3,
   VERSION_1_4,
 } from '../web/protocol.mjs';
-import type { Diagnostic, Frame, PageInfo, RequestValues, Tile, TileRect } from '../web/protocol.mjs';
+import type { Diagnostic, Frame, RequestValues, Tile, TileRect } from '../web/protocol.mjs';
 import type { Link, Match, OutlineItem, SearchResult, Target, UriAction } from '../web/reading_protocol.mjs';
 import type { ReadingState } from '../web/reading_view.mjs';
 import { HostFailure, failureReason } from '../web/failure.mjs';
@@ -940,7 +940,7 @@ async function testViewer(
   };
   const pick = async (entry: { id: string; path: string }) => {
     const picker = elements.get('file');
-    picker.files = [new File([await readFile(join(root, entry.path))], entry.id + '.pdf')];
+    picker.files = [new File([await readFile(join(root, entry.path))], `${entry.id}.pdf`)];
     picker.dispatch('change');
   };
   const ready = () => elements.get('status').textContent === 'Visible tiles rendered';
@@ -1218,7 +1218,7 @@ async function testViewer(
     assert.equal(canvases().length, 0);
     await pick({ id: 'extract-simple', path: 'corpus/generated/text/extract-simple.pdf' });
     await waitFor(ready);
-    const text = () => view(0)?.children.find((n) => n.className === 'text-layer')!;
+    const text = () => view(0)?.children.find((n) => n.className === 'text-layer') as Element;
     assert.equal(
       text()
         .children.map((n) => n.textContent)
@@ -1497,7 +1497,7 @@ async function testViewer(
     assert.equal(rootElement.children[0].textContent, hostile);
     const maliciousText = '<svg onload=alert(1)>';
     let byte = 0;
-    const characters = [...maliciousText].map((c) => ({ start: byte, end: ++byte, quadStart: 0, quadCount: 0 }));
+    const characters = [...maliciousText].map((_c) => ({ start: byte, end: ++byte, quadStart: 0, quadCount: 0 }));
     // createElement returns the stand-in Element.
     const inertLayer = textLayer(
       { text: maliciousText, quads: [], characters },

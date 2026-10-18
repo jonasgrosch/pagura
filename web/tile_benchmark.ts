@@ -54,7 +54,7 @@ const samples = [];
 try {
   for (let sample = -2; sample < 5; sample++) {
     for (const runtime of sample % 2 ? ['wasi', 'native'] : ['native', 'wasi']) {
-      let seconds, output;
+      let seconds: number, output: Buffer;
       if (runtime === 'native') {
         const start = performance.now();
         const result = spawnSync(nativePath, [], { input, maxBuffer: 32 * 1024 * 1024, timeout: 60000 });
@@ -95,7 +95,7 @@ try {
     }
   }
   process.stdout.write(
-    JSON.stringify(
+    `${JSON.stringify(
       {
         schema: 1,
         workload: 'many-rectangles',
@@ -113,7 +113,7 @@ try {
       },
       null,
       2,
-    ) + '\n',
+    )}\n`,
   );
 } finally {
   rmSync(scratch, { recursive: true, force: true });

@@ -64,6 +64,7 @@ export function inputReader(shared, drained) {
   return (destination) => {
     if (!destination.length) return 0;
     let state;
+    // biome-ignore lint/suspicious/noAssignInExpressions: block until the writer leaves the empty state.
     while ((state = Atomics.load(control, 0)) === 0) Atomics.wait(control, 0, 0);
     if (state === 2) return 0;
     const length = Atomics.load(control, 1);

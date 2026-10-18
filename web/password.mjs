@@ -25,7 +25,7 @@ export function requestPassword(message = 'This PDF requires a password.') {
     const finish = (value) => {
       form.removeEventListener('submit', submit);
       cancel.removeEventListener('click', reject);
-      dialog.removeEventListener('cancel', escape);
+      dialog.removeEventListener('cancel', onEscape);
       activeCancel = null;
       input.value = '';
       dialog.close();
@@ -39,13 +39,13 @@ export function requestPassword(message = 'This PDF requires a password.') {
     };
     const reject = () => finish(null);
     /** @param {Event} event */
-    const escape = (event) => {
+    const onEscape = (event) => {
       event.preventDefault();
       finish(null);
     };
     form.addEventListener('submit', submit);
     cancel.addEventListener('click', reject);
-    dialog.addEventListener('cancel', escape);
+    dialog.addEventListener('cancel', onEscape);
     activeCancel = reject;
     dialog.showModal();
     input.focus();

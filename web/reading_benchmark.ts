@@ -102,7 +102,7 @@ if (!isMainThread) {
     assert.equal(afterClose.textBytes, 0);
     assert.equal(afterClose.textPages, 0);
     process.stdout.write(
-      JSON.stringify(
+      `${JSON.stringify(
         {
           exploratory: true,
           runtime: 'browser-shim-node',
@@ -120,7 +120,7 @@ if (!isMainThread) {
         },
         null,
         2,
-      ) + '\n',
+      )}\n`,
     );
   } finally {
     client.destroy();

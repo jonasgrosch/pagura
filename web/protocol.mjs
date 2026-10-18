@@ -136,6 +136,7 @@ export class HostError extends Error {
   }
   /** @override */
   toString() {
+    // biome-ignore lint/complexity/noUselessThisAlias: a typed view of the fields Object.assign copied.
     const source = /** @type {Partial<SourceContext>} */ (this);
     const categories = ['', 'Syntax', 'Limit', 'Unsupported', 'MissingObject', 'Cycle', 'Password', 'InvalidArgument'];
     const object = source.object ? ` (object ${source.object.number} ${source.object.generation})` : '';
