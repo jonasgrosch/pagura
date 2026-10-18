@@ -1,0 +1,8 @@
+kind=pdf-image
+outcome=repair
+width=7
+height=3
+components=1
+bits=1
+repair=image.ccitt-columns
+space=DeviceGray

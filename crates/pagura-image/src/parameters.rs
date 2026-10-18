@@ -214,22 +214,7 @@ pub(crate) fn unpack_with_diagnostics(
     let length = row_bytes
         .checked_mul(height as usize)
         .ok_or(Error::limit("image size overflow"))?;
-    if data.len() != length {
-        let (tag, message) = if data.len() < length {
-            (
-                crate::tags::DATA_SHORT,
-                "short image data padded with zero bytes (8.9.3, 8.9.5.1)",
-            )
-        } else {
-            (
-                crate::tags::DATA_EXCESS,
-                "excess image data ignored (8.9.3, 8.9.5.1)",
-            )
-        };
-        diagnostics
-            .repair(Diagnostic::new(tag, message).at(Position::Buffer(data.len().min(length))))?;
-    }
-    let data = &data[..data.len().min(length)];
+    let data = packed_data(data, length, diagnostics)?;
     if bits == 16 {
         return Ok(Samples::Words(
             (0..count)
@@ -252,6 +237,31 @@ pub(crate) fn unpack_with_diagnostics(
         }
     }
     Ok(Samples::Bytes(values))
+}
+
+/// Check packed row length without allocating missing bytes. Callers supply
+/// zero for a missing byte and must ignore unused bits at each row's end.
+pub(crate) fn packed_data<'a>(
+    data: &'a [u8],
+    length: usize,
+    diagnostics: &mut Diagnostics,
+) -> Result<&'a [u8]> {
+    if data.len() != length {
+        let (tag, message) = if data.len() < length {
+            (
+                crate::tags::DATA_SHORT,
+                "short image data padded with zero bytes (8.9.3, 8.9.5.1)",
+            )
+        } else {
+            (
+                crate::tags::DATA_EXCESS,
+                "excess image data ignored (8.9.3, 8.9.5.1)",
+            )
+        };
+        diagnostics
+            .repair(Diagnostic::new(tag, message).at(Position::Buffer(data.len().min(length))))?;
+    }
+    Ok(&data[..data.len().min(length)])
 }
 
 pub(crate) fn finish(

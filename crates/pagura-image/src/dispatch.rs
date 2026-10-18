@@ -1,5 +1,5 @@
 //! Image codec dispatch and cross-checking of dictionary and stream metadata.
-use crate::{DecodedImage, ImageKind, MaskKind, Samples, ccitt, dct, jbig2, parameters as p};
+use crate::{DecodedImage, ImageKind, MaskKind, Samples, dct, jbig2, parameters as p};
 use pagura_codec::ImageCodec;
 use pagura_core::{Diagnostics, Dictionary, Error, Result, Value};
 use pagura_document::Document;
@@ -86,13 +86,8 @@ pub(crate) fn decode(
             if bits != 1 || components != 1 {
                 return Err(Error::syntax("CCITT requires one-bit components"));
             }
-            let params = ccitt::CcittParams::from_dictionary(params)?;
-            if params.columns != width {
-                return Err(Error::syntax("CCITT Columns disagrees with image Width"));
-            }
-            let decoded = ccitt::decode_with_diagnostics(data, &params, &limits, diagnostics)?;
             image.samples =
-                p::unpack_with_diagnostics(&decoded, width, height, 1, 1, &limits, diagnostics)?;
+                crate::fax_image::decode(data, params, width, height, &limits, diagnostics)?;
         }
         Some(ImageCodec::Jbig2) => {
             if bits != 1 || components != 1 {

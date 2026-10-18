@@ -439,6 +439,8 @@ def cases():
     yield from image_codec_cases()
     yield from tolerance_cases()
     yield from dictionary_repair_cases()
+    yield from fax_grid_cases()
+    yield from inline_filter_cases()
     yield from jpx_options_cases()
     for name, options in [
         ("jpeg-baseline-gray", {}), ("jpeg-extended", dict(extended=True)),
@@ -995,3 +997,82 @@ def dictionary_repair_cases():
         yield image_pdf_vector('jpeg-entropy-excess-invalid-'+suffix, bad, [],
             gray+b'/Filter /DCTDecode', requirement='image-jpeg-entropy-excess',
             width=1, height=1, outcome='syntax', reject_repair=1)
+
+
+def fax_grid_cases():
+    """Table 11 owns encoded rows; Table 87 owns the painted sample grid.
+
+    Right-side extension with fax white is an explicit recovery policy.
+    Unused source byte-alignment bits have no pixel meaning.
+    """
+    for columns, width in [(5, 3), (5, 7), (9, 13), (13, 9)]:
+        rows = [[int((x+2*y) % 4 < 2) for x in range(columns)] for y in range(3)]
+        for k in [0, -1]:
+            for black in [False, True]:
+                encoded, _ = ccitt(rows, k=k, align=k == 0, black_is_1=black)
+                expected = []
+                for row in rows:
+                    logical = row[:width]+[0]*max(0, width-columns)
+                    expected.extend(v if black else 1-v for v in logical)
+                params = b'<< /K %d /Columns %d /EncodedByteAlign %s /BlackIs1 %s >>' % (
+                    k, columns, b'true' if k == 0 else b'false', b'true' if black else b'false')
+                yield image_pdf_vector(f'fax-columns-{columns}-width-{width}-g{4 if k < 0 else 3}-black{int(black)}',
+                    encoded, expected, b'/Filter /CCITTFaxDecode /ColorSpace /DeviceGray /BitsPerComponent 1 /DecodeParms '+params,
+                    requirement='image-ccitt-columns', width=width, height=3, bits=1,
+                    outcome='repair', repair='image.ccitt-columns', space='DeviceGray')
+
+    rows = [[int(x in (0, 8, 1727)) for x in range(1728)] for _ in range(2)]
+    encoded, _ = ccitt(rows, k=-1)
+    yield image_pdf_vector('fax-columns-default', encoded, [1-v for row in rows for v in row[:9]],
+        b'/Filter /CCITTFaxDecode /ColorSpace /DeviceGray /BitsPerComponent 1 /DecodeParms << /K -1 >>',
+        requirement='image-ccitt-columns', width=9, height=2, bits=1,
+        outcome='repair', repair='image.ccitt-columns', space='DeviceGray')
+
+    rows = [[0, 1, 1, 0, 1], [1, 0, 0, 1, 0]]
+    encoded, _ = ccitt(rows, k=-1, black_is_1=True)
+    yield image_pdf_vector('fax-columns-stencil-inverted', encoded, [v for row in rows for v in row+[0, 0]],
+        b'/Filter /CCITTFaxDecode /ImageMask true /Decode [1 0] /DecodeParms << /K -1 /Columns 5 /BlackIs1 true >>',
+        requirement='image-ccitt-columns', width=7, height=2, bits=1, decode='1,0', inverted=1,
+        outcome='repair', repair='image.ccitt-columns', space='stencil')
+    for height, suffix, length_tag in [(1, 'excess-rows', 'image.data-excess'), (3, 'missing-row', 'image.data-short')]:
+        expected = [v for row in rows[:height] for v in row+[0, 0]]
+        if height > len(rows):
+            # Existing short packed-data policy fills source bytes with zero;
+            # the extension beyond Columns remains fax white independently.
+            expected += [0]*7
+        yield image_pdf_vector('fax-columns-'+suffix, encoded, expected,
+            b'/Filter /CCITTFaxDecode /ColorSpace /DeviceGray /BitsPerComponent 1 /DecodeParms << /K -1 /Columns 5 /BlackIs1 true >>',
+            requirement='image-ccitt-columns', width=7, height=height, bits=1,
+            outcome='repair', repair='image.ccitt-columns', reports=2,
+            report_tags='image.ccitt-columns,'+length_tag, space='DeviceGray')
+    for explicit in [False, True]:
+        dictionary = b'<< /W 7 /H 2 /BPC 1 /CS /G /F /CCF /DP << /K -1 /Columns 5 /BlackIs1 true >>'
+        if explicit:
+            dictionary += b' /L %d' % len(encoded)
+        yield Vector('inline-fax-columns-'+('length' if explicit else 'legacy'), {
+            '.dict': dictionary+b' >>', '.in': encoded,
+            '.out': bytes(v for row in rows for v in row+[0, 0]),
+            '.params': b'kind=inline\noutcome=repair\nrepair=image.ccitt-columns\n'},
+            ('image-ccitt-columns',), 'Fax source rows framed with Columns and adapted to Width')
+
+
+def inline_filter_cases():
+    """7.3.8.1 Table 5 permits zero filters; 8.9.7 has no exception."""
+    for suffix, dictionary, encoded, expected in [
+        ('gray', b'<< /W 3 /H 2 /BPC 2 /CS /G /F [] >>', bytes([0x18, 0xe4]), bytes([0, 1, 2, 3, 2, 1])),
+        ('cmyk', b'<< /W 2 /H 1 /BPC 8 /CS /CMYK /F [] >>', bytes(7)+b'\xff', bytes(7)+b'\xff'),
+        ('null-params', b'<< /W 2 /H 1 /BPC 8 /CS /G /Filter [] /DP null >>', bytes([12, 26]), bytes([12, 26])),
+        ('stencil', b'<< /W 2 /H 1 /IM true /F [] >>', b'\x40', bytes([0, 1])),
+        ('embedded-ei', b'<< /W 4 /H 1 /BPC 8 /CS /G /F [] >>', b' EI ', b' EI '),
+    ]:
+        yield Vector('inline-empty-filter-'+suffix, {'.dict': dictionary, '.in': encoded, '.out': expected,
+            '.params': b'kind=inline\noutcome=valid\n'}, ('image-inline-filter',),
+            'Empty inline filter array denotes unencoded samples in both recovery modes')
+    for suffix, value in [('boolean', b'false'), ('integer', b'0'), ('string', b'(Fl)'),
+                          ('dictionary', b'<< >>'), ('null-element', b'[null]'), ('nested-array', b'[[]]'),
+                          ('unknown-name', b'/Unknown')]:
+        outcome = 'unsupported' if suffix == 'unknown-name' else 'syntax'
+        yield Vector('inline-invalid-filter-'+suffix, {
+            '.dict': b'<< /W 1 /H 1 /BPC 8 /CS /G /F '+value+b' >>', '.in': b'\0', '.out': b'',
+            '.params': f'kind=inline\noutcome={outcome}\nfeature=filter.unknown\nboundary_error=1\n'.encode()},
+            ('image-inline-filter',), 'Malformed or unknown inline filters are never inferred from image bytes')

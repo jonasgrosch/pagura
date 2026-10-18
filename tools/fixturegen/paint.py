@@ -225,6 +225,7 @@ def image_cases():
 def cases():
     yield from text_cases()
     yield from image_cases()
+    yield from image_geometry_cases()
     yield from extra_cases()
     yield from bundled_cases()
     yield from repair_cases()
@@ -258,6 +259,9 @@ def extra_cases():
     for name,program,key,extra in [("type1",type1_font(),b"FontFile",b""),("cff",cff_font(),b"FontFile3",b"/Subtype /Type1C")]:
         font=ttf()[0].replace(b"/TrueType",b"/Type1").replace(b"/Widths [400]",b"/Widths [600]")
         descriptor=ttf()[1].replace(b"/FontFile2",b"/"+key)
+        # Both programs define glyphs with non-Latin names such as curve;
+        # the descriptor therefore sets Symbolic (9.8.2/Table 121).
+        descriptor = descriptor.replace(b"/Flags 32", b"/Flags 4")
         if key == b"FontFile":
             extra = type1_lengths(program)
         yield case("text-"+name,b"BT /F 20 Tf 4 4 Td (AA) Tj ET",[font,descriptor,stream(program,extra)],FONT,
@@ -778,3 +782,36 @@ def cjk_substitute_case():
     return Vector('bundled-cjk-substitute',{'.pdf':pdf,'.rgb':oracle},('paint-bundled-cjk-substitute',),
                   'Opt-in Source Han Sans: predefined CMap to CID to collection Unicode to OTF cmap and CID CFF outlines',
                   extra={'driver':'bundled-cjk-paint','cargo_feature':'cjk-fonts','tolerance':1})
+
+
+def image_geometry_cases():
+    from dataclasses import replace
+    for suffix, columns, width, black in [('crop', 13, 9, False), ('pad', 9, 13, False), ('pad-inverted', 9, 13, True)]:
+        rows = [[int((x+2*y) % 4 < 2) for x in range(columns)] for y in range(3)]
+        encoded, _ = codecs.ccitt(rows, k=-1, black_is_1=black)
+        logical = [row[:width]+[0]*max(0, width-columns) for row in rows]
+        expected = [255*(1-v) for row in logical for v in row]
+        dictionary = b'/Filter /CCITTFaxDecode /ColorSpace /DeviceGray /BitsPerComponent 1 /DecodeParms << /K -1 /Columns %d /BlackIs1 %s >>' % (columns, b'true' if black else b'false')
+        if black:
+            dictionary += b' /Decode [1 0]'
+        result = image_case('image-fax-grid-'+suffix, encoded, dictionary, expected, width, 3, requirement='image-ccitt-columns')
+        yield replace(result, repairs=('image.ccitt-columns',), strict_valid=False)
+
+    rows = [[0, 1, 1, 0, 1], [1, 0, 0, 1, 0]]
+    encoded, _ = codecs.ccitt(rows, k=-1)
+    content = b'q 14 0 0 4 2 2 cm BI /W 7 /H 2 /BPC 1 /CS /G /F /CCF /DP << /K -1 /Columns 5 >> ID '+encoded+b' EI Q'
+    rectangles = [((2+2*x, 2+2*(1-y), 2, 2), (255*(1-v),)*3)
+                  for y, row in enumerate(rows) for x, v in enumerate(row+[0, 0])]
+    result = case('image-inline-fax-grid', content, rectangles=rectangles, requirement='image-ccitt-columns')
+    yield replace(result, repairs=('image.ccitt-columns',), strict_valid=False)
+
+    # Table 5's zero-filter array is valid inline, with deterministic raw
+    # framing even when image samples themselves spell an EI operator.
+    for suffix, space, width, data, colors in [
+        ('cmyk', b'/CMYK', 2, bytes(7)+b'\xff', [WHITE, BLACK]),
+        ('embedded-ei', b'/G', 4, b' EI ', [(v,)*3 for v in b' EI ']),
+    ]:
+        content = b'q %d 0 0 2 2 2 cm BI /W %d /H 1 /BPC 8 /CS ' % (width*2, width)+space+b' /F [] ID '+data+b' EI Q 1 0 0 rg 2 10 4 2 re f'
+        rectangles = [((2+2*x, 2, 2, 2), color) for x, color in enumerate(colors)]
+        rectangles.append(((2, 10, 4, 2), RED))
+        yield case('image-inline-empty-filter-'+suffix, content, rectangles=rectangles, requirement='image-inline-filter')

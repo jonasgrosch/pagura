@@ -26,7 +26,33 @@ fn independent_paint_oracles_and_device_tiles() {
     for path in paths {
         let name = path.file_stem().unwrap().to_str().unwrap();
         let document = open(name);
-        let list = compile_page(&document, document.page(0).unwrap()).unwrap();
+        let list = if name.starts_with("image-fax-grid-") || name == "image-inline-fax-grid" {
+            let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
+            assert_eq!(
+                error.repair,
+                Some(pagura_image::tags::CCITT_COLUMNS),
+                "{name}"
+            );
+            assert!(document.diagnostics().is_empty(), "{name}");
+            let repaired = Document::open(
+                fixture("paint", &format!("{name}.pdf")),
+                &OpenOptions::default(),
+            )
+            .unwrap();
+            let list = compile_page(&repaired, repaired.page(0).unwrap()).unwrap();
+            assert_eq!(
+                repaired
+                    .diagnostics()
+                    .iter()
+                    .map(|d| d.repair)
+                    .collect::<Vec<_>>(),
+                [pagura_image::tags::CCITT_COLUMNS],
+                "{name}"
+            );
+            list
+        } else {
+            compile_page(&document, document.page(0).unwrap()).unwrap()
+        };
         let oracle = std::fs::read(&path).unwrap();
         let (width, height) = list.device_size(&RenderOptions::default()).unwrap();
         let header = format!("P6\n{width} {height}\n255\n");

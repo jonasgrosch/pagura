@@ -1,0 +1,10 @@
+kind=pdf-image
+outcome=repair
+width=7
+height=1
+components=1
+bits=1
+repair=image.ccitt-columns
+reports=2
+report_tags=image.ccitt-columns,image.data-excess
+space=DeviceGray

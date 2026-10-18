@@ -137,7 +137,12 @@ pub(crate) fn data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usi
             .ok_or(Error::syntax("invalid inline image Length"))?;
         return Ok(length);
     }
-    if dict.get(b"Filter").is_none_or(Value::is_null) {
+    // Table 5 permits an array of zero filters. Its inline equivalent (8.9.7)
+    // is unencoded data, just like an absent or null Filter; no repair applies.
+    if dict
+        .get(b"Filter")
+        .is_none_or(|value| value.is_null() || value.as_array().is_some_and(<[_]>::is_empty))
+    {
         let (width, height) = p::dimensions(&dict)?;
         let stencil = p::boolean(&dict, b"ImageMask", false)?;
         if !stencil
@@ -237,13 +242,14 @@ fn valid_prefix(
             let Ok(params) = crate::ccitt::CcittParams::from_dictionary(params.as_ref()) else {
                 return false;
             };
-            let Ok((width, height)) = p::dimensions(dict) else {
+            let Ok((_, height)) = p::dimensions(dict) else {
                 return false;
             };
-            width == params.columns
-                && crate::ccitt::decode(&decoded, &params, &limits).is_ok_and(|bytes| {
-                    bytes.len() as u64 == u64::from(width).div_ceil(8) * u64::from(height)
-                })
+            // Framing follows the encoded fax rows, not the eventual image
+            // grid. decode_inline reports any Columns/Width repair later.
+            crate::ccitt::decode(&decoded, &params, &limits).is_ok_and(|bytes| {
+                bytes.len() as u64 == u64::from(params.columns).div_ceil(8) * u64::from(height)
+            })
         }
         _ => false,
     }

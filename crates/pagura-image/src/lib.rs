@@ -33,9 +33,13 @@ pub mod tags {
     /// wrong-typed parameter for parameterless JPXDecode (7.3.9, 7.3.8.1
     /// Table 5, 7.4.1, 7.4.9). Actual null values require no repair.
     pub const DECODE_PARAMS: Repair = Repair::new("image.decode-params");
+    /// Decode fax rows using Columns, then crop or white-pad to the image
+    /// Width (7.4.6 Table 11; 8.9.5.1 Table 87). Row padding is not a sample.
+    pub const CCITT_COLUMNS: Repair = Repair::new("image.ccitt-columns");
 }
 
 mod dispatch;
+mod fax_image;
 mod filter_rules;
 mod inline;
 mod jpx_channels;

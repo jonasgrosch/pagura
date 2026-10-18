@@ -287,13 +287,19 @@ fn assert_repairs(name: &str, params: &BTreeMap<String, String>, document: &Docu
     assert!(matches!(error.position, Position::Stream { .. }), "{name}");
     assert!(strict.diagnostics().is_empty(), "{name}");
     let reports = document.diagnostics();
+    let expected_tags = params.get("report_tags").map_or_else(
+        || vec![params["repair"].as_str(); params.get("reports").map_or(1, |n| n.parse().unwrap())],
+        |tags| tags.split(',').collect(),
+    );
     assert_eq!(
-        reports.len(),
-        params.get("reports").map_or(1, |n| n.parse().unwrap()),
+        reports
+            .iter()
+            .map(|report| report.repair.as_str())
+            .collect::<Vec<_>>(),
+        expected_tags,
         "{name}"
     );
     for report in &reports {
-        assert_eq!(report.repair.as_str(), params["repair"], "{name}");
         assert_eq!(report.object, Some(ObjectId::new(3, 0)), "{name}");
         assert!(matches!(report.position, Position::Stream { .. }), "{name}");
     }

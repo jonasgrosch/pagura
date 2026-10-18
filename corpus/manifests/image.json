@@ -3618,6 +3618,810 @@
       }
     },
     {
+      "id": "image/fax-columns-5-width-3-g3-black0",
+      "kind": "vector",
+      "description": "fax columns 5 width 3 g3 black0",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-5-width-3-g3-black0.out",
+          "sha256": "11a2e300b2fa3acea201cfe16aa7071a156ad9410c8c2f3fcafb7772574183bd"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-5-width-3-g3-black0.params",
+          "sha256": "08e3194e5c5f601c7fb15f237df24cc1cb94bfc8d1196421d471f40ee2ecf5ec"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-5-width-3-g3-black0.pdf",
+          "sha256": "c721f9bf24dc222eed57e3c6b92571092a97b4cf4414d7767ba5fde51c7f9732"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-5-width-3-g3-black1",
+      "kind": "vector",
+      "description": "fax columns 5 width 3 g3 black1",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-5-width-3-g3-black1.out",
+          "sha256": "499b10adcfef928b43f1ab7611f5e83c4a0e32476443d3b9f08188d71b7dc713"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-5-width-3-g3-black1.params",
+          "sha256": "08e3194e5c5f601c7fb15f237df24cc1cb94bfc8d1196421d471f40ee2ecf5ec"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-5-width-3-g3-black1.pdf",
+          "sha256": "a9eac43ad5d092ffda846ca74bcb49f261e88908fb59622d827f5ac85c498f63"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-5-width-3-g4-black0",
+      "kind": "vector",
+      "description": "fax columns 5 width 3 g4 black0",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-5-width-3-g4-black0.out",
+          "sha256": "11a2e300b2fa3acea201cfe16aa7071a156ad9410c8c2f3fcafb7772574183bd"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-5-width-3-g4-black0.params",
+          "sha256": "08e3194e5c5f601c7fb15f237df24cc1cb94bfc8d1196421d471f40ee2ecf5ec"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-5-width-3-g4-black0.pdf",
+          "sha256": "e75b4f15879d2ac4ba55d822abf7bd7ce5e4cf15d23d2f818df0f45fcade60c5"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-5-width-3-g4-black1",
+      "kind": "vector",
+      "description": "fax columns 5 width 3 g4 black1",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-5-width-3-g4-black1.out",
+          "sha256": "499b10adcfef928b43f1ab7611f5e83c4a0e32476443d3b9f08188d71b7dc713"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-5-width-3-g4-black1.params",
+          "sha256": "08e3194e5c5f601c7fb15f237df24cc1cb94bfc8d1196421d471f40ee2ecf5ec"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-5-width-3-g4-black1.pdf",
+          "sha256": "bd03fa8c2286ba05c14b1cb81b87a6ad483d1c78108eb52af90af7d05bbcaba1"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-5-width-7-g3-black0",
+      "kind": "vector",
+      "description": "fax columns 5 width 7 g3 black0",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-5-width-7-g3-black0.out",
+          "sha256": "1a04691d91e197ac81ecb1a6bad05218ddb5473d11623601e5cf45aaa86d5a86"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-5-width-7-g3-black0.params",
+          "sha256": "86676f4a77f0a666a21471dfccd7eb2e0dbc32a87c83f87821f4dc03a03edbcd"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-5-width-7-g3-black0.pdf",
+          "sha256": "7add94340a01561f3b9b5487b3849d9507ac15878beb90e7959042cf8aff757e"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-5-width-7-g3-black1",
+      "kind": "vector",
+      "description": "fax columns 5 width 7 g3 black1",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-5-width-7-g3-black1.out",
+          "sha256": "54a2ed8cee65245663adfd73bfd8f83892b9b2825e014c41b6a2664e895a5710"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-5-width-7-g3-black1.params",
+          "sha256": "86676f4a77f0a666a21471dfccd7eb2e0dbc32a87c83f87821f4dc03a03edbcd"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-5-width-7-g3-black1.pdf",
+          "sha256": "fc3f5f3690829ce70fbe7387e3e1bdeaa9fb29354bf1d67385dff9b0df058f2e"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-5-width-7-g4-black0",
+      "kind": "vector",
+      "description": "fax columns 5 width 7 g4 black0",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-5-width-7-g4-black0.out",
+          "sha256": "1a04691d91e197ac81ecb1a6bad05218ddb5473d11623601e5cf45aaa86d5a86"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-5-width-7-g4-black0.params",
+          "sha256": "86676f4a77f0a666a21471dfccd7eb2e0dbc32a87c83f87821f4dc03a03edbcd"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-5-width-7-g4-black0.pdf",
+          "sha256": "3f2b390c43f1d8f12f391fc81ba1acd84f4fa137d4e8b83d4c2eba93f23dec4c"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-5-width-7-g4-black1",
+      "kind": "vector",
+      "description": "fax columns 5 width 7 g4 black1",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-5-width-7-g4-black1.out",
+          "sha256": "54a2ed8cee65245663adfd73bfd8f83892b9b2825e014c41b6a2664e895a5710"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-5-width-7-g4-black1.params",
+          "sha256": "86676f4a77f0a666a21471dfccd7eb2e0dbc32a87c83f87821f4dc03a03edbcd"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-5-width-7-g4-black1.pdf",
+          "sha256": "6c675d1650f325491806d4c9ededd66eb1cdb5cd00818bea605a7a3c65517d8a"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-9-width-13-g3-black0",
+      "kind": "vector",
+      "description": "fax columns 9 width 13 g3 black0",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-9-width-13-g3-black0.out",
+          "sha256": "64c077edadcf503cf4e7e82320e476945d58a4363c15dc545753abc9ea45551e"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-9-width-13-g3-black0.params",
+          "sha256": "4c33becd28c8c80186e3674dab1f4a7e5213ae25013201abeddb854ffdc053a5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-9-width-13-g3-black0.pdf",
+          "sha256": "b43fbc43965597b00094ac3c318de4671c5d09589ea9ba1a1636419b63629e0c"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-9-width-13-g3-black1",
+      "kind": "vector",
+      "description": "fax columns 9 width 13 g3 black1",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-9-width-13-g3-black1.out",
+          "sha256": "a33d927334f15d38d8129afc6ffd2cc6808e4c73aef605594b586b77e4740870"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-9-width-13-g3-black1.params",
+          "sha256": "4c33becd28c8c80186e3674dab1f4a7e5213ae25013201abeddb854ffdc053a5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-9-width-13-g3-black1.pdf",
+          "sha256": "8ad4f3e5e73dcde3f8d7313e35fc38c04e4babf8cbfc2ddfa5b76e4054fb4e4a"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-9-width-13-g4-black0",
+      "kind": "vector",
+      "description": "fax columns 9 width 13 g4 black0",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-9-width-13-g4-black0.out",
+          "sha256": "64c077edadcf503cf4e7e82320e476945d58a4363c15dc545753abc9ea45551e"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-9-width-13-g4-black0.params",
+          "sha256": "4c33becd28c8c80186e3674dab1f4a7e5213ae25013201abeddb854ffdc053a5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-9-width-13-g4-black0.pdf",
+          "sha256": "a7facfa4153c4e9fdc312a960381c5330cb8efa814e4b87acf76dc06b159ea79"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-9-width-13-g4-black1",
+      "kind": "vector",
+      "description": "fax columns 9 width 13 g4 black1",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-9-width-13-g4-black1.out",
+          "sha256": "a33d927334f15d38d8129afc6ffd2cc6808e4c73aef605594b586b77e4740870"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-9-width-13-g4-black1.params",
+          "sha256": "4c33becd28c8c80186e3674dab1f4a7e5213ae25013201abeddb854ffdc053a5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-9-width-13-g4-black1.pdf",
+          "sha256": "9e72f8f5813c6b361a203929eb106a02bd1e30c0591f62fea41ba6cc16b34dcf"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-13-width-9-g3-black0",
+      "kind": "vector",
+      "description": "fax columns 13 width 9 g3 black0",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-13-width-9-g3-black0.out",
+          "sha256": "9dee843dc64e36409bd64e362a131f17cc26e91fb408a74a38b89899c0a95cc6"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-13-width-9-g3-black0.params",
+          "sha256": "b766dbe03e3246e6a22872a63689d7b6f694461d15e2f65d1f1f30110db6e55b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-13-width-9-g3-black0.pdf",
+          "sha256": "5447dd40ae89df7c23d7d788d9a2ef45ce18a13fea5f55242cd426b73e9b6516"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-13-width-9-g3-black1",
+      "kind": "vector",
+      "description": "fax columns 13 width 9 g3 black1",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-13-width-9-g3-black1.out",
+          "sha256": "4925290b81173fbee067ef6a0cc3bee870680ede05652bb638db5fa881ce253e"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-13-width-9-g3-black1.params",
+          "sha256": "b766dbe03e3246e6a22872a63689d7b6f694461d15e2f65d1f1f30110db6e55b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-13-width-9-g3-black1.pdf",
+          "sha256": "f4c67cdbbba0eea06142129de7840dcf04e084643707cec3c93666cde5622734"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-13-width-9-g4-black0",
+      "kind": "vector",
+      "description": "fax columns 13 width 9 g4 black0",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-13-width-9-g4-black0.out",
+          "sha256": "9dee843dc64e36409bd64e362a131f17cc26e91fb408a74a38b89899c0a95cc6"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-13-width-9-g4-black0.params",
+          "sha256": "b766dbe03e3246e6a22872a63689d7b6f694461d15e2f65d1f1f30110db6e55b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-13-width-9-g4-black0.pdf",
+          "sha256": "2163a5a24ab539f4c815478b200adf31cd6067a02ae6989409c505c1bb026464"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-13-width-9-g4-black1",
+      "kind": "vector",
+      "description": "fax columns 13 width 9 g4 black1",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-13-width-9-g4-black1.out",
+          "sha256": "4925290b81173fbee067ef6a0cc3bee870680ede05652bb638db5fa881ce253e"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-13-width-9-g4-black1.params",
+          "sha256": "b766dbe03e3246e6a22872a63689d7b6f694461d15e2f65d1f1f30110db6e55b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-13-width-9-g4-black1.pdf",
+          "sha256": "f5c51791059ac21e43cfff938d2005f3d77c259c12498468b4a60d894433253e"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-default",
+      "kind": "vector",
+      "description": "fax columns default",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-default.out",
+          "sha256": "96d849b5a04abcd3e43bfd5054a4a9e03e9610844dead4953dac7340845e10cd"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-default.params",
+          "sha256": "b5ca1c89032367d460a8da820b5063ad36061d545a32ee976f3ba647e93f9eab"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-default.pdf",
+          "sha256": "d59c3961edcefac233345de5fd840ca0d70aa699374f6ccb92afd63d68e25b18"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-stencil-inverted",
+      "kind": "vector",
+      "description": "fax columns stencil inverted",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-stencil-inverted.out",
+          "sha256": "22672c254e50743673b67e335e67e890c6f89c2b369e10ddf0ce791331eb395f"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-stencil-inverted.params",
+          "sha256": "3d3954e3081d345af8cff50e643b1a58075a27cae13c4bf92f1941d43bcaa092"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-stencil-inverted.pdf",
+          "sha256": "34bbc77c37144ef3768ad91cf50902956e888a1f666454ac67dcf4e59256f316"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-excess-rows",
+      "kind": "vector",
+      "description": "fax columns excess rows",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-excess-rows.out",
+          "sha256": "1ada981a141d9056e64b732423224abab2b7390c3c99708e3f5f541e2cba601b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-excess-rows.params",
+          "sha256": "ea92b3b735a7cb354c6eaddacb827351ad1bc525af340fef4db22c20f84b7c49"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-excess-rows.pdf",
+          "sha256": "0e89edaed66b7b180c9c5377856196fcc83f3f980883fcc974b632fffe709219"
+        }
+      }
+    },
+    {
+      "id": "image/fax-columns-missing-row",
+      "kind": "vector",
+      "description": "fax columns missing row",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/fax-columns-missing-row.out",
+          "sha256": "b0ea1ae4801bab56904322f7f3dbaf9054ff9f78812e7a6d0a296f5948440b57"
+        },
+        ".params": {
+          "path": "corpus/generated/image/fax-columns-missing-row.params",
+          "sha256": "77c53478d81724dc944ae8288d5480082ae9644193b95e387fc894dba30dafb2"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/fax-columns-missing-row.pdf",
+          "sha256": "4b635bd12857545aa541b51dc7fba588306370de380d2d36a1f7babd8bc060da"
+        }
+      }
+    },
+    {
+      "id": "image/inline-fax-columns-legacy",
+      "kind": "vector",
+      "description": "Fax source rows framed with Columns and adapted to Width",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-fax-columns-legacy.dict",
+          "sha256": "5fc32da46b1992a161e0443c94cd2761d5815531b86cc79646bdb1710c2aeee9"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-fax-columns-legacy.in",
+          "sha256": "bead5bb545bb7d9cfc24f5398d852e9996dbcc7c78f8e9ff94ad8579fb5d916a"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-fax-columns-legacy.out",
+          "sha256": "bdd7ed66a37cb422bb71c01d99cb6cca92c06f81d4ed66fd9a38b85dba46ab32"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-fax-columns-legacy.params",
+          "sha256": "28f359160a49cacaf88f41b273369c3e9b3826f5770ff0526f32f4bedbc30ec0"
+        }
+      }
+    },
+    {
+      "id": "image/inline-fax-columns-length",
+      "kind": "vector",
+      "description": "Fax source rows framed with Columns and adapted to Width",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-fax-columns-length.dict",
+          "sha256": "c52f1d47377dc35a682ba8a00466905c9e9f07bd2ff32849540009e1e095130c"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-fax-columns-length.in",
+          "sha256": "bead5bb545bb7d9cfc24f5398d852e9996dbcc7c78f8e9ff94ad8579fb5d916a"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-fax-columns-length.out",
+          "sha256": "bdd7ed66a37cb422bb71c01d99cb6cca92c06f81d4ed66fd9a38b85dba46ab32"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-fax-columns-length.params",
+          "sha256": "28f359160a49cacaf88f41b273369c3e9b3826f5770ff0526f32f4bedbc30ec0"
+        }
+      }
+    },
+    {
+      "id": "image/inline-empty-filter-gray",
+      "kind": "vector",
+      "description": "Empty inline filter array denotes unencoded samples in both recovery modes",
+      "requirements": [
+        "image-inline-filter"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-empty-filter-gray.dict",
+          "sha256": "af7c1fb7264b7c24520121a2422cc022bdf5b9cf6f65946aba6bc6dc51040466"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-empty-filter-gray.in",
+          "sha256": "da76d84be86d2b244230f41351e6873bdb048be1817d68ef5e7f8f997141e664"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-empty-filter-gray.out",
+          "sha256": "5b26f5ffd504b14382ab4e2e760ff485ad9adfd1e5a24b9f578bb7bdb7d138e4"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-empty-filter-gray.params",
+          "sha256": "b5419c40424ed18fb5878e5dc39617828f60e6aa8925ec48e4bdc55c5b347d8d"
+        }
+      }
+    },
+    {
+      "id": "image/inline-empty-filter-cmyk",
+      "kind": "vector",
+      "description": "Empty inline filter array denotes unencoded samples in both recovery modes",
+      "requirements": [
+        "image-inline-filter"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-empty-filter-cmyk.dict",
+          "sha256": "de8e2e1e5610c9b4c17c4cd9509a48935366ae6d6fa8630b0e9f6deee8c3379b"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-empty-filter-cmyk.in",
+          "sha256": "b8862208a16d307a1e2b3a5df2b44a63126bba7cd20c985c436135ad88d2c735"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-empty-filter-cmyk.out",
+          "sha256": "b8862208a16d307a1e2b3a5df2b44a63126bba7cd20c985c436135ad88d2c735"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-empty-filter-cmyk.params",
+          "sha256": "b5419c40424ed18fb5878e5dc39617828f60e6aa8925ec48e4bdc55c5b347d8d"
+        }
+      }
+    },
+    {
+      "id": "image/inline-empty-filter-null-params",
+      "kind": "vector",
+      "description": "Empty inline filter array denotes unencoded samples in both recovery modes",
+      "requirements": [
+        "image-inline-filter"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-empty-filter-null-params.dict",
+          "sha256": "78c690ae392bff8a611b79d7fd41761ff4d17e48db0e2112b2a191d67002128a"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-empty-filter-null-params.in",
+          "sha256": "14f651836c8c14cc190c78940eb1f78bcecb33d1af9ade6b42ec5da50ddae55d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-empty-filter-null-params.out",
+          "sha256": "14f651836c8c14cc190c78940eb1f78bcecb33d1af9ade6b42ec5da50ddae55d"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-empty-filter-null-params.params",
+          "sha256": "b5419c40424ed18fb5878e5dc39617828f60e6aa8925ec48e4bdc55c5b347d8d"
+        }
+      }
+    },
+    {
+      "id": "image/inline-empty-filter-stencil",
+      "kind": "vector",
+      "description": "Empty inline filter array denotes unencoded samples in both recovery modes",
+      "requirements": [
+        "image-inline-filter"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-empty-filter-stencil.dict",
+          "sha256": "cd5b2ff221147c534ced38ccaacbb01defb00b262581d9a6b22bdbffbbc33e98"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-empty-filter-stencil.in",
+          "sha256": "c3641f8544d7c02f3580b07c0f9887f0c6a27ff5ab1d4a3e29caf197cfc299ae"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-empty-filter-stencil.out",
+          "sha256": "b413f47d13ee2fe6c845b2ee141af81de858df4ec549a58b7970bb96645bc8d2"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-empty-filter-stencil.params",
+          "sha256": "b5419c40424ed18fb5878e5dc39617828f60e6aa8925ec48e4bdc55c5b347d8d"
+        }
+      }
+    },
+    {
+      "id": "image/inline-empty-filter-embedded-ei",
+      "kind": "vector",
+      "description": "Empty inline filter array denotes unencoded samples in both recovery modes",
+      "requirements": [
+        "image-inline-filter"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-empty-filter-embedded-ei.dict",
+          "sha256": "e7446127f63d0944d4d2774d86a65c9e4fa6f2f015021d4930b3fe86f7556213"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-empty-filter-embedded-ei.in",
+          "sha256": "47cddf766c5f3a3241f5bacc3e2c89bc45c2f49df3672be5f3597a59dc47e274"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-empty-filter-embedded-ei.out",
+          "sha256": "47cddf766c5f3a3241f5bacc3e2c89bc45c2f49df3672be5f3597a59dc47e274"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-empty-filter-embedded-ei.params",
+          "sha256": "b5419c40424ed18fb5878e5dc39617828f60e6aa8925ec48e4bdc55c5b347d8d"
+        }
+      }
+    },
+    {
+      "id": "image/inline-invalid-filter-boolean",
+      "kind": "vector",
+      "description": "Malformed or unknown inline filters are never inferred from image bytes",
+      "requirements": [
+        "image-inline-filter"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-invalid-filter-boolean.dict",
+          "sha256": "e2787efb2c3c2c1b109d516d233a127e504aea5b3a06a10615a825ab59c57bea"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-invalid-filter-boolean.in",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-invalid-filter-boolean.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-invalid-filter-boolean.params",
+          "sha256": "5c8fe7035276a51774132131f3cee4ed978b8237f7c1f42b1ced50779f634ec3"
+        }
+      }
+    },
+    {
+      "id": "image/inline-invalid-filter-integer",
+      "kind": "vector",
+      "description": "Malformed or unknown inline filters are never inferred from image bytes",
+      "requirements": [
+        "image-inline-filter"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-invalid-filter-integer.dict",
+          "sha256": "8a9d7d6b818bd527b71014168201234017c8c3c81f424fe1795c1b7fe63f14c0"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-invalid-filter-integer.in",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-invalid-filter-integer.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-invalid-filter-integer.params",
+          "sha256": "5c8fe7035276a51774132131f3cee4ed978b8237f7c1f42b1ced50779f634ec3"
+        }
+      }
+    },
+    {
+      "id": "image/inline-invalid-filter-string",
+      "kind": "vector",
+      "description": "Malformed or unknown inline filters are never inferred from image bytes",
+      "requirements": [
+        "image-inline-filter"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-invalid-filter-string.dict",
+          "sha256": "3cf3aa8546ee1405e311be2c30a97b418b6c617754842c04679cb56ec67c6583"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-invalid-filter-string.in",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-invalid-filter-string.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-invalid-filter-string.params",
+          "sha256": "5c8fe7035276a51774132131f3cee4ed978b8237f7c1f42b1ced50779f634ec3"
+        }
+      }
+    },
+    {
+      "id": "image/inline-invalid-filter-dictionary",
+      "kind": "vector",
+      "description": "Malformed or unknown inline filters are never inferred from image bytes",
+      "requirements": [
+        "image-inline-filter"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-invalid-filter-dictionary.dict",
+          "sha256": "f3859be9a6093addebd232310c091377b6bd4cb864219d3fbd17270e5190a5a5"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-invalid-filter-dictionary.in",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-invalid-filter-dictionary.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-invalid-filter-dictionary.params",
+          "sha256": "5c8fe7035276a51774132131f3cee4ed978b8237f7c1f42b1ced50779f634ec3"
+        }
+      }
+    },
+    {
+      "id": "image/inline-invalid-filter-null-element",
+      "kind": "vector",
+      "description": "Malformed or unknown inline filters are never inferred from image bytes",
+      "requirements": [
+        "image-inline-filter"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-invalid-filter-null-element.dict",
+          "sha256": "110380e384033ea7d520c94f705ffe80d5358312ed5ffddac9e86a677ca010e6"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-invalid-filter-null-element.in",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-invalid-filter-null-element.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-invalid-filter-null-element.params",
+          "sha256": "5c8fe7035276a51774132131f3cee4ed978b8237f7c1f42b1ced50779f634ec3"
+        }
+      }
+    },
+    {
+      "id": "image/inline-invalid-filter-nested-array",
+      "kind": "vector",
+      "description": "Malformed or unknown inline filters are never inferred from image bytes",
+      "requirements": [
+        "image-inline-filter"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-invalid-filter-nested-array.dict",
+          "sha256": "18d5edb016d80338502e178abf30f5b210366f1bdca53e3048e67412d86e03e9"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-invalid-filter-nested-array.in",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-invalid-filter-nested-array.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-invalid-filter-nested-array.params",
+          "sha256": "5c8fe7035276a51774132131f3cee4ed978b8237f7c1f42b1ced50779f634ec3"
+        }
+      }
+    },
+    {
+      "id": "image/inline-invalid-filter-unknown-name",
+      "kind": "vector",
+      "description": "Malformed or unknown inline filters are never inferred from image bytes",
+      "requirements": [
+        "image-inline-filter"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-invalid-filter-unknown-name.dict",
+          "sha256": "db0884279a8196ea99b6dfa1a162e405cab6b254ccd083080d81be9c0dc4b690"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-invalid-filter-unknown-name.in",
+          "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-invalid-filter-unknown-name.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-invalid-filter-unknown-name.params",
+          "sha256": "8ab33189a7f0cef44f71c4074c380bd4057fa5ac6d6ffff068e58aeac7500e33"
+        }
+      }
+    },
+    {
       "id": "image/jpx-overrides-vendor-colour",
       "kind": "vector",
       "description": "jpx overrides vendor colour",

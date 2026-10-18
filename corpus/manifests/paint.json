@@ -1470,6 +1470,134 @@
       "tolerance": 0
     },
     {
+      "id": "paint/image-fax-grid-crop",
+      "kind": "pdf",
+      "description": "image fax grid crop",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "path": "corpus/generated/paint/image-fax-grid-crop.pdf",
+      "sha256": "1a8d782b1326b329eda51143f1ab80b90a0d698280f7d023df5867646e3c2c5c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "image.ccitt-columns"
+      ],
+      "oracle": "corpus/generated/paint/image-fax-grid-crop.ppm",
+      "oracle_sha256": "c45de45ed2e78abd18cacc9c49677bd27fc45b2289a7495af8fff3bece3cdb9c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-fax-grid-pad",
+      "kind": "pdf",
+      "description": "image fax grid pad",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "path": "corpus/generated/paint/image-fax-grid-pad.pdf",
+      "sha256": "f1837eb31e368934b991930849f36587144b97f557702e9897b29e09b771890a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "image.ccitt-columns"
+      ],
+      "oracle": "corpus/generated/paint/image-fax-grid-pad.ppm",
+      "oracle_sha256": "c45de45ed2e78abd18cacc9c49677bd27fc45b2289a7495af8fff3bece3cdb9c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-fax-grid-pad-inverted",
+      "kind": "pdf",
+      "description": "image fax grid pad inverted",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "path": "corpus/generated/paint/image-fax-grid-pad-inverted.pdf",
+      "sha256": "a94eb9b02074a30629f676c313654be0fb7664ba4717508d155f6f15459294c9",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "image.ccitt-columns"
+      ],
+      "oracle": "corpus/generated/paint/image-fax-grid-pad-inverted.ppm",
+      "oracle_sha256": "c45de45ed2e78abd18cacc9c49677bd27fc45b2289a7495af8fff3bece3cdb9c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-inline-fax-grid",
+      "kind": "pdf",
+      "description": "image inline fax grid",
+      "expected": "render",
+      "requirements": [
+        "image-ccitt-columns"
+      ],
+      "path": "corpus/generated/paint/image-inline-fax-grid.pdf",
+      "sha256": "23afdce998e33dd7b32c86cb55bda7cc18521a5c887bb388250f005498879d0d",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "image.ccitt-columns"
+      ],
+      "oracle": "corpus/generated/paint/image-inline-fax-grid.ppm",
+      "oracle_sha256": "833262e8f558114a73fe1deb4cb901f8d75db6be2727e4530bf0f54c93f2fc5a",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-inline-empty-filter-cmyk",
+      "kind": "pdf",
+      "description": "image inline empty filter cmyk",
+      "expected": "render",
+      "requirements": [
+        "image-inline-filter"
+      ],
+      "path": "corpus/generated/paint/image-inline-empty-filter-cmyk.pdf",
+      "sha256": "9ffcdea7bc02145b482b584dca4c71ddeaa12660a6d1c7d14f5a4cffe846a78b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-inline-empty-filter-cmyk.ppm",
+      "oracle_sha256": "9b9c2a61764992ca6b7ab1a1076ed8536ee487edcdc32d19c2f0aaec39d43162",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-inline-empty-filter-embedded-ei",
+      "kind": "pdf",
+      "description": "image inline empty filter embedded ei",
+      "expected": "render",
+      "requirements": [
+        "image-inline-filter"
+      ],
+      "path": "corpus/generated/paint/image-inline-empty-filter-embedded-ei.pdf",
+      "sha256": "e44f302b49ccc0e8130393149a767644a0cbfa1338980a41329c5786999bcb46",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-inline-empty-filter-embedded-ei.ppm",
+      "oracle_sha256": "f88ae9c1b8765c8863e85b70d6c9d2ae90aa8699bdba62500700041595e1583e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
       "id": "paint/text-heavy-page",
       "kind": "pdf",
       "description": "text heavy page",
@@ -1498,7 +1626,7 @@
         "paint-text-outlines"
       ],
       "path": "corpus/generated/paint/text-type1.pdf",
-      "sha256": "0fe976b8accd19b81c26c50771c6fae3bdbd73fd7f3ad297deb8fa27b5ff696e",
+      "sha256": "24820ae45cb38ac7f839fff27a641825f5c2f35fff03eaa72eada7f39905fa8a",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1518,7 +1646,7 @@
         "paint-text-outlines"
       ],
       "path": "corpus/generated/paint/text-cff.pdf",
-      "sha256": "a16d271d4ece1c12c84544b83a6a65c527b6a0022cdac6459b9825e09f2d479a",
+      "sha256": "5689b46d0871c7df284f5a1feb4af0f29241f696d588fab358587d7d939ebdda",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],

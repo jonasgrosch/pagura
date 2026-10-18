@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "image",
-  "scope": "PDF image-layer rules reviewed against the locally supplied ISO_32000-2_sponsored_EC3.txt (ISO 32000-2:2020, errata collection 3): 8.9.3-8.9.7, Tables 87, 88, 90-92; 7.4.6/Table 11, 7.4.7/Table 12, 7.4.8/Table 13, 7.4.9 and 11.6.4.3. This revision additionally checks JPEG entropy padding and application segment framing against local itu-t81-1992.txt B.1.1.4-5, B.2.4.6/Table B.9 and E.1.4; Group 4 EOFB/padding against itu-t6-1988.txt 2.4.1.1-2; and JP2 sample placement and channel definitions against itu-t800-2019.txt B.2, G.4 and I.5.3.6. These are scoped rule reviews, not verification of the complete JPEG/fax/JPEG 2000 algorithms. Adobe Technical Note 5116, JPEG 2000 Part 2 (T.801) and ICC profile semantics remain pending primary-text review. T.81/T.4/T.6/T.88/T.800 are now locally available; unreviewed algorithms remain pending as detailed below. Resource budgets follow ADR 0010, not an ISO numerical limit. This revision additionally reviews ISO 32000-2:2020 7.3.9, 7.3.8.1/Table 5, 7.4.1 and 7.4.9 (optional/null filter parameters), 8.9.5.1/Table 87 and 8.9.6.2 (stencil colour), and 8.9.7/Table 92 (the XObject abbreviation prohibition) against the same local ISO text; final entropy-segment MCU counts and EOI are reviewed against local itu-t81-1992.txt B.2.1. Recovery choices are explicit departures, not normative permissions.",
+  "scope": "PDF image-layer rules reviewed against the locally supplied ISO_32000-2_sponsored_EC3.txt (ISO 32000-2:2020, errata collection 3): 8.9.3-8.9.7, Tables 87, 88, 90-92; 7.4.6/Table 11, 7.4.7/Table 12, 7.4.8/Table 13, 7.4.9 and 11.6.4.3. This revision additionally checks JPEG entropy padding and application segment framing against local itu-t81-1992.txt B.1.1.4-5, B.2.4.6/Table B.9 and E.1.4; Group 4 EOFB/padding against itu-t6-1988.txt 2.4.1.1-2; and JP2 sample placement and channel definitions against itu-t800-2019.txt B.2, G.4 and I.5.3.6. These are scoped rule reviews, not verification of the complete JPEG/fax/JPEG 2000 algorithms. Adobe Technical Note 5116, JPEG 2000 Part 2 (T.801) and ICC profile semantics remain pending primary-text review. T.81/T.4/T.6/T.88/T.800 are now locally available; unreviewed algorithms remain pending as detailed below. Resource budgets follow ADR 0010, not an ISO numerical limit. This revision additionally reviews ISO 32000-2:2020 7.3.9, 7.3.8.1/Table 5, 7.4.1 and 7.4.9 (optional/null filter parameters), 8.9.5.1/Table 87 and 8.9.6.2 (stencil colour), and 8.9.7/Table 92 (the XObject abbreviation prohibition) against the same local ISO text; final entropy-segment MCU counts and EOI are reviewed against local itu-t81-1992.txt B.2.1. Recovery choices are explicit departures, not normative permissions. Additional wrapper rules checked against the same local ISO text: 7.3.8.1 Table 5 and 8.9.7 Tables 91-92 permit an empty inline Filter array; 7.4.6 Table 11 fixes the encoded fax row width, and 8.9.5.1 Table 87 fixes the image sample grid. Mismatched fax widths use an explicit reported recovery rather than an ISO-defined correction.",
   "requirements": [
     {
       "id": "image-samples",
@@ -299,7 +299,9 @@
       "status": "partial",
       "tests": [
         "pagura-image tests::image_and_codec_budgets_precede_allocations",
-        "pagura-image tests::truncated_and_mutated_codecs_never_invent_samples"
+        "pagura-image tests::truncated_and_mutated_codecs_never_invent_samples",
+        "pagura-image fax_image::tests::source_grid_budget_precedes_decoding_and_cropping",
+        "pagura-image fax_image::tests::packed_source_and_output_must_fit_together"
       ],
       "gaps": "Broader corpus coverage remains.",
       "review": [
@@ -673,6 +675,66 @@
         "Only parameter normalization belongs to the image layer; stream decryption, Crypt validation and filter application remain in pagura-document. Supplied parameters and decoded results are not cached; the usual per-operation budgets apply."
       ],
       "gaps": "External stream data remains unsupported; this API does not authorize repairs by itself."
+    },
+    {
+      "id": "image-inline-filter",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.8.1; Table 5",
+        "8.9.7; Tables 91-92"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "pagura-image tests::independent_vectors",
+        "tools/conformance.py",
+        "pagura-render interpreter::text::tests::independent_paint_oracles_and_device_tiles"
+      ],
+      "review": [
+        {
+          "locator": "7.3.8.1; Table 5; 8.9.7; Tables 91-92",
+          "rule": "Filter may be an array of zero names; the inline stream entry has the same meaning, so an empty array denotes unencoded samples.",
+          "verdict": "reviewed and exercised",
+          "implementation_agreement": "Agrees with the primary rule and explicitly stated recovery policy.",
+          "expectation_agreement": "Independent Python encoders construct source rows; direct row geometry and rectangle oracles derive expected samples and pixels without consulting Rust output.",
+          "evidence": "inline-empty-filter-gray/cmyk/null-params/stencil/embedded-ei check exact samples in Strict mode. inline-invalid-filter-* retain errors in decoding and framing. paint/image-inline-empty-filter-cmyk/embedded-ei check exact pixels and operator resumption."
+        }
+      ],
+      "choices": [
+        "An empty array is valid, not a conformance fault: both Strict and Repair accept it without diagnostics. Unknown names retain filter.unknown and wrong types remain syntax errors; no filter is guessed from sample bytes."
+      ],
+      "gaps": "Resource colour spaces without a framing context and other legacy boundary limits remain as documented in image-inline.",
+      "external_primary_text_review": []
+    },
+    {
+      "id": "image-ccitt-columns",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.6; Table 11 Columns",
+        "8.9.5.1; Table 87 Width and Height",
+        "8.9.3"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "pagura-image tests::independent_vectors",
+        "tools/conformance.py",
+        "pagura-render interpreter::text::tests::independent_paint_oracles_and_device_tiles",
+        "pagura-image fax_image::tests::source_errors_are_not_hidden_by_grid_cropping"
+      ],
+      "review": [
+        {
+          "locator": "7.4.6; Table 11 Columns; 8.9.5.1; Table 87 Width and Height; 8.9.3",
+          "rule": "Fax parameters must match encoding; Columns governs complete decoded scan lines and byte padding, while Width and Height define the image sample grid. Inconsistent image dictionaries are errors.",
+          "verdict": "reviewed and exercised",
+          "implementation_agreement": "Agrees with the primary rule and explicitly stated recovery policy.",
+          "expectation_agreement": "Independent Python encoders construct source rows; direct row geometry and rectangle oracles derive expected samples and pixels without consulting Rust output.",
+          "evidence": "fax-columns-*-width-*-g*-black* and fax-columns-default check independently constructed samples across byte boundaries, both polarities and Group 3/4. fax-columns-stencil-inverted retains Decode. fax-columns-excess-rows/missing-row preserve length diagnostics. inline-fax-columns-legacy/length check source framing. paint/image-fax-grid-* and paint/image-inline-fax-grid check exact pixels."
+        }
+      ],
+      "choices": [
+        "image.ccitt-columns keeps Columns for run decoding and reference rows, crops the right side or extends it with fax white to Width before Decode. Byte-alignment bits are never samples. Existing zero-byte image.data-short and suffix image.data-excess policies apply to complete source rows independently."
+      ],
+      "gaps": "White extension is reader policy, not an ISO correction. Source grid, packed storage and final sample grid remain bounded; corrupt source codes are not recovered by cropping.",
+      "external_primary_text_review": []
     }
   ]
 }

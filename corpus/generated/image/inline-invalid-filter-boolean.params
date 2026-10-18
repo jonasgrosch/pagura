@@ -1,0 +1,4 @@
+kind=inline
+outcome=syntax
+feature=filter.unknown
+boundary_error=1

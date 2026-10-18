@@ -335,7 +335,18 @@ fn inline_vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8])
     } else {
         Dictionary::new()
     };
-    let doc = document();
+    let doc = Document::open(
+        fixture("image", "samples-1-1-raw.pdf"),
+        &OpenOptions {
+            recovery: if params["outcome"] == "valid" {
+                Recovery::Strict
+            } else {
+                Recovery::Repair
+            },
+            ..OpenOptions::default()
+        },
+    )
+    .unwrap();
     let result = decode_inline(&doc, &resources, dict, &data);
     if params["outcome"] == "repair" {
         let strict = Document::open(
@@ -355,7 +366,23 @@ fn inline_vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8])
             "{name}"
         );
     } else if params["outcome"] != "valid" {
-        assert_eq!(result.unwrap_err().kind, ErrorKind::Syntax, "{name}");
+        let error = result.unwrap_err();
+        if params["outcome"] == "unsupported" {
+            assert_eq!(
+                error.feature().unwrap().as_str(),
+                params["feature"],
+                "{name}"
+            );
+        } else {
+            assert_eq!(error.kind, ErrorKind::Syntax, "{name}");
+        }
+        if params.contains_key("boundary_error") {
+            assert_eq!(
+                inline_data_length(dict, &data).unwrap_err().kind,
+                error.kind,
+                "{name}"
+            );
+        }
         return;
     }
     let image = result.unwrap_or_else(|e| panic!("{name}: {e}"));
