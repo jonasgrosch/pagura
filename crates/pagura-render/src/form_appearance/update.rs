@@ -1,5 +1,6 @@
 //! Preserve existing artwork and resource precedence (12.7.4.3).
 use super::Program;
+use crate::operators::{MAX_OPERANDS, Token, token};
 use pagura_core::{
     Dictionary, Error, Limits, Result, Value,
     syntax::{Origin, Parser},
@@ -80,7 +81,7 @@ fn text_region(bytes: &[u8], limits: Limits) -> Result<Option<std::ops::Range<us
     let mut work = 0usize;
     let mut scope = Scope::default();
     let mut start_scope = Scope::default();
-    while let Some(next) = parser.peek() {
+    while parser.peek().is_some() {
         if work >= limits.operations {
             return Err(
                 Error::limit("appearance update token budget exceeded").at(parser.position())
@@ -90,19 +91,17 @@ fn text_region(bytes: &[u8], limits: Limits) -> Result<Option<std::ops::Range<us
         if operands.is_empty() {
             start = parser.offset();
         }
-        if matches!(
-            next,
-            b'/' | b'(' | b'<' | b'[' | b'+' | b'-' | b'.' | b'0'..=b'9'
-        ) || parser.data().get(parser.offset()..).is_some_and(|b| {
-            b.starts_with(b"true") || b.starts_with(b"false") || b.starts_with(b"null")
-        }) {
-            if operands.len() >= limits.value_nodes {
-                return Err(Error::limit("appearance update operand budget exceeded"));
+        let operator = match token(&mut parser)? {
+            Some(Token::Operand(value)) => {
+                if operands.len() >= MAX_OPERANDS {
+                    return Err(Error::limit("content operand budget exceeded"));
+                }
+                operands.push(value);
+                continue;
             }
-            operands.push(parser.parse()?);
-            continue;
-        }
-        let operator = parser.word()?;
+            Some(Token::Operator(operator)) => operator,
+            None => break,
+        };
         scope.step(operator, active.map(|_| start_scope.graphics), limits)?;
         match operator {
             b"BMC" | b"BDC" => {

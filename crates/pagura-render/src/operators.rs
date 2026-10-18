@@ -1,16 +1,46 @@
 //! Annex A content operators, decoded once into typed operations.
 //!
+//! [`token`] splits content into operands and operator keywords (7.8.2);
 //! [`Operator::parse`] recognizes an operator keyword; [`Operator::decode`]
 //! checks its operands (count and types, Annex A) and returns an
 //! [`Operation`] whose handlers never index into the operand list.
 
 use crate::color::MAX_COMPONENTS;
+use pagura_core::syntax::Parser;
 use pagura_core::{Error, Name, Result, Value};
 use pagura_raster::{FillRule, Point, Transform};
 
 /// The most operands one operator takes: `scn` with a full DeviceN
 /// colour plus a pattern name.
 pub(crate) const MAX_OPERANDS: usize = MAX_COMPONENTS + 1;
+
+/// One lexical item of content (7.8.2): an operand object, including the
+/// keywords `true`, `false` and `null`, or an operator keyword.
+#[derive(Debug)]
+pub(crate) enum Token<'a> {
+    Operand(Value),
+    Operator(&'a [u8]),
+}
+
+/// The next token of `parser`, or `None` at the end of the data. Every
+/// reader of content, appearance strings included, splits it this way.
+pub(crate) fn token<'a>(parser: &mut Parser<'a>) -> Result<Option<Token<'a>>> {
+    let Some(byte) = parser.peek() else {
+        return Ok(None);
+    };
+    if matches!(
+        byte,
+        b'/' | b'(' | b'[' | b'<' | b'+' | b'-' | b'.' | b'0'..=b'9'
+    ) {
+        return parser.parse().map(|value| Some(Token::Operand(value)));
+    }
+    Ok(Some(match parser.word()? {
+        b"true" => Token::Operand(Value::Boolean(true)),
+        b"false" => Token::Operand(Value::Boolean(false)),
+        b"null" => Token::Operand(Value::Null),
+        word => Token::Operator(word),
+    }))
+}
 
 macro_rules! operators {
     ($($variant:ident = $name:literal,)*) => {
@@ -695,6 +725,35 @@ fn tag_properties(v: &[Value]) -> Result<(&Name, &Value)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn keywords_are_operands_and_other_words_operators() {
+        let mut parser = Parser::new(
+            b"true truex null nullify false 1 /N BI",
+            pagura_core::syntax::Origin::Buffer,
+            pagura_core::Limits::default(),
+        );
+        let mut tokens = Vec::new();
+        while let Some(token) = token(&mut parser).unwrap() {
+            tokens.push(match token {
+                Token::Operand(value) => Ok(value),
+                Token::Operator(word) => Err(word),
+            });
+        }
+        assert_eq!(
+            tokens,
+            [
+                Ok(Value::Boolean(true)),
+                Err(b"truex".as_slice()),
+                Ok(Value::Null),
+                Err(b"nullify".as_slice()),
+                Ok(Value::Boolean(false)),
+                Ok(Value::Integer(1)),
+                Ok(Value::Name(Name::new(b"N"))),
+                Err(b"BI".as_slice()),
+            ]
+        );
+    }
 
     #[test]
     fn every_annex_a_operator_parses_back_from_its_name() {

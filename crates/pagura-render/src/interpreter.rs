@@ -17,7 +17,7 @@ pub(crate) mod text;
 use crate::color::{self, Color};
 use crate::display::{Clip, Command, DisplayList, Mark, PathCommand};
 use crate::features;
-use crate::operators::{MAX_OPERANDS, Operation, Operator};
+use crate::operators::{MAX_OPERANDS, Operation, Operator, Token, token};
 use crate::optional::Visibility;
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Dictionary, Error, Feature, Name, ObjectId, Position, Rect, Result, Value};
@@ -199,7 +199,7 @@ impl Compiler<'_> {
         self.initial_state = self.state.clone();
         let mut parser = Parser::new(bytes, Origin::Buffer, self.document.limits());
         let mut stream_index = 0;
-        while let Some(byte) = parser.peek() {
+        while parser.peek().is_some() {
             self.session
                 .charge_operations(1)
                 .map_err(|e| stream_error(e, parser.offset(), origins))?;
@@ -218,20 +218,12 @@ impl Compiler<'_> {
             } else {
                 self.position = Position::Buffer(offset);
             }
-            let result = if matches!(
-                byte,
-                b'/' | b'(' | b'[' | b'<' | b'+' | b'-' | b'.' | b'0'..=b'9'
-            ) {
-                parser.parse().and_then(|value| self.operand(value))
-            } else {
-                parser.word().and_then(|word| match word {
-                    b"true" => self.operand(Value::Boolean(true)),
-                    b"false" => self.operand(Value::Boolean(false)),
-                    b"null" => self.operand(Value::Null),
-                    b"BI" => self.inline_image(&mut parser, resources),
-                    _ => self.operator(word, resources),
-                })
-            };
+            let result = token(&mut parser).and_then(|token| match token {
+                Some(Token::Operand(value)) => self.operand(value),
+                Some(Token::Operator(b"BI")) => self.inline_image(&mut parser, resources),
+                Some(Token::Operator(word)) => self.operator(word, resources),
+                None => Ok(()),
+            });
             result.map_err(|e| stream_error(e, offset, origins))?;
         }
         if !self.operands.is_empty()
