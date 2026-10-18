@@ -15,6 +15,8 @@ COMMANDS = [
     (CARGO + ["clippy", *OFFLINE, "--workspace", "--all-targets", "--", "-D", "warnings"], {}),
     (CARGO + ["test", *OFFLINE, "--workspace", "--all-targets"], {}),
     (CARGO + ["test", *OFFLINE, "--workspace", "--doc"], {}),
+    # The codec encoders against independent decoders; cargo tests never start Python.
+    ([sys.executable, "tools/verify_encoders.py"], {}),
     (CARGO + ["doc", *OFFLINE, "--workspace", "--no-deps"], {"RUSTDOCFLAGS": "-D warnings"}),
     (CARGO + ["build", *OFFLINE, "--release", "-p", "pagura-host", "--target", "wasm32-wasip1"], {}),
     # Matching opt-in font builds exercise informational diagnostics without

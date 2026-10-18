@@ -698,13 +698,14 @@ def inflate_exact(encoded):
 
 
 def verify_encoded_batch(payload):
-    """Validate Rust-produced bytes passed by the Rust tests, not generated here.
+    """Validate Rust-produced bytes from tools/verify_encoders.py, not generated here.
 
     Frames are >BIIIII (kind, encoded size, pixel size, width, height, channels),
     followed by encoded and expected bytes. All expected bytes are independent
     fixture data; this module never imports, runs or calls the product.
+    Returns the number of zlib streams and of PNG images verified.
     """
-    count, pos = 0, 0
+    counts, pos = [0, 0], 0
     while pos < len(payload):
         kind, size, plain_size, width, height, channels = struct.unpack_from(">BIIIII", payload, pos)
         pos += 21
@@ -717,12 +718,7 @@ def verify_encoded_batch(payload):
             assert kind == 1
             w, h, c, pixels, _ = decode_png(encoded)
             assert (w,h,c,pixels) == (width,height,channels,expected)
-        count += 1
+        counts[kind] += 1
     assert pos == len(payload)
-    return count
+    return counts[0], counts[1]
 
-
-if __name__ == "__main__":
-    import sys
-    assert sys.argv[1:] == ["verify"]
-    print(f"Independent Python oracle verified {verify_encoded_batch(sys.stdin.buffer.read())} encoded streams/images")
