@@ -45,9 +45,12 @@ layout, test placement, tag placement and spelling, error positions,
    and the same direction, and would split the error vocabulary from the
    readers that produce it.
 2. **Context builders keep the innermost context** on both `Error` and
-   `Diagnostic`, and a `Position::Stream` records its stream as the object.
-   A position or object recorded close to the fault is the most precise
-   one; outer callers add context only where none is known.
+   `Diagnostic`: a position or object recorded close to the fault is the
+   most precise one, and outer callers add context only where none is
+   known. `at` sets only the position, because inside an object stream the
+   position names the stream while the object is the compressed object
+   being parsed. `within`, which places a codec's buffer offset in the
+   stream it decoded, also records that stream as the object.
 3. **Public types of `pagura-core` are evolvable.** `ErrorKind`, `Position`,
    `Origin`, `Recovery`, `DiagnosticKind`, `Error`, `Diagnostic` and
    `DirectStream` are `#[non_exhaustive]`; `Rect`'s fields are private. `Value` and
