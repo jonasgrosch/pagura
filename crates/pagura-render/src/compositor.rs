@@ -17,7 +17,6 @@ mod plan;
 mod reduced;
 mod regions;
 mod sampled;
-mod scene;
 mod shading;
 mod soft_mask;
 mod surface;

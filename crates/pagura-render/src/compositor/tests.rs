@@ -1,7 +1,7 @@
-use super::scene::normal_scene;
 use super::*;
 use crate::RenderOptions;
 use crate::display::DisplayList;
+use crate::display::scene::normal_scene;
 use crate::transparency::{Composite, MaskMethod, SoftMask};
 use pagura_raster::{Pixmap, Point};
 

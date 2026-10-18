@@ -1,6 +1,6 @@
 //! The page: chunked rendering, spot passes and conversion to output pixels.
 
-use super::{Backdrop, Context, Frame, Separations, Surface, colorants, plan, regions, scene, transfer};
+use super::{Backdrop, Context, Frame, Separations, Surface, colorants, plan, regions, transfer};
 use crate::display::DisplayList;
 use crate::transparency::Model;
 use crate::{RenderOptions, Tile};
@@ -23,7 +23,7 @@ impl Context {
             && !separations.enabled
             && !list.group.knockout
             && list.group.model.is_none_or(|m| m == Model::Rgb)
-            && scene::normal_scene(&list.commands);
+            && crate::display::scene::normal_scene(&list.commands);
         let model = list.group.model.unwrap_or(if separations.enabled {
             Model::Cmyk
         } else {

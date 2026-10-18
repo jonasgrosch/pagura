@@ -2,7 +2,6 @@
 //! the 8-bit tile, without group surfaces (11.3.3, 11.4.5).
 
 use super::{Command, DisplayList, GlyphCache, GlyphRun, Mark, PathCommand, contextual};
-use crate::color::Color;
 use crate::{RenderOptions, Tile};
 use pagura_core::{Error, Limits, Meter, Result};
 use pagura_raster::{
@@ -203,26 +202,4 @@ impl PathCommand {
         }
         Ok(())
     }
-}
-
-/// Opaque Normal non-knockout RGB groups are source-over associative
-/// (11.3.3, 11.4.5); no intermediate surface or colour conversion is needed.
-pub(super) fn opaque_commands(commands: &[Command]) -> bool {
-    commands.iter().all(|command| match command {
-        Command::Glyphs(run) => {
-            run.paint.composite.simple() && matches!(run.paint.color, Color::Solid { .. })
-        }
-        Command::Path(p) => p.composite.simple() && matches!(p.color, Color::Solid { .. }),
-        Command::Group(g) => {
-            g.composite.simple()
-                && g.attributes.view.is_none()
-                && !g.attributes.knockout
-                && (!g.attributes.isolated
-                    || g.attributes
-                        .model
-                        .is_none_or(|m| m == crate::transparency::Model::Rgb))
-                && opaque_commands(&g.commands)
-        }
-        Command::Shading(_) | Command::Image(_) => false,
-    })
 }
