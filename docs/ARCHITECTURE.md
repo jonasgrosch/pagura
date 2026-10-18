@@ -22,7 +22,7 @@ Dependencies point downward only and are fixed in the crate manifests.
 | `pagura-codec` | stream filters and predictors with streaming output caps | documents, references |
 | `pagura-crypto` | MD5, SHA-2, RC4, AES; the standard security handler from plain parameters | the object model beyond `ObjectId` |
 | `pagura-document` | immutable source bytes, cross-reference data and revisions, lazily parsed and cached objects, decoded streams, typed page tree, recovery | content streams, pixels |
-| `pagura-raster` | geometry, paths, flattening, exact-area fill, stroking, masks, `Pixmap` | PDF |
+| `pagura-raster` | geometry, paths, flattening, exact-area fill, stroking, masks, `Pixmap`; the one float-to-byte quantizer (ADR 0022) | PDF |
 | `pagura-font` | font programs (TrueType/OpenType, CFF/CFF2, Type 1) as outlines, advances, encodings and cmaps | PDF dictionaries |
 | `pagura-text` | PDF font dictionaries, encodings, widths, CMaps and ToUnicode; shown strings to positioned glyphs | content streams, pixels |
 | `pagura-image` | image XObjects and inline images; JPEG, CCITT, JBIG2 and JPEG 2000 decoding to samples | painting, colour conversion |
