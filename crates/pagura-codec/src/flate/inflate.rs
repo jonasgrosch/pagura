@@ -1,7 +1,7 @@
 //! DEFLATE decoding (RFC 1951 3.2) inside optional zlib framing (RFC 1950 2.2).
 use super::adler;
 use super::tables::{DIST_BASE, DIST_EXTRA, LENGTH_BASE, LENGTH_EXTRA};
-use crate::report::{repair, syntax, trailing};
+use crate::report::{Trailer, repair, syntax, trailing};
 use crate::{Predictor, output::Output, repairs};
 use pagura_core::{Diagnostics, Error, Result};
 
@@ -114,7 +114,7 @@ fn inflate(
                 }
                 bits.offset += 4;
             }
-            trailing(input, bits.offset, false, diagnostics)?;
+            trailing(input, bits.offset, Trailer::Nothing, diagnostics)?;
             inflater.output.finish(bits.offset)
         }
         Err(Fault::End) => {

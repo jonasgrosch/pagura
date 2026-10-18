@@ -16,6 +16,7 @@ pub(crate) use inflate::{decode, raw};
 
 /// Compression effort. Both modes emit deterministic RFC 1950 zlib streams.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Level {
     /// Short hash-chain searches and greedy matches.
     Fast,
