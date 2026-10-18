@@ -18,5 +18,7 @@ pagura.workspace = true
 default = []
 bundled-data = ["pagura/bundled-data"]
 
+cjk-fonts = ["pagura/cjk-fonts"]
+
 [dev-dependencies]
 pagura-testkit.workspace = true

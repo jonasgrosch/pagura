@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "text",
-  "scope": "The rule paraphrases and exact ISO locators below were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text (ISO_32000-2_sponsored_EC3.txt): PDF string-decoding/spacing interfaces, supported font dictionaries and embedding bindings, character selection, widths/CID metrics, PDF-specific CMap rules and ToUnicode. Every code-to-name slot of Standard, MacRoman, WinAnsi, PDFDoc, Symbol and ZapfDingbats was compared with Annex D; MacExpert was also checked. This is not verification of Adobe Glyph List rules, TN5014 grammar or external font-program binary formats. Provider additions were checked against ISO 9.6.2.2/Table 109 and 9.9.2, 9.8.1-9.8.2/Tables 120-121, 9.7.5.2/Table 116 and 9.10.2, and TN5014 sections 5.1-5.4 for pinned resource inheritance. AFM values and Unicode projection choices are checked against the pinned data files, not claimed as verification of external AFM or sfnt format standards. Recovery additions were checked against ISO 9.7.4.1 Table 115, 9.7.4.2, 9.7.5.4, 9.7.6.2, 9.10.3 and TN5014 7.4. Tolerant interpretations depart from those rules as individually reported below; corpus acceptance is evidence of tolerance, not standards conformance. Round 5 rechecks the PDF TrueType routes against 9.6.5.4 and Table 113 in the same local ISO text; final-paragraph alternatives are reader policy. Retained byte accounting is ADR 0012 policy, not a numerical requirement of Annex C.1. Substitution and optional-weight handling were checked against ISO 9.6.2.1-9.6.2.2, 9.6.5.2, 9.6.5.4, 9.8.1-9.8.2/Tables 120-121 and 9.9.2 in the same local text. Sixty-six Russian AFII name-to-scalar records were compared with local adobe-glyph-list data. Short aliases and invalid-weight discard are documented policies; full external AGL/AGLFN algorithm verification is not claimed.",
+  "scope": "The rule paraphrases and exact ISO locators below were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text (ISO_32000-2_sponsored_EC3.txt): PDF string-decoding/spacing interfaces, supported font dictionaries and embedding bindings, character selection, widths/CID metrics, PDF-specific CMap rules and ToUnicode. Every code-to-name slot of Standard, MacRoman, WinAnsi, PDFDoc, Symbol and ZapfDingbats was compared with Annex D; MacExpert was also checked. This is not verification of Adobe Glyph List rules, TN5014 grammar or external font-program binary formats. Provider additions were checked against ISO 9.6.2.2/Table 109 and 9.9.2, 9.8.1-9.8.2/Tables 120-121, 9.7.5.2/Table 116 and 9.10.2, and TN5014 sections 5.1-5.4 for pinned resource inheritance. AFM values and Unicode projection choices are checked against the pinned data files, not claimed as verification of external AFM or sfnt format standards. Recovery additions were checked against ISO 9.7.4.1 Table 115, 9.7.4.2, 9.7.5.4, 9.7.6.2, 9.10.3 and TN5014 7.4. Tolerant interpretations depart from those rules as individually reported below; corpus acceptance is evidence of tolerance, not standards conformance. Round 5 rechecks the PDF TrueType routes against 9.6.5.4 and Table 113 in the same local ISO text; final-paragraph alternatives are reader policy. Retained byte accounting is ADR 0012 policy, not a numerical requirement of Annex C.1. Substitution and optional-weight handling were checked against ISO 9.6.2.1-9.6.2.2, 9.6.5.2, 9.6.5.4, 9.8.1-9.8.2/Tables 120-121 and 9.9.2 in the same local text. Sixty-six Russian AFII name-to-scalar records were compared with local adobe-glyph-list data. Short aliases and invalid-weight discard are documented policies; full external AGL/AGLFN algorithm verification is not claimed. Horizontal CID substitution and Symbol/Dingbats additions were checked against the same local ISO text: 9.6.2.2, 9.6.5.2/Table 112, 9.6.5.4, 9.7.3/Table 114, 9.7.4.2-9.7.4.3, 9.7.5 and 9.10.2-9.10.3. CFF INDEX, DICT, charset layouts and standard SIDs used by the Foxit oracle were checked against local TN5176 sections 4, 5, 8-10, 13-14 and Appendix A. Regional OTF cmap expectations are independent binary-layout oracles; primary OpenType format review remains pending. Collection projection, Unicode subtable preference, horizontal-only substitutes and coalesced coverage diagnostics are explicit provider policies.",
   "requirements": [
     {
       "id": "text-type3",
@@ -726,7 +726,7 @@
         "text/standard14-differences",
         "text/bundled-standard-inventory"
       ],
-      "gaps": "Symbol and ZapfDingbats metrics work; outlines remain unavailable. Alias normalization is an explicit compatibility choice.",
+      "gaps": "None for bundled standard 14 metrics and horizontal outlines; unprovided resources stay explicit.",
       "verification": {
         "rule": "The standard 14 fonts must be available through original metrics and suitable substitutes; legacy PDFs may omit widths and descriptors.",
         "implementation": "ISO rule agrees; all AFM glyph-name widths, assigned codes, descriptor values, canonical font names and listed aliases match independent file expectations.",
@@ -1197,7 +1197,7 @@
         "text/substitute-unsafe-symbolic-both",
         "text/substitute-unsafe-symbolic-known-base"
       ],
-      "gaps": "Unknown symbolic encodings, non-embedded CID fonts and metrics-only Symbol/Dingbats remain Unsupported. AGL/AGLFN naming algorithms beyond the existing subset remain pending primary-text review.",
+      "gaps": "Unknown symbolic encodings and CID collections without provider data remain Unsupported; vertical CID substitutes are explicitly unsupported. AGL/AGLFN naming algorithms beyond the existing subset remain pending primary-text review.",
       "verification": {
         "rule": "Font names and descriptor attributes can select external substitutes; explicit encodings determine names, glyph-name Unicode selects TrueType glyphs, and PDF widths preserve advances. Subset tags contain six uppercase letters and a plus.",
         "implementation": "Known family suffixes b, i, bi/ib and repeated b resolve canonical styles within the existing bounded alias matcher. Existing symbolic guards and embedded-program precedence remain unchanged. Sixty-six Russian AFII records were checked directly against local AGL data.",
@@ -1250,6 +1250,83 @@
         "verdict": "Table 120 domain check agrees; discarding an invalid optional hint is explicit compatibility policy.",
         "choices": [
           "Do not round or clamp invalid weights into another style. Ignore the invalid optional value and use normal weight 400, retaining Italic, Serif, FixedPitch and ForceBold selection."
+        ]
+      }
+    },
+    {
+      "id": "text-symbol-substitution",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.6.2.2",
+        "9.6.5.2",
+        "9.6.5.4"
+      ],
+      "status": "Standard Symbol and ZapfDingbats substitutes use AFM code-to-name encodings or Differences and CFF charset names; PDF Widths override AFM advances.",
+      "tests": [
+        "text/substitute-Symbol-charset",
+        "text/substitute-Symbol-differences",
+        "text/substitute-Symbol-differences-widths",
+        "text/substitute-Symbol-truetype-symbolic",
+        "text/substitute-ZapfDingbats-charset",
+        "text/substitute-ZapfDingbats-differences",
+        "text/substitute-ZapfDingbats-differences-widths",
+        "text/substitute-Symbol-truetype-nonsymbolic"
+      ],
+      "gaps": "Unknown symbolic fonts remain unsupported; no synthetic glyph-name guessing.",
+      "verification": {
+        "rule": "Standard Symbol and ZapfDingbats substitutes use AFM code-to-name encodings or Differences and CFF charset names; PDF Widths override AFM advances.",
+        "implementation": "agrees with the cited PDF rules within the documented substitution policy",
+        "expectations": "AFM widths and names, independently parsed CFF charsets or regional OTF cmap glyph IDs, and independent collection Unicode projection; no Rust output",
+        "verdict": "ISO subset agrees; substitution selection is documented policy",
+        "choices": [
+          "Known symbolic TrueType substitutes without a usable original program use the known AFM built-in code encoding, ignoring a Latin Encoding entry as for the symbolic 9.6.5.4 route; Type 1 Encoding and Differences retain their normal meaning.",
+          "For a nonsymbolic TrueType font with a known Symbol/Dingbats base name and named Latin Encoding, names absent from the substitute fall back to the AFM built-in code mapping; explicit Differences retain their meaning. This is a reader fallback permitted by the final paragraph of 9.6.5.4, not an input repair."
+        ]
+      }
+    },
+    {
+      "id": "text-cid-substitution",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.7.3",
+        "9.7.4.2",
+        "9.7.4.3",
+        "9.7.5",
+        "9.10.2",
+        "9.10.3"
+      ],
+      "status": "CID collection identities determine character meaning; the PDF CMap selects CIDs, and W/DW supply advances independently of the external program; ToUnicode serves extraction only.",
+      "tests": [
+        "text/substitute-cid-Japan1-CIDFontType0",
+        "text/substitute-cid-Japan1-CIDFontType2",
+        "text/substitute-cid-Japan1-tounicode",
+        "text/substitute-cid-Japan1-vertical",
+        "text/substitute-cid-GB1-CIDFontType0",
+        "text/substitute-cid-GB1-CIDFontType2",
+        "text/substitute-cid-GB1-tounicode",
+        "text/substitute-cid-GB1-vertical",
+        "text/substitute-cid-CNS1-CIDFontType0",
+        "text/substitute-cid-CNS1-CIDFontType2",
+        "text/substitute-cid-CNS1-tounicode",
+        "text/substitute-cid-CNS1-vertical",
+        "text/substitute-cid-Korea1-CIDFontType0",
+        "text/substitute-cid-Korea1-CIDFontType2",
+        "text/substitute-cid-Korea1-tounicode",
+        "text/substitute-cid-Korea1-vertical",
+        "text/substitute-cid-missing-unicode",
+        "text/substitute-cid-missing-glyph",
+        "text/substitute-cid-mismatched-collection",
+        "text/substitute-cid-identity-unknown",
+        "text/substitute-cid-wmode"
+      ],
+      "gaps": "Primary OpenType cmap binary-format review remains pending; independent Python format 4/12 decoding and pinned program data are the current evidence.",
+      "verification": {
+        "rule": "CID collection identities determine character meaning; the PDF CMap selects CIDs, and W/DW supply advances independently of the external program; ToUnicode serves extraction only.",
+        "implementation": "agrees with the cited PDF rules within the documented substitution policy",
+        "expectations": "AFM widths and names, independently parsed CFF charsets or regional OTF cmap glyph IDs, and independent collection Unicode projection; no Rust output",
+        "verdict": "ISO subset agrees; substitution selection is documented policy",
+        "choices": [
+          "Horizontal collection CIDs project through the provider Unicode table and regional substitute Unicode cmap, preferring Windows full Unicode, Windows BMP, then platform Unicode. Multi-scalar values and missing Unicode/glyphs draw no mark and preserve CID widths. A bounded load-time reachable-CID check reports incomplete coverage once per descendant, including notdef. Vertical substitutes fail font.cid-substitute-vertical; embedded vertical fonts remain supported. Shared provider programs and tables are excluded from per-font retained estimates."
         ]
       }
     }

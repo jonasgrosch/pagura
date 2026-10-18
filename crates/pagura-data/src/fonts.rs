@@ -32,8 +32,13 @@ impl Fonts {
             return Ok(Some(Arc::clone(value)));
         }
         let metrics = Arc::new(crate::afm::parse(afm, self.limits)?);
+        let format = if matches!(name, b"Symbol" | b"ZapfDingbats") {
+            FontFormat::Cff
+        } else {
+            FontFormat::TrueType
+        };
         let program = outline
-            .map(|data| FontProgram::parse(data, FontFormat::TrueType, &self.limits).map(Arc::new))
+            .map(|data| FontProgram::parse(data, format, &self.limits).map(Arc::new))
             .transpose()?;
         let value = Arc::new(StandardFont { metrics, program });
         let mut cache = self.cache.lock().unwrap_or_else(PoisonError::into_inner);
@@ -107,12 +112,12 @@ fn entry(name: &[u8]) -> Option<Entry> {
         b"Symbol" => (
             b"Symbol",
             include_bytes!("../../../data/afm/Symbol.afm"),
-            None,
+            Some(include_bytes!("../../../data/fonts/FoxitSymbol.cff").as_slice()),
         ),
         b"ZapfDingbats" => (
             b"ZapfDingbats",
             include_bytes!("../../../data/afm/ZapfDingbats.afm"),
-            None,
+            Some(include_bytes!("../../../data/fonts/FoxitDingbats.cff").as_slice()),
         ),
         _ => return None,
     })

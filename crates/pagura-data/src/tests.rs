@@ -8,7 +8,7 @@ use pagura_document::{Document, OpenOptions};
 use pagura_testkit::fixture;
 use pagura_text::{GlyphShape, PdfFont};
 
-fn expected(name: &str, suffix: &str) -> Result<Vec<Value>> {
+pub(super) fn expected(name: &str, suffix: &str) -> Result<Vec<Value>> {
     let bytes = fixture("text", &format!("{name}.{suffix}"));
     let value = Parser::new(&bytes, Origin::Buffer, Limits::default()).parse()?;
     if let Value::Array(values) = value {
@@ -17,28 +17,28 @@ fn expected(name: &str, suffix: &str) -> Result<Vec<Value>> {
         Err(Error::syntax("oracle must be an array"))
     }
 }
-fn row(value: &Value) -> Result<&[Value]> {
+pub(super) fn row(value: &Value) -> Result<&[Value]> {
     value
         .as_array()
         .ok_or_else(|| Error::syntax("oracle must be a row"))
 }
-fn number(value: &Value) -> Result<f64> {
+pub(super) fn number(value: &Value) -> Result<f64> {
     value
         .as_number()
         .ok_or_else(|| Error::syntax("oracle must be numeric"))
 }
-fn integer(value: &Value) -> Result<u32> {
+pub(super) fn integer(value: &Value) -> Result<u32> {
     value
         .as_integer()
         .and_then(|v| u32::try_from(v).ok())
         .ok_or_else(|| Error::syntax("oracle must be an unsigned integer"))
 }
-fn text(value: &Value) -> Option<&str> {
+pub(super) fn text(value: &Value) -> Option<&str> {
     value
         .as_string()
         .and_then(|bytes| std::str::from_utf8(bytes).ok())
 }
-fn names(inventory: &str) -> Result<Vec<String>> {
+pub(super) fn names(inventory: &str) -> Result<Vec<String>> {
     expected(inventory, "out")?
         .iter()
         .map(|value| {
@@ -48,19 +48,19 @@ fn names(inventory: &str) -> Result<Vec<String>> {
         })
         .collect()
 }
-fn open(name: &str) -> Result<Document> {
+pub(super) fn open(name: &str) -> Result<Document> {
     Document::open(
         fixture("text", &format!("{name}.pdf")),
         &OpenOptions::default(),
     )
 }
-fn dictionary(document: &Document) -> Result<&pagura_core::Dictionary> {
+pub(super) fn dictionary(document: &Document) -> Result<&pagura_core::Dictionary> {
     document
         .object(pagura_core::ObjectId::new(4, 0))?
         .dictionary()
         .ok_or_else(|| Error::syntax("missing font dictionary"))
 }
-fn near(actual: f64, expected: f64) {
+pub(super) fn near(actual: f64, expected: f64) {
     assert!((actual - expected).abs() < 1e-12, "{actual} != {expected}");
 }
 
@@ -262,6 +262,10 @@ fn collection_unicode_aliases_match_independent_rows() -> Result<()> {
 #[test]
 fn unavailable_resources_are_explicit_and_not_cached_as_guesses() -> Result<()> {
     let provider = Bundled::default();
+    assert!(provider.cid_font(b"Unknown", b"Japan1")?.is_none());
+    assert!(provider.cid_font(b"Adobe", b"Unknown")?.is_none());
+    #[cfg(not(feature = "cjk-fonts"))]
+    assert!(provider.cid_font(b"Adobe", b"Japan1")?.is_none());
     assert!(provider.standard_font(b"Unknown")?.is_none());
     assert!(provider.predefined_cmap(b"Unknown")?.is_none());
     assert!(provider.cid_to_unicode(b"Unknown", b"Japan1")?.is_none());
@@ -290,6 +294,11 @@ fn parsing_budgets_fail_before_publication() {
         },
     ] {
         let provider = Bundled::new(limits);
+        #[cfg(feature = "cjk-fonts")]
+        assert_eq!(
+            provider.cid_font(b"Adobe", b"Japan1").unwrap_err().kind,
+            pagura_core::ErrorKind::Limit
+        );
         #[cfg(feature = "standard-fonts")]
         assert_eq!(
             provider.standard_font(b"Helvetica").unwrap_err().kind,
@@ -471,6 +480,15 @@ fn notices_accompany_every_enabled_data_set() {
             "Apache License, Version 2.0"
         ));
         assert!(has("Apache License, Version 2.0", "TERMS AND CONDITIONS"));
+        assert!(has(
+            "Foxit Symbol and Dingbats",
+            "Redistributions in binary form"
+        ));
+    }
+    if cfg!(feature = "cjk-fonts") {
+        assert!(has("Source Han Sans", "SIL OPEN FONT LICENSE"));
+    } else {
+        assert!(!notices.iter().any(|(name, _)| *name == "Source Han Sans"));
     }
     if cfg!(feature = "cmaps") {
         assert!(has(
@@ -478,4 +496,21 @@ fn notices_accompany_every_enabled_data_set() {
             "Redistributions in binary form"
         ));
     }
+}
+
+#[cfg(all(feature = "cmaps", not(feature = "cjk-fonts")))]
+#[test]
+fn cjk_programs_are_opt_in_and_missing_programs_fail_explicitly() -> Result<()> {
+    let provider = Bundled::default();
+    for ordering in ["Japan1", "GB1", "CNS1", "Korea1"] {
+        let document = open(&format!("substitute-cid-{ordering}-CIDFontType2"))?;
+        assert_eq!(
+            PdfFont::load_with(&document, dictionary(&document)?, &provider)
+                .unwrap_err()
+                .kind,
+            pagura_core::ErrorKind::Unsupported(pagura_text::features::NON_EMBEDDED)
+        );
+        assert_eq!(document.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
+    }
+    Ok(())
 }

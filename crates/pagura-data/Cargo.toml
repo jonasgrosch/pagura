@@ -15,6 +15,7 @@ workspace = true
 default = ["standard-fonts", "cmaps"]
 standard-fonts = []
 cmaps = []
+cjk-fonts = ["cmaps"]
 
 [dependencies]
 pagura-core.workspace = true

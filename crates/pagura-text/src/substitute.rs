@@ -46,11 +46,35 @@ pub(crate) fn load(
         )?,
     };
     let data = provider.standard_font(selected)?.ok_or_else(unavailable)?;
-    let names = encoding::load(
-        document,
-        font.get(b"Encoding"),
-        data.metrics.encoding.clone(),
-    )?;
+    let encoding = if kind == FontKind::TrueType
+        && descriptor.is_some_and(|d| {
+            d.get(b"Flags")
+                .and_then(Value::as_integer)
+                .is_some_and(|f| f & 4 != 0)
+        }) {
+        None
+    } else {
+        font.get(b"Encoding")
+    };
+    let mut names = encoding::load(document, encoding, data.metrics.encoding.clone())?;
+    // A named Latin encoding can accompany a nonsymbolic declaration on a
+    // known Symbol TrueType face. After the name route fails, 9.6.5.4 permits
+    // reader fallbacks: use the known AFM code mapping. Explicit Differences
+    // retain their names, including undefined glyphs; no name is guessed.
+    if kind == FontKind::TrueType
+        && matches!(standard, Some(b"Symbol" | b"ZapfDingbats"))
+        && optional(document, font, b"Encoding")?.is_some_and(|v| v.as_name().is_some())
+        && let Some(program) = &data.program
+    {
+        for (name, builtin) in names.iter_mut().zip(&data.metrics.encoding) {
+            if name
+                .as_ref()
+                .is_none_or(|n| program.glyph_for_name(n.as_bytes()).is_none())
+            {
+                name.clone_from(builtin);
+            }
+        }
+    }
     let metrics = if standard.is_some() && optional(document, font, b"Widths")?.is_none() {
         Metrics::standard(&data.metrics, &names)
     } else {
@@ -215,6 +239,8 @@ fn canonical(family: u8, bold: bool, italic: bool) -> &'static [u8] {
 
 fn substitution_message(name: &[u8]) -> &'static str {
     match name {
+        b"Symbol" => "substitute outlines for Symbol",
+        b"ZapfDingbats" => "substitute outlines for ZapfDingbats",
         b"Courier" => "substitute outlines for Courier",
         b"Courier-Bold" => "substitute outlines for Courier-Bold",
         b"Courier-Oblique" => "substitute outlines for Courier-Oblique",

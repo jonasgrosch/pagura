@@ -35,7 +35,8 @@ pub use pagura_write::{Builder, NewObject};
 use std::sync::Arc;
 
 /// Creates document-bound rendering resources using the feature-selected data.
-/// Keep this context when compiling or rendering many pages.
+/// Keep this context when compiling or rendering many pages. The opt-in
+/// `cjk-fonts` feature adds horizontal collection-specific substitutes.
 pub fn render_context(document: Arc<Document>) -> RenderContext {
     #[cfg(feature = "bundled-data")]
     {
@@ -47,7 +48,8 @@ pub fn render_context(document: Arc<Document>) -> RenderContext {
 }
 
 /// Compiles one page. For many pages, keep a [`render_context`]. The default
-/// `bundled-data` feature provides standard-font substitutes and predefined CMaps.
+/// `bundled-data` feature provides standard-font substitutes and predefined CMaps;
+/// `cjk-fonts` adds horizontal CID substitutes and is off by default.
 ///
 /// # Errors
 /// As [`pagura_render::compile_page`] and the feature-selected provider.
@@ -83,7 +85,8 @@ pub fn render_tile(
     compile_page(document, page)?.render_tile(options, tile)
 }
 
-/// Licence notices for font and CMap data linked by this facade's features. Distributors must
+/// Licence notices for font and CMap data, including opt-in CJK outlines,
+/// linked by this facade's features. Distributors must
 /// reproduce these notices; the CLI exposes them through `pagura licenses`.
 pub fn data_notices() -> impl Iterator<Item = (&'static str, &'static str)> {
     #[cfg(feature = "bundled-data")]

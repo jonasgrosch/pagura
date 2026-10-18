@@ -1,0 +1,45 @@
+%PDF-1.7
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 10 10] >>
+endobj
+4 0 obj
+<< /Subtype /Type0 /BaseFont /Collection /DescendantFonts [5 0 R] /Encoding /UniCNS-UCS2-H /ToUnicode 8 0 R >>
+endobj
+5 0 obj
+<< /Subtype /CIDFontType2 /BaseFont /Collection /CIDSystemInfo << /Registry (Adobe) /Ordering (CNS1) /Supplement 0 >> /FontDescriptor 6 0 R  /DW 923 /W [595 [731]] /CIDToGIDMap /Identity >>
+endobj
+6 0 obj
+<< /Flags 4 /FontName /Collection >>
+endobj
+7 0 obj
+null
+endobj
+8 0 obj
+<< /Length 91 >>
+stream
+1 begincodespacerange <0000> <ffff> endcodespacerange 1 beginbfchar <4e00> <0041> endbfchar
+endstream
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000190 00000 n 
+0000000316 00000 n 
+0000000521 00000 n 
+0000000573 00000 n 
+0000000593 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+734
+%%EOF

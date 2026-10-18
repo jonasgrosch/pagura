@@ -95,6 +95,14 @@ pub(crate) struct CMap {
 }
 
 impl CMap {
+    // Include explicit notdef mappings and the implicit CID 0 fallback.
+    pub(crate) fn cids(&self) -> impl Iterator<Item = u32> + '_ {
+        self.mappings
+            .cids()
+            .chain(self.notdef.cids())
+            .chain(std::iter::once(0))
+    }
+
     pub(crate) fn heap_bytes(&self) -> usize {
         let names = [&self.use_name, &self.registry, &self.ordering]
             .into_iter()

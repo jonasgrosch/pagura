@@ -30,6 +30,17 @@ impl CidMap {
         crate::memory::tree::<Code, CidRange>(self.0.len())
     }
 
+    pub(crate) fn cids(&self) -> impl Iterator<Item = u32> + '_ {
+        self.0.values().flat_map(|range| {
+            let end = if range.increment {
+                range.cid + (range.last.value - range.first.value)
+            } else {
+                range.cid
+            };
+            range.cid..=end
+        })
+    }
+
     pub(crate) fn len(&self) -> usize {
         self.0.len()
     }

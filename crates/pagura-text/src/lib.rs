@@ -25,6 +25,7 @@ use pagura_font::{FontProgram, GlyphId};
 use pagura_raster::Transform;
 use std::sync::Arc;
 
+mod cid_substitute;
 mod cidmap;
 mod cmap;
 mod encoding;
@@ -37,6 +38,7 @@ mod provider;
 pub mod repairs;
 mod substitute;
 
+pub use cid_substitute::CID_GLYPH_MISSING;
 /// Stable diagnostic tag for a host-provided outline substitution.
 pub use program::STREAM_LENGTHS;
 pub use substitute::SUBSTITUTED;
@@ -53,6 +55,9 @@ pub mod features {
 
     /// A font whose program is not embedded and has no substitute yet.
     pub const NON_EMBEDDED: Feature = Feature::new("font.non-embedded");
+    /// Vertical substitute glyph forms are unavailable; embedded vertical fonts
+    /// keep their existing support.
+    pub const CID_SUBSTITUTE_VERTICAL: Feature = Feature::new("font.cid-substitute-vertical");
     /// A CMap requires PostScript evaluation beyond declarative mappings.
     pub const CMAP_PROGRAM: Feature = Feature::new("font.cmap-program");
     /// Historical ambiguity tag; supported TrueType selection no longer emits it.
@@ -228,7 +233,9 @@ impl PdfFont {
     pub fn type3_resources(&self) -> Option<&Dictionary> {
         match &self.source {
             font::Source::Type3 { resources, .. } => resources.as_ref(),
-            font::Source::Program { .. } | font::Source::MetricsOnly => None,
+            font::Source::Program { .. }
+            | font::Source::MetricsOnly
+            | font::Source::CidSubstitute { .. } => None,
         }
     }
 

@@ -6,6 +6,7 @@ ISO 32000-2 mapping rules. No product executable is imported or invoked.
 from __future__ import annotations
 
 import struct
+from functools import cache
 
 from .model import Vector
 from .pdf import document, stream
@@ -668,6 +669,93 @@ def bundled_tt_glyph(path, scalar):
     return 0
 
 
+def bundled_cff_charset(path):
+    """TN5176 sections 4, 5, 8-10, 13 and 14: read INDEX, Top DICT and name charset.
+
+    Only the pinned bare CFF resources use this oracle. Standard SIDs below
+    are facts from TN5176 Appendix A; custom SIDs index the file's String INDEX.
+    """
+    raw = path.read_bytes()
+
+    def index(at):
+        count = int.from_bytes(raw[at:at+2], "big")
+        at += 2
+        if not count:
+            return [], at
+        width = raw[at]
+        at += 1
+        offsets = [int.from_bytes(raw[at+i*width:at+(i+1)*width], "big")
+                   for i in range(count+1)]
+        at += width*(count+1)
+        return [raw[at+a-1:at+b-1] for a,b in zip(offsets,offsets[1:])], at+offsets[-1]-1
+
+    _, at = index(raw[2])
+    tops, at = index(at)
+    strings, _ = index(at)
+    stack, fields, at = [], {}, 0
+    top = tops[0]
+    while at < len(top):
+        byte = top[at]
+        at += 1
+        if byte <= 21:
+            if byte == 12:
+                byte = (12, top[at])
+                at += 1
+            fields[byte], stack = stack, []
+        elif byte in (28,29):
+            length = 2 if byte == 28 else 4
+            stack.append(int.from_bytes(top[at:at+length], "big", signed=True))
+            at += length
+        elif byte == 30:
+            while top[at] & 15 != 15 and top[at] >> 4 != 15:
+                at += 1
+            at += 1
+            stack.append(None)  # Real operands are not offsets.
+        elif 32 <= byte <= 246:
+            stack.append(byte-139)
+        elif 247 <= byte <= 254:
+            extra = top[at]
+            at += 1
+            stack.append((byte-247)*256+extra+108 if byte <= 250
+                         else -(byte-251)*256-extra-108)
+        else:
+            raise ValueError("unexpected CFF DICT operand")
+    glyphs, _ = index(fields[17][0])
+    at = fields[15][0]
+    fmt = raw[at]
+    at += 1
+    sids = [0]
+    while len(sids) < len(glyphs):
+        first = int.from_bytes(raw[at:at+2], "big")
+        at += 2
+        if fmt == 0:
+            count = 1
+        else:
+            width = 1 if fmt == 1 else 2
+            assert fmt in (1,2)
+            count = int.from_bytes(raw[at:at+width], "big")+1
+            at += width
+        sids.extend(range(first, first+count))
+    assert len(sids) == len(glyphs)
+    standard = {0:".notdef",1:"space"}
+    # All other standard names used by the pinned symbol charset.
+    standard.update(CFF_SYMBOL_SIDS)
+    return {strings[sid-391].decode() if sid >= 391 else standard[sid]:gid
+            for gid,sid in enumerate(sids)}
+
+
+CFF_SYMBOL_SIDS = {
+    2:"exclam",4:"numbersign",6:"percent",7:"ampersand",9:"parenleft",
+    10:"parenright",12:"plus",13:"comma",15:"period",16:"slash",
+    **dict(enumerate("zero one two three four five six seven eight nine".split(),17)),
+    27:"colon",28:"semicolon",29:"less",30:"equal",31:"greater",32:"question",
+    60:"bracketleft",62:"bracketright",64:"underscore",92:"braceleft",93:"bar",
+    94:"braceright",99:"fraction",101:"florin",116:"bullet",121:"ellipsis",
+    151:"logicalnot",152:"mu",156:"plusminus",159:"divide",161:"degree",
+    166:"minus",168:"multiply",
+}
+
+
 def bundled_cmap(path, inventory, cache):
     """Independent file oracle. Expand intervals in Python, overlaying parents."""
     import re
@@ -712,12 +800,146 @@ def bundled_unicode(path):
     return result
 
 
+@cache
+def bundled_font_bytes(path):
+    return path.read_bytes()
+
+
+def bundled_otf_glyph(path, scalar):
+    """Independent sfnt format 4/12 lookup; no use of the OTF's CFF CIDs."""
+    raw = bundled_font_bytes(path)
+    count = struct.unpack_from(">H", raw, 4)[0]
+    tables = {tag: offset for tag,_,offset,_ in
+              (struct.unpack_from(">4sIII", raw,12+16*i) for i in range(count))}
+    cmap = tables[b"cmap"]
+    count = struct.unpack_from(">H",raw,cmap+2)[0]
+    records = [struct.unpack_from(">HHI",raw,cmap+4+8*i) for i in range(count)]
+    for platform,encoding in [(3,10),(3,1)]+[(0,e) for p,e,_ in records if p==0]:
+        for p,e,offset in records:
+            if (p,e) != (platform,encoding):
+                continue
+            base = cmap+offset
+            fmt = struct.unpack_from(">H",raw,base)[0]
+            if fmt == 12:
+                groups = struct.unpack_from(">I",raw,base+12)[0]
+                for i in range(groups):
+                    first,last,glyph = struct.unpack_from(">III",raw,base+16+12*i)
+                    if first <= scalar <= last:
+                        return glyph+scalar-first
+            elif fmt == 4 and scalar <= 0xffff:
+                segments = struct.unpack_from(">H",raw,base+6)[0]//2
+                ends = base+14
+                starts = ends+2*segments+2
+                deltas = starts+2*segments
+                offsets = deltas+2*segments
+                for j in range(segments):
+                    first = struct.unpack_from(">H",raw,starts+2*j)[0]
+                    last = struct.unpack_from(">H",raw,ends+2*j)[0]
+                    if first <= scalar <= last:
+                        delta = struct.unpack_from(">h",raw,deltas+2*j)[0]
+                        extra = struct.unpack_from(">H",raw,offsets+2*j)[0]
+                        if not extra:
+                            return (scalar+delta)&65535
+                        gid = struct.unpack_from(">H",raw,offsets+2*j+extra+2*(scalar-first))[0]
+                        return ((gid+delta)&65535) if gid else 0
+    return 0
+
+
+def symbol_substitute_cases(data, lock):
+    for base in ("Symbol","ZapfDingbats"):
+        item = lock["standard_14"][base]
+        _, afm = bundled_afm(data/item["metrics"])
+        charset = bundled_cff_charset(data/item["outline"])
+        encoded = [(c,n,w,charset[n]) for c,n,w in afm if c>=0]
+        name = "substitute-"+base+"-charset"
+        yield Vector(name,{".pdf":pdf(b"<< /Subtype /Type1 /BaseFont /"+base.encode()+b" >>"),
+                           ".input":bytes(c for c,_,_,_ in encoded),".out":expected(encoded),".base":base.encode()},
+                     ("text-symbol-substitution",),"Every encoded AFM glyph selects the independently decoded CFF charset name",{"driver":"bundled-symbol"})
+        selected = "theta1" if base=="Symbol" else "a202"
+        width = next(w for _,n,w in afm if n==selected)
+        for override in (False,True):
+            name = "substitute-"+base+"-differences"+("-widths" if override else "")
+            extra = b" /FirstChar 1 /LastChar 1 /Widths [731]" if override else b""
+            font = b"<< /Subtype /Type1 /BaseFont /"+base.encode()+b" /Encoding << /Differences [1 /"+selected.encode()+b"] >>"+extra+b" >>"
+            yield Vector(name,{".pdf":pdf(font),".input":b"\1",".out":expected([(1,selected,731 if override else width,charset[selected])]),".base":base.encode()},
+                         ("text-symbol-substitution",),"Differences selects CFF names; explicit PDF widths take precedence over AFM",{"driver":"bundled-symbol"})
+        if base=="Symbol":
+            font=b"<< /Subtype /TrueType /BaseFont /Symbol /Encoding /MacRomanEncoding /FontDescriptor 5 0 R >>"
+            yield Vector("substitute-Symbol-truetype-symbolic",{".pdf":pdf(font,[b"<< /Flags 4 >>"]),".input":b"A",".out":expected([(65,"Alpha",722,charset["Alpha"])]),".base":b"Symbol"},
+                         ("text-symbol-substitution",),"A symbolic TrueType substitute retains the Symbol encoding despite a Latin Encoding entry",{"driver":"bundled-symbol"})
+
+    charset = bundled_cff_charset(data/lock["standard_14"]["Symbol"]["outline"])
+    yield Vector("substitute-Symbol-truetype-nonsymbolic",{
+        ".pdf":pdf(b"<< /Subtype /TrueType /BaseFont /Symbol /Encoding /MacRomanEncoding /FontDescriptor 5 0 R >>",[b"<< /Flags 32 >>"]),
+        ".input":b"A", ".out":expected([(65,"Alpha",722,charset["Alpha"])]), ".base":b"Symbol"},
+        ("text-symbol-substitution",),"After the named Latin route lacks a glyph, a known Symbol TrueType face falls back to its AFM code mapping",{"driver":"bundled-symbol"})
+
+
+def cid_substitute_document(ordering, cmap, *, extra=b"", descendant=b"", subtype=b"CIDFontType2", unicode_map=None):
+    font = b"<< /Subtype /Type0 /BaseFont /Collection /DescendantFonts [5 0 R] /Encoding "+cmap
+    font += (b" /ToUnicode 8 0 R" if unicode_map else b"")+b" >>"
+    cidfont = b"<< /Subtype /"+subtype+b" /BaseFont /Collection /CIDSystemInfo << /Registry (Adobe) /Ordering ("+ordering.encode()+b") /Supplement 0 >> /FontDescriptor 6 0 R "+descendant+b" >>"
+    return pdf(font,[cidfont,b"<< /Flags 4 /FontName /Collection >>",stream(extra) if extra else b"null",stream(unicode_map) if unicode_map else b"null"])
+
+
+def cid_substitute_cases(data, lock):
+    folders = {p.name.split('-')[1]:p for p in (data/"cmaps").iterdir() if p.is_dir()}
+    inventory = {p.name:p for folder in folders.values() for p in folder.iterdir() if p.name!="cid2unicode.txt"}
+    cache = {}
+    prefixes = {"Japan1":"UniJIS","GB1":"UniGB","CNS1":"UniCNS","Korea1":"UniKS"}
+    for collection, outline in lock["cid_substitutes"].items():
+        ordering = collection.removeprefix("Adobe-")
+        cmap_name = prefixes[ordering]+"-UCS2-H"
+        codes,_,_,_ = bundled_cmap(inventory[cmap_name],inventory,cache)
+        unicode = bundled_unicode(folders[ordering]/"cid2unicode.txt")
+        samples = [0x4e00,0x4e8c]
+        cids = [codes[2,c] for c in samples]
+        widths = b" /DW 923 /W [%d [731]]" % cids[0]
+        rows = [(code,cid,731 if i==0 else 923,unicode.get(cid),bundled_otf_glyph(data/outline,ord(unicode[cid]))) for i,(code,cid) in enumerate(zip(samples,cids))]
+        assert all(row[4] for row in rows)
+        for subtype in (b"CIDFontType0",b"CIDFontType2"):
+            name="substitute-cid-"+ordering+"-"+subtype.decode()
+            yield Vector(name,{".pdf":cid_substitute_document(ordering,b"/"+cmap_name.encode(),descendant=widths,subtype=subtype),".input":b"".join(c.to_bytes(2,'big') for c in samples),".out":expected(rows),".collection":ordering.encode()},
+                         ("text-cid-substitution",),"CIDs select collection Unicode and regional OTF cmap glyphs; PDF W and DW supply advances",{"driver":"bundled-cid"})
+        # Force a different extraction string: it must never select an outline.
+        tu=b"1 begincodespacerange <0000> <ffff> endcodespacerange 1 beginbfchar <4e00> <0041> endbfchar"
+        name="substitute-cid-"+ordering+"-tounicode"
+        changed=[list(row) for row in rows];changed[0][3]="A"
+        yield Vector(name,{".pdf":cid_substitute_document(ordering,b"/"+cmap_name.encode(),descendant=widths+b" /CIDToGIDMap /Identity",unicode_map=tu),".input":b"".join(c.to_bytes(2,'big') for c in samples),".out":expected(changed),".collection":ordering.encode()},
+                     ("text-cid-substitution",),"ToUnicode affects extraction only and an external font ignores CIDToGIDMap",{"driver":"bundled-cid"})
+        name="substitute-cid-"+ordering+"-vertical"
+        yield Vector(name,{".pdf":cid_substitute_document(ordering,b"/"+(prefixes[ordering]+"-UCS2-V").encode()),".error":b"font.cid-substitute-vertical\n"},
+                     ("text-cid-substitution",),"Vertical substitute glyph forms remain explicitly unsupported",{"driver":"bundled-cid-error"})
+    # Unknown Unicode CID and a known Unicode value absent from the JP subset.
+    ordering="Japan1"
+    unicode=bundled_unicode(folders[ordering]/"cid2unicode.txt")
+    outline=data/lock["cid_substitutes"]["Adobe-Japan1"]
+    absent=next(cid for cid,text in unicode.items() if cid and not bundled_otf_glyph(outline,ord(text)))
+    for name,cid,description in [("unicode",65535,"CID has no collection Unicode value"),("glyph",absent,"Regional substitute lacks the collection Unicode value")]:
+        assert cid not in unicode if name=="unicode" else cid in unicode
+        cmap=b"1 begincodespacerange <0000> <ffff> endcodespacerange 1 begincidchar <0001> %d endcidchar" % cid
+        fixture="substitute-cid-missing-"+name
+        yield Vector(fixture,{".pdf":cid_substitute_document(ordering,b"7 0 R",extra=cmap,descendant=b"/W [%d [731]]" % cid),".input":b"\0\1",".out":expected([(1,cid,731,unicode.get(cid),None)]),".collection":ordering.encode()},
+                     ("text-cid-substitution",),description+"; no mark but the exact PDF advance remains",{"driver":"bundled-cid"})
+    for name,ordering,encoding,error in [
+        ("substitute-cid-mismatched-collection","Japan1",b"/UniGB-UCS2-H",b"syntax"),
+        ("substitute-cid-identity-unknown","Identity",b"/Identity-H",b"font.non-embedded"),
+    ]:
+        yield Vector(name,{".pdf":cid_substitute_document(ordering,encoding),".error":error+b"\n"},
+                     ("text-cid-substitution",),"Incompatible or unknown character collections never select guessed glyphs",{"driver":"bundled-cid-error"})
+    cmap=b"/WMode 1 def 1 begincodespacerange <0000> <ffff> endcodespacerange 1 begincidchar <0001> 1 endcidchar"
+    yield Vector("substitute-cid-wmode",{".pdf":cid_substitute_document("Japan1",b"7 0 R",extra=cmap),".error":b"font.cid-substitute-vertical\n"},
+                 ("text-cid-substitution",),"Embedded CMap WMode 1 also rejects horizontal-only substitution",{"driver":"bundled-cid-error"})
+
+
 def bundled_cases():
     import json
     from pathlib import Path
     from .font import truetype
     data = Path(__file__).resolve().parents[2]/"data"
     lock = json.loads((data/"lock.json").read_text())
+    yield from symbol_substitute_cases(data, lock)
+    yield from cid_substitute_cases(data, lock)
     names = []
     aliases = {
         "Helvetica": ["Arial", "ArialMT", "Arial,Regular"],
@@ -744,16 +966,15 @@ def bundled_cases():
         encoding = {code:name for code,name,_ in glyphs if code >= 0}
         # These sample names have explicit known Unicode values; the complete
         # AFM name/width/code set is separately checked without assuming AGL.
-        sample_unicode = {"space":" ","A":"A","a":"a","fi":"ﬁ","Alpha":"Α","alpha":"α"}
+        sample_unicode = {"space":" ","A":"A","a":"a","fi":"ﬁ","Alpha":"Α","alpha":"α","arrowright":"→","a10":"✡","a60":"❁","a122":"③"}
         samples = [32,65,97,174,0]
-        # TrueType substitutes are selected through their Unicode cmap. The CFF
-        # substitutes for Symbol and ZapfDingbats are not linked by the data
-        # crate yet, so their fonts still expect no outline glyph.
-        outlines = item["outline"] if item["outline"].endswith(".ttf") else None
+        outlines = item["outline"]
+        charset = bundled_cff_charset(data/outlines) if outlines.endswith(".cff") else None
         rows = [(code,widths.get(encoding.get(code),0)/1000,
                  sample_unicode.get(encoding.get(code)),
-                 bundled_tt_glyph(data/outlines,ord(sample_unicode[encoding[code]]))
-                 if outlines and encoding.get(code) in sample_unicode else 0)
+                 (charset.get(encoding.get(code),0) if charset is not None else
+                  bundled_tt_glyph(data/outlines,ord(sample_unicode[encoding[code]]))
+                  if outlines and encoding.get(code) in sample_unicode else 0))
                 for code in samples]
         variants = [(base,base),(base+"-subset","ABCDEF+"+base)]
         variants += [(base+"-alias-%d" % i,name) for i,name in enumerate(aliases.get(base,[]))]

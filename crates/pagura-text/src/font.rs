@@ -16,6 +16,9 @@ use std::{collections::BTreeMap, sync::Arc};
 #[derive(Debug)]
 pub(crate) enum Source {
     MetricsOnly,
+    CidSubstitute {
+        program: Arc<FontProgram>,
+    },
     Type3 {
         procedures: BTreeMap<Name, ObjectId>,
         resources: Option<Dictionary>,
@@ -44,17 +47,7 @@ pub(crate) fn load_with(
     font: &Dictionary,
     provider: Option<&dyn crate::Provider>,
 ) -> Result<PdfFont> {
-    let kind = match required(document, font, b"Subtype")?
-        .as_name()
-        .map(Name::as_bytes)
-    {
-        Some(b"Type1") => FontKind::Type1,
-        Some(b"MMType1") => FontKind::MmType1,
-        Some(b"TrueType") => FontKind::TrueType,
-        Some(b"Type3") => FontKind::Type3,
-        Some(b"Type0") => FontKind::Type0,
-        _ => return Err(Error::syntax("invalid font Subtype")),
-    };
+    let kind = kind(document, font)?;
     if kind == FontKind::Type3 {
         return type3(document, font);
     }
@@ -86,6 +79,16 @@ pub(crate) fn load_with(
             .any(|key| dict.contains_key(key))
     });
     if !embedded && let Some(provider) = provider {
+        if let Some(mapping) = mapping {
+            return crate::cid_substitute::load(
+                document,
+                font,
+                metrics_font,
+                metrics_id,
+                mapping,
+                provider,
+            );
+        }
         return crate::substitute::load(document, font, descriptor, kind, provider);
     }
     let descriptor = descriptor.ok_or_else(|| {
@@ -138,6 +141,22 @@ pub(crate) fn load_with(
         retained: 0,
     }
     .accounted())
+}
+
+fn kind(document: &Document, font: &Dictionary) -> Result<FontKind> {
+    Ok(
+        match required(document, font, b"Subtype")?
+            .as_name()
+            .map(Name::as_bytes)
+        {
+            Some(b"Type1") => FontKind::Type1,
+            Some(b"MMType1") => FontKind::MmType1,
+            Some(b"TrueType") => FontKind::TrueType,
+            Some(b"Type3") => FontKind::Type3,
+            Some(b"Type0") => FontKind::Type0,
+            _ => return Err(Error::syntax("invalid font Subtype")),
+        },
+    )
 }
 
 fn composite_mapping(
@@ -327,12 +346,32 @@ fn collection_unicode(
     mapping: &Mapping,
     provider: Option<&dyn crate::Provider>,
 ) -> Result<Option<Arc<crate::CidToUnicode>>> {
-    let (Mapping::Composite { map, .. }, Some(provider)) = (mapping, provider) else {
+    let (Mapping::Composite { .. }, Some(provider)) = (mapping, provider) else {
         return Ok(None);
     };
-    if let (Some(registry), Some(ordering)) = (&map.registry, &map.ordering) {
-        return provider.cid_to_unicode(registry.as_bytes(), ordering.as_bytes());
+    let Some((registry, ordering)) = collection(document, font, mapping)? else {
+        return Ok(None);
+    };
+    provider.cid_to_unicode(registry, ordering)
+}
+
+fn collection<'a>(
+    document: &'a Document,
+    font: &'a Dictionary,
+    mapping: &'a Mapping,
+) -> Result<Option<(&'a [u8], &'a [u8])>> {
+    if let Mapping::Composite { map, .. } = mapping
+        && let (Some(registry), Some(ordering)) = (&map.registry, &map.ordering)
+    {
+        return Ok(Some((registry.as_bytes(), ordering.as_bytes())));
     }
+    cid_collection(document, font)
+}
+
+pub(crate) fn cid_collection<'a>(
+    document: &'a Document,
+    font: &'a Dictionary,
+) -> Result<Option<(&'a [u8], &'a [u8])>> {
     let Some(info) = optional(document, font, b"CIDSystemInfo")? else {
         return Ok(None);
     };
@@ -343,7 +382,7 @@ fn collection_unicode(
     let ordering = required(document, info, b"Ordering")?
         .as_string()
         .ok_or_else(|| Error::syntax("invalid CID ordering"))?;
-    provider.cid_to_unicode(registry, ordering)
+    Ok(Some((registry, ordering)))
 }
 
 fn stream(document: &Document, value: &Value) -> Result<Vec<u8>> {
@@ -366,6 +405,16 @@ impl PdfFont {
     ) -> GlyphShape {
         match &self.source {
             Source::MetricsOnly => GlyphShape::Blank,
+            Source::CidSubstitute { program } => {
+                crate::cid_substitute::glyph(program, self.cid_unicode.as_deref(), selector).map_or(
+                    GlyphShape::Blank,
+                    |glyph| GlyphShape::Outline {
+                        program: Arc::clone(program),
+                        glyph,
+                        matrix: program.font_matrix(),
+                    },
+                )
+            }
             Source::Type3 {
                 procedures, matrix, ..
             } => name
@@ -382,7 +431,9 @@ impl PdfFont {
             } => {
                 let glyph = if self.kind == FontKind::Type0 {
                     cid_glyph(program, cid_map.as_deref(), selector)
-                } else if self.kind == FontKind::TrueType || *substituted {
+                } else if (self.kind == FontKind::TrueType || *substituted)
+                    && program.format() != pagura_font::FontFormat::Cff
+                {
                     crate::selection::truetype(program, code.value, name, unicode, *truetype_raw)
                 } else {
                     name.and_then(|name| program.glyph_for_name(name.as_bytes()))
@@ -415,6 +466,7 @@ impl PdfFont {
             Source::Program {
                 program, cid_map, ..
             } => cid_glyph(program, cid_map.as_deref(), cid).is_some(),
+            Source::CidSubstitute { .. } => cid <= 65535,
             Source::Type3 { .. } | Source::MetricsOnly => false,
         }
     }

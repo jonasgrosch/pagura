@@ -11,6 +11,18 @@ use std::{collections::BTreeMap, sync::Arc};
 /// The host must cover outstanding shared results even after cache eviction
 /// or destruction of the provider itself.
 pub trait Provider: Send + Sync {
+    /// A horizontal substitute with a Unicode cmap for a CID collection.
+    /// Selection translates collection CIDs through [`Self::cid_to_unicode`],
+    /// never through the substitute's internal CIDs (9.7.4.2; ADR 0009).
+    /// The default supplies no substitute, preserving existing providers.
+    ///
+    /// # Errors
+    /// Returns parsing or resource-budget errors; `None` means unavailable.
+    fn cid_font(&self, registry: &[u8], ordering: &[u8]) -> Result<Option<Arc<FontProgram>>> {
+        let _ = (registry, ordering);
+        Ok(None)
+    }
+
     /// Standard-14 metrics and optional substitute, by canonical base name.
     ///
     /// # Errors
@@ -78,7 +90,7 @@ impl StandardMetrics {
 }
 
 /// Shared metrics and a substitute outline program. Missing outlines do not
-/// prevent metric lookup (notably Symbol and ZapfDingbats).
+/// prevent metric lookup.
 #[derive(Debug, Clone)]
 pub struct StandardFont {
     /// Original metrics and encoding; these determine layout.

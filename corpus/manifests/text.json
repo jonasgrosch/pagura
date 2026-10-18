@@ -3775,6 +3775,733 @@
       "driver": "unicode-fault"
     },
     {
+      "id": "text/substitute-Symbol-charset",
+      "kind": "vector",
+      "description": "Every encoded AFM glyph selects the independently decoded CFF charset name",
+      "requirements": [
+        "text-symbol-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-Symbol-charset.base",
+          "sha256": "ba0e4afa93400b805dfcc4b9e6aef549269946e2d1af5ababfc3a73c67912d89"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-Symbol-charset.input",
+          "sha256": "cc400a5ec86b6d122c8b9c3b624a37c41c579468f1a7b9381980fadbf13646ef"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-Symbol-charset.out",
+          "sha256": "6b5c12799d654bcb299fe9472ba94b7554b47580642540b0919ccfd32569382b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-Symbol-charset.pdf",
+          "sha256": "73fca21fc6e42f8c98abfdc424b363d20756b191a88a026a08a7e9c8cd3fbf2a"
+        }
+      },
+      "driver": "bundled-symbol"
+    },
+    {
+      "id": "text/substitute-Symbol-differences",
+      "kind": "vector",
+      "description": "Differences selects CFF names; explicit PDF widths take precedence over AFM",
+      "requirements": [
+        "text-symbol-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-Symbol-differences.base",
+          "sha256": "ba0e4afa93400b805dfcc4b9e6aef549269946e2d1af5ababfc3a73c67912d89"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-Symbol-differences.input",
+          "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-Symbol-differences.out",
+          "sha256": "7c30d665a25e76d1f32ba37472dc8e3d07d54cf9ea020a01748c2b631b43a0ab"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-Symbol-differences.pdf",
+          "sha256": "11b445245c7efb79c4caf549f9501984fed0abb22a00332e87f289b93f826468"
+        }
+      },
+      "driver": "bundled-symbol"
+    },
+    {
+      "id": "text/substitute-Symbol-differences-widths",
+      "kind": "vector",
+      "description": "Differences selects CFF names; explicit PDF widths take precedence over AFM",
+      "requirements": [
+        "text-symbol-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-Symbol-differences-widths.base",
+          "sha256": "ba0e4afa93400b805dfcc4b9e6aef549269946e2d1af5ababfc3a73c67912d89"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-Symbol-differences-widths.input",
+          "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-Symbol-differences-widths.out",
+          "sha256": "de8b3ca4fad0bcb03471fdaec4b32b3b8672fba32fc3927ccdfc28290a2bf084"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-Symbol-differences-widths.pdf",
+          "sha256": "1c0305cb2add6d55fdf50f04787431de52bb479fecb0021d3d6761137c2a9a90"
+        }
+      },
+      "driver": "bundled-symbol"
+    },
+    {
+      "id": "text/substitute-Symbol-truetype-symbolic",
+      "kind": "vector",
+      "description": "A symbolic TrueType substitute retains the Symbol encoding despite a Latin Encoding entry",
+      "requirements": [
+        "text-symbol-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-Symbol-truetype-symbolic.base",
+          "sha256": "ba0e4afa93400b805dfcc4b9e6aef549269946e2d1af5ababfc3a73c67912d89"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-Symbol-truetype-symbolic.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-Symbol-truetype-symbolic.out",
+          "sha256": "6bca3273091cde9eb72178a23486fa9607af88601e821d1f6ff8759fe2457493"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-Symbol-truetype-symbolic.pdf",
+          "sha256": "a7d5f236fdaa62dcd4f9014002d6e0f5c50ad40f84c168081d94a8b6b07e7190"
+        }
+      },
+      "driver": "bundled-symbol"
+    },
+    {
+      "id": "text/substitute-ZapfDingbats-charset",
+      "kind": "vector",
+      "description": "Every encoded AFM glyph selects the independently decoded CFF charset name",
+      "requirements": [
+        "text-symbol-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-ZapfDingbats-charset.base",
+          "sha256": "af08b5c8c9dc4e2a131194f31bf0578feb273bc572af49369e031f4e24a703cb"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-ZapfDingbats-charset.input",
+          "sha256": "35d2568db15d80f6a39d5a6e5a304d7653f3cfd3b41ace8f568432b68c018a95"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-ZapfDingbats-charset.out",
+          "sha256": "6c577a941194ce7aae8fb91be45531da7fc609e113f16768d9712fc045efff48"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-ZapfDingbats-charset.pdf",
+          "sha256": "ed3a8d00972a55d9eb674bcdf3d53ad3ba3735eb6aa21dfc8c0b362db6f9ca5f"
+        }
+      },
+      "driver": "bundled-symbol"
+    },
+    {
+      "id": "text/substitute-ZapfDingbats-differences",
+      "kind": "vector",
+      "description": "Differences selects CFF names; explicit PDF widths take precedence over AFM",
+      "requirements": [
+        "text-symbol-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-ZapfDingbats-differences.base",
+          "sha256": "af08b5c8c9dc4e2a131194f31bf0578feb273bc572af49369e031f4e24a703cb"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-ZapfDingbats-differences.input",
+          "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-ZapfDingbats-differences.out",
+          "sha256": "c9ca5b14b1609dbcf031f790974bedbdf2d5d6e3c13a0ccbabd1954d49964b51"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-ZapfDingbats-differences.pdf",
+          "sha256": "2d31a6ce1bd8663a6aa09094587b23e576ab65c83e06edeb4c7360f638f73856"
+        }
+      },
+      "driver": "bundled-symbol"
+    },
+    {
+      "id": "text/substitute-ZapfDingbats-differences-widths",
+      "kind": "vector",
+      "description": "Differences selects CFF names; explicit PDF widths take precedence over AFM",
+      "requirements": [
+        "text-symbol-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-ZapfDingbats-differences-widths.base",
+          "sha256": "af08b5c8c9dc4e2a131194f31bf0578feb273bc572af49369e031f4e24a703cb"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-ZapfDingbats-differences-widths.input",
+          "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-ZapfDingbats-differences-widths.out",
+          "sha256": "76430f264cb41a14ee9d3310787fa6541854a0b97468e85f8108dbe4da5c5e03"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-ZapfDingbats-differences-widths.pdf",
+          "sha256": "5fdbb875fa4b6c7c0cccbce3a0e1cb1af64164e8555744a85774c41bc2143a06"
+        }
+      },
+      "driver": "bundled-symbol"
+    },
+    {
+      "id": "text/substitute-Symbol-truetype-nonsymbolic",
+      "kind": "vector",
+      "description": "After the named Latin route lacks a glyph, a known Symbol TrueType face falls back to its AFM code mapping",
+      "requirements": [
+        "text-symbol-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-Symbol-truetype-nonsymbolic.base",
+          "sha256": "ba0e4afa93400b805dfcc4b9e6aef549269946e2d1af5ababfc3a73c67912d89"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-Symbol-truetype-nonsymbolic.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-Symbol-truetype-nonsymbolic.out",
+          "sha256": "6bca3273091cde9eb72178a23486fa9607af88601e821d1f6ff8759fe2457493"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-Symbol-truetype-nonsymbolic.pdf",
+          "sha256": "62f7d93cfe0e215a59af12637fbd615d8826b94926a6f5bbcb875f5f4ab96de4"
+        }
+      },
+      "driver": "bundled-symbol"
+    },
+    {
+      "id": "text/substitute-cid-Japan1-CIDFontType0",
+      "kind": "vector",
+      "description": "CIDs select collection Unicode and regional OTF cmap glyphs; PDF W and DW supply advances",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".collection": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-CIDFontType0.collection",
+          "sha256": "4e22b6c097e106fd50991128534ff13b39cb35f41339bae32d68cd840502511a"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-CIDFontType0.input",
+          "sha256": "8800813cd7526620e3f24653a0c93b00edf62fa4fd2d885411c8fed070b8a6e3"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-CIDFontType0.out",
+          "sha256": "5563c2875d6e7c741fed4289f3ab5e85d93e866806aaccbc326de6b3349d443a"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-CIDFontType0.pdf",
+          "sha256": "dd1dcb0485b6a178013c14dd3d88b5cfef8a1710915e3043b4b16b7203a77127"
+        }
+      },
+      "driver": "bundled-cid"
+    },
+    {
+      "id": "text/substitute-cid-Japan1-CIDFontType2",
+      "kind": "vector",
+      "description": "CIDs select collection Unicode and regional OTF cmap glyphs; PDF W and DW supply advances",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".collection": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-CIDFontType2.collection",
+          "sha256": "4e22b6c097e106fd50991128534ff13b39cb35f41339bae32d68cd840502511a"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-CIDFontType2.input",
+          "sha256": "8800813cd7526620e3f24653a0c93b00edf62fa4fd2d885411c8fed070b8a6e3"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-CIDFontType2.out",
+          "sha256": "5563c2875d6e7c741fed4289f3ab5e85d93e866806aaccbc326de6b3349d443a"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-CIDFontType2.pdf",
+          "sha256": "9b3690fdf6a76fec4d134fc9af61fcb83d7a56a93e3dddc9f7a71e3ed812df2a"
+        }
+      },
+      "driver": "bundled-cid"
+    },
+    {
+      "id": "text/substitute-cid-Japan1-tounicode",
+      "kind": "vector",
+      "description": "ToUnicode affects extraction only and an external font ignores CIDToGIDMap",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".collection": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-tounicode.collection",
+          "sha256": "4e22b6c097e106fd50991128534ff13b39cb35f41339bae32d68cd840502511a"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-tounicode.input",
+          "sha256": "8800813cd7526620e3f24653a0c93b00edf62fa4fd2d885411c8fed070b8a6e3"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-tounicode.out",
+          "sha256": "50e016d9f5c7895a8691c85f9b01a60b47e0cf642d587450fd10084ee062ec34"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-tounicode.pdf",
+          "sha256": "81115106989db9427477ccdbc72ce5a5423eb1d2487257ef0de767b40a86069d"
+        }
+      },
+      "driver": "bundled-cid"
+    },
+    {
+      "id": "text/substitute-cid-Japan1-vertical",
+      "kind": "vector",
+      "description": "Vertical substitute glyph forms remain explicitly unsupported",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-vertical.error",
+          "sha256": "e746a1ec27c679d09df4679a9be670df93bfae9922d6d5ea544dfc94f79720e8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-Japan1-vertical.pdf",
+          "sha256": "7e0792b2b102edf2813524ee808de29fef1acb79f0ed27d4e16e8589a7c5e7e9"
+        }
+      },
+      "driver": "bundled-cid-error"
+    },
+    {
+      "id": "text/substitute-cid-GB1-CIDFontType0",
+      "kind": "vector",
+      "description": "CIDs select collection Unicode and regional OTF cmap glyphs; PDF W and DW supply advances",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".collection": {
+          "path": "corpus/generated/text/substitute-cid-GB1-CIDFontType0.collection",
+          "sha256": "2a7d897203c5c059f51677b478a9452fda7d5054b295400d36329b8606ebf4da"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-GB1-CIDFontType0.input",
+          "sha256": "8800813cd7526620e3f24653a0c93b00edf62fa4fd2d885411c8fed070b8a6e3"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-GB1-CIDFontType0.out",
+          "sha256": "d7fa414212c7524a0a01534659560ac72a900388199878efa0a5c6678b829efb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-GB1-CIDFontType0.pdf",
+          "sha256": "06479f2106aa2f2ba72cdcd54bd78830753be0c0f4ab1cd1e897868ed3e62e9a"
+        }
+      },
+      "driver": "bundled-cid"
+    },
+    {
+      "id": "text/substitute-cid-GB1-CIDFontType2",
+      "kind": "vector",
+      "description": "CIDs select collection Unicode and regional OTF cmap glyphs; PDF W and DW supply advances",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".collection": {
+          "path": "corpus/generated/text/substitute-cid-GB1-CIDFontType2.collection",
+          "sha256": "2a7d897203c5c059f51677b478a9452fda7d5054b295400d36329b8606ebf4da"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-GB1-CIDFontType2.input",
+          "sha256": "8800813cd7526620e3f24653a0c93b00edf62fa4fd2d885411c8fed070b8a6e3"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-GB1-CIDFontType2.out",
+          "sha256": "d7fa414212c7524a0a01534659560ac72a900388199878efa0a5c6678b829efb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-GB1-CIDFontType2.pdf",
+          "sha256": "a9b36cb4fb0b10630af5f8cd7e951628bc637a99c44ee0c91f18b112bd57ebd0"
+        }
+      },
+      "driver": "bundled-cid"
+    },
+    {
+      "id": "text/substitute-cid-GB1-tounicode",
+      "kind": "vector",
+      "description": "ToUnicode affects extraction only and an external font ignores CIDToGIDMap",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".collection": {
+          "path": "corpus/generated/text/substitute-cid-GB1-tounicode.collection",
+          "sha256": "2a7d897203c5c059f51677b478a9452fda7d5054b295400d36329b8606ebf4da"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-GB1-tounicode.input",
+          "sha256": "8800813cd7526620e3f24653a0c93b00edf62fa4fd2d885411c8fed070b8a6e3"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-GB1-tounicode.out",
+          "sha256": "50beb150524a50d2a8850e7a4edd1f8b6da37cec6c477b4b44f2211228ba1b3a"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-GB1-tounicode.pdf",
+          "sha256": "727a1359816948ebf83f0ff31e7d56667b4e31b0f53ea0fa047f80a5238703e3"
+        }
+      },
+      "driver": "bundled-cid"
+    },
+    {
+      "id": "text/substitute-cid-GB1-vertical",
+      "kind": "vector",
+      "description": "Vertical substitute glyph forms remain explicitly unsupported",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/substitute-cid-GB1-vertical.error",
+          "sha256": "e746a1ec27c679d09df4679a9be670df93bfae9922d6d5ea544dfc94f79720e8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-GB1-vertical.pdf",
+          "sha256": "c1bc088d7b972832195bc13236d80e21437d0a6a297ba8c80671cbee89b1e71c"
+        }
+      },
+      "driver": "bundled-cid-error"
+    },
+    {
+      "id": "text/substitute-cid-CNS1-CIDFontType0",
+      "kind": "vector",
+      "description": "CIDs select collection Unicode and regional OTF cmap glyphs; PDF W and DW supply advances",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".collection": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-CIDFontType0.collection",
+          "sha256": "7bf2990ba7fee43f8edb622b91f0fd4351e09ef21eab965b748c2d7e48cbf257"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-CIDFontType0.input",
+          "sha256": "8800813cd7526620e3f24653a0c93b00edf62fa4fd2d885411c8fed070b8a6e3"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-CIDFontType0.out",
+          "sha256": "f2e79e92f6b3031674890695724e7879e8be9860a45f36789673a8ac42cd54e3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-CIDFontType0.pdf",
+          "sha256": "75aa8433f5c1d4a816a84945616a3e574cdf47f03099d21ad9aa2c6ac948ed71"
+        }
+      },
+      "driver": "bundled-cid"
+    },
+    {
+      "id": "text/substitute-cid-CNS1-CIDFontType2",
+      "kind": "vector",
+      "description": "CIDs select collection Unicode and regional OTF cmap glyphs; PDF W and DW supply advances",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".collection": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-CIDFontType2.collection",
+          "sha256": "7bf2990ba7fee43f8edb622b91f0fd4351e09ef21eab965b748c2d7e48cbf257"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-CIDFontType2.input",
+          "sha256": "8800813cd7526620e3f24653a0c93b00edf62fa4fd2d885411c8fed070b8a6e3"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-CIDFontType2.out",
+          "sha256": "f2e79e92f6b3031674890695724e7879e8be9860a45f36789673a8ac42cd54e3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-CIDFontType2.pdf",
+          "sha256": "ddbcbef073f0b22e6983c00297b8faa235e2f4026aefa6061e7cf50c03b9e530"
+        }
+      },
+      "driver": "bundled-cid"
+    },
+    {
+      "id": "text/substitute-cid-CNS1-tounicode",
+      "kind": "vector",
+      "description": "ToUnicode affects extraction only and an external font ignores CIDToGIDMap",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".collection": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-tounicode.collection",
+          "sha256": "7bf2990ba7fee43f8edb622b91f0fd4351e09ef21eab965b748c2d7e48cbf257"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-tounicode.input",
+          "sha256": "8800813cd7526620e3f24653a0c93b00edf62fa4fd2d885411c8fed070b8a6e3"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-tounicode.out",
+          "sha256": "6030bf275b72b5b6ce7a92437912a258220e8d294d0000bdf4969ec02b3ade84"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-tounicode.pdf",
+          "sha256": "6e0a1188c2817d4a804c173c88ef2c9dad5ae3eae977ccdb45fb684908f6e264"
+        }
+      },
+      "driver": "bundled-cid"
+    },
+    {
+      "id": "text/substitute-cid-CNS1-vertical",
+      "kind": "vector",
+      "description": "Vertical substitute glyph forms remain explicitly unsupported",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-vertical.error",
+          "sha256": "e746a1ec27c679d09df4679a9be670df93bfae9922d6d5ea544dfc94f79720e8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-CNS1-vertical.pdf",
+          "sha256": "c9cb0cb02d97446222c467609d991c097f0d12d06c85a9aa63ca135d38366367"
+        }
+      },
+      "driver": "bundled-cid-error"
+    },
+    {
+      "id": "text/substitute-cid-Korea1-CIDFontType0",
+      "kind": "vector",
+      "description": "CIDs select collection Unicode and regional OTF cmap glyphs; PDF W and DW supply advances",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".collection": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-CIDFontType0.collection",
+          "sha256": "50c4b0841ebc8f4907d25e80346aa8227806a07abe07e3c0b06c8fc9f0b14883"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-CIDFontType0.input",
+          "sha256": "8800813cd7526620e3f24653a0c93b00edf62fa4fd2d885411c8fed070b8a6e3"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-CIDFontType0.out",
+          "sha256": "ab578a3cfeabd224a6b69a3e818103061e6100d136977dd4f56876ed516308da"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-CIDFontType0.pdf",
+          "sha256": "cd9d0e37c39ab3efb36c64da3591456163b754ee069a923226203544d77648b7"
+        }
+      },
+      "driver": "bundled-cid"
+    },
+    {
+      "id": "text/substitute-cid-Korea1-CIDFontType2",
+      "kind": "vector",
+      "description": "CIDs select collection Unicode and regional OTF cmap glyphs; PDF W and DW supply advances",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".collection": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-CIDFontType2.collection",
+          "sha256": "50c4b0841ebc8f4907d25e80346aa8227806a07abe07e3c0b06c8fc9f0b14883"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-CIDFontType2.input",
+          "sha256": "8800813cd7526620e3f24653a0c93b00edf62fa4fd2d885411c8fed070b8a6e3"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-CIDFontType2.out",
+          "sha256": "ab578a3cfeabd224a6b69a3e818103061e6100d136977dd4f56876ed516308da"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-CIDFontType2.pdf",
+          "sha256": "92c015722f8810a4ee6291cd85993fccd1cb0b2754057bf9386cfc92633813e4"
+        }
+      },
+      "driver": "bundled-cid"
+    },
+    {
+      "id": "text/substitute-cid-Korea1-tounicode",
+      "kind": "vector",
+      "description": "ToUnicode affects extraction only and an external font ignores CIDToGIDMap",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".collection": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-tounicode.collection",
+          "sha256": "50c4b0841ebc8f4907d25e80346aa8227806a07abe07e3c0b06c8fc9f0b14883"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-tounicode.input",
+          "sha256": "8800813cd7526620e3f24653a0c93b00edf62fa4fd2d885411c8fed070b8a6e3"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-tounicode.out",
+          "sha256": "dbe30f7b7159447a8849b2a3f28c3d218f24938bbfb767f5a896ea94080dcf34"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-tounicode.pdf",
+          "sha256": "8f57e3750d58b78e02428f887b5039ae9698c6ad24c78c6d1bdac0ceb6b4c45a"
+        }
+      },
+      "driver": "bundled-cid"
+    },
+    {
+      "id": "text/substitute-cid-Korea1-vertical",
+      "kind": "vector",
+      "description": "Vertical substitute glyph forms remain explicitly unsupported",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-vertical.error",
+          "sha256": "e746a1ec27c679d09df4679a9be670df93bfae9922d6d5ea544dfc94f79720e8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-Korea1-vertical.pdf",
+          "sha256": "2d49c07653807fb99daf44bd6deac7229db7fe6a1ee4ce701bf959a260f401d9"
+        }
+      },
+      "driver": "bundled-cid-error"
+    },
+    {
+      "id": "text/substitute-cid-missing-unicode",
+      "kind": "vector",
+      "description": "CID has no collection Unicode value; no mark but the exact PDF advance remains",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".collection": {
+          "path": "corpus/generated/text/substitute-cid-missing-unicode.collection",
+          "sha256": "4e22b6c097e106fd50991128534ff13b39cb35f41339bae32d68cd840502511a"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-missing-unicode.input",
+          "sha256": "b413f47d13ee2fe6c845b2ee141af81de858df4ec549a58b7970bb96645bc8d2"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-missing-unicode.out",
+          "sha256": "1f65215baefac2dc76206caaa2f32b63290b90e4eb6c0535db14131df6077066"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-missing-unicode.pdf",
+          "sha256": "f8ed6ba1be15c28ce9ffaafbab98066c59de6d94f4601c509f3d74abe5f8f43e"
+        }
+      },
+      "driver": "bundled-cid"
+    },
+    {
+      "id": "text/substitute-cid-missing-glyph",
+      "kind": "vector",
+      "description": "Regional substitute lacks the collection Unicode value; no mark but the exact PDF advance remains",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".collection": {
+          "path": "corpus/generated/text/substitute-cid-missing-glyph.collection",
+          "sha256": "4e22b6c097e106fd50991128534ff13b39cb35f41339bae32d68cd840502511a"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-cid-missing-glyph.input",
+          "sha256": "b413f47d13ee2fe6c845b2ee141af81de858df4ec549a58b7970bb96645bc8d2"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-cid-missing-glyph.out",
+          "sha256": "1f4db4ef81d8e60c198d41d0221ed49a7214b5b738b7b1e5de842ea97fc05778"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-missing-glyph.pdf",
+          "sha256": "e6d38fc575e112469506af6d13a1136ba1aaab569c3f2b2f305c6f1d3f43dc93"
+        }
+      },
+      "driver": "bundled-cid"
+    },
+    {
+      "id": "text/substitute-cid-mismatched-collection",
+      "kind": "vector",
+      "description": "Incompatible or unknown character collections never select guessed glyphs",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/substitute-cid-mismatched-collection.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-mismatched-collection.pdf",
+          "sha256": "329994f274145a8196268f9a455a30f18660eb0a83d35b778109e760064ff8ae"
+        }
+      },
+      "driver": "bundled-cid-error"
+    },
+    {
+      "id": "text/substitute-cid-identity-unknown",
+      "kind": "vector",
+      "description": "Incompatible or unknown character collections never select guessed glyphs",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/substitute-cid-identity-unknown.error",
+          "sha256": "0646f6975bfe2319c773cf86792d69af5ffa8454e99a5f2aa19e38d48560b1c6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-identity-unknown.pdf",
+          "sha256": "3cf360553f5284805cd9fe032776e2c2d00a4ddb70ee42f4cdddc4318a85c2d4"
+        }
+      },
+      "driver": "bundled-cid-error"
+    },
+    {
+      "id": "text/substitute-cid-wmode",
+      "kind": "vector",
+      "description": "Embedded CMap WMode 1 also rejects horizontal-only substitution",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/text/substitute-cid-wmode.error",
+          "sha256": "e746a1ec27c679d09df4679a9be670df93bfae9922d6d5ea544dfc94f79720e8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-cid-wmode.pdf",
+          "sha256": "17194546b5a6c81308be79f529f4aea3fbaff372b1ab2aba80f92b02730415bb"
+        }
+      },
+      "driver": "bundled-cid-error"
+    },
+    {
       "id": "text/standard14-Courier",
       "kind": "vector",
       "description": "AFM-derived standard font widths, encoding, descriptors and substitute glyphs",
@@ -5501,7 +6228,7 @@
         },
         ".out": {
           "path": "corpus/generated/text/standard14-Symbol.out",
-          "sha256": "635675b785359e820bb0d866d8c4451a6a7a9732da1ca92e3dd79fe3530c487f"
+          "sha256": "bccdc6232704288860123944fb3ed3e1e8eca0bae32375acb7285761af29d638"
         },
         ".pdf": {
           "path": "corpus/generated/text/standard14-Symbol.pdf",
@@ -5529,7 +6256,7 @@
         },
         ".out": {
           "path": "corpus/generated/text/standard14-Symbol-subset.out",
-          "sha256": "635675b785359e820bb0d866d8c4451a6a7a9732da1ca92e3dd79fe3530c487f"
+          "sha256": "bccdc6232704288860123944fb3ed3e1e8eca0bae32375acb7285761af29d638"
         },
         ".pdf": {
           "path": "corpus/generated/text/standard14-Symbol-subset.pdf",
@@ -5565,7 +6292,7 @@
         },
         ".out": {
           "path": "corpus/generated/text/standard14-ZapfDingbats.out",
-          "sha256": "9cc5bffe8b4270a601682fe53e2482d57a05df02e0b894cfa340b4cf3a8aad46"
+          "sha256": "9065a07dba24537e3379f1030ccb5284e5b7fe87a0b714c894175da3948c211f"
         },
         ".pdf": {
           "path": "corpus/generated/text/standard14-ZapfDingbats.pdf",
@@ -5593,7 +6320,7 @@
         },
         ".out": {
           "path": "corpus/generated/text/standard14-ZapfDingbats-subset.out",
-          "sha256": "9cc5bffe8b4270a601682fe53e2482d57a05df02e0b894cfa340b4cf3a8aad46"
+          "sha256": "9065a07dba24537e3379f1030ccb5284e5b7fe87a0b714c894175da3948c211f"
         },
         ".pdf": {
           "path": "corpus/generated/text/standard14-ZapfDingbats-subset.pdf",

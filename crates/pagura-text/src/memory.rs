@@ -48,7 +48,7 @@ pub(crate) fn estimate(font: &PdfFont) -> usize {
 
 fn source(source: &Source) -> usize {
     match source {
-        Source::MetricsOnly => 0,
+        Source::MetricsOnly | Source::CidSubstitute { .. } => 0,
         Source::Type3 {
             procedures,
             resources,

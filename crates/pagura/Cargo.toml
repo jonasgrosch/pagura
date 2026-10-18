@@ -24,6 +24,8 @@ pagura-write.workspace = true
 default = ["bundled-data"]
 bundled-data = ["dep:pagura-data"]
 
+cjk-fonts = ["bundled-data", "pagura-data/cjk-fonts"]
+
 [dev-dependencies]
 # The fuzz regression replay (tests/fuzz_regressions.rs) drives these
 # crates through the same code as the fuzz targets.
