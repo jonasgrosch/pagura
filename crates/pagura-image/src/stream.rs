@@ -102,8 +102,8 @@ fn predictor_precision<'a>(
         .resolve_dictionary(dictionary.get(b"DecodeParms")?)
         .ok()?;
     let predictor = pagura_codec::Predictor::from_params(Some(params)).ok()?;
-    if i64::from(predictor.bits_per_component) == bits
-        || predictor.kind == pagura_codec::PredictorKind::None
+    if i64::from(predictor.bits_per_component()) == bits
+        || predictor.kind() == pagura_codec::PredictorKind::None
     {
         return None;
     }

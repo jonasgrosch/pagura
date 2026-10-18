@@ -7,10 +7,6 @@ pub(crate) fn syntax(message: &'static str, offset: usize) -> Error {
     Error::syntax(message).at(Position::Buffer(offset))
 }
 
-pub(crate) fn limit(offset: usize) -> Error {
-    Error::limit("decoded stream budget exceeded").at(Position::Buffer(offset))
-}
-
 pub(crate) fn repair(
     diagnostics: &mut Diagnostics,
     tag: Repair,

@@ -16,12 +16,15 @@ pub fn run(data: &[u8]) {
     let Some((&selector, input)) = data.split_first() else {
         return;
     };
-    let predictor = Predictor {
-        kind: [PredictorKind::None, PredictorKind::Tiff, PredictorKind::Png]
+    // The selector only yields parameters inside Table 8's ranges.
+    let Ok(predictor) = Predictor::new(
+        [PredictorKind::None, PredictorKind::Tiff, PredictorKind::Png]
             [usize::from(selector >> 6) % 3],
-        colors: 1 + (selector & 3),
-        bits_per_component: [1, 2, 4, 8, 16][usize::from((selector >> 2) & 7) % 5],
-        columns: 1 + u32::from(selector >> 4),
+        1 + (selector & 3),
+        [1, 2, 4, 8, 16][usize::from((selector >> 2) & 7) % 5],
+        1 + u32::from(selector >> 4),
+    ) else {
+        return;
     };
     let filter = match selector & 7 {
         0 => Filter::AsciiHex,

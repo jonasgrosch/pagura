@@ -119,11 +119,9 @@ fn independent_png_decode_checks_pixels_crc_chunks_filters_and_straight_alpha() 
         let pixels = fixture("codec", &format!("{name}.in"));
         let expected = fixture("codec", &format!("{name}.out"));
         for level in [Level::Fast, Level::Default] {
-            let options = Options {
-                color_type,
-                level,
-                ..Options::default()
-            };
+            let options = Options::default()
+                .with_color_type(color_type)
+                .with_level(level);
             let encoded = png::encode(&pixels, width, height, &options).unwrap();
             assert_eq!(
                 encoded,
@@ -136,24 +134,18 @@ fn independent_png_decode_checks_pixels_crc_chunks_filters_and_straight_alpha() 
                 &expected,
                 [width, height, channels],
             );
-            let exact = Options {
-                limits: Limits {
-                    stream_bytes: encoded.len(),
-                    ..options.limits
-                },
-                ..options
-            };
+            let exact = options.with_limits(Limits {
+                stream_bytes: encoded.len(),
+                ..options.limits
+            });
             assert_eq!(
                 encoded,
                 png::encode(&pixels, width, height, &exact).unwrap()
             );
-            let short = Options {
-                limits: Limits {
-                    stream_bytes: encoded.len() - 1,
-                    ..options.limits
-                },
-                ..options
-            };
+            let short = options.with_limits(Limits {
+                stream_bytes: encoded.len() - 1,
+                ..options.limits
+            });
             assert_eq!(
                 png::encode(&pixels, width, height, &short)
                     .unwrap_err()
@@ -182,8 +174,10 @@ fn encoding_limits_dimensions_and_pixel_counts_are_explicit() {
                 ..exact
             };
             let error = flate::compress(plain, level, &short).unwrap_err();
-            assert_eq!(error.kind, ErrorKind::Limit);
-            assert!(matches!(error.position, Position::Buffer(_)));
+            assert_eq!(
+                (error.kind, error.position),
+                (ErrorKind::Limit, Position::Unknown)
+            );
         }
         assert_eq!(
             flate::compress(
@@ -228,7 +222,7 @@ fn encoding_limits_dimensions_and_pixel_counts_are_explicit() {
         },
     ] {
         assert_eq!(
-            png::encode(&pixels, 1, 1, &Options { limits, ..options })
+            png::encode(&pixels, 1, 1, &options.with_limits(limits))
                 .unwrap_err()
                 .kind,
             ErrorKind::Limit
