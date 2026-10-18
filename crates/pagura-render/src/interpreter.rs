@@ -244,18 +244,16 @@ impl Compiler<'_> {
                 Error::syntax("unclosed saved graphics states"),
                 bytes.len().saturating_sub(1),
                 origins,
-            );
+            )
+            .position;
             repair(
                 self.document,
                 pagura_core::Diagnostic::new(
                     crate::repairs::GRAPHICS_UNCLOSED,
                     "unmatched q states discarded at end of content sequence (7.8.2, 8.4.2)",
                 )
-                .at(position.position)
-                .in_object(match position.position {
-                    Position::Stream { object, .. } => object,
-                    _ => return Err(position),
-                }),
+                .at(position)
+                .in_object_opt(position.object()),
             )?;
             self.saved.clear();
         }

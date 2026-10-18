@@ -49,15 +49,10 @@ impl Compiler<'_> {
                 {
                     return Err(Error::syntax("invalid unused pattern colour operands"));
                 }
-                let mut diagnostic = pagura_core::Diagnostic::new(
+                self.repair(
                     crate::repairs::PATTERN_UNDERLYING,
                     "coloured pattern uses intrinsic colours; extra scn operands ignored (8.7.3.2, Table 73)",
-                )
-                .at(self.position);
-                if let pagura_core::Position::Stream { object, .. } = self.position {
-                    diagnostic = diagnostic.in_object(object);
-                }
-                super::repair(self.document, diagnostic)?;
+                )?;
                 None
             }
             _ => None,

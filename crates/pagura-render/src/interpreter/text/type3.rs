@@ -58,11 +58,12 @@ impl Compiler<'_> {
     pub(in crate::interpreter) fn glyph_metrics(&mut self, metrics: GlyphMetrics) -> Result<()> {
         let procedure = self
             .procedure
-            .as_mut()
+            .as_ref()
             .ok_or(Error::syntax("glyph metrics outside Type3 procedure"))?;
         if procedure.phase == Phase::Ready {
             return Err(Error::syntax("duplicate Type3 metrics"));
         }
+        let expected = procedure.expected;
         let ([wx, wy], uncolored) = match metrics {
             GlyphMetrics::Width(width) => (width, false),
             GlyphMetrics::Box {
@@ -75,22 +76,16 @@ impl Compiler<'_> {
                 (width, true)
             }
         };
-        if wx * procedure.expected.scale != procedure.expected.advance || wy != 0.0 {
-            super::super::repair(
-                self.document,
-                pagura_core::Diagnostic::new(
-                    crate::repairs::TYPE3_WIDTH,
-                    "d0/d1 metrics disagree with Widths or declare a vertical advance; Widths retained",
-                )
-                .at(self.position)
-                .in_object(match self.position {
-                    pagura_core::Position::Stream { object, .. } => object,
-                    _ => return Err(Error::syntax("Type3 metrics have no stream context")),
-                }),
+        if wx * expected.scale != expected.advance || wy != 0.0 {
+            self.repair(
+                crate::repairs::TYPE3_WIDTH,
+                "d0/d1 metrics disagree with Widths or declare a vertical advance; Widths retained",
             )?;
         }
-        procedure.phase = Phase::Ready;
-        procedure.uncolored = procedure.inherited_uncolored || uncolored;
+        if let Some(procedure) = self.procedure.as_mut() {
+            procedure.phase = Phase::Ready;
+            procedure.uncolored = procedure.inherited_uncolored || uncolored;
+        }
         Ok(())
     }
     /// Interprets a Type 3 glyph procedure; its resources fall back to the
