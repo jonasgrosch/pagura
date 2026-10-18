@@ -22,7 +22,8 @@
 use super::wrapper::{self, FIRST_OBJECT, Pdf};
 use pagura::{Document, ObjectId, OpenOptions, Recovery};
 use pagura_core::{Diagnostics, Limits};
-use pagura_image::{DecodedImage, Samples, ccitt, dct, jbig2, jpx};
+use pagura_image::{DecodedImage, Samples};
+use pagura_imagecodec::{ccitt, dct, jbig2, jpx};
 
 /// Named colour spaces the inline image dictionary can select (8.9.7).
 const RESOURCES: &[u8] = b"<< /ColorSpace << /G2 /DeviceGray /RGB2 /DeviceRGB \

@@ -1,4 +1,6 @@
 //! Arithmetic text and aggregation, T.88 (02/2000), 6.4 and 7.4.3.
+pub(super) mod huffman;
+
 use super::{
     Bitmap,
     arithmetic::{Context, Decoder},

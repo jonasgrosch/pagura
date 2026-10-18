@@ -1,9 +1,7 @@
 //! CCITT Group 3/4 fax (ITU-T T.4/T.6; ISO 32000-2 clause 7.4.6).
 mod codes;
-use crate::parameters::{boolean, integer};
 use pagura_core::{
-    Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, Limits, Position, Recovery, Repair,
-    Result,
+    Diagnostic, Diagnostics, Error, ErrorKind, Limits, Position, Recovery, Repair, Result,
 };
 
 /// `CCITTFaxDecode` parameters (Table 11).
@@ -44,35 +42,6 @@ impl Default for CcittParams {
         }
     }
 }
-impl CcittParams {
-    /// Reads Table 11 parameters, including defaults.
-    ///
-    /// # Errors
-    /// Returns syntax errors for invalid types, dimensions or negative counts.
-    pub fn from_dictionary(params: Option<&Dictionary>) -> Result<Self> {
-        let Some(p) = params else {
-            return Ok(Self::default());
-        };
-        let columns = u32::try_from(integer(p, b"Columns", 1728)?)
-            .ok()
-            .filter(|&v| v > 0)
-            .ok_or(Error::syntax("invalid CCITT Columns"))?;
-        let rows = u32::try_from(integer(p, b"Rows", 0)?)
-            .map_err(|_| Error::syntax("invalid CCITT Rows"))?;
-        Ok(Self {
-            k: integer(p, b"K", 0)?,
-            columns,
-            rows: if rows == 0 { None } else { Some(rows) },
-            end_of_line: boolean(p, b"EndOfLine", false)?,
-            encoded_byte_align: boolean(p, b"EncodedByteAlign", false)?,
-            end_of_block: boolean(p, b"EndOfBlock", true)?,
-            black_is_1: boolean(p, b"BlackIs1", false)?,
-            damaged_rows_before_error: u32::try_from(integer(p, b"DamagedRowsBeforeError", 0)?)
-                .map_err(|_| Error::syntax("invalid CCITT damaged row count"))?,
-        })
-    }
-}
-
 struct Bits<'a> {
     data: &'a [u8],
     at: usize,
@@ -240,12 +209,12 @@ fn decode_inner(
     if params.columns == 0 {
         return Err(Error::syntax("invalid CCITT Columns"));
     }
-    crate::parameters::budget(params.columns, 1, 1, 1, limits)?;
+    crate::sample_count(params.columns, 1, 1, 1, limits)?;
     if data.len() > limits.stream_bytes || data.len().checked_mul(8).is_none() {
         return Err(Error::limit("CCITT input budget exceeded").at(Position::Buffer(0)));
     }
     if let Some(rows) = params.rows.filter(|_| !params.end_of_block) {
-        crate::parameters::budget(params.columns, rows, 1, 1, limits)?;
+        crate::sample_count(params.columns, rows, 1, 1, limits)?;
     }
     let width = params.columns as usize;
     let stride = width.div_ceil(8);

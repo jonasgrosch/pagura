@@ -128,7 +128,7 @@ fn output_native<T: Sample>(
 ) -> Result<DctImage> {
     let n = u8::try_from(frame.components.len())
         .map_err(|_| Error::syntax("invalid JPEG component count"))?;
-    let count = crate::parameters::budget(frame.width, frame.height, n, 8, limits)?;
+    let count = crate::sample_count(frame.width, frame.height, n, 8, limits)?;
     let idct = Idct::new();
     let mut planes = Vec::with_capacity(usize::from(n));
     for c in &frame.components {

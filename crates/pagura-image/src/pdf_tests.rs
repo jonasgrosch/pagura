@@ -1,7 +1,9 @@
 //! PDF image/filter integration oracles, calculated by the fixture generator.
-use crate::{DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples, jpx, jpx_image};
+use crate::adapter::jpx as jpx_image;
+use crate::{DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples};
 use pagura_core::{ErrorKind, Limits, ObjectId, Position, Recovery, Value};
 use pagura_document::{Document, OpenOptions};
+use pagura_imagecodec::jpx;
 use pagura_testkit::fixture;
 use std::collections::BTreeMap;
 
@@ -320,7 +322,7 @@ fn jpeg_reports_are_bounded_per_decode_and_do_not_authorize_strict_repairs() {
         .unwrap();
     let mut diagnostics = pagura_core::Diagnostics::new(Recovery::Repair);
     for _ in 0..2 {
-        let image = crate::dct::decode_with_diagnostics(
+        let image = pagura_imagecodec::dct::decode_with_diagnostics(
             &stream.data,
             None,
             &Limits::default(),
@@ -337,10 +339,17 @@ fn jpeg_reports_are_bounded_per_decode_and_do_not_authorize_strict_repairs() {
     let mut strict = pagura_core::Diagnostics::new(Recovery::Strict);
     assert!(strict.absorb(diagnostics.take()).is_err());
     assert!(strict.is_empty());
-    let error =
-        crate::dct::decode_with_diagnostics(&stream.data, None, &Limits::default(), &mut strict)
-            .unwrap_err();
-    assert_eq!(error.repair, Some(crate::dct::tags::ENTROPY_PADDING));
+    let error = pagura_imagecodec::dct::decode_with_diagnostics(
+        &stream.data,
+        None,
+        &Limits::default(),
+        &mut strict,
+    )
+    .unwrap_err();
+    assert_eq!(
+        error.repair,
+        Some(pagura_imagecodec::dct::tags::ENTROPY_PADDING)
+    );
 }
 
 #[test]

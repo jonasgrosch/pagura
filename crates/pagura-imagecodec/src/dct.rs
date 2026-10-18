@@ -247,7 +247,11 @@ fn segment<'a>(data: &'a [u8], offset: &mut usize) -> Result<&'a [u8]> {
 
 /// Locates the JPEG EOI without interpreting pixels; segment lengths protect
 /// marker-like bytes in APP payloads, and scan stuffing protects entropy data.
-pub(crate) fn data_length(data: &[u8]) -> Result<usize> {
+///
+/// # Errors
+/// A syntax error when the data ends before EOI or has a marker that is not
+/// valid at its place.
+pub fn data_length(data: &[u8]) -> Result<usize> {
     if data.get(..2) != Some(&[255, 216]) {
         return Err(Error::syntax("missing JPEG SOI"));
     }

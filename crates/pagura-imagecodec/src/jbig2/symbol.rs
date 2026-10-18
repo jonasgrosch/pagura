@@ -1,4 +1,6 @@
 //! Arithmetic dictionaries and retained contexts, T.88 (02/2000), 6.5/7.4.2.
+pub(super) mod huffman;
+
 use super::{
     Bitmap,
     arithmetic::{Context, Decoder},

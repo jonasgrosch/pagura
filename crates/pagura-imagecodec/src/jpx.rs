@@ -88,6 +88,11 @@ pub struct Options {
     /// Ignore `cdef`; retain channel order and report no opacity.
     /// This also permits callers to disregard unsupported channel associations.
     pub ignore_opacity: bool,
+    /// Do not apply a palette (`pclr`) and its component mapping: return the
+    /// stored indices for a color space of the caller's that interprets them,
+    /// such as a PDF `Indexed` space (7.4.9), which would otherwise expand
+    /// them twice.
+    pub ignore_palette: bool,
 }
 
 /// Meaning of the opacity samples, T.800 I.5.3.6, Table I.16.
@@ -174,38 +179,23 @@ pub fn decode_with_diagnostics(
     options: &Options,
     diagnostics: &mut pagura_core::Diagnostics,
 ) -> Result<Decoded> {
-    decode_pdf(data, limits, options, diagnostics, false)
-}
-
-pub(crate) fn decode_pdf(
-    data: &[u8],
-    limits: &Limits,
-    options: &Options,
-    diagnostics: &mut pagura_core::Diagnostics,
-    indexed: bool,
-) -> Result<Decoded> {
     if data.len() > limits.stream_bytes {
         return Err(Error::limit("JPEG 2000 input budget exceeded").at(Position::Buffer(0)));
     }
     let mut budget = io::Budget::new(limits);
     budget.diagnostics = pagura_core::Diagnostics::new(diagnostics.mode());
-    let result = decode_bounded(data, &mut budget, options, indexed)
-        .map_err(|error| error.at(Position::Buffer(0)));
+    let result =
+        decode_bounded(data, &mut budget, options).map_err(|error| error.at(Position::Buffer(0)));
     diagnostics.absorb(budget.diagnostics.take())?;
     result
 }
 
-fn decode_bounded(
-    data: &[u8],
-    budget: &mut io::Budget<'_>,
-    options: &Options,
-    indexed: bool,
-) -> Result<Decoded> {
+fn decode_bounded(data: &[u8], budget: &mut io::Budget<'_>, options: &Options) -> Result<Decoded> {
     if data.starts_with(&[255, 79]) {
         codestream::decode(data, 0, budget)
     } else {
         let (stream, base, mut header) = boxes::parse(data, budget, options)?;
-        if indexed {
+        if options.ignore_palette {
             header.use_pdf_palette()?;
         }
         let mut decoded = codestream::decode(stream, base, budget)?;

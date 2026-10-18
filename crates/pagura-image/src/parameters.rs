@@ -109,19 +109,7 @@ pub(crate) fn budget(
     bits: u8,
     limits: &Limits,
 ) -> Result<usize> {
-    let pixels = u64::from(width) * u64::from(height);
-    let count = pixels
-        .checked_mul(u64::from(components))
-        .and_then(|v| usize::try_from(v).ok())
-        .ok_or(Error::limit("image sample size overflow"))?;
-    if pixels > limits.pixels as u64
-        || count
-            .checked_mul(if bits > 8 { 2 } else { 1 })
-            .is_none_or(|bytes| bytes > limits.decoded_bytes)
-    {
-        return Err(Error::limit("image sample budget exceeded"));
-    }
-    Ok(count)
+    pagura_imagecodec::sample_count(width, height, components, bits, limits)
 }
 
 pub(crate) fn components(space: &Value) -> Result<u8> {

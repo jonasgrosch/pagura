@@ -7,14 +7,11 @@
 //! needed to paint it (decode array, masks, interpolation). Colour conversion
 //! and painting belong to `pagura-render`.
 
-pub mod ccitt;
-pub mod dct;
 pub mod features;
-pub mod jbig2;
-pub mod jpx;
 
 use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
 use pagura_document::{Document, IndirectObject};
+pub use pagura_imagecodec::jpx::JpxColor;
 
 /// Stable reported repairs of malformed image dictionaries and data (ADR 0003).
 pub mod tags {
@@ -55,12 +52,10 @@ pub mod tags {
     pub const FILTER_MISMATCH: Repair = Repair::new("image.filter-mismatch");
 }
 
+mod adapter;
 mod dispatch;
-mod fax_image;
 mod filter_rules;
 mod inline;
-mod jpx_channels;
-mod jpx_image;
 mod mask;
 mod parameters;
 mod stream;
@@ -79,7 +74,7 @@ pub enum ImageKind {
     /// retained so painting can apply their original interpretation.
     EmbeddedColor {
         /// Colour description from the container.
-        color: jpx::JpxColor,
+        color: JpxColor,
     },
     /// A 1-bit stencil mask painted with the current fill colour
     /// (`/ImageMask true`); `inverted` follows `/Decode [1 0]`.

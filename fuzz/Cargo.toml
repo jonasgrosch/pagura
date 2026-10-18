@@ -30,6 +30,7 @@ pagura-core = { path = "../crates/pagura-core" }
 pagura-font = { path = "../crates/pagura-font" }
 pagura-host = { path = "../crates/pagura-host" }
 pagura-image = { path = "../crates/pagura-image" }
+pagura-imagecodec = { path = "../crates/pagura-imagecodec" }
 pagura-text = { path = "../crates/pagura-text" }
 
 [[bin]]

@@ -1,13 +1,13 @@
 //! Huffman dictionaries, T.88 (02/2000), 6.5 and 7.4.2.
-use super::{
+use crate::jbig2::{
     Bitmap,
     budget::Work,
     huffman::{Bits, Table},
-    huffman_text::{self, Identifiers, Placement, Procedure},
     reader::Reader,
     refinement::{Model, Parameters},
     symbol::{Dictionary, Retained, Settings},
     text::Config,
+    text::huffman::{self as huffman_text, Identifiers, Placement, Procedure},
 };
 use pagura_core::{Error, Limits, Position, Result};
 use std::rc::Rc;
@@ -259,7 +259,9 @@ impl Builder {
         let retained_bytes = contexts
             .as_ref()
             .and_then(|r| r.refinement.as_ref())
-            .map_or(0, |c| c.len() * size_of::<super::arithmetic::Context>());
+            .map_or(0, |c| {
+                c.len() * size_of::<crate::jbig2::arithmetic::Context>()
+            });
         Ok(Dictionary {
             symbols: output,
             bytes: self.overhead + self.bytes + retained_bytes,
@@ -268,7 +270,7 @@ impl Builder {
     }
 }
 
-pub(super) fn decode(
+pub(crate) fn decode(
     reader: &mut Reader<'_>,
     imported: &[Rc<Bitmap>],
     custom: &[Rc<Table>],
@@ -276,7 +278,7 @@ pub(super) fn decode(
     limits: &Limits,
     work: &mut Work,
 ) -> Result<Dictionary> {
-    work.operations(super::huffman::STANDARD_ROWS, limits)?;
+    work.operations(crate::jbig2::huffman::STANDARD_ROWS, limits)?;
     let header = Header::read(reader, custom)?;
     let mut builder = Builder::new(header, imported, retained, limits)?;
     let base = match reader.position() {
@@ -302,13 +304,13 @@ fn collective(
     let bytes = usize::try_from(sizes.required(bits)?)
         .map_err(|_| Error::syntax("negative JBIG2 collective data size"))?;
     let (width, height) = size;
-    let (_, raw_size) = super::bitmap::layout(width, height, limits)?;
+    let (_, raw_size) = crate::jbig2::bitmap::layout(width, height, limits)?;
     work.pixels(u64::from(width) * u64::from(height) * 2, limits)?;
     bits.align();
     let position = bits.position();
     let data = bits.take(if bytes == 0 { raw_size } else { bytes })?;
     if bytes != 0 {
-        return super::mmr::decode(
+        return crate::jbig2::mmr::decode(
             data,
             width,
             height,

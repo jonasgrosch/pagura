@@ -14,8 +14,6 @@ mod budget;
 mod generic;
 mod halftone;
 mod huffman;
-mod huffman_symbol;
-mod huffman_text;
 mod integer;
 mod mmr;
 mod reader;
@@ -424,7 +422,7 @@ impl State<'_> {
             .get(reader.offset + 1)
             .is_some_and(|b| b & 1 != 0)
         {
-            huffman_symbol::decode(
+            symbol::huffman::decode(
                 reader,
                 &imported,
                 &self.tables(references, 4)?,
@@ -795,7 +793,7 @@ impl State<'_> {
             .get(reader.offset + 1)
             .is_some_and(|b| b & 1 != 0)
         {
-            huffman_text::decode(
+            text::huffman::decode(
                 reader,
                 size,
                 &imported,

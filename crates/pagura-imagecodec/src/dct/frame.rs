@@ -54,7 +54,7 @@ impl Frame {
                 "JPEG component layout is unsupported",
             ));
         }
-        super::super::parameters::budget(width, height, n, 8, limits)?;
+        crate::sample_count(width, height, n, 8, limits)?;
         let mut components: Vec<Component> = Vec::with_capacity(usize::from(n));
         for c in data[6..].as_chunks::<3>().0 {
             let (h, v, table) = (

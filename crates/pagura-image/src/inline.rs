@@ -235,11 +235,11 @@ fn valid_prefix(
                 .as_ref()
                 .and_then(|p| p.get(b"ColorTransform"))
                 .and_then(Value::as_integer);
-            crate::dct::decode(&decoded, transform, &limits)
+            pagura_imagecodec::dct::decode(&decoded, transform, &limits)
                 .is_ok_and(|image| p::dimensions(dict) == Ok((image.width, image.height)))
         }
         Some((ImageCodec::CcittFax, params)) => {
-            let Ok(params) = crate::ccitt::CcittParams::from_dictionary(params.as_ref()) else {
+            let Ok(params) = crate::adapter::fax::params(params.as_ref()) else {
                 return false;
             };
             let Ok((_, height)) = p::dimensions(dict) else {
@@ -247,7 +247,7 @@ fn valid_prefix(
             };
             // Framing follows the encoded fax rows, not the eventual image
             // grid. decode_inline reports any Columns/Width repair later.
-            crate::ccitt::decode(&decoded, &params, &limits).is_ok_and(|bytes| {
+            pagura_imagecodec::ccitt::decode(&decoded, &params, &limits).is_ok_and(|bytes| {
                 bytes.len() as u64 == u64::from(params.columns).div_ceil(8) * u64::from(height)
             })
         }
@@ -277,7 +277,7 @@ fn filter_boundary(dict: &Dictionary, data: &[u8]) -> Result<Option<usize>> {
                 .ok_or(Error::syntax("missing ASCII85 terminator"))?
                 + 2,
         ),
-        b"DCTDecode" | b"DCT" => Some(crate::dct::data_length(data)?),
+        b"DCTDecode" | b"DCT" => Some(pagura_imagecodec::dct::data_length(data)?),
         b"RunLengthDecode" | b"RL" => {
             let mut offset = 0;
             loop {

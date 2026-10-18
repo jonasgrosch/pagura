@@ -1,5 +1,5 @@
 //! Huffman text and aggregation, T.88 (02/2000), 6.4 and 7.4.3.
-use super::{
+use crate::jbig2::{
     Bitmap,
     arithmetic::Decoder,
     budget::Work,
@@ -11,7 +11,7 @@ use super::{
 use pagura_core::{Error, Limits, Position, Result};
 use std::rc::Rc;
 
-pub(super) fn select(
+pub(crate) fn select(
     selection: u16,
     standards: &[usize],
     custom: &mut std::slice::Iter<'_, Rc<Table>>,
@@ -35,12 +35,12 @@ pub(super) fn select(
     Ok(table)
 }
 
-pub(super) struct Procedure {
+pub(crate) struct Procedure {
     tables: Vec<Rc<Table>>,
-    pub(super) model: Option<Model>,
+    pub(crate) model: Option<Model>,
 }
 impl Procedure {
-    pub(super) fn aggregation(model: Model) -> Result<Self> {
+    pub(crate) fn aggregation(model: Model) -> Result<Self> {
         Ok(Self {
             tables: [6, 8, 11, 15, 15, 15, 15, 1]
                 .into_iter()
@@ -91,7 +91,7 @@ impl Procedure {
         };
         Ok(Self { tables, model })
     }
-    pub(super) fn bytes(&self) -> usize {
+    pub(crate) fn bytes(&self) -> usize {
         self.tables.iter().map(|t| t.bytes()).sum::<usize>()
             + self.model.as_ref().map_or(0, Model::context_bytes)
     }
@@ -146,7 +146,7 @@ impl Procedure {
                 work,
             )
     }
-    pub(super) fn single(
+    pub(crate) fn single(
         &mut self,
         bits: &mut Bits<'_>,
         symbols: &[Rc<Bitmap>],
@@ -168,7 +168,7 @@ impl Procedure {
         };
         self.bitmap(bits, symbol, request, limits, work)
     }
-    pub(super) fn region(
+    pub(crate) fn region(
         &mut self,
         bits: &mut Bits<'_>,
         symbols: &[Rc<Bitmap>],
@@ -197,11 +197,11 @@ impl Procedure {
         let mut first = 0i64;
         let mut count = 0;
         while count < instances {
-            strip = super::text::add(strip, self.number(2, bits)? * config.strips)?;
-            first = super::text::add(first, self.number(0, bits)?)?;
+            strip = crate::jbig2::text::add(strip, self.number(2, bits)? * config.strips)?;
+            first = crate::jbig2::text::add(first, self.number(0, bits)?)?;
             let mut s = first;
             loop {
-                let t = super::text::add(
+                let t = crate::jbig2::text::add(
                     strip,
                     i64::from(
                         bits.read(
@@ -223,7 +223,7 @@ impl Procedure {
                 work.pixels(u64::from(glyph.width) * u64::from(glyph.height), limits)?;
                 let (x, y) = config.origin(s, t, glyph)?;
                 bitmap.combine_signed(glyph, x, y, config.operator);
-                s = super::text::add(s, config.advance(glyph))?;
+                s = crate::jbig2::text::add(s, config.advance(glyph))?;
                 count += 1;
                 let Some(delta) = self.tables[1].decode(bits)? else {
                     break;
@@ -231,7 +231,7 @@ impl Procedure {
                 if count >= instances {
                     return Err(Error::syntax("excess JBIG2 Huffman symbol instances"));
                 }
-                s = super::text::add(s, delta + config.offset)?;
+                s = crate::jbig2::text::add(s, delta + config.offset)?;
             }
         }
         Ok(bitmap)
@@ -239,15 +239,15 @@ impl Procedure {
 }
 
 #[derive(Clone, Copy)]
-pub(super) enum Identifiers<'a> {
+pub(crate) enum Identifiers<'a> {
     Table(&'a Table),
     Fixed(u8),
 }
-pub(super) struct Placement<'a> {
-    pub(super) size: (u32, u32),
-    pub(super) instances: usize,
-    pub(super) config: Config,
-    pub(super) identifiers: Identifiers<'a>,
+pub(crate) struct Placement<'a> {
+    pub(crate) size: (u32, u32),
+    pub(crate) instances: usize,
+    pub(crate) config: Config,
+    pub(crate) identifiers: Identifiers<'a>,
 }
 
 fn dimension(base: u32, delta: i64) -> Result<u32> {
@@ -314,7 +314,7 @@ fn identifiers(
     Table::new(&parameters)
 }
 
-pub(super) fn decode(
+pub(crate) fn decode(
     reader: &mut Reader<'_>,
     size: (u32, u32),
     symbols: &[Rc<Bitmap>],
@@ -322,7 +322,7 @@ pub(super) fn decode(
     limits: &Limits,
     work: &mut Work,
 ) -> Result<Bitmap> {
-    work.operations(super::huffman::STANDARD_ROWS, limits)?;
+    work.operations(crate::jbig2::huffman::STANDARD_ROWS, limits)?;
     let flags = reader.u16()?;
     let mut procedure = Procedure::read(reader, flags, custom, limits)?;
     let instances = reader.u32()? as usize;
