@@ -23,14 +23,14 @@ mod transparency;
 
 pub use context::RenderContext;
 pub use display::DisplayList;
-pub use interpreter::{compile_page, compile_page_with};
+pub use interpreter::{compile_page, compile_page_with, compile_page_with_text, text_page};
 
 use pagura_core::{Error, Rect, Result};
 use pagura_document::{Document, Page, Rotation};
 use pagura_raster::Rgba8;
 
 pub use pagura_raster::Pixmap;
-pub use pagura_text::Provider;
+pub use pagura_text::{Provider, SearchOptions, TextMatch, TextPage};
 
 /// Stable tags for rendering capabilities not implemented yet.
 pub mod features;

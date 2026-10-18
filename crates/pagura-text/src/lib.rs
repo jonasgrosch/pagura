@@ -33,10 +33,17 @@ mod font;
 mod memory;
 mod metrics;
 mod objects;
+mod page;
+pub use page::{
+    Character, LayoutOptions, MarkedContent, MarkedSpan, PositionedGlyph, PositionedText, Quad,
+    SearchOptions, TextFont, TextLine, TextMatch, TextPage, TextWord,
+};
 mod program;
 mod provider;
 pub mod repairs;
+mod strings;
 mod substitute;
+pub use strings::decode_text_string;
 
 pub use cid_substitute::CID_GLYPH_MISSING;
 /// Stable diagnostic tag for a host-provided outline substitution.
@@ -166,8 +173,8 @@ impl PdfFont {
     /// Counts encoding payloads, width/vertical tables, owned CMaps, ToUnicode,
     /// CIDToGIDMap and Type 3 procedures/resources. Tree entries include a
     /// 64-byte bookkeeping allowance; names include a payload allowance even
-    /// when inline. Embedded program storage uses a proxy for private parsed
-    /// tables: twice the input bytes, 192 bytes per glyph and 16 KiB overhead.
+    /// when inline. Embedded program storage uses `FontProgram::retained_bytes()` plus
+    /// the shared handle and Arc bookkeeping.
     /// This is an estimate, not allocator telemetry or a peak-memory bound.
     ///
     /// Provider-owned programs, predefined CMaps and collection Unicode tables

@@ -2,6 +2,7 @@
 
 mod bounds;
 pub(crate) mod cache;
+pub(super) mod extract;
 mod type3;
 
 use super::{
@@ -115,7 +116,7 @@ impl Compiler<'_> {
         Ok(())
     }
 
-    pub(super) fn text_operator(
+    pub(super) fn text_operator<const EXTRACT: bool>(
         &mut self,
         word: &[u8],
         v: &[Value],
@@ -135,7 +136,7 @@ impl Compiler<'_> {
                     .and_then(Value::as_name)
                     .ok_or(Error::syntax("font name expected"))?;
                 let value = resource(self.document, resources, b"Font", name.as_bytes())?;
-                self.select_font(value, number(v, 1)?)?;
+                self.select_font_mode::<EXTRACT>(value, number(v, 1)?)?;
             }
             b"Tr" => {
                 let mode = v
@@ -164,7 +165,7 @@ impl Compiler<'_> {
                 self.text_line(x, y)?;
             }
             b"T*" => self.text_line(0.0, -self.state.text.leading)?,
-            b"Tj" => self.show_value(&v[0], resources)?,
+            b"Tj" => self.show_value::<EXTRACT>(&v[0], resources)?,
             b"TJ" => {
                 self.text_object()?;
                 let array = v[0].as_array().ok_or(Error::syntax("TJ array expected"))?;
@@ -172,7 +173,7 @@ impl Compiler<'_> {
                     if let Some(adjustment) = value.as_number() {
                         self.text_adjust(adjustment)?;
                     } else {
-                        self.show_value(value, resources)?;
+                        self.show_value::<EXTRACT>(value, resources)?;
                     }
                 }
             }
@@ -185,7 +186,7 @@ impl Compiler<'_> {
                     &v[0]
                 };
                 self.text_line(0.0, -self.state.text.leading)?;
-                self.show_value(string, resources)?;
+                self.show_value::<EXTRACT>(string, resources)?;
             }
             b"d0" | b"d1" => self.glyph_metrics(word, v)?,
             _ => return Err(Error::syntax("invalid text operator")),
@@ -287,7 +288,11 @@ impl Compiler<'_> {
         }
     }
 
-    fn show_value(&mut self, value: &Value, resources: &Dictionary) -> Result<()> {
+    fn show_value<const EXTRACT: bool>(
+        &mut self,
+        value: &Value,
+        resources: &Dictionary,
+    ) -> Result<()> {
         self.text_object()?;
         let bytes = value
             .as_string()
@@ -307,13 +312,16 @@ impl Compiler<'_> {
             .checked_add(glyphs.len())
             .filter(|&n| n <= self.document.limits().operations)
             .ok_or(Error::limit("text glyph work exceeded"))?;
+        if EXTRACT {
+            self.extract_show()?;
+        }
         for glyph in glyphs {
-            self.show_glyph(&font, glyph, resources)?;
+            self.show_glyph::<EXTRACT>(&font, glyph, resources)?;
         }
         Ok(())
     }
 
-    fn show_glyph(
+    fn show_glyph<const EXTRACT: bool>(
         &mut self,
         font: &cache::CachedFont,
         glyph: Glyph,
@@ -348,6 +356,9 @@ impl Compiler<'_> {
             ((glyph.advance * size + spacing) * text.horizontal, 0.0),
             |v| (0.0, v.advance * size + spacing),
         );
+        if EXTRACT {
+            self.extract_glyph(font, &glyph, matrix, transform)?;
+        }
         // Zero-sized text neither paints nor clips (Table 103), but still spaces.
         if size != 0.0 {
             match glyph.shape {

@@ -58,6 +58,9 @@ pub(crate) fn repair(document: &Document, diagnostic: pagura_core::Diagnostic) -
     Ok(())
 }
 
+pub(crate) use text::extract::compile_with_text;
+pub use text::extract::{compile_page_with_text, text_page};
+
 /// Compiles a page into the vector display list (7.8.2; 8.4–8.6; ADR 0004).
 /// All content streams are one token sequence, including compound operands.
 ///
@@ -165,6 +168,7 @@ struct Compiler<'a> {
     stencil_pattern: bool,
     position: Position,
     forms: Vec<ObjectId>,
+    extraction: Option<text::extract::Extraction>,
 }
 
 impl<'a> Compiler<'a> {
@@ -193,6 +197,7 @@ impl<'a> Compiler<'a> {
             stencil_pattern: false,
             position: Position::Unknown,
             forms: Vec::new(),
+            extraction: None,
         })
     }
 
@@ -208,7 +213,14 @@ impl<'a> Compiler<'a> {
         self.state.stroke_color = self.state.fill.clone();
         let streams = self.document.content_streams(page)?;
         self.sequence(&streams, page.resources())?;
-        self.annotations(page)
+        if self.extraction.is_some() {
+            let extraction = self.extraction.take();
+            let result = self.annotations(page);
+            self.extraction = extraction;
+            result
+        } else {
+            self.annotations(page)
+        }
     }
 
     fn sequence(&mut self, streams: &[&IndirectObject], resources: &Dictionary) -> Result<()> {
@@ -379,7 +391,11 @@ impl<'a> Compiler<'a> {
             b"Do" => self.xobject(v, resources)?,
             b"BT" | b"ET" | b"Tc" | b"Tw" | b"Tz" | b"TL" | b"Tf" | b"Tr" | b"Ts" | b"Td"
             | b"TD" | b"Tm" | b"T*" | b"Tj" | b"TJ" | b"'" | b"\"" | b"d0" | b"d1" => {
-                self.text_operator(word, v, resources)?;
+                if self.extraction.is_some() {
+                    self.text_operator::<true>(word, v, resources)?;
+                } else {
+                    self.text_operator::<false>(word, v, resources)?;
+                }
             }
             b"BX" => {
                 self.compatibility = nested(self.compatibility, self.document.limits().depth)?;
@@ -390,34 +406,15 @@ impl<'a> Compiler<'a> {
                     .checked_sub(1)
                     .ok_or(Error::syntax("EX without BX"))?;
             }
-            b"BMC" | b"BDC" => {
-                if self.marked.len() >= self.document.limits().depth {
-                    return Err(Error::limit("marked content nesting exceeded"));
-                }
-                let mut visible = true;
-                if word == b"BDC"
-                    && v.first()
-                        .and_then(Value::as_name)
-                        .is_some_and(|n| n == b"OC")
-                {
-                    let properties = v
-                        .get(1)
-                        .ok_or(Error::syntax("missing optional content properties"))?;
-                    let properties = if let Some(name) = properties.as_name() {
-                        resource(self.document, resources, b"Properties", name.as_bytes())?
-                    } else {
-                        properties
-                    };
-                    visible = self.visibility.marked(self.document, properties)?;
-                }
-                self.marked.push(self.visible);
-                self.visible &= visible;
-            }
+            b"BMC" | b"BDC" => self.begin_marked(word, v, resources)?,
             b"EMC" => {
                 self.visible = self
                     .marked
                     .pop()
                     .ok_or(Error::syntax("EMC without marked content"))?;
+                if self.extraction.is_some() {
+                    self.extract_end()?;
+                }
             }
             b"MP" | b"DP" => {}
             b"ID" | b"EI" => return Err(Error::syntax("inline image delimiter outside image")),
@@ -428,6 +425,33 @@ impl<'a> Compiler<'a> {
                     "content operator is not implemented",
                 ));
             }
+        }
+        Ok(())
+    }
+    fn begin_marked(&mut self, word: &[u8], v: &[Value], resources: &Dictionary) -> Result<()> {
+        if self.marked.len() >= self.document.limits().depth {
+            return Err(Error::limit("marked content nesting exceeded"));
+        }
+        let mut visible = true;
+        if word == b"BDC"
+            && v.first()
+                .and_then(Value::as_name)
+                .is_some_and(|n| n == b"OC")
+        {
+            let properties = v
+                .get(1)
+                .ok_or(Error::syntax("missing optional content properties"))?;
+            let properties = if let Some(name) = properties.as_name() {
+                resource(self.document, resources, b"Properties", name.as_bytes())?
+            } else {
+                properties
+            };
+            visible = self.visibility.marked(self.document, properties)?;
+        }
+        self.marked.push(self.visible);
+        self.visible &= visible;
+        if self.extraction.is_some() {
+            self.extract_begin(word, v, resources)?;
         }
         Ok(())
     }

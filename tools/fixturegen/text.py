@@ -91,6 +91,7 @@ def error_case(name, font, tag, objects=()):
 
 
 def cases():
+    yield from extraction_cases()
     yield from tolerance_paint_cases()
     yield from tolerance_cases()
     for case in original_cases():
@@ -1253,3 +1254,145 @@ def tolerance_paint_cases():
         code=b"00ff" if name=="codespace" else b"0001"
         yield Case("paint-cmap-"+name,page(b"BT /F 20 Tf 4 4 Td <"+code+b"> Tj ET",objects,b"<< /Font << /F 5 0 R >> >>"),RENDER,
                    ("text-cmap-recovery",),"A reported font/CMap repair paints the exact rectangle; strict rejects it",oracle=oracle,repairs=(tag,),strict_valid=False)
+
+
+def extraction_cases():
+    """Independent Trm arithmetic and explicitly authored reading-order strings.
+
+    Selection cells use PDF advances and descriptor em bounds; Type 3 uses its
+    declared FontBBox through FontMatrix. Layout is policy, not ISO typography.
+    """
+    import re
+    from .paint import page, ttf
+
+    def value(item):
+        if isinstance(item, (list, tuple)):
+            return b"[" + b" ".join(value(x) for x in item) + b"]"
+        return scalar(item)
+
+    def transform(p, m):
+        x, y = p
+        a, b, c, d, e, f = m
+        return a*x+c*y+e, b*x+d*y+f
+
+    def records(text, x, y, *, size=10, horizontal=1, character=0, word=0,
+                rise=0, matrix=(1,0,0,1,0,0), advance=.5, height=1,
+                mode=0, hidden=False, path="", vertical=False, origin=(.25,.8),
+                font_matrix=None, unicode_values=None):
+        rows=[]
+        for index,c in enumerate(text):
+            def point(px,py):
+                return transform((x+px*size*horizontal,y+py*size+rise),matrix)
+            baseline=point(0,0)
+            if vertical:
+                corners=[(0,0),(advance,0),(advance,1),(0,1)]
+                corners=[(px-origin[0],py-origin[1]) for px,py in corners]
+            elif font_matrix:
+                corners=[transform(p,font_matrix) for p in [(0,0),(500,0),(500,1000),(0,1000)]]
+            else:
+                corners=[(0,0),(advance,0),(advance,height),(0,height)]
+            quad=[n for p in corners for n in point(*p)]
+            end=point(0,-1) if vertical else point(advance,0)
+            tip=point(0,-1) if vertical else point(1,0)
+            perp=point(1,0) if vertical else point(0,1)
+            em=((perp[0]-baseline[0])**2+(perp[1]-baseline[1])**2)**.5
+            unicode_value=c if unicode_values is None else unicode_values[index]
+            rows.append([unicode_value,*quad,size,vertical,mode,hidden,path,*baseline,
+                         tip[0]-baseline[0],tip[1]-baseline[1],em,*end])
+            spacing=character+(word if c==' ' else 0)
+            if vertical:y+=-size+spacing
+            else:x+=(advance*size+spacing)*horizontal
+        return rows
+
+    differences=b" ".join(b"%d /uni%04X" % (i,i) for i in range(32,127))
+    procs=b" ".join(b"/uni%04X 6 0 R" % i for i in range(32,127))
+    font=(b"<< /Type /Font /Subtype /Type3 /FontBBox [0 0 500 1000] /FontMatrix [.001 0 0 .001 0 0] "
+          b"/FirstChar 32 /LastChar 126 /Widths ["+b"500 "*95+b"] /Encoding << /Differences ["+differences+
+          b"] >> /CharProcs << "+procs+b" >> /Resources << >> >>")
+    objects=[font,stream(b"500 0 d0 0 0 500 1000 re f")]
+    resources=b"<< /Font << /F 5 0 R >> >>"
+
+    def vector(name, content, rows, text, *, source=None, objs=None, res=None, catalog=None, queries=(), hidden_text=None, marks=None):
+        pdf_data=page(content,objects if objs is None else objs,resources if res is None else res,size=240)
+        if catalog:
+            # Rebuild objects to let the PDF writer recompute every xref offset.
+            pdf_data=document([b"<< /Type /Catalog /Pages 2 0 R "+catalog+b" >>",
+                b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+                b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 240 240] /Resources "+res+b" /Contents 4 0 R >>",
+                stream(content),*(objects if objs is None else objs)])
+        words=[];lines=[];offset=0
+        for line in text.split('\n'):
+            if line:
+                start_word=len(words)
+                words.extend([[len(text[:offset+m.start()].encode()),len(text[:offset+m.end()].encode()),len(lines)] for m in re.finditer(r"\w+",line)])
+                lines.append([len(text[:offset].encode()),len(text[:offset+len(line)].encode()),start_word,len(words),text[offset+len(line):].startswith("\n\n")])
+            offset+=len(line)+1
+        files={".pdf":pdf_data,".glyphs":value(rows)+b"\n",".text":text.encode(),
+               ".content":(source if source is not None else ''.join(row[0] if row[0] is not None else '\ufffd' for row in rows if not row[12])).encode(),
+               ".lines":value(lines)+b"\n",".words":value(words)+b"\n",".queries":value(queries)+b"\n"}
+        if hidden_text is not None:files[".hidden-text"]=hidden_text.encode()
+        if marks is not None:files[".marked"]=value(marks)+b"\n"
+        return Vector("extract-"+name,files,("text-positioned","text-layout","text-search","text-replacement"),
+                      "Independent selection geometry, semantic text, layout boundaries and search",{"driver":"text-page"})
+
+    yield vector("spacing",b"BT /F 10 Tf 80 Tz 1 Tc 2 Tw 3 Ts 1 0 0 1 10 30 Tm (A A) Tj ET",
+                 records("A A",10,30,horizontal=.8,character=1,word=2,rise=3),"A A")
+    yield vector("tj",b"BT /F 10 Tf 10 60 Td [(AB) -100 (CD) -250 (EF)] TJ ET",
+                 records("AB",10,60)+records("CD",21,60)+records("EF",33.5,60),"ABCD EF",
+                 queries=[['abcd ef',True,True,True,[[0,7]],[[0,1,2,3,4,5]]],['bc',True,True,True,[],[]]])
+    yield vector("simple",b"BT /F 10 Tf 10 20 Td (AA) Tj ET",records("ZZ",10,20,advance=.4,height=.6),"ZZ",
+                 objs=[ttf()[0][:-2]+b" /ToUnicode 8 0 R >>",*ttf()[1:],stream(b"1 begincodespacerange <00> <ff> endcodespacerange 1 beginbfchar <41> <005A> endbfchar")])
+    unknown=font.replace(b"65 /uni0041",b"65 /unknownOpaque").replace(b"/uni0041 6 0 R",b"/unknownOpaque 6 0 R")
+    yield vector("unknown",b"BT /F 10 Tf 10 20 Td (ABA) Tj ET",records("ABA",10,20,unicode_values=[None,'B',None]),"\ufffdB\ufffd",
+                 objs=[unknown,objects[1]],queries=[['B',False,False,True,[[3,4]],[[1]]],['\ufffd',False,False,True,[],[]]])
+    yield vector("rotated",b"q 0 1 -1 0 200 0 cm BT /F 10 Tf 10 20 Td (AB) Tj ET Q",
+                 records("AB",10,20,matrix=(0,1,-1,0,200,0)),"AB")
+    yield vector("type3-matrix",b"BT /F 10 Tf 10 20 Td (AB) Tj ET",
+                 records("AB",10,20,advance=1,font_matrix=(.002,0,0,.003,0,0)),"AB",
+                 objs=[font.replace(b"[.001 0 0 .001 0 0]",b"[.002 0 0 .003 0 0]"),objects[1]])
+    yield vector("form",b"/Figure BMC q 2 0 0 2 5 7 cm /X Do Q EMC",
+                 records("AB",10,20,matrix=(2,0,0,2,11,15),path="Figure"),"AB",
+                 objs=[*objects,stream(b"BT /F 10 Tf 10 20 Td (AB) Tj ET",b"/Type /XObject /Subtype /Form /BBox [0 0 200 200] /Matrix [1 0 0 1 3 4]")],
+                 res=b"<< /Font << /F 5 0 R >> /XObject << /X 7 0 R >> >>")
+    yield vector("ocr",b"BT /F 10 Tf 3 Tr 10 20 Td (OCR) Tj ET",records("OCR",10,20,mode=3),"OCR")
+    yield vector("clipped",b"0 0 1 1 re W n BT /F 10 Tf 7 Tr 10 20 Td (AB) Tj ET",records("AB",10,20,mode=7),"AB")
+    yield vector("actual-lines",b"BT /F 10 Tf 10 20 Td /Span << /ActualText (a) >> BDC (A) Tj EMC 0 20 Td /Span << /ActualText (b) >> BDC (B) Tj EMC ET",
+                 records("A",10,20,path="Span")+records("B",10,40,path="Span"),"ab",source="ab")
+    yield vector("named-properties",b"/Span /Replace BDC BT /F 10 Tf 10 20 Td (A) Tj ET EMC",
+                 records("A",10,20,path="Span"),"named",source="named",marks=[["Span",9,"named","alternative",0,1,False]],
+                 res=b"<< /Font << /F 5 0 R >> /Properties << /Replace << /MCID 9 /ActualText (named) /Alt (alternative) >> >> >>")
+    yield vector("negative",b"BT /F -10 Tf 100 80 Td (ABC) Tj ET",records("ABC",100,80,size=-10),"ABC")
+    yield vector("reversed",b"/ReversedChars BMC BT /F 10 Tf 10 20 Td (cba) Tj [(fed) (ihg)] TJ ET EMC",
+                 records("cbafedihg",10,20,path="ReversedChars"),"abcdefghi",source="abcdefghi")
+    content=b"BT /F 10 Tf 10 20 Td /Span << /ActualText <FEFF007300740072006100DF0065> >> BDC (AB) Tj EMC /Span << /ActualText (Z) >> BDC (C) Tj EMC ET"
+    yield vector("actual",content,records("ABC",10,20,path="Span"),"straßeZ",source="straßeZ",
+                 queries=[['STRASSE',True,False,True,[[0,7]],[[0,1]]],['s',True,False,True,[[0,1]],[[0,1]]],['S',True,True,True,[],[]]])
+    content=b"BT /F 10 Tf 10 20 Td /Span << /ActualText (outer) >> BDC (A) Tj /Span << /ActualText (inner) >> BDC (B) Tj EMC EMC /Span << /ActualText () >> BDC (C) Tj EMC ET"
+    yield vector("nested",content,records("A",10,20,path="Span")+records("B",15,20,path="Span/Span")+records("C",20,20,path="Span"),"outer",source="outer")
+    yield vector("alt",b"BT /F 10 Tf 10 20 Td /Span << /Alt (star) >> BDC (A) Tj EMC /Span << /Alt (moon) >> BDC (B) Tj EMC ET",
+                 records("AB",10,20,path="Span"),"star moon",source="star moon")
+    yield vector("empty-replacement",b"/Span << /ActualText <EFBBBF1B656E1BE282AC> >> BDC 10 20 5 10 re f EMC",[],"€",source="€")
+    yield vector("graphic-replacement",b"BT /F 10 Tf 10 20 Td (L) Tj ET /Span << /ActualText (middle) >> BDC 15 20 2 4 re f EMC BT /F 10 Tf 15 20 Td (R) Tj ET",
+                 records("L",10,20)+records("R",15,20),"LmiddleR",source="LmiddleR")
+    oc=b"<< /Font << /F 5 0 R >> /Properties << /Hidden 7 0 R >> /XObject << /X 8 0 R >> >>"
+    ocobjs=[*objects,b"<< /Type /OCG /Name (hidden) >>",stream(b"BT /F 10 Tf 10 50 Td (D) Tj ET",b"/Type /XObject /Subtype /Form /BBox [0 0 200 200] /OC 7 0 R")]
+    yield vector("optional",b"BT /F 10 Tf 10 20 Td (A) Tj /OC /Hidden BDC (B) Tj EMC (C) Tj ET /X Do",
+                 records("A",10,20)+records("B",15,20,hidden=True,path="OC")+records("C",20,20)+records("D",10,50,hidden=True),"A C",source="AC",
+                 objs=ocobjs,res=oc,catalog=b"/OCProperties << /OCGs [7 0 R] /D << /BaseState /ON /OFF [7 0 R] >> >>",hidden_text="D\n\nABC")
+    yield vector("columns",b"BT /F 10 Tf 130 200 Td (Right) Tj 0 -12 Td (side) Tj 1 0 0 1 10 200 Tm (Left) Tj 0 -12 Td (side) Tj ET",
+                 records("Right",130,200)+records("side",130,188)+records("Left",10,200)+records("side",10,188),"Left\nside\n\nRight\nside",
+                 queries=[['left side',True,True,True,[[0,9]],[[9,10,11,12,13,14,15,16]]]])
+    yield vector("marked-order",b"/P BMC BT /F 10 Tf 10 20 Td (first) Tj 0 12 Td (last) Tj ET EMC",
+                 records("first",10,20,path="P")+records("last",10,32,path="P"),"first\nlast")
+    yield vector("hyphen",b"BT /F 10 Tf 10 100 Td (hyphen-) Tj 0 -12 Td (ated text) Tj 0 -12 Td (across lines) Tj ET",
+                 records("hyphen-",10,100)+records("ated text",10,88)+records("across lines",10,76),"hyphen-\nated text\nacross lines",
+                 queries=[['hyphenated',True,True,True,[[0,12]],[[0,1,2,3,4,5,6,7,8,9,10]]],['hyphenated',True,False,False,[],[]],['TEXT ACROSS',True,True,True,[[13,24]],[[12,13,14,15,16,17,18,19,20,21]]]])
+    # Embedded CIDFont, widths and vertical origins authored here; Unicode is
+    # independent of GIDs. The rectangle sfnt supplies only a paintable program.
+    base=ttf()
+    for vertical in (False,True):
+        cmap=b"1 begincodespacerange <0000> <ffff> endcodespacerange 2 beginbfchar <0001> <0041> <0002> <0042> endbfchar"
+        font0=b"<< /Type /Font /Subtype /Type0 /BaseFont /Rect /Encoding /Identity-"+(b"V" if vertical else b"H")+b" /DescendantFonts [8 0 R] /ToUnicode 9 0 R >>"
+        descendant=b"<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Rect /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 6 0 R /CIDToGIDMap /Identity /DW 500 /DW2 [800 -1000] >>"
+        yield vector("vertical" if vertical else "composite",b"BT /F 10 Tf 100 100 Td <00010002> Tj ET",
+                     records("AB",100,100,vertical=vertical,height=.6),"AB",objs=[font0,*base[1:],descendant,stream(cmap)])

@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "text",
-  "scope": "The rule paraphrases and exact ISO locators below were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text (ISO_32000-2_sponsored_EC3.txt): PDF string-decoding/spacing interfaces, supported font dictionaries and embedding bindings, character selection, widths/CID metrics, PDF-specific CMap rules and ToUnicode. Every code-to-name slot of Standard, MacRoman, WinAnsi, PDFDoc, Symbol and ZapfDingbats was compared with Annex D; MacExpert was also checked. This is not verification of Adobe Glyph List rules, TN5014 grammar or external font-program binary formats. Provider additions were checked against ISO 9.6.2.2/Table 109 and 9.9.2, 9.8.1-9.8.2/Tables 120-121, 9.7.5.2/Table 116 and 9.10.2, and TN5014 sections 5.1-5.4 for pinned resource inheritance. AFM values and Unicode projection choices are checked against the pinned data files, not claimed as verification of external AFM or sfnt format standards. Recovery additions were checked against ISO 9.7.4.1 Table 115, 9.7.4.2, 9.7.5.4, 9.7.6.2, 9.10.3 and TN5014 7.4. Tolerant interpretations depart from those rules as individually reported below; corpus acceptance is evidence of tolerance, not standards conformance. Round 5 rechecks the PDF TrueType routes against 9.6.5.4 and Table 113 in the same local ISO text; final-paragraph alternatives are reader policy. Retained byte accounting is ADR 0012 policy, not a numerical requirement of Annex C.1. Substitution and optional-weight handling were checked against ISO 9.6.2.1-9.6.2.2, 9.6.5.2, 9.6.5.4, 9.8.1-9.8.2/Tables 120-121 and 9.9.2 in the same local text. Sixty-six Russian AFII name-to-scalar records were compared with local adobe-glyph-list data. Short aliases and invalid-weight discard are documented policies; full external AGL/AGLFN algorithm verification is not claimed. Horizontal CID substitution and Symbol/Dingbats additions were checked against the same local ISO text: 9.6.2.2, 9.6.5.2/Table 112, 9.6.5.4, 9.7.3/Table 114, 9.7.4.2-9.7.4.3, 9.7.5 and 9.10.2-9.10.3. CFF INDEX, DICT, charset layouts and standard SIDs used by the Foxit oracle were checked against local TN5176 sections 4, 5, 8-10, 13-14 and Appendix A. Regional OTF cmap expectations are independent binary-layout oracles; primary OpenType format review remains pending. Collection projection, Unicode subtable preference, horizontal-only substitutes and coalesced coverage diagnostics are explicit provider policies.",
+  "scope": "The rule paraphrases and exact ISO locators below were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text (ISO_32000-2_sponsored_EC3.txt): PDF string-decoding/spacing interfaces, supported font dictionaries and embedding bindings, character selection, widths/CID metrics, PDF-specific CMap rules and ToUnicode. Every code-to-name slot of Standard, MacRoman, WinAnsi, PDFDoc, Symbol and ZapfDingbats was compared with Annex D; MacExpert was also checked. This is not verification of Adobe Glyph List rules, TN5014 grammar or external font-program binary formats. Provider additions were checked against ISO 9.6.2.2/Table 109 and 9.9.2, 9.8.1-9.8.2/Tables 120-121, 9.7.5.2/Table 116 and 9.10.2, and TN5014 sections 5.1-5.4 for pinned resource inheritance. AFM values and Unicode projection choices are checked against the pinned data files, not claimed as verification of external AFM or sfnt format standards. Recovery additions were checked against ISO 9.7.4.1 Table 115, 9.7.4.2, 9.7.5.4, 9.7.6.2, 9.10.3 and TN5014 7.4. Tolerant interpretations depart from those rules as individually reported below; corpus acceptance is evidence of tolerance, not standards conformance. Round 5 rechecks the PDF TrueType routes against 9.6.5.4 and Table 113 in the same local ISO text; final-paragraph alternatives are reader policy. Retained byte accounting is ADR 0012 policy, not a numerical requirement of Annex C.1. Substitution and optional-weight handling were checked against ISO 9.6.2.1-9.6.2.2, 9.6.5.2, 9.6.5.4, 9.8.1-9.8.2/Tables 120-121 and 9.9.2 in the same local text. Sixty-six Russian AFII name-to-scalar records were compared with local adobe-glyph-list data. Short aliases and invalid-weight discard are documented policies; full external AGL/AGLFN algorithm verification is not claimed. Horizontal CID substitution and Symbol/Dingbats additions were checked against the same local ISO text: 9.6.2.2, 9.6.5.2/Table 112, 9.6.5.4, 9.7.3/Table 114, 9.7.4.2-9.7.4.3, 9.7.5 and 9.10.2-9.10.3. CFF INDEX, DICT, charset layouts and standard SIDs used by the Foxit oracle were checked against local TN5176 sections 4, 5, 8-10, 13-14 and Appendix A. Regional OTF cmap expectations are independent binary-layout oracles; primary OpenType format review remains pending. Collection projection, Unicode subtable preference, horizontal-only substitutes and coalesced coverage diagnostics are explicit provider policies. Extraction additions were checked against the same local ISO text: 7.9.2.2, 9.3, 9.4.4, 9.10, 14.6, 14.8.2.5.1/14.8.2.5.3, 14.8.2.6.2 and 14.9.3-14.9.4. Trm and replacement/reversal semantics are normative; selection cells, untagged reading order, layout thresholds, word boundaries and search equivalence are explicitly reader policy. No Unicode normalization or full case-fold standard verification is claimed.",
   "requirements": [
     {
       "id": "text-type3",
@@ -1141,16 +1141,16 @@
         "text/type3-differences",
         "text/embedded-cid-variable-codes"
       ],
-      "gaps": "No allocator telemetry or peak bound. Private FontProgram tables use an explicit proxy until pagura-font exposes a retained estimate; renderer admission is outside this crate.",
+      "gaps": "Estimate only, not allocator telemetry or peak bound. Provider programs remain excluded; CIDToGIDMap capacity is counted separately.",
       "verification": {
         "rule": "Annex C.1 discusses processor limits; the retained accounting amounts and provider ownership convention are implementation policy under ADR 0012.",
-        "implementation": "Owned encoding payloads, widths, vertical metrics, CMaps, Unicode, CIDToGIDMap, Type 3 resources/procedures and an embedded-program proxy are computed once. Names include payload allowances; trees add 64 bytes per entry. Provider-owned shared resources are excluded and remain its cache-budget responsibility.",
-        "expectations": "Unit tests cover all five requested font categories, owned resource growth, stable repeated reads, shared provider identity/Unicode exclusion and saturating arithmetic. No allocator-accurate size is claimed.",
+        "implementation": "Owned encoding payloads, widths, vertical metrics, CMaps, Unicode, CIDToGIDMap, Type 3 resources/procedures and FontProgram::retained_bytes plus handle/Arc overhead are computed once. Names include payload allowances; trees add 64 bytes per entry. Provider-owned shared resources are excluded and remain its cache-budget responsibility.",
+        "expectations": "Unit tests cover all five requested font categories, owned resource growth, stable repeated reads, shared provider identity/Unicode exclusion and saturating arithmetic. No allocator-accurate size is claimed. Exact program-retained accounting and separate CID-map capacity are tested for embedded TrueType, CFF, Type 1 and composite programs.",
         "verdict": "Accounting policy tested, not an ISO-defined byte count.",
         "choices": [
           "Include the PdfFont struct itself, but exclude Document-owned source dictionaries/streams and renderer-owned outlines. Replace the renderer input-size estimate with retained_bytes; do not add the two.",
-          "Embedded private FontProgram storage uses two input byte lengths plus 192 bytes per glyph, 16 KiB fixed overhead, the public program struct and Arc headers. This models parsed offsets, charstrings, encodings and indexes without reparsing a program or walking glyphs.",
-          "Provider substitute programs, predefined CMaps and CID-to-Unicode tables are charged by their provider, never per font. Copied encodings/metrics, embedded maps and inherited map copies remain owned allocations."
+          "Provider substitute programs, predefined CMaps and CID-to-Unicode tables are charged by their provider, never per font. Copied encodings/metrics, embedded maps and inherited map copies remain owned allocations.",
+          "Embedded programs count FontProgram::retained_bytes plus the FontProgram handle and two usize Arc counters. Substituted provider programs are excluded; CID map capacity remains separate."
         ]
       }
     },
@@ -1327,6 +1327,199 @@
         "verdict": "ISO subset agrees; substitution selection is documented policy",
         "choices": [
           "Horizontal collection CIDs project through the provider Unicode table and regional substitute Unicode cmap, preferring Windows full Unicode, Windows BMP, then platform Unicode. Multi-scalar values and missing Unicode/glyphs draw no mark and preserve CID widths. A bounded load-time reachable-CID check reports incomplete coverage once per descendant, including notdef. Vertical substitutes fail font.cid-substitute-vertical; embedded vertical fonts remain supported. Shared provider programs and tables are excluded from per-font retained estimates."
+        ]
+      }
+    },
+    {
+      "id": "text-positioned",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.3",
+        "9.4.4",
+        "9.10"
+      ],
+      "status": "Same-interpreter positioned glyphs with default-user-space selection cells",
+      "tests": [
+        "text/extract-spacing",
+        "text/extract-tj",
+        "text/extract-simple",
+        "text/extract-unknown",
+        "text/extract-rotated",
+        "text/extract-type3-matrix",
+        "text/extract-form",
+        "text/extract-ocr",
+        "text/extract-clipped",
+        "text/extract-actual-lines",
+        "text/extract-named-properties",
+        "text/extract-negative",
+        "text/extract-reversed",
+        "text/extract-actual",
+        "text/extract-nested",
+        "text/extract-alt",
+        "text/extract-empty-replacement",
+        "text/extract-graphic-replacement",
+        "text/extract-optional",
+        "text/extract-columns",
+        "text/extract-marked-order",
+        "text/extract-hyphen",
+        "text/extract-composite",
+        "text/extract-vertical"
+      ],
+      "gaps": "Structure-tree semantics and script-specific segmentation remain future work; layout/search heuristics are explicit policy.",
+      "verification": {
+        "rule": "The text rendering matrix combines font size, horizontal scale, rise, text matrix and CTM; spacing and vertical origins affect positions, while Unicode does not select painted glyphs.",
+        "implementation": "agrees with the cited ISO subset and documented policies",
+        "expectations": "independent Python Trm arithmetic and explicitly authored text, boundaries and query ranges",
+        "verdict": "ISO subset agrees; geometric layout/search policies are not conformance rules",
+        "choices": [
+          "Selection cells use Type 3 FontBBox through FontMatrix; other horizontal cells use PDF advance and descriptor FontBBox y extents, falling back to a 0..1 em cell. Vertical cells use horizontal advance and vertical advance around the glyph origin. These are metric cells, not ink bounds or clipped outlines.",
+          "Coordinates precede page Rotate, UserUnit and device scaling. Hidden optional content and all render modes remain in raw glyphs. Pattern cells, masks, Type 3 internals and annotation appearances are paint constructions, excluded from page semantics."
+        ]
+      }
+    },
+    {
+      "id": "text-layout",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.10",
+        "14.8.2.5",
+        "14.8.2.6.2"
+      ],
+      "status": "Content-order characters, policy words/lines, reading order and copy text",
+      "tests": [
+        "text/extract-spacing",
+        "text/extract-tj",
+        "text/extract-simple",
+        "text/extract-unknown",
+        "text/extract-rotated",
+        "text/extract-type3-matrix",
+        "text/extract-form",
+        "text/extract-ocr",
+        "text/extract-clipped",
+        "text/extract-actual-lines",
+        "text/extract-named-properties",
+        "text/extract-negative",
+        "text/extract-reversed",
+        "text/extract-actual",
+        "text/extract-nested",
+        "text/extract-alt",
+        "text/extract-empty-replacement",
+        "text/extract-graphic-replacement",
+        "text/extract-optional",
+        "text/extract-columns",
+        "text/extract-marked-order",
+        "text/extract-hyphen",
+        "text/extract-composite",
+        "text/extract-vertical"
+      ],
+      "gaps": "Structure-tree semantics and script-specific segmentation remain future work; layout/search heuristics are explicit policy.",
+      "verification": {
+        "rule": "Unicode supports text extraction; ordering inside a marked sequence follows content order, while untagged geometric layout and word recognition require reader policy.",
+        "implementation": "agrees with the cited ISO subset and documented policies",
+        "expectations": "independent Python Trm arithmetic and explicitly authored text, boundaries and query ranges",
+        "verdict": "ISO subset agrees; geometric layout/search policies are not conformance rules",
+        "choices": [
+          "No structure-tree reading-order traversal is claimed. Outermost marked occurrences keep content order as indivisible blocks. Other blocks cluster by one-degree orientation in discovery order, inline start anchors within 1.5 em into columns, then perpendicular baseline descending. Horizontal columns run left to right; vertical columns run right to left.",
+          "Baselines within .35 perpendicular em and direction dot product above .98 form lines. Displacements over 2.5 em split fragments. Positive unoccupied gaps above .2 perpendicular em insert spaces; ReversedChars occurrences rely on explicit whitespace. Line displacements over 1.8 em, column shifts over 2.5 em or orientation changes insert paragraph breaks. These thresholds are configurable except the documented clustering constants.",
+          "Words are alphanumeric/underscore runs, not UAX 29 segmentation. Unknown Unicode exports U+FFFD but remains None and cannot match a literal replacement character. Hidden optional content is excluded by default; render mode 3, clip-only and clipped text stay extractable. Negative sizes and rotated baselines use their signed writing vectors."
+        ]
+      }
+    },
+    {
+      "id": "text-replacement",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.9.2.2",
+        "14.6",
+        "14.8.2.5.3",
+        "14.9.3",
+        "14.9.4"
+      ],
+      "status": "Marked-content ActualText, Alt and ReversedChars",
+      "tests": [
+        "text/extract-spacing",
+        "text/extract-tj",
+        "text/extract-simple",
+        "text/extract-unknown",
+        "text/extract-rotated",
+        "text/extract-type3-matrix",
+        "text/extract-form",
+        "text/extract-ocr",
+        "text/extract-clipped",
+        "text/extract-actual-lines",
+        "text/extract-named-properties",
+        "text/extract-negative",
+        "text/extract-reversed",
+        "text/extract-actual",
+        "text/extract-nested",
+        "text/extract-alt",
+        "text/extract-empty-replacement",
+        "text/extract-graphic-replacement",
+        "text/extract-optional",
+        "text/extract-columns",
+        "text/extract-marked-order",
+        "text/extract-hyphen",
+        "text/extract-composite",
+        "text/extract-vertical"
+      ],
+      "gaps": "Structure-tree semantics and script-specific segmentation remain future work; layout/search heuristics are explicit policy.",
+      "verification": {
+        "rule": "ActualText replaces enclosed characters without adding word breaks; Alt is whole-word/phrase replacement and consecutive alternatives have a word break; ReversedChars reverses each individual shown string.",
+        "implementation": "agrees with the cited ISO subset and documented policies",
+        "expectations": "independent Python Trm arithmetic and explicitly authored text, boundaries and query ranges",
+        "verdict": "ISO subset agrees; geometric layout/search policies are not conformance rules",
+        "choices": [
+          "Outermost replacement takes precedence over nested replacements. ActualText takes precedence over Alt, including empty strings. Replacements can cover graphics without glyphs; their quads are empty. Partial searches highlight all associated glyphs instead of inventing per-character geometry.",
+          "Property lists may be direct or named resources. UTF-16BE, UTF-8 BOM and PDFDocEncoding strings are decoded; Unicode language escapes are stripped from exported text. Structure-element ActualText/Alt is not yet traversed.",
+          "Consecutive ActualText spans remain together in content order without a word break. Unpositioned graphic replacements anchor content order, attach without geometric separators and have no quad; Alt still supplies a word break."
+        ]
+      }
+    },
+    {
+      "id": "text-search",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.10",
+        "14.8.2.6.2",
+        "14.9.4"
+      ],
+      "status": "Bounded Unicode case-insensitive search with source quads",
+      "tests": [
+        "text/extract-spacing",
+        "text/extract-tj",
+        "text/extract-simple",
+        "text/extract-unknown",
+        "text/extract-rotated",
+        "text/extract-type3-matrix",
+        "text/extract-form",
+        "text/extract-ocr",
+        "text/extract-clipped",
+        "text/extract-actual-lines",
+        "text/extract-named-properties",
+        "text/extract-negative",
+        "text/extract-reversed",
+        "text/extract-actual",
+        "text/extract-nested",
+        "text/extract-alt",
+        "text/extract-empty-replacement",
+        "text/extract-graphic-replacement",
+        "text/extract-optional",
+        "text/extract-columns",
+        "text/extract-marked-order",
+        "text/extract-hyphen",
+        "text/extract-composite",
+        "text/extract-vertical"
+      ],
+      "gaps": "Structure-tree semantics and script-specific segmentation remain future work; layout/search heuristics are explicit policy.",
+      "verification": {
+        "rule": "Search operates on extracted Unicode and replacement text; match normalization, boundaries and discretionary hyphens are reader policy.",
+        "implementation": "agrees with the cited ISO subset and documented policies",
+        "expectations": "independent Python Trm arithmetic and explicitly authored text, boundaries and query ranges",
+        "verdict": "ISO subset agrees; geometric layout/search policies are not conformance rules",
+        "choices": [
+          "Rust Unicode uppercase mapping handles scalar expansions; partial expansions cannot match. No normalization, locale-sensitive casing or full case-fold equivalence is claimed, and no new Unicode data is bundled.",
+          "Whitespace collapses for search across lines. Optional hyphen joining removes ASCII hyphen, U+2010 or soft hyphen followed by one line break between letters, never a paragraph break. Whole-word boundaries use alphanumeric/underscore. Matches report UTF-8 ranges in reading-order export and deduplicated source quads.",
+          "Linear prefix search and preflight budgets bound query, estimated storage, layout work and returned highlights. Unknown Unicode is a search barrier."
         ]
       }
     }

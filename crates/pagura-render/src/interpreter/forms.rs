@@ -41,9 +41,8 @@ impl Compiler<'_> {
             _ => return Err(unsupported(features::XOBJECT_SUBTYPE)),
         }
         // Table 93 (8.10.2): skip an invisible form in its entirety.
-        if let Some(oc) = dictionary.get(b"OC")
-            && !self.visibility.visible(self.document, oc)?
-        {
+        let hidden = self.form_hidden(dictionary)?;
+        if hidden && self.extraction.is_none() {
             return Ok(());
         }
         if let Some(kind) = dictionary.get(b"FormType")
@@ -71,6 +70,7 @@ impl Compiler<'_> {
             .transpose()?
             .unwrap_or(Transform::IDENTITY);
         let mut child = self.form_context(id, matrix, bbox)?;
+        self.inherit_extraction(&mut child, hidden);
         let bounds = child.state.clip.as_ref().map(|c| Arc::clone(&c.path));
         let resources = dictionary
             .get(b"Resources")
@@ -120,6 +120,13 @@ impl Compiler<'_> {
         }
         Ok(())
     }
+    fn form_hidden(&self, dictionary: &Dictionary) -> Result<bool> {
+        Ok(dictionary
+            .get(b"OC")
+            .map(|oc| self.visibility.visible(self.document, oc))
+            .transpose()?
+            .is_some_and(|visible| !visible))
+    }
     pub(super) fn form_context(&self, id: ObjectId, matrix: Transform, bbox: Rect) -> Result<Self> {
         let mut child = self.detached();
         child.forms.push(id);
@@ -164,6 +171,7 @@ impl Compiler<'_> {
             stencil_pattern: self.stencil_pattern,
             position: self.position,
             forms: self.forms.clone(),
+            extraction: None,
         }
     }
 }

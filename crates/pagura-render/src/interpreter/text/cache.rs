@@ -263,6 +263,18 @@ impl Compiler<'_> {
     }
 
     pub(super) fn select_font(&mut self, value: &Value, size: f64) -> Result<()> {
+        if self.extraction.is_some() {
+            self.select_font_mode::<true>(value, size)
+        } else {
+            self.select_font_mode::<false>(value, size)
+        }
+    }
+
+    pub(super) fn select_font_mode<const EXTRACT: bool>(
+        &mut self,
+        value: &Value,
+        size: f64,
+    ) -> Result<()> {
         let dictionary = self.document.resolve_dictionary(value)?;
         let key = value.as_reference();
         let local = self.state.text.cache.borrow().fonts.get(key, dictionary);
@@ -300,6 +312,9 @@ impl Compiler<'_> {
                 return Err(Error::limit("font cache budget exceeded"));
             }
             cache.fonts.insert(key, dictionary, Arc::clone(&font));
+        }
+        if EXTRACT {
+            self.extract_font(&font, key, dictionary)?;
         }
         self.state.text.font = Some(font);
         self.state.text.size = size;

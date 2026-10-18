@@ -20,6 +20,8 @@ const USAGE: &str = "usage: pagura inspect [--strict] INPUT
        pagura licenses
        pagura render [--timings] INPUT OUTPUT.ppm [DPI=72] [PAGE=0]
        pagura convert [--timings] INPUT OUTPUT_DIR [DPI=72] [FIRST LAST]
+       pagura text INPUT [PAGE]
+       pagura find INPUT QUERY
        pagura scan [--max-pages N] INPUT [DPI=72]
        pagura roundtrip INPUT OUTPUT
        pagura microbench INPUT open-pages|render-cold|render-warm COUNT [DPI=72]
@@ -123,6 +125,11 @@ fn run(args: &[String]) -> CliResult {
             Ok(())
         }
         ["inspect", input] => inspect(input, &flags),
+        ["text", input, rest @ ..] if rest.len() <= 1 => {
+            let page = rest.first().map(|p| p.parse::<usize>()).transpose()?;
+            extract(input, page, None, &flags)
+        }
+        ["find", input, query] => extract(input, None, Some(query), &flags),
         ["render", input, output, rest @ ..] if rest.len() <= 2 => {
             let page = rest.get(1).map_or(Ok(0), |page| page.parse::<usize>())?;
             let output = Output::File(output);
@@ -184,6 +191,52 @@ fn rendering(document: std::sync::Arc<Document>, flags: &Flags) -> pagura::Rende
         let _ = flags;
         pagura::RenderContext::new(document)
     }
+}
+
+/// Page numbers are zero-based, as for render. Text separates pages with FF;
+/// find emits JSON lines with byte ranges and default-user-space quads.
+fn extract(input: &str, selected: Option<usize>, query: Option<&str>, flags: &Flags) -> CliResult {
+    let context = rendering(std::sync::Arc::new(open(input, flags)?), flags);
+    let document = context.document();
+    let count = document.page_count()?;
+    if selected.is_some_and(|p| p >= count) {
+        return Err("page index outside document".into());
+    }
+    let range = selected.map_or(0..count, |p| p..p + 1);
+    let mut stdout = std::io::stdout().lock();
+    for (ordinal, index) in range.enumerate() {
+        let text = context.text_page(document.page(index)?)?;
+        if let Some(query) = query {
+            for found in text.find(query, text.search_options())? {
+                let mut quads = String::new();
+                for (i, quad) in found.quads.iter().enumerate() {
+                    if i > 0 {
+                        quads.push(',');
+                    }
+                    quads.push('[');
+                    for (j, point) in quad.0.iter().enumerate() {
+                        if j > 0 {
+                            quads.push(',');
+                        }
+                        write!(quads, "[{},{}]", point.x, point.y)?;
+                    }
+                    quads.push(']');
+                }
+                writeln!(
+                    stdout,
+                    "{{\"page\":{index},\"start\":{},\"end\":{},\"quads\":[{quads}]}}",
+                    found.range.start, found.range.end
+                )?;
+            }
+        } else {
+            if ordinal > 0 {
+                stdout.write_all(b"\x0c\n")?;
+            }
+            stdout.write_all(text.text().as_bytes())?;
+            stdout.write_all(b"\n")?;
+        }
+    }
+    Ok(())
 }
 
 /// Creates `path` and writes `bytes`; never truncates an existing file.

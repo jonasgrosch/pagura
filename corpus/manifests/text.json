@@ -5,6 +5,1022 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "text/extract-spacing",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-spacing.content",
+          "sha256": "e704cbac81f1ae504c626c4482e413e92959b3f03457baf3c4558fe3fd2b4391"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-spacing.glyphs",
+          "sha256": "f81a4e0b8d27577231f073953001a4069c30d64cb50a734365120d333914af07"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-spacing.lines",
+          "sha256": "d5b68fba9fa868bc8788a4103bb90905965a20f215a05ddcc12cf59a252562a9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-spacing.pdf",
+          "sha256": "737b2da405239f303bcc5fa19c173293b92aaf4805aeb6742ae711c12d190095"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-spacing.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-spacing.text",
+          "sha256": "e704cbac81f1ae504c626c4482e413e92959b3f03457baf3c4558fe3fd2b4391"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-spacing.words",
+          "sha256": "58ae3b692c5dce0b8ae8b164e40a52f82966ddc8b50ffcde9f13140f1c5babe9"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-tj",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-tj.content",
+          "sha256": "e9c0f8b575cbfcb42ab3b78ecc87efa3b011d9a5d10b09fa4e96f240bf6a82f5"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-tj.glyphs",
+          "sha256": "8871bec22d2897e069a517c5634e75b9f932730126af15895802705fd2e0d4ac"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-tj.lines",
+          "sha256": "d004f5878635aa5118df0131870ecb7363c3454e711ae9aea7591ca6ef07ddbc"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-tj.pdf",
+          "sha256": "842034c3619a744e285939b41339bbc5dabff459fb130f01d986274957df08b5"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-tj.queries",
+          "sha256": "dbcec71a46ceaedb14bb1c11117ba373bb30d647fdb29a26f67f2cde36f72914"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-tj.text",
+          "sha256": "c83fa4ed91f4d81a20af48d4b311c5f214c656441d8f1d74df32d8b23d07c1a7"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-tj.words",
+          "sha256": "dd54f0716acbfdca4c9ab5fb533afacee26e4b1889127395977e97781ce8725b"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-simple",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-simple.content",
+          "sha256": "099987a5188a32ab07b68b4219a824bb83bfcc10aca0fd4f58e41c99b37f09f9"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-simple.glyphs",
+          "sha256": "5bddacdd8da1f9626c9ea9eaf180d0c5d92d8c471ac2fe7a83253648a992ff90"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-simple.lines",
+          "sha256": "8dd05e23d0503d86a47258c980ca9973ef4cfa82ba6639f302b99ba4243c7231"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-simple.pdf",
+          "sha256": "d240db8c5a4384129786bc03cd95c835187f6013af1903ef080c3c6b51cf789d"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-simple.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-simple.text",
+          "sha256": "099987a5188a32ab07b68b4219a824bb83bfcc10aca0fd4f58e41c99b37f09f9"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-simple.words",
+          "sha256": "f0d16c10b6a2e0be3a471b88285f598c55e8c8a9b6ac132235df2fdd74d06373"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-unknown",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-unknown.content",
+          "sha256": "c4a70adf49d466d86fa4ea70f24d106f817e039e38603c0410c63816ea435843"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-unknown.glyphs",
+          "sha256": "b6c0c9dd66221e10d2901a7f9a03a40c5eec5c032f8201ace9caa72ba1e24ddb"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-unknown.lines",
+          "sha256": "0cac5b2fdbd89cb68cb66ca0641e8d6b51cff76c925bd96058eb77d999a22297"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-unknown.pdf",
+          "sha256": "7faf84aed63d6a85633acf5d863f18bb6c95ad7d038821da98b74a450032c08a"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-unknown.queries",
+          "sha256": "1f1eb71095cbbc9c4217862603e9f757835026c7c2dbed050eee95a05aad12bd"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-unknown.text",
+          "sha256": "c4a70adf49d466d86fa4ea70f24d106f817e039e38603c0410c63816ea435843"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-unknown.words",
+          "sha256": "9367b1d77197ec3b209cda59b01c4732530c0eadf801329a0d88e434f5916cb9"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-rotated",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-rotated.content",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-rotated.glyphs",
+          "sha256": "ce8550fa68e518cff2dd7acf6d072fbef26e672544a783465551e393493673ca"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-rotated.lines",
+          "sha256": "8dd05e23d0503d86a47258c980ca9973ef4cfa82ba6639f302b99ba4243c7231"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-rotated.pdf",
+          "sha256": "c0725c0f2ef84eb0b4119b1e12d3dfc30e7d3ca0ea839711fe4b6242185d2a0b"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-rotated.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-rotated.text",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-rotated.words",
+          "sha256": "f0d16c10b6a2e0be3a471b88285f598c55e8c8a9b6ac132235df2fdd74d06373"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-type3-matrix",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-type3-matrix.content",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-type3-matrix.glyphs",
+          "sha256": "9367595687aea6b5a64176766627152f4cbdb7896a0cc6cf4f13e4d10f74befc"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-type3-matrix.lines",
+          "sha256": "8dd05e23d0503d86a47258c980ca9973ef4cfa82ba6639f302b99ba4243c7231"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-type3-matrix.pdf",
+          "sha256": "91ba050982f3bd5c7629b1e93360dc521f6ba77b2e713d56d0faaf961069c7f9"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-type3-matrix.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-type3-matrix.text",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-type3-matrix.words",
+          "sha256": "f0d16c10b6a2e0be3a471b88285f598c55e8c8a9b6ac132235df2fdd74d06373"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-form",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-form.content",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-form.glyphs",
+          "sha256": "de8530d38da94bda24f86cd1fd8e2086e2903848b400afecf97acc0f72553942"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-form.lines",
+          "sha256": "8dd05e23d0503d86a47258c980ca9973ef4cfa82ba6639f302b99ba4243c7231"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-form.pdf",
+          "sha256": "fe4e1a7b5a847e38ab9677b08fc5293179048c8bac631b3d1a00fbdd9d8767f2"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-form.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-form.text",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-form.words",
+          "sha256": "f0d16c10b6a2e0be3a471b88285f598c55e8c8a9b6ac132235df2fdd74d06373"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-ocr",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-ocr.content",
+          "sha256": "5e5bea5354e3f22eb70cc9df456ef31b0f9e9c1b0fc37e9f9826fc6b339fc719"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-ocr.glyphs",
+          "sha256": "459a8745e79eddc6d008c295332c588e8c2574d018be53d58d2c85ed791436c3"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-ocr.lines",
+          "sha256": "15a24e5d2a71c7f43c7f6884a2580756a26d93737e959c55c5e653966231cd2c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-ocr.pdf",
+          "sha256": "66d543679d16657f36bc956b0ef1e035dc1e4ef5a81cdfe64d103c97cac7bc21"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-ocr.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-ocr.text",
+          "sha256": "5e5bea5354e3f22eb70cc9df456ef31b0f9e9c1b0fc37e9f9826fc6b339fc719"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-ocr.words",
+          "sha256": "5f119f480edb3a6fa33fe70a26786770be0a9f2c0b7019b959c38cc18b8d1acc"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-clipped",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-clipped.content",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-clipped.glyphs",
+          "sha256": "89238108cb22e099f0503c67eab08a7d37db61208e5f817f1bf5c3bdce9cbd29"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-clipped.lines",
+          "sha256": "8dd05e23d0503d86a47258c980ca9973ef4cfa82ba6639f302b99ba4243c7231"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-clipped.pdf",
+          "sha256": "d553752bf867e95023e6d8a06c845f4dac3c217861fd3721ff1c1bdc81b19d6a"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-clipped.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-clipped.text",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-clipped.words",
+          "sha256": "f0d16c10b6a2e0be3a471b88285f598c55e8c8a9b6ac132235df2fdd74d06373"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-actual-lines",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-actual-lines.content",
+          "sha256": "fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-actual-lines.glyphs",
+          "sha256": "ad491e66d8fe6dd78397f023898adead67f2c21adc43dd4d446113bddc4b25f6"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-actual-lines.lines",
+          "sha256": "8dd05e23d0503d86a47258c980ca9973ef4cfa82ba6639f302b99ba4243c7231"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-actual-lines.pdf",
+          "sha256": "fc982d150fbb26530f4de08b9926bd1a2a1c327c94ba5ed65213e69d809dd42d"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-actual-lines.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-actual-lines.text",
+          "sha256": "fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-actual-lines.words",
+          "sha256": "f0d16c10b6a2e0be3a471b88285f598c55e8c8a9b6ac132235df2fdd74d06373"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-named-properties",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-named-properties.content",
+          "sha256": "a157d36a739191c1826419da5c87aedf3dd0cd6828565ada2a38a6b68ed741e5"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-named-properties.glyphs",
+          "sha256": "60fcd2dd75ef599479d0fb48e7da3e601dacc3d99fe68456eddf2cd736e65dfd"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-named-properties.lines",
+          "sha256": "1dc3acfac7f8152708850e825ae6c37b0afd7663c402480464a9794a35490d38"
+        },
+        ".marked": {
+          "path": "corpus/generated/text/extract-named-properties.marked",
+          "sha256": "035e4492c7eb3c5cb01f47a735510b0b58dc9e7fff311e98c5e9c959ab4aecdf"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-named-properties.pdf",
+          "sha256": "e8a45690d79ac5a6eff1ecd84c1443dba38d46ee84246b9037ef5ea30ce9d6cf"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-named-properties.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-named-properties.text",
+          "sha256": "a157d36a739191c1826419da5c87aedf3dd0cd6828565ada2a38a6b68ed741e5"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-named-properties.words",
+          "sha256": "dc75027c92d1aa00343799977a0cdc40039ad53d31a3897c2332fb75ec2db7fc"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-negative",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-negative.content",
+          "sha256": "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-negative.glyphs",
+          "sha256": "17cb6178722b7d72da945e67015e2b05ff2020b15b3d4bed82bce71d961e5968"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-negative.lines",
+          "sha256": "15a24e5d2a71c7f43c7f6884a2580756a26d93737e959c55c5e653966231cd2c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-negative.pdf",
+          "sha256": "e98fd92d10b9da1033a41d4d2883a6d51ddebe381533094c3bd00024741325cc"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-negative.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-negative.text",
+          "sha256": "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-negative.words",
+          "sha256": "5f119f480edb3a6fa33fe70a26786770be0a9f2c0b7019b959c38cc18b8d1acc"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-reversed",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-reversed.content",
+          "sha256": "19cc02f26df43cc571bc9ed7b0c4d29224a3ec229529221725ef76d021c8326f"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-reversed.glyphs",
+          "sha256": "8223b684852e324f8e236a70d856e252f43a35ce43475103d2f33c53e6f7a37f"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-reversed.lines",
+          "sha256": "f925156cce05dc38ec3ba2496ff9d25a4e89690d33e063216d41c8bebe3342a6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-reversed.pdf",
+          "sha256": "b2e3636231d3e52db8a18dd33fa4eacb44b17b19de5901c3edff94526882571f"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-reversed.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-reversed.text",
+          "sha256": "19cc02f26df43cc571bc9ed7b0c4d29224a3ec229529221725ef76d021c8326f"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-reversed.words",
+          "sha256": "9f53ae17fdf0637b2075a9f4d9409d021c339fd441786f42ec2c95ae8383b28d"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-actual",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-actual.content",
+          "sha256": "85c65dd4f77954b0b22758796fa94ff6dccb233c5fb90359ef6e4e78f38a6df8"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-actual.glyphs",
+          "sha256": "2a79fee05cafb9bb75860913077c66e4f226ec0e2cad9e5bc07a6c2d876163c5"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-actual.lines",
+          "sha256": "7d9616024560e727039563e26d86f4424e85434790151160913d527b66c58809"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-actual.pdf",
+          "sha256": "eb4ca28696f41e66d733ad17d4ed6efeb9f5ca3da5bec3946d7571375d5a8ca2"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-actual.queries",
+          "sha256": "15b5c537fef87817ce1bd2217e202abd38531e0dc1353d582066603a75eaa90f"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-actual.text",
+          "sha256": "85c65dd4f77954b0b22758796fa94ff6dccb233c5fb90359ef6e4e78f38a6df8"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-actual.words",
+          "sha256": "10f3536be04ed17202ce1d475a44e5c4b9464d6c21a87e389028ba0401d96e3d"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-nested",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-nested.content",
+          "sha256": "560e3e12b1e0dafa161e62fb3327ad65c98b7cd53849b17c627e8d3e1d419d6a"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-nested.glyphs",
+          "sha256": "fab35391dad57646383d230407c25c8f5cd85a3f6d56133e01fc51c598b47f06"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-nested.lines",
+          "sha256": "1dc3acfac7f8152708850e825ae6c37b0afd7663c402480464a9794a35490d38"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-nested.pdf",
+          "sha256": "63f45cd746566e60af43d9c1d1e94fb456ab7a55b619529370ff10f624417975"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-nested.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-nested.text",
+          "sha256": "560e3e12b1e0dafa161e62fb3327ad65c98b7cd53849b17c627e8d3e1d419d6a"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-nested.words",
+          "sha256": "dc75027c92d1aa00343799977a0cdc40039ad53d31a3897c2332fb75ec2db7fc"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-alt",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-alt.content",
+          "sha256": "e88218751dc384506740ef8b440656b63800f251a7efa68944efeb7f0e643ecb"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-alt.glyphs",
+          "sha256": "cb7ec0fe5d50bdbb7e2eb86691c0bedb29057c74960ce3883ee451d8cf3a8f0b"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-alt.lines",
+          "sha256": "382acd21cda0faed8a1352eadc76bd2b851209229c2913ea94eb7a833af48e71"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-alt.pdf",
+          "sha256": "5d32e888e99c639fbd398e5ddd5fcbaf32218301ec9c9084c740a83eaf629a45"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-alt.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-alt.text",
+          "sha256": "e88218751dc384506740ef8b440656b63800f251a7efa68944efeb7f0e643ecb"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-alt.words",
+          "sha256": "35e56b88a82a2ff41d4ed928c978cdeb2ca1ffc1441de1dc4e8260018bb340c4"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-empty-replacement",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-empty-replacement.content",
+          "sha256": "c4cc90ed3d26f12d4b08a75140970a7904035c31cbb4515a83f19b9003c00d1d"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-empty-replacement.glyphs",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-empty-replacement.lines",
+          "sha256": "9bf894a5a4a3c3be4f463c02d230607eb0b1f375e945321a27538c9178e9cfd9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-empty-replacement.pdf",
+          "sha256": "608d3049fa236507ba1da28a080e81d3edfebc0480dcafb5cc7620d520f4bfe0"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-empty-replacement.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-empty-replacement.text",
+          "sha256": "c4cc90ed3d26f12d4b08a75140970a7904035c31cbb4515a83f19b9003c00d1d"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-empty-replacement.words",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-graphic-replacement",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-graphic-replacement.content",
+          "sha256": "42c73134ee54c2fca570d673818a13a9cc3b8720073024b00ef2349872840f1e"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-graphic-replacement.glyphs",
+          "sha256": "90a4b7564ab3334e33c8e3c9e83c9fb76b2f14ae595fae5a4e35268f0714052b"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-graphic-replacement.lines",
+          "sha256": "7d9616024560e727039563e26d86f4424e85434790151160913d527b66c58809"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-graphic-replacement.pdf",
+          "sha256": "db8940a542af1455910406490a726c7b86b60a8ed791b6abe1b2dc587fb4a833"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-graphic-replacement.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-graphic-replacement.text",
+          "sha256": "42c73134ee54c2fca570d673818a13a9cc3b8720073024b00ef2349872840f1e"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-graphic-replacement.words",
+          "sha256": "10f3536be04ed17202ce1d475a44e5c4b9464d6c21a87e389028ba0401d96e3d"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-optional",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-optional.content",
+          "sha256": "472e73d796e20aa8ff9059e6316f218e0322548f661ec4dc267507ed66317404"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-optional.glyphs",
+          "sha256": "08c9a05b5a146ca170d6e32c33bfb2a557e7573998085f787eeebfca6af3638f"
+        },
+        ".hidden-text": {
+          "path": "corpus/generated/text/extract-optional.hidden-text",
+          "sha256": "dd83e681f023efbba83565c2797042aa3bd6d2244c428dd53352c0e0daafd792"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-optional.lines",
+          "sha256": "d5b68fba9fa868bc8788a4103bb90905965a20f215a05ddcc12cf59a252562a9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-optional.pdf",
+          "sha256": "083cb1b574dd94811e384a1fb8b9c12fd909b4f526051ed14d71b37adc04c9c8"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-optional.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-optional.text",
+          "sha256": "95c37a1bb3f117e54a9a268b1edb5c8c62fe6b3a2e6afe52ae0453ba3c1a8393"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-optional.words",
+          "sha256": "58ae3b692c5dce0b8ae8b164e40a52f82966ddc8b50ffcde9f13140f1c5babe9"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-columns",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-columns.content",
+          "sha256": "4c7acf8e8061f48abd4a6943ac8235ded5c4a6523b89a031641308fd78a6c3e6"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-columns.glyphs",
+          "sha256": "59e729c9bc524c6aa48c7e333cd0a483f6cec6b47a122873ef2d2093bc45a9a2"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-columns.lines",
+          "sha256": "dac21de91cf88118ce13863152f5501db5030c3506c03fd6a21a739e0f729fc4"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-columns.pdf",
+          "sha256": "4c741d70ce9132715fabf7366acda93eb581a0dde423b1eba67699237d9e4760"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-columns.queries",
+          "sha256": "fd75d3107d0665086fe6e4ab95d2cc1db6e941a635fe8edf9119b9ed943af202"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-columns.text",
+          "sha256": "788614097723d159ccb76b4bfb2c739fddb7133442d8c523a32f6a23afa4ed0c"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-columns.words",
+          "sha256": "d6ed3156d776b74f9c945581223dc63392373178cb3bda6cf1051b552587b314"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-marked-order",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-marked-order.content",
+          "sha256": "6600861c7f8274a2c96894009f212ce368f90fe66296a97ef77f6820bff3ecd0"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-marked-order.glyphs",
+          "sha256": "0ff36c4eab443c148007235f73c3bca4c41982f5a40b2eec38c6072f4afd2b73"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-marked-order.lines",
+          "sha256": "4dd6d503d712dd1a2fdc0c23dc4b96c25c4d1e31c01c5eda76022ce51ebe6af0"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-marked-order.pdf",
+          "sha256": "9c2cdb9fc6e214b7cd649451f6b201a16990721b9ec01171a0706f97ce77975f"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-marked-order.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-marked-order.text",
+          "sha256": "7080ca9a0e72864f0ee38e35021bf5daa829bfe5b4b83e1ccd299c6ed11abf80"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-marked-order.words",
+          "sha256": "1c8fab301d07e5e6623bfe3b56b2fa21d32f6ae0dcc07bdeca3e7110c79d44f6"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-hyphen",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-hyphen.content",
+          "sha256": "b320e168a907fe203bfcf4fd378fb350f4b725ec67190279e3a2f6d694318939"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-hyphen.glyphs",
+          "sha256": "16d96c431f572da920cedc8f6c56c7e01ad82e20f2bf65b40a4443bb7d8f012c"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-hyphen.lines",
+          "sha256": "89b38c3c9096076f1afdb4fcc3ef8aeb60729f60c00939776ffa86f963f2081f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-hyphen.pdf",
+          "sha256": "d0d086c699b22488b1ab30c5a6cd8910e79254cd49c7d6bdd2b5398dfab7f147"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-hyphen.queries",
+          "sha256": "8c18ffccb5b852f60c6a5b7279666f0e1bbc521dc6e4a47ff51bf117ea32d03f"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-hyphen.text",
+          "sha256": "d65963561436b71bdbae9e4713d0ddf8b0332ec4df1f42031cd7ee097f13faea"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-hyphen.words",
+          "sha256": "c4dc4ed3650ec6def870174485389c40345025bf17f1ed4310b2e21b34d99f82"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-composite",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-composite.content",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-composite.glyphs",
+          "sha256": "331bcaeb39035e23b22bec44422fd749e3eace8e1791667091fa565f9a6214f7"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-composite.lines",
+          "sha256": "8dd05e23d0503d86a47258c980ca9973ef4cfa82ba6639f302b99ba4243c7231"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-composite.pdf",
+          "sha256": "4f9e1d2bc50066debc9c83beeedde270b2a1c1aac51b9c3c61ff78497af9a9f5"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-composite.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-composite.text",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-composite.words",
+          "sha256": "f0d16c10b6a2e0be3a471b88285f598c55e8c8a9b6ac132235df2fdd74d06373"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
+      "id": "text/extract-vertical",
+      "kind": "vector",
+      "description": "Independent selection geometry, semantic text, layout boundaries and search",
+      "requirements": [
+        "text-positioned",
+        "text-layout",
+        "text-search",
+        "text-replacement"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/text/extract-vertical.content",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".glyphs": {
+          "path": "corpus/generated/text/extract-vertical.glyphs",
+          "sha256": "361dfbd76c2ba7a7ad1c3cf5c3326c6e8873757d6551c8c02c0f25089531c446"
+        },
+        ".lines": {
+          "path": "corpus/generated/text/extract-vertical.lines",
+          "sha256": "8dd05e23d0503d86a47258c980ca9973ef4cfa82ba6639f302b99ba4243c7231"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/extract-vertical.pdf",
+          "sha256": "e579a83f974a3533676f66166bd16dac53b61b07e4019e773a42427e94eb7829"
+        },
+        ".queries": {
+          "path": "corpus/generated/text/extract-vertical.queries",
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        ".text": {
+          "path": "corpus/generated/text/extract-vertical.text",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        },
+        ".words": {
+          "path": "corpus/generated/text/extract-vertical.words",
+          "sha256": "f0d16c10b6a2e0be3a471b88285f598c55e8c8a9b6ac132235df2fdd74d06373"
+        }
+      },
+      "driver": "text-page"
+    },
+    {
       "id": "text/paint-tounicode-simple",
       "kind": "pdf",
       "description": "Invalid extraction data leaves the same analytic rectangle glyph",

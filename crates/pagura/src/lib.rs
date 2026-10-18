@@ -1,6 +1,10 @@
 #![forbid(unsafe_code)]
 //! Pagura: an independent PDF engine in safe Rust.
 //!
+//! Positioned text extraction and search go through [`text_page`], or
+//! [`RenderContext::text_page`] to share fonts across pages. Extraction has its
+//! own output and leaves the rendering display list unchanged.
+//!
 //! This facade re-exports the stable entry points of the workspace crates.
 //! See `docs/STATUS.md` for what is implemented; unimplemented
 //! capabilities are reported as [`ErrorKind::Unsupported`] errors carrying
@@ -27,8 +31,8 @@ pub use pagura_core::{
 pub use pagura_document::{Document, IndirectObject, OpenOptions, Page, Rotation};
 pub use pagura_raster::{Pixmap, Rgba8};
 pub use pagura_render::{
-    DisplayList, Provider, RenderContext, RenderOptions, Tile, compile_page_with, device_size,
-    render_page_with, render_tile_with,
+    DisplayList, Provider, RenderContext, RenderOptions, SearchOptions, TextMatch, TextPage, Tile,
+    compile_page_with, compile_page_with_text, device_size, render_page_with, render_tile_with,
 };
 pub use pagura_write::{Builder, NewObject};
 
@@ -62,6 +66,23 @@ pub fn compile_page(document: &Document, page: &Page) -> Result<DisplayList> {
     );
     #[cfg(not(feature = "bundled-data"))]
     pagura_render::compile_page(document, page)
+}
+
+/// Extracts one page's positioned text, with the feature-selected font data.
+/// For many pages, keep a [`render_context`] and use
+/// [`RenderContext::text_page`].
+///
+/// # Errors
+/// As [`compile_page`] and [`compile_page_with_text`].
+pub fn text_page(document: &Document, page: &Page) -> Result<TextPage> {
+    #[cfg(feature = "bundled-data")]
+    return pagura_render::text_page(
+        document,
+        page,
+        Some(&pagura_data::Bundled::new(document.limits())),
+    );
+    #[cfg(not(feature = "bundled-data"))]
+    pagura_render::text_page(document, page, None)
 }
 
 /// Renders one page. For many pages, keep a [`render_context`].

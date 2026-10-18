@@ -167,3 +167,31 @@ fn cid_to_gid_spare_capacity_is_owned_storage() -> Result<()> {
     assert_eq!(font.accounted().retained_bytes(), before + capacity);
     Ok(())
 }
+
+#[test]
+fn embedded_program_storage_uses_the_programs_retained_accounting() -> Result<()> {
+    for name in [
+        "tt-unicode-priority",
+        "embedded-cff",
+        "embedded-type1",
+        "embedded-cid-variable-codes",
+    ] {
+        let (document, dictionary) = load(name)?;
+        let font = PdfFont::load(&document, &dictionary)?;
+        let font::Source::Program {
+            program, cid_map, ..
+        } = &font.source
+        else {
+            return Err(Error::syntax("expected program"));
+        };
+        assert_eq!(
+            super::source(&font.source),
+            program
+                .retained_bytes()
+                .saturating_add(size_of_val(program.as_ref()))
+                .saturating_add(2 * size_of::<usize>())
+                .saturating_add(cid_map.as_ref().map_or(0, Vec::capacity))
+        );
+    }
+    Ok(())
+}

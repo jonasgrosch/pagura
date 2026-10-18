@@ -2,7 +2,7 @@
 use crate::{DisplayList, Pixmap, RenderOptions, Tile, interpreter};
 use pagura_core::Result;
 use pagura_document::{Document, Page};
-use pagura_text::Provider;
+use pagura_text::{Provider, TextPage};
 use std::sync::{Arc, Mutex};
 
 /// Immutable document and provider, with bounded fonts and glyph outlines shared
@@ -66,6 +66,29 @@ impl RenderContext {
     /// # Errors
     /// As [`crate::compile_page`]. A page from another document is rejected.
     pub fn compile_page(&self, page: &Page) -> Result<DisplayList> {
+        self.check_owned(page)?;
+        interpreter::compile_cached(&self.document, page, self.provider.as_deref(), &self.fonts)
+    }
+
+    /// Compiles a page and extracts its positioned text, reusing this
+    /// document's fonts. Conventions as [`crate::compile_page_with_text`].
+    ///
+    /// # Errors
+    /// As [`Self::compile_page`] and [`crate::compile_page_with_text`].
+    pub fn compile_page_with_text(&self, page: &Page) -> Result<(DisplayList, TextPage)> {
+        self.check_owned(page)?;
+        interpreter::compile_with_text(&self.document, page, self.provider.as_deref(), &self.fonts)
+    }
+
+    /// Extracts a page's positioned text, reusing this document's fonts.
+    ///
+    /// # Errors
+    /// As [`Self::compile_page_with_text`].
+    pub fn text_page(&self, page: &Page) -> Result<TextPage> {
+        self.compile_page_with_text(page).map(|(_, text)| text)
+    }
+
+    fn check_owned(&self, page: &Page) -> Result<()> {
         let owned = self.document.page(page.index())?;
         if owned.id() != page.id()
             || !std::ptr::eq(owned.resources(), page.resources())
@@ -75,7 +98,7 @@ impl RenderContext {
                 "page does not belong to rendering context",
             ));
         }
-        interpreter::compile_cached(&self.document, page, self.provider.as_deref(), &self.fonts)
+        Ok(())
     }
 
     /// Compiles and renders a whole page with shared resources.

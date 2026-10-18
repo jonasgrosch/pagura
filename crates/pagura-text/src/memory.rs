@@ -71,21 +71,10 @@ fn source(source: &Source) -> usize {
             let program_bytes = if *substituted {
                 0
             } else {
-                // FontProgram's internals are private. This explicit proxy
-                // allows for decoded programs, offsets, charstrings, name/CID
-                // indexes and encodings. No outlines are retained by that API.
                 program
-                    .data()
-                    .len()
-                    .saturating_mul(2)
-                    .saturating_add(
-                        usize::try_from(program.glyph_count())
-                            .unwrap_or(usize::MAX)
-                            .saturating_mul(192),
-                    )
-                    .saturating_add(16 * 1024)
+                    .retained_bytes()
                     .saturating_add(size_of_val(program.as_ref()))
-                    .saturating_add(6 * size_of::<usize>())
+                    .saturating_add(2 * size_of::<usize>())
             };
             program_bytes.saturating_add(cid_map.as_ref().map_or(0, Vec::capacity))
         }
