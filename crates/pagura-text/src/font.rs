@@ -532,12 +532,13 @@ fn cid_map(
     Ok(if metrics_font.is_name(b"Subtype", b"CIDFontType2") {
         match optional(document, metrics_font, b"CIDToGIDMap")? {
             None => {
-                let mut diagnostic = Diagnostic::new(
-                    crate::repairs::CID_TO_GID_IDENTITY,
-                    "embedded CIDFontType2 missing CIDToGIDMap; using Identity (9.7.4.1, Table 115)",
-                );
-                diagnostic.object = id;
-                crate::report::Report::new(document).diagnostic(diagnostic)?;
+                crate::report::Report::new(document).diagnostic(
+                    Diagnostic::new(
+                        crate::repairs::CID_TO_GID_IDENTITY,
+                        "embedded CIDFontType2 missing CIDToGIDMap; using Identity (9.7.4.1, Table 115)",
+                    )
+                    .in_object_opt(id),
+                )?;
                 None
             }
             Some(Value::Name(name)) if name == b"Identity" => None,

@@ -1,5 +1,5 @@
 //! PDF embedding bindings, ISO 32000-2 9.9.1 Tables 124–125.
-use crate::{FontKind, features, objects::optional};
+use crate::{FontKind, features, objects::optional, repairs, report::Report};
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ObjectId, Position, Result, Value};
 use pagura_document::Document;
 use pagura_document::Prefix;
@@ -52,17 +52,19 @@ fn load_stream(
         Some(data) => std::borrow::Cow::Owned(data),
         None => document.stream_data_sized(object, declared_length(document, dictionary))?,
     };
+    let report = Report::new(document);
     // A prefix was checked against Length1 when it was decoded.
     if whole && let Some(problem) = length_problem(document, dictionary, key, format, data.len())? {
         // The decoded program describes its own extent; the Length entries
         // are bookkeeping that writers often get wrong (Table 125).
-        let mut diagnostics = Diagnostics::new(document.recovery());
-        diagnostics
-            .repair(Diagnostic::new(crate::repairs::STREAM_LENGTHS, problem).in_object(id))?;
-        document.report(diagnostics.take());
+        report.diagnostic(Diagnostic::new(repairs::STREAM_LENGTHS, problem).in_object(id))?;
     }
     // Program-level repairs (damaged tables, glyphs and cmaps) are reported
     // with the document's, located in the font stream rather than its buffer.
+    let start = Position::Stream {
+        object: id,
+        offset: 0,
+    };
     let mut diagnostics = Diagnostics::new(document.recovery());
     let result = FontProgram::parse_with_diagnostics(
         data.into_owned(),
@@ -70,19 +72,13 @@ fn load_stream(
         &document.limits(),
         &mut diagnostics,
     );
-    document.report(diagnostics.take().into_iter().map(|mut diagnostic| {
-        if let Position::Buffer(offset) = diagnostic.position {
-            diagnostic.position = Position::Stream { object: id, offset };
-        }
-        diagnostic.object.get_or_insert(id);
-        diagnostic
-    }));
-    result.map_err(|mut error| {
-        if let Position::Buffer(offset) = error.position {
-            error.position = Position::Stream { object: id, offset };
-        }
-        error
-    })
+    report.diagnostics(
+        diagnostics
+            .take()
+            .into_iter()
+            .map(|diagnostic| diagnostic.within(start).in_object(id)),
+    )?;
+    result.map_err(|error| error.within(start))
 }
 
 /// The program length a font stream's `Length1` to `Length3` declare, as an
