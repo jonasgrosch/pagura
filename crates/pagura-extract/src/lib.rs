@@ -1,16 +1,19 @@
-//! Positioned text, geometric layout policy and search (9.10, 14.8, 14.9.4).
+#![forbid(unsafe_code)]
+//! PDF page text: positioned text, geometric layout policy, search and the
+//! logical structure view (9.10, 14.7–14.9; ADR 0014, ADR 0025).
 //!
 //! Content interpretation belongs exclusively to `pagura-render`. These types
 //! consume its records, never content streams. Quads are selection cells, not
 //! exact ink outlines. Page layout is reader policy; logical structure is a
 //! separate assistive-technology view and never changes page search or selection.
-use crate::{FontKind, WritingMode};
 use pagura_core::{Error, Limits, Name, ObjectId, Result};
 use pagura_raster::Point;
+use pagura_text::{FontKind, WritingMode};
 use std::{ops::Range, sync::Arc};
 
 mod layout;
 mod memory;
+pub mod repairs;
 mod structure;
 pub use structure::{StructureElement, StructureNamespace};
 mod search;
@@ -312,8 +315,9 @@ impl TextPage {
                 if !failure.recoverable {
                     return Err(error);
                 }
-                crate::repairs::Report::new(document).diagnostic(
-                    pagura_core::Diagnostic::new(crate::repairs::STRUCTURE_FALLBACK, error.message)
+                repairs::report(
+                    document,
+                    pagura_core::Diagnostic::new(repairs::STRUCTURE_FALLBACK, error.message)
                         .in_object_opt(error.object)
                         .at(error.position),
                 )?;

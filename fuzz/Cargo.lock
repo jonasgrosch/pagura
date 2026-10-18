@@ -77,6 +77,7 @@ dependencies = [
  "pagura-crypto",
  "pagura-data",
  "pagura-document",
+ "pagura-pki",
  "pagura-raster",
  "pagura-render",
  "pagura-write",
@@ -119,6 +120,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pagura-extract"
+version = "0.1.0"
+dependencies = [
+ "pagura-core",
+ "pagura-document",
+ "pagura-raster",
+ "pagura-text",
+]
+
+[[package]]
 name = "pagura-font"
 version = "0.1.0"
 dependencies = [
@@ -133,6 +144,7 @@ dependencies = [
  "pagura",
  "pagura-codec",
  "pagura-core",
+ "pagura-extract",
  "pagura-font",
  "pagura-host",
  "pagura-image",
@@ -164,6 +176,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "pagura-pki"
+version = "0.1.0"
+dependencies = [
+ "pagura-core",
+]
+
+[[package]]
 name = "pagura-raster"
 version = "0.1.0"
 dependencies = [
@@ -177,6 +196,7 @@ dependencies = [
  "pagura-core",
  "pagura-crypto",
  "pagura-document",
+ "pagura-extract",
  "pagura-font",
  "pagura-image",
  "pagura-raster",
@@ -198,6 +218,7 @@ name = "pagura-write"
 version = "0.1.0"
 dependencies = [
  "pagura-core",
+ "pagura-crypto",
 ]
 
 [[package]]

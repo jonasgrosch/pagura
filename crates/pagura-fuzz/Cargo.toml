@@ -19,6 +19,7 @@ workspace = true
 pagura = { workspace = true, features = ["bundled-data"] }
 pagura-codec.workspace = true
 pagura-core.workspace = true
+pagura-extract.workspace = true
 pagura-font.workspace = true
 pagura-host.workspace = true
 pagura-image.workspace = true

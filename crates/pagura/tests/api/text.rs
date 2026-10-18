@@ -92,7 +92,7 @@ fn positioned_semantics_layout_and_search_match_independent_generator() {
         let queries = expected(&name, "queries");
         for row in array(&queries) {
             let row = array(row);
-            let options = pagura_text::SearchOptions {
+            let options = pagura_extract::SearchOptions {
                 case_insensitive: boolean(&row[1]),
                 whole_words: boolean(&row[2]),
                 join_hyphenated: boolean(&row[3]),
@@ -112,7 +112,7 @@ fn positioned_semantics_layout_and_search_match_independent_generator() {
         let hidden = fixture_path("text", &format!("{name}.hidden-text"));
         if hidden.exists() {
             assert_eq!(
-                text.with_layout(pagura_text::LayoutOptions {
+                text.with_layout(pagura_extract::LayoutOptions {
                     include_hidden: true,
                     ..Default::default()
                 })
@@ -134,7 +134,7 @@ fn positioned_semantics_layout_and_search_match_independent_generator() {
     }
 }
 
-fn check_glyphs(name: &str, text: &pagura_text::TextPage) {
+fn check_glyphs(name: &str, text: &pagura_extract::TextPage) {
     let rows = expected(name, "glyphs");
     assert_eq!(text.glyphs().len(), array(&rows).len(), "{name}");
     for (glyph, row) in text.glyphs().iter().zip(array(&rows)) {
@@ -183,7 +183,7 @@ fn check_glyphs(name: &str, text: &pagura_text::TextPage) {
     }
 }
 
-fn check_highlights(name: &str, matches: &[pagura_text::TextMatch], expected_indices: &[Value]) {
+fn check_highlights(name: &str, matches: &[pagura_extract::TextMatch], expected_indices: &[Value]) {
     let glyphs = expected(name, "glyphs");
     assert_eq!(matches.len(), expected_indices.len());
     for (found, indices) in matches.iter().zip(expected_indices) {
@@ -198,7 +198,7 @@ fn check_highlights(name: &str, matches: &[pagura_text::TextMatch], expected_ind
     }
 }
 
-fn check_metadata(name: &str, text: &pagura_text::TextPage) {
+fn check_metadata(name: &str, text: &pagura_extract::TextPage) {
     if !text.glyphs().is_empty() {
         assert_eq!(text.fonts().len(), 1);
         assert_eq!(text.fonts()[0].object, Some(pagura::ObjectId::new(5, 0)));

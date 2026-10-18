@@ -28,5 +28,6 @@ bundled-data = ["dep:pagura-data"]
 cjk-fonts = ["bundled-data", "pagura-data/cjk-fonts"]
 
 [dev-dependencies]
+pagura-extract.workspace = true
 pagura-testkit.workspace = true
 pagura-text.workspace = true

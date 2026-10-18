@@ -5,7 +5,7 @@ use super::{
     Atom, Error, LayoutOptions, Line, PositionedText, Range, Replacement, Result, TextPage,
     reversed,
 };
-pub(in crate::page) fn append(
+pub(crate) fn append(
     chars: &mut Vec<Character>,
     text: &mut String,
     unicode: Option<char>,
@@ -170,7 +170,7 @@ fn merge_lines(
     merged
 }
 
-pub(in crate::page) fn boundaries(page: &mut TextPage) {
+pub(crate) fn boundaries(page: &mut TextPage) {
     let mut start = 0;
     for text in page.text.split('\n') {
         let end = start + text.len();
