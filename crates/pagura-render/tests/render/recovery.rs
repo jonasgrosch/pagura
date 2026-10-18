@@ -1,7 +1,7 @@
 //! Strict/repaired boundaries and tile invariance for recovery and transfers.
-use crate::{RenderOptions, Tile, compile_page};
 use pagura_core::{ErrorKind, ObjectId, Position, Recovery};
 use pagura_document::{Document, OpenOptions};
+use pagura_render::{RenderOptions, Tile, compile_page};
 use pagura_testkit::fixture;
 
 #[test]

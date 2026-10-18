@@ -1,6 +1,6 @@
 //! Source-widget identity and lazy filled appearance selection (12.7.4.3).
-use super::{Dictionary, DisplayList, Error, Page, Result};
 use crate::form_appearance::{self, Appearance};
+use crate::interpreter::{Dictionary, DisplayList, Error, Page, Result};
 use pagura_document::forms::{FieldKind, FormFiller};
 use pagura_text::Provider;
 use std::collections::BTreeMap;
@@ -16,7 +16,7 @@ use std::collections::BTreeMap;
 /// Edited fields and non-capability errors still fail explicitly.
 ///
 /// # Errors
-/// As [`super::compile_page`] and [`form_appearance::prepare_widget`]. A page
+/// As [`crate::compile_page`] and [`form_appearance::prepare_widget`]. A page
 /// belonging to another document is rejected. Only visible widgets on this page
 /// need appearance generation; no partial display list is returned on failure.
 pub fn compile_filled_page(
@@ -24,7 +24,7 @@ pub fn compile_filled_page(
     page: &Page,
     provider: Option<&dyn Provider>,
 ) -> Result<DisplayList> {
-    super::Shared::standalone(filler.document(), provider, |shared| {
+    crate::interpreter::Shared::standalone(filler.document(), provider, |shared| {
         compile_filled_shared(filler, page, shared)
     })
 }
@@ -32,7 +32,7 @@ pub fn compile_filled_page(
 pub(crate) fn compile_filled_shared(
     filler: &FormFiller<'_>,
     page: &Page,
-    shared: &super::Shared<'_>,
+    shared: &crate::interpreter::Shared<'_>,
 ) -> Result<DisplayList> {
     let document = filler.document();
     let owned = document.page(page.index())?;
@@ -41,7 +41,7 @@ pub(crate) fn compile_filled_shared(
             "page does not belong to form document",
         ));
     }
-    super::compile(document, page, shared, Some(filler), None).map(|(list, _)| list)
+    crate::interpreter::compile(document, page, shared, Some(filler), None).map(|(list, _)| list)
 }
 
 pub(super) struct FilledAnnotations<'f, 'd> {
@@ -70,8 +70,8 @@ impl<'f, 'd> FilledAnnotations<'f, 'd> {
     pub(super) fn prepare(
         &self,
         dictionary: &Dictionary,
-        compiler: &super::Compiler<'_>,
-        rect: super::Rect,
+        compiler: &crate::interpreter::Compiler<'_>,
+        rect: crate::interpreter::Rect,
     ) -> Result<Option<Appearance>> {
         // Dictionaries are borrowed from the immutable document. Identity avoids
         // applying a value to an unrelated annotation with the same field name.
@@ -99,9 +99,7 @@ impl<'f, 'd> FilledAnnotations<'f, 'd> {
                 .dictionary()
                 .ok_or(Error::syntax("appearance has no dictionary"))?;
             let (bbox, matrix) = compiler.form_geometry(form)?;
-            if compiler.form_hidden(form)?
-                || super::annotations::placement(bbox, matrix, rect)?.is_none()
-            {
+            if compiler.form_hidden(form)? || super::placement(bbox, matrix, rect)?.is_none() {
                 return Ok(original);
             }
         }
@@ -130,3 +128,6 @@ impl<'f, 'd> FilledAnnotations<'f, 'd> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

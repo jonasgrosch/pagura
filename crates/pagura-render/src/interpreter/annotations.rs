@@ -1,5 +1,6 @@
 //! Normal annotation appearances and screen visibility (12.5.2–12.5.5).
 
+pub(super) mod filled;
 mod shapes;
 mod widgets;
 
@@ -26,7 +27,7 @@ impl Compiler<'_> {
         let filled = self
             .session
             .filler
-            .map(super::annotations_filled::FilledAnnotations::new)
+            .map(filled::FilledAnnotations::new)
             .transpose()?;
         for value in values {
             self.annotation(value, page.resources(), filled.as_ref())
@@ -39,7 +40,7 @@ impl Compiler<'_> {
         &mut self,
         value: &Value,
         resources: &Dictionary,
-        filled: Option<&super::annotations_filled::FilledAnnotations<'_, '_>>,
+        filled: Option<&filled::FilledAnnotations<'_, '_>>,
     ) -> Result<()> {
         let d = self.document.resolve_dictionary(value)?;
         let flags = d

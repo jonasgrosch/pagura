@@ -1,9 +1,6 @@
 //! Content compilation from immutable objects and optional in-memory form values.
 
 mod annotations;
-mod annotations_filled;
-#[cfg(test)]
-mod annotations_filled_tests;
 mod forms;
 pub(crate) mod images;
 mod masks;
@@ -34,8 +31,8 @@ pub(crate) fn repair(document: &Document, diagnostic: pagura_core::Diagnostic) -
     Ok(())
 }
 
-pub use annotations_filled::compile_filled_page;
-pub(crate) use annotations_filled::compile_filled_shared;
+pub use annotations::filled::compile_filled_page;
+pub(crate) use annotations::filled::compile_filled_shared;
 pub(crate) use text::extract::compile_with_text;
 pub use text::extract::{compile_page_with_text, text_page};
 

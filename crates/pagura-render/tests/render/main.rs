@@ -4,4 +4,5 @@
 
 mod paint;
 mod pipeline;
+mod recovery;
 mod support;

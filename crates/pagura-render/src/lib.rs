@@ -157,6 +157,3 @@ fn pixels(extent: f64) -> Result<u32> {
     )]
     Ok(rounded as u32)
 }
-
-#[cfg(test)]
-mod recovery_tests;
