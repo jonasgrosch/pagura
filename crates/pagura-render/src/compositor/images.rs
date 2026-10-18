@@ -1,4 +1,5 @@
 //! Image colour, shape and opacity enter the common compositor (8.9; 11.6.5.2).
+use super::reduced::Prepared;
 use super::sampled::{Sampler, Texel};
 use super::{Backdrop, Context, Model, Source, Surface};
 use crate::{display::ImageCommand, interpreter::images::Image};
@@ -16,18 +17,7 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
-        if command.transfer.is_some() {
-            return Err(Error::unsupported(
-                crate::features::TRANSPARENCY_TRANSFER,
-                "image transfer selection in transparency is not implemented",
-            ));
-        }
-        if model == Model::Cmyk && command.composite.overprint {
-            return Err(Error::unsupported(
-                crate::features::TRANSPARENCY_OVERPRINT,
-                "CMYK image overprint is not implemented",
-            ));
-        }
+        validate(command, model)?;
         let transform = command.transform.then(self.device);
         if !transform.is_finite() {
             return Err(Error::limit("image transform overflow"));
@@ -52,12 +42,18 @@ impl Context {
         let stencil = self.stencil_color(command, model)?;
         let image = &command.image;
         let mut texels = Texels::new(image);
-        let sampler = sampler(image, inverse);
-        let mask_sampler = image.mask.as_ref().map(|m| sampler_for(m, inverse));
         let width = usize::try_from(clip.width())
             .map_err(|_| Error::limit("image clip width exceeds usize"))?;
         let origin = clip.origin();
         self.charge(clip.coverage().len())?;
+        if !clip.coverage().iter().any(|&v| v != 0) {
+            return Ok(());
+        }
+        let available = self.limits.decoded_bytes.saturating_sub(self.allocated);
+        let (mut sampler, mut mask_sampler) =
+            prepare(image, inverse, origin.0, clip.width(), available)?;
+        let sampling_bytes = sampler.bytes() + mask_sampler.as_ref().map_or(0, Prepared::bytes);
+        self.allocated += sampling_bytes;
         for (row, coverage) in clip.coverage().chunks_exact(width).enumerate() {
             let y =
                 origin.1 + u32::try_from(row).map_err(|_| Error::limit("image row exceeds u32"))?;
@@ -70,7 +66,7 @@ impl Context {
                 let mut value = sampler.sample(x, y, &mut work, maximum, |pixel| {
                     texels.sample(self, command, pixel, model, stencil)
                 })?;
-                if let (Some(mask), Some(mask_sampler)) = (&image.mask, &mask_sampler) {
+                if let (Some(mask), Some(mask_sampler)) = (&image.mask, &mut mask_sampler) {
                     let sample = mask_sampler
                         .sample(x, y, &mut work, maximum, |pixel| mask_texel(mask, pixel))?;
                     let factor = sample.alpha;
@@ -114,6 +110,7 @@ impl Context {
                     );
             }
         }
+        self.allocated -= sampling_bytes;
         Ok(())
     }
     fn stencil_color(&mut self, command: &ImageCommand, model: Model) -> Result<Option<[f64; 4]>> {
@@ -207,9 +204,40 @@ impl Context {
         })
     }
 }
-fn sampler(image: &Image, inverse: Transform) -> Sampler {
-    sampler_for(image, inverse)
+fn prepare(
+    image: &Image,
+    inverse: Transform,
+    origin: u32,
+    width: u32,
+    bytes: usize,
+) -> Result<(Prepared, Option<Prepared>)> {
+    let sampler = sampler_for(image, inverse).prepare(origin, width, bytes)?;
+    let mask = image
+        .mask
+        .as_ref()
+        .map(|mask| {
+            sampler_for(mask, inverse).prepare(origin, width, bytes.saturating_sub(sampler.bytes()))
+        })
+        .transpose()?;
+    Ok((sampler, mask))
 }
+
+fn validate(command: &ImageCommand, model: Model) -> Result<()> {
+    if command.transfer.is_some() {
+        return Err(Error::unsupported(
+            crate::features::TRANSPARENCY_TRANSFER,
+            "image transfer selection in transparency is not implemented",
+        ));
+    }
+    if model == Model::Cmyk && command.composite.overprint {
+        return Err(Error::unsupported(
+            crate::features::TRANSPARENCY_OVERPRINT,
+            "CMYK image overprint is not implemented",
+        ));
+    }
+    Ok(())
+}
+
 fn sampler_for(image: &Image, inverse: Transform) -> Sampler {
     Sampler {
         width: image.decoded.width,

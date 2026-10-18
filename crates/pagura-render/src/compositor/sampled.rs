@@ -1,6 +1,7 @@
 //! Affine image sampling. Magnification uses nearest neighbours or bilinear
 //! interpolation of associated colour and alpha. Minification integrates the
 //! source-pixel rectangles intersecting the inverse-mapped device-pixel polygon.
+//! Axis-aligned minification uses the streaming separable reduction.
 //! Integer aligned scales and quarter turns select source pixels exactly.
 use pagura_core::{Error, Result};
 use pagura_raster::{Point, Transform};
@@ -12,14 +13,14 @@ pub(super) struct Texel {
     pub(super) shape: f64,
 }
 impl Texel {
-    fn add(&mut self, value: Self, weight: f64) {
+    pub(super) fn add(&mut self, value: Self, weight: f64) {
         for (sum, c) in self.color.iter_mut().zip(value.color) {
             *sum += c * weight;
         }
         self.alpha += value.alpha * weight;
         self.shape += value.shape * weight;
     }
-    fn scale(mut self, weight: f64) -> Self {
+    pub(super) fn scale(mut self, weight: f64) -> Self {
         self.color = self.color.map(|v| v * weight);
         self.alpha *= weight;
         self.shape *= weight;
@@ -89,65 +90,27 @@ impl Sampler {
         if polygon.iter().any(|p| !p.is_finite()) {
             return Err(Error::limit("image sampling transform overflow"));
         }
-        let x0 = coordinate(
-            polygon
-                .iter()
-                .map(|p| p.x)
-                .fold(f64::INFINITY, f64::min)
-                .floor(),
-            self.width,
-        );
-        let y0 = coordinate(
-            polygon
-                .iter()
-                .map(|p| p.y)
-                .fold(f64::INFINITY, f64::min)
-                .floor(),
-            self.height,
-        );
-        let x1 = coordinate(
-            polygon
-                .iter()
-                .map(|p| p.x)
-                .fold(f64::NEG_INFINITY, f64::max)
-                .ceil(),
-            self.width,
-        );
-        let y1 = coordinate(
-            polygon
-                .iter()
-                .map(|p| p.y)
-                .fold(f64::NEG_INFINITY, f64::max)
-                .ceil(),
-            self.height,
-        );
+        let (low, high) = polygon
+            .iter()
+            .fold((polygon[0], polygon[0]), |(low, high), p| {
+                (
+                    Point::new(low.x.min(p.x), low.y.min(p.y)),
+                    Point::new(high.x.max(p.x), high.y.max(p.y)),
+                )
+            });
+        let x0 = coordinate(low.x.floor(), self.width);
+        let y0 = coordinate(low.y.floor(), self.height);
+        let x1 = coordinate(high.x.ceil(), self.width);
+        let y1 = coordinate(high.y.ceil(), self.height);
         let count =
             usize::try_from(u64::from(x1.saturating_sub(x0)) * u64::from(y1.saturating_sub(y0)))
                 .map_err(|_| Error::limit("image sampling work overflow"))?;
         charge(work, count, maximum)?;
         let mut out = Texel::default();
         let mut weight = 0.0;
-        let rectangle = (self.inverse.b == 0.0 && self.inverse.c == 0.0)
-            || (self.inverse.a == 0.0 && self.inverse.d == 0.0);
-        let low = Point::new(
-            polygon[0].x.min(polygon[2].x),
-            polygon[0].y.min(polygon[2].y),
-        );
-        let high = Point::new(
-            polygon[0].x.max(polygon[2].x),
-            polygon[0].y.max(polygon[2].y),
-        );
         for row in y0..y1 {
             for col in x0..x1 {
-                // Axis-aligned scans need interval overlap, rather than four
-                // polygon clipping passes for every source cell. The general
-                // affine path keeps polygon integration for shear and rotation.
-                let area = if rectangle {
-                    (high.x.min(f64::from(col) + 1.0) - low.x.max(f64::from(col))).max(0.0)
-                        * (high.y.min(f64::from(row) + 1.0) - low.y.max(f64::from(row))).max(0.0)
-                } else {
-                    intersection(&polygon, f64::from(col), f64::from(row))
-                };
+                let area = intersection(&polygon, f64::from(col), f64::from(row));
                 if area > 0.0 {
                     out.add(texel(self.index(f64::from(col), f64::from(row))?)?, area);
                     weight += area;
@@ -167,7 +130,7 @@ impl Sampler {
             .map_err(|_| Error::limit("image index exceeds usize"))
     }
 }
-fn charge(work: &mut usize, count: usize, maximum: usize) -> Result<()> {
+pub(super) fn charge(work: &mut usize, count: usize, maximum: usize) -> Result<()> {
     *work = work
         .checked_add(count)
         .filter(|&n| n <= maximum)
@@ -179,7 +142,7 @@ fn charge(work: &mut usize, count: usize, maximum: usize) -> Result<()> {
     clippy::cast_sign_loss,
     reason = "sample coordinates clamped to u32 image bounds"
 )]
-fn coordinate(value: f64, maximum: u32) -> u32 {
+pub(super) fn coordinate(value: f64, maximum: u32) -> u32 {
     value.clamp(0.0, f64::from(maximum)) as u32
 }
 fn intersection(polygon: &[Point; 4], x: f64, y: f64) -> f64 {
@@ -230,7 +193,7 @@ fn intersection(polygon: &[Point; 4], x: f64, y: f64) -> f64 {
 mod tests {
     use super::*;
     #[test]
-    fn rectangle_overlap_matches_polygon_integration() {
+    fn separable_reduction_matches_polygon_integration() {
         for inverse in [
             Transform::new(2.4, 0.0, 0.0, 3.2, -1.25, -2.75),
             Transform::new(-2.4, 0.0, 0.0, -3.2, 31.1, 29.7),
@@ -242,6 +205,7 @@ mod tests {
                 interpolate: false,
                 inverse,
             };
+            let mut sampler = sampler.prepare(0, 10, usize::MAX).unwrap();
             for y in 0..10 {
                 for x in 0..10 {
                     let points = [

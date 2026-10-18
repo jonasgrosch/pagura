@@ -234,6 +234,7 @@ def cases():
     yield from image_colour_cases()
     yield damaged_glyph_case()
     yield from separable_area_cases()
+    yield from area_threshold_cases()
 
 
 def type1_lengths(program):
@@ -614,3 +615,54 @@ def separable_area_cases():
         image = stream(bytes(data),b'/Subtype /Image /Width 6 /Height 4 /BitsPerComponent 8 /ColorSpace /DeviceGray'+(b' /Mask [0 0]' if masked else b''))
         yield case(name,b'q 3 0 0 2 2 2 cm /I Do Q',[image],b'<< /XObject << /I 5 0 R >> >>',
                    rectangles=marks,requirement='paint-image-resampling')
+
+
+def area_threshold_cases():
+    # Equal counts of adjacent 8-bit levels give the exact rational mean
+    # (2*lo+1)/2. The independent half-up oracle is therefore lo+1.
+    for n, lo in [(1024,159),(2048,95),(2048,223),(2048,253)]:
+        image = stream(zlib.compress(bytes([lo,lo+1])*(n*n//2)),
+                       b'/Subtype /Image /Width %d /Height %d /BitsPerComponent 8 /ColorSpace /DeviceGray /Filter /FlateDecode' % (n,n))
+        yield case('image-area-tie-%d-%d'%(n,lo),b'/I Do',[image],
+                   b'<< /XObject << /I 5 0 R >> >>',size=1,
+                   oracle=b'P6\n1 1\n255\n'+bytes([lo+1])*3,
+                   requirement='paint-image-resampling')
+    # Its exact covered area is 10^-307, below half a coverage level.
+    # Sampling is never requested, even if source-coordinate scaling overflows.
+    image = stream(bytes(2048),b'/Subtype /Image /Width 2048 /Height 1 /BitsPerComponent 8 /ColorSpace /DeviceGray')
+    yield case('image-area-zero-coverage',b'q 0.'+b'0'*306+b'1 0 0 1 0 0 cm /I Do Q',
+               [image],b'<< /XObject << /I 5 0 R >> >>',size=1,
+               requirement='paint-image-resampling')
+    # Parameterized sampling fixtures keep the large, repeated source planes
+    # implicit. Columns alternate lo and lo+1; every row is identical. These
+    # cover all half-level differences seen in the exhaustive 64/1024/2048
+    # square sweep without storing hundreds of redundant image streams.
+    from .model import Vector
+    values = []
+    for n, levels in [(1024, AREA_TIES_1024), (2048, AREA_TIES_2048),
+                      (4096, (31,159,191,223)), (8192, (159,191,223))]:
+        values.extend('%d %d %d' % (n,lo,lo+1) for lo in levels)
+    yield Vector('image-area-thresholds',{'.txt': ('# side low half_up_oracle; alternating low/high columns\n'+'\n'.join(values)+'\n').encode()},
+                 ('paint-image-resampling',),'Exact rational means of alternating adjacent levels at large reduction ratios')
+
+AREA_TIES_1024 = (
+    70, 73, 74, 75, 76, 77, 78, 90, 91, 92, 93, 94,
+    133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144,
+    145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156,
+    157, 158, 159, 170, 171, 172, 173, 174, 175, 176, 177, 178,
+    179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190,
+)
+
+AREA_TIES_2048 = (
+    13, 14, 23, 24, 25, 26, 27, 28, 29, 30, 43, 44,
+    45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
+    57, 58, 59, 60, 61, 62, 83, 84, 85, 86, 87, 88,
+    89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100,
+    101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112,
+    113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124,
+    125, 126, 186, 187, 188, 189, 190, 203, 204, 205, 206, 207,
+    208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219,
+    220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231,
+    232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243,
+    244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254,
+)

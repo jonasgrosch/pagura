@@ -361,13 +361,19 @@
         "paint/image-area-sheared",
         "pagura-render compositor::images::tests::scalar_cache_uses_component_precision_for_mixed_samples",
         "paint/image-area-separable",
-        "paint/image-area-separable-colour-key"
+        "paint/image-area-separable-colour-key",
+        "paint/image-area-tie-1024-159",
+        "paint/image-area-tie-2048-95",
+        "paint/image-area-tie-2048-223",
+        "paint/image-area-tie-2048-253",
+        "paint/image-area-thresholds",
+        "paint/image-area-zero-coverage"
       ],
       "gaps": "Interpolation is device policy rather than an ISO-prescribed filter. Strongly anisotropic transforms use area integration whenever an inverse pixel edge exceeds one source pixel.",
       "review": [
         {
           "locator": "8.9.5.3",
-          "rule": "Implementation policy: nearest neighbours or bilinear associated colour/alpha for magnification, per Interpolate; exact source-cell footprint area integration for minification. Global device coordinates preserve tile parity.",
+          "rule": "Implementation policy: nearest neighbours or bilinear associated colour/alpha for magnification, per Interpolate; exact source-cell footprint area integration for minification. Global device coordinates preserve tile parity. Axis-aligned area integration is separable; two boundary rows per column bound temporary storage independently of source height. Threshold oracles use exact rational half-up means.",
           "verdict": "verified against local primary text; device policy identified explicitly"
         }
       ]
@@ -383,9 +389,10 @@
         "paint/type3-recursion",
         "pagura-render interpreter::text::tests::paint_cache_admission_is_atomic_and_shared_across_saved_states",
         "pagura-render interpreter::text::tests::fonts_and_outlines_are_reused",
+        "pagura-render interpreter::text::cache::tests::admission_follows_the_loaded_fonts_owned_estimate",
         "pagura-render interpreter::text::cache::tests::malformed_font_fanout_is_rejected_before_loading_descendants"
       ],
-      "gaps": "The opaque PdfFont API has no retained-memory estimator; parsed font internals retain their own per-font budgets, with at most 256 cached fonts. This is not a process peak-memory bound.",
+      "gaps": "Retained estimates are accounting policy rather than allocator telemetry or a process peak-memory bound.",
       "review": [
         {
           "locator": "Annex C.1",
@@ -457,15 +464,16 @@
         "pagura-render interpreter::text::cache::tests::retained_cache_admission_eviction_and_duplicate_publication_are_bounded",
         "paint/text-late-font-repair",
         "pagura cli::scan_retries_a_late_repair_without_losing_earlier_pages",
-        "pagura-render interpreter::text::cache::tests::embedded_cid_font_inputs_are_charged_through_descendants",
+        "pagura-render interpreter::text::cache::tests::admission_follows_the_loaded_fonts_owned_estimate",
         "pagura-render interpreter::text::cache::tests::each_dictionary_owns_its_glyph_outlines",
-        "pagura-render interpreter::text::cache::tests::evicted_records_cannot_populate_replacements"
+        "pagura-render interpreter::text::cache::tests::evicted_records_cannot_populate_replacements",
+        "pagura-render interpreter::text::cache::tests::embedded_cid_fonts_charge_the_loaded_estimate"
       ],
-      "gaps": "PdfFont exposes no complete retained-memory estimator. The shared cache charges font input and dictionary estimates, path-segment estimates and bookkeeping; opaque parsed internals retain their own per-font bounds, with at most 256 fonts. Provider caches have independent bounds.",
+      "gaps": "Provider caches have independent bounds. Retained estimates are not a process peak-memory bound.",
       "review": [
         {
           "locator": "Annex C.1",
-          "rule": "Document-bound font and outline caches use immutable font dictionaries and resource identities. Retained input, dictionary and path-segment estimates are bounded by document_bytes, eviction never changes pixels, and foreign pages are rejected.",
+          "rule": "Document-bound font and outline caches use immutable font dictionaries and resource identities. PdfFont::retained_bytes(), renderer-owned metadata, direct dictionary copies and path-segment estimates are bounded by document_bytes; provider-owned data is budgeted separately. Eviction never changes pixels, and foreign pages are rejected.",
           "verdict": "verified against local primary text; cache accounting is implementation policy"
         }
       ]

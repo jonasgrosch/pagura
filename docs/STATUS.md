@@ -41,7 +41,7 @@ painting dominates their time and is being optimized.
 | PDF Differences | 37 | 75.7% | 24 | 23.3% (10/43) | 0 / 0 |
 | PDF 2.0 examples | 7 | 100.0% | 6 | 12.5% (1/8) | 0 / 0 |
 
-Generated fixtures: 880 PDF cases with independent expectations pass
+Generated fixtures: 885 PDF cases with independent expectations pass
 (`tools/conformance.py`), plus 337 codec, 97 crypto and 19 raster vectors in
 crate tests.
 

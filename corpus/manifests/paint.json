@@ -2492,6 +2492,120 @@
       "width": 32,
       "height": 32,
       "tolerance": 0
+    },
+    {
+      "id": "paint/image-area-tie-1024-159",
+      "kind": "pdf",
+      "description": "image area tie 1024 159",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-area-tie-1024-159.pdf",
+      "sha256": "9a894cf59f4256880bd0ed6875493380ebe0690ba04816498d9a5d0baff28fb8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-area-tie-1024-159.ppm",
+      "oracle_sha256": "ed132805888be8e60bc4c75233f138e9942d5472dc3dc9fc27078b40d1aeee41",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-area-tie-2048-95",
+      "kind": "pdf",
+      "description": "image area tie 2048 95",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-area-tie-2048-95.pdf",
+      "sha256": "fc3f4e502d1dfc3d418534fedfb765691d5e5f286a545b60279702c8b7fca1bb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-area-tie-2048-95.ppm",
+      "oracle_sha256": "932cdb9a58becbce0f1737a7554f3fe3e615035f19bf595b1aa7579eb32ac4cb",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-area-tie-2048-223",
+      "kind": "pdf",
+      "description": "image area tie 2048 223",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-area-tie-2048-223.pdf",
+      "sha256": "39d95cafad4bab89bd04c9bfa9a1c51ba112178131f10005d5fda49edd53b25a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-area-tie-2048-223.ppm",
+      "oracle_sha256": "6dd154d673798cca23aa65ba96a83d33ca7f739768987f56e2353ddc27f27b91",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-area-tie-2048-253",
+      "kind": "pdf",
+      "description": "image area tie 2048 253",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-area-tie-2048-253.pdf",
+      "sha256": "d1749c2ca63da7a0cedba38e156125a3fd63f5220bb7d26a6ae63559b554bf54",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-area-tie-2048-253.ppm",
+      "oracle_sha256": "5c2303a8af15b9da2ef404379478f2d8b8408b3c22debd737add7866fd39b1be",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-area-zero-coverage",
+      "kind": "pdf",
+      "description": "image area zero coverage",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-area-zero-coverage.pdf",
+      "sha256": "6d38fadc27f559d495422a25044fd06bea04c49f1e12067d138beaf23a0974e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-area-zero-coverage.ppm",
+      "oracle_sha256": "3aaa77f17582428b99e7f04836135214e7ae36328fb233b7b284da36da2dafb3",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-area-thresholds",
+      "kind": "vector",
+      "description": "Exact rational means of alternating adjacent levels at large reduction ratios",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "files": {
+        ".txt": {
+          "path": "corpus/generated/paint/image-area-thresholds.txt",
+          "sha256": "3eb6d9ca20414eb1f793c112a0cc6ee9b7f8fda4d956a54aacbe7dca156e7cea"
+        }
+      }
     }
   ]
 }

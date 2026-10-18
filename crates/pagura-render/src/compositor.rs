@@ -6,6 +6,7 @@
 
 mod images;
 mod patterns;
+mod reduced;
 mod regions;
 mod sampled;
 mod view;
