@@ -1,0 +1,4 @@
+filter=LZWDecode
+outcome=syntax
+repair=none
+cap=4096

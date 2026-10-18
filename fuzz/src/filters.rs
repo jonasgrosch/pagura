@@ -2,7 +2,7 @@
 //! structured error for damaged data (clause 7.4). The first byte selects the
 //! filter and predictor; the rest is the encoded input.
 
-use pagura_codec::{Filter, Predictor, PredictorKind};
+use pagura_codec::{EarlyChange, Filter, Predictor, PredictorKind};
 use pagura_core::{Diagnostics, Recovery};
 
 const CAP: usize = 1 << 20;
@@ -29,7 +29,11 @@ pub fn run(data: &[u8]) {
         2 => Filter::RunLength,
         3 | 4 => Filter::Lzw {
             predictor,
-            early_change: selector & 1 == 0,
+            early_change: if selector & 1 == 0 {
+                EarlyChange::Early
+            } else {
+                EarlyChange::Postponed
+            },
         },
         _ => Filter::Flate { predictor },
     };

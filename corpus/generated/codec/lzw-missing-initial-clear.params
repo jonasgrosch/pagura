@@ -1,0 +1,4 @@
+filter=LZWDecode
+outcome=valid
+repair=filter.lzw-initial-clear
+cap=24

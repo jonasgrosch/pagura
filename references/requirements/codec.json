@@ -202,8 +202,8 @@
         {
           "locator": "7.4.4.2, Table 7",
           "rule": "LZW starts with clear=256, represents byte literals with 0..255, and ends with code 257.",
-          "implementation": "Agrees: initial clear is required, clears reset the dictionary and width, and EOD ends decoding.",
-          "fixtures": "Agrees: empty, special-phrase, reset and literal-only boundary vectors.",
+          "implementation": "Agrees: when the first code is a literal or EOD instead of the initial clear, Strict rejects with filter.lzw-initial-clear and Repair decodes from the initial table, which equals the cleared one, and reports it; any other first code is a syntax error. Clears reset the dictionary and width, and EOD ends decoding.",
+          "fixtures": "Agrees: empty, special-phrase, reset and literal-only boundary vectors; lzw-missing-initial-clear asserts tagged Strict rejection and exact Repair output, and lzw-missing-initial-clear-phrase the syntax error for a first phrase code.",
           "verdict": "verified"
         },
         {
@@ -255,7 +255,8 @@
       "gaps": "TIFF strip boundaries, FillOrder metadata and TIFF container byte order are outside this PDF decoder. Positive dimensions beyond the public predictor fields remain unsupported.",
       "documented_choices": [
         "filter.lzw-full-table: ISO 7.4.4.2 requires an encoder clear when full. Strict rejects with this repair tag; Repair completes the decoder-lag entry and freezes codes through 4095, without subsequent insertion until clear/EOD. It records the repair once per stream, including across later clear codes. This recovery is project policy, not ISO permission.",
-        "filter.lzw-padding: ISO 7.4.4.2 requires zero unused EOD bits. Strict rejects with this repair tag; Repair ignores nonzero residual bits and records the deviation. This recovery is project policy, not ISO permission."
+        "filter.lzw-padding: ISO 7.4.4.2 requires zero unused EOD bits. Strict rejects with this repair tag; Repair ignores nonzero residual bits and records the deviation. This recovery is project policy, not ISO permission.",
+        "filter.lzw-initial-clear: ISO 7.4.4.2 requires the encoder to begin with a clear code. When the first code is a literal or EOD, Strict rejects with this repair tag and Repair decodes from the initial table, reporting the deviation once per stream; a first code above EOD names no table entry and stays a syntax error. This recovery is project policy, not ISO permission."
       ],
       "external_primary_review": [
         {

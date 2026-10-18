@@ -188,15 +188,16 @@ def external_format_cases():
                      plain, "predictor-tiff", predictor=2, colors=2, bits=depth, columns=2)
 
 
-def lzw(data, early, reset_at=4096):
+def lzw(data, early, reset_at=4096, initial_clear=True):
     """Phrase encoder with independent decoder-width accounting (7.4.4.2).
 
     Dictionary insertion leads the decoder by one entry, except at EOD.
     Width follows codes the decoder has consumed, not encoder table size.
+    Without the initial clear code the decoder's starting table is the same.
     """
     dictionary = {bytes([i]): i for i in range(256)}
     next_code = 258
-    output = [(256, 9)]
+    output = [(256, 9)] if initial_clear else []
     width = 9
     decoder_next = 258
     has_previous = False
@@ -447,6 +448,16 @@ def cases():
                          repair="filter.lzw-full-table" if label == "frozen-table" else "none")
     yield vector("lzw-truncated", lzw(b"hello", 1)[:-2], b"hell", "filter-repairs", "LZWDecode", repair="filter.truncated")
     yield vector("lzw-trailing", lzw(b"hello", 1) + b"\0", b"hello", "filter-repairs", "LZWDecode", repair="filter.trailing-data")
+    # 7.4.4.2: the encoder begins with a clear code. Repair decodes from the
+    # initial table, which a leading clear would only reset to itself.
+    plain = b"TOBEORNOTTOBEORTOBEORNOT"
+    yield vector("lzw-missing-initial-clear", lzw(plain, 1, initial_clear=False), plain, "filter-lzw",
+                 "LZWDecode", repair="filter.lzw-initial-clear")
+    # A first code above EOD names no table entry; it stays a syntax error.
+    bits = f"{258:09b}{257:09b}"
+    bits += "0" * (-len(bits) % 8)
+    yield vector("lzw-missing-initial-clear-phrase", bytes(int(bits[i:i + 8], 2) for i in range(0, len(bits), 8)),
+                 b"", "filter-lzw", "LZWDecode", outcome="syntax", cap=4096)
     yield vector("lzw-invalid-code", bytes.fromhex("804b40"), b"", "filter-lzw", "LZWDecode", outcome="syntax", cap=4096)
     for length in range(10):
         plain = data[:length]
