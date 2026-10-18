@@ -30,7 +30,7 @@ Dependencies point downward only and are fixed in the crate manifests.
 | `pagura-write` | deterministic serialization | parsing |
 | `pagura` | the public facade and the `pagura` CLI | — |
 | `pagura-host` | the stdio session protocol, native and `wasm32-wasip1` | — |
-| `pagura-testkit` | test-only fixture access and assertions (std only) | product code |
+| `pagura-testkit` | test-only fixture access, manifest reading, byte assertions and host protocol frames (std only) | product code |
 
 Add a crate only for a substantial, independently testable responsibility
 with a clear dependency direction. Colour management (ICC) is the next
