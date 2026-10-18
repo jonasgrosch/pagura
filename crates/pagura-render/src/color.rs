@@ -23,7 +23,7 @@ pub(crate) enum Space {
         range: [[f64; 2]; 4],
     },
     Tint {
-        inputs: usize,
+        names: Arc<[pagura_core::Name]>,
         base: Arc<Self>,
         function: Arc<crate::functions::Function>,
     },
@@ -66,7 +66,8 @@ impl Color {
         }
         let components = match &space {
             Space::Cmyk => vec![0.0, 0.0, 0.0, 1.0],
-            Space::Tint { inputs, .. } | Space::Special { inputs, .. } => vec![1.0; *inputs],
+            Space::Tint { names, .. } => vec![1.0; names.len()],
+            Space::Special { inputs, .. } => vec![1.0; *inputs],
             _ => vec![0.0; space.components()],
         };
         Self::Solid { space, components }
@@ -237,7 +238,8 @@ impl Space {
             Self::Cmyk => 4,
             Self::Cie(cie) => cie.components(),
             Self::Icc { base, .. } => base.components(),
-            Self::Tint { inputs, .. } | Self::Special { inputs, .. } => *inputs,
+            Self::Tint { names, .. } => names.len(),
+            Self::Special { inputs, .. } => *inputs,
         }
     }
 
@@ -280,26 +282,33 @@ impl Space {
                 base.convert_with_intent(&function.evaluate(&tint)?, intent)
             }
             Self::Indexed { base, high, lookup } => {
-                let value = c
-                    .first()
-                    .copied()
-                    .unwrap_or(0.0)
-                    .round()
-                    .clamp(0.0, f64::from(*high));
-                #[expect(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    reason = "index is clamped to 0..=255"
-                )]
-                let index = value as usize;
-                let bytes = lookup
-                    .get(index * base.components()..(index + 1) * base.components())
-                    .unwrap_or_default();
-                let components = base.decode_lookup(bytes);
+                let components =
+                    indexed_components(base, *high, lookup, c.first().copied().unwrap_or(0.0))?;
                 base.convert_with_intent(&components, intent)
             }
         }
     }
+}
+
+/// Decode one Indexed entry in its base space's source range (8.6.6.3).
+pub(crate) fn indexed_components(
+    base: &Space,
+    high: u8,
+    lookup: &[u8],
+    value: f64,
+) -> Result<Vec<f64>> {
+    let value = value.round().clamp(0.0, f64::from(high));
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "index rounded and clamped to 0..255"
+    )]
+    let index = value as usize;
+    let count = base.components();
+    let bytes = lookup
+        .get(index * count..(index + 1) * count)
+        .ok_or(Error::syntax("truncated Indexed colour lookup"))?;
+    Ok(base.decode_lookup(bytes))
 }
 
 pub(crate) fn named(
@@ -416,55 +425,22 @@ fn array_space(
                     all: name == b"All",
                 });
             }
-            tint_space(document, resources, base, function, 1, (depth, defaults))
-        }
-        (b"DeviceN", [_, names, base, function] | [_, names, base, function, _]) => {
-            let attributes = values
-                .get(4)
-                .map(|v| document.resolve_dictionary(v))
-                .transpose()?;
-            let count = device_n_components(document, names)?;
-            if let Some(attributes) = attributes
-                && attributes
-                    .get(b"Subtype")
-                    .map(|v| document.resolve(v))
-                    .transpose()?
-                    .and_then(Value::as_name)
-                    .is_some_and(|n| n == b"NChannel")
-            {
-                for name in document.resolve(names)?.as_array().unwrap_or_default() {
-                    if document
-                        .resolve(name)?
-                        .as_name()
-                        .is_some_and(|n| n == b"None")
-                    {
-                        return Err(Error::syntax("None is forbidden in NChannel"));
-                    }
-                }
-            }
-            if document.resolve(names)?.as_array().is_some_and(|names| {
-                names.iter().all(|n| {
-                    document
-                        .resolve(n)
-                        .ok()
-                        .and_then(Value::as_name)
-                        .is_some_and(|n| n == b"None")
-                })
-            }) {
-                return Ok(Space::Special {
-                    inputs: count,
-                    all: false,
-                });
-            }
             tint_space(
                 document,
                 resources,
                 base,
                 function,
-                count,
+                vec![name.clone()],
                 (depth, defaults),
             )
         }
+        (b"DeviceN", [_, names, base, function] | [_, names, base, function, _]) => device_n_space(
+            document,
+            resources,
+            values,
+            [names, base, function],
+            (depth, defaults),
+        ),
         (b"ICCBased", [_, profile]) => icc_space(document, resources, profile, depth),
         (b"CalGray" | b"CalRGB" | b"Lab", [_, parameters]) => {
             let parameters = document.resolve_dictionary(parameters)?;
@@ -488,6 +464,72 @@ fn array_space(
             "colour space family is not implemented",
         )),
     }
+}
+
+fn device_n_space(
+    document: &ColorContext<'_>,
+    resources: &Dictionary,
+    values: &[Value],
+    [names, base, function]: [&Value; 3],
+    (depth, defaults): (usize, bool),
+) -> Result<Space> {
+    let attributes = values
+        .get(4)
+        .map(|v| document.resolve_dictionary(v))
+        .transpose()?;
+    let count = device_n_components(document, names)?;
+    if let Some(attributes) = attributes
+        && attributes
+            .get(b"Subtype")
+            .map(|v| document.resolve(v))
+            .transpose()?
+            .and_then(Value::as_name)
+            .is_some_and(|n| n == b"NChannel")
+    {
+        for name in document.resolve(names)?.as_array().unwrap_or_default() {
+            if document
+                .resolve(name)?
+                .as_name()
+                .is_some_and(|n| n == b"None")
+            {
+                return Err(Error::syntax("None is forbidden in NChannel"));
+            }
+        }
+    }
+    if document.resolve(names)?.as_array().is_some_and(|names| {
+        names.iter().all(|n| {
+            document
+                .resolve(n)
+                .ok()
+                .and_then(Value::as_name)
+                .is_some_and(|n| n == b"None")
+        })
+    }) {
+        return Ok(Space::Special {
+            inputs: count,
+            all: false,
+        });
+    }
+    tint_space(
+        document,
+        resources,
+        base,
+        function,
+        document
+            .resolve(names)?
+            .as_array()
+            .unwrap_or_default()
+            .iter()
+            .map(|value| {
+                document
+                    .resolve(value)?
+                    .as_name()
+                    .cloned()
+                    .ok_or(Error::syntax("DeviceN colourant must be a name"))
+            })
+            .collect::<Result<Vec<_>>>()?,
+        (depth, defaults),
+    )
 }
 
 fn device_n_components(document: &ColorContext<'_>, names: &Value) -> Result<usize> {
@@ -524,7 +566,7 @@ fn tint_space(
     resources: &Dictionary,
     base: &Value,
     function: &Value,
-    inputs: usize,
+    names: Vec<pagura_core::Name>,
     (depth, defaults): (usize, bool),
 ) -> Result<Space> {
     let base = resolve(document, resources, base, depth + 1, defaults)?;
@@ -535,9 +577,9 @@ fn tint_space(
         return Err(Error::syntax("invalid tint alternate space"));
     }
     let function =
-        crate::functions::Function::parse(document, function, inputs, base.components())?;
+        crate::functions::Function::parse(document, function, names.len(), base.components())?;
     Ok(Space::Tint {
-        inputs,
+        names: names.into(),
         base: Arc::new(base),
         function: Arc::new(function),
     })

@@ -99,9 +99,8 @@ impl Context {
                     .ok_or(Error::invalid_argument("pattern outside target"))?;
                 let factor = f64::from(coverage) / 255.0;
                 let source = Source {
-                    color: pixel.color,
-                    alpha: pixel.group * factor,
-                    shape: pixel.shape * factor,
+                    spot: self.spot_batch.is_some(),
+                    ..Source::new(pixel.color, pixel.group * factor, pixel.shape * factor)
                 }
                 .apply(
                     &command.composite,

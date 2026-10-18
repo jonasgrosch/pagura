@@ -8,7 +8,7 @@ use pagura_raster::{
     FillRule, Mask, Paint, Path, PathBuilder, Pixmap, Rasterizer, Stroke, Transform,
     adjusted_stroke_outline, stroke_outline,
 };
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Clip {
@@ -79,6 +79,7 @@ pub struct DisplayList {
     pub(crate) user_unit: f64,
     pub(crate) limits: Limits,
     pub(crate) group: crate::transparency::Attributes,
+    pub(crate) separations: OnceLock<Result<Arc<crate::compositor::Separations>>>,
 }
 
 impl DisplayList {
@@ -90,7 +91,16 @@ impl DisplayList {
             user_unit: page.user_unit(),
             limits,
             group: crate::transparency::Attributes::default(),
+            separations: OnceLock::new(),
         }
+    }
+
+    pub(crate) fn separations(&self) -> Result<Arc<crate::compositor::Separations>> {
+        self.separations
+            .get_or_init(|| {
+                crate::compositor::Separations::new(&self.commands, self.limits).map(Arc::new)
+            })
+            .clone()
     }
 
     /// Number of painted marks (a fill-and-stroke operation produces two).
@@ -158,7 +168,8 @@ impl DisplayList {
         {
             return Err(Error::invalid_argument("tile lies outside the page"));
         }
-        if self.group.knockout
+        if self.separations()?.enabled
+            || self.group.knockout
             || self
                 .group
                 .model

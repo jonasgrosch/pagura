@@ -224,8 +224,8 @@ impl Compiler<'_> {
             b"BM" => {
                 self.state.composite.blend = crate::blend::BlendMode::parse(self.document, value)?;
             }
-            // Overprint cannot affect an RGB device without separations
-            // (8.6.7), but malformed values remain errors.
+            // Retain both flags independently; OP supplies op only when the
+            // dictionary omits op (Table 57).
             b"OP" | b"op" => {
                 let flag = value
                     .as_bool()
@@ -240,6 +240,7 @@ impl Compiler<'_> {
                 if !matches!(value.as_integer(), Some(0 | 1)) {
                     return Err(Error::syntax("invalid overprint mode"));
                 }
+                self.state.composite.nonzero_overprint = value.as_integer() == Some(1);
             }
             b"AIS" => {
                 self.state.composite.alpha_is_shape = value

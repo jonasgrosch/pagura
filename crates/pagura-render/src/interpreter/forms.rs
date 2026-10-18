@@ -154,6 +154,7 @@ impl Compiler<'_> {
                 user_unit: self.list.user_unit,
                 limits: self.list.limits,
                 group: self.list.group,
+                separations: std::sync::OnceLock::new(),
             },
             state: self.state.clone(),
             saved: Vec::new(),

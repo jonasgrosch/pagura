@@ -1,7 +1,7 @@
 //! Retained transparency attributes and blending-space conversion (clause 11).
 
 use crate::blend::{BlendMode, lum};
-use crate::color::{Color, Space};
+use crate::color::Space;
 use crate::display::Command;
 use crate::functions::Function;
 use crate::icc::ColorContext;
@@ -16,6 +16,7 @@ pub(crate) struct Composite {
     pub(crate) alpha_is_shape: bool,
     pub(crate) conversion: Conversion,
     pub(crate) overprint: bool,
+    pub(crate) nonzero_overprint: bool,
 }
 impl Default for Composite {
     fn default() -> Self {
@@ -26,6 +27,7 @@ impl Default for Composite {
             alpha_is_shape: false,
             conversion: Conversion::default(),
             overprint: false,
+            nonzero_overprint: false,
         }
     }
 }
@@ -105,17 +107,6 @@ impl Model {
             }
         })
     }
-    pub(crate) fn color(
-        self,
-        color: &Color,
-        conversion: &Conversion,
-        work: &mut usize,
-    ) -> Result<[f64; 4]> {
-        let Color::Solid { space, components } = color else {
-            return Err(Error::invalid_argument("pattern is not a solid colour"));
-        };
-        self.source(space, components, conversion, work)
-    }
     pub(crate) fn source(
         self,
         space: &Space,
@@ -146,22 +137,12 @@ impl Model {
             );
         }
         if let Space::Indexed { base, high, lookup } = space {
-            let value = components
-                .first()
-                .copied()
-                .unwrap_or(0.0)
-                .round()
-                .clamp(0.0, f64::from(*high));
-            #[expect(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                reason = "index rounded and clamped to 0..255"
-            )]
-            let index = value as usize;
-            let values = lookup
-                .get(index * base.components()..(index + 1) * base.components())
-                .ok_or(Error::syntax("truncated Indexed colour lookup"))?;
-            let decoded = base.decode_lookup(values);
+            let decoded = crate::color::indexed_components(
+                base,
+                *high,
+                lookup,
+                components.first().copied().unwrap_or(0.0),
+            )?;
             return self.source(base, &decoded, conversion, work);
         }
         let matching = matches!(

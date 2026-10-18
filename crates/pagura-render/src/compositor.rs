@@ -5,6 +5,8 @@
 //! group colours have their initial backdrop removed before final composition
 //! (11.4.4). Knockout replaces prior contributions according to shape, not alpha.
 
+mod colorants;
+pub(crate) use colorants::Separations;
 mod images;
 mod patterns;
 mod reduced;
@@ -58,6 +60,8 @@ impl Pixel {
             color,
             alpha,
             shape,
+            preserve,
+            spot,
         } = source;
         let base = if knockout { initial } else { *self };
         let opacity = if knockout && shape > 0.0 {
@@ -65,14 +69,45 @@ impl Pixel {
         } else {
             alpha
         };
-        // Normal returns the source unchanged (11.3.5); avoid unpremultiplying
-        // the backdrop, while retaining the compositing arithmetic and rounding.
-        let blend = if state.blend == crate::blend::BlendMode::Normal {
-            color
+        // Compatible overprinting substitutes backdrop components (11.7.4.3).
+        // For another blend mode, this is the source of the implicit
+        // non-isolated group, before applying the requested outer blend.
+        let back = if preserve.iter().any(|&v| v) {
+            base.straight()
         } else {
-            state
-                .blend
-                .apply(base.straight(), color, model.components())
+            [0.0; 4]
+        };
+        let blend_mode = if spot
+            && matches!(
+                state.blend,
+                crate::blend::BlendMode::Difference
+                    | crate::blend::BlendMode::Exclusion
+                    | crate::blend::BlendMode::Hue
+                    | crate::blend::BlendMode::Saturation
+                    | crate::blend::BlendMode::Color
+                    | crate::blend::BlendMode::Luminosity
+            ) {
+            crate::blend::BlendMode::Normal
+        } else {
+            state.blend
+        };
+        let (color, blend) = if blend_mode == crate::blend::BlendMode::Normal {
+            (
+                color,
+                [0, 1, 2, 3].map(|i| if preserve[i] { back[i] } else { color[i] }),
+            )
+        } else {
+            let color = [0, 1, 2, 3].map(|i| {
+                if preserve[i] {
+                    (1.0 - base.alpha) * color[i] + base.alpha * back[i]
+                } else {
+                    color[i]
+                }
+            });
+            (
+                color,
+                blend_mode.apply(base.straight(), color, model.components()),
+            )
         };
         let value = [0, 1, 2, 3].map(|i| {
             (1.0 - opacity) * base.color[i]
@@ -96,8 +131,19 @@ struct Source {
     color: [f64; 4],
     alpha: f64,
     shape: f64,
+    preserve: [bool; 4],
+    spot: bool,
 }
 impl Source {
+    fn new(color: [f64; 4], alpha: f64, shape: f64) -> Self {
+        Self {
+            color,
+            alpha,
+            shape,
+            preserve: [false; 4],
+            spot: false,
+        }
+    }
     fn apply(mut self, state: &Composite, mask: f64) -> Self {
         let factor = state.alpha * mask;
         self.alpha *= factor;
@@ -175,6 +221,10 @@ impl Backdrop<'_> {
 
 struct Context {
     elide_opaque_groups: bool,
+    separations: Arc<Separations>,
+    preview: colorants::Preview,
+    spot_batch: Option<usize>,
+    mask_colors: bool,
     bounds: regions::Prepared,
     raster: pagura_raster::Rasterizer,
     limits: Limits,
@@ -373,7 +423,7 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
-        if !path_active(p, model)? {
+        if !path_active(p)? {
             return Ok(());
         }
         let Some(mask) = self.path_mask(p, tile)? else {
@@ -413,7 +463,7 @@ impl Context {
         let pattern = pattern_source(p);
         self.charge(mask.coverage().len())?;
         let color = if pattern.is_none() {
-            Some(model.color(&p.color, &p.composite.conversion, &mut self.function_work)?)
+            Some(self.color(&p.color, model, &p.composite, true)?)
         } else {
             None
         };
@@ -462,9 +512,9 @@ impl Context {
                 let shape = f64::from(coverage) / 255.0;
                 let source = if let Some(color) = color {
                     Source {
-                        color,
                         alpha: shape,
                         shape,
+                        ..color
                     }
                 } else if let (Some(pattern), Some(inverse)) = (&pattern, inverse) {
                     let rate = if pattern.shading.antialias { 2 } else { 1 };
@@ -663,7 +713,7 @@ impl Context {
                 } else {
                     [0.0; 4]
                 };
-                pixel.color = if model == parent_model {
+                pixel.color = if model == parent_model || self.spot_batch.is_some() {
                     color
                 } else {
                     parent_model.encode_rgb(
@@ -690,9 +740,8 @@ impl Context {
                     .copied()
                     .unwrap_or(1.0);
                 let source = Source {
-                    color: pixel.color,
-                    alpha: pixel.group,
-                    shape: pixel.shape,
+                    spot: self.spot_batch.is_some(),
+                    ..Source::new(pixel.color, pixel.group, pixel.shape)
                 }
                 .apply(&group.composite, mask);
                 parent
@@ -834,13 +883,14 @@ impl Context {
                         continue;
                     }
                 }
-                let sample = model.source(
+                let sample = self.source(
                     &command.shading.space,
                     &values[..command.shading.space.components()],
-                    &command.composite.conversion,
-                    &mut self.function_work,
+                    model,
+                    &command.composite,
+                    false,
                 )?;
-                for (out, sample) in color.iter_mut().zip(sample) {
+                for (out, sample) in color.iter_mut().zip(sample.color) {
                     *out += sample;
                 }
                 covered += 1;
@@ -850,11 +900,11 @@ impl Context {
             return Ok(None);
         }
         let shape = f64::from(covered) / (divisor * divisor);
-        Ok(Some(Source {
-            color: color.map(|v| v / f64::from(covered)),
-            alpha: shape,
-            shape,
-        }))
+        let mut source = self.sampled_source(&command.shading.space, model, &command.composite);
+        source.color = color.map(|v| v / f64::from(covered));
+        source.alpha = shape;
+        source.shape = shape;
+        Ok(Some(source))
     }
     fn discard_mask(&mut self) {
         if let Some(mask) = self.mask.take() {
@@ -893,6 +943,8 @@ impl Context {
             // object later, not to the mask source (11.6.5.1).
             let previous = std::mem::replace(&mut self.soft_source, true);
             self.clip = None;
+            let spot_batch = self.spot_batch.take();
+            let mask_colors = std::mem::replace(&mut self.mask_colors, true);
             let result = self.commands(
                 &mask.group.commands,
                 surface,
@@ -902,6 +954,8 @@ impl Context {
                 depth + 1,
             );
             self.soft_source = previous;
+            self.spot_batch = spot_batch;
+            self.mask_colors = mask_colors;
             self.clip = None;
             result?;
         }
@@ -970,6 +1024,10 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
         list.crop.height(),
     );
     let mut context = Context {
+        separations: list.separations()?,
+        preview: colorants::Preview::default(),
+        spot_batch: None,
+        mask_colors: false,
         elide_opaque_groups: !list.group.knockout
             && list.group.model.is_none_or(|m| m == Model::Rgb)
             && normal_scene(&list.commands),
@@ -987,7 +1045,12 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
         function_work: 0,
         soft_source: false,
     };
-    let model = list.group.model.unwrap_or(Model::Rgb);
+    let model = list.group.model.unwrap_or(if context.separations.enabled {
+        Model::Cmyk
+    } else {
+        Model::Rgb
+    });
+    context.elide_opaque_groups &= !context.separations.enabled;
     let mut output =
         Pixmap::new_with_limits(tile.width, tile.height, options.background, list.limits)?;
     // Keep the high-precision page backdrop bounded too. Global device
@@ -1004,56 +1067,109 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
                 width,
                 height,
             };
-            context.clip = None;
-            context.discard_mask();
-            let mut page = context.surface(region, Backdrop::Transparent)?;
-            context.commands(
-                &list.commands,
-                &mut page,
-                Backdrop::Transparent,
-                model,
-                list.group.knockout,
-                0,
-            )?;
-            let stride = usize::try_from(tile.width)
-                .map_err(|_| Error::limit("output width exceeds usize"))?;
-            for (row, pixels) in page
-                .pixels
-                .chunks_exact(
-                    usize::try_from(width)
-                        .map_err(|_| Error::limit("chunk width exceeds usize"))?,
-                )
-                .enumerate()
-            {
-                let start = (usize::try_from(y - tile.y)
-                    .map_err(|_| Error::limit("output row exceeds usize"))?
-                    + row)
-                    * stride
-                    + usize::try_from(x - tile.x)
-                        .map_err(|_| Error::limit("output column exceeds usize"))?;
-                for (target, pixel) in output.data_mut()[start * 4..(start + pixels.len()) * 4]
-                    .as_chunks_mut::<4>()
-                    .0
-                    .iter_mut()
-                    .zip(pixels)
-                {
-                    let alpha = pixel.alpha;
-                    if alpha == 0.0 {
-                        continue;
-                    }
-                    let color = model.rgb(pixel.straight());
-                    for (i, out) in target.iter_mut().enumerate().take(3) {
-                        *out = quantize(color[i] * alpha + f64::from(*out) / 255.0 * (1.0 - alpha));
-                    }
-                    target[3] = quantize(alpha + f64::from(target[3]) / 255.0 * (1.0 - alpha));
-                }
-            }
-            context.allocated -= page.bytes();
+            context.render_chunk(list, model, &mut output, tile, region)?;
             x += width;
         }
         y += height;
     }
     Ok(output)
+}
+
+impl Context {
+    fn render_chunk(
+        &mut self,
+        list: &DisplayList,
+        model: Model,
+        output: &mut Pixmap,
+        tile: Tile,
+        region: Tile,
+    ) -> Result<()> {
+        let Tile { x, y, width, .. } = region;
+        self.clip = None;
+        self.discard_mask();
+        let mut page = self.surface(region, Backdrop::Transparent)?;
+        self.commands(
+            &list.commands,
+            &mut page,
+            Backdrop::Transparent,
+            model,
+            list.group.knockout,
+            0,
+        )?;
+        let mut spots = Vec::with_capacity(self.separations.batches());
+        for batch in 0..self.separations.batches() {
+            self.spot_batch = Some(batch);
+            self.clip = None;
+            let mut surface = self.surface(region, Backdrop::Transparent)?;
+            self.commands(
+                &list.commands,
+                &mut surface,
+                Backdrop::Transparent,
+                model,
+                list.group.knockout,
+                0,
+            )?;
+            spots.push(surface);
+        }
+        self.spot_batch = None;
+        let stride =
+            usize::try_from(tile.width).map_err(|_| Error::limit("output width exceeds usize"))?;
+        for (row, pixels) in page
+            .pixels
+            .chunks_exact(
+                usize::try_from(width).map_err(|_| Error::limit("chunk width exceeds usize"))?,
+            )
+            .enumerate()
+        {
+            let start = (usize::try_from(y - tile.y)
+                .map_err(|_| Error::limit("output row exceeds usize"))?
+                + row)
+                * stride
+                + usize::try_from(x - tile.x)
+                    .map_err(|_| Error::limit("output column exceeds usize"))?;
+            for (column, (target, pixel)) in output.data_mut()
+                [start * 4..(start + pixels.len()) * 4]
+                .as_chunks_mut::<4>()
+                .0
+                .iter_mut()
+                .zip(pixels)
+                .enumerate()
+            {
+                let alpha = pixel.alpha;
+                if alpha == 0.0 {
+                    continue;
+                }
+                let color = if spots.is_empty() {
+                    model.rgb(pixel.straight())
+                } else {
+                    let index = row
+                        * usize::try_from(width)
+                            .map_err(|_| Error::limit("chunk width exceeds usize"))?
+                        + column;
+                    let mut tints = [0.0; 32];
+                    for (batch, surface) in spots.iter().enumerate() {
+                        for (i, value) in surface.pixels[index].straight().into_iter().enumerate() {
+                            tints[batch * 4 + i] = 1.0 - value;
+                        }
+                    }
+                    self.charge(self.separations.len())?;
+                    self.preview.rgb(
+                        &self.separations,
+                        model,
+                        pixel.straight(),
+                        &tints,
+                        &mut self.function_work,
+                    )?
+                };
+                for (i, out) in target.iter_mut().enumerate().take(3) {
+                    *out = quantize(color[i] * alpha + f64::from(*out) / 255.0 * (1.0 - alpha));
+                }
+                target[3] = quantize(alpha + f64::from(target[3]) / 255.0 * (1.0 - alpha));
+            }
+        }
+        self.allocated -= page.bytes() + spots.iter().map(Surface::bytes).sum::<usize>();
+        Ok(())
+    }
 }
 
 fn opaque_knockout(group: &Group) -> bool {
@@ -1150,7 +1266,7 @@ fn pattern_source(p: &PathCommand) -> Option<crate::display::ShadingCommand> {
     }
 }
 
-fn path_active(p: &PathCommand, model: Model) -> Result<bool> {
+fn path_active(p: &PathCommand) -> Result<bool> {
     if matches!(
         &p.color,
         crate::color::Color::Pattern { selected: None, .. }
@@ -1163,18 +1279,131 @@ fn path_active(p: &PathCommand, model: Model) -> Result<bool> {
             "transfer selection across transparent artwork is not implemented",
         ));
     }
-    if model == Model::Cmyk && p.composite.overprint {
-        return Err(Error::unsupported(
-            crate::features::TRANSPARENCY_OVERPRINT,
-            "CMYK group overprint is not implemented",
-        ));
-    }
     Ok(true)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn overprint_list(bytes: &[u8]) -> DisplayList {
+        let document = pagura_document::Document::open(
+            bytes.to_vec(),
+            &pagura_document::OpenOptions::default(),
+        )
+        .unwrap();
+        crate::compile_page(&document, document.page(0).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn simulation_requires_painted_colorants_and_is_shared_across_tiles() {
+        for (bytes, needed) in [
+            (
+                include_bytes!("../../../corpus/generated/overprint/noop-rgb-multiply-on.pdf")
+                    .as_slice(),
+                false,
+            ),
+            (
+                include_bytes!("../../../corpus/generated/overprint/fill-zero.pdf"),
+                false,
+            ),
+            (
+                include_bytes!(
+                    "../../../corpus/generated/overprint/image-ignores-nonzero-mode.pdf"
+                ),
+                false,
+            ),
+            (
+                include_bytes!(
+                    "../../../corpus/generated/overprint/shading-ignores-nonzero-mode.pdf"
+                ),
+                false,
+            ),
+            (
+                include_bytes!("../../../corpus/generated/overprint/indexed-base-cmyk.pdf"),
+                true,
+            ),
+            (
+                include_bytes!("../../../corpus/generated/overprint/separation-on.pdf"),
+                true,
+            ),
+        ] {
+            let list = overprint_list(bytes);
+            let plan = list.separations().unwrap();
+            assert_eq!(plan.enabled, needed);
+            let options = RenderOptions::default();
+            for x in 0..8 {
+                list.render_tile(
+                    &options,
+                    Tile {
+                        x,
+                        y: 0,
+                        width: 1,
+                        height: 8,
+                    },
+                )
+                .unwrap();
+                assert!(Arc::ptr_eq(&plan, &list.separations().unwrap()));
+            }
+        }
+    }
+
+    #[test]
+    fn separation_batches_and_masks_preserve_tile_parity() {
+        for bytes in [
+            include_bytes!("../../../corpus/generated/overprint/spot-batches-6.pdf").as_slice(),
+            include_bytes!("../../../corpus/generated/overprint/spot-passes-rgb-group.pdf"),
+            include_bytes!(
+                "../../../corpus/generated/overprint/spot-luminosity-mask-uses-alternate.pdf"
+            ),
+            include_bytes!("../../../corpus/generated/overprint/fractional-coverage.pdf"),
+            include_bytes!("../../../corpus/generated/overprint/combined-fill-stroke-half.pdf"),
+        ] {
+            let list = overprint_list(bytes);
+            for background in [
+                pagura_raster::Rgba8::WHITE,
+                pagura_raster::Rgba8::TRANSPARENT,
+            ] {
+                let options = RenderOptions {
+                    scale: 1.375,
+                    background,
+                };
+                let full = list.render(&options).unwrap();
+                let (width, height) = list.device_size(&options).unwrap();
+                for y in (0..height).step_by(4) {
+                    for x in (0..width).step_by(3) {
+                        let tile = Tile {
+                            x,
+                            y,
+                            width: 3.min(width - x),
+                            height: 4.min(height - y),
+                        };
+                        let part = list.render_tile(&options, tile).unwrap();
+                        for row in 0..tile.height as usize {
+                            let start = ((y as usize + row) * width as usize + x as usize) * 4;
+                            let stride = tile.width as usize * 4;
+                            assert_eq!(
+                                &part.data()[row * stride..(row + 1) * stride],
+                                &full.data()[start..start + stride]
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn spot_surfaces_share_the_process_memory_allowance() {
+        let mut list = overprint_list(include_bytes!(
+            "../../../corpus/generated/overprint/spot-batches-6.pdf"
+        ));
+        list.limits.decoded_bytes = 4096;
+        assert_eq!(
+            list.render(&RenderOptions::default()).unwrap_err().kind,
+            pagura_core::ErrorKind::Limit
+        );
+    }
 
     #[test]
     fn solid_runs_preserve_unit_and_fractional_backdrop_alpha_evaluation() {
@@ -1231,6 +1460,10 @@ mod tests {
         let clip = Mask::from_path(2, 2, &path, Transform::IDENTITY, FillRule::NonZero, 4).unwrap();
         let mut context = Context {
             elide_opaque_groups: false,
+            separations: Arc::new(Separations::default()),
+            preview: colorants::Preview::default(),
+            spot_batch: None,
+            mask_colors: false,
             raster: pagura_raster::Rasterizer::default(),
             bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
             limits,

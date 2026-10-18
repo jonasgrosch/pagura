@@ -1597,8 +1597,8 @@
     {
       "id": "content/overprint-cmyk-boundary",
       "kind": "pdf",
-      "description": "11.7.4 requires colourant-preserving overprint simulation; dense converted vectors cannot supply it",
-      "expected": "unsupported",
+      "description": "11.7.4 selects nonzero CMYK colourants before compositing",
+      "expected": "render",
       "requirements": [
         "content-overprint-boundary"
       ],
@@ -1607,7 +1607,11 @@
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
-      "feature": "transparency.overprint"
+      "oracle": "corpus/generated/content/overprint-cmyk-boundary.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     },
     {
       "id": "content/annotation-icon-Comment",

@@ -1,0 +1,50 @@
+%PDF-1.7
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ExtGState << /On << /OP true /OPM 1 >> /Off << /OP false /op false >> /Zero << /op true /OPM 0 >> /Fill << /OP false /op true /OPM 1 >> /Stroke << /OP true /op false /OPM 1 >> /Half << /OP true /OPM 1 /ca .4 /CA .4 >> /Screen << /OP true /OPM 1 /BM /Screen >> /Difference << /OP true /OPM 1 /BM /Difference >> >> /ColorSpace << /C [/Separation /InkC /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [1 0 0 0] /N 1 >>] /M [/Separation /InkM /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [0 1 0 0] /N 1 >>] /PC [/Separation /Cyan /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [1 0 0 0] /N 1 >>] /DN [/DeviceN [/InkC /InkM] /DeviceCMYK 5 0 R] /PN [/DeviceN [/Cyan /Black] /DeviceCMYK 6 0 R] /All [/Separation /All /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [1 1 1 1] /N 1 >>] /I [/Indexed /DeviceCMYK 0 <ff000000>] >> /XObject << /Fm 7 0 R >> /Shading << /Sh << /ShadingType 2 /ColorSpace /C /Coords [0 0 8 0] /Extend [true true] /Function << /FunctionType 2 /Domain [0 1] /C0 [.6] /C1 [.6] /N 1 >> >> >>>> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 36 >>
+stream
+0 1 0 0 k 0 0 8 8 re f /On gs /Sh sh
+endstream
+endobj
+5 0 obj
+<< /Length 7 /FunctionType 4 /Domain [0 1 0 1] /Range [0 1 0 1 0 1 0 1]>>
+stream
+{ 0 0 }
+endstream
+endobj
+6 0 obj
+<< /Length 17 /FunctionType 4 /Domain [0 1 0 1] /Range [0 1 0 1 0 1 0 1]>>
+stream
+{ 0 exch 0 exch }
+endstream
+endobj
+7 0 obj
+<< /Length 0 /Type /XObject /Subtype /Form /BBox [0 0 8 8] /Resources << /ExtGState << /On << /OP true /OPM 1 >> /Off << /OP false /op false >> /Zero << /op true /OPM 0 >> /Fill << /OP false /op true /OPM 1 >> /Stroke << /OP true /op false /OPM 1 >> /Half << /OP true /OPM 1 /ca .4 /CA .4 >> /Screen << /OP true /OPM 1 /BM /Screen >> /Difference << /OP true /OPM 1 /BM /Difference >> >> /ColorSpace << /C [/Separation /InkC /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [1 0 0 0] /N 1 >>] /M [/Separation /InkM /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [0 1 0 0] /N 1 >>] /PC [/Separation /Cyan /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [1 0 0 0] /N 1 >>] /DN [/DeviceN [/InkC /InkM] /DeviceCMYK 5 0 R] /PN [/DeviceN [/Cyan /Black] /DeviceCMYK 6 0 R] /All [/Separation /All /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0 0 0 0] /C1 [1 1 1 1] /N 1 >>] /I [/Indexed /DeviceCMYK 0 <ff000000>] >> /XObject << /Fm 7 0 R >> >> >>
+stream
+
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000001291 00000 n 
+0000001377 00000 n 
+0000001491 00000 n 
+0000001616 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+2637
+%%EOF
