@@ -8,9 +8,12 @@
 //! preserving winding and bounding work by the surface.
 
 use crate::flatten::{Polyline, bounded, flatten_into};
-use crate::{FillRule, Path, Point, Segment, Transform};
+use crate::{FillRule, Path, Point, Transform};
 use pagura_core::{Error, Limits, Result};
 use std::sync::Arc;
+
+mod rectangle;
+use rectangle::Rectangle;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Shape {
@@ -20,30 +23,12 @@ pub(crate) struct Shape {
 }
 impl Shape {
     pub(crate) fn covers(&self, origin: (u32, u32), size: (u32, u32)) -> bool {
-        let [
-            Segment::MoveTo(a),
-            Segment::LineTo(b),
-            Segment::LineTo(c),
-            Segment::LineTo(d),
-            Segment::Close,
-        ] = self.path.segments()
-        else {
-            return false;
-        };
-        let [a, b, c, d] = [*a, *b, *c, *d].map(|p| p * self.transform);
-        let axis = (a.x == b.x && b.y == c.y && c.x == d.x && d.y == a.y)
-            || (a.y == b.y && b.x == c.x && c.y == d.y && d.x == a.x);
-        if !axis || a == b || b == c || c == d || d == a {
-            return false;
-        }
-        let left = a.x.min(c.x);
-        let right = a.x.max(c.x);
-        let top = a.y.min(c.y);
-        let bottom = a.y.max(c.y);
-        left <= f64::from(origin.0)
-            && top <= f64::from(origin.1)
-            && right >= f64::from(origin.0) + f64::from(size.0)
-            && bottom >= f64::from(origin.1) + f64::from(size.1)
+        self.rectangle().is_some_and(|rectangle| {
+            rectangle.left <= f64::from(origin.0)
+                && rectangle.top <= f64::from(origin.1)
+                && rectangle.right >= f64::from(origin.0) + f64::from(size.0)
+                && rectangle.bottom >= f64::from(origin.1) + f64::from(size.1)
+        })
     }
 }
 // Successfully constructed masks contain finite geometry only.
@@ -120,7 +105,7 @@ struct Row {
     maximum_events: usize,
 }
 impl Row {
-    fn reset(&mut self, width: usize, origin: u32, limits: &Limits) -> Result<()> {
+    fn reset(&mut self, width: usize, origin: u32) -> Result<()> {
         for buffer in [&mut self.areas, &mut self.covers] {
             buffer
                 .try_reserve_exact(width.saturating_sub(buffer.len()))
@@ -128,9 +113,6 @@ impl Row {
             buffer.resize(width, 0.0);
         }
         self.origin = origin;
-        self.work = 0;
-        self.maximum = limits.raster_work;
-        self.maximum_events = limits.path_segments;
         Ok(())
     }
     fn charge(&mut self, amount: usize) -> Result<()> {
@@ -239,28 +221,21 @@ pub(crate) fn coverage(
         sweep,
     } = scratch;
     let stride = usize::try_from(width).map_err(|_| Error::limit("mask width exceeds usize"))?;
-    row.reset(stride, origin.0, limits)?;
+    row.work = 0;
+    row.maximum = limits.raster_work;
+    row.maximum_events = limits.path_segments;
+    let (bounds, groups) = Rectangle::intersection(shapes, origin, (width, height), row, limits)?;
+    if groups == 0 && !shapes.is_empty() {
+        row.charge(out.len())?;
+        bounds.write(out, stride, origin)?;
+        return Ok(());
+    }
+    row.reset(stride, origin.0)?;
     edges.clear();
     raw.clear();
     boundary.clear();
-    build_edges(shapes, (width, height), origin, limits, row, raw, contours)?;
-    normalize_boundaries(
-        raw,
-        edges,
-        boundary,
-        f64::from(origin.0),
-        f64::from(origin.0) + f64::from(width),
-        limits,
-        row,
-    )?;
-    // Edges have already validated the geometry and its budgets. A rectangular
-    // intersection containing the whole viewport has exactly unit area in every
-    // cell; no scanline arithmetic or sorting is needed.
-    if !shapes.is_empty() && shapes.iter().all(|s| s.covers(origin, (width, height))) {
-        row.charge(out.len())?;
-        out.fill(255);
-        return Ok(());
-    }
+    build_edges(shapes, bounds, limits, row, raw, contours)?;
+    normalize_boundaries(raw, edges, boundary, bounds.left, bounds.right, limits, row)?;
     // A shared vertical extent has just two vertex events, already ordered.
     // Keep them inline instead of allocating and sorting duplicate endpoints.
     row.charge(edges.len())?;
@@ -284,7 +259,7 @@ pub(crate) fn coverage(
         .peekable();
     active.clear();
     let mut admitted = 0;
-    winding.values.resize(shapes.len(), 0);
+    winding.values.resize(groups, 0);
     sweep.sorted = false;
     out.fill(0);
     for (y, output) in out.chunks_exact_mut(stride).enumerate() {
@@ -495,18 +470,17 @@ fn crossing(
 
 fn build_edges(
     shapes: &[Shape],
-    size: (u32, u32),
-    origin: (u32, u32),
+    bounds: Rectangle,
     limits: &Limits,
     row: &mut Row,
     edges: &mut Vec<Edge>,
     contours: &mut Vec<Polyline>,
 ) -> Result<()> {
-    let left = f64::from(origin.0);
-    let right = left + f64::from(size.0);
-    let top = f64::from(origin.1);
-    let bottom = top + f64::from(size.1);
-    for (group, shape) in shapes.iter().enumerate() {
+    for (group, shape) in shapes
+        .iter()
+        .filter(|s| s.rectangle().is_none())
+        .enumerate()
+    {
         let count = flatten_into(&shape.path, shape.transform, limits, contours)?;
         contours.truncate(count);
         for (i, contour) in contours.iter_mut().take(count).enumerate() {
@@ -539,15 +513,17 @@ fn build_edges(
             for next in points.chain(std::iter::once(first)) {
                 bounded(next)?;
                 row.charge(3)?;
-                clipped(
-                    edges,
-                    previous,
-                    next,
-                    group,
-                    shape.rule,
-                    [left, top, right, bottom],
-                    limits,
-                )?;
+                if !bounds.is_empty() {
+                    clipped(
+                        edges,
+                        previous,
+                        next,
+                        group,
+                        shape.rule,
+                        [bounds.left, bounds.top, bounds.right, bounds.bottom],
+                        limits,
+                    )?;
+                }
                 previous = next;
             }
         }

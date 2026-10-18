@@ -1168,9 +1168,21 @@ mod tests {
             function_work: 0,
             soft_source: false,
         };
+        // Rectangles take a closed form without sweep scratch; warm it with a triangle.
+        let mut warm = PathBuilder::new();
+        warm.move_to(Point::new(0.0, 0.0));
+        warm.line_to(Point::new(2.0, 0.0)).unwrap();
+        warm.line_to(Point::new(0.0, 2.0)).unwrap();
+        warm.close();
         let mask = context
             .raster
-            .clipped_path(&clip, path, Transform::IDENTITY, FillRule::NonZero, limits)
+            .clipped_path(
+                &clip,
+                Arc::new(warm.finish()),
+                Transform::IDENTITY,
+                FillRule::NonZero,
+                limits,
+            )
             .unwrap()
             .unwrap();
         context.raster.recycle(mask);
