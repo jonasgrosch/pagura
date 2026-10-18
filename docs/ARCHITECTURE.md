@@ -20,7 +20,7 @@ Dependencies point downward only and are fixed in the crate manifests.
 |---|---|---|
 | `pagura-core` | `Value`, `Name`, `Dictionary`, `ObjectId`, `Rect`; bounded `syntax::Parser`; `Error`/`ErrorKind`/`Feature`/`Position`; `Diagnostic`/`DiagnosticKind`/`Repair`/`Recovery`; `Limits`; the primitives every parser shares (ADR 0017): `Meter`, `bytes::{Cursor, BitCursor}`, `text_string` | files, revisions, rendering |
 | `pagura-codec` | stream filters and predictors with streaming output caps | documents, references |
-| `pagura-crypto` | MD5, SHA-2, RC4, AES; the standard security handler from plain parameters | the object model beyond `ObjectId` |
+| `pagura-crypto` | `Digest` hashes (MD5, SHA-1, SHA-2), RSA and ECDSA signature verification; the standard security handler from plain parameters, with RC4 and AES internal to it (ADR 0021) | the object model beyond `ObjectId`; signing; certificates and trust |
 | `pagura-document` | immutable source bytes, cross-reference data and revisions, lazily parsed and cached objects, decoded streams, typed page tree, recovery | content streams, pixels |
 | `pagura-raster` | geometry, paths, flattening, exact-area fill, stroking, masks, `Pixmap` | PDF |
 | `pagura-font` | font programs (TrueType/OpenType, CFF/CFF2, Type 1) as outlines, advances, encodings and cmaps | PDF dictionaries |
