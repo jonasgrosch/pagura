@@ -19,7 +19,7 @@ pub(super) fn resources(
     }
     let mut result = existing.cloned().unwrap_or_default();
     if let Some(defaults) = defaults {
-        for (category, value) in defaults.iter() {
+        for (category, value) in defaults {
             let value_resolved = document.resolve(value)?;
             if value_resolved.is_null() {
                 continue;
@@ -42,7 +42,7 @@ pub(super) fn resources(
                     ));
                 }
                 let mut merged = old.clone();
-                for (name, value) in new.iter() {
+                for (name, value) in new {
                     if super::optional(document, &merged, name.as_bytes())?.is_none() {
                         merged.insert(name.clone(), value.clone());
                     }
