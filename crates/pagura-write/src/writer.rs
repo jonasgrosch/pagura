@@ -1,12 +1,20 @@
 //! PDF syntax for validated objects, the cross-reference table and the trailer.
 
 use crate::NewObject;
-use pagura_core::{Dictionary, Error, Meter, ObjectId, Result, Value};
-use std::collections::BTreeMap;
+use pagura_core::{Dictionary, Error, Meter, ObjectId, Result, Value, convert};
 use std::fmt;
 
 /// The version line and a binary comment of four high-bit bytes (7.5.2).
 const HEADER: &[u8] = b"%PDF-1.7\n%\xE2\xE3\xCF\xD3\n";
+
+/// Bytes per classic cross-reference entry (7.5.4).
+pub(crate) const XREF_ENTRY_BYTES: usize = 20;
+
+/// The largest byte offset the ten digits of an entry hold (7.5.4).
+const MAX_XREF_OFFSET: u64 = 9_999_999_999;
+
+/// The generation of object 0, the head of the free list (7.5.4).
+const FREE_HEAD_GENERATION: u16 = u16::MAX;
 
 /// The `Limit` message of the output budget.
 const FILE_BUDGET: &str = "writer file budget exceeded";
@@ -79,7 +87,14 @@ impl Writer {
         self.put(HEADER)
     }
 
+    /// Writes an indirect object at the current offset, which its
+    /// cross-reference entry must be able to hold.
     pub(crate) fn object(&mut self, id: ObjectId, object: &NewObject) -> Result<()> {
+        if convert::usize_to_u64(self.offset()) > MAX_XREF_OFFSET {
+            return Err(Error::limit(
+                "classic cross-reference offsets require ten digits",
+            ));
+        }
         self.text(format_args!("{id} obj\n"))?;
         match object {
             NewObject::Value(value) => self.value(value)?,
@@ -167,36 +182,32 @@ impl Writer {
     }
 
     /// Writes a single-section table whose free entries form a linked list
-    /// starting at object 0 (clause 7.5.4).
+    /// starting at object 0 (7.5.4), then the trailer (7.5.5). `offsets`
+    /// holds each object's number and offset in ascending order.
     pub(crate) fn xref_and_trailer(
         &mut self,
-        offsets: &BTreeMap<u32, (usize, u16)>,
+        offsets: &[(u32, usize)],
+        size: u32,
         root: ObjectId,
     ) -> Result<()> {
-        let size = offsets
-            .keys()
-            .next_back()
-            .copied()
-            .unwrap_or(0)
-            .checked_add(1)
-            .ok_or(Error::limit("writer cross-reference range is too large"))?;
         let xref = self.offset();
         self.text(format_args!("xref\n0 {size}\n"))?;
-        let mut next_free = (0..size)
-            .filter(|n| !offsets.contains_key(n))
-            .skip(1)
+        let in_use = |number| {
+            offsets
+                .binary_search_by_key(&number, |&(used, _)| used)
+                .is_ok()
+        };
+        // Each free entry names the next free number; the last names 0.
+        let mut next_free = (1..size)
+            .filter(|&number| !in_use(number))
             .chain(std::iter::once(0));
+        let mut objects = offsets.iter().peekable();
         for number in 0..size {
-            if let Some((offset, generation)) = offsets.get(&number) {
-                if *offset as u128 > 9_999_999_999 {
-                    return Err(Error::limit(
-                        "classic cross-reference offsets require ten digits",
-                    ));
-                }
-                self.text(format_args!("{offset:010} {generation:05} n \n"))?;
+            if let Some((_, offset)) = objects.next_if(|(used, _)| *used == number) {
+                self.text(format_args!("{offset:010} 00000 n \n"))?;
             } else {
                 let next = next_free.next().unwrap_or(0);
-                let generation = if number == 0 { 65535 } else { 0 };
+                let generation = if number == 0 { FREE_HEAD_GENERATION } else { 0 };
                 self.text(format_args!("{next:010} {generation:05} f \n"))?;
             }
         }

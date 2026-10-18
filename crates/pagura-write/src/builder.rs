@@ -1,18 +1,24 @@
 //! Collecting objects and validating them before serialization.
 
 use crate::NewObject;
-use crate::writer::{STREAM_LENGTH, Writer};
-use pagura_core::{Error, Limits, Meter, Name, ObjectId, Result, ResultExt, Value};
+use crate::writer::{STREAM_LENGTH, Writer, XREF_ENTRY_BYTES};
+use pagura_core::{Error, Limits, Meter, Name, ObjectId, Result, ResultExt, Value, convert};
 use std::collections::BTreeMap;
 
 /// The `Limit` message of the per-object value budget.
 const VALUE_BUDGET: &str = "writer value budget exceeded";
 
+/// The `Limit` message of the cross-reference table's size.
+const XREF_BUDGET: &str = "writer cross-reference budget exceeded";
+
 /// Collects objects and writes them as one new document.
+///
+/// Every object of a new document has generation 0 (7.3.10), so objects are
+/// kept by number alone.
 #[derive(Debug, Default)]
 pub struct Builder {
     limits: Limits,
-    objects: BTreeMap<u32, (u16, NewObject)>,
+    objects: BTreeMap<u32, NewObject>,
 }
 
 impl Builder {
@@ -46,7 +52,7 @@ impl Builder {
         if self.objects.len() >= self.limits.objects {
             return Err(Error::limit("writer object budget exceeded"));
         }
-        self.objects.insert(id.number, (id.generation, object));
+        self.objects.insert(id.number, object);
         Ok(())
     }
 
@@ -58,10 +64,8 @@ impl Builder {
     /// `InvalidArgument` for values PDF cannot represent or an invalid catalog,
     /// and `Limit` for output, stream or cross-reference budgets.
     pub fn finish(&self, root: ObjectId) -> Result<Vec<u8>> {
-        let (_, catalog) = self
-            .objects
-            .get(&root.number)
-            .filter(|(generation, _)| *generation == root.generation)
+        let catalog = self
+            .get(root)
             .ok_or(Error::missing_object("Root object is missing"))?;
         let is_catalog = matches!(
             catalog,
@@ -71,39 +75,49 @@ impl Builder {
         if !is_catalog {
             return Err(Error::invalid_argument("Root must be a Catalog dictionary"));
         }
-        for (&number, (generation, object)) in &self.objects {
-            let id = ObjectId::new(number, *generation);
-            self.validate_object(object).in_object(id)?;
+        for (&number, object) in &self.objects {
+            self.validate_object(object)
+                .in_object(ObjectId::new(number, 0))?;
         }
-        // Every sparse number still needs a 20-byte xref entry (7.5.4).
-        // Bound the range before allocating or iterating over it.
-        let size = self
-            .objects
-            .keys()
-            .next_back()
-            .copied()
-            .unwrap_or(0)
-            .checked_add(1)
-            .ok_or(Error::limit("writer cross-reference range is too large"))?;
-        let size = usize::try_from(size)
-            .map_err(|_| Error::limit("writer cross-reference range is too large"))?;
-        if size > self.limits.objects
-            || size
-                .checked_mul(20)
-                .is_none_or(|bytes| bytes > self.limits.file_bytes)
-        {
-            return Err(Error::limit("writer cross-reference budget exceeded"));
-        }
+        let size = self.xref_size()?;
+        let mut offsets = Vec::new();
+        offsets
+            .try_reserve_exact(self.objects.len())
+            .map_err(|_| Error::limit(XREF_BUDGET))?;
         let mut writer = Writer::new(self.limits.file_bytes);
         writer.header()?;
-        let mut offsets = BTreeMap::new();
-        for (&number, (generation, object)) in &self.objects {
-            let id = ObjectId::new(number, *generation);
-            offsets.insert(number, (writer.offset(), *generation));
+        for (&number, object) in &self.objects {
+            let id = ObjectId::new(number, 0);
+            offsets.push((number, writer.offset()));
             writer.object(id, object).in_object(id)?;
         }
-        writer.xref_and_trailer(&offsets, root)?;
+        writer.xref_and_trailer(&offsets, size, root)?;
         Ok(writer.into_bytes())
+    }
+
+    fn get(&self, id: ObjectId) -> Option<&NewObject> {
+        self.objects.get(&id.number).filter(|_| id.generation == 0)
+    }
+
+    /// The cross-reference table's `/Size`, one above the largest object
+    /// number (7.5.5 Table 15). Every number below it needs an entry, used or
+    /// not (7.5.4), so the range is bounded before anything is written.
+    fn xref_size(&self) -> Result<u32> {
+        let size = self
+            .objects
+            .last_key_value()
+            .map_or(0, |(&number, _)| number)
+            .checked_add(1)
+            .ok_or(Error::limit(XREF_BUDGET))?;
+        let entries = convert::u32_to_usize(size);
+        if entries > self.limits.objects
+            || entries
+                .checked_mul(XREF_ENTRY_BYTES)
+                .is_none_or(|bytes| bytes > self.limits.file_bytes)
+        {
+            return Err(Error::limit(XREF_BUDGET));
+        }
+        Ok(size)
     }
 
     /// Checks what the writer will write for `object`, with the budgets the
@@ -139,13 +153,7 @@ impl Builder {
                 Err(Error::limit("writer string budget exceeded"))
             }
             Value::Name(name) => self.validate_name(name),
-            Value::Reference(id)
-                if self
-                    .objects
-                    .get(&id.number)
-                    .map(|(generation, _)| *generation)
-                    != Some(id.generation) =>
-            {
+            Value::Reference(id) if self.get(*id).is_none() => {
                 Err(Error::missing_object("dangling object reference"))
             }
             Value::Array(values) => values
