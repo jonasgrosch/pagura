@@ -1,5 +1,5 @@
 use super::end;
-use crate::{Document, OpenOptions, tags};
+use crate::{Document, OpenOptions, repairs};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Diagnostics, ErrorKind, Limits, ObjectId, Recovery};
 use pagura_testkit::fixture;
@@ -15,7 +15,7 @@ fn reserved_zero_root_needs_its_exact_positive_plaintext_identity() {
         },
     )
     .unwrap_err();
-    assert_eq!(strict.repair, Some(tags::CATALOG_OBJECT_NUMBER));
+    assert_eq!(strict.repair, Some(repairs::CATALOG_OBJECT_NUMBER));
     assert_eq!(strict.object, Some(ObjectId::new(1, 0)));
     let document = Document::open(bytes, &OpenOptions::default()).unwrap();
     assert_eq!(document.page_count().unwrap(), 1);
@@ -48,12 +48,15 @@ fn missing_object_terminators_require_a_following_structural_token() {
             let result = end(&mut parser, limits, ObjectId::new(1, 0), &mut diagnostics);
             if recovery == Recovery::Strict {
                 let error = result.unwrap_err();
-                assert_eq!(error.repair, Some(tags::OBJECT_END));
+                assert_eq!(error.repair, Some(repairs::OBJECT_END));
                 assert_eq!(error.object, Some(ObjectId::new(1, 0)));
             } else {
                 result.unwrap();
                 assert_eq!(&bytes[parser.offset()..], next);
-                assert_eq!(diagnostics.as_slice()[0].repair(), Some(tags::OBJECT_END));
+                assert_eq!(
+                    diagnostics.as_slice()[0].repair(),
+                    Some(repairs::OBJECT_END)
+                );
             }
         }
     }
@@ -109,7 +112,7 @@ fn unusable_lengths_are_repaired_lazily_and_keep_exact_bytes() {
         )
         .unwrap();
         let error = strict.object(ObjectId::new(4, 0)).unwrap_err();
-        assert_eq!(error.repair, Some(tags::LENGTH_CORRECTED), "{name}");
+        assert_eq!(error.repair, Some(repairs::LENGTH_CORRECTED), "{name}");
         let document = Document::open(bytes.clone(), &OpenOptions::default()).unwrap();
         let object = document.object(ObjectId::new(4, 0)).unwrap();
         assert_eq!(
@@ -122,7 +125,7 @@ fn unusable_lengths_are_repaired_lazily_and_keep_exact_bytes() {
             document
                 .diagnostics()
                 .iter()
-                .filter(|item| item.repair() == Some(tags::LENGTH_CORRECTED))
+                .filter(|item| item.repair() == Some(repairs::LENGTH_CORRECTED))
                 .count(),
             1
         );

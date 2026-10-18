@@ -147,7 +147,7 @@ pub(super) fn partial_name<'a>(
         return text::decode(ctx, bytes, source).map(Some);
     }
     ctx.repair(
-        crate::tags::FORM_NAME,
+        crate::repairs::FORM_NAME,
         "wrong-typed field name kept as an anonymous node (12.7.4.2)",
         source,
     )?;

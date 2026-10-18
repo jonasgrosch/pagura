@@ -4,8 +4,8 @@ mod padding;
 mod policy;
 mod repair;
 
-use crate::{Document, IndirectObject, ObjectSource, tags};
-use pagura_core::{Dictionary, Error, Feature, Name, ObjectId, Result, Value};
+use crate::{Document, IndirectObject, ObjectSource, features, repairs};
+use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
 use pagura_crypto::standard::{CryptMethod, FileKey, SecurityParams};
 use policy::Policy;
 use std::collections::BTreeMap;
@@ -48,9 +48,9 @@ pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
         .ok_or(Error::syntax("Encrypt Filter must be a name"))?;
     if filter != b"Standard" {
         let feature = if filter == b"Adobe.PubSec" {
-            tags::PUBSEC
+            features::PUBSEC
         } else {
-            tags::UNKNOWN_SECURITY
+            features::UNKNOWN_SECURITY
         };
         return Err(Error::unsupported(
             feature,
@@ -123,7 +123,7 @@ fn authenticate_document(
     let short_key = params.version == 4 && params.revision == 4 && params.key_length != 16;
     if short_key {
         policy.repair(
-            tags::SHORT_KEY,
+            repairs::SHORT_KEY,
             "nonstandard short V=4 RC4 key size requires explicit legacy authentication",
         )?;
     }
@@ -136,7 +136,7 @@ fn authenticate_document(
         && u32::from_le_bytes(params.permissions.to_le_bytes()) & 0x0d00 != 0x0d00;
     if selector {
         policy.repair(
-            tags::PERMISSION_SELECTOR,
+            repairs::PERMISSION_SELECTOR,
             "R2 revision-only permissions conflict; original revision and hash bytes preserved",
         )?;
     }
@@ -214,7 +214,7 @@ fn parameters(
     let version = u8::try_from(version).map_err(|_| Error::syntax("invalid security V"))?;
     if !matches!(version, 1 | 2 | 4 | 5) {
         return Err(Error::unsupported(
-            Feature::new("security.version"),
+            features::SECURITY_VERSION,
             "unsupported encryption algorithm version",
         ));
     }
@@ -309,14 +309,14 @@ fn methods<'a>(
                 .ok_or(Error::syntax("crypt filter must be a dictionary"))?;
             if name != b"StdCF" {
                 policy.repair(
-                    tags::CRYPT_NAME,
+                    repairs::CRYPT_NAME,
                     "nonstandard crypt-filter name used with the Standard security handler",
                 )?;
             }
             let method = crypt_method(filter, params, policy)?;
             if filter.is_name(b"AuthEvent", b"EFOpen") && !defaults.contains(&Some(name)) {
                 policy.repair(
-                    tags::CRYPT_EVENT,
+                    repairs::CRYPT_EVENT,
                     "EFOpen-only filter used as a Standard-handler extension",
                 )?;
             }
@@ -364,7 +364,7 @@ fn crypt_method(
         .is_some_and(|value| !matches!(value, Value::Name(name) if name == b"CryptFilter"))
     {
         policy.repair(
-            tags::CRYPT_TYPE,
+            repairs::CRYPT_TYPE,
             "crypt-filter Type corrected from its explicit CF dictionary membership",
         )?;
     }
@@ -374,7 +374,7 @@ fn crypt_method(
     let method = match filter.get_name(b"CFM").map(Name::as_bytes) {
         None | Some(b"None") => {
             return Err(Error::unsupported(
-                Feature::new("security.CFM"),
+                features::CRYPT_METHOD,
                 "Standard handler cannot dispatch the delegated None crypt-filter method",
             ));
         }
@@ -383,7 +383,7 @@ fn crypt_method(
         Some(b"AESV3") if params.version == 5 => CryptMethod::AesV3,
         _ => {
             return Err(Error::unsupported(
-                Feature::new("security.CFM"),
+                features::CRYPT_METHOD,
                 "unsupported crypt filter method",
             ));
         }
@@ -398,14 +398,14 @@ fn crypt_method(
             .ok_or(Error::syntax("crypt filter Length must be nonnegative"))?;
         if method != CryptMethod::Identity && length != params.key_length {
             return Err(Error::unsupported(
-                Feature::new("security.crypt-length"),
+                features::CRYPT_KEY_LENGTH,
                 "crypt filter key length differs from the file key",
             ));
         }
     }
     if filter.get(b"Length").is_none_or(Value::is_null) {
         policy.repair(
-            tags::CRYPT_LENGTH,
+            repairs::CRYPT_LENGTH,
             "missing crypt-filter Length inferred from the file key size",
         )?;
     }

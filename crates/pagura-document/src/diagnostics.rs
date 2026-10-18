@@ -30,11 +30,12 @@ impl Log {
 #[cfg(test)]
 mod tests {
     use super::CAPACITY;
+    use crate::repairs;
     use crate::{Document, OpenOptions};
     use pagura_core::{Diagnostic, ObjectId, Position, Repair};
     use pagura_testkit::fixture;
 
-    const TAG: Repair = Repair::new("test.repair");
+    const TAG: Repair = repairs::TRAILING_BYTES;
 
     #[test]
     fn repeated_decoding_retains_one_diagnostic_identity() {

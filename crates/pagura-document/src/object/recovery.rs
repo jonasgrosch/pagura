@@ -26,7 +26,7 @@ pub(crate) fn end(
     {
         diagnostics.repair(
             Diagnostic::new(
-                crate::tags::OBJECT_SEPARATOR,
+                crate::repairs::OBJECT_SEPARATOR,
                 "missing separator after endobj before the next object header",
             )
             .at(parser.position())
@@ -45,7 +45,7 @@ pub(crate) fn end(
         || probe.keyword(b"trailer")
     {
         return diagnostics.repair(
-            Diagnostic::new(crate::tags::OBJECT_END, "complete indirect value has no endobj before the next object or cross-reference section")
+            Diagnostic::new(crate::repairs::OBJECT_END, "complete indirect value has no endobj before the next object or cross-reference section")
                 .at(parser.position()).in_object(id),
         );
     }
@@ -132,7 +132,7 @@ pub(super) fn stream_extent(
     let (marker, actual) = terminator(document, id, start, direct)?;
     repairs.repair(
         Diagnostic::new(
-            crate::tags::LENGTH_CORRECTED,
+            crate::repairs::LENGTH_CORRECTED,
             "unusable stream Length corrected to the unambiguous endstream terminator",
         )
         .at(pagura_core::Position::File(end.unwrap_or(start)))
@@ -380,7 +380,7 @@ pub(super) fn corrected_offset(
     })?;
     diagnostics.repair(
         Diagnostic::new(
-            crate::tags::OFFSET_CORRECTED,
+            crate::repairs::OFFSET_CORRECTED,
             "cross-reference offset corrected to a nearby matching object header",
         )
         .at(pagura_core::Position::File(offset))

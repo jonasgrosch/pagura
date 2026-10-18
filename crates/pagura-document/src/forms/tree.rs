@@ -5,7 +5,7 @@ use super::{
     names, values, widgets,
 };
 use crate::{
-    Document, tags,
+    Document, repairs,
     view::{Context, Source, identity},
 };
 use pagura_core::{Dictionary, Error, Result, Value};
@@ -37,7 +37,7 @@ pub(super) fn read(doc: &Document) -> Result<Option<AcroForm<'_>>> {
         attributes::array(&mut ctx, fields, source)?
     } else {
         ctx.repair(
-            tags::FORM_FIELDS,
+            repairs::FORM_FIELDS,
             "absent Fields read as an empty field tree (12.7.3, Table 224)",
             source,
         )?;
@@ -118,7 +118,7 @@ impl<'a> Walk<'a> {
         self.ctx.allocate::<usize>(8, source)?;
         if !self.seen.insert(identity(value)) {
             return self.ctx.repair(
-                tags::FORM_CYCLE,
+                repairs::FORM_CYCLE,
                 "repeated field or widget edge omitted (12.7.4.1)",
                 source,
             );
@@ -126,7 +126,7 @@ impl<'a> Walk<'a> {
         let (d, source) = self.ctx.dictionary(value, source)?;
         if !indirect {
             self.ctx.repair(
-                tags::FORM_STRUCTURE,
+                repairs::FORM_STRUCTURE,
                 "direct field or widget dictionary read in place (12.7.4.1)",
                 source,
             )?;
@@ -173,7 +173,7 @@ impl<'a> Walk<'a> {
         if has_fields {
             if has_widgets || widgets::is_widget(&mut self.ctx, d, source)? {
                 self.ctx.repair(
-                    tags::FORM_STRUCTURE,
+                    repairs::FORM_STRUCTURE,
                     "mixed field and widget children retained separately (12.7.4.1)",
                     source,
                 )?;
@@ -200,7 +200,7 @@ impl<'a> Walk<'a> {
         };
         if !matches {
             self.ctx.repair(
-                tags::FORM_PARENT,
+                repairs::FORM_PARENT,
                 "Fields and Kids membership overrides inconsistent Parent (12.7.4.1)",
                 source,
             )?;
@@ -218,7 +218,7 @@ impl<'a> Walk<'a> {
         let partial_name = attributes::partial_name(&mut self.ctx, d, source)?;
         if partial_name.as_ref().is_none_or(|s| s.contains('.')) {
             self.ctx.repair(
-                tags::FORM_NAME,
+                repairs::FORM_NAME,
                 "anonymous or malformed field name retained verbatim (12.7.4.2)",
                 source,
             )?;
@@ -315,7 +315,7 @@ impl<'a> Walk<'a> {
             }
             if !same_type || !same_values {
                 self.ctx.repair(
-                    tags::FORM_DUPLICATE_NAME,
+                    repairs::FORM_DUPLICATE_NAME,
                     "conflicting duplicate field names retained as separate objects (12.7.4.2)",
                     source,
                 )?;

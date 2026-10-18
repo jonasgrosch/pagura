@@ -1,6 +1,6 @@
 //! One traversal for name and number trees (7.9.6–7.9.7, Tables 36–37).
 use crate::view::{Context, Source, identity};
-use crate::{Document, tags};
+use crate::{Document, repairs};
 use pagura_core::{Error, ErrorKind, Result, Value};
 use std::{collections::BTreeSet, fmt::Debug, marker::PhantomData};
 
@@ -109,7 +109,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
         };
         if (root && present) || (!root && bounds.is_none()) {
             ctx.repair(
-                tags::TREE_LIMITS,
+                repairs::TREE_LIMITS,
                 "tree Limits absent or malformed; actual keys used (7.9.6–7.9.7)",
                 source,
             )?;
@@ -134,7 +134,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
         match ctx.resolve(value, source) {
             Ok((value, _)) if !root && value.is_null() => {
                 ctx.repair(
-                    tags::TREE_STRUCTURE,
+                    repairs::TREE_STRUCTURE,
                     "null tree child omitted (7.9.6–7.9.7)",
                     source,
                 )?;
@@ -145,9 +145,9 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                 if !root && matches!(error.kind, ErrorKind::MissingObject | ErrorKind::Cycle) =>
             {
                 let tag = if error.kind == ErrorKind::Cycle {
-                    tags::TREE_CYCLE
+                    repairs::TREE_CYCLE
                 } else {
-                    tags::TREE_STRUCTURE
+                    repairs::TREE_STRUCTURE
                 };
                 ctx.repair(tag, "unresolvable tree child omitted (7.9.6–7.9.7)", source)?;
                 Ok(None)
@@ -170,7 +170,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
             ctx.allocate::<usize>(8, source)?;
             if !visited.insert(identity(value)) {
                 ctx.repair(
-                    tags::TREE_CYCLE,
+                    repairs::TREE_CYCLE,
                     "repeated tree node omitted (7.9.6–7.9.7)",
                     source,
                 )?;
@@ -190,7 +190,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                         .zip(entries.iter().map(|e| e.key).max());
                     if bounds.is_some() && bounds != actual {
                         ctx.repair(
-                            tags::TREE_LIMITS,
+                            repairs::TREE_LIMITS,
                             "tree Limits disagree with leaf keys; actual keys used (7.9.6–7.9.7)",
                             source,
                         )?;
@@ -209,7 +209,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                     for child in kids.iter().rev() {
                         if !matches!(child, Value::Reference(_)) {
                             ctx.repair(
-                                tags::TREE_STRUCTURE,
+                                repairs::TREE_STRUCTURE,
                                 "direct tree child dictionary accepted (7.9.6–7.9.7)",
                                 source,
                             )?;
@@ -221,7 +221,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                         };
                         if visited.contains(&identity(child_value)) {
                             ctx.repair(
-                                tags::TREE_CYCLE,
+                                repairs::TREE_CYCLE,
                                 "repeated tree node omitted (7.9.6–7.9.7)",
                                 child_source,
                             )?;
@@ -282,7 +282,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
             .collect::<Result<_>>()?;
         if entries.windows(2).any(|v| v[0].key >= v[1].key) {
             ctx.repair(
-                tags::TREE_ORDER,
+                repairs::TREE_ORDER,
                 "tree keys reordered; first duplicate retained (7.9.6–7.9.7)",
                 source,
             )?;
@@ -300,7 +300,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                 Frame::Exit(bounds, source) => {
                     let actual = ranges.pop().flatten();
                     if bounds.is_some() && bounds != actual {
-                        ctx.repair(tags::TREE_LIMITS,"tree Limits disagree with descendant keys; actual keys used (7.9.6–7.9.7)",source)?;
+                        ctx.repair(repairs::TREE_LIMITS,"tree Limits disagree with descendant keys; actual keys used (7.9.6–7.9.7)",source)?;
                     }
                     if let (Some(parent), Some(actual)) = (ranges.last_mut(), actual) {
                         merge(parent, actual);
@@ -316,7 +316,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
             ctx.allocate::<usize>(8, source)?;
             if !visited.insert(identity(value)) {
                 ctx.repair(
-                    tags::TREE_CYCLE,
+                    repairs::TREE_CYCLE,
                     "repeated tree node omitted (7.9.6–7.9.7)",
                     source,
                 )?;
@@ -335,7 +335,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
             let kids = ctx.entry(dictionary, b"Kids", source)?;
             if pairs.is_some() && kids.is_some() {
                 ctx.repair(
-                    tags::TREE_STRUCTURE,
+                    repairs::TREE_STRUCTURE,
                     "mixed tree node read as local entries then children (7.9.6–7.9.7)",
                     source,
                 )?;
@@ -361,7 +361,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                 for child in kids.iter().rev() {
                     if !matches!(child, Value::Reference(_)) {
                         ctx.repair(
-                            tags::TREE_STRUCTURE,
+                            repairs::TREE_STRUCTURE,
                             "direct tree child dictionary accepted (7.9.6–7.9.7)",
                             source,
                         )?;
@@ -372,7 +372,7 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
         }
         if entries.windows(2).any(|v| v[0].key >= v[1].key) {
             ctx.repair(
-                tags::TREE_ORDER,
+                repairs::TREE_ORDER,
                 "tree keys reordered; first duplicate retained (7.9.6–7.9.7)",
                 tree_source,
             )?;

@@ -219,7 +219,7 @@ pub(crate) fn parse_at(
         }
         repairs.repair(
             Diagnostic::new(
-                crate::tags::CATALOG_OBJECT_NUMBER,
+                crate::repairs::CATALOG_OBJECT_NUMBER,
                 "zero-numbered Catalog uses its positive trailer Root and exact xref identity",
             )
             .at(pagura_core::Position::File(offset))

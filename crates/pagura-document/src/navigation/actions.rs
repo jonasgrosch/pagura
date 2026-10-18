@@ -1,7 +1,7 @@
 //! Actions are inert data, including their ordered Next graph (12.6).
 use super::destinations::{self, Destination, RemoteDestination};
 use crate::view::{Context, Source, identity};
-use crate::{Document, IndirectObject, tags};
+use crate::{Document, IndirectObject, repairs};
 use pagura_core::{Dictionary, Error, Name, Result, Value};
 use std::collections::BTreeSet;
 
@@ -219,7 +219,7 @@ pub(crate) fn read_with<'a>(
         ctx.allocate::<usize>(8, source)?;
         if !active.insert(identity(value)) {
             ctx.repair(
-                tags::ACTION_CYCLE,
+                repairs::ACTION_CYCLE,
                 "cyclic action Next edge omitted (12.6.2)",
                 source,
             )?;

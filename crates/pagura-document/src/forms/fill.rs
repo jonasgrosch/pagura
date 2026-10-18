@@ -188,7 +188,7 @@ impl<'a> FormFiller<'a> {
     ) -> Result<FilledField> {
         if self.form.has_xfa {
             return Err(Error::unsupported(
-                crate::forms::features::XFA,
+                crate::features::XFA,
                 "XFA filling is unavailable",
             ));
         }
@@ -216,7 +216,7 @@ impl<'a> FormFiller<'a> {
             }
             (FieldKind::Group | FieldKind::Signature { .. } | FieldKind::Other(_), _) => {
                 return Err(Error::unsupported(
-                    crate::forms::features::FIELD_TYPE,
+                    crate::features::FIELD_TYPE,
                     "field type cannot be filled",
                 ));
             }

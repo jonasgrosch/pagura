@@ -9,7 +9,6 @@
 //! the document's retained-cache budget (ADR 0012). No partial result is returned
 //! on failure. Names are display/lookup data, never unique object identities.
 mod attributes;
-pub mod features;
 mod fill;
 mod model;
 mod names;

@@ -1,7 +1,7 @@
 //! Page boundaries, Table 31 and 14.11.2. Invalid geometry is never used to
 //! identify an otherwise untyped leaf.
 
-use crate::{Document, tags};
+use crate::{Document, repairs};
 use pagura_core::{Diagnostic, Diagnostics, ObjectId, Rect, Result, Value};
 
 /// US Letter, the viewing convention for a page without a usable MediaBox.
@@ -28,7 +28,7 @@ pub(crate) fn boxes(
         media
     } else {
         diagnostics.repair(
-                Diagnostic::new(tags::PAGE_MEDIA_BOX,
+                Diagnostic::new(repairs::PAGE_MEDIA_BOX,
                     "missing or invalid MediaBox replaced by valid CropBox or Letter viewing convention")
                     .in_object(id),
             )?;
@@ -43,7 +43,7 @@ pub(crate) fn boxes(
             if !matches!(resolved, Some(Value::Null)) {
                 diagnostics.repair(
                     Diagnostic::new(
-                        tags::PAGE_CROP_BOX,
+                        repairs::PAGE_CROP_BOX,
                         "invalid or disjoint CropBox replaced by MediaBox",
                     )
                     .in_object(id),

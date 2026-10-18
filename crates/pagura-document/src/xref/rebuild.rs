@@ -5,7 +5,7 @@
 //! in the real-world corpus.
 
 use crate::object::recovery::{self, header};
-use crate::tags;
+use crate::repairs;
 use crate::xref::{Location, XrefEntry, XrefTable};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{
@@ -27,7 +27,7 @@ pub(crate) fn read(
 ) -> Result<XrefTable> {
     diagnostics.repair(
         Diagnostic::new(
-            tags::XREF_REBUILT,
+            repairs::XREF_REBUILT,
             "damaged cross-reference data reconstructed from indirect object definitions",
         )
         .at(position),
@@ -181,7 +181,7 @@ fn skip_direct(
     if let Some(end) = declared {
         diagnostics.repair(
             Diagnostic::new(
-                tags::LENGTH_CORRECTED,
+                repairs::LENGTH_CORRECTED,
                 "direct stream Length corrected to a validated terminator",
             )
             .at(Position::File(end))
@@ -247,7 +247,7 @@ fn skip_stream(
                     {
                         continue;
                     }
-                    diagnostics.repair(Diagnostic::new(tags::STREAM_BOUNDARY, "stream resynchronized at endstream/endobj without a preceding EOL during xref reconstruction").at(Position::File(at)))?;
+                    diagnostics.repair(Diagnostic::new(repairs::STREAM_BOUNDARY, "stream resynchronized at endstream/endobj without a preceding EOL during xref reconstruction").at(Position::File(at)))?;
                 }
                 parser.seek(after)?;
                 return Ok(true);
@@ -414,7 +414,7 @@ pub(crate) fn catalog(document: &mut crate::Document) -> Result<()> {
     let mut diagnostics = Diagnostics::new(document.recovery());
     diagnostics.repair(
         Diagnostic::new(
-            tags::TRAILER_RECONSTRUCTED,
+            repairs::TRAILER_RECONSTRUCTED,
             "unusable trailer Root reconstructed from the last Catalog",
         )
         .in_object(id),

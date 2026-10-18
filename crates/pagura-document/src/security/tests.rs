@@ -1,6 +1,6 @@
 //! Independent dictionary/vector regressions for clauses 7.5.5 and 7.6.
 
-use crate::{Document, OpenOptions, tags};
+use crate::{Document, OpenOptions, features, repairs};
 use pagura_core::{ErrorKind, Limits, ObjectId, Recovery};
 use pagura_testkit::fixture;
 
@@ -33,13 +33,13 @@ fn standard_defaults_and_ignored_identity_entries_need_no_repair() {
 #[test]
 fn safe_dictionary_deviations_are_strict_errors_and_reported_repairs() {
     for (name, tag) in [
-        ("dictionary-crypt-filter-type", tags::CRYPT_TYPE),
-        ("dictionary-crypt-filter-no-length", tags::CRYPT_LENGTH),
-        ("dictionary-standard-filter-name", tags::CRYPT_NAME),
-        ("dictionary-perms-mismatch", tags::PERMS_MISMATCH),
-        ("dictionary-id-absent", tags::DOCUMENT_ID),
-        ("dictionary-id-one", tags::DOCUMENT_ID),
-        ("dictionary-id-short", tags::DOCUMENT_ID),
+        ("dictionary-crypt-filter-type", repairs::CRYPT_TYPE),
+        ("dictionary-crypt-filter-no-length", repairs::CRYPT_LENGTH),
+        ("dictionary-standard-filter-name", repairs::CRYPT_NAME),
+        ("dictionary-perms-mismatch", repairs::PERMS_MISMATCH),
+        ("dictionary-id-absent", repairs::DOCUMENT_ID),
+        ("dictionary-id-one", repairs::DOCUMENT_ID),
+        ("dictionary-id-short", repairs::DOCUMENT_ID),
     ] {
         let bytes = fixture("crypto", &format!("{name}.pdf"));
         let error = Document::open(
@@ -85,10 +85,7 @@ fn delegation_is_not_identity_and_metadata_exemption_uses_catalog_identity() {
             },
         )
         .unwrap_err();
-        assert_eq!(
-            error.feature(),
-            Some(pagura_core::Feature::new("security.CFM"))
-        );
+        assert_eq!(error.feature(), Some(features::CRYPT_METHOD));
         for (name, object) in [
             ("dictionary-other-metadata", 7),
             ("dictionary-legacy-metadata", 6),
@@ -117,10 +114,7 @@ fn delegation_is_not_identity_and_metadata_exemption_uses_catalog_identity() {
             },
         )
         .unwrap_err();
-        assert_eq!(
-            error.feature(),
-            Some(pagura_core::Feature::new("security.CFM"))
-        );
+        assert_eq!(error.feature(), Some(features::CRYPT_METHOD));
     }
 }
 
@@ -136,7 +130,7 @@ fn padded_key_choice_precedes_cached_strings_and_obeys_decoding_limits() {
             },
         )
         .unwrap_err();
-        assert_eq!(error.repair, Some(tags::SHORT_KEY));
+        assert_eq!(error.repair, Some(repairs::SHORT_KEY));
         for password in [b"".as_slice(), b"owner"] {
             let document = Document::open(
                 bytes.clone(),
@@ -167,7 +161,7 @@ fn padded_key_choice_precedes_cached_strings_and_obeys_decoding_limits() {
                 document
                     .diagnostics()
                     .iter()
-                    .filter(|d| d.repair() == Some(tags::KEY_PADDING))
+                    .filter(|d| d.repair() == Some(repairs::KEY_PADDING))
                     .count(),
                 1
             );
@@ -365,7 +359,7 @@ mod unit {
             Value::Dictionary(dictionary(b"<< /Filter /Adobe.PubSec >>"));
         assert_eq!(
             super::super::read(&document).unwrap_err().feature(),
-            Some(crate::tags::PUBSEC)
+            Some(crate::features::PUBSEC)
         );
         let options = OpenOptions {
             password: b"private-password".to_vec(),
@@ -438,7 +432,7 @@ mod authorization_events {
                 )
                 .unwrap_err()
                 .repair,
-                Some(crate::tags::CRYPT_EVENT)
+                Some(crate::repairs::CRYPT_EVENT)
             );
             for recovery in [Recovery::Repair] {
                 for password in [b"".as_slice(), b"wrong"] {
@@ -477,7 +471,7 @@ mod authorization_events {
                         document
                             .diagnostics()
                             .iter()
-                            .any(|d| d.repair() == Some(crate::tags::CRYPT_EVENT))
+                            .any(|d| d.repair() == Some(crate::repairs::CRYPT_EVENT))
                     );
                 }
                 for password in [b"attachment".as_slice(), b"owner"] {
@@ -549,7 +543,7 @@ mod authorization_events {
 }
 
 mod missing_length {
-    use crate::{Document, OpenOptions, tags};
+    use crate::{Document, OpenOptions, repairs};
     use pagura_core::{ErrorKind, ObjectId, Recovery};
     use pagura_testkit::fixture;
 
@@ -569,7 +563,7 @@ mod missing_length {
                 },
             )
             .unwrap_err();
-            assert_eq!(strict.repair, Some(tags::KEY_LENGTH_MISSING));
+            assert_eq!(strict.repair, Some(repairs::KEY_LENGTH_MISSING));
             assert_eq!(strict.object, Some(ObjectId::new(5, 0)));
             let document = Document::open(bytes.clone(), &options).unwrap();
             assert_eq!(document.page_count().unwrap(), 1);
@@ -593,7 +587,7 @@ mod missing_length {
                 document
                     .diagnostics()
                     .iter()
-                    .filter(|d| d.repair() == Some(tags::KEY_LENGTH_MISSING))
+                    .filter(|d| d.repair() == Some(repairs::KEY_LENGTH_MISSING))
                     .count(),
                 1
             );

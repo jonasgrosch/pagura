@@ -87,7 +87,7 @@ mod retained_tests {
 }
 
 mod recovery_tests {
-    use crate::{Document, OpenOptions, tags};
+    use crate::{Document, OpenOptions, repairs};
     use pagura_core::{ErrorKind, Limits, ObjectId, Recovery, Rect};
     use pagura_testkit::fixture;
     use std::sync::Arc;
@@ -95,21 +95,21 @@ mod recovery_tests {
     #[test]
     fn page_repairs_reject_strictly_and_preserve_source_and_geometry() {
         for (name, tag, count) in [
-            ("pages-media-missing", tags::PAGE_MEDIA_BOX, 1),
-            ("pages-media-empty", tags::PAGE_MEDIA_BOX, 1),
-            ("pages-media-from-crop", tags::PAGE_MEDIA_BOX, 1),
-            ("pages-crop-empty", tags::PAGE_CROP_BOX, 1),
-            ("pages-crop-disjoint", tags::PAGE_CROP_BOX, 1),
-            ("pages-kids-invalid", tags::PAGE_KIDS, 1),
-            ("pages-kids-single", tags::PAGE_KIDS, 1),
-            ("pages-kids-rebuilt", tags::PAGE_KIDS_REBUILT, 1),
-            ("pages-root-untyped-backlinks", tags::PAGE_TYPE, 1),
-            ("pages-repeat-leaf", tags::PAGE_REPEAT, 2),
-            ("pages-repeat-branch", tags::PAGE_REPEAT, 2),
-            ("pages-cycle-usable", tags::PAGE_CYCLE, 1),
-            ("pages-parent-mismatch", tags::PAGE_PARENT, 1),
-            ("pages-template-kid", tags::PAGE_TYPE_INVALID, 1),
-            ("pages-direct-kids", tags::PAGE_DIRECT, 2),
+            ("pages-media-missing", repairs::PAGE_MEDIA_BOX, 1),
+            ("pages-media-empty", repairs::PAGE_MEDIA_BOX, 1),
+            ("pages-media-from-crop", repairs::PAGE_MEDIA_BOX, 1),
+            ("pages-crop-empty", repairs::PAGE_CROP_BOX, 1),
+            ("pages-crop-disjoint", repairs::PAGE_CROP_BOX, 1),
+            ("pages-kids-invalid", repairs::PAGE_KIDS, 1),
+            ("pages-kids-single", repairs::PAGE_KIDS, 1),
+            ("pages-kids-rebuilt", repairs::PAGE_KIDS_REBUILT, 1),
+            ("pages-root-untyped-backlinks", repairs::PAGE_TYPE, 1),
+            ("pages-repeat-leaf", repairs::PAGE_REPEAT, 2),
+            ("pages-repeat-branch", repairs::PAGE_REPEAT, 2),
+            ("pages-cycle-usable", repairs::PAGE_CYCLE, 1),
+            ("pages-parent-mismatch", repairs::PAGE_PARENT, 1),
+            ("pages-template-kid", repairs::PAGE_TYPE_INVALID, 1),
+            ("pages-direct-kids", repairs::PAGE_DIRECT, 2),
         ] {
             let bytes = fixture("document", &format!("{name}.pdf"));
             let strict = Document::open(
@@ -255,10 +255,13 @@ mod recovery_tests {
             },
         )
         .unwrap_err();
-        assert_eq!(strict.repair, Some(tags::XREF_REBUILT));
+        assert_eq!(strict.repair, Some(repairs::XREF_REBUILT));
         for (name, tag) in [
-            ("object-stream-type-invalid", tags::OBJECT_STREAM_TYPE),
-            ("object-stream-self-entry", tags::OBJECT_STREAM_SELF_ENTRY),
+            ("object-stream-type-invalid", repairs::OBJECT_STREAM_TYPE),
+            (
+                "object-stream-self-entry",
+                repairs::OBJECT_STREAM_SELF_ENTRY,
+            ),
         ] {
             let error = Document::open(
                 fixture("document", &format!("{name}.pdf")),

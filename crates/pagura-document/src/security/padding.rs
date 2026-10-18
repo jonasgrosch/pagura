@@ -30,7 +30,7 @@ pub(super) fn select(
         && let Some(witness) = detect(document, key)?
     {
         let mut diagnostic = Diagnostic::new(
-            crate::tags::KEY_PADDING,
+            crate::repairs::KEY_PADDING,
             "authenticated short RC4 file key zero-padded for xref-validated object decryption",
         )
         .in_object(witness);

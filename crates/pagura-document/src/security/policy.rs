@@ -47,7 +47,7 @@ impl Policy {
             return Ok(None);
         };
         self.repair(
-            crate::tags::PERMISSIONS_UNSIGNED,
+            crate::repairs::PERMISSIONS_UNSIGNED,
             "unsigned 32-bit permissions reinterpreted as signed two's complement",
         )?;
         Ok(Some(i32::from_le_bytes(unsigned.to_le_bytes())))
@@ -57,7 +57,7 @@ impl Policy {
         use pagura_crypto::standard::{PermissionsCheck, PermissionsValidation};
         if let PermissionsValidation::Inconsistent(check) = key.permissions_validation() {
             self.repair(
-                crate::tags::PERMS_MISMATCH,
+                crate::repairs::PERMS_MISMATCH,
                 match check {
                     PermissionsCheck::Permissions => {
                         "authenticated Perms disagrees with dictionary permissions"
@@ -91,7 +91,7 @@ impl Policy {
                         .all(|id| id.as_string().is_some_and(|id| id.len() >= 16))
             });
         if !valid {
-            self.repair(crate::tags::DOCUMENT_ID,
+            self.repair(crate::repairs::DOCUMENT_ID,
                 "required two direct file identifiers of at least 16 bytes are malformed; existing key-derivation bytes preserved")?;
         }
         Ok(())
