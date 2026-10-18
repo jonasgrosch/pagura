@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{
     Document,
-    navigation::context::{Context, Source},
+    view::{Context, Source},
 };
 use pagura_core::Result;
 use std::collections::BTreeSet;

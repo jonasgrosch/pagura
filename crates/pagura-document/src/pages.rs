@@ -1,5 +1,8 @@
 //! The page tree (ISO 32000-2 clause 7.7.3) as typed pages.
 
+pub(crate) mod contents;
+pub(crate) mod geometry;
+
 use crate::{Document, tags};
 use pagura_core::syntax::PathComponent;
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ObjectId, Rect, Result, Value};
@@ -527,7 +530,7 @@ impl<'a> Walk<'a> {
         source_path: &[PathComponent],
     ) -> Result<Page> {
         let document = self.document;
-        let (media_box, crop_box) = crate::page_geometry::boxes(
+        let (media_box, crop_box) = geometry::boxes(
             document,
             id,
             inherited.media_box,

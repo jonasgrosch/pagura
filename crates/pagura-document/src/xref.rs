@@ -1,5 +1,8 @@
 //! File structure and cross-reference data (ISO 32000-2 clauses 7.5.2–7.5.8).
 
+pub(crate) mod rebuild;
+pub(crate) mod stream;
+
 use crate::tags;
 use pagura_core::syntax::{Origin, Parser, is_whitespace};
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Limits, Position, Result};
@@ -93,7 +96,7 @@ pub(crate) fn read(
             Ok(table)
         }
         Err(error) if diagnostics.mode() == pagura_core::Recovery::Repair && structural(&error) => {
-            crate::rebuild::read(bytes, limits, diagnostics, error.position)
+            rebuild::read(bytes, limits, diagnostics, error.position)
         }
         Err(error) => Err(error),
     }
@@ -167,7 +170,7 @@ fn primary(
                 )
                 .at(Position::File(hybrid)));
             }
-            let (supplement, _) = crate::xref_stream::read(
+            let (supplement, _) = stream::read(
                 bytes,
                 hybrid,
                 Limits {
@@ -353,7 +356,7 @@ fn section(
         diagnostics.absorb(parser.take_diagnostics())?;
         (entries, trailer, RevisionKind::Table)
     } else {
-        let (entries, trailer) = crate::xref_stream::read(bytes, offset, limits, diagnostics)?;
+        let (entries, trailer) = stream::read(bytes, offset, limits, diagnostics)?;
         (entries, trailer, RevisionKind::Stream)
     };
     Ok(result)

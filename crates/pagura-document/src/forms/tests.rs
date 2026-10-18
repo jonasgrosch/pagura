@@ -314,7 +314,7 @@ fn duplicate_comparison_shares_the_traversal_budget() {
     );
     let a = pagura_core::Value::Array(vec![pagura_core::Value::Integer(1); 64]);
     let b = a.clone();
-    let mut ctx = crate::navigation::context::Context::new(&doc);
+    let mut ctx = crate::view::Context::new(&doc);
     let source = ctx.source(pagura_core::ObjectId::new(11, 0)).unwrap();
     let error = names::equivalent(&mut ctx, Some(&a), Some(&b), source, false).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);

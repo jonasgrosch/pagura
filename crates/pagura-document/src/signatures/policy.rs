@@ -2,10 +2,7 @@
 use super::{FieldSelection, MdpPermission, Signature, Transform, roles::Roles, transforms};
 use crate::{
     Document,
-    navigation::{
-        context::{Context, Source},
-        text,
-    },
+    view::{Context, Source, text},
 };
 use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
 use std::collections::BTreeSet;

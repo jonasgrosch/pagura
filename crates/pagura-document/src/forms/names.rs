@@ -1,5 +1,5 @@
 //! Bounded duplicate-value comparison, including indirect subvalues.
-use crate::navigation::context::{Context, Source, identity};
+use crate::view::{Context, Source, identity};
 use pagura_core::{Result, Value};
 use std::collections::BTreeSet;
 
@@ -48,8 +48,8 @@ pub(super) fn equivalent<'a>(
             }
             (Value::String(a), Value::String(b)) => {
                 let equal = if text_strings {
-                    let a = crate::navigation::text::decode(ctx, a, source)?;
-                    let b = crate::navigation::text::decode(ctx, b, source)?;
+                    let a = crate::view::text::decode(ctx, a, source)?;
+                    let b = crate::view::text::decode(ctx, b, source)?;
                     bytes_equal(ctx, a.as_bytes(), b.as_bytes(), source)?
                 } else {
                     bytes_equal(ctx, a, b, source)?

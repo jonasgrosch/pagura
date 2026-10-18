@@ -1,7 +1,7 @@
 //! Lazy strict revision snapshots sharing source storage and cache accounting.
 use crate::{
     Document, IndirectObject, OpenOptions,
-    navigation::context::{Context, Source},
+    view::{Context, Source},
 };
 use pagura_core::{Error, ErrorKind, Feature, ObjectId, Position, Recovery, Result};
 use std::{

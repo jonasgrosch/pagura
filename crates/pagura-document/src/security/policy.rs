@@ -1,6 +1,7 @@
 //! Dictionary conformance policy, ISO 32000-2 Tables 15, 20, 21 and 25.
 
-use crate::{Document, security_repair};
+use super::repair;
+use crate::Document;
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, ObjectId, Position, Repair, Result, Value};
 
 pub(super) struct Policy {
@@ -14,7 +15,7 @@ impl Policy {
         Self {
             diagnostics: Diagnostics::new(document.recovery()),
             object,
-            position: security_repair::position(document, object),
+            position: repair::position(document, object),
         }
     }
 

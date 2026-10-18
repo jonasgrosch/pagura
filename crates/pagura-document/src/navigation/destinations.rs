@@ -1,9 +1,7 @@
 //! Explicit and named destinations (12.3.2, Table 149; Annex J.3.3–J.3.4).
-use super::{
-    actions,
-    context::{Context, Source, identity, number},
-};
+use super::actions;
 use crate::Document;
+use crate::view::{Context, Source, identity, number};
 use pagura_core::{Dictionary, Error, ErrorKind, Name, Rect, Result, Value};
 use std::collections::BTreeSet;
 

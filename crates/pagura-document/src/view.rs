@@ -1,4 +1,6 @@
 //! Shared work accounting and source locations for navigation views.
+pub(crate) mod text;
+
 use crate::{Document, ObjectSource};
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, Limits, ObjectId, Position, Repair, Result, Value,

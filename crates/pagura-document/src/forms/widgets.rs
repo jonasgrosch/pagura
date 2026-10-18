@@ -1,11 +1,9 @@
 //! Widget source data and appearance-state names (12.5.6.19, 12.7.5.2).
 use super::{Widget, attributes};
 use crate::{
-    navigation::{
-        actions,
-        context::{Context, Source, number},
-    },
+    navigation::actions,
     tags,
+    view::{Context, Source, number},
 };
 use pagura_core::{Dictionary, Error, Name, Rect, Result};
 

@@ -1,8 +1,6 @@
 //! Actions are inert data, including their ordered Next graph (12.6).
-use super::{
-    context::{Context, Source, identity},
-    destinations::{self, Destination, RemoteDestination},
-};
+use super::destinations::{self, Destination, RemoteDestination};
+use crate::view::{Context, Source, identity};
 use crate::{Document, IndirectObject, tags};
 use pagura_core::{Dictionary, Error, Name, Result, Value};
 use std::collections::BTreeSet;

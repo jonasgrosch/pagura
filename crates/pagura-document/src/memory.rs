@@ -10,7 +10,7 @@ pub(crate) const fn slot_bytes() -> usize {
 pub(crate) const fn stream_slot_bytes() -> usize {
     size_of::<(
         u32,
-        std::sync::OnceLock<Result<crate::object_stream::Contents>>,
+        std::sync::OnceLock<Result<crate::object::stream::Contents>>,
     )>()
     .saturating_add(64)
 }

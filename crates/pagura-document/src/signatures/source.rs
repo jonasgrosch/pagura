@@ -1,5 +1,5 @@
 //! Bind a signature dictionary to its original Contents token (12.8.3.3.1).
-use crate::navigation::context::{Context, Source};
+use crate::view::{Context, Source};
 use pagura_core::{
     Dictionary, Error, Name, Result, Value,
     syntax::{Origin, Parser},

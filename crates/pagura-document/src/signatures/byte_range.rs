@@ -1,7 +1,7 @@
 //! Source-bound byte ranges (12.8.1, Table 255; 12.8.3.3.1).
 use crate::{
     ObjectSource,
-    navigation::context::{Context, Source},
+    view::{Context, Source},
 };
 use pagura_core::{Dictionary, Result, Value};
 use std::ops::Range;
