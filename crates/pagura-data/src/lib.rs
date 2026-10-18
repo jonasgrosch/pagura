@@ -155,6 +155,18 @@ impl Provider for Bundled {
     }
 }
 
+/// The lines of a text file with the byte offset each starts at, without
+/// their `\n` or `\r\n` terminators.
+#[cfg(any(feature = "standard-fonts", feature = "cmaps"))]
+fn lines(text: &str) -> impl Iterator<Item = (usize, &str)> {
+    text.split_inclusive('\n').scan(0, |next, line| {
+        let offset = *next;
+        *next += line.len();
+        let line = line.strip_suffix('\n').unwrap_or(line);
+        Some((offset, line.strip_suffix('\r').unwrap_or(line)))
+    })
+}
+
 #[cfg(all(test, any(feature = "cmaps", feature = "standard-fonts")))]
 mod tests;
 
