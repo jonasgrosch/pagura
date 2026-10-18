@@ -123,14 +123,12 @@ impl Diagnostic {
         self.kind.repair()
     }
 
-    /// Sets the position unless one is already known. A
-    /// [`Position::Stream`] also records its stream as the object context,
-    /// unless an inner object is already recorded.
+    /// Sets the position unless one is already known. As for
+    /// [`Error::at`], the object context stays separate.
     #[must_use]
     pub const fn at(mut self, position: Position) -> Self {
         if matches!(self.position, Position::Unknown) {
             self.position = position;
-            self = self.in_object_opt(position.object());
         }
         self
     }
