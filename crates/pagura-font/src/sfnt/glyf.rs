@@ -202,7 +202,7 @@ fn quadratic(builder: &mut PathBuilder, control: Point, end: Point) -> Result<()
     );
     builder
         .cubic_to(a, b, end)
-        .ok_or_else(|| bad(0, "quadratic without current point"))?;
+        .map_err(|_| bad(0, "quadratic without current point"))?;
     Ok(())
 }
 fn contour(builder: &mut PathBuilder, vertices: &[Vertex]) -> Result<()> {
@@ -224,7 +224,7 @@ fn contour(builder: &mut PathBuilder, vertices: &[Vertex]) -> Result<()> {
             } else {
                 builder
                     .line_to(vertex.point)
-                    .ok_or_else(|| bad(0, "line without current point"))?;
+                    .map_err(|_| bad(0, "line without current point"))?;
             }
         } else {
             if let Some(p) = control {
@@ -313,12 +313,12 @@ fn composite(
                 Segment::LineTo(p) => {
                     builder
                         .line_to(transform.apply(p))
-                        .ok_or_else(|| bad(r.at(), "invalid component path"))?;
+                        .map_err(|_| bad(r.at(), "invalid component path"))?;
                 }
                 Segment::CubicTo(a, b, c) => {
                     builder
                         .cubic_to(transform.apply(a), transform.apply(b), transform.apply(c))
-                        .ok_or_else(|| bad(r.at(), "invalid component path"))?;
+                        .map_err(|_| bad(r.at(), "invalid component path"))?;
                 }
                 Segment::Close => {
                     builder.close();

@@ -284,11 +284,7 @@ pub(crate) fn outline_boundary(
             points.push(Point::new(point.x.floor() + 0.0, point.y.floor() + 0.0));
             continue;
         }
-        boundary.move_to(first * transform);
-        for &point in contour.points.iter().skip(1) {
-            boundary.line_to(point * transform);
-        }
-        boundary.close();
+        boundary.polygon(contour.points.iter().map(|&point| point * transform));
     }
     let (outline, _) = crate::stroke::outline(
         &boundary.finish(),
@@ -302,7 +298,7 @@ pub(crate) fn outline_boundary(
     // The stroker emits positively oriented polygons, so these cells and the
     // hairline boundaries form one union, painted exactly once.
     let mut result = PathBuilder::new();
-    append(&mut result, &outline);
+    result.append(&outline, Transform::IDENTITY);
     points.sort_unstable_by(|a, b| a.x.total_cmp(&b.x).then(a.y.total_cmp(&b.y)));
     let mut points = points.iter().peekable();
     while let Some(&point) = points.next() {
@@ -318,25 +314,6 @@ pub(crate) fn outline_boundary(
         return Err(Error::limit("empty fill outline segment budget exceeded"));
     }
     Ok(result.finish())
-}
-
-fn append(builder: &mut PathBuilder, path: &Path) {
-    for segment in path.segments() {
-        match *segment {
-            Segment::MoveTo(p) => {
-                builder.move_to(p);
-            }
-            Segment::LineTo(p) => {
-                builder.line_to(p);
-            }
-            Segment::CubicTo(a, b, c) => {
-                builder.cubic_to(a, b, c);
-            }
-            Segment::Close => {
-                builder.close();
-            }
-        }
-    }
 }
 
 fn linear_curves(path: &Path) -> Result<bool> {
@@ -598,7 +575,7 @@ mod tests {
             if i == 0 {
                 builder.move_to(point);
             } else {
-                builder.line_to(point);
+                builder.line_to(point).unwrap();
             }
         }
         let mut path = builder.finish();

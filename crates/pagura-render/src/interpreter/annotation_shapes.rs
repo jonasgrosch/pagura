@@ -77,8 +77,10 @@ impl Compiler<'_> {
         };
         let mut path = PathBuilder::new();
         if underline {
-            path.move_to(Point::new(inner.x0(), inner.y0()));
-            path.line_to(Point::new(inner.x1(), inner.y0()));
+            path.polyline([
+                Point::new(inner.x0(), inner.y0()),
+                Point::new(inner.x1(), inner.y0()),
+            ]);
         } else {
             path.rect(inner.x0(), inner.y0(), inner.width(), inner.height());
         }
@@ -295,13 +297,7 @@ fn icon(name: &[u8]) -> (Path, Path) {
         ],
     };
     for line in lines {
-        for (i, &(x, y)) in line.iter().enumerate() {
-            if i == 0 {
-                p.move_to(Point::new(x, y));
-            } else {
-                p.line_to(Point::new(x, y));
-            }
-        }
+        p.polyline(line.iter().map(|&(x, y)| Point::new(x, y)));
     }
     (bg.finish(), p.finish())
 }
