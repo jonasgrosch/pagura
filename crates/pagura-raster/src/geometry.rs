@@ -1,8 +1,12 @@
-//! Points and affine transforms.
+//! Points, vectors and affine transforms.
 
-use std::ops::Mul;
+use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
 
-/// A point in a two-dimensional coordinate space.
+/// A point, or the vector from the origin to it, in a two-dimensional
+/// coordinate space.
+///
+/// One type serves both roles, as in PDF's own notation: `b - a` is the
+/// vector from `a` to `b`, and `a + v` moves `a` by `v`.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Point {
     /// Horizontal coordinate.
@@ -20,6 +24,96 @@ impl Point {
     /// Whether both coordinates are finite.
     pub fn is_finite(self) -> bool {
         self.x.is_finite() && self.y.is_finite()
+    }
+
+    /// The dot product of two vectors.
+    pub fn dot(self, other: Self) -> f64 {
+        self.x * other.x + self.y * other.y
+    }
+
+    /// The z component of the cross product of two vectors: positive when
+    /// `other` turns counterclockwise from `self` in a y-up space.
+    pub fn cross(self, other: Self) -> f64 {
+        self.x * other.y - self.y * other.x
+    }
+
+    /// The Euclidean length of a vector, without intermediate overflow.
+    pub fn length(self) -> f64 {
+        self.x.hypot(self.y)
+    }
+
+    /// The vector rotated a quarter turn counterclockwise (y-up).
+    #[must_use]
+    pub fn perp(self) -> Self {
+        Self::new(-self.y, self.x)
+    }
+
+    /// The point at parameter `t` on the line from `self` (`t = 0`) to
+    /// `other` (`t = 1`).
+    #[must_use]
+    pub fn lerp(self, other: Self, t: f64) -> Self {
+        self + (other - self) * t
+    }
+
+    /// The point halfway between `self` and `other`, without intermediate
+    /// overflow.
+    #[must_use]
+    pub fn midpoint(self, other: Self) -> Self {
+        Self::new(self.x.midpoint(other.x), self.y.midpoint(other.y))
+    }
+}
+
+impl Add for Point {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Self::new(self.x + other.x, self.y + other.y)
+    }
+}
+
+impl AddAssign for Point {
+    fn add_assign(&mut self, other: Self) {
+        *self = *self + other;
+    }
+}
+
+impl Sub for Point {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self {
+        Self::new(self.x - other.x, self.y - other.y)
+    }
+}
+
+impl SubAssign for Point {
+    fn sub_assign(&mut self, other: Self) {
+        *self = *self - other;
+    }
+}
+
+impl Neg for Point {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        Self::new(-self.x, -self.y)
+    }
+}
+
+/// Scales a vector.
+impl Mul<f64> for Point {
+    type Output = Self;
+
+    fn mul(self, factor: f64) -> Self {
+        Self::new(self.x * factor, self.y * factor)
+    }
+}
+
+/// Divides a vector by a scalar.
+impl Div<f64> for Point {
+    type Output = Self;
+
+    fn div(self, divisor: f64) -> Self {
+        Self::new(self.x / divisor, self.y / divisor)
     }
 }
 
@@ -137,6 +231,35 @@ impl Mul<Transform> for Point {
 #[cfg(test)]
 mod tests {
     use super::{Point, Transform};
+
+    #[test]
+    fn vector_operators_match_componentwise_arithmetic() {
+        let a = Point::new(3.0, -4.0);
+        let b = Point::new(-1.5, 2.0);
+        assert_eq!(a + b, Point::new(1.5, -2.0));
+        assert_eq!(a - b, Point::new(4.5, -6.0));
+        assert_eq!(-a, Point::new(-3.0, 4.0));
+        assert_eq!(a * 2.0, Point::new(6.0, -8.0));
+        assert_eq!(a / 2.0, Point::new(1.5, -2.0));
+        let mut c = a;
+        c += b;
+        c -= a;
+        assert_eq!(c, b);
+        assert_eq!(a.dot(b), -12.5);
+        assert_eq!(a.cross(b), 0.0);
+        assert_eq!(Point::new(1.0, 0.0).cross(Point::new(0.0, 1.0)), 1.0);
+        assert_eq!(a.length(), 5.0);
+        assert_eq!(Point::new(1.0, 2.0).perp(), Point::new(-2.0, 1.0));
+        assert_eq!(a.lerp(b, 0.0), a);
+        assert_eq!(a.lerp(b, 1.0), b);
+        assert_eq!(a.lerp(b, 0.25), Point::new(1.875, -2.5));
+        assert_eq!(a.midpoint(b), Point::new(0.75, -1.0));
+        // Squares and sums of these coordinates overflow f64; the results do not.
+        let length = Point::new(3e200, 4e200).length();
+        assert!((length / 5e200 - 1.0).abs() < 1e-15);
+        let huge = Point::new(f64::MAX, -f64::MAX);
+        assert_eq!(huge.midpoint(huge), huge);
+    }
 
     #[test]
     fn then_applies_left_operand_first() {
