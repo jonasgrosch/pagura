@@ -1,11 +1,17 @@
 //! Iterative, depth- and allocation-bounded structure hierarchy traversal.
-use super::{
-    BTreeSet, Budget, Dictionary, Document, Error, Name, Node, ObjectId, Plan, Reference, Result,
-    StructureElement, Value,
-};
+use super::{Budget, Node, Plan, Reference, StructureElement};
+use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
+use pagura_document::Document;
+use std::collections::BTreeSet;
 
+/// Work of the iterative walk: a `/K` value to visit, or the end of an
+/// element's descendants.
 enum Task<'a> {
-    Value(&'a Value, Option<usize>, usize),
+    Value {
+        value: &'a Value,
+        parent: Option<usize>,
+        depth: usize,
+    },
     End(usize),
 }
 pub(super) fn read<'a>(
@@ -22,7 +28,11 @@ pub(super) fn read<'a>(
     };
     let mut tasks = Vec::new();
     if let Some(kids) = super::entry(doc, root, b"K")? {
-        tasks.push(Task::Value(kids, None, 0));
+        tasks.push(Task::Value {
+            value: kids,
+            parent: None,
+            depth: 0,
+        });
     }
     let mut seen = BTreeSet::new();
     while let Some(task) = tasks.pop() {
@@ -32,18 +42,21 @@ pub(super) fn read<'a>(
                 plan.nodes[index].end = plan.nodes.len();
                 continue;
             }
-            Task::Value(value, parent, depth) => (value, parent, depth),
+            Task::Value {
+                value,
+                parent,
+                depth,
+            } => (value, parent, depth),
         };
         budget.depth(depth)?;
         let resolved = doc.resolve(value)?;
         if let Some(array) = resolved.as_array() {
             budget.store(array.len().saturating_mul(size_of::<Task<'_>>()))?;
-            tasks.extend(
-                array
-                    .iter()
-                    .rev()
-                    .map(|v| Task::Value(v, parent, depth + 1)),
-            );
+            tasks.extend(array.iter().rev().map(|value| Task::Value {
+                value,
+                parent,
+                depth: depth + 1,
+            }));
         } else if let Some(mcid) = resolved.as_integer() {
             let parent = parent.ok_or(Error::syntax("structure root child is not an element"))?;
             let pg = page_id(doc, plan.nodes[parent].dictionary, None)?;
@@ -85,7 +98,11 @@ pub(super) fn read<'a>(
                     )?;
                     tasks.push(Task::End(index));
                     if let Some(kids) = super::entry(doc, dictionary, b"K")? {
-                        tasks.push(Task::Value(kids, Some(index), depth + 1));
+                        tasks.push(Task::Value {
+                            value: kids,
+                            parent: Some(index),
+                            depth: depth + 1,
+                        });
                     }
                 }
                 _ => return Err(Error::syntax("invalid structure child Type")),
