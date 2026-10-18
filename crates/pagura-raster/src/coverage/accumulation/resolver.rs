@@ -1,10 +1,10 @@
 //! One-cell strip sweep, using source geometry for ghosts and dense cells.
 
-use super::super::{Edge, Exact, bytes, clipped, normalize_boundaries};
+use super::super::{Edge, Exact, RASTER_WORK, bytes, clipped, normalize_boundaries};
 use super::geometry::{GRID, Geometry, reserve};
 use super::scatter::{Active, Piece};
 use crate::Point;
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 
 #[derive(Debug, Default)]
 pub(super) struct Resolver {
@@ -58,7 +58,7 @@ impl Resolver {
             }
             self.finish(g.rules.len(), limits)
         })();
-        *work = self.scratch.row.work;
+        *work = self.scratch.row.work.used();
         result
     }
 
@@ -158,13 +158,13 @@ impl Resolver {
             }
             self.finish(g.rules.len(), limits).map(Some)
         })();
-        *work = self.scratch.row.work;
+        *work = self.scratch.row.work.used();
         result
     }
 
     fn begin(&mut self, limits: &Limits, work: usize) -> Result<()> {
-        self.scratch.row.work = work;
-        self.scratch.row.maximum = limits.raster_work;
+        self.scratch.row.work = Meter::new(limits.raster_work, RASTER_WORK);
+        self.scratch.row.work.charge(work)?;
         self.scratch.row.maximum_events = limits.path_segments;
         self.scratch.row.reset(1, 0)?;
         self.scratch.raw.clear();

@@ -6,9 +6,9 @@
 use super::{Piece, build, intersections};
 use crate::Point;
 use crate::coverage::{
-    BoundaryEvent, Edge, Rectangle, Row, Shape, Windings, bytes, normalize_boundaries,
+    BoundaryEvent, Edge, RASTER_WORK, Rectangle, Row, Shape, Windings, bytes, normalize_boundaries,
 };
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 
 /// Reused curve-sweep storage; line-only fills never allocate it.
 #[derive(Debug, Default)]
@@ -53,11 +53,9 @@ impl Sweep {
         anchor: Point,
     ) -> Result<()> {
         let row = &mut self.row;
-        row.work = 0;
-        row.maximum = limits.raster_work;
+        row.work = Meter::new(limits.raster_work, RASTER_WORK);
         row.maximum_events = limits.path_segments;
-        let (bounds, groups) =
-            Rectangle::intersection(shapes, origin, (width, height), row, limits)?;
+        let (bounds, groups) = Rectangle::intersection(shapes, origin, (width, height), row)?;
         let stride =
             usize::try_from(width).map_err(|_| Error::limit("mask width exceeds usize"))?;
         let bounds = Rectangle {

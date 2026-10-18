@@ -1,10 +1,10 @@
 //! Curve preparation, degree reduction and viewport projection.
 
 use super::{Piece, Quadratic, add, lerp, scale, sub};
-use crate::coverage::{Edge, Geometry, Rectangle, Row, Shape, clipped};
+use crate::coverage::{Edge, Geometry, RASTER_WORK, Rectangle, Row, Shape, clipped};
 use crate::flatten::bounded;
 use crate::{FillRule, Point, Segment};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 
 // A cubic is a degree-elevated quadratic exactly when its third difference
 // D = -P0 + 3P1 - 3P2 + P3 vanishes. Its midpoint quadratic differs from it by
@@ -323,7 +323,7 @@ pub(crate) fn prepare(
     cap: usize,
 ) -> Result<Option<Vec<Piece>>> {
     let mut row = Row {
-        maximum: limits.raster_work,
+        work: Meter::new(limits.raster_work, RASTER_WORK),
         maximum_events: limits.path_segments,
         ..Row::default()
     };

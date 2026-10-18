@@ -1,6 +1,6 @@
 //! Conservative device bounds from the convex hull of path control points.
 
-use crate::flatten::bounded;
+use crate::flatten::{bounded, validate};
 use crate::{Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Result};
 
@@ -19,12 +19,7 @@ pub(crate) fn control_hull(
     transform: Transform,
     limits: &Limits,
 ) -> Result<[Point; 2]> {
-    if !transform.is_finite() {
-        return Err(Error::invalid_argument("path transform is not finite"));
-    }
-    if path.segments().len() > limits.path_segments {
-        return Err(Error::limit("path segment budget exceeded"));
-    }
+    validate(path, transform, limits)?;
     // Start with an empty hull. Seeding the maximum from the viewport origin
     // would turn geometry entirely above/left of it into a spurious boundary
     // cell after the floor-cell allowance below, forcing needless flattening.
