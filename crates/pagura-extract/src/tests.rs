@@ -59,7 +59,7 @@ fn expansion_boundaries_overlapping_matches_and_unicode_case() -> Result<()> {
 #[test]
 fn search_is_linear_and_limits_output_and_query_storage() -> Result<()> {
     let mut text = page(&"a".repeat(40000))?;
-    text.limits.operations = 250_000;
+    text.limits.text_work = 250_000;
     assert_eq!(
         text.find(&format!("{}b", "a".repeat(2000)), SearchOptions::default())?
             .len(),
@@ -110,11 +110,11 @@ fn unknown_unicode_is_a_barrier_and_geometry_and_layout_budgets_are_validated() 
             ..Default::default()
         },
         Limits {
-            operations: 1,
+            text_work: 1,
             ..Default::default()
         },
         Limits {
-            value_nodes: 0,
+            text_items: 0,
             ..Default::default()
         },
     ] {
@@ -249,7 +249,7 @@ fn structure_work_budget_and_document_identity_are_enforced() -> Result<()> {
         bytes,
         &OpenOptions {
             limits: Limits {
-                operations: 1,
+                text_work: 1,
                 ..Default::default()
             },
             ..Default::default()
