@@ -107,7 +107,12 @@ fn independent_vectors_exact_errors_repairs_and_caps() {
                 pagura_codec::decode_raw_deflate(&encoded, cap, *predictor, diagnostics)
             } else if params.get("take_crypt").is_some_and(|s| s == "1") {
                 let mut chain = chain.clone();
-                assert!(matches!(chain.take_crypt(), Some(None)), "{name}");
+                assert!(
+                    chain
+                        .take_crypt()
+                        .is_some_and(|crypt| crypt.name().is_none()),
+                    "{name}"
+                );
                 chain
                     .decode(&encoded, cap, diagnostics)
                     .map(std::borrow::Cow::into_owned)
