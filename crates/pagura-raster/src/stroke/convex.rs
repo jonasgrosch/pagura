@@ -1,6 +1,5 @@
 //! Boundaries of convex closed miter strokes (ISO 32000-2, 8.4.3.4).
 
-use super::{add, sub};
 use crate::flatten::bounded;
 use crate::{PathBuilder, Point};
 use pagura_core::{Error, Limits, Result};
@@ -73,9 +72,9 @@ pub(super) fn boundaries(
             return Ok(None);
         }
         if !filled {
-            inner.push(add(points[i], m));
+            inner.push(points[i] + m);
         }
-        outer.extend([sub(points[i], n1), sub(points[i], m), sub(points[i], n2)]);
+        outer.extend([points[i] - n1, points[i] - m, points[i] - n2]);
     }
     for i in 0..inner.len() {
         let a = inner[i];
@@ -158,8 +157,8 @@ fn orientation(points: &[Point]) -> Option<f64> {
         let p = points[if i == 0 { points.len() - 1 } else { i - 1 }];
         let q = points[i];
         let r = points[(i + 1) % points.len()];
-        let a = sub(q, p);
-        let b = sub(r, q);
+        let a = q - p;
+        let b = r - q;
         turns += usize::from(half(a) != half(b));
         let (left, right) = (a.x * b.y, a.y * b.x);
         let cross = left - right;

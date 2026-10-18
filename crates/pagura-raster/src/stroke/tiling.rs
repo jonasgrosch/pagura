@@ -12,7 +12,7 @@
 //! a short segment, an open centreline whose directions span a half turn, a
 //! closed one that is not convex, and runs whose pens may meet.
 
-use super::{Run, add, cap, join, polygon, sub};
+use super::{Run, cap, join, polygon};
 use crate::{LineCap, LineJoin, PathBuilder, Point, Stroke};
 use pagura_core::{Error, Limits, Result};
 
@@ -352,9 +352,9 @@ fn piece(
 ) -> Result<()> {
     let normal = Point::new(-direction.y * radius, direction.x * radius);
     let corner = |point: Point, turn: Option<Turn>, left: bool| match turn {
-        Some(turn) if turn.left == left => add(point, turn.offset),
-        _ if left => add(point, normal),
-        _ => sub(point, normal),
+        Some(turn) if turn.left == left => point + turn.offset,
+        _ if left => point + normal,
+        _ => point - normal,
     };
     let mut piece = [Point::new(0.0, 0.0); 6];
     let mut n = 0;
@@ -411,7 +411,7 @@ fn end(
     points
         .try_reserve_exact(count as usize + 1)
         .map_err(|_| Error::limit("round cap allocation failed"))?;
-    points.push(add(point, normal));
+    points.push(point + normal);
     for i in 1..count {
         let angle = start - std::f64::consts::PI * f64::from(i) / f64::from(count);
         points.push(Point::new(
@@ -419,7 +419,7 @@ fn end(
             point.y + radius * angle.sin(),
         ));
     }
-    points.push(sub(point, normal));
+    points.push(point - normal);
     polygon(out, &points, limits)
 }
 
