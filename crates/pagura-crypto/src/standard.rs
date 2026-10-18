@@ -6,8 +6,8 @@
 
 use pagura_core::{Error, Feature, ObjectId, Position, Result};
 
-use crate::Rc4;
 use crate::aes::{Aes, pkcs7_padding};
+use crate::rc4::Rc4;
 
 mod legacy;
 mod modern;
@@ -181,7 +181,7 @@ impl FileKey {
         padded[..self.key.len()].copy_from_slice(&self.key);
         let derived = legacy::object_key(&padded, CryptMethod::Rc4, object);
         let mut output = copy_bytes(data).map_err(|error| error.in_object(object))?;
-        Rc4::new(&derived)?.apply_keystream(&mut output);
+        Rc4::new(&derived).apply_keystream(&mut output);
         Ok(output)
     }
 
@@ -213,7 +213,7 @@ impl FileKey {
         };
         if method == CryptMethod::Rc4 {
             let mut output = copy_bytes(data)?;
-            Rc4::new(key)?.apply_keystream(&mut output);
+            Rc4::new(key).apply_keystream(&mut output);
             return Ok(output);
         }
         let Some((iv, body)) = data

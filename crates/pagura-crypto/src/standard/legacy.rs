@@ -2,7 +2,8 @@
 use pagura_core::{Error, ObjectId, Result};
 
 use super::{Authority, CryptMethod, FileKey, SecurityParams, equal, file_key};
-use crate::{Md5, Rc4, md5};
+use crate::rc4::Rc4;
+use crate::{Md5, md5};
 
 // The parent validates parameter lengths before calling this module.
 pub(super) fn authenticate(params: &SecurityParams, password: &[u8]) -> Result<FileKey> {
@@ -13,7 +14,7 @@ pub(super) fn authenticate(params: &SecurityParams, password: &[u8]) -> Result<F
     let owner_key = legacy_owner_key(params, password);
     let mut recovered = params.owner_hash.clone();
     if params.revision == 2 {
-        Rc4::new(&owner_key)?.apply_keystream(&mut recovered);
+        Rc4::new(&owner_key).apply_keystream(&mut recovered);
     } else {
         for round in (0..20).rev() {
             rc4_round(&owner_key, round, &mut recovered)?;
@@ -71,13 +72,13 @@ fn rc4_round(key: &[u8], round: u8, data: &mut [u8]) -> Result<()> {
     for (out, byte) in mixed.iter_mut().zip(key) {
         *out = *byte ^ round;
     }
-    Rc4::new(&mixed[..key.len()])?.apply_keystream(data);
+    Rc4::new(&mixed[..key.len()]).apply_keystream(data);
     Ok(())
 }
 fn legacy_user_matches(params: &SecurityParams, key: &[u8]) -> Result<bool> {
     if params.revision == 2 {
         let mut expected = PADDING;
-        Rc4::new(key)?.apply_keystream(&mut expected);
+        Rc4::new(key).apply_keystream(&mut expected);
         return Ok(equal(&expected, &params.user_hash));
     }
     let mut hash = Md5::new();
