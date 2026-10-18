@@ -31,7 +31,7 @@ pub use bigint::MAX_MODULUS_BITS;
 pub use hash::{
     Md5, Sha1, Sha224, Sha256, Sha384, Sha512, md5, sha1, sha224, sha256, sha384, sha512,
 };
-pub use rc4::Rc4;
+
 pub use rsa::{HashAlgorithm, PssParameters, RsaLimits, RsaPublicKey};
 pub use verification::Verification;
 
