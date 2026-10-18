@@ -334,9 +334,9 @@ mod tests {
             visited.push((key.as_bytes(), value.as_integer()));
         }
         assert_eq!(visited, [(b"B".as_slice(), Some(1)), (b"A", Some(2))]);
-        let entries = dictionary.iter();
+        let mut entries = dictionary.iter();
         assert_eq!(entries.len(), 2);
-        let last = entries.rev().next().map(|(key, _)| key.as_bytes());
+        let last = entries.next_back().map(|(key, _)| key.as_bytes());
         assert_eq!(last, Some(b"A".as_slice()));
     }
 

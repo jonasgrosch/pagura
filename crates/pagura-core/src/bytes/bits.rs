@@ -278,7 +278,7 @@ mod tests {
         assert!(bits.bit().unwrap());
         assert_eq!(bits.bits(3).unwrap(), 0b011);
         assert_eq!(bits.position(), Position::Buffer(0));
-        assert_eq!(bits.bits(6).unwrap(), 0b0011_01);
+        assert_eq!(bits.bits(6).unwrap(), 0b00_1101);
         assert_eq!(bits.remaining_bits(), 6 + 5 * 8);
         assert_eq!(bits.bits(0).unwrap(), 0);
         assert_eq!(bits.bits(6).unwrap(), 0b01_1100);
