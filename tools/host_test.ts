@@ -8,7 +8,7 @@ import { ReadingView } from '../web/reading_view.mjs';
 import { navigationDocument } from '../web/navigation_document.mjs';
 /** Offline parity, independent pixel oracles and browser-shim checks.
  * Prerequisites: cargo build --locked --offline -p pagura-host; cargo wasm --offline
- * Usage: node tools/host_test.mjs
+ * Usage: node tools/host_test.ts
  */
 import assert from 'node:assert/strict';
 import { readFile, mkdtemp, open, rm } from 'node:fs/promises';

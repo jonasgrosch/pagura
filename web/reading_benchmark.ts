@@ -1,5 +1,5 @@
 /** Exploratory reading costs in WASI through the browser shim in Node.
- * node web/reading_benchmark.mjs WASM_PATH > reading.json
+ * node web/reading_benchmark.ts WASM_PATH > reading.json
  * DOM samples measure construction in a stand-in, excluding browser layout.
  */
 import { readFileSync } from 'node:fs';

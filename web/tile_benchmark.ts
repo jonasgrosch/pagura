@@ -1,5 +1,5 @@
 /** Exploratory tile throughput; no cross-engine or release performance claim.
- * node web/tile_benchmark.mjs NATIVE_BINARY WASM_BINARY > /tmp/tiles.json
+ * node web/tile_benchmark.ts NATIVE_BINARY WASM_BINARY > /tmp/tiles.json
  * Two warmups, five samples, identical 64 tiles and independent PPM verification.
  * Native samples include process startup; WASI samples include _start/open but
  * exclude module compilation/instantiation. Compare revisions within a runtime.

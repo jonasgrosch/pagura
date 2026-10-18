@@ -1,5 +1,5 @@
 /** Real Chrome check, using only Node's fetch/WebSocket and a loopback CDP tab.
- * Usage: node web/browser_test.mjs http://127.0.0.1:9222 http://127.0.0.1:8000/
+ * Usage: node web/browser_test.ts http://127.0.0.1:9222 http://127.0.0.1:8000/
  * The browser and tools/serve_web.py must already be running. */
 import assert from 'node:assert/strict';
 

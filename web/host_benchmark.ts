@@ -1,5 +1,5 @@
 /** Exploratory session measurements; no release or cross-engine speed claim.
- * node web/host_benchmark.mjs WASM_PATH EXTERNAL_MULTIPAGE_PDF > /tmp/host.json
+ * node web/host_benchmark.ts WASM_PATH EXTERNAL_MULTIPAGE_PDF > /tmp/host.json
  * Inputs are read in place into memory; no document/request files are written.
  */
 import assert from 'node:assert/strict';

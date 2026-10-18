@@ -11,7 +11,7 @@
       "tests": [
         "pagura-host protocol::tests::hello_has_an_independent_literal_wire_oracle",
         "pagura-host protocol::tests::decoding_rejects_every_truncation_and_trailing_bytes",
-        "tools/host_test.mjs testCodecAndCapabilities",
+        "tools/host_test.ts testCodecAndCapabilities",
         "pagura-host protocol::tests::strict_repair_has_an_independent_frozen_v1_wire_oracle"
       ],
       "gaps": "Wire layout is project-owned and fixed in crates/pagura-host/PROTOCOL.md; no interoperability claim beyond v1."
@@ -25,7 +25,7 @@
         "pagura-host session::tests::malformed_and_out_of_order_frames_are_terminal",
         "pagura-host session::tests::deterministic_fuzz_frames_never_panic",
         "pagura-host protocol::tests::decoding_rejects_every_truncation_and_trailing_bytes",
-        "tools/host_test.mjs malformed native/WASI parity",
+        "tools/host_test.ts malformed native/WASI parity",
         "pagura-host session::tests::bad_render_arguments_are_operational_and_never_return_pixels"
       ],
       "gaps": "The host fuzz target has bounded smoke runs only; no long campaigns, transport deadlines, engine-side cancellation, or OS memory-limit evidence."
@@ -49,7 +49,7 @@
       "tests": [
         "pagura-host protocol::tests::error_wire_preserves_feature_object_and_stream_position",
         "pagura-host session::tests::handles_budgets_errors_and_repairs_preserve_the_session",
-        "tools/host_test.mjs structured Unsupported and strict-repair failures",
+        "tools/host_test.ts structured Unsupported and strict-repair failures",
         "pagura-host protocol::tests::every_error_category_and_context_has_a_fixed_wire_code",
         "pagura-host protocol::tests::strict_repair_has_an_independent_frozen_v1_wire_oracle"
       ],
@@ -72,8 +72,8 @@
       "status": "verified for all classic render cases and page 2 of two-pages",
       "tests": [
         "pagura-host session::tests::classic_tiles_match_independent_ppm_and_page_geometry",
-        "tools/host_test.mjs native/WASI complete response identity",
-        "tools/host_test.mjs browser-shim pixels and partial tile rows",
+        "tools/host_test.ts native/WASI complete response identity",
+        "tools/host_test.ts browser-shim pixels and partial tile rows",
         "classic/blank",
         "classic/rectangle",
         "classic/graphics-state",
@@ -87,7 +87,7 @@
         "classic/undefined-reference-is-null",
         "classic/trailing-bytes",
         "classic/two-pages",
-        "tools/host_test.mjs testTwoPages"
+        "tools/host_test.ts testTwoPages"
       ],
       "gaps": "This is correctness evidence on the declared generated subset, not general PDF conformance or performance evidence."
     },
@@ -97,8 +97,8 @@
       "clauses": [],
       "status": "implemented and exercised through the actual shim",
       "tests": [
-        "tools/host_test.mjs testCodecAndCapabilities",
-        "tools/host_test.mjs runHost worker_threads bridge"
+        "tools/host_test.ts testCodecAndCapabilities",
+        "tools/host_test.ts runHost worker_threads bridge"
       ],
       "gaps": "Native and WASI parity plus empty args/env/preopens are exercised offline; actual touch and modal interaction require browser checks."
     },
@@ -108,7 +108,7 @@
       "clauses": [],
       "status": "continuous lazy pages with zoom, gestures, keyboard controls and password entry",
       "tests": [
-        "tools/host_test.mjs testViewer",
+        "tools/host_test.ts testViewer",
         "web/README.md manual browser validation instructions",
         "web/test_server.py"
       ],
@@ -122,8 +122,8 @@
       "tests": [
         "classic/two-pages",
         "pagura-host session::tests::two_pages_have_independent_geometry_and_second_page_pixels",
-        "tools/host_test.mjs testTwoPages",
-        "tools/host_test.mjs testViewer"
+        "tools/host_test.ts testTwoPages",
+        "tools/host_test.ts testViewer"
       ],
       "gaps": "Real-browser navigation verified manually. Page 1 uses two-pages.ppm; page 2 expectations are independently computed from the stated blue-square geometry, including partial tiles."
     },
@@ -134,8 +134,8 @@
       "status": "implemented with opt-in read-only server routes and validated startup URL loading",
       "tests": [
         "web/test_server.py",
-        "tools/host_test.mjs testFixtureLoading",
-        "tools/host_test.mjs testViewer startup cases"
+        "tools/host_test.ts testFixtureLoading",
+        "tools/host_test.ts testViewer startup cases"
       ],
       "gaps": "Serving remains loopback-only and disabled unless --fixtures is supplied; only corpus/generated is exposed."
     },
@@ -149,7 +149,7 @@
       "tests": [
         "pagura-host cache::tests::hits_refresh_lru_eviction_and_close_release_charges",
         "pagura-host session::tests::generations_skip_before_compilation_and_cached_tiles_share_one_list",
-        "web/tile_benchmark.mjs"
+        "web/tile_benchmark.ts"
       ],
       "gaps": "The renderer exposes mark count but no retained heap size; weights are estimates, not a process-memory ceiling. Oversized entries are not retained."
     },
@@ -161,7 +161,7 @@
       "tests": [
         "pagura-host protocol::tests::generation_layouts_are_additive_and_truncations_fail",
         "pagura-host session::tests::generations_skip_before_compilation_and_cached_tiles_share_one_list",
-        "tools/host_test.mjs testGenerations"
+        "tools/host_test.ts testGenerations"
       ],
       "gaps": "An executing synchronous tile finishes; only stale queued work and its pixels are discarded. Generations do not wrap."
     },
@@ -174,8 +174,8 @@
       ],
       "status": "lazy continuous pages, compact height index and bounded DOM/tiles",
       "tests": [
-        "tools/host_test.mjs testViewer",
-        "tools/host_test.mjs testCodecAndCapabilities"
+        "tools/host_test.ts testViewer",
+        "tools/host_test.ts testCodecAndCapabilities"
       ],
       "gaps": "32 visible pages, 128 visible tiles, 256 detailed metadata entries, 200000 height records and a 10-million-CSS-pixel layout budget; excess is explicit."
     },
@@ -188,7 +188,7 @@
       ],
       "status": "accessible modal, wrong-password retry, cancellation and cleared temporary values",
       "tests": [
-        "tools/host_test.mjs testViewer",
+        "tools/host_test.ts testViewer",
         "crypto/r2-rc4-40-password-user"
       ],
       "gaps": "Text entry uses UTF-8. Raw byte passwords remain available through the client; non-ASCII legacy PDFDocEncoding conversion and engine SASLprep limitations remain."
@@ -200,8 +200,8 @@
       "status": "additive v1.1 session stats and separate linear-memory sideband",
       "tests": [
         "pagura-host session::tests::retention_and_supervisor_cancellation_release_on_close",
-        "tools/host_test.mjs retention native/WASI parity",
-        "web/host_benchmark.mjs"
+        "tools/host_test.ts retention native/WASI parity",
+        "web/host_benchmark.ts"
       ],
       "gaps": "Source and compiled-list estimates exclude document internals, transient allocations, transport and JS. Document retained counter has no public accessor. Linear memory is a high-water capacity, not live heap or RSS."
     },
@@ -211,8 +211,8 @@
       "clauses": [],
       "status": "bounded automatic restart with document, password, page and zoom replay",
       "tests": [
-        "tools/host_test.mjs testClientFailures",
-        "tools/host_test.mjs testViewer"
+        "tools/host_test.ts testClientFailures",
+        "tools/host_test.ts testViewer"
       ],
       "gaps": "Client-only injected traps, memory, budgets and deadlines exercise recovery; physical browser OOM and browser interaction still need runtime validation. One automatic retry per selected file. The 512 MiB memory check runs at I/O boundaries; request deadline is 30 seconds."
     },
@@ -233,8 +233,8 @@
       "status": "Protocol 1.4 kinds and repairs-only legacy snapshots with native/WASI parity",
       "tests": [
         "pagura-host protocol::tests::diagnostic_kinds_have_independent_wire_oracles_and_legacy_filtering",
-        "tools/host_test.mjs testDiagnosticKinds",
-        "tools/host_test.mjs viewer mixed diagnostic counts"
+        "tools/host_test.ts testDiagnosticKinds",
+        "tools/host_test.ts viewer mixed diagnostic counts"
       ],
       "gaps": "Information omitted from older diagnostics responses is available through the negotiated 1.4 typed snapshot."
     }

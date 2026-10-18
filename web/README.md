@@ -118,7 +118,7 @@ checks on the target devices.
 ```
 cargo build --locked --offline -p pagura-host
 cargo wasm --offline
-node tools/host_test.mjs
+node tools/host_test.ts
 ```
 
 Tests preserve native/WASI document-response identity and independent classic
@@ -133,7 +133,7 @@ Build release binaries for each revision and run the same workload against each:
 ```
 cargo build --locked --offline --release -p pagura-host
 cargo wasm --offline
-node web/tile_benchmark.mjs target/release/pagura-host target/wasm32-wasip1/release/pagura-host.wasm > /tmp/tiles.json
+node web/tile_benchmark.ts target/release/pagura-host target/wasm32-wasip1/release/pagura-host.wasm > /tmp/tiles.json
 cargo run --locked --offline --release -p pagura-host --example tile_profile -- corpus/generated/classic/many-rectangles.pdf
 ```
 
@@ -173,7 +173,7 @@ browser OOM behavior.
 ## Session measurements
 
 ```
-node web/host_benchmark.mjs target/wasm32-wasip1/release/pagura-host.wasm /absolute/path/to/external-multipage.pdf > /tmp/host.json
+node web/host_benchmark.ts target/wasm32-wasip1/release/pagura-host.wasm /absolute/path/to/external-multipage.pdf > /tmp/host.json
 ```
 
 The dependency-free harness drives identical operations through Node WASI and
@@ -285,7 +285,7 @@ profile with a loopback debugging port, for example on macOS:
 
 ```
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --disable-background-networking --remote-debugging-port=9222 --user-data-dir=/tmp/pagura-browser-check
-node web/browser_test.mjs http://127.0.0.1:9222 http://127.0.0.1:8000/
+node web/browser_test.ts http://127.0.0.1:9222 http://127.0.0.1:8000/
 ```
 
 The dependency-free check opens and closes its own tab. It loads independently
@@ -304,7 +304,7 @@ cache bookkeeping per page. Its counters are target-specific; they are not RSS
 or WebAssembly linear-memory measurements.
 
 ```
-node web/reading_benchmark.mjs target/wasm32-wasip1/release/pagura-host.wasm > reading.json
+node web/reading_benchmark.ts target/wasm32-wasip1/release/pagura-host.wasm > reading.json
 ```
 
 This offline exploratory harness uses an independent ASCII/Type-3 PDF generator:

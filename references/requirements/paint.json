@@ -658,7 +658,7 @@
       "status": "Typed repair and informational diagnostics with unchanged independent pixels",
       "tests": [
         "paint/bundled-diagnostic-kinds",
-        "tools/host_test.mjs testDiagnosticKinds",
+        "tools/host_test.ts testDiagnosticKinds",
         "pagura CLI scan_separates_information_from_repairs"
       ],
       "gaps": "Diagnostic classification follows ADR 0003/0009; the polygon oracle follows the locked substitute and explicit PDF metrics."
