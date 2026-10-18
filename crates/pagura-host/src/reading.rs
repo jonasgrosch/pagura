@@ -1,9 +1,9 @@
 //! Bounded reading adapter (ISO 32000-2 9.10, 12.3–12.6; ADR 0014).
 mod navigation;
-mod wire;
+
 use crate::protocol::Reader;
+pub(crate) use crate::wire::Writer;
 use pagura::{Error, Limits, Position, Result, SearchOptions};
-pub(crate) use wire::Writer;
 
 /// The bounded search window and continuation cursor.
 #[derive(Debug, Clone, Copy, PartialEq)]
