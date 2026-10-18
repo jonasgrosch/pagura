@@ -1,5 +1,8 @@
 //! Role maps and the two standard namespaces (14.7.3; 14.8.6; Annex M).
-use super::{BTreeSet, Budget, Dictionary, Document, Error, Name, Result, Value};
+use super::Budget;
+use pagura_core::{Dictionary, Error, Name, Result, Value};
+use pagura_document::Document;
+use std::collections::BTreeSet;
 
 /// Standard structure namespace, distinct from the PDF file's version (14.8.6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

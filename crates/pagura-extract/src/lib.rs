@@ -59,6 +59,11 @@ pub struct MarkedContent {
 }
 
 impl MarkedContent {
+    /// Whether this occurrence marks an artifact rather than content (14.8.2.2).
+    pub(crate) fn is_artifact(&self) -> bool {
+        self.tag.as_bytes() == b"Artifact"
+    }
+
     /// The replacement text of this occurrence: ActualText, or Alt when
     /// ActualText is absent (14.9.3–14.9.4).
     pub(crate) fn replacement(&self) -> Option<&str> {

@@ -173,7 +173,7 @@ fn groups(page: &TextPage, plan: &Plan<'_>, budget: &mut Budget) -> Result<Vec<V
             if page.glyphs()[first]
                 .marked_content
                 .iter()
-                .any(|m| m.tag.as_bytes() == b"Artifact")
+                .any(|m| m.is_artifact())
             {
                 continue;
             }
@@ -228,12 +228,7 @@ fn replacement_atom(
             budget.work(range.len())?;
             for glyph in range.clone() {
                 let g = &page.glyphs()[glyph];
-                if !g.hidden
-                    && !g
-                        .marked_content
-                        .iter()
-                        .any(|m| m.tag.as_bytes() == b"Artifact")
-                {
+                if !g.hidden && !g.marked_content.iter().any(|m| m.is_artifact()) {
                     budget.store(size_of::<usize>())?;
                     selected.push(glyph);
                 }
