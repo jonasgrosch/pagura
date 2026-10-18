@@ -1,70 +1,76 @@
-//! Opt-in, collection-specific Unicode substitutes; no assumption about CIDs.
-use pagura_core::{Diagnostics, Limits, Recovery, Result};
-use pagura_font::{FontFormat, FontProgram};
-use std::{
-    collections::BTreeMap,
-    sync::{Arc, Mutex, PoisonError},
-};
+//! Opt-in, collection-specific Unicode substitutes for CID fonts. Selection
+//! goes through the collection's Unicode data, never the fonts' own CIDs.
+use crate::{cache::Cache, entry::Program};
+use pagura_core::{Limits, Result};
+#[cfg(feature = "cjk-fonts")]
+use pagura_font::FontFormat;
+use pagura_font::FontProgram;
+use std::sync::Arc;
 
-#[derive(Debug)]
-pub(crate) struct Fonts {
-    limits: Limits,
-    cache: Mutex<BTreeMap<&'static [u8], Arc<FontProgram>>>,
+/// The substitute for an Adobe character collection, if one is linked.
+pub(crate) fn cid_font(
+    registry: &[u8],
+    ordering: &[u8],
+    cache: &Cache<FontProgram>,
+    limits: &Limits,
+) -> Result<Option<Arc<FontProgram>>> {
+    let Some(program) = crate::adobe_ordering(registry, ordering)
+        .and_then(|ordering| PROGRAMS.iter().find(|program| program.key == ordering))
+    else {
+        return Ok(None);
+    };
+    cache
+        .get_or_try_insert(program.key, || program.parse(limits))
+        .map(Some)
 }
 
-impl Fonts {
-    pub(crate) fn new(limits: Limits) -> Self {
-        Self {
-            limits,
-            cache: Mutex::new(BTreeMap::new()),
-        }
-    }
+/// Source Han Sans Regular, one regional subset per collection.
+#[cfg(feature = "cjk-fonts")]
+pub(crate) const PROGRAMS: &[Program] = &[
+    Program {
+        key: b"Japan1",
+        data: include_bytes!("../../../data/cjk/SourceHanSansJP-Regular.otf"),
+        format: FontFormat::OpenType,
+    },
+    Program {
+        key: b"GB1",
+        data: include_bytes!("../../../data/cjk/SourceHanSansCN-Regular.otf"),
+        format: FontFormat::OpenType,
+    },
+    Program {
+        key: b"CNS1",
+        data: include_bytes!("../../../data/cjk/SourceHanSansTW-Regular.otf"),
+        format: FontFormat::OpenType,
+    },
+    Program {
+        key: b"Korea1",
+        data: include_bytes!("../../../data/cjk/SourceHanSansKR-Regular.otf"),
+        format: FontFormat::OpenType,
+    },
+];
+#[cfg(not(feature = "cjk-fonts"))]
+pub(crate) const PROGRAMS: &[Program] = &[];
 
-    pub(crate) fn get(&self, registry: &[u8], ordering: &[u8]) -> Result<Option<Arc<FontProgram>>> {
-        if registry != b"Adobe" {
-            return Ok(None);
-        }
-        let Some((key, data)) = entry(ordering) else {
-            return Ok(None);
-        };
-        if let Some(program) = self
-            .cache
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .get(key)
-        {
-            return Ok(Some(Arc::clone(program)));
-        }
-        // Parse outside the publication lock, just as for standard fonts.
-        let program = Arc::new(FontProgram::parse_with_diagnostics(
-            data,
-            FontFormat::OpenType,
-            &self.limits,
-            &mut Diagnostics::new(Recovery::Strict),
-        )?);
-        let mut cache = self.cache.lock().unwrap_or_else(PoisonError::into_inner);
-        Ok(Some(Arc::clone(cache.entry(key).or_insert(program))))
-    }
-}
+#[cfg(all(test, feature = "cjk-fonts"))]
+mod tests {
+    use crate::Bundled;
+    use pagura_core::{Error, Result};
+    use pagura_text::Provider;
+    use std::sync::Arc;
 
-fn entry(ordering: &[u8]) -> Option<(&'static [u8], &'static [u8])> {
-    Some(match ordering {
-        b"Japan1" => (
-            b"Japan1",
-            include_bytes!("../../../data/cjk/SourceHanSansJP-Regular.otf"),
-        ),
-        b"GB1" => (
-            b"GB1",
-            include_bytes!("../../../data/cjk/SourceHanSansCN-Regular.otf"),
-        ),
-        b"CNS1" => (
-            b"CNS1",
-            include_bytes!("../../../data/cjk/SourceHanSansTW-Regular.otf"),
-        ),
-        b"Korea1" => (
-            b"Korea1",
-            include_bytes!("../../../data/cjk/SourceHanSansKR-Regular.otf"),
-        ),
-        _ => return None,
-    })
+    #[test]
+    fn every_collection_substitute_loads_once() -> Result<()> {
+        let provider = Bundled::default();
+        for program in super::PROGRAMS {
+            let first = provider
+                .cid_font(b"Adobe", program.key)?
+                .ok_or_else(|| Error::syntax("missing CJK program"))?;
+            let again = provider
+                .cid_font(b"Adobe", program.key)?
+                .ok_or_else(|| Error::syntax("missing cached CJK program"))?;
+            assert!(Arc::ptr_eq(&first, &again));
+            assert_eq!(first.data(), program.data);
+        }
+        Ok(())
+    }
 }

@@ -36,6 +36,7 @@ inside the PDF interpreter, so hosts can supply their own or load it lazily.
 The CJK fonts are about 23 MiB, so they are linked only through the opt-in
 `cjk-fonts` feature; default builds and the WebAssembly host leave them out.
 
-A binary that links this data (the `pagura-data` features `standard-fonts`,
-`cmaps` and `cjk-fonts`) must reproduce its licence notices with its documentation;
+A binary that links this data (the `pagura-data` features `standard-metrics`,
+`standard-outlines`, `cmaps` and `cjk-fonts`; ADR 0009 lists what each links)
+must reproduce its licence notices with its documentation;
 `pagura_data::notices()` returns exactly the notices of the enabled features.

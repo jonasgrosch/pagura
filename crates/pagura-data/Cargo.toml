@@ -11,10 +11,16 @@ repository.workspace = true
 [lints]
 workspace = true
 
+# Sizes are of the linked data files; ADR 0009 records the footprint.
 [features]
-default = ["standard-fonts", "cmaps"]
-standard-fonts = []
+default = ["standard-metrics", "standard-outlines", "cmaps"]
+# Core14 AFM metrics: widths and descriptors of the standard 14 fonts (0.6 MiB).
+standard-metrics = []
+# Substitute outlines that draw the standard 14 fonts (5.8 MiB).
+standard-outlines = ["standard-metrics"]
+# Table 116 CMaps and CID-to-Unicode data (3.4 MiB).
 cmaps = []
+# Source Han Sans substitutes for CID fonts (22.3 MiB).
 cjk-fonts = ["cmaps"]
 
 [dependencies]

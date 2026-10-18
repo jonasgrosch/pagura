@@ -56,6 +56,39 @@ and reaches the engine only through a provider (invariant 7):
   The feature is off by default, so default binaries and the WebAssembly
   host stay small.
 
+### Footprint and features (amended 2026-10-18)
+
+Each `pagura-data` feature links one set of files. The sizes are those of
+the linked files, which the binary carries uncompressed:
+
+| Feature | Files | Linked | Default |
+|---|---|---|---|
+| `standard-metrics` | 14 Core14 AFM files | 0.6 MiB | yes |
+| `standard-outlines` (implies `standard-metrics`) | 12 croscore TrueType fonts, 2 Foxit CFF fonts | 5.8 MiB | yes |
+| `cmaps` | 59 Table 116 CMaps, 4 `cid2unicode.txt` | 3.4 MiB | yes |
+| `cjk-fonts` (implies `cmaps`) | 4 Source Han Sans OpenType fonts | 22.3 MiB | no |
+
+What each configuration carries:
+
+- **The default WebAssembly host** (`pagura-host` without features, which
+  the web viewer loads) links no data. Its fonts reach it through a
+  host-side provider or not at all.
+- **The facade's default `bundled-data` feature** takes `pagura-data`'s
+  defaults. It links 9.8 MiB into the `pagura` CLI and into a
+  `pagura-host --features bundled-data` module.
+- **`cjk-fonts`** adds 22.3 MiB.
+- **Metrics without outlines** (`default-features = false, features =
+  ["standard-metrics", "cmaps"]`) links 4.0 MiB. A non-embedded standard
+  font then keeps its AFM widths and descriptor, but decoding its glyphs
+  fails explicitly with `font.non-embedded`.
+
+The outlines stay in the default set for two reasons. `bundled-data`
+promises substitute outlines. And without them, every non-embedded
+standard 14 font would fail to draw in default builds. The facade
+offers `bundled-data` only as a whole; a metrics-only facade feature waits
+for a host that needs it. ADR 0026 records how the data crate relates to
+the parsers.
+
 `pagura-text` defines the provider interface: a standard font by base name,
 a predefined CMap by name, and a CID substitute by character collection. A data crate implements it over the bundled files,
 which are recorded with source URLs and SHA-256 in a lock, like the corpora.
