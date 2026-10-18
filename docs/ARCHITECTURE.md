@@ -18,7 +18,7 @@ Dependencies point downward only and are fixed in the crate manifests.
 
 | Crate | Responsibility | Knows nothing about |
 |---|---|---|
-| `pagura-core` | `Value`, `Name`, `Dictionary`, `ObjectId`, `Rect`; bounded `syntax::Parser`; `Error`/`ErrorKind`/`Feature`/`Position`; `Diagnostic`/`DiagnosticKind`/`Repair`/`Recovery`; `Limits` | files, revisions, rendering |
+| `pagura-core` | `Value`, `Name`, `Dictionary`, `ObjectId`, `Rect`; bounded `syntax::Parser`; `Error`/`ErrorKind`/`Feature`/`Position`; `Diagnostic`/`DiagnosticKind`/`Repair`/`Recovery`; `Limits`; the primitives every parser shares (ADR 0017): `Meter`, `bytes::{Cursor, BitCursor}`, `text_string` | files, revisions, rendering |
 | `pagura-codec` | stream filters and predictors with streaming output caps | documents, references |
 | `pagura-crypto` | MD5, SHA-2, RC4, AES; the standard security handler from plain parameters | the object model beyond `ObjectId` |
 | `pagura-document` | immutable source bytes, cross-reference data and revisions, lazily parsed and cached objects, decoded streams, typed page tree, recovery | content streams, pixels |
@@ -43,7 +43,9 @@ candidate; until then it lives in `pagura-render`.
    reference to an undefined object resolves to null (clause 7.3.10).
 3. Every traversal has an explicit budget; every decoder enforces an output
    cap while decoding; the storage a document retains in its caches has an
-   aggregate budget (`Limits::document_bytes`, ADR 0012).
+   aggregate budget (`Limits::document_bytes`, ADR 0012). Each `Limits`
+   field bounds exactly one documented quantity and is charged through
+   `pagura_core::Meter` (ADR 0016).
 4. A rendering error cannot become a successful partial page.
 5. Unsupported behaviour is an `Unsupported(Feature)` error with a stable tag;
    diagnostics distinguish repairs from information; only repairs carry `Repair`
