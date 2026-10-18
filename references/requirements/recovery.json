@@ -1,0 +1,176 @@
+{
+  "schema": 2,
+  "area": "recovery",
+  "scope": "Verified cited clauses against locally supplied ISO 32000-2:2020 with errata collection 3. Cubic boundary conditions, recovery choices, and transfer coverage are explicit project policies. Independent rational interpolation and standard-library encoders supply expectations.",
+  "requirements": [
+    {
+      "id": "recovery-cubic",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.10.2"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "recovery/cubic-interior",
+        "recovery/cubic-clipped",
+        "recovery/cubic-12-reversed",
+        "recovery/cubic-32",
+        "recovery/cubic-two-inputs",
+        "recovery/cubic-mixed-linear",
+        "recovery/cubic-constant-many-inputs",
+        "recovery/cubic-single-axis",
+        "recovery/cubic-rgb-16"
+      ],
+      "rule": "Order 3 uses a local interpolating cubic spline. Boundary conditions are project policy: centred interior tangents and one-sided endpoint tangents preserve samples and affine functions. Applying the fewer-than-four-samples linear fallback independently per axis is the project reading of 7.10.2. Decode and Range are applied after interpolation."
+    },
+    {
+      "id": "recovery-widgets",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.6.19",
+        "12.7.4.3",
+        "12.7.5.3",
+        "12.7.5.5"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "recovery/widget-empty-text",
+        "recovery/widget-empty-signature",
+        "recovery/widget-parent-null",
+        "recovery/widget-parent-undefined",
+        "recovery/widget-inherited-empty",
+        "recovery/widget-styled-empty",
+        "recovery/widget-no-border-color",
+        "recovery/widget-rotated-background",
+        "recovery/widget-value",
+        "recovery/widget-inherited-value",
+        "recovery/widget-null-inherits-value",
+        "recovery/widget-signed",
+        "recovery/widget-parent-cycle",
+        "recovery/widget-rotated-border",
+        "recovery/widget-invalid-rotation"
+      ],
+      "rule": "Empty text and unsigned signature widgets paint only their specified MK background and border. Field types and values inherit through Parent; null means absent. Nonempty values remain explicit unsupported appearances. Rotated backgrounds are invariant; rotated borders remain unsupported. Rotation must be a multiple of 90 degrees."
+    },
+    {
+      "id": "recovery-transfer",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "10.5",
+        "11.7.5.2"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "recovery/transfer-opaque",
+        "recovery/transfer-translucent-default",
+        "recovery/transfer-reset-by-topmost",
+        "recovery/transfer-identity-topmost",
+        "recovery/transfer-transparent-topmost",
+        "recovery/transfer-opaque-ancestor",
+        "recovery/transfer-translucent-ancestor",
+        "recovery/transfer-image",
+        "recovery/transfer-shading",
+        "recovery/transfer-soft-mask-source",
+        "recovery/transfer-soft-mask-function",
+        "recovery/transfer-soft-mask-image",
+        "recovery/transfer-identity-array-direct",
+        "recovery/transfer-identity-array-indirect",
+        "recovery/transfer-fractional-region",
+        "recovery/transfer-soft-mask-pattern",
+        "recovery/transfer-soft-mask-overprint",
+        "recovery/transfer-pattern-cell-direct",
+        "recovery/transfer-pattern-cell-group"
+      ],
+      "rule": "Final device transfers are selected by the topmost elementary intrinsic shape. Only opaque elementary objects and opaque ancestor invocations retain their specified transfer. Transparent objects select the device default Identity. Group objects and soft-mask artwork do not select transfers. Nonlinear evaluation uses f64. Fractional boundaries involving nondefault transfers, pattern selection and per-colourant selection remain unsupported. An array of four Identity names is the default transfer, even through indirect references. Pattern and overprint artwork in a soft mask does not select page transfers. Transfers used only in tiling-pattern cells are detected and rejected explicitly until pattern-region selection is implemented."
+    },
+    {
+      "id": "recovery-codecs",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.4.2",
+        "7.4.4.3",
+        "7.4.6",
+        "7.4.8",
+        "7.4.9"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "recovery/lzw-no-initial-clear",
+        "recovery/jpeg-trailing-restart",
+        "recovery/ccitt-cropped-columns",
+        "recovery/predictor-image-precision",
+        "recovery/jpx-part-count",
+        "recovery/jpx-misplaced-mapping",
+        "recovery/image-flate-mislabeled-dct",
+        "recovery/image-mislabeled-invalid-checksum",
+        "recovery/image-mislabeled-invalid-trailing",
+        "recovery/image-mislabeled-invalid-length",
+        "recovery/image-mislabeled-invalid-predictor",
+        "recovery/predictor-unusual-valid",
+        "recovery/predictor-retry-invalid-tag"
+      ],
+      "rule": "Repairs retain a missing initial LZW clear dictionary, discard final JPEG restart markers only immediately before EOI after the MCU count, crop excess CCITT columns by encoded row stride, retry syntax failures with conflicting valid predictor precision at the image precision only if decoding succeeds, and discard inconsistent JPX tile-part counts while retaining ordered parts and exact lengths. Strict mode rejects each repair. JPEG recovery follows T.81 B.2.1 and B.2.4.4; JPX follows T.800 A.4.2. A sole misplaced JPX mapping box preceding the codestream supplies the header palette mapping, reported under T.800 I.5.3.4-I.5.3.5. Mislabeled DCT data is recovered as Flate only with matching predictor metadata, strict framing/checksum validation and exact sample length."
+    },
+    {
+      "id": "recovery-image-syntax",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.8.1",
+        "8.6.3",
+        "8.9.5",
+        "8.9.7"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "recovery/inline-empty-filters",
+        "recovery/image-device-array",
+        "recovery/jpx-pdf-palette",
+        "recovery/image-xobject-type"
+      ],
+      "rule": "Empty inline filter arrays are empty chains. Device colour spaces may be expressed as a one-name array, including on image XObjects. An image Subtype permits a reported repair of an invalid optional XObject Type."
+    },
+    {
+      "id": "recovery-content",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.8.2",
+        "8.4.2"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "recovery/unclosed-graphics"
+      ],
+      "rule": "An otherwise complete content sequence with unmatched saved graphics states reports their closure at sequence end. Unfinished operands, paths, text, marked content and compatibility sections still fail."
+    },
+    {
+      "id": "recovery-type3",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.6.4",
+        "Table 111"
+      ],
+      "status": "implemented",
+      "tests": [
+        "recovery/type3-vertical-metric",
+        "recovery/type3-width-advance"
+      ],
+      "rule": "Inconsistent d0/d1 horizontal or vertical metrics are reported while Widths retains the horizontal advance; strict mode rejects the mismatch."
+    },
+    {
+      "id": "recovery-patterns",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.7.3.2",
+        "Table 73"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "recovery/pattern-coloured-underlying",
+        "recovery/pattern-underlying-retained",
+        "recovery/pattern-wrong-unused-count",
+        "recovery/pattern-coloured-base-no-operands"
+      ],
+      "rule": "Coloured patterns paint in their intrinsic colours and accept only their name even if the Pattern colour space declares a base. A reported repair discards extra numeric operands of the selected underlying colour space; wrong types and counts remain syntax errors. The underlying space is retained for later uncoloured patterns."
+    }
+  ]
+}

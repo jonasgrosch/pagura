@@ -19,6 +19,7 @@ impl Compiler<'_> {
         match subtype {
             b"Link" | b"Square" => self.annotation_border(d, rect, subtype == b"Square")?,
             b"Text" => self.annotation_icon(d, rect)?,
+            b"Widget" => self.annotation_widget(d, rect)?,
             _ => {
                 return Err(Error::unsupported(
                     crate::features::ANNOTATION_APPEARANCE,
@@ -136,7 +137,7 @@ impl Compiler<'_> {
             rect,
         )
     }
-    fn annotation_mark(
+    pub(super) fn annotation_mark(
         &mut self,
         d: &Dictionary,
         path: Path,
@@ -178,7 +179,7 @@ impl Compiler<'_> {
         Ok(())
     }
 }
-fn rect_path(r: Rect) -> Path {
+pub(super) fn rect_path(r: Rect) -> Path {
     let mut p = PathBuilder::new();
     p.rect(r.x0, r.y0, r.width(), r.height());
     p.finish()
@@ -207,7 +208,7 @@ fn numbers(document: &pagura_document::Document, value: &Value) -> Result<Vec<f6
         })
         .collect()
 }
-fn annotation_color(
+pub(super) fn annotation_color(
     document: &pagura_document::Document,
     d: &Dictionary,
     key: &[u8],
@@ -300,12 +301,12 @@ fn icon(name: &[u8]) -> (Path, Path) {
     (bg.finish(), p.finish())
 }
 
-struct Border {
-    width: f64,
-    dash: Vec<f64>,
-    underline: bool,
+pub(super) struct Border {
+    pub(super) width: f64,
+    pub(super) dash: Vec<f64>,
+    pub(super) underline: bool,
 }
-fn border(document: &pagura_document::Document, d: &Dictionary) -> Result<Border> {
+pub(super) fn border(document: &pagura_document::Document, d: &Dictionary) -> Result<Border> {
     let (mut width, mut dash, mut style) = (1.0, Vec::new(), b"S".as_slice());
     if let Some(bs) = d.get(b"BS") {
         let bs = document.resolve_dictionary(bs)?;

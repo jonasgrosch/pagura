@@ -121,6 +121,7 @@ impl Color {
         resources: &Dictionary,
         values: &[Value],
         initial: pagura_raster::Transform,
+        position: pagura_core::Position,
     ) -> Result<()> {
         let Self::Pattern { base, selected } = self else {
             return self.set(values);
@@ -142,10 +143,22 @@ impl Color {
                 color.set(components)?;
                 t.color = Some(color);
             }
-            _ if base.is_some() || !components.is_empty() => {
-                return Err(Error::syntax(
-                    "coloured pattern cannot have an underlying colour",
-                ));
+            _ if !components.is_empty() => {
+                if components.iter().any(|v| v.as_number().is_none())
+                    || base
+                        .as_ref()
+                        .is_none_or(|s| s.components() != components.len())
+                {
+                    return Err(Error::syntax("invalid unused pattern colour operands"));
+                }
+                let mut diagnostic = pagura_core::Diagnostic::new(
+                    crate::interpreter::tags::PATTERN_UNDERLYING,
+                    "coloured pattern uses intrinsic colours; extra scn operands ignored (8.7.3.2, Table 73)",
+                ).at(position);
+                if let pagura_core::Position::Stream { object, .. } = position {
+                    diagnostic = diagnostic.in_object(object);
+                }
+                crate::interpreter::repair(document, diagnostic)?;
             }
             _ => {}
         }

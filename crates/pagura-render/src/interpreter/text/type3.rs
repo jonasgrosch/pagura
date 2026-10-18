@@ -61,11 +61,21 @@ impl Compiler<'_> {
         if procedure.phase == Phase::Ready {
             return Err(Error::syntax("duplicate Type3 metrics"));
         }
-        if number(values, 0)? * procedure.expected.1 != procedure.expected.0 {
-            return Err(Error::syntax("Type3 metrics disagree with font Widths"));
-        }
-        if number(values, 1)? != 0.0 {
-            return Err(Error::syntax("Type3 vertical width must be zero"));
+        if number(values, 0)? * procedure.expected.1 != procedure.expected.0
+            || number(values, 1)? != 0.0
+        {
+            super::super::repair(
+                self.document,
+                pagura_core::Diagnostic::new(
+                    super::super::tags::TYPE3_WIDTH,
+                    "d0/d1 metrics disagree with Widths or declare a vertical advance; Widths retained",
+                )
+                .at(self.position)
+                .in_object(match self.position {
+                    pagura_core::Position::Stream { object, .. } => object,
+                    _ => return Err(Error::syntax("Type3 metrics have no stream context")),
+                }),
+            )?;
         }
         if word == b"d1"
             && (number(values, 2)? > number(values, 4)? || number(values, 3)? > number(values, 5)?)

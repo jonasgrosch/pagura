@@ -447,6 +447,19 @@ pub(crate) fn transfer(document: &Document, value: &Value) -> Result<Option<Tran
         if array.len() != 4 {
             return Err(Error::syntax("transfer array requires four functions"));
         }
+        // 10.5: Identity on every device component is the default transfer.
+        // Preserve that identity in transparency classification (11.7.5.2),
+        // rather than treating a syntactic array as a nondefault function.
+        let mut identity = true;
+        for value in array {
+            identity &= document
+                .resolve(value)?
+                .as_name()
+                .is_some_and(|n| n == b"Identity");
+        }
+        if identity {
+            return Ok(None);
+        }
         let values = array
             .iter()
             .map(|v| {

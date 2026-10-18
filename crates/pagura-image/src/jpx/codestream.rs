@@ -1,6 +1,6 @@
 //! Tile assembly and reconstruction, T.800 Annex A, B.1–B.12, E.1 and G.1–G.4.
 
-use pagura_core::{Error, Result};
+use pagura_core::{Error, Position, Result};
 
 use super::coding::{Configuration, Quantization, Style};
 use super::io::{Budget, Reader, area, syntax, usize_from};
@@ -217,6 +217,7 @@ struct Tile {
     next_packet: usize,
     next_part: u16,
     part_count: Option<u16>,
+    ignore_part_count: bool,
     local_poc: bool,
     packed_headers: Option<bool>,
 }
@@ -311,6 +312,7 @@ impl Tile {
             next_packet: 0,
             next_part: 0,
             part_count: None,
+            ignore_part_count: false,
             local_poc,
             packed_headers: None,
         })
@@ -350,6 +352,41 @@ impl Tile {
             self.next_packet += 1;
             sequence = sequence.wrapping_add(1);
         }
+        Ok(())
+    }
+
+    /// T.800 A.4.2: index order and byte lengths define the physical parts;
+    /// inconsistent declarations may be ignored only through reported recovery.
+    fn start_part(
+        &mut self,
+        part: &Part<'_>,
+        position: usize,
+        budget: &mut Budget<'_>,
+    ) -> Result<()> {
+        if self.next_part != part.number {
+            return Err(syntax("out-of-order JPEG 2000 tile-part", position));
+        }
+        if !self.ignore_part_count && part.count != 0 {
+            if part.number >= part.count || self.part_count.is_some_and(|n| n != part.count) {
+                // Ordered, length-delimited parts identify the actual sequence
+                // without guessing payload boundaries (T.800 A.4.2, Table A.5).
+                if !budget.repaired_part_count {
+                    budget.diagnostics.repair(
+                        pagura_core::Diagnostic::new(
+                            crate::tags::JPX_TILE_PART_COUNT,
+                            "inconsistent JPEG 2000 tile-part count ignored (T.800 A.4.2)",
+                        )
+                        .at(Position::Buffer(position)),
+                    )?;
+                    budget.repaired_part_count = true;
+                }
+                self.ignore_part_count = true;
+                self.part_count = None;
+            } else {
+                self.part_count = Some(part.count);
+            }
+        }
+        self.next_part += 1;
         Ok(())
     }
 
@@ -729,15 +766,7 @@ pub(super) fn decode(data: &[u8], base: usize, budget: &mut Budget<'_>) -> Resul
         let tile = tiles[part.index]
             .as_mut()
             .ok_or_else(|| syntax("missing JPEG 2000 tile", next.1))?;
-        if tile.next_part != part.number
-            || part.count != 0 && tile.part_count.is_some_and(|n| n != part.count)
-        {
-            return Err(syntax("out-of-order JPEG 2000 tile-part", next.1));
-        }
-        if part.count != 0 {
-            tile.part_count = Some(part.count);
-        }
-        tile.next_part += 1;
+        tile.start_part(&part, next.1, budget)?;
         if ppm.fragments.present() && ppt.present() {
             return Err(syntax("simultaneous JPEG 2000 PPM and PPT", next.1));
         }
@@ -803,7 +832,7 @@ fn read_part<'a>(
     let number = u16::from(fields.u8()?);
     let count = u16::from(fields.u8()?);
     fields.finish()?;
-    if index >= tiles || number == 255 || count != 0 && number >= count {
+    if index >= tiles || number == 255 {
         return Err(syntax("invalid JPEG 2000 tile-part index", start));
     }
     let end = tile_part_end(data, reader.base, start, length, reader.position())?;

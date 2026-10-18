@@ -267,6 +267,19 @@ fn scan_end(
                 Error::syntax("truncated JPEG scan marker").at(Position::Buffer(marker))
             })?;
             if *code != 0 {
+                if marker == start
+                    && (0xd0..=0xd7).contains(code)
+                    && data.get(offset + 1..offset + 3) == Some(&[255, 217])
+                {
+                    diagnostics.repair(
+                        Diagnostic::new(
+                            super::tags::TRAILING_RESTART,
+                            "JPEG restart marker after final MCU ignored (T.81 B.2.1, B.2.4.4)",
+                        )
+                        .at(Position::Buffer(marker)),
+                    )?;
+                    return Ok(offset + 1);
+                }
                 if marker == start {
                     return Ok(marker);
                 }

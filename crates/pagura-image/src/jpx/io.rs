@@ -1,6 +1,6 @@
 //! Checked binary access and the shared allocation/work budget.
 
-use pagura_core::{Error, Limits, Position, Result};
+use pagura_core::{Diagnostics, Error, Limits, Position, Recovery, Result};
 
 pub(super) fn syntax(message: &'static str, offset: usize) -> Error {
     Error::syntax(message).at(Position::Buffer(offset))
@@ -116,6 +116,8 @@ pub(super) struct Budget<'a> {
     pub limits: &'a Limits,
     bytes: usize,
     work: usize,
+    pub diagnostics: Diagnostics,
+    pub repaired_part_count: bool,
 }
 
 impl<'a> Budget<'a> {
@@ -124,6 +126,8 @@ impl<'a> Budget<'a> {
             limits,
             bytes: 0,
             work: 0,
+            diagnostics: Diagnostics::new(Recovery::Strict),
+            repaired_part_count: false,
         }
     }
 
