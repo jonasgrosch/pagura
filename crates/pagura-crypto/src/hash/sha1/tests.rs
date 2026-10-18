@@ -1,6 +1,6 @@
 use super::*;
-use crate::hash::{Sha224, sha224};
 use crate::rsa::tests::{decode, vectors};
+use crate::{Digest, Sha224};
 
 #[test]
 fn nist_minimized_and_streaming() {
@@ -23,7 +23,7 @@ fn nist_minimized_and_streaming() {
                 }
                 assert_eq!(hash.clone().finalize().as_slice(), expected);
                 assert_eq!(hash.finalize().as_slice(), expected);
-                assert_eq!(sha1(&input).as_slice(), expected);
+                assert_eq!(Sha1::digest(&input).as_slice(), expected);
             } else {
                 let mut hash = Sha224::new();
                 for chunk in input.chunks(size) {
@@ -32,7 +32,7 @@ fn nist_minimized_and_streaming() {
                 }
                 assert_eq!(hash.clone().finalize().as_slice(), expected);
                 assert_eq!(hash.finalize().as_slice(), expected);
-                assert_eq!(sha224(&input).as_slice(), expected);
+                assert_eq!(Sha224::digest(&input).as_slice(), expected);
             }
         }
     }
@@ -59,9 +59,9 @@ fn cached_cavp_byte_suites_including_monte_carlo() {
             for _ in 0..1000 {
                 let joined = [a.as_slice(), b.as_slice(), c.as_slice()].concat();
                 let next = if *algorithm == "SHA1" {
-                    sha1(&joined).to_vec()
+                    Sha1::digest(&joined).to_vec()
                 } else {
-                    sha224(&joined).to_vec()
+                    Sha224::digest(&joined).to_vec()
                 };
                 a = b;
                 b = c;
@@ -73,7 +73,7 @@ fn cached_cavp_byte_suites_including_monte_carlo() {
             for chunk in input.chunks(33) {
                 streamed.update(chunk);
             }
-            let actual = sha1(&input).to_vec();
+            let actual = Sha1::digest(&input).to_vec();
             assert_eq!(streamed.finalize().as_slice(), actual);
             actual
         } else {
@@ -81,7 +81,7 @@ fn cached_cavp_byte_suites_including_monte_carlo() {
             for chunk in input.chunks(33) {
                 streamed.update(chunk);
             }
-            let actual = sha224(&input).to_vec();
+            let actual = Sha224::digest(&input).to_vec();
             assert_eq!(streamed.finalize().as_slice(), actual);
             actual
         };

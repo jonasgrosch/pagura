@@ -11,7 +11,7 @@ use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Limits, Position, Result};
 
 use crate::bigint::{MAX_MODULUS_BITS, Modulus, bit_length};
-use crate::{Sha1, Sha224, Sha256, Sha384, Sha512, Verification};
+use crate::{Digest, Sha1, Sha224, Sha256, Sha384, Sha512, Verification};
 
 mod pss;
 pub use pss::PssParameters;
@@ -67,21 +67,19 @@ impl HashAlgorithm {
     /// Hashes borrowed message parts in iteration order without concatenating them.
     /// Empty parts and an empty iterator are permitted (FIPS 180-4).
     pub fn digest_parts<'a>(self, parts: impl IntoIterator<Item = &'a [u8]>) -> Vec<u8> {
-        macro_rules! digest {
-            ($hash:ty) => {{
-                let mut hash = <$hash>::new();
-                for part in parts {
-                    hash.update(part);
-                }
-                hash.finalize().to_vec()
-            }};
+        fn digest<'a, D: Digest>(parts: impl IntoIterator<Item = &'a [u8]>) -> Vec<u8> {
+            let mut hash = D::default();
+            for part in parts {
+                hash.update(part);
+            }
+            hash.finalize().as_ref().to_vec()
         }
         match self {
-            Self::Sha1 => digest!(Sha1),
-            Self::Sha224 => digest!(Sha224),
-            Self::Sha256 => digest!(Sha256),
-            Self::Sha384 => digest!(Sha384),
-            Self::Sha512 => digest!(Sha512),
+            Self::Sha1 => digest::<Sha1>(parts),
+            Self::Sha224 => digest::<Sha224>(parts),
+            Self::Sha256 => digest::<Sha256>(parts),
+            Self::Sha384 => digest::<Sha384>(parts),
+            Self::Sha512 => digest::<Sha512>(parts),
         }
     }
 

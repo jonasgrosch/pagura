@@ -2,6 +2,7 @@
 
 use super::{Budget, D50, slice, u16_at, u32_at, xyz};
 use pagura_core::{Error, Limits, Result};
+use pagura_crypto::Digest;
 use std::collections::BTreeMap;
 
 pub(super) type Tags<'a> = BTreeMap<[u8; 4], &'a [u8]>;
