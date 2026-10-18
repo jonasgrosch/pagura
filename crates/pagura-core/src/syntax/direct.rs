@@ -45,15 +45,15 @@ pub type DirectStreamHandler<'a, 'h> =
 /// The handler borrow (`'b`) is independent of what the handler captures
 /// (`'h`), so a caller's closure is not forced to outlive its borrow.
 pub(super) struct Context<'a, 'b, 'h> {
-    pub handler: &'b mut DirectStreamHandler<'a, 'h>,
-    pub path: Vec<PathComponent>,
-    pub found: Vec<DirectStream>,
-    pub count: usize,
+    pub(super) handler: &'b mut DirectStreamHandler<'a, 'h>,
+    pub(super) path: Vec<PathComponent>,
+    pub(super) found: Vec<DirectStream>,
+    pub(super) count: usize,
     metadata: Meter,
 }
 
 impl<'a, 'b, 'h> Context<'a, 'b, 'h> {
-    pub fn new(handler: &'b mut DirectStreamHandler<'a, 'h>, limits: &Limits) -> Self {
+    pub(super) fn new(handler: &'b mut DirectStreamHandler<'a, 'h>, limits: &Limits) -> Self {
         Self {
             handler,
             path: Vec::new(),
@@ -69,7 +69,7 @@ impl<'a, 'b, 'h> Context<'a, 'b, 'h> {
     /// Retains a descriptor for the stream whose dictionary is at the current
     /// path. Descriptor growth and the copied path are charged to
     /// [`Limits::document_bytes`] before anything is copied.
-    pub fn record(&mut self, source: Range<usize>, data: Range<usize>) -> Result<()> {
+    pub(super) fn record(&mut self, source: Range<usize>, data: Range<usize>) -> Result<()> {
         let capacity = if self.found.len() == self.found.capacity() {
             self.found.capacity().saturating_mul(2).max(1)
         } else {

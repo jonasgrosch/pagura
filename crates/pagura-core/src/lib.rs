@@ -1,12 +1,23 @@
 #![forbid(unsafe_code)]
+#![warn(unreachable_pub)]
 //! PDF primitives shared by every Pagura crate: the object model, bounded
 //! syntax parsing (ISO 32000-2 clauses 7.2–7.3), structured errors, recovery
 //! diagnostics and resource limits.
+//!
+//! It also holds the primitives every parser shares, so no crate needs its
+//! own copy:
+//! - [`Meter`], the work and memory budget charged against [`Limits`];
+//! - [`bytes::Cursor`] and [`bytes::BitCursor`] for binary formats;
+//! - [`text_string`], the PDF text-string and PDFDocEncoding codec;
+//! - [`Diagnostics::repair_once`], [`Error::within`] and [`ResultExt`] for
+//!   reporting with context;
+//! - [`convert`], lossless integer widening.
 //!
 //! This crate has no knowledge of files, revisions or rendering. It is the
 //! vocabulary the other crates speak.
 
 pub mod bytes;
+pub mod convert;
 mod diagnostic;
 mod dictionary;
 mod error;
