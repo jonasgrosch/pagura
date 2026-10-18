@@ -3,7 +3,7 @@
 //!
 //! Supports 1–16-bit components, multiple tiles and packet-boundary tile-parts,
 //! default and explicit precincts, all five progression orders and POC changes,
-//! PPM/PPT packed headers, complete code-block bit planes across quality layers,
+//! PPM/PPT packed headers, partial code-block bit planes across quality layers,
 //! ROI maxshift, MQ and raw bypass coding, context reset, pass termination,
 //! predictable termination, vertical-causal contexts and segmentation symbols,
 //! 5/3 and 9/7 synthesis, RCT/ICT, palettes and straight or premultiplied opacity.
@@ -11,7 +11,7 @@
 //! Part 2 extensions remain pending primary T.801 review. PDF integration
 //! follows clause 7.4.9 and Table 87.
 //! Unsupported JPX extensions and sample representations return
-//! `Unsupported(filter.JPXDecode)`; no partial image is returned.
+//! `Unsupported(filter.JPXDecode)`; structural truncations remain explicit errors.
 //! ICC bytes and enumerated colour identifiers are preserved for the caller.
 //!
 //! `Limits::stream_bytes` caps encoded input, `pixels` caps the reference-grid

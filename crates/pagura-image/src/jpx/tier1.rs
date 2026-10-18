@@ -7,11 +7,33 @@ use super::mq::{Context, Decoder};
 use super::segments::{self, Segment};
 
 #[derive(Clone, Copy, Default)]
-struct Sample {
+pub(super) struct Sample {
     magnitude: u32,
     negative: bool,
     visited: bool,
     refined: bool,
+    missing: u8,
+}
+
+impl Sample {
+    /// D.2.1, H.1, E-6–E-8: r=1/2, with a coefficient-specific decoded prefix.
+    pub fn reconstruct(self, roi: u8, reversible: bool) -> f64 {
+        let mut magnitude = self.magnitude;
+        let mut missing = self.missing;
+        if roi != 0 && magnitude >= (1_u32 << roi) {
+            magnitude >>= roi;
+            missing = missing.saturating_sub(roi);
+        }
+        if magnitude == 0 {
+            return 0.0;
+        }
+        let offset = if reversible && missing == 0 {
+            0.0
+        } else {
+            f64::from(1_u32 << missing) * 0.5
+        };
+        (f64::from(magnitude) + offset) * if self.negative { -1.0 } else { 1.0 }
+    }
 }
 
 struct Block {
@@ -136,6 +158,7 @@ impl Block {
         let sample = &mut self.samples[y * self.width + x];
         sample.magnitude = 1 << plane;
         sample.negative = negative;
+        sample.missing = plane;
         Ok(())
     }
 
@@ -174,6 +197,7 @@ impl Block {
                     let value = decoder.bit(context)?;
                     self.samples[index].magnitude |= u32::from(value) << plane;
                     self.samples[index].refined = true;
+                    self.samples[index].missing = plane;
                 }
             }
         }
@@ -315,7 +339,7 @@ pub(super) fn decode(
     segments: &[Segment],
     p: &Parameters,
     budget: &mut Budget<'_>,
-) -> Result<Vec<i64>> {
+) -> Result<Vec<Sample>> {
     let base = segments.first().map_or(0, |s| s.base);
     let valid_modes = segments::BYPASS
         | segments::RESET
@@ -325,10 +349,11 @@ pub(super) fn decode(
         | segments::SYMBOLS;
     if p.planes == 0
         || p.planes > 30
-        || p.passes != usize::from(p.planes) * 3 - 2
+        || p.passes == 0
+        || p.passes > usize::from(p.planes) * 3 - 2
         || p.modes & !valid_modes != 0
     {
-        return Err(syntax("invalid or incomplete JPEG 2000 bit planes", base));
+        return Err(syntax("invalid JPEG 2000 bit planes", base));
     }
     let count = p.width * p.height;
     budget.work(
@@ -347,11 +372,7 @@ pub(super) fn decode(
     for segment in segments {
         decode_segment(&mut block, segment, p, &mut contexts)?;
     }
-    let mut result = budget.filled(count, 0_i64)?;
-    for (out, sample) in result.iter_mut().zip(block.samples) {
-        *out = i64::from(sample.magnitude) * if sample.negative { -1 } else { 1 };
-    }
-    Ok(result)
+    Ok(block.samples)
 }
 
 fn decode_segment_inner(
@@ -360,6 +381,11 @@ fn decode_segment_inner(
     p: &Parameters,
     contexts: &mut [Context; 19],
 ) -> Result<()> {
+    // B.10.6/D.4: a final layer may end at a nonterminated coding pass.
+    let end = segment.first + segment.passes;
+    let terminated =
+        end == usize::from(p.planes) * 3 - 2 || end == segments::end(segment.first, p.modes);
+    let predictable = terminated && p.modes & segments::PREDICTABLE != 0;
     let mut decoder = if segments::raw(segment.first, p.modes) {
         Entropy::Raw(Raw {
             data: &segment.data,
@@ -370,12 +396,7 @@ fn decode_segment_inner(
             synthetic: false,
         })
     } else {
-        Entropy::Mq(Decoder::new(
-            &segment.data,
-            0,
-            *contexts,
-            p.modes & segments::PREDICTABLE != 0,
-        )?)
+        Entropy::Mq(Decoder::new(&segment.data, 0, *contexts, predictable)?)
     };
     for pass in segment.first..segment.first + segment.passes {
         let plane = p.planes
@@ -410,7 +431,7 @@ fn decode_segment_inner(
             *contexts = decoder.contexts();
             decoder.finish()?;
         }
-        Entropy::Raw(decoder) => decoder.finish(p.modes & segments::PREDICTABLE != 0)?,
+        Entropy::Raw(decoder) => decoder.finish(predictable)?,
     }
     Ok(())
 }

@@ -1,10 +1,11 @@
 """Independent JPEG 2000 Part 1 encoder and JP2 box fixtures.
 
-The encoder writes full bit planes, rectangular code-blocks, precincts, layers,
+The encoder writes coding-pass prefixes, rectangular code-blocks, precincts, layers,
 progression volumes, packed headers, ROI and all Part 1 block styles. It implements
 forward integer 5/3 lifting, RCT, scalar-quantized 9/7 lifting, tag-tree leaves,
 and MQ arithmetic encoding, using only the Python standard library.
-Expected samples are the input pixels, never the output of a decoder. Lossy
+Expected samples are input pixels or closed-form coefficient reconstructions,
+never the output of a decoder. Lossy
 vectors have an explicit tolerance for quantization. This is test tooling,
 not a general JPEG 2000 encoder.
 """
@@ -104,8 +105,11 @@ class ArithmeticEncoder:
 
 
 class PassEncoder:
-    def __init__(self, planes, modes, roi=0):
+    def __init__(self, planes, modes, roi=0, max_passes=None):
         self.total, self.modes, self.pass_index, self.first = planes*3-2, modes, 0, 0
+        if max_passes is not None:
+            assert 1 <= max_passes <= self.total
+            self.total = max_passes
         self.encoder = ArithmeticEncoder()
         self.state, self.mps = self.encoder.state, self.encoder.mps
         self.raw_bits, self.parts, self.raw = [], [], False
@@ -151,14 +155,14 @@ class PassEncoder:
         self.encoder = ArithmeticEncoder(self.state,self.mps)
 
 
-def encode_block(coefficients, orientation, modes=0, roi=0):
+def encode_block(coefficients, orientation, modes=0, roi=0, max_passes=None):
     height, width = len(coefficients), len(coefficients[0])
     maximum = max(abs(v) for row in coefficients for v in row)
     if maximum == 0:
         return 0, []
     planes = maximum.bit_length()
     sig, visited, refined = set(), set(), set()
-    arithmetic = PassEncoder(planes,modes,roi)
+    arithmetic = PassEncoder(planes,modes,roi,max_passes)
 
     def neighbours(x, y):
         h = [(xx, y) for xx in (x - 1, x + 1) if (xx, y) in sig]
@@ -204,6 +208,8 @@ def encode_block(coefficients, orientation, modes=0, roi=0):
             if modes & 2:
                 arithmetic.reset()
             arithmetic.end_pass()
+            if arithmetic.pass_index == arithmetic.total:
+                return planes, arithmetic.parts
             for x, y in positions:
                 if (x, y) in sig and (x, y) not in visited:
                     context = 16 if (x, y) in refined else 14 + int(zc(x, y) != 0)
@@ -212,6 +218,8 @@ def encode_block(coefficients, orientation, modes=0, roi=0):
             if modes & 2:
                 arithmetic.reset()
             arithmetic.end_pass()
+            if arithmetic.pass_index == arithmetic.total:
+                return planes, arithmetic.parts
         for stripe in range(0, height, 4):
             for x in range(width):
                 end = min(height, stripe + 4)
@@ -237,6 +245,8 @@ def encode_block(coefficients, orientation, modes=0, roi=0):
         if modes & 2:
             arithmetic.reset()
         arithmetic.end_pass()
+        if arithmetic.pass_index == arithmetic.total:
+            return planes, arithmetic.parts
         visited.clear()
     return planes, arithmetic.parts
 
@@ -343,7 +353,7 @@ def partition(band, origin, block_size):
     return len(xs)-1, len(ys)-1, blocks
 
 
-def packet(bands, maxima, origins, block_size=64, modes=0, markers=False, layer=0, roi=0, empty_passes=False):
+def packet(bands, maxima, origins, block_size=64, modes=0, markers=False, layer=0, roi=0, empty_passes=False, max_passes=None):
     header, body = PacketBits(), b""
     present = any(any(v for row in band for v in row) for band in bands)
     header.number(int(present))
@@ -352,7 +362,7 @@ def packet(bands, maxima, origins, block_size=64, modes=0, markers=False, layer=
             columns, rows, blocks = partition(band, origin, block_size)
             if not blocks:
                 continue
-            encoded = [encode_block(block, 0 if len(bands) == 1 else orientation_index+1, modes, roi) for block in blocks]
+            encoded = [encode_block(block, 0 if len(bands) == 1 else orientation_index+1, modes, roi, max_passes) for block in blocks]
             if empty_passes:
                 # D.4.1 allows zero-byte ordinary segments when the pass has no
                 # decisions. In this singleton all samples are already significant.
@@ -368,7 +378,7 @@ def packet(bands, maxima, origins, block_size=64, modes=0, markers=False, layer=
                 zero_planes = maximum - planes
                 assert zero_planes >= 0
                 zeros.write(header, x, y, zero_planes+1)
-                passes = planes * 3 - 2
+                passes = sum(n for n,_ in pieces)
                 if passes == 1:
                     header.number(0)
                 elif passes == 2:
@@ -586,10 +596,10 @@ def pass_count_bits(header,passes):
         header.number(passes-37,7)
 
 
-def layered_codestream(values,modes):
+def layered_codestream(values,modes,max_passes=None):
     """Split one code-block's codewords and passes across two real contributions."""
     source = [[v-128 for v in values[y*8:y*8+8]] for y in range(8)]
-    planes,pieces = encode_block(source,0,modes)
+    planes,pieces = encode_block(source,0,modes,max_passes=max_passes)
     cutoff,done = 11,0
     first,second = [],[]
     for n,data in pieces:
@@ -678,7 +688,7 @@ def vector(name, data, planes, width, height, requirements=("jpx-part1",), toler
                   "Independently encoded input pixels", extra={"color": color, "alpha": alpha})
 
 
-def coefficient_stream(bands, width, height, *, lossy=False, exponents=None, modes=0, empty_passes=False):
+def coefficient_stream(bands, width, height, *, lossy=False, exponents=None, modes=0, empty_passes=False, max_passes=None, roi=0):
     """Encode explicitly chosen coefficients, without invoking the forward DWT.
 
     This separates E.1/F.3 known-answer expectations from the transform encoder.
@@ -691,11 +701,13 @@ def coefficient_stream(bands, width, height, *, lossy=False, exponents=None, mod
     quant = (b"\x42"+b"".join(struct.pack(">H",e << 11) for e in exponents) if lossy
              else b"\x40"+bytes(e << 3 for e in exponents))
     result = base[:qstart]+marker(0x5c,quant)
+    if roi:
+        result += marker(0x5e,bytes([0,0,roi]))
     body = b""
     for r in range(levels+1):
         selected = bands[:1] if r == 0 else bands[1:]
         eps = exponents[:1] if r == 0 else exponents[1:]
-        header,data = packet(selected,[e+1 for e in eps],[(0,0)]*len(selected),modes=modes,empty_passes=empty_passes)
+        header,data = packet(selected,[e+1+roi for e in eps],[(0,0)]*len(selected),modes=modes,empty_passes=empty_passes,max_passes=max_passes,roi=roi)
         body += header+data
     return result+marker(0x90,struct.pack(">HIBB",0,14+len(body),0,1))+b"\xff\x93"+body+b"\xff\xd9"
 
@@ -909,14 +921,114 @@ def cases():
     mismatch = bytearray(raw)
     mismatch[mismatch.index(b"\xff\x52")+13] = 0
     yield rejection("quant-transform-mismatch",bytes(mismatch),("jpx-marker-syntax",),"A.6.4 quantization representation must match the wavelet transform")
-    # B.12.3 permits an incomplete final progression volume; this decoder
-    # explicitly declines partial-quality output rather than calling it corrupt.
+    # B.12.3: keep the original first-resolution prefix. With zero high
+    # bands, F.3.8.1 reduces to exact integer linear interpolation of LL:
+    # even coordinates keep LL; odd coordinates average adjacent LL samples.
     partial = codestream([gray],8,8,levels=1,tile_parts=True)
     first = partial.index(b"\xff\x90")
     end = first+struct.unpack_from(">I",partial,first+6)[0]
     partial = bytearray(partial[:end]+b"\xff\xd9")
     partial[first+11] = 0
-    yield Vector("incomplete-progression",{".jpx":bytes(partial),".error":b"unsupported\n"},("jpx-progression",),"B.12.3 permits an incomplete final volume; partial-quality reconstruction is unsupported",extra={"error":"unsupported"})
+    ll = transform([[v-128 for v in gray[y*8:y*8+8]] for y in range(8)],0,0,1,True)[0]
+    horizontal = [[row[x//2] if x%2 == 0 else (row[x//2]+row[min(x//2+1,3)])//2
+                   for x in range(8)] for row in ll]
+    expected = [max(0,min(255,128+(horizontal[y//2][x] if y%2 == 0 else
+                (horizontal[y//2][x]+horizontal[min(y//2+1,3)][x])//2)))
+                for y in range(8) for x in range(8)]
+    yield vector("incomplete-progression",bytes(partial),[expected],8,8,
+                 ("jpx-progression","jpx-partial-quality","jpx-wavelet"))
+    # A minimal independent F.3 oracle: LL=10 and zero details give four tens.
+    partial = coefficient_stream([[[10]],[[0]],[[0]],[[0]]],2,2)
+    first = partial.index(b"\xff\x90")
+    low_header,low_body = packet([[[10]]],[9],[(0,0)])
+    payload = low_header+low_body
+    partial = partial[:first]+marker(0x90,struct.pack(">HIBB",0,14+len(payload),0,1))+b"\xff\x93"+payload+b"\xff\xd9"
+    yield vector("partial-resolution",partial,[[138]*4],2,2,
+                 ("jpx-progression","jpx-partial-quality","jpx-wavelet"))
+    # D.3/Table D.6, E-7/E-8 with r=1/2. These prefix values are specified
+    # independently of the entropy encoder, including within-bit-plane stops.
+    column = [[10],[1],[3],[-7]]
+    prefixes = [(12,0,0,0),(12,0,0,0),(10,0,0,0),(10,0,0,-6),
+                (10,0,3,-6),(11,0,3,-7),(11,0,3,-7),(11,1,3,-7),
+                (10,1,3,-7),(10,1,3,-7)]
+    for modes in (0,1,2,4,8,16,32,63):
+        for passes,expected in enumerate(prefixes,1):
+            stream = coefficient_stream([column],1,4,modes=modes,max_passes=passes)
+            yield vector(f"partial-column-{modes}-{passes}",stream,
+                         [[128+v for v in expected]],1,4,
+                         ("jpx-partial-quality","jpx-codeblock-modes"))
+    # Once all coefficients are significant, only refinement changes Nb.
+    # Zero low bits make the E-8 midpoint a closed-form oracle in bypass planes.
+    expanded = [[160],[16],[48],[-112]]
+    for modes in (1,17,63):
+        for passes in (11,12,14,15,17,18,20,21):
+            missing = 7-passes//3
+            offset = (1 << (missing-1)) if missing else 0
+            expected = [max(0,min(255,128+(abs(v)+offset)*(1 if v>0 else -1))) for row in expanded for v in row]
+            stream = coefficient_stream([expanded],1,4,modes=modes,max_passes=passes)
+            yield vector(f"partial-bypass-{modes}-{passes}",stream,[expected],1,4,
+                         ("jpx-partial-quality","jpx-codeblock-modes","jpx-termination"))
+    # A nonempty raw significance pass ends before its paired refinement:
+    # the newly significant unit is exact; the older samples retain midpoints.
+    raw_prefix = coefficient_stream([[[160],[1],[48],[-112]]],1,4,modes=17,max_passes=20)
+    yield vector("partial-bypass-significance",raw_prefix,[[255,129,177,15]],1,4,
+                 ("jpx-partial-quality","jpx-codeblock-modes","jpx-termination"))
+    # A small, smooth RGB tile has sparse entropy data but several synthesis
+    # levels. Its exact constant samples also test fused irreversible scaling.
+    flat = [[128]*(64*64)]*3
+    yield vector("wavelet-budget",codestream(flat,64,64,levels=5,mct=True,lossy=True),
+                 flat,64,64,("jpx-wavelet","jpx-hostile"))
+    # Remove the final layer's packets but keep its COD declaration. The
+    # earlier packet is a real contribution, rather than an empty layer.
+    layer = bytearray(coefficient_stream([column],1,4,max_passes=5))
+    cod = layer.index(b"\xff\x52")
+    struct.pack_into(">H",layer,cod+6,2)
+    yield vector("partial-layer",bytes(layer),[[138,128,131,122]],1,4,
+                 ("jpx-partial-quality","jpx-progression"))
+    # Two nonempty quality layers, ending after the cleanup of plane three.
+    # The arithmetic codeword may continue across the layer boundary.
+    prefix_samples = []
+    for v in gray:
+        q = v-128
+        magnitude = (abs(q)//8)*8
+        prefix_samples.append(max(0,min(255,128+((magnitude+4)*(1 if q>0 else -1) if magnitude else 0))))
+    for modes in (0,1,4,63):
+        yield vector(f"partial-layer-contributions-{modes}",layered_codestream(gray,modes,max_passes=13),
+                     [prefix_samples],8,8,("jpx-partial-quality","jpx-progression","jpx-codeblock-modes"))
+    # E-6, Delta=1, r=1/2: unlike E-7, full irreversible magnitudes retain
+    # the half-unit offset. Round coefficients away from zero at a tie, then
+    # apply the G.1.2 level shift (the decoder's documented output choice).
+    for passes,expected in enumerate(prefixes,1):
+        values = [128+(v if passes < 9 or v == 0 else v+(1 if v>0 else -1)) for v in expected]
+        if passes == 8:
+            values[1] = 130  # First significance at the last plane: 1 + 1/2.
+        stream = coefficient_stream([column],1,4,lossy=True,max_passes=passes)
+        yield vector(f"partial-irreversible-{passes}",stream,[values],1,4,
+                     ("jpx-partial-quality","jpx-irreversible"))
+    # H.1: the three ROI coefficients have four extra coding planes, while
+    # the background coefficient is not shifted. The initial prefixes agree
+    # with the same column; background significance arrives in the last plane.
+    shifted = [[160],[1],[48],[-112]]
+    for passes,expected in enumerate(prefixes[:9],1):
+        stream = coefficient_stream([shifted],1,4,roi=4,max_passes=passes)
+        values = [128+v for v in expected]
+        values[1] = 128
+        yield vector(f"partial-roi-{passes}",stream,[values],1,4,
+                     ("jpx-partial-quality","jpx-roi"))
+    # H.1 background realignment retains one missing bit until refinement;
+    # ROI coefficients already have all their original bits at these stops.
+    for passes in (17,18,19,20,21):
+        stream = coefficient_stream([[[160],[2],[48],[-112]]],1,4,roi=4,max_passes=passes)
+        yield vector(f"partial-roi-background-{passes}",stream,
+                     [[138,131 if passes < 21 else 130,131,121]],1,4,
+                     ("jpx-partial-quality","jpx-roi"))
+    bad_count = bytearray(codestream([gray],8,8,levels=1,tile_parts=True))
+    pos = bad_count.index(b"\xff\x90")
+    while bad_count[pos:pos+2] == b"\xff\x90":
+        bad_count[pos+11] = 1  # Two actual parts, a declared count of one.
+        pos += struct.unpack_from(">I",bad_count,pos+6)[0]
+    yield rejection("tile-part-count",bytes(bad_count),("jpx-tiles","jpx-marker-syntax"),
+                    "A.4.2 counts tile-parts, rather than recording the last index")
     # A.7.5 permits PPT to precede its data in an earlier tile-part; report the
     # unsupported organization explicitly, rather than calling valid data malformed.
     early = bytearray(codestream([gray],8,8,levels=1,packed="ppt",tile_parts=True))

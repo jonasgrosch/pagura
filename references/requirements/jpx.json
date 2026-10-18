@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "jpx",
-  "scope": "Reviewed the implemented Part 1 decoding subset against ITU-T T.800 (06/2019), local itu-t800-2019.txt: Annex A marker syntax and placement; B.1-B.12 grids, partitions, packets and progressions; C.3 and Table C.2 arithmetic decoding; D.1-D.7 coefficient modelling and termination; E.1 dequantization; F.2-F.3 synthesis; G.1-G.4 level shift, component transforms and sampling; H.1 ROI; I.3-I.5 and I.8 JP2 boxes. Per-requirement verdicts distinguish agreement, corrected disagreements, documented choices and explicit unsupported subsets; this is not complete format conformance certification. PDF permissions and dictionary contracts remain checked against ISO 32000-2 EC3 7.4.9 and 8.9.5 Table 87. Only Part 2 extension semantics (T.801), ICC profile conformance (ISO 15076-1/ICC.1) and external colour definitions remain pending primary-text review; their bytes/identifiers are preserved without colour conversion.",
+  "scope": "Reviewed the implemented Part 1 decoding subset against ITU-T T.800 (06/2019), local itu-t800-2019.txt: Annex A marker syntax and placement; B.1-B.12 grids, partitions, packets and progressions; C.3 and Table C.2 arithmetic decoding; D.1-D.7 coefficient modelling and termination; E.1 dequantization; F.2-F.3 synthesis; G.1-G.4 level shift, component transforms and sampling; H.1 ROI; I.3-I.5 and I.8 JP2 boxes. Per-requirement verdicts distinguish agreement, corrected disagreements, documented choices and explicit unsupported subsets; this is not complete format conformance certification. PDF permissions and dictionary contracts remain checked against ISO 32000-2 EC3 7.4.9 and 8.9.5 Table 87. Only Part 2 extension semantics (T.801), ICC profile conformance (ISO 15076-1/ICC.1) and external colour definitions remain pending primary-text review; their bytes/identifiers are preserved without colour conversion. Coding-pass prefix reconstruction is additionally verified against D.2.1/D.3, E-6-E-8 and H.1, with packet-boundary incomplete final volumes under B.10/B.12.3; no physical missing-byte repair is implied.",
   "requirements": [
     {
       "id": "jpx-part1",
@@ -47,7 +47,7 @@
         "jpx/pdf-depth-17",
         "jpx/model-column"
       ],
-      "gaps": "Samples above 16 bits, coded magnitudes above 30 bits and partial bit-plane quality output are explicitly Unsupported.",
+      "gaps": "Samples above 16 bits and coded magnitudes above 30 bits are explicitly Unsupported. Coding-pass prefixes are supported; see jpx-partial-quality.",
       "pdf_review": {
         "rule": "PDF allows different per-component depths from 1 through 38; JPEG 2000 algorithms are delegated to the external format standard.",
         "verdict": "PDF rule checked; corrected for the supported Part 1 subset; see codec_review and gaps",
@@ -97,7 +97,8 @@
         "jpx/singleton-1-1-1-1-0",
         "jpx/singleton-1-1-1-1-1",
         "jpx/lifting-known-answer",
-        "jpx/quant-gain-known-answer"
+        "jpx/quant-gain-known-answer",
+        "jpx/wavelet-budget"
       ],
       "gaps": "Floating-point 9/7 arithmetic uses Table F.4 approximations; reversible intermediates exceeding the exact arithmetic bound return Unsupported.",
       "pdf_review": {
@@ -128,7 +129,7 @@
         "7.4.9"
       ],
       "codec_reference": "ITU-T T.800 (06/2019), B.8-B.12.3, A.8.1, A.8.2",
-      "status": "Corrected: Corrected mandatory-SOP handling, tile-part sequence resets, and rejection of unspecified packet padding bits. Added unused-padding and optional-SOP vectors. An incomplete final progression volume is permitted by B.12.3 and is now classified Unsupported rather than malformed.",
+      "status": "Corrected: Corrected mandatory-SOP handling, tile-part sequence resets, and rejection of unspecified packet padding bits. Added unused-padding and optional-SOP vectors. An incomplete final progression volume is permitted by B.12.3 and is reconstructed from its available coding passes.",
       "tests": [
         "jpx/rct-progression-0",
         "jpx/rct-progression-1",
@@ -158,11 +159,11 @@
         "jpx/packet-unused-bits",
         "jpx/incomplete-progression"
       ],
-      "gaps": "Incomplete final volumes and partial bit-plane reconstruction remain unsupported; no successful partial image is returned.",
+      "gaps": "Complete packet-boundary prefixes, including an incomplete final progression volume, are reconstructed. Missing bytes inside a declared packet, missing declared tile-parts and missing tiles remain syntax errors.",
       "pdf_review": {
         "rule": "JPEG 2000 progression information is carried by the image data; PDF supplies no decoding parameters for it.",
         "verdict": "PDF rule checked; corrected for the supported Part 1 subset; see codec_review and gaps",
-        "implementation_expectations": "Corrected mandatory-SOP handling, tile-part sequence resets, and rejection of unspecified packet padding bits. Added unused-padding and optional-SOP vectors. An incomplete final progression volume is permitted by B.12.3 and is now classified Unsupported rather than malformed.",
+        "implementation_expectations": "Corrected mandatory-SOP handling, tile-part sequence resets, and rejection of unspecified packet padding bits. Added unused-padding and optional-SOP vectors. An incomplete final progression volume is permitted by B.12.3 and is reconstructed from its available coding passes.",
         "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9, lines 3561-3702",
         "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification"
       },
@@ -176,7 +177,7 @@
         ],
         "rule": "Packets identify one layer/component/resolution/precinct, inherit inclusion state across layers, and follow progression volumes without repeating packets; SOP is optional when enabled and its sequence counts packets across the tile.",
         "verdict": "Corrected",
-        "implementation_expectations": "Corrected mandatory-SOP handling, tile-part sequence resets, and rejection of unspecified packet padding bits. Added unused-padding and optional-SOP vectors. An incomplete final progression volume is permitted by B.12.3 and is now classified Unsupported rather than malformed."
+        "implementation_expectations": "Corrected mandatory-SOP handling, tile-part sequence resets, and rejection of unspecified packet padding bits. Added unused-padding and optional-SOP vectors. An incomplete final progression volume is permitted by B.12.3 and is reconstructed from its available coding passes."
       }
     },
     {
@@ -231,7 +232,8 @@
         "jpx/precincts-tiles",
         "jpx/tile-coding",
         "jpx/final-tile-part",
-        "jpx/tile-part-index-255"
+        "jpx/tile-part-index-255",
+        "jpx/tile-part-count"
       ],
       "gaps": "Extended capability/profile-specific machinery, PLM and CRG remain explicitly unsupported. Tile and allocation/work caps are project policy.",
       "pdf_review": {
@@ -416,7 +418,8 @@
         "jpx/ppm-index",
         "jpx/ppt-index",
         "jpx/packed-conflict",
-        "jpx/ppm-unused"
+        "jpx/ppm-unused",
+        "jpx/wavelet-budget"
       ],
       "gaps": "This decoder is not a complete codestream conformance validator: optional TLM/PLT hints receive structural validation but are not used for seeking or fully cross-checked against decoded lengths.",
       "pdf_review": {
@@ -466,7 +469,7 @@
         "jpx/pdf-colour-12",
         "jpx/pdf-depth-17"
       ],
-      "gaps": "The image facade must adopt decode_with_options and use its placement/kind metadata. Full-file enforcement and PDF dictionary semantics remain caller responsibilities; T.801-only baseline details remain pending.",
+      "gaps": "The image facade uses decode_with_options with origin/kind metadata. PDF dictionary semantics and recovery diagnostics remain caller responsibilities; T.801-only baseline details remain pending.",
       "codec_reference": "ITU-T T.800 (06/2019), A.5.1, B.2, G.4, I.5.3.6, Table I.16, Table I.17",
       "codec_review": {
         "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
@@ -567,7 +570,7 @@
         "jpx/poc-range",
         "jpx/poc-wide-zero-end"
       ],
-      "gaps": "Incomplete final volumes are explicitly Unsupported; no normative claim is inferred from OpenJPEG acceptance of retroactive declarations.",
+      "gaps": "The final progression volume may be incomplete. No normative claim is inferred from OpenJPEG acceptance of retroactive declarations.",
       "codec_review": {
         "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
         "source": "text/itu-t800-2019.txt",
@@ -639,7 +642,7 @@
         "7.4.9"
       ],
       "codec_reference": "ITU-T T.800 (06/2019), A.6.3, Table A.26, D.2.2, D.6, H.1, H.2.1",
-      "status": "Corrected: ROI de-scaling agrees with H.1 for full decoded coefficients. Removed the ROI-dependent delay in bypass selection: D.6 counts significant bit-planes without adding the ROI shift. Generator and Rust now agree with this text-derived rule; OpenJPEG differs on ROI+bypass vectors.",
+      "status": "Corrected: ROI de-scaling agrees with H.1 for full and partially decoded coefficients. Removed the ROI-dependent delay in bypass selection: D.6 counts significant bit-planes without adding the ROI shift. Generator and Rust now agree with this text-derived rule; OpenJPEG differs on ROI+bypass vectors.",
       "pdf_review": {
         "rule": "PDF permits JPEG 2000 image data and delegates ROI encoding mechanics to the format standard.",
         "locator_verdict": "checked against the stated local PDF text; the separate codec_review records Part 1 verification",
@@ -668,7 +671,7 @@
         ],
         "rule": "Maxshift adds coding precision and separates ROI/background magnitude ranges; the ordinary bit-plane scan is unchanged and bypass starts at the fifth significant bit-plane.",
         "verdict": "Corrected",
-        "implementation_expectations": "ROI de-scaling agrees with H.1 for full decoded coefficients. Removed the ROI-dependent delay in bypass selection: D.6 counts significant bit-planes without adding the ROI shift. Generator and Rust now agree with this text-derived rule; OpenJPEG differs on ROI+bypass vectors."
+        "implementation_expectations": "ROI de-scaling agrees with H.1 for full and partially decoded coefficients. Removed the ROI-dependent delay in bypass selection: D.6 counts significant bit-planes without adding the ROI shift. Generator and Rust now agree with this text-derived rule; OpenJPEG differs on ROI+bypass vectors."
       }
     },
     {
@@ -712,7 +715,7 @@
         "jpx/combined-reversible",
         "jpx/roi-bypass"
       ],
-      "gaps": "Partial-quality block reconstruction remains Unsupported; predictable verification uses a constant-storage arithmetic interval replay.",
+      "gaps": "Coding-pass prefixes are supported. Predictable verification uses a constant-storage arithmetic interval replay at known termination boundaries; a truncated nonterminated final codeword has no canonical flush to check.",
       "codec_review": {
         "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
         "source": "text/itu-t800-2019.txt",
@@ -745,7 +748,8 @@
         "jpx/quant-extra-steps",
         "jpx/tlm-empty",
         "jpx/comment-registration",
-        "jpx/tile-part-index-255"
+        "jpx/tile-part-index-255",
+        "jpx/tile-part-count"
       ],
       "gaps": "CAP, PRF, PLM, CRG and unsupported capability/profile machinery return Unsupported. TLM/PLT are structurally checked but consistency with all decoded byte lengths is not fully validated.",
       "codec_review": {
@@ -854,6 +858,178 @@
         "rule": "Component samples lie at integer multiples of SIZ separation; their first in-image coordinate uses ceiling division, independently in each axis.",
         "verdict": "Implemented / verified",
         "implementation_expectations": "Returned component_geometry preserves spacing and first-sample reference-grid origin after palette mapping and cdef reordering. A nonzero-origin three-component vector has different non-power-of-two steps and independent B-1/B-2 placement/sample expectations."
+      }
+    },
+    {
+      "id": "jpx-partial-quality",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.9"
+      ],
+      "codec_reference": "ITU-T T.800 (06/2019), B.10.6-B.10.7, B.12.3, D.2.1, D.3.1-D.3.5, D.4.1-D.4.3, E.1.1.2, E.1.2.2, H.1",
+      "status": "Implemented / verified: each significant coefficient retains its last decoded plane. Significance and refinement update that plane independently. Available pass prefixes, omitted final layers and complete packet-boundary tile-part prefixes reconstruct without fabricating further decisions. Table D.6-derived prefixes and closed-form bypass/ROI/irreversible expectations agree; structural missing data and invalid part counts remain errors.",
+      "tests": [
+        "jpx/incomplete-progression",
+        "jpx/partial-resolution",
+        "jpx/partial-column-0-1",
+        "jpx/partial-column-0-2",
+        "jpx/partial-column-0-3",
+        "jpx/partial-column-0-4",
+        "jpx/partial-column-0-5",
+        "jpx/partial-column-0-6",
+        "jpx/partial-column-0-7",
+        "jpx/partial-column-0-8",
+        "jpx/partial-column-0-9",
+        "jpx/partial-column-0-10",
+        "jpx/partial-column-1-1",
+        "jpx/partial-column-1-2",
+        "jpx/partial-column-1-3",
+        "jpx/partial-column-1-4",
+        "jpx/partial-column-1-5",
+        "jpx/partial-column-1-6",
+        "jpx/partial-column-1-7",
+        "jpx/partial-column-1-8",
+        "jpx/partial-column-1-9",
+        "jpx/partial-column-1-10",
+        "jpx/partial-column-2-1",
+        "jpx/partial-column-2-2",
+        "jpx/partial-column-2-3",
+        "jpx/partial-column-2-4",
+        "jpx/partial-column-2-5",
+        "jpx/partial-column-2-6",
+        "jpx/partial-column-2-7",
+        "jpx/partial-column-2-8",
+        "jpx/partial-column-2-9",
+        "jpx/partial-column-2-10",
+        "jpx/partial-column-4-1",
+        "jpx/partial-column-4-2",
+        "jpx/partial-column-4-3",
+        "jpx/partial-column-4-4",
+        "jpx/partial-column-4-5",
+        "jpx/partial-column-4-6",
+        "jpx/partial-column-4-7",
+        "jpx/partial-column-4-8",
+        "jpx/partial-column-4-9",
+        "jpx/partial-column-4-10",
+        "jpx/partial-column-8-1",
+        "jpx/partial-column-8-2",
+        "jpx/partial-column-8-3",
+        "jpx/partial-column-8-4",
+        "jpx/partial-column-8-5",
+        "jpx/partial-column-8-6",
+        "jpx/partial-column-8-7",
+        "jpx/partial-column-8-8",
+        "jpx/partial-column-8-9",
+        "jpx/partial-column-8-10",
+        "jpx/partial-column-16-1",
+        "jpx/partial-column-16-2",
+        "jpx/partial-column-16-3",
+        "jpx/partial-column-16-4",
+        "jpx/partial-column-16-5",
+        "jpx/partial-column-16-6",
+        "jpx/partial-column-16-7",
+        "jpx/partial-column-16-8",
+        "jpx/partial-column-16-9",
+        "jpx/partial-column-16-10",
+        "jpx/partial-column-32-1",
+        "jpx/partial-column-32-2",
+        "jpx/partial-column-32-3",
+        "jpx/partial-column-32-4",
+        "jpx/partial-column-32-5",
+        "jpx/partial-column-32-6",
+        "jpx/partial-column-32-7",
+        "jpx/partial-column-32-8",
+        "jpx/partial-column-32-9",
+        "jpx/partial-column-32-10",
+        "jpx/partial-column-63-1",
+        "jpx/partial-column-63-2",
+        "jpx/partial-column-63-3",
+        "jpx/partial-column-63-4",
+        "jpx/partial-column-63-5",
+        "jpx/partial-column-63-6",
+        "jpx/partial-column-63-7",
+        "jpx/partial-column-63-8",
+        "jpx/partial-column-63-9",
+        "jpx/partial-column-63-10",
+        "jpx/partial-bypass-1-11",
+        "jpx/partial-bypass-1-12",
+        "jpx/partial-bypass-1-14",
+        "jpx/partial-bypass-1-15",
+        "jpx/partial-bypass-1-17",
+        "jpx/partial-bypass-1-18",
+        "jpx/partial-bypass-1-20",
+        "jpx/partial-bypass-1-21",
+        "jpx/partial-bypass-17-11",
+        "jpx/partial-bypass-17-12",
+        "jpx/partial-bypass-17-14",
+        "jpx/partial-bypass-17-15",
+        "jpx/partial-bypass-17-17",
+        "jpx/partial-bypass-17-18",
+        "jpx/partial-bypass-17-20",
+        "jpx/partial-bypass-17-21",
+        "jpx/partial-bypass-63-11",
+        "jpx/partial-bypass-63-12",
+        "jpx/partial-bypass-63-14",
+        "jpx/partial-bypass-63-15",
+        "jpx/partial-bypass-63-17",
+        "jpx/partial-bypass-63-18",
+        "jpx/partial-bypass-63-20",
+        "jpx/partial-bypass-63-21",
+        "jpx/partial-bypass-significance",
+        "jpx/partial-layer",
+        "jpx/partial-layer-contributions-0",
+        "jpx/partial-layer-contributions-1",
+        "jpx/partial-layer-contributions-4",
+        "jpx/partial-layer-contributions-63",
+        "jpx/partial-irreversible-1",
+        "jpx/partial-irreversible-2",
+        "jpx/partial-irreversible-3",
+        "jpx/partial-irreversible-4",
+        "jpx/partial-irreversible-5",
+        "jpx/partial-irreversible-6",
+        "jpx/partial-irreversible-7",
+        "jpx/partial-irreversible-8",
+        "jpx/partial-irreversible-9",
+        "jpx/partial-irreversible-10",
+        "jpx/partial-roi-1",
+        "jpx/partial-roi-2",
+        "jpx/partial-roi-3",
+        "jpx/partial-roi-4",
+        "jpx/partial-roi-5",
+        "jpx/partial-roi-6",
+        "jpx/partial-roi-7",
+        "jpx/partial-roi-8",
+        "jpx/partial-roi-9",
+        "jpx/partial-roi-background-17",
+        "jpx/partial-roi-background-18",
+        "jpx/partial-roi-background-19",
+        "jpx/partial-roi-background-20",
+        "jpx/partial-roi-background-21"
+      ],
+      "gaps": "Physical truncation inside a declared packet, absent declared tile-parts and absent tiles remain explicit syntax errors. Arbitrary nonterminated final prefixes do not admit a canonical predictable-tail comparison; mandatory style-defined boundaries are still checked. The existing 16-bit sample and 30-bit coefficient caps remain.",
+      "pdf_review": {
+        "rule": "PDF delegates embedded quality progressions to JPEG 2000 decoding.",
+        "verdict": "Verified against ISO 32000-2 7.4.9; coefficient reconstruction verified separately against T.800.",
+        "source": "ISO_32000-2_sponsored_EC3.txt: clause 7.4.9",
+        "locator_verdict": "checked",
+        "implementation_expectations": "Implemented / verified: each significant coefficient retains its last decoded plane. Significance and refinement update that plane independently. Available pass prefixes, omitted final layers and complete packet-boundary tile-part prefixes reconstruct without fabricating further decisions. Table D.6-derived prefixes and closed-form bypass/ROI/irreversible expectations agree; structural missing data and invalid part counts remain errors."
+      },
+      "codec_review": {
+        "standard": "ITU-T T.800 (06/2019) / ISO/IEC 15444-1:2019",
+        "source": "text/itu-t800-2019.txt",
+        "clauses": [
+          "B.10.6-B.10.7",
+          "B.12.3",
+          "D.2.1",
+          "D.3.1-D.3.5",
+          "D.4.1-D.4.3",
+          "E.1.1.2",
+          "E.1.2.2",
+          "H.1"
+        ],
+        "rule": "D.2.1 counts decoded magnitude bits per coefficient, not per block. E-6/E-8 reconstruct a nonzero decoded prefix q with sign(q) * (abs(q) + r * 2^(Mb-Nb)); r=1/2 is the documented choice. Reversible fully decoded coefficients use E-7 with no offset. Zero stays zero; H.1 realigns ROI prefixes before reconstruction. B.10 permits pass-count contributions and B.12.3 permits an incomplete final progression volume.",
+        "verdict": "Implemented / verified",
+        "implementation_expectations": "Implemented / verified: each significant coefficient retains its last decoded plane. Significance and refinement update that plane independently. Available pass prefixes, omitted final layers and complete packet-boundary tile-part prefixes reconstruct without fabricating further decisions. Table D.6-derived prefixes and closed-form bypass/ROI/irreversible expectations agree; structural missing data and invalid part counts remain errors."
       }
     }
   ],
@@ -1024,5 +1200,71 @@
       ],
       "verdict": "reviewed, explicitly Unsupported; CRG fractional placement is not silently discarded"
     }
-  ]
+  ],
+  "fault_decisions": [
+    {
+      "fault": "tile-part count records the last index rather than the number of parts",
+      "clauses": [
+        "T.800 A.4.2, Tables A.5-A.6"
+      ],
+      "verdict": "Malformed: TNsot=5 cannot describe indices 0 through 5. Retain positioned Syntax. A bounded off-by-one recovery would require Recovery/Diagnostics at the codec boundary and an explicit repair tag under ADR 0003; no silent recovery."
+    },
+    {
+      "fault": "PDF Indexed colour space with one codestream component mapped through a four-column JP2 palette",
+      "clauses": [
+        "ISO 32000-2 7.4.9",
+        "T.800 I.5.3.4-I.5.3.5"
+      ],
+      "verdict": "The ordinary channel count after cmap is four, while PDF Indexed requires one input component. Retain the image facade mismatch error. Ignoring colr does not erase cmap channel definitions; choosing the PDF palette over the embedded palette would be a reported recovery requiring image-layer changes."
+    }
+  ],
+  "partial_quality_evidence": {
+    "vectors": 137,
+    "oracle": "Coefficient prefixes from T.800 D.3/Table D.6; coefficient-specific E-6/E-8 midpoints; H.1 ROI realignment; zero-detail F.3.8.1 interpolation. Expected samples are computed independently of Rust and of decoder output.",
+    "rust": "Exact agreement with every new sample oracle, including irreversible prefix cases.",
+    "openjpeg": "OpenJPEG 2.5.4 supports the normative review: 135 exact comparisons; two single-sample differences of one on partial-irreversible-9 and partial-irreversible-10. These are the existing signed coefficient tie-rounding choice before level shifting, not a change to fixture tolerances.",
+    "rounding_choice": "Choose r=1/2; round reconstructed signed coefficients to nearest integer, ties away from zero, then level shift and clip. Reversible E-8 produces exact integer midpoints."
+  },
+  "performance_evidence": {
+    "profile": "An 846 x 1103 three-component, five-level irreversible image charges 82,966,761 work units before correction: 59,684,688 for wavelet synthesis, 2,555,246 for coefficient pass scans. Diagnostic phase timing measured about 17 ms in synthesis of about 58 ms total; system sampling was unavailable, so phase timers and budget attribution were used.",
+    "cause": "The fixed 16-units-per-sample synthesis estimate exceeds the actual coefficient traversals. Two standalone scaling traversals and a second tier-1 coefficient allocation are also unnecessary.",
+    "change": "Fuse row scaling into subband interleaving and column scaling into the existing gather. Preserve the order of every floating-point multiplication and lift. Charge seven coefficient visits per synthesis sample (three copies, plus four lifting/range-check visits), with allocation initialization charged separately. Return coefficient state directly rather than copying it to an i64 vector.",
+    "work_units_after": 48853774,
+    "limits": "The default 50,000,000 operation limit and every allocation/pixel limit remain unchanged. Dense or larger images may still exceed these limits.",
+    "code_delta": "Wavelet implementation: 23 lines added, 7 removed. Tier-1 direct return removes a five-line allocation/conversion sequence (replaced by one direct return); the per-coefficient prefix counter fits the existing sample-state padding. Prefix correctness changes are separate from the optimization.",
+    "alternatives": "A strided in-place column experiment was slower and was discarded. No context cache, threading, architecture-specific code or increased resource limit was added.",
+    "equivalence": "94 previously supported real-file codestreams and 125 generated codestream/container vectors compare identical in all returned samples and metadata, under the same diagnostic resource allowance.",
+    "measurement": {
+      "case": "One 846 x 1103 irreversible synthesis level with dense LL and zero high bands; identical optimized Rust build for both implementations. Five alternating pairs of 60 iterations. Child user+system CPU time avoids host scheduling delay; startup/input setup is included in both sides.",
+      "cpu_ms_before": 6.8829,
+      "cpu_ms_after": 5.0817,
+      "reduction_percent": 26.17,
+      "scope": "Native synthesis microbenchmark, not an end-to-end renderer speed claim."
+    },
+    "remaining_dense_case": "A real-world image of 1394 x 1058 RGB with dense coded coefficients: 184,456,854 units before and 126,971,331 after. Even the corrected accounting exceeds the unchanged 50,000,000 cap; the limit remains explicit.",
+    "realworld_validation": {
+      "before_rendered": 12380,
+      "after_rendered": 12861,
+      "enumerated_pages": 14918,
+      "previously_successful_pages_lost": 0,
+      "partial_quality_failures": {
+        "before": 493,
+        "now_rendered": 479,
+        "now_work_limit": 13,
+        "now_outline_error": 1
+      },
+      "original_work_limit_failures": {
+        "before": 31,
+        "now_rendered": 2,
+        "now_work_limit": 6,
+        "now_malformed_decodeparms": 23
+      },
+      "unchanged_explicit_errors": {
+        "tile_part_count": 5,
+        "pdf_channel_count": 4
+      },
+      "method": "All 1000 corpus files scanned at 72 dpi (998 PDF headers). Initial harness used 60 CPU seconds per document. Native uncapped rescans completed 0315, 0522 and 0888; two pre-existing timeouts remain excluded. Product Limits unchanged.",
+      "comparison": "Each document/page success set was compared, rather than only comparing totals. Three harness timeouts were completed with the native scan command; the two original timeouts remain excluded. No product Limits were raised."
+    }
+  }
 }

@@ -193,6 +193,26 @@ fn limits_bound_input_pixels_allocations_and_work() {
 }
 
 #[test]
+fn smooth_tile_synthesis_stays_within_work_budget() -> pagura_core::Result<()> {
+    let limits = Limits {
+        operations: 250_000,
+        ..Limits::default()
+    };
+    let image = decode(&fixture("jpx", "wavelet-budget.jpx"), &limits)?;
+    assert_eq!(
+        (image.width, image.height, image.components.len()),
+        (64, 64, 3)
+    );
+    assert!(
+        image
+            .components
+            .iter()
+            .all(|c| c.samples.iter().all(|&v| v == 128))
+    );
+    Ok(())
+}
+
+#[test]
 fn reserved_coding_modes_are_rejected() -> Result<(), Box<dyn std::error::Error>> {
     let data = fixture("jpx", "gray.jpx");
     let cod = data

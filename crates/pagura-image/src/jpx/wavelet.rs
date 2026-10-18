@@ -24,6 +24,9 @@ impl Plane {
     }
 }
 
+const K: f64 = 1.230_174_104_914_001;
+
+// Irreversible inputs are scaled while copying into the row/column.
 fn inverse_line(line: &mut [f64], origin: u32, reversible: bool) -> Result<()> {
     if line.len() == 1 {
         if origin % 2 == 1 {
@@ -37,10 +40,6 @@ fn inverse_line(line: &mut [f64], origin: u32, reversible: bool) -> Result<()> {
         lift(line, low, |sum| -((sum + 2.0) / 4.0).floor());
         lift(line, high, |sum| (sum / 2.0).floor());
     } else {
-        const K: f64 = 1.230_174_104_914_001;
-        for (i, value) in line.iter_mut().enumerate() {
-            *value *= if i % 2 == low { K } else { 1.0 / K };
-        }
         lift(line, low, |sum| -0.443_506_852_043_971 * sum);
         lift(line, high, |sum| -0.882_911_075_530_934 * sum);
         lift(line, low, |sum| 0.052_980_118_572_961 * sum);
@@ -79,19 +78,29 @@ pub(super) fn synthesize(
     let mut result = Plane::new(x0, y0, x1, y1, budget)?;
     let width = usize_from(result.width)?;
     let height = usize_from(result.height)?;
+    // Bound coefficient visits: interleaving, column gather/scatter, and
+    // four half-line lifts in each direction (or two lifts plus range checks).
+    // Scaling is fused into the copies; allocation initialization is separate.
     budget.work(
         area(result.width, result.height)?
-            .checked_mul(16)
+            .checked_mul(7)
             .ok_or_else(|| pagura_core::Error::limit("JPEG 2000 wavelet work overflow"))?,
     )?;
     for (orientation, band) in [low, high[0], high[1], high[2]].iter().enumerate() {
         let start_x = usize::from((x0 % 2 == 1) ^ (orientation % 2 == 1));
         let start_y = usize::from((y0 % 2 == 1) ^ (orientation >= 2));
         let band_width = usize_from(band.width)?;
+        let scale = if reversible || width <= 1 {
+            1.0
+        } else if orientation % 2 == 0 {
+            K
+        } else {
+            1.0 / K
+        };
         for y in 0..usize_from(band.height)? {
             for x in 0..band_width {
                 result.values[(2 * y + start_y) * width + 2 * x + start_x] =
-                    band.values[y * band_width + x];
+                    band.values[y * band_width + x] * scale;
             }
         }
     }
@@ -104,7 +113,14 @@ pub(super) fn synthesize(
     // T.800 F.3.2 requires horizontal synthesis before vertical synthesis.
     for x in 0..width {
         for (y, value) in column.iter_mut().enumerate() {
-            *value = result.values[y * width + x];
+            let scale = if reversible || height <= 1 {
+                1.0
+            } else if y % 2 == (y0 % 2) as usize {
+                K
+            } else {
+                1.0 / K
+            };
+            *value = result.values[y * width + x] * scale;
         }
         inverse_line(&mut column, y0, reversible)?;
         for (y, &value) in column.iter().enumerate() {

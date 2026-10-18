@@ -2422,21 +2422,2930 @@
     {
       "id": "jpx/incomplete-progression",
       "kind": "vector",
-      "description": "B.12.3 permits an incomplete final volume; partial-quality reconstruction is unsupported",
+      "description": "Independently encoded input pixels",
       "requirements": [
-        "jpx-progression"
+        "jpx-progression",
+        "jpx-partial-quality",
+        "jpx-wavelet"
       ],
       "files": {
-        ".error": {
-          "path": "corpus/generated/jpx/incomplete-progression.error",
-          "sha256": "f13674351f8231c9e60fc923652b1ce94b62357ee00fedaf23ad3af677aff656"
-        },
         ".jpx": {
           "path": "corpus/generated/jpx/incomplete-progression.jpx",
           "sha256": "9dad8ba05364d0f592fb32dfaf151fb85e54c4b82c1a676ece86a551d85ec3cd"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/incomplete-progression.samples",
+          "sha256": "d3c2e2fea5163c2ba8d8286df02efe5a1e9b5b77b0cb9731c0698218a8e13193"
         }
       },
-      "error": "unsupported"
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-resolution",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-progression",
+        "jpx-partial-quality",
+        "jpx-wavelet"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-resolution.jpx",
+          "sha256": "a2272ce08c8720f7c96f99cf6a4c2b2be477042e05283c0e6f1ba1d363315482"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-resolution.samples",
+          "sha256": "ce2e071faf34ba8a025b4628bc3ccaa404f8e64e31405d6c98e6080bd3f971ef"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-0-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-0-1.jpx",
+          "sha256": "29890e6553feedeef116b91581cd83fb75b305ad0d5285160a88a48697403834"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-0-1.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-0-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-0-2.jpx",
+          "sha256": "71d38a7ff9865f4e6575c3278111b82980afbcfba0f0a0eb1ec7abd927d6896e"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-0-2.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-0-3",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-0-3.jpx",
+          "sha256": "96232b93c549ea20d2e9d9f316315a9a4a011ae02419f892a1a24f6bfdfcad81"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-0-3.samples",
+          "sha256": "3fc24df38b4281905fbd3bc3f9d213aab5c1d01c77fbdd9ca955d542c411afc8"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-0-4",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-0-4.jpx",
+          "sha256": "08ab5db5184b3a55edfeace2aed57444b3c0254655f3ab334f41a3d5d8bb92e1"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-0-4.samples",
+          "sha256": "a94ef7db75714f377e441cdd9ca9d73596d75fdb98235182537cbfec9673dfbb"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-0-5",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-0-5.jpx",
+          "sha256": "eb25a76847b72b0d7648cc5ca35b33cc6b86e156bc59e7ddb3284a0edfc33660"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-0-5.samples",
+          "sha256": "4c4e90ba05b757c4f80aa05d6d3566d075cbfcc4fa5c462307228195b6e977fd"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-0-6",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-0-6.jpx",
+          "sha256": "8f219fd837c00670c4356b0cd95898ebf4a96ef8258080ff519cb09c173de69a"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-0-6.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-0-7",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-0-7.jpx",
+          "sha256": "0da5e9b36a57ccd33af7ce9fe9eb11c847f928ad76416ecbddb7bf8e10569021"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-0-7.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-0-8",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-0-8.jpx",
+          "sha256": "8d5d7c3868cf38662fca96a642da1c702762d8b402d356d6b23ac149f285bbef"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-0-8.samples",
+          "sha256": "cf1a66ad7c9d50741a7e252e633eec12f07d67d1fcd42b19852097d818feace3"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-0-9",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-0-9.jpx",
+          "sha256": "4fe2dd0984a9b3e2904b7be9dd4ebc463fc104772a8de5ab35662f0592c7aba3"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-0-9.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-0-10",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-0-10.jpx",
+          "sha256": "0b5bccc191775709f88a578c0a90eb6629caf9b4a942e71415efb75786e0cd7f"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-0-10.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-1-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-1-1.jpx",
+          "sha256": "a012fecba66f4fe3bcddd7d18df5e2ede860872c02ca28bb5f1ee2a1dae87524"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-1-1.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-1-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-1-2.jpx",
+          "sha256": "4499a4907a06fef9cf27fa575c2bc089949e48a91d60f99e8c2b4a4322ecf6a7"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-1-2.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-1-3",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-1-3.jpx",
+          "sha256": "dfe201e8c28c1c621125f0eb096eb9c900fa6c5de9b6613ecbd1c163c90fb206"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-1-3.samples",
+          "sha256": "3fc24df38b4281905fbd3bc3f9d213aab5c1d01c77fbdd9ca955d542c411afc8"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-1-4",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-1-4.jpx",
+          "sha256": "451c4d1faa2b7449f0d7d939c38766a1d11e2df9215b5277785291db7d94fefd"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-1-4.samples",
+          "sha256": "a94ef7db75714f377e441cdd9ca9d73596d75fdb98235182537cbfec9673dfbb"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-1-5",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-1-5.jpx",
+          "sha256": "2e40ecb1eefff7dfc63c629dcf486f159ffe7c67eb29a25a9a66cf6004f82c06"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-1-5.samples",
+          "sha256": "4c4e90ba05b757c4f80aa05d6d3566d075cbfcc4fa5c462307228195b6e977fd"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-1-6",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-1-6.jpx",
+          "sha256": "bd13a29df4b0ebedf898d5477dc6874bdea427148dcc631b6b97586450f3b196"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-1-6.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-1-7",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-1-7.jpx",
+          "sha256": "46f0e8ff3b9185a193ae804f8e580df8c40f533aaac5aa0168ea0a0e06b7fff3"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-1-7.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-1-8",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-1-8.jpx",
+          "sha256": "de2c67fef94f58b168b9adf236a85082330d15116d5d028dc8dae4774fe916b3"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-1-8.samples",
+          "sha256": "cf1a66ad7c9d50741a7e252e633eec12f07d67d1fcd42b19852097d818feace3"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-1-9",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-1-9.jpx",
+          "sha256": "ca0731c8cd275dbbb044078b74722ba84098fbb2716897d7f5b69bf09aaed2c4"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-1-9.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-1-10",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-1-10.jpx",
+          "sha256": "41380d12287e00c594e73f885ce1ee064443980ea6587fa67530de6dd025959d"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-1-10.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-2-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-2-1.jpx",
+          "sha256": "99f8678a84b85d780d773e1d9bd7d124cbf66f2abaed1a4ca5cbc16b2c17dec4"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-2-1.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-2-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-2-2.jpx",
+          "sha256": "17b444db6e62862ea2676b33f8da454ee136285ae79b63e04b785c9c154fd133"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-2-2.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-2-3",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-2-3.jpx",
+          "sha256": "0534e480ec9d4d5c8bd25be0a1ed5242af814c36010ac602ef030c8073b78890"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-2-3.samples",
+          "sha256": "3fc24df38b4281905fbd3bc3f9d213aab5c1d01c77fbdd9ca955d542c411afc8"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-2-4",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-2-4.jpx",
+          "sha256": "8aa4cc956e81a30c924c1e5ecc7be5969d5e5a641fd39592e43eaad88fe38003"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-2-4.samples",
+          "sha256": "a94ef7db75714f377e441cdd9ca9d73596d75fdb98235182537cbfec9673dfbb"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-2-5",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-2-5.jpx",
+          "sha256": "ae760dd58b7b7a10c8735351c9405b08ee687906d1cb65a9e13c6cde5af063d5"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-2-5.samples",
+          "sha256": "4c4e90ba05b757c4f80aa05d6d3566d075cbfcc4fa5c462307228195b6e977fd"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-2-6",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-2-6.jpx",
+          "sha256": "c91f240697ad71d6eb04f5ab8f16a7b82763c50d9093b19a82348aef474c0255"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-2-6.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-2-7",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-2-7.jpx",
+          "sha256": "bbdebf7c8608e501b02e670cf1a077ef961474b0916330431a6508acb3967245"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-2-7.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-2-8",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-2-8.jpx",
+          "sha256": "c039ca60fbabc0f6f8be9d5ccbe0d2066307593457edbf38bed99c5bb52850ab"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-2-8.samples",
+          "sha256": "cf1a66ad7c9d50741a7e252e633eec12f07d67d1fcd42b19852097d818feace3"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-2-9",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-2-9.jpx",
+          "sha256": "125b74e2b5a1aa73c60b000397e1ef8c57a52b908518a04add618836bcb7918b"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-2-9.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-2-10",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-2-10.jpx",
+          "sha256": "c10beecfc901f248e87fcdfdef3c7cba37f972c50e7e6a9f732e3269bf51be5a"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-2-10.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-4-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-4-1.jpx",
+          "sha256": "f55737a77faca1d57d3016fe0a800780aaabc85cd6cf76b21decffb24441614b"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-4-1.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-4-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-4-2.jpx",
+          "sha256": "ec19fe27c81f336524b9f3be1c3d5eab67c3655429ef69a379b5b792c8bf5cf1"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-4-2.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-4-3",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-4-3.jpx",
+          "sha256": "2cbc05c945c0d41855a9f82c3ecd4242e204810b157348294816625825a7a19e"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-4-3.samples",
+          "sha256": "3fc24df38b4281905fbd3bc3f9d213aab5c1d01c77fbdd9ca955d542c411afc8"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-4-4",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-4-4.jpx",
+          "sha256": "c7654e9c706f937ed33d80e015245e472c28cc7392712e99e5c316ccfee9aacc"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-4-4.samples",
+          "sha256": "a94ef7db75714f377e441cdd9ca9d73596d75fdb98235182537cbfec9673dfbb"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-4-5",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-4-5.jpx",
+          "sha256": "563a00297e4966f06a198d68319983aca5d5024f1ba3f31bb18d0d8a7e012ea5"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-4-5.samples",
+          "sha256": "4c4e90ba05b757c4f80aa05d6d3566d075cbfcc4fa5c462307228195b6e977fd"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-4-6",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-4-6.jpx",
+          "sha256": "060f1aa5402894c292baf2f72620c19ddb01469fef872312601a6621135b4465"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-4-6.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-4-7",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-4-7.jpx",
+          "sha256": "2a2ea5caa2f30bd3f4fc4e967f56c4c4c7802761460d65455d81dd196de99166"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-4-7.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-4-8",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-4-8.jpx",
+          "sha256": "f0c78bcab2b6cd08f3ee1c28256d36b274cfe423e134015a9ea7626713dac503"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-4-8.samples",
+          "sha256": "cf1a66ad7c9d50741a7e252e633eec12f07d67d1fcd42b19852097d818feace3"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-4-9",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-4-9.jpx",
+          "sha256": "badbc43d42a6665f86a3b1a812a7363b959c7965ea19d2fd4ab30a8c352cfb15"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-4-9.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-4-10",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-4-10.jpx",
+          "sha256": "60038ada728a2632568f0501cc2fc8726a470e35ffa309527e7b0bf9df2c611c"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-4-10.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-8-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-8-1.jpx",
+          "sha256": "44bea3922d404a75f7567db445c0624e76760cce4f743a2c7722c365be334502"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-8-1.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-8-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-8-2.jpx",
+          "sha256": "31811c27026d3688eb42ce580848ac408e9cb619dc9d5899a0e0e3f7ffbf0219"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-8-2.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-8-3",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-8-3.jpx",
+          "sha256": "0b009475d93b014d432936c0028134bf85793b33615133572efc92fe7a94cb6a"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-8-3.samples",
+          "sha256": "3fc24df38b4281905fbd3bc3f9d213aab5c1d01c77fbdd9ca955d542c411afc8"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-8-4",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-8-4.jpx",
+          "sha256": "892f4ecbd8451e442cca4890e8c4289392835cbe93fe72ab8e87a910dd1258e1"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-8-4.samples",
+          "sha256": "a94ef7db75714f377e441cdd9ca9d73596d75fdb98235182537cbfec9673dfbb"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-8-5",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-8-5.jpx",
+          "sha256": "61d2bc0163feec9151eaf16a064b796ce15b4a2bc38f73344e1ef30069395aac"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-8-5.samples",
+          "sha256": "4c4e90ba05b757c4f80aa05d6d3566d075cbfcc4fa5c462307228195b6e977fd"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-8-6",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-8-6.jpx",
+          "sha256": "21aac4ce1a48d05c1a705d9bca788e7bb01d1edd64f7aec1f44dc53a554ef6c6"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-8-6.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-8-7",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-8-7.jpx",
+          "sha256": "54655028f372926c2579bf7ff05f209b0ffee753242433aaa1b29c256c1a7bec"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-8-7.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-8-8",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-8-8.jpx",
+          "sha256": "c51b4ce828cb30900f2c2dd5f7b2a461abd50445c415970cb0935554ea1d9836"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-8-8.samples",
+          "sha256": "cf1a66ad7c9d50741a7e252e633eec12f07d67d1fcd42b19852097d818feace3"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-8-9",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-8-9.jpx",
+          "sha256": "e3a56b4b76ccfda152c176e29a65c163475678f4962161ed9ad0858a9c9e2887"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-8-9.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-8-10",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-8-10.jpx",
+          "sha256": "22a49da9eb6f2752742d30f430dd7a32d077bee4e8f9ef6f8c432ba66a498ac9"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-8-10.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-16-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-16-1.jpx",
+          "sha256": "121f9bd16bb606c564b4d09b373897dfd8d3471902e85ff424f2cff978bb1353"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-16-1.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-16-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-16-2.jpx",
+          "sha256": "1d6ac0758d9aff6d9270a3d6315e7e246f9d7763de9785630d61367defa0b9f9"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-16-2.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-16-3",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-16-3.jpx",
+          "sha256": "bdfeb3197b6fc0be832d9b7e7bdcf05469b31800b5635e523dea2008aebe34bb"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-16-3.samples",
+          "sha256": "3fc24df38b4281905fbd3bc3f9d213aab5c1d01c77fbdd9ca955d542c411afc8"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-16-4",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-16-4.jpx",
+          "sha256": "8dad612f2c4f33d434fed70910a4cd6e3b4efd03e81156300bdda1a6895a549d"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-16-4.samples",
+          "sha256": "a94ef7db75714f377e441cdd9ca9d73596d75fdb98235182537cbfec9673dfbb"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-16-5",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-16-5.jpx",
+          "sha256": "21adca70fa5d3b27242453c9898b82bc66c1f638b482a30822362fb056ea7e9f"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-16-5.samples",
+          "sha256": "4c4e90ba05b757c4f80aa05d6d3566d075cbfcc4fa5c462307228195b6e977fd"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-16-6",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-16-6.jpx",
+          "sha256": "f134ee99c94ccd6102c4a2e1da4a6604e8f0686442e67189efa0ed0cb67ade85"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-16-6.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-16-7",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-16-7.jpx",
+          "sha256": "a5d90e6e51aee437e1fdd7953233c1b8b9eb0534723c40eb673abbd15e5acbc6"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-16-7.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-16-8",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-16-8.jpx",
+          "sha256": "741fb2c6915b3868711a3c2e4d47446cdbc559b68dde25e5729badebb5a18fee"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-16-8.samples",
+          "sha256": "cf1a66ad7c9d50741a7e252e633eec12f07d67d1fcd42b19852097d818feace3"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-16-9",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-16-9.jpx",
+          "sha256": "e24bfec1cba6dba182bfadbdd67e3ee97534c6c341adb2fd92e8b97876c5fc6f"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-16-9.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-16-10",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-16-10.jpx",
+          "sha256": "74ea5ebb0e99b05b45f4c9f73e1231b674ed17bcd2765c3e5919f2ae1902278c"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-16-10.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-32-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-32-1.jpx",
+          "sha256": "3e820acf1c98fdf7beb26c9d2d870c437bc891b2ab238c1735fb977a22568664"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-32-1.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-32-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-32-2.jpx",
+          "sha256": "bfbd08a690ef26dfb17e53c348199b81c75a36e0533618f80e1c890b2ecc2d05"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-32-2.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-32-3",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-32-3.jpx",
+          "sha256": "1608510fd04ab85d3d55baa2f22d9cc34e0c1d2e6d02ad8608b7a16dd0dfadea"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-32-3.samples",
+          "sha256": "3fc24df38b4281905fbd3bc3f9d213aab5c1d01c77fbdd9ca955d542c411afc8"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-32-4",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-32-4.jpx",
+          "sha256": "a23d058f8658f624155d5b7b4b07d6d80e01328a075d28c1254797865e963268"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-32-4.samples",
+          "sha256": "a94ef7db75714f377e441cdd9ca9d73596d75fdb98235182537cbfec9673dfbb"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-32-5",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-32-5.jpx",
+          "sha256": "a613f8a3cac7f9fb655c6694bf0f9748f047c8b3ae031c0b42e554ac64605995"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-32-5.samples",
+          "sha256": "4c4e90ba05b757c4f80aa05d6d3566d075cbfcc4fa5c462307228195b6e977fd"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-32-6",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-32-6.jpx",
+          "sha256": "12a390cf31020c8538f6daefd2294f002dfb0e1a0087851f53d09723d64061d4"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-32-6.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-32-7",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-32-7.jpx",
+          "sha256": "42bba0bfaa6d1aaba8e58cbc2ef29b242909f13891b81c8d5fddba68a7fa5ce4"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-32-7.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-32-8",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-32-8.jpx",
+          "sha256": "93eb5d58d655a8923dc4be5c3959bddae4ea2e1f94c9bfef68b917acf4edd057"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-32-8.samples",
+          "sha256": "cf1a66ad7c9d50741a7e252e633eec12f07d67d1fcd42b19852097d818feace3"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-32-9",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-32-9.jpx",
+          "sha256": "9a25069d5979d8385f7404c2636a6df1e73618e3afb6340432a5ed562ec1e7a0"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-32-9.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-32-10",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-32-10.jpx",
+          "sha256": "66e74c0204492c4b2ec8f5f0e5323d8731cdf0e09d566c39f715a46d16c4c7ba"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-32-10.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-63-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-63-1.jpx",
+          "sha256": "7ecdf6445ce6b5ac830a8086d89b442502c0e8c9bbef8454488c88790839c8c5"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-63-1.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-63-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-63-2.jpx",
+          "sha256": "62009c1935ec76396d926280cf825d6f3f53554c4337fd07e474d1068b473f9a"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-63-2.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-63-3",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-63-3.jpx",
+          "sha256": "33c788ffb0f9f81be566bfeeb0af3623a2cdf3e95424ccc942d22ebe52b3ea63"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-63-3.samples",
+          "sha256": "3fc24df38b4281905fbd3bc3f9d213aab5c1d01c77fbdd9ca955d542c411afc8"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-63-4",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-63-4.jpx",
+          "sha256": "1adc2efbea03707a95a950a4c3d0976b255f1c632bbda642ffb184d675ba7633"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-63-4.samples",
+          "sha256": "a94ef7db75714f377e441cdd9ca9d73596d75fdb98235182537cbfec9673dfbb"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-63-5",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-63-5.jpx",
+          "sha256": "8c71e941a472ddc62ec942a01454afff5b95a527a5ec0dd9a3d263ebfb4ff462"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-63-5.samples",
+          "sha256": "4c4e90ba05b757c4f80aa05d6d3566d075cbfcc4fa5c462307228195b6e977fd"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-63-6",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-63-6.jpx",
+          "sha256": "37970b3c65f6a8d8d51a92ca4b91a17c0c13b046dd9ec676bc999d520f0b06b7"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-63-6.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-63-7",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-63-7.jpx",
+          "sha256": "64717d9200b3bddaf5e383abe6f19d9afd56906290a38e083e65ddfc6bdc3ee3"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-63-7.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-63-8",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-63-8.jpx",
+          "sha256": "352c896d7d4738e2830cd6a6d7176a052f71a4290d77a2420ea3fb782ba70703"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-63-8.samples",
+          "sha256": "cf1a66ad7c9d50741a7e252e633eec12f07d67d1fcd42b19852097d818feace3"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-63-9",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-63-9.jpx",
+          "sha256": "fada397afe94fdd4fe11bdaa39ab3b639970cc052f239fe71c93e570b50ac9bb"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-63-9.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-column-63-10",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-column-63-10.jpx",
+          "sha256": "b209978af03afb47e84c547fb685a2fa712225086739eb4c5491f2f657f48f03"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-column-63-10.samples",
+          "sha256": "adafde77e907b0810b1c01d85b8a47c8648f323a888f87557cdfe234a7c5a669"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-1-11",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-1-11.jpx",
+          "sha256": "dd2830c9b8465cab12d79f1e130e3f9c83456f02dcc307aee403442ffc9c744b"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-1-11.samples",
+          "sha256": "0ac6cb8d187bdc72619a8d77100919f8ab65c53f3ed131455f219beb60097e66"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-1-12",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-1-12.jpx",
+          "sha256": "1f86d2117c69c31fe7410919f26bc37f4d031636de32e5b455a2fc59c1fd31ee"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-1-12.samples",
+          "sha256": "2c780a005c04a7ae05c4b3487f4adc44ca0b43c89393a04f0b4b4cebf82d91ec"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-1-14",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-1-14.jpx",
+          "sha256": "5c7de7d896a97ad93256df4b06519820d5999ec33b814251a5c815d4966bb156"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-1-14.samples",
+          "sha256": "2c780a005c04a7ae05c4b3487f4adc44ca0b43c89393a04f0b4b4cebf82d91ec"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-1-15",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-1-15.jpx",
+          "sha256": "cc61f841024196efe504a29af9923ede45fe52bdb2b951e7cb0e92d32d499a4b"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-1-15.samples",
+          "sha256": "d8cfdcbdbd086c2609f61730c6f09268601ff102e9978f19957edfeeaa7fa9f5"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-1-17",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-1-17.jpx",
+          "sha256": "725cd2a40e546cca9f271873a475178cb08aa355ae742938d3519a634c7d0d63"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-1-17.samples",
+          "sha256": "d8cfdcbdbd086c2609f61730c6f09268601ff102e9978f19957edfeeaa7fa9f5"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-1-18",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-1-18.jpx",
+          "sha256": "1e6a0732c2bf0411e34b6e8fc1d28d9f38adb1c4218f392a80b7b66ea8da4200"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-1-18.samples",
+          "sha256": "014aeb6dade1b3c93f2d292a6e974ba8070e61d27f1299fc049742cf6d0ceaf0"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-1-20",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-1-20.jpx",
+          "sha256": "1855da26a215563bfcc67e32e9313549d09cd58d44975163fe393fdac10ed95e"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-1-20.samples",
+          "sha256": "014aeb6dade1b3c93f2d292a6e974ba8070e61d27f1299fc049742cf6d0ceaf0"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-1-21",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-1-21.jpx",
+          "sha256": "ef440d4570aba22486a4a5827b82e681bbba0fc50a600f905a92d5d2869e5b56"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-1-21.samples",
+          "sha256": "4bb7197e9816d99b9c404c2dd623f16e345f68b16bd035e3f5163dad846bc6e8"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-17-11",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-17-11.jpx",
+          "sha256": "90fc2dc7b9894dd42a369bff6a4b45bdb0ab7629d8104b8f7fa964c653da1a5d"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-17-11.samples",
+          "sha256": "0ac6cb8d187bdc72619a8d77100919f8ab65c53f3ed131455f219beb60097e66"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-17-12",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-17-12.jpx",
+          "sha256": "2309561e773ae6e04b596330cf7768325dbbe0a009068b4eb5eb35a5bf700bc5"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-17-12.samples",
+          "sha256": "2c780a005c04a7ae05c4b3487f4adc44ca0b43c89393a04f0b4b4cebf82d91ec"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-17-14",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-17-14.jpx",
+          "sha256": "c3184fc08ddfb7464bfdcac74a6715efacd0a338deb27e1ea4054063b536abf2"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-17-14.samples",
+          "sha256": "2c780a005c04a7ae05c4b3487f4adc44ca0b43c89393a04f0b4b4cebf82d91ec"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-17-15",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-17-15.jpx",
+          "sha256": "53731c3e8a97c0ae1ccac867264434b61b59652c5886071d6392247fb2be1646"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-17-15.samples",
+          "sha256": "d8cfdcbdbd086c2609f61730c6f09268601ff102e9978f19957edfeeaa7fa9f5"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-17-17",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-17-17.jpx",
+          "sha256": "b6b08763060b080ad42dde09f7b42f891c8909b409d57d6d47a45635fc870b59"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-17-17.samples",
+          "sha256": "d8cfdcbdbd086c2609f61730c6f09268601ff102e9978f19957edfeeaa7fa9f5"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-17-18",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-17-18.jpx",
+          "sha256": "2d56c07b24dfa6064f176608b7e611092aa89e770054ea12a10aa4c5c1db467c"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-17-18.samples",
+          "sha256": "014aeb6dade1b3c93f2d292a6e974ba8070e61d27f1299fc049742cf6d0ceaf0"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-17-20",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-17-20.jpx",
+          "sha256": "7ded8903477ee6fa4e7e3b862c418d97eba9ab86a697b5f2f1293dbd8bc0ef86"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-17-20.samples",
+          "sha256": "014aeb6dade1b3c93f2d292a6e974ba8070e61d27f1299fc049742cf6d0ceaf0"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-17-21",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-17-21.jpx",
+          "sha256": "a5d15428314fd59c469cdf78a5a24252babc4a49fb367544cafea5608ed1deed"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-17-21.samples",
+          "sha256": "4bb7197e9816d99b9c404c2dd623f16e345f68b16bd035e3f5163dad846bc6e8"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-63-11",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-63-11.jpx",
+          "sha256": "e57a61f8608ff7ea99a237c49aef34359537ba4ff9d88d19b850633f5016283c"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-63-11.samples",
+          "sha256": "0ac6cb8d187bdc72619a8d77100919f8ab65c53f3ed131455f219beb60097e66"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-63-12",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-63-12.jpx",
+          "sha256": "46c294bc4f74ec12697827df9c6fe1bc60d076b209d6d48fb94c981371ae8551"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-63-12.samples",
+          "sha256": "2c780a005c04a7ae05c4b3487f4adc44ca0b43c89393a04f0b4b4cebf82d91ec"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-63-14",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-63-14.jpx",
+          "sha256": "ba4964b1aefb6370db7cf38a85b366d168fe3ba50f3b5966b7e0a1f80a635c5b"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-63-14.samples",
+          "sha256": "2c780a005c04a7ae05c4b3487f4adc44ca0b43c89393a04f0b4b4cebf82d91ec"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-63-15",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-63-15.jpx",
+          "sha256": "28e0c30a1d2e3416c5bd1d3985676633efdaf1f6645cde1f1e76a3b3ed6c3a1d"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-63-15.samples",
+          "sha256": "d8cfdcbdbd086c2609f61730c6f09268601ff102e9978f19957edfeeaa7fa9f5"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-63-17",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-63-17.jpx",
+          "sha256": "a35443b89e0e38aa1c3353a806d1f17399ea692b617a09522be005248ee0829e"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-63-17.samples",
+          "sha256": "d8cfdcbdbd086c2609f61730c6f09268601ff102e9978f19957edfeeaa7fa9f5"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-63-18",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-63-18.jpx",
+          "sha256": "489d31da74205b60059af9c3ea79bdb5b186af7686e89147d591e4d3239d26f4"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-63-18.samples",
+          "sha256": "014aeb6dade1b3c93f2d292a6e974ba8070e61d27f1299fc049742cf6d0ceaf0"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-63-20",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-63-20.jpx",
+          "sha256": "e3e63206fe63d10b9c838c26020452e2115b38b9f4407ca85a34abd483b32b56"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-63-20.samples",
+          "sha256": "014aeb6dade1b3c93f2d292a6e974ba8070e61d27f1299fc049742cf6d0ceaf0"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-63-21",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-63-21.jpx",
+          "sha256": "bf9c01c1d0cfa835ebea32525650b870901bc6842de54b088b959de80b64c06e"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-63-21.samples",
+          "sha256": "4bb7197e9816d99b9c404c2dd623f16e345f68b16bd035e3f5163dad846bc6e8"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-bypass-significance",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-codeblock-modes",
+        "jpx-termination"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-bypass-significance.jpx",
+          "sha256": "331afa1ee4848fc6a4180374046fb147d4a996cbae7c83da467e90ecf808f15d"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-bypass-significance.samples",
+          "sha256": "1d5e89d80b0557ad90db8e0f6405254bb4881b2450edc4100e2841eecfb3c077"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/wavelet-budget",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-wavelet",
+        "jpx-hostile"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/wavelet-budget.jpx",
+          "sha256": "02c4faaad2591e645ac0f1e393b1fa83f28859914af03fb14d579db5f6d4a6bd"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/wavelet-budget.samples",
+          "sha256": "a21895219732254ae910f745b23084576d279a0d8555d3e74c0e26d045b45895"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-layer",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-progression"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-layer.jpx",
+          "sha256": "945c84e274d1cbd35dab5287de04d80d3ecb86b23894c925e82cfd98f220346b"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-layer.samples",
+          "sha256": "4c4e90ba05b757c4f80aa05d6d3566d075cbfcc4fa5c462307228195b6e977fd"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-layer-contributions-0",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-progression",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-layer-contributions-0.jpx",
+          "sha256": "68e1f6182c89ad1c41e9fd244a00371ac023026e6151b314a98c57116e855d3d"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-layer-contributions-0.samples",
+          "sha256": "5ca555be662eadd35e5e6fdda97955fb7e48f27d3133f216b79f94a11d9c0b22"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-layer-contributions-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-progression",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-layer-contributions-1.jpx",
+          "sha256": "cc4e29381549a7d420a13fdec6aa6328fe5ab11b6ce450ddf9fdf27cff109692"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-layer-contributions-1.samples",
+          "sha256": "5ca555be662eadd35e5e6fdda97955fb7e48f27d3133f216b79f94a11d9c0b22"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-layer-contributions-4",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-progression",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-layer-contributions-4.jpx",
+          "sha256": "12f62f79fc3d7825c95758a8cfbb461dd49d101a3d20d7015e56c35ea6261f13"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-layer-contributions-4.samples",
+          "sha256": "5ca555be662eadd35e5e6fdda97955fb7e48f27d3133f216b79f94a11d9c0b22"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-layer-contributions-63",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-progression",
+        "jpx-codeblock-modes"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-layer-contributions-63.jpx",
+          "sha256": "ed36a762a4e3fd8ff0699d3e94a657d83ff782ab7832dd0e1fe41654d85f88d0"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-layer-contributions-63.samples",
+          "sha256": "5ca555be662eadd35e5e6fdda97955fb7e48f27d3133f216b79f94a11d9c0b22"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-irreversible-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-irreversible"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-irreversible-1.jpx",
+          "sha256": "b085b6b26088fbf10b504faa5fa2098f7be28f94c6bc3d402c88ab0dc85c9154"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-irreversible-1.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-irreversible-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-irreversible"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-irreversible-2.jpx",
+          "sha256": "9d819ce66cba2d71e60ba0afe9d1cd0debd6797bb8a347819b08950e42d1763b"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-irreversible-2.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-irreversible-3",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-irreversible"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-irreversible-3.jpx",
+          "sha256": "f400affe8c3bf15b28e840dbd8a8700dec9e97c7ceebc1aec93cd8c94df320a8"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-irreversible-3.samples",
+          "sha256": "3fc24df38b4281905fbd3bc3f9d213aab5c1d01c77fbdd9ca955d542c411afc8"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-irreversible-4",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-irreversible"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-irreversible-4.jpx",
+          "sha256": "9d55a6b8ca588724ba60069391b7077eef608b8114066d9d3905788077571e69"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-irreversible-4.samples",
+          "sha256": "a94ef7db75714f377e441cdd9ca9d73596d75fdb98235182537cbfec9673dfbb"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-irreversible-5",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-irreversible"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-irreversible-5.jpx",
+          "sha256": "41d95e51c6313646da47a18ce040f4a06bbe8359afb42efa1f4682df5e587595"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-irreversible-5.samples",
+          "sha256": "4c4e90ba05b757c4f80aa05d6d3566d075cbfcc4fa5c462307228195b6e977fd"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-irreversible-6",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-irreversible"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-irreversible-6.jpx",
+          "sha256": "03fcc28c83a50cb2906227f3387269aaa3aaf6429d31aa1ac0b099b9e011d805"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-irreversible-6.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-irreversible-7",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-irreversible"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-irreversible-7.jpx",
+          "sha256": "39e13480d9f02796280efd4f4664c21f07ab3a33df1f22902ac1fada1650a897"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-irreversible-7.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-irreversible-8",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-irreversible"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-irreversible-8.jpx",
+          "sha256": "2047ed60240b0c55aac27c11ce5d7055e4e125a48d965de9a450890b291b29a3"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-irreversible-8.samples",
+          "sha256": "097b73ec77b1f6cc7f1abf9b37bdf5ac8bf548b2983c22406b8ed528e6c27219"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-irreversible-9",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-irreversible"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-irreversible-9.jpx",
+          "sha256": "c5043baee975f5cec8682798b78b2ce75052344db48faec773c987e872b174e9"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-irreversible-9.samples",
+          "sha256": "22e480ec6d0d0545290582403908dbe0c579d498bb1bf7f820a0be765c2ae9c0"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-irreversible-10",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-irreversible"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-irreversible-10.jpx",
+          "sha256": "d0a1aad9819c239e84db8d432628acc7d5808a54e7a4f8d1067a7af27150b44c"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-irreversible-10.samples",
+          "sha256": "22e480ec6d0d0545290582403908dbe0c579d498bb1bf7f820a0be765c2ae9c0"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-roi-1",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-roi"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-roi-1.jpx",
+          "sha256": "54cfb6e8e9fe03bf483a5f5cfb745ce7614d3b03d226a37cc5eb7fe76f5ec164"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-roi-1.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-roi-2",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-roi"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-roi-2.jpx",
+          "sha256": "e681930bae16d05a68936fbcacc495eda3c4447793c56be741d7fbc994435465"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-roi-2.samples",
+          "sha256": "89ec69825195a06a0068cdcc1701039662c6259c38f37b2cb0eb44571050026f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-roi-3",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-roi"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-roi-3.jpx",
+          "sha256": "36efc071567abc555bd4f3dbf16c7e8a7187734ad64f1d36422cf16c00639d29"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-roi-3.samples",
+          "sha256": "3fc24df38b4281905fbd3bc3f9d213aab5c1d01c77fbdd9ca955d542c411afc8"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-roi-4",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-roi"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-roi-4.jpx",
+          "sha256": "f36b89a11778023a9dc0cd01cce85b4eca15cd2a42b4edd46d5907d67d7a5c2d"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-roi-4.samples",
+          "sha256": "a94ef7db75714f377e441cdd9ca9d73596d75fdb98235182537cbfec9673dfbb"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-roi-5",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-roi"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-roi-5.jpx",
+          "sha256": "557da7999c3d1b2dd0a6b6cd96f752a716507f3d0b3df12fc870c7f4bddab3cd"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-roi-5.samples",
+          "sha256": "4c4e90ba05b757c4f80aa05d6d3566d075cbfcc4fa5c462307228195b6e977fd"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-roi-6",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-roi"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-roi-6.jpx",
+          "sha256": "8eeed7b5620ad26082f3cbe2acdb6d1c76d399ab4359b08bf7917eb166fdead4"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-roi-6.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-roi-7",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-roi"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-roi-7.jpx",
+          "sha256": "246dc9387985c34b4edc4a0ecb64427f8773bb314b46c11666deae16320ea033"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-roi-7.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-roi-8",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-roi"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-roi-8.jpx",
+          "sha256": "369a808d100b910543af65826a6c93baa3826047e6208ca7f3fae7a4c578db11"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-roi-8.samples",
+          "sha256": "3533226df6f3fdc2bd7736b953146076bbc4a383f3ab7add43ba4a812196600f"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-roi-9",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-roi"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-roi-9.jpx",
+          "sha256": "2f170a139214e253e0fc7bed1cfdbb646a8bca0ab61c3f78928a42ebc5258f9c"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-roi-9.samples",
+          "sha256": "5741471cb8234672c0df3e2bea1fadc0033485497eb0521ba86ef0f6ec2822ae"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-roi-background-17",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-roi"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-roi-background-17.jpx",
+          "sha256": "7094aeee094b45bd9eafff8215d36659238db1386ab688489303c744a92a1f77"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-roi-background-17.samples",
+          "sha256": "0cde8e7e2335d46c62f33335d97c369641dd261a7586371a7a68f7ef4e712814"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-roi-background-18",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-roi"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-roi-background-18.jpx",
+          "sha256": "834e11337199bf143189d1b2de75b6bc11aa50ecf106f12848d2b4a5b1fb0fb9"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-roi-background-18.samples",
+          "sha256": "0cde8e7e2335d46c62f33335d97c369641dd261a7586371a7a68f7ef4e712814"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-roi-background-19",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-roi"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-roi-background-19.jpx",
+          "sha256": "887668eb6d9f16d615d6bafd82c6e5543653d491b924546975535f4554dbdf6c"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-roi-background-19.samples",
+          "sha256": "0cde8e7e2335d46c62f33335d97c369641dd261a7586371a7a68f7ef4e712814"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-roi-background-20",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-roi"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-roi-background-20.jpx",
+          "sha256": "4188151a06e2e2c47dfc7a38c8204dfea0bc989f1baa6ba1e563db867d2ed1f4"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-roi-background-20.samples",
+          "sha256": "0cde8e7e2335d46c62f33335d97c369641dd261a7586371a7a68f7ef4e712814"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/partial-roi-background-21",
+      "kind": "vector",
+      "description": "Independently encoded input pixels",
+      "requirements": [
+        "jpx-partial-quality",
+        "jpx-roi"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/partial-roi-background-21.jpx",
+          "sha256": "c0bed34c5ddf829f0bb26d6000ad4348ded1b63adc99d9039095575b2fe6b3ea"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/partial-roi-background-21.samples",
+          "sha256": "a21a3747a3ee2f125622300d46c65d05ce8f445349e7894b1b94534c9da55503"
+        }
+      },
+      "color": "unspecified",
+      "alpha": null
+    },
+    {
+      "id": "jpx/tile-part-count",
+      "kind": "vector",
+      "description": "A.4.2 counts tile-parts, rather than recording the last index",
+      "requirements": [
+        "jpx-tiles",
+        "jpx-marker-syntax"
+      ],
+      "files": {
+        ".error": {
+          "path": "corpus/generated/jpx/tile-part-count.error",
+          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
+        },
+        ".jpx": {
+          "path": "corpus/generated/jpx/tile-part-count.jpx",
+          "sha256": "08d2a4488874e30aea306994fe70da6cbdc7adeb3aad8fc83eaa506f95102735"
+        }
+      },
+      "error": "syntax"
     },
     {
       "id": "jpx/ppt-early-headers",

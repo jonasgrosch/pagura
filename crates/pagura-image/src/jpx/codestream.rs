@@ -357,12 +357,6 @@ impl Tile {
         if self.part_count.is_some_and(|n| self.next_part != n) {
             return Err(syntax("incomplete JPEG 2000 tile or tile-parts", 0));
         }
-        if self.decoded_packets != self.all_packets.len() {
-            return Err(unsupported(
-                "JPEG 2000 incomplete final progression volume is not implemented",
-                0,
-            ));
-        }
         budget.charge::<Plane>(self.components.len())?;
         let mut planes = Vec::with_capacity(self.components.len());
         for (((component, style), (quant, source)), roi) in self
@@ -497,12 +491,6 @@ fn reconstruct_component(
                     .checked_sub(block.zero_planes)
                     .filter(|&n| n != 0)
                     .ok_or_else(|| syntax("invalid JPEG 2000 zero bit-plane count", block.base))?;
-                if block.passes != usize::from(planes) * 3 - 2 {
-                    return Err(unsupported(
-                        "JPEG 2000 partial bit-plane quality truncation is not implemented",
-                        block.base,
-                    ));
-                }
                 let parameters = tier1::Parameters {
                     width: block.width,
                     height: block.height,
@@ -513,15 +501,8 @@ fn reconstruct_component(
                 };
                 let values = tier1::decode(&block.segments, &parameters, budget)?;
                 let width = usize_from(band.plane.width)?;
-                for (index, mut value) in values.into_iter().enumerate() {
-                    if roi != 0 && value.unsigned_abs() >= (1_u64 << roi) {
-                        value = value.signum() * (value.abs() >> roi);
-                    }
-                    let coefficient = if style.reversible || value == 0 {
-                        value as f64
-                    } else {
-                        value as f64 + if value < 0 { -0.5 } else { 0.5 }
-                    };
+                for (index, value) in values.into_iter().enumerate() {
+                    let coefficient = value.reconstruct(roi, style.reversible);
                     band.plane.values
                         [(block.y + index / block.width) * width + block.x + index % block.width] =
                         coefficient * step;
