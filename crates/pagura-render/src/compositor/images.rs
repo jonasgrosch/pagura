@@ -51,6 +51,7 @@ impl Context {
         let (mut sampler, mut mask_sampler) =
             prepare(image, inverse, origin.0, clip.width(), available)?;
         let sampling_bytes = sampler.bytes() + mask_sampler.as_ref().map_or(0, Prepared::bytes);
+        self.trim_raster(sampling_bytes);
         self.allocated += sampling_bytes;
         for (row, column, coverage) in clip.spans() {
             let y =
@@ -468,6 +469,7 @@ mod tests {
             elide_opaque_groups: false,
             raster: pagura_raster::Rasterizer::default(),
             bounds: super::super::regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
+            glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
             limits,
             device: Transform::IDENTITY,
             page_device: Transform::IDENTITY,

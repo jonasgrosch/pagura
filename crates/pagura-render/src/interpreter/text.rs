@@ -14,9 +14,13 @@ use pagura_raster::{Path, Segment};
 use pagura_text::{Glyph, GlyphShape, PdfFont, WritingMode};
 use std::{cell::RefCell, rc::Rc};
 
+// Bound the placement and source tables retained by a single run.
+const MAX_GLYPHS_PER_RUN: usize = 65_535;
+
 #[derive(Debug)]
 pub(super) struct TextState {
     font: Option<Arc<cache::CachedFont>>,
+    pub(super) run: Option<usize>,
     size: f64,
     character: f64,
     word: f64,
@@ -36,6 +40,7 @@ impl Clone for TextState {
     fn clone(&self) -> Self {
         Self {
             font: self.font.clone(),
+            run: None,
             size: self.size,
             character: self.character,
             word: self.word,
@@ -54,6 +59,7 @@ impl Default for TextState {
     fn default() -> Self {
         Self {
             font: None,
+            run: None,
             size: 0.0,
             character: 0.0,
             word: 0.0,
@@ -369,7 +375,7 @@ impl Compiler<'_> {
                 } if mode != 3 => {
                     let path = self.glyph_outline(font, glyph, &program)?;
                     let transform = checked(matrix.then(transform))?;
-                    self.outline_text(&path, transform, mode)?;
+                    self.outline_text(path, transform, mode)?;
                 }
                 GlyphShape::Type3 { procedure, matrix } if mode != 3 && mode != 7 => {
                     self.type3_glyph(
@@ -386,14 +392,28 @@ impl Compiler<'_> {
         self.text_translate(dx, dy)
     }
 
-    fn outline_text(&mut self, outline: &Path, transform: Transform, mode: u8) -> Result<()> {
+    fn outline_text(&mut self, outline: Arc<Path>, transform: Transform, mode: u8) -> Result<()> {
         if outline.is_empty() {
             return Ok(());
         }
+        if matches!(mode, 0 | 4) {
+            if mode == 4 {
+                self.paint_charge(path_bytes(&outline), 0)?;
+                let path = outline.transformed(transform);
+                validate_path(&path)?;
+                let limit = self.document.limits().path_segments;
+                append(&mut self.text_object()?.clip, &path, limit)?;
+            }
+            if self.visible {
+                self.append_glyph(outline, transform)?;
+            }
+            return Ok(());
+        }
+        self.state.text.run = None;
         // Painting plus clipping retains two separate paths; clip-only and
         // paint-only modes retain one (9.3.6).
         let copies = if (4..=6).contains(&mode) { 2 } else { 1 };
-        self.paint_charge(path_bytes(outline).saturating_mul(copies), 0)?;
+        self.paint_charge(path_bytes(&outline).saturating_mul(copies), 0)?;
         let path = outline.transformed(transform);
         validate_path(&path)?;
         if mode >= 4 {
@@ -414,6 +434,47 @@ impl Compiler<'_> {
             self.path = old;
         }
         Ok(())
+    }
+    fn append_glyph(&mut self, outline: Arc<Path>, transform: Transform) -> Result<()> {
+        self.marks = self
+            .marks
+            .checked_add(1)
+            .filter(|&n| n <= self.document.limits().display_commands)
+            .ok_or(Error::limit("display list budget exceeded"))?;
+        // Bound placement/source/index capacities before growing the run.
+        self.paint_charge(crate::display::GlyphRun::placement_bytes(), 0)?;
+        let run = self
+            .state
+            .text
+            .run
+            .filter(|&i| i + 1 == self.list.commands.len());
+        let run = run.filter(|&i| match &self.list.commands[i] {
+            super::Command::Glyphs(run) => run.glyphs.len() < MAX_GLYPHS_PER_RUN,
+            _ => false,
+        });
+        let index = if let Some(i) = run {
+            i
+        } else {
+            self.paint_charge(size_of::<crate::display::GlyphRun>(), 0)?;
+            let index = self.list.commands.len();
+            self.list.commands.push(super::Command::Glyphs(Box::new(
+                crate::display::GlyphRun::new(super::PathCommand {
+                    path: Arc::default(),
+                    mark: super::Mark::Fill(FillRule::NonZero),
+                    clip: self.state.clip.clone(),
+                    color: self.state.fill.clone(),
+                    position: self.position,
+                    transfer: self.state.transfer.clone(),
+                    composite: self.state.composite.clone(),
+                }),
+            )));
+            self.state.text.run = Some(index);
+            index
+        };
+        let super::Command::Glyphs(run) = &mut self.list.commands[index] else {
+            return Err(Error::invalid_argument("invalid text run"));
+        };
+        run.push(outline, transform, self.position)
     }
 }
 

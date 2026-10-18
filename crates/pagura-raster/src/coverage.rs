@@ -16,12 +16,23 @@ mod rectangle;
 use rectangle::Rectangle;
 
 #[derive(Debug, Clone, PartialEq)]
+pub(crate) enum Geometry {
+    Path(Arc<Path>),
+    Glyph(Arc<crate::GlyphGeometry>),
+}
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Shape {
-    pub(crate) path: Arc<Path>,
+    pub(crate) geometry: Geometry,
     pub(crate) transform: Transform,
     pub(crate) rule: FillRule,
 }
 impl Shape {
+    fn segments(&self) -> usize {
+        match &self.geometry {
+            Geometry::Path(path) => path.segments().len(),
+            Geometry::Glyph(glyph) => glyph.vertices(),
+        }
+    }
     pub(crate) fn covers(&self, origin: (u32, u32), size: (u32, u32)) -> bool {
         self.rectangle().is_some_and(|rectangle| {
             rectangle.left <= f64::from(origin.0)
@@ -533,57 +544,108 @@ fn build_edges(
 ) -> Result<()> {
     for (group, shape) in shapes
         .iter()
-        .filter(|s| s.rectangle().is_none())
+        .filter(|shape| shape.rectangle().is_none())
         .enumerate()
     {
-        let count = flatten_into(&shape.path, shape.transform, limits, contours, curves)?;
-        contours.truncate(count);
-        for (i, contour) in contours.iter_mut().take(count).enumerate() {
-            if i + 1 == count && !contour.closed && contour.points.len() == 1 {
-                continue;
-            }
-            for point in &mut contour.points {
-                *point = *point * shape.transform;
-            }
-            let corners = contour
-                .points
-                .first()
-                .filter(|_| contour.degenerate)
-                .map(|point| {
-                    // 8.5.3.3.1: a degenerate fill encloses its half-open floor cell.
-                    let (x, y) = (point.x.floor(), point.y.floor());
-                    [
-                        Point::new(x, y),
-                        Point::new(x + 1.0, y),
-                        Point::new(x + 1.0, y + 1.0),
-                        Point::new(x, y + 1.0),
-                    ]
-                });
-            let points = corners
-                .as_ref()
-                .map_or(contour.points.as_slice(), |c| c.as_slice());
-            let mut points = points.iter().copied();
-            let Some(first) = points.next() else { continue };
-            let mut previous = first;
-            for next in points.chain(std::iter::once(first)) {
-                bounded(next)?;
-                row.charge(3)?;
-                if !bounds.is_empty() {
-                    clipped(
-                        edges,
-                        previous,
-                        next,
-                        group,
-                        shape.rule,
-                        [bounds.left, bounds.top, bounds.right, bounds.bottom],
+        match &shape.geometry {
+            Geometry::Glyph(glyph) => {
+                if glyph.vertices() > limits.path_segments {
+                    return Err(Error::limit("flattened segment budget exceeded"));
+                }
+                // The same placement pays for its geometry on cache hits and misses.
+                row.charge(glyph.vertices())?;
+                for (i, contour) in glyph.contours().iter().enumerate() {
+                    if i + 1 == glyph.contours().len()
+                        && !contour.is_closed()
+                        && contour.points().len() == 1
+                    {
+                        continue;
+                    }
+                    emit_contour(
+                        contour.points().iter().map(|&p| p * shape.transform),
+                        contour.is_degenerate(),
+                        (group, shape.rule),
+                        bounds,
                         limits,
+                        row,
+                        edges,
                     )?;
                 }
-                previous = next;
+            }
+            Geometry::Path(path) => {
+                let count = flatten_into(path, shape.transform, limits, contours, curves)?;
+                contours.truncate(count);
+                for (i, contour) in contours.iter().enumerate() {
+                    if i + 1 == count && !contour.closed && contour.points.len() == 1 {
+                        continue;
+                    }
+                    emit_contour(
+                        contour.points.iter().map(|&p| p * shape.transform),
+                        contour.degenerate,
+                        (group, shape.rule),
+                        bounds,
+                        limits,
+                        row,
+                        edges,
+                    )?;
+                }
             }
         }
     }
     Ok(())
+}
+
+fn emit_contour(
+    mut points: impl Iterator<Item = Point>,
+    degenerate: bool,
+    (group, rule): (usize, FillRule),
+    bounds: Rectangle,
+    limits: &Limits,
+    row: &mut Row,
+    edges: &mut Vec<Edge>,
+) -> Result<()> {
+    let Some(first) = points.next() else {
+        return Ok(());
+    };
+    let corners = if degenerate {
+        let (x, y) = (first.x.floor(), first.y.floor());
+        Some([
+            Point::new(x, y),
+            Point::new(x + 1.0, y),
+            Point::new(x + 1.0, y + 1.0),
+            Point::new(x, y + 1.0),
+        ])
+    } else {
+        None
+    };
+    let mut emit = |points: &mut dyn Iterator<Item = Point>| -> Result<()> {
+        let Some(first) = points.next() else {
+            return Ok(());
+        };
+        let mut previous = first;
+        for next in points.chain(std::iter::once(first)) {
+            bounded(next)?;
+            row.charge(3)?;
+            if !bounds.is_empty() {
+                clipped(
+                    edges,
+                    previous,
+                    next,
+                    group,
+                    rule,
+                    [bounds.left, bounds.top, bounds.right, bounds.bottom],
+                    limits,
+                )?;
+            }
+            previous = next;
+        }
+        Ok(())
+    };
+    if let Some(corners) = corners {
+        emit(&mut corners.into_iter())
+    } else {
+        emit(&mut std::iter::once(first).chain(points))
+    }
 }
 
 fn normalize_boundaries(

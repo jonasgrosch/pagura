@@ -9,8 +9,9 @@ pub(crate) const TOLERANCE: f64 = 1.0 / 256.0;
 
 pub(crate) type CurveStack = Vec<([Point; 4], usize)>;
 
-#[derive(Debug)]
-pub(crate) struct Polyline {
+/// A flattened contour with source closure and geometric-point metadata.
+#[derive(Debug, PartialEq)]
+pub struct Polyline {
     pub(crate) points: Vec<Point>,
     pub(crate) closed: bool,
     pub(crate) degenerate: bool,

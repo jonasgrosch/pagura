@@ -11,6 +11,7 @@ mod bounds;
 mod coverage;
 mod flatten;
 mod geometry;
+mod glyph;
 mod paint;
 mod path;
 mod pixmap;
@@ -18,6 +19,7 @@ mod raster;
 mod stroke;
 
 pub use geometry::{Point, Transform};
+pub use glyph::{GlyphContour, GlyphGeometry};
 pub use paint::{Paint, Rgba8};
 pub use path::{Path, PathBuilder, Segment};
 pub use pixmap::Pixmap;

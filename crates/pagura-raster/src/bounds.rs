@@ -17,14 +17,6 @@ pub(crate) fn region(
     if path.segments().len() > limits.path_segments {
         return Err(Error::limit("path segment budget exceeded"));
     }
-    let right = origin
-        .0
-        .checked_add(size.0)
-        .ok_or(Error::limit("tile extent overflows u32"))?;
-    let bottom = origin
-        .1
-        .checked_add(size.1)
-        .ok_or(Error::limit("tile extent overflows u32"))?;
     // Start with an empty hull. Seeding the maximum from the viewport origin
     // would turn geometry entirely above/left of it into a spurious boundary
     // cell after the floor-cell allowance below, forcing needless flattening.
@@ -51,6 +43,27 @@ pub(crate) fn region(
             Segment::Close => {}
         }
     }
+    hull_region([min, max], size, origin)
+}
+
+pub(crate) fn hull_region(
+    [min, max]: [Point; 2],
+    size: (u32, u32),
+    origin: (u32, u32),
+) -> Result<Option<(u32, u32, u32, u32)>> {
+    let right = origin
+        .0
+        .checked_add(size.0)
+        .ok_or(Error::limit("tile extent overflows u32"))?;
+    let bottom = origin
+        .1
+        .checked_add(size.1)
+        .ok_or(Error::limit("tile extent overflows u32"))?;
+    if min.x > max.x || min.y > max.y {
+        return Ok(None);
+    }
+    bounded(min)?;
+    bounded(max)?;
     let x0 = coordinate(min.x.floor(), origin.0, right);
     let y0 = coordinate(min.y.floor(), origin.1, bottom);
     // Include the floor cell even at an integral maximum: a true point subpath
