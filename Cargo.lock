@@ -31,6 +31,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pagura-color"
+version = "0.1.0"
+dependencies = [
+ "pagura-core",
+ "pagura-crypto",
+ "pagura-testkit",
+]
+
+[[package]]
 name = "pagura-core"
 version = "0.1.0"
 dependencies = [
@@ -112,8 +121,8 @@ dependencies = [
 name = "pagura-render"
 version = "0.1.0"
 dependencies = [
+ "pagura-color",
  "pagura-core",
- "pagura-crypto",
  "pagura-document",
  "pagura-font",
  "pagura-image",

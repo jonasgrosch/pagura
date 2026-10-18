@@ -6,6 +6,7 @@ members = [
     "crates/pagura-crypto",
     "crates/pagura-document",
     "crates/pagura-raster",
+    "crates/pagura-color",
     "crates/pagura-font",
     "crates/pagura-text",
     "crates/pagura-data",
@@ -29,6 +30,7 @@ publish = false
 [workspace.dependencies]
 pagura = { path = "crates/pagura", default-features = false }
 pagura-codec = { path = "crates/pagura-codec" }
+pagura-color = { path = "crates/pagura-color" }
 pagura-core = { path = "crates/pagura-core" }
 pagura-crypto = { path = "crates/pagura-crypto" }
 pagura-data = { path = "crates/pagura-data" }
