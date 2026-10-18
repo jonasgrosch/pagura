@@ -6,7 +6,8 @@
 
 use pagura_core::{Error, Feature, ObjectId, Position, Result};
 
-use crate::{Aes, Rc4};
+use crate::Rc4;
+use crate::aes::{Aes, pkcs7_padding};
 
 mod legacy;
 mod modern;
@@ -215,23 +216,24 @@ impl FileKey {
             Rc4::new(key)?.apply_keystream(&mut output);
             return Ok(output);
         }
-        let iv: &[u8; 16] = data
-            .get(..16)
-            .and_then(|bytes| bytes.try_into().ok())
-            .ok_or_else(|| {
-                Error::syntax("AES ciphertext is missing its IV").at(Position::Buffer(0))
-            })?;
-        if data.len() < 32 || !data.len().is_multiple_of(16) {
+        let Some((iv, body)) = data
+            .split_first_chunk::<16>()
+            .filter(|(_, body)| !body.is_empty() && body.len().is_multiple_of(16))
+        else {
             return Err(
                 Error::syntax("AES ciphertext requires an IV and whole padded blocks")
                     .at(Position::Buffer(data.len())),
             );
+        };
+        let mut output = copy_bytes(body)?;
+        let blocks = output.as_chunks_mut::<16>().0;
+        aes_key(key)?.decrypt_cbc(iv, blocks);
+        let mut padding = 0;
+        if let Some(last) = blocks.last() {
+            padding = pkcs7_padding(last)
+                .map_err(|error| error.within(Position::Buffer(data.len() - 16)))?;
         }
-        let mut output = copy_bytes(&data[16..])?;
-        aes_key(key)?
-            .decrypt_cbc(iv, &mut output)
-            .map_err(cipher_position)?;
-        crate::aes::unpad_pkcs7(&mut output).map_err(cipher_position)?;
+        output.truncate(output.len() - padding);
         Ok(output)
     }
 }
@@ -396,12 +398,6 @@ fn aes_key(key: &[u8]) -> Result<Aes> {
         )),
         _ => Err(Error::syntax("invalid AES key length")),
     }
-}
-fn cipher_position(mut error: Error) -> Error {
-    if let Position::Buffer(offset) = error.position {
-        error.position = Position::Buffer(offset.saturating_add(16));
-    }
-    error
 }
 
 #[cfg(test)]
