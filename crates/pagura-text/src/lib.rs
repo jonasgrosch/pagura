@@ -39,7 +39,8 @@ mod substitute;
 pub use strings::decode_text_string;
 
 pub use provider::{
-    CidToUnicode, PredefinedCMap, Provider, StandardDescriptor, StandardFont, StandardMetrics,
+    CMapCode, CidToUnicode, PredefinedCMap, Provider, StandardDescriptor, StandardFont,
+    StandardMetrics,
 };
 mod selection;
 mod tables;

@@ -134,7 +134,14 @@ fn custom_provider_matches_the_facade_default_and_loads_once() {
             self.calls.fetch_add(1, Ordering::Relaxed);
             self.data.standard_font(name)
         }
-        fn predefined_cmap(&self, name: &[u8]) -> pagura::Result<Option<Arc<PredefinedCMap>>> {
+        fn cid_font(
+            &self,
+            registry: &[u8],
+            ordering: &[u8],
+        ) -> pagura::Result<Option<Arc<pagura_font::FontProgram>>> {
+            self.data.cid_font(registry, ordering)
+        }
+        fn predefined_cmap(&self, name: &[u8]) -> pagura::Result<Option<PredefinedCMap>> {
             self.data.predefined_cmap(name)
         }
         fn cid_to_unicode(

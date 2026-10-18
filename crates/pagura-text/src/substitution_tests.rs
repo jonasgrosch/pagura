@@ -49,7 +49,7 @@ impl Provider for Outlines {
             program: Some(Arc::new(program)),
         })))
     }
-    fn predefined_cmap(&self, _: &[u8]) -> Result<Option<Arc<PredefinedCMap>>> {
+    fn predefined_cmap(&self, _: &[u8]) -> Result<Option<PredefinedCMap>> {
         Ok(None)
     }
     fn cid_font(&self, _: &[u8], _: &[u8]) -> Result<Option<Arc<FontProgram>>> {
@@ -116,7 +116,7 @@ fn invalid_optional_weights_have_exact_repaired_glyphs_and_strict_tags() -> Resu
                 .object(ObjectId::new(4, 0))?
                 .dictionary()
                 .ok_or_else(|| Error::syntax("missing font"))?;
-            let result = PdfFont::load_with(&document, dict, &Outlines);
+            let result = PdfFont::load_with_provider(&document, dict, Some(&Outlines));
             if recovery == Recovery::Strict && !tag.is_empty() {
                 let error = result.unwrap_err();
                 assert_eq!(
@@ -221,7 +221,7 @@ fn descriptor_styles_and_symbol_aliases_preserve_pdf_positions_in_both_modes() -
                 .object(ObjectId::new(4, 0))?
                 .dictionary()
                 .ok_or_else(|| Error::syntax("missing font"))?;
-            let font = PdfFont::load_with(&document, dictionary, &Outlines)?;
+            let font = PdfFont::load_with_provider(&document, dictionary, Some(&Outlines))?;
             check_glyphs(name, &font)?;
             let glyphs = font.decode(&fixture("text", &format!("{name}.input")))?;
             let mut position = 0.0;
@@ -286,7 +286,7 @@ fn substituted_fonts_reject_malformed_unicode_in_strict_mode() -> Result<()> {
                 .object(ObjectId::new(4, 0))?
                 .dictionary()
                 .ok_or_else(|| Error::syntax("missing font"))?;
-            let result = PdfFont::load_with(&document, dictionary, &Outlines);
+            let result = PdfFont::load_with_provider(&document, dictionary, Some(&Outlines));
             if recovery == Recovery::Strict {
                 let error = result.unwrap_err();
                 let tag = fixture("text", &format!("{name}.strict.error"));
@@ -352,7 +352,7 @@ fn null_or_dangling_font_files_still_use_the_provider() -> Result<()> {
         descriptor.insert(Name::new(b"FontFile2"), value);
         let mut font = original.clone();
         font.insert(Name::new(b"FontDescriptor"), Value::Dictionary(descriptor));
-        let substituted = PdfFont::load_with(&document, &font, &Outlines)?;
+        let substituted = PdfFont::load_with_provider(&document, &font, Some(&Outlines))?;
         check_glyphs(name, &substituted)?;
         let error = PdfFont::load(&document, &font)
             .err()

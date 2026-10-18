@@ -18,7 +18,14 @@ fn appearance_layout_and_painting_reuse_the_context_font_entry() {
         fn predefined_cmap(
             &self,
             _: &[u8],
-        ) -> pagura_core::Result<Option<Arc<pagura_text::PredefinedCMap>>> {
+        ) -> pagura_core::Result<Option<pagura_text::PredefinedCMap>> {
+            Ok(None)
+        }
+        fn cid_font(
+            &self,
+            _: &[u8],
+            _: &[u8],
+        ) -> pagura_core::Result<Option<Arc<pagura_font::FontProgram>>> {
             Ok(None)
         }
         fn cid_to_unicode(
