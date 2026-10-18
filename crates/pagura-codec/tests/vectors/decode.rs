@@ -1,19 +1,9 @@
 //! Generated vector tests; all expected bytes originate outside Pagura.
-use crate::{Filter, FilterChain, features};
+use super::options;
+use pagura_codec::{Filter, FilterChain, features};
 use pagura_core::{Diagnostics, Dictionary, ErrorKind, Name, Position, Recovery, Value};
 use pagura_testkit::{assert_bytes_eq, fixture, fixture_path};
 use std::collections::BTreeMap;
-
-pub(super) fn options(name: &str) -> BTreeMap<String, String> {
-    String::from_utf8(fixture("codec", &format!("{name}.params")))
-        .unwrap()
-        .lines()
-        .map(|line| {
-            let (key, value) = line.split_once('=').unwrap();
-            (key.to_owned(), value.to_owned())
-        })
-        .collect()
-}
 
 fn chain(params: &BTreeMap<String, String>) -> pagura_core::Result<FilterChain> {
     let value = |text: &str| match text {
@@ -114,7 +104,7 @@ fn independent_vectors_exact_errors_repairs_and_caps() {
                 let Some(Filter::Flate { predictor }) = chain.filters().first() else {
                     panic!("invalid raw fixture");
                 };
-                crate::decode_raw_deflate(&encoded, cap, *predictor, diagnostics)
+                pagura_codec::decode_raw_deflate(&encoded, cap, *predictor, diagnostics)
             } else if params.get("take_crypt").is_some_and(|s| s == "1") {
                 let mut chain = chain.clone();
                 assert!(matches!(chain.take_crypt(), Some(None)), "{name}");
@@ -192,14 +182,14 @@ fn malformed_small_inputs_never_panic_or_exceed_cap() {
         Filter::Ascii85,
         Filter::RunLength,
         Filter::Flate {
-            predictor: crate::Predictor::default(),
+            predictor: pagura_codec::Predictor::default(),
         },
         Filter::Lzw {
-            predictor: crate::Predictor::default(),
+            predictor: pagura_codec::Predictor::default(),
             early_change: false,
         },
         Filter::Lzw {
-            predictor: crate::Predictor::default(),
+            predictor: pagura_codec::Predictor::default(),
             early_change: true,
         },
     ];
