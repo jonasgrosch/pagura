@@ -457,6 +457,7 @@ mod tests {
     fn context() -> Context {
         let limits = pagura_core::Limits::default();
         Context {
+            overprint: crate::overprint::Policy::Ignore,
             elide_opaque_groups: false,
             separations: Arc::new(super::super::Separations::default()),
             preview: super::super::colorants::Preview::default(),

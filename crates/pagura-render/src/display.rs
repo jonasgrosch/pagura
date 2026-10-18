@@ -495,6 +495,7 @@ pub struct DisplayList {
     pub(crate) user_unit: f64,
     pub(crate) limits: Limits,
     pub(crate) group: crate::transparency::Attributes,
+    pub(crate) print_intent: bool,
     pub(crate) separations: OnceLock<Result<Arc<crate::compositor::Separations>>>,
 }
 
@@ -507,6 +508,7 @@ impl DisplayList {
             user_unit: page.user_unit(),
             limits,
             group: crate::transparency::Attributes::default(),
+            print_intent: false,
             separations: OnceLock::new(),
         }
     }
@@ -517,6 +519,17 @@ impl DisplayList {
                 crate::compositor::Separations::new(&self.commands, self.limits).map(Arc::new)
             })
             .clone()
+    }
+
+    pub(crate) fn preview_separations(
+        &self,
+        options: &RenderOptions,
+    ) -> Result<Arc<crate::compositor::Separations>> {
+        if options.overprint.resolve(self.print_intent) == crate::overprint::Policy::Simulate {
+            self.separations()
+        } else {
+            Ok(Arc::default())
+        }
     }
 
     /// Number of painted marks (a fill-and-stroke operation produces two).
@@ -584,7 +597,7 @@ impl DisplayList {
         {
             return Err(Error::invalid_argument("tile lies outside the page"));
         }
-        if self.separations()?.enabled
+        if self.preview_separations(options)?.enabled
             || self.group.knockout
             || self
                 .group
@@ -857,6 +870,8 @@ mod tests {
             user_unit: 1.0,
             limits: Limits::default(),
             group: crate::transparency::Attributes::default(),
+            print_intent: false,
+            separations: OnceLock::new(),
         }
     }
     #[test]

@@ -197,6 +197,7 @@ impl Compiler<'_> {
                 user_unit: self.list.user_unit,
                 limits: self.list.limits,
                 group: self.list.group,
+                print_intent: self.list.print_intent,
                 separations: std::sync::OnceLock::new(),
             },
             state: self.state.clone(),

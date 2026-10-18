@@ -4,7 +4,9 @@
 
 mod password;
 
-use pagura::{Document, Limits, OpenOptions, Pixmap, Recovery, RenderOptions, Rgba8};
+use pagura::{
+    Document, Limits, OpenOptions, OverprintPreview, Pixmap, Recovery, RenderOptions, Rgba8,
+};
 use std::error::Error;
 use std::fmt::Write as _;
 use std::fs::File;
@@ -33,6 +35,7 @@ options:
                    the file, build the page list), render (rasterize into
                    memory) and emit (encode and write the image); the
                    engine's contribution to a conversion is open + render
+  --overprint MODE auto (default): PDF/X declarations; always: simulate; never: ignore
   --max-pages N    scan at most N pages per document
 scan prints one JSON line describing what opened and rendered, never images.";
 
@@ -56,6 +59,7 @@ struct Flags {
     timings: bool,
     password: Vec<u8>,
     max_pages: Option<usize>,
+    overprint: OverprintPreview,
 }
 
 impl Flags {
@@ -68,6 +72,13 @@ impl Flags {
             },
             password: self.password.clone(),
             ..OpenOptions::default()
+        }
+    }
+
+    fn render_options(&self, dpi: f64) -> RenderOptions {
+        RenderOptions {
+            overprint: self.overprint,
+            ..RenderOptions::from_dpi(dpi)
         }
     }
 
@@ -91,6 +102,14 @@ fn parse(args: &[String]) -> CliResult<(Flags, Vec<&str>)> {
             "--timings" => flags.timings = true,
             "--password" => flags.password = value()?.as_bytes().to_vec(),
             "--max-pages" => flags.max_pages = Some(value()?.parse()?),
+            "--overprint" => {
+                flags.overprint = match value()? {
+                    "auto" => OverprintPreview::Auto,
+                    "always" => OverprintPreview::Always,
+                    "never" => OverprintPreview::Never,
+                    _ => return Err("--overprint requires auto, always or never".into()),
+                };
+            }
             "--version" => positional.push(arg),
             flag if flag.starts_with("--") => {
                 return Err(format!("unknown option {flag}\n{USAGE}").into());
@@ -153,7 +172,7 @@ fn run(args: &[String]) -> CliResult {
             write_new(Path::new(output), document.original_bytes())
         }
         ["microbench", input, operation, count, rest @ ..] if rest.len() <= 1 => {
-            microbench(input, operation, count.parse()?, dpi(rest.first())?)
+            microbench(input, operation, count.parse()?, dpi(rest.first())?, &flags)
         }
         _ => Err(USAGE.into()),
     }
@@ -315,7 +334,7 @@ fn convert(
         return Err(format!("page range outside the document's {count} pages").into());
     }
     let open_time = started.elapsed();
-    let options = RenderOptions::from_dpi(dpi);
+    let options = flags.render_options(dpi);
     let mut stages = Vec::with_capacity(indices.clone().count());
     for index in indices {
         let render_started = Instant::now();
@@ -420,7 +439,7 @@ fn scan(input: &str, dpi: f64, flags: &Flags) -> String {
         }
     };
     let mut context = rendering(std::sync::Arc::new(document), flags);
-    let options = RenderOptions::from_dpi(dpi);
+    let options = flags.render_options(dpi);
     let mut failures = Vec::new();
     let pages = context
         .document()
@@ -482,13 +501,13 @@ fn scan_open_error(error: &(dyn Error + 'static)) -> String {
 }
 
 /// Pagura-only stage timings for profiling; never a cross-engine claim.
-fn microbench(input: &str, operation: &str, count: u32, dpi: f64) -> CliResult {
+fn microbench(input: &str, operation: &str, count: u32, dpi: f64, flags: &Flags) -> CliResult {
     if !(1..=100_000).contains(&count) {
         return Err("iteration count must be 1 to 100000".into());
     }
     let options = OpenOptions::default();
     let bytes: std::sync::Arc<[u8]> = load(input, options.limits)?.into();
-    let render_options = RenderOptions::from_dpi(dpi);
+    let render_options = flags.render_options(dpi);
     let warm = pagura::render_context(std::sync::Arc::new(Document::open(
         bytes.clone(),
         &options,

@@ -235,7 +235,9 @@ impl<'a> Compiler<'a> {
         self.state.stroke_color = self.state.fill.clone();
         let streams = self.document.content_streams(page)?;
         self.sequence(&streams, page.resources())?;
-        self.annotations(page)
+        self.annotations(page)?;
+        self.list.print_intent = crate::overprint::print_intent(self.document, page);
+        Ok(())
     }
 
     fn sequence(&mut self, streams: &[&IndirectObject], resources: &Dictionary) -> Result<()> {
