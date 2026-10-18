@@ -2,7 +2,7 @@
 use super::options;
 use pagura_codec::{Filter, FilterChain, features};
 use pagura_core::{Diagnostics, Dictionary, ErrorKind, Name, Position, Recovery, Value};
-use pagura_testkit::{assert_bytes_eq, fixture, fixture_path};
+use pagura_testkit::{assert_bytes_eq, fixture, fixture_names};
 use std::collections::BTreeMap;
 
 fn chain(params: &BTreeMap<String, String>) -> pagura_core::Result<FilterChain> {
@@ -78,16 +78,7 @@ fn assert_repair_rejection(error: &pagura_core::Error, tag: &str, name: &str) {
 
 #[test]
 fn independent_vectors_exact_errors_repairs_and_caps() {
-    let mut names: Vec<_> = std::fs::read_dir(fixture_path("codec", ""))
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
-        .filter(|path| {
-            path.extension()
-                .is_some_and(|extension| extension == "params")
-        })
-        .map(|path| path.file_stem().unwrap().to_str().unwrap().to_owned())
-        .collect();
-    names.sort();
+    let names = fixture_names("codec", "params");
     assert!(names.len() > 200);
     for name in names {
         let params = options(&name);
