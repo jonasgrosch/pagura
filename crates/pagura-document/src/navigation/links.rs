@@ -171,7 +171,7 @@ fn quads(
         .as_chunks::<2>()
         .0
         .iter()
-        .any(|xy| xy[0] < rect.x0 || xy[0] > rect.x1 || xy[1] < rect.y0 || xy[1] > rect.y1)
+        .any(|xy| xy[0] < rect.x0() || xy[0] > rect.x1() || xy[1] < rect.y0() || xy[1] > rect.y1())
     {
         return Ok(Vec::new());
     }

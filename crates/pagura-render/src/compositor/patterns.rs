@@ -62,8 +62,8 @@ impl Context {
         let tile = mask_tile(mask);
         let b = pattern.bbox;
         let [x0, y0, x1, y1] = cell_envelope(tile, inverse, b);
-        let (ix0, ix1) = intervals(x0, x1, b.x0, b.x1, pattern.step[0])?;
-        let (iy0, iy1) = intervals(y0, y1, b.y0, b.y1, pattern.step[1])?;
+        let (ix0, ix1) = intervals(x0, x1, b.x0(), b.x1(), pattern.step[0])?;
+        let (iy0, iy1) = intervals(y0, y1, b.y0(), b.y1(), pattern.step[1])?;
         self.charge(instance_count(
             (ix0, ix1),
             (iy0, iy1),
@@ -217,10 +217,10 @@ fn fit(t: Transform, pattern: &Tiling) -> Result<Transform> {
     if pattern.spacing == 1 {
         let bbox = pattern.bbox;
         for p in [
-            Point::new(bbox.x0, bbox.y0),
-            Point::new(bbox.x1, bbox.y0),
-            Point::new(bbox.x0, bbox.y1),
-            Point::new(bbox.x1, bbox.y1),
+            Point::new(bbox.x0(), bbox.y0()),
+            Point::new(bbox.x1(), bbox.y0()),
+            Point::new(bbox.x0(), bbox.y1()),
+            Point::new(bbox.x1(), bbox.y1()),
         ] {
             let a = p * t;
             let b = p * fitted;

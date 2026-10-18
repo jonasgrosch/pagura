@@ -74,12 +74,12 @@ impl Compiler<'_> {
             .min(rect.height() * 0.5);
         let mut path = PathBuilder::new();
         if border.underline {
-            path.move_to(Point::new(rect.x0 + inset, rect.y0 + inset));
-            path.line_to(Point::new(rect.x1 - inset, rect.y0 + inset));
+            path.move_to(Point::new(rect.x0() + inset, rect.y0() + inset));
+            path.line_to(Point::new(rect.x1() - inset, rect.y0() + inset));
         } else {
             path.rect(
-                rect.x0 + inset,
-                rect.y0 + inset,
+                rect.x0() + inset,
+                rect.y0() + inset,
                 (rect.width() - 2.0 * inset).max(0.0),
                 (rect.height() - 2.0 * inset).max(0.0),
             );

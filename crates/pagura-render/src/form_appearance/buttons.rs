@@ -32,12 +32,12 @@ pub(super) fn check_mark(
         resources.insert(Name::new(b"Font"), Value::Dictionary(fonts));
         content.text(&format!(
             "q\n{} {} {} {} re W n\n0 g\nBT\n/ZaDb {size} Tf\n1 0 0 1 {} {} Tm\n<34> Tj\nET\nQ\n",
-            area.x0,
-            area.y0,
+            area.x0(),
+            area.y0(),
             area.width(),
             area.height(),
-            area.x0,
-            area.y0
+            area.x0(),
+            area.y0()
         ))?;
     }
     let mut dictionary = form_dictionary(bbox);

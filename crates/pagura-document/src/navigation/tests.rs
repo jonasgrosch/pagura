@@ -27,7 +27,7 @@ fn view(v: DestinationView) -> String {
         DestinationView::FitV(v) => format!("FitV:{}", num(v)),
         DestinationView::FitBh(v) => format!("FitBH:{}", num(v)),
         DestinationView::FitBv(v) => format!("FitBV:{}", num(v)),
-        DestinationView::FitR(r) => format!("FitR:{},{},{},{}", r.x0, r.y0, r.x1, r.y1),
+        DestinationView::FitR(r) => format!("FitR:{},{},{},{}", r.x0(), r.y0(), r.x1(), r.y1()),
     }
 }
 fn action(kind: &ActionKind<'_>) -> String {
@@ -133,10 +133,10 @@ fn snapshot(doc: &Document, kind: &str) -> Result<String> {
                 writeln!(
                     out,
                     "{i}|{},{},{},{}|{}|{}|{h}|{}",
-                    r.x0,
-                    r.y0,
-                    r.x1,
-                    r.y1,
+                    r.x0(),
+                    r.y0(),
+                    r.x1(),
+                    r.y1(),
                     link.quad_points.len(),
                     link.border.width,
                     target(link.target.as_ref())

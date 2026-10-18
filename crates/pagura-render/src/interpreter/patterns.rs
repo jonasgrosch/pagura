@@ -65,7 +65,7 @@ impl Compiler<'_> {
                 child.state.stroke_color = color.clone();
             }
             let mut bounds = PathBuilder::new();
-            bounds.rect(t.bbox.x0, t.bbox.y0, t.bbox.width(), t.bbox.height());
+            bounds.rect(t.bbox.x0(), t.bbox.y0(), t.bbox.width(), t.bbox.height());
             child.add_clip(Arc::new(bounds.finish()), FillRule::NonZero)?;
             child
                 .sequence(&[object], resources)
