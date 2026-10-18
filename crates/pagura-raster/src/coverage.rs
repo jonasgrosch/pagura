@@ -187,6 +187,8 @@ impl Row {
                 self.touched[start / 64] |= 1 << (start % 64);
             }
         }
+        // index() clamps both ends to the row and start <= end, so the slice
+        // is in bounds even for geometry beyond the viewport.
         for (x, target) in (start..end).zip(&mut self.areas[start..end]) {
             let column =
                 f64::from(u32::try_from(x).map_err(|_| Error::limit("column exceeds u32"))?);
