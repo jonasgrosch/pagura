@@ -1,6 +1,6 @@
 [package]
 name = "pagura-pki"
-description = "Bounded ASN.1, X.509, CMS and timestamp parsing"
+description = "Bounded PKI parsing and host-anchored certificate path validation"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
