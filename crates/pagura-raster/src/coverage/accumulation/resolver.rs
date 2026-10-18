@@ -1,6 +1,6 @@
 //! One-cell strip sweep, using source geometry for ghosts and dense cells.
 
-use super::super::{Edge, Exact, RASTER_WORK, bytes, clipped, normalize_boundaries};
+use super::super::{Edge, Exact, RASTER_WORK, Rectangle, bytes, clipped, normalize_boundaries};
 use super::geometry::{GRID, Geometry, reserve};
 use super::scatter::{Active, Piece};
 use crate::Point;
@@ -52,7 +52,12 @@ impl Resolver {
                     Point::new(b.x - x, b.y - y),
                     group,
                     g.rules[group],
-                    [0.0, 0.0, 1.0, 1.0],
+                    Rectangle {
+                        left: 0.0,
+                        top: 0.0,
+                        right: 1.0,
+                        bottom: 1.0,
+                    },
                     limits,
                 )?;
             }
