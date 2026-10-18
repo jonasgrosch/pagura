@@ -151,8 +151,12 @@ impl Decoder {
             }
             for &(i, dc, ac) in &scan.selected {
                 let c = &mut frame.components[i];
-                latch_quant(c, &self.quant, frame.baseline)
-                    .map_err(|error| error.at(Position::Buffer(offset)))?;
+                // The tables cannot change within a scan (B.2.4.1). Validate
+                // and latch in component order at its first MCU only.
+                if mcu == 0 {
+                    latch_quant(c, &self.quant, frame.baseline)
+                        .map_err(|error| error.at(Position::Buffer(offset)))?;
+                }
                 let (horizontal, vertical) = if interleaved { (c.h, c.v) } else { (1, 1) };
                 for y in 0..vertical {
                     for x in 0..horizontal {

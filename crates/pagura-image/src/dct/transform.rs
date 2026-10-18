@@ -1,9 +1,11 @@
 //! T.81 A.3.3 inverse DCT and PDF Table 13 colour transforms.
 mod idct;
+mod rgb;
 
 use super::{DctImage, frame::Frame};
 use idct::Idct;
 use pagura_core::{Error, Limits, Result};
+use rgb::Rgb;
 
 // T.81 Figure A.6 diagonal coefficient order, independent of any encoder.
 const ORDER: [usize; 64] = [
@@ -40,13 +42,9 @@ impl Sample for u8 {
     fn finish(mut samples: Vec<Self>, components: usize, convert: bool) -> Vec<u8> {
         if convert && components >= 3 {
             for pixel in samples.chunks_exact_mut(components) {
-                let rgb = ycbcr(
-                    f64::from(pixel[0]),
-                    f64::from(pixel[1]) - 128.0,
-                    f64::from(pixel[2]) - 128.0,
-                );
+                let rgb = Rgb::new(pixel[1], pixel[2]).pixel(pixel[0]);
                 for (out, value) in pixel[..3].iter_mut().zip(rgb) {
-                    *out = sample(value);
+                    *out = value;
                     if components == 4 {
                         *out = 255 - *out;
                     }
@@ -229,17 +227,9 @@ fn fused_rgb(frame: &Frame, planes: &[Vec<u8>], samples: &mut [u8]) -> bool {
             .zip(blue)
             .zip(red)
         {
-            let cb = f64::from(cb) - 128.0;
-            let cr = f64::from(cr) - 128.0;
-            let (red, green_cb, green_cr, blue) =
-                (1.402 * cr, 0.344_136 * cb, 0.714_136 * cr, 1.772 * cb);
+            let rgb = Rgb::new(cb, cr);
             for (pixel, &y) in run.as_chunks_mut::<3>().0.iter_mut().zip(yy) {
-                let y = f64::from(y);
-                *pixel = [
-                    sample(y + red),
-                    sample(y - green_cb - green_cr),
-                    sample(y + blue),
-                ];
+                *pixel = rgb.pixel(y);
             }
         }
     }
