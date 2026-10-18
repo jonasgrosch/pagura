@@ -1,11 +1,11 @@
 //! Exact-area scanlines with signed cell areas and cover differences.
 //!
-//! Certified single spans accumulate directly. Other active edges select winding
-//! boundaries before integration; endpoint-order inversions isolate crossing
-//! blocks without an all-pairs scan. Partial-cell areas and prefix cover
-//! differences resolve in one scan over the row. Horizontal clipping projects
-//! outside geometry onto viewport boundaries, preserving winding and bounding
-//! work by the surface.
+//! One active-edge order follows prepared vertex events across scanlines.
+//! Endpoint inversions partition crossing blocks and discover their events in
+//! one pass. Winding boundaries are selected before integration; partial-cell
+//! areas and prefix cover differences resolve in one scan over each row.
+//! Horizontal clipping projects outside geometry onto viewport boundaries,
+//! preserving winding and bounding work by the surface.
 
 use crate::flatten::{bounded, flatten};
 use crate::{FillRule, Path, Point, Segment, Transform};
@@ -69,7 +69,7 @@ impl Edge {
     }
 }
 
-#[derive(Clone)]
+#[derive(Default)]
 struct Windings {
     values: Vec<i64>,
     outside: usize,
@@ -106,34 +106,41 @@ impl Windings {
     }
 }
 
+// Scratch belongs to one coverage sweep and retains capacity between strips.
+#[derive(Default)]
+struct Sweep {
+    // Certified at the previous strip end; admissions invalidate this order.
+    sorted: bool,
+    events: Vec<(usize, f64)>,
+    ordered: Vec<(usize, Edge, f64)>,
+    winding: Windings,
+}
+
 struct Row {
     areas: Vec<f64>,
     covers: Vec<f64>,
     origin: u32,
     work: usize,
     maximum: usize,
+    maximum_events: usize,
 }
 impl Row {
-    fn new(width: usize, origin: u32, maximum: usize) -> Result<Self> {
-        let mut areas = Vec::new();
-        areas
-            .try_reserve_exact(width)
-            .map_err(|_| Error::limit("scanline allocation failed"))?;
-        areas.resize(width, 0.0);
-        let count = width
-            .checked_add(1)
-            .ok_or(Error::limit("scanline width overflow"))?;
-        let mut covers = Vec::new();
-        covers
-            .try_reserve_exact(count)
-            .map_err(|_| Error::limit("scanline allocation failed"))?;
-        covers.resize(count, 0.0);
+    fn new(width: usize, origin: u32, limits: &Limits) -> Result<Self> {
+        let mut buffers = [Vec::new(), Vec::new()];
+        for buffer in &mut buffers {
+            buffer
+                .try_reserve_exact(width)
+                .map_err(|_| Error::limit("scanline allocation failed"))?;
+            buffer.resize(width, 0.0);
+        }
+        let [areas, covers] = buffers;
         Ok(Self {
             areas,
             covers,
             origin,
             work: 0,
-            maximum,
+            maximum: limits.raster_work,
+            maximum_events: limits.path_segments,
         })
     }
     fn charge(&mut self, amount: usize) -> Result<()> {
@@ -188,7 +195,7 @@ pub(crate) fn coverage(
     limits: &Limits,
 ) -> Result<()> {
     let stride = usize::try_from(width).map_err(|_| Error::limit("mask width exceeds usize"))?;
-    let mut row = Row::new(stride, origin.0, limits.raster_work)?;
+    let mut row = Row::new(stride, origin.0, limits)?;
     let mut edges = edges(shapes, (width, height), origin, limits, &mut row)?;
     // Edges have already validated the geometry and its budgets. A rectangular
     // intersection containing the whole viewport has exactly unit area in every
@@ -198,98 +205,69 @@ pub(crate) fn coverage(
         out.fill(255);
         return Ok(());
     }
-    row.sorted(edges.len())?;
-    edges.sort_unstable_by(|a, b| a.a.y.total_cmp(&b.a.y));
-    let mut active: Vec<Edge> = Vec::new();
-    let mut next = 0;
+    // A shared vertical extent has just two vertex events, already ordered.
+    // Keep them inline instead of allocating and sorting duplicate endpoints.
+    row.charge(edges.len())?;
+    let extent = edges
+        .first()
+        .map(|e| [e.a.y, e.b.y])
+        .filter(|&[lo, hi]| edges.iter().all(|e| e.a.y == lo && e.b.y == hi));
     let mut vertices = Vec::new();
-    let mut selected: Vec<Edge> = Vec::new();
+    if extent.is_none() {
+        row.sorted(edges.len())?;
+        edges.sort_unstable_by(|a, b| a.a.y.total_cmp(&b.a.y));
+        vertices.extend(edges.iter().flat_map(|e| [e.a.y, e.b.y]));
+        row.sorted(vertices.len())?;
+        vertices.sort_unstable_by(f64::total_cmp);
+        vertices.dedup();
+    }
+    let mut vertices = extent.into_iter().flatten().chain(vertices).peekable();
+    let mut active: Vec<Edge> = Vec::new();
+    let mut admitted = 0;
     let mut winding = Windings::new(shapes.len());
+    let mut sweep = Sweep::default();
     out.fill(0);
     for (y, output) in out.chunks_exact_mut(stride).enumerate() {
         let lo = f64::from(u32::try_from(y).map_err(|_| Error::limit("row exceeds u32"))?)
             + f64::from(origin.1);
         let hi = lo + 1.0;
-        active.retain(|e| e.b.y > lo);
-        while let Some(&edge) = edges.get(next)
-            && edge.a.y < hi
-        {
-            active.push(edge);
-            next += 1;
-        }
-        if active.is_empty() {
+        while vertices.next_if(|&y| y <= lo).is_some() {}
+        if active.is_empty() && edges.get(admitted).is_none_or(|e| e.a.y >= hi) {
             continue;
         }
-        row.charge(active.len())?;
         row.areas.fill(0.0);
         row.covers.fill(0.0);
-        if shapes.len() != 1 || !unit_span(&active, lo, hi, &mut row)? {
-            vertices.clear();
-            vertices.extend([lo, hi]);
-            vertices.extend(
-                active
-                    .iter()
-                    .flat_map(|e| [e.a.y, e.b.y])
-                    .filter(|&y| y > lo && y < hi),
-            );
-            row.sorted(vertices.len())?;
-            vertices.sort_unstable_by(f64::total_cmp);
-            vertices.dedup();
-            selected.clear();
-            let mut admitted = 0;
-            for interval in vertices.windows(2) {
-                let mid = interval[0].midpoint(interval[1]);
-                selected.retain(|e| e.b.y > mid);
-                // Row edges retain their starting-y order. Admit each just once,
-                // rather than searching the entire row at every vertex interval.
-                while let Some(&edge) = active.get(admitted)
-                    && edge.a.y < mid
-                {
-                    if edge.b.y > mid {
-                        selected.push(edge);
-                    }
-                    admitted += 1;
+        let mut start = lo;
+        loop {
+            let end = vertices.peek().copied().unwrap_or(hi).min(hi);
+            let mid = start.midpoint(end);
+            row.charge(active.len())?;
+            active.retain(|e| e.b.y > mid);
+            // One starting-y stream admits each edge once per mask. Surviving
+            // edges retain the previous interval's order, including across rows.
+            while let Some(&edge) = edges.get(admitted)
+                && edge.a.y < mid
+            {
+                row.charge(1)?;
+                if edge.b.y > mid {
+                    sweep.sorted = false;
+                    active.push(edge);
                 }
-                strip(
-                    &mut selected,
-                    interval[0],
-                    interval[1],
-                    &mut winding,
-                    &mut row,
-                    limits,
-                )?;
+                admitted += 1;
             }
+            if !active.is_empty() {
+                strip(&mut active, start, end, &mut winding, &mut row, &mut sweep)?;
+            }
+            if end == hi {
+                break;
+            }
+            vertices.next();
+            start = end;
         }
         row.charge(stride)?;
         row.finish(output);
     }
     Ok(())
-}
-
-// Opposite unit windings with a shared vertical extent and no crossing enclose
-// one span. Both fill rules agree: signed area equals covered area in every
-// cell. Global coordinates preserve tile coverage even if clipping changes
-// which rows qualify.
-fn unit_span(active: &[Edge], lo: f64, hi: f64, row: &mut Row) -> Result<bool> {
-    let [a, b] = active else { return Ok(false) };
-    if !matches!(a.winding, -1 | 1) || b.winding != -a.winding {
-        return Ok(false);
-    }
-    if lo.max(a.a.y) != lo.max(b.a.y) || hi.min(a.b.y) != hi.min(b.b.y) {
-        return Ok(false);
-    }
-    let (lo, hi) = (lo.max(a.a.y), hi.min(a.b.y));
-    let (a, b) = if endpoint(*a, *b, lo, false).is_le() {
-        (*a, *b)
-    } else {
-        (*b, *a)
-    };
-    if a.x(hi) > b.x(hi) {
-        return Ok(false);
-    }
-    row.edge(a, lo, hi, -1)?;
-    row.edge(b, lo, hi, 1)?;
-    Ok(true)
 }
 
 fn strip(
@@ -298,125 +276,159 @@ fn strip(
     hi: f64,
     winding: &mut Windings,
     row: &mut Row,
-    limits: &Limits,
+    sweep: &mut Sweep,
 ) -> Result<()> {
     winding.reset();
-    row.sorted(top.len())?;
-    top.sort_unstable_by(|a, b| endpoint(*a, *b, lo, false));
-    if top
-        .windows(2)
-        // Equal x at hi is a meeting, not a crossing inside
-        // this strip. The order at lo already gives the interior order; slope
-        // tie-breaking here would send ordinary closing vertices through the
-        // exact crossing integrator unnecessarily.
-        .all(|pair| pair[0].x(hi).total_cmp(&pair[1].x(hi)).is_le())
-    {
+    if !sweep.sorted {
+        repair(top, |a, b| cached(*a, a.x(lo), *b, b.x(lo), false), row)?;
+    }
+    sweep.sorted = true;
+    // Equal x may meet at hi without crossing inside this strip. The complete
+    // endpoint key also certifies the next strip's top order after departures.
+    if top.windows(2).all(|pair| {
+        let (a, b) = (pair[0], pair[1]);
+        let (ax, bx) = (a.x(hi), b.x(hi));
+        sweep.sorted &= cached(a, ax, b, bx, false).is_le();
+        ax.total_cmp(&bx).is_le()
+    }) {
         for &edge in top.iter() {
             row.edge(edge, lo, hi, winding.step(edge)?)?;
         }
         return Ok(());
     }
-    let mut bottom: Vec<_> = top.iter().copied().enumerate().collect();
-    row.sorted(bottom.len())?;
-    bottom.sort_unstable_by(|(_, a), (_, b)| endpoint(*a, *b, hi, true));
-    let mut ranks = vec![0; top.len()];
-    for (rank, &(index, _)) in bottom.iter().enumerate() {
-        *ranks
-            .get_mut(index)
-            .ok_or(Error::invalid_argument("invalid edge rank"))? = rank;
+    sweep.events.clear();
+    sweep.ordered.clear();
+    sweep
+        .ordered
+        .extend(top.iter().enumerate().map(|(i, &e)| (i, e, e.x(hi))));
+    row.charge(top.len())?;
+    // One bottom-order insertion pass discovers every inversion once. The
+    // inserted edge keeps its original top index throughout its exchanges;
+    // event owners are therefore monotone, even before sorting by event y.
+    for i in 1..sweep.ordered.len() {
+        let mut j = i;
+        while j > 0 {
+            row.charge(1)?;
+            let (_, a, ax) = sweep.ordered[j - 1];
+            let (owner, b, bx) = sweep.ordered[j];
+            if cached(a, ax, b, bx, true).is_le() {
+                break;
+            }
+            let (d0, d1) = (a.x(lo) - b.x(lo), ax - bx);
+            if d0 < 0.0 && d1 > 0.0 {
+                if sweep.events.len() >= row.maximum_events {
+                    return Err(Error::limit("crossing event budget exceeded"));
+                }
+                sweep
+                    .events
+                    .push((owner, lo + (hi - lo) * (d0 / (d0 - d1))));
+            }
+            sweep.ordered.swap(j - 1, j);
+            j -= 1;
+        }
     }
-    let mut start = 0;
-    let mut end = 0;
-    for (i, &rank) in ranks.iter().enumerate() {
-        end = end.max(rank);
+    let mut events = sweep.events.as_mut_slice();
+    let (mut start, mut end) = (0, 0);
+    for i in 0..sweep.ordered.len() {
+        end = end.max(sweep.ordered[i].0);
         if end != i {
             continue;
         }
-        let block = top
-            .get(start..=i)
-            .ok_or(Error::invalid_argument("invalid crossing block"))?;
+        let block = &top[start..=i];
         if let [edge] = block {
             row.edge(*edge, lo, hi, winding.step(*edge)?)?;
         } else {
-            crossing(block, lo, hi, winding, row, limits)?;
+            // The maximum original index closes precisely an irreducible
+            // permutation block. Its events form the next contiguous prefix.
+            let count = events.partition_point(|&(owner, _)| owner <= i);
+            let (current, rest) = events.split_at_mut(count);
+            events = rest;
+            let ordered = &mut sweep.ordered[start..=i];
+            for ((_, edge, _), &original) in ordered.iter_mut().zip(block) {
+                *edge = original;
+            }
+            crossing(ordered, current, lo, hi, winding, row, &mut sweep.winding)?;
             for &edge in block {
                 winding.step(edge)?;
             }
         }
         start = i + 1;
     }
+    // Each block now retains its last interval's order for the next strip.
+    for (edge, &(_, ordered, _)) in top.iter_mut().zip(&sweep.ordered) {
+        *edge = ordered;
+    }
     Ok(())
 }
 
-fn endpoint(a: Edge, b: Edge, y: f64, bottom: bool) -> std::cmp::Ordering {
-    a.x(y)
-        .total_cmp(&b.x(y))
-        .then_with(|| {
-            if bottom {
-                b.slope().total_cmp(&a.slope())
-            } else {
-                a.slope().total_cmp(&b.slope())
+// Repair sparse inversions in place. After one slice-length of exchanges,
+// sorting bounds a badly disturbed admission order by O(n log n).
+fn repair<T>(
+    values: &mut [T],
+    mut compare: impl FnMut(&T, &T) -> std::cmp::Ordering,
+    row: &mut Row,
+) -> Result<()> {
+    row.charge(values.len())?;
+    let mut remaining = values.len();
+    for i in 1..values.len() {
+        let mut j = i;
+        // i and j are internal loop indices, always within this slice. Keep
+        // the key at i until its insertion point is known, then move once.
+        while j > 0 && compare(&values[j - 1], &values[i]).is_gt() {
+            if remaining == 0 {
+                row.sorted(values.len())?;
+                values.sort_unstable_by(compare);
+                return Ok(());
             }
+            row.charge(1)?;
+            remaining -= 1;
+            j -= 1;
+        }
+        values[j..=i].rotate_right(1);
+    }
+    Ok(())
+}
+
+fn cached(a: Edge, ax: f64, b: Edge, bx: f64, bottom: bool) -> std::cmp::Ordering {
+    ax.total_cmp(&bx)
+        .then_with(|| {
+            let (a, b) = if bottom { (b, a) } else { (a, b) };
+            a.slope().total_cmp(&b.slope())
         })
         .then(a.id.cmp(&b.id))
 }
 
 fn crossing(
-    block: &[Edge],
+    ordered: &mut [(usize, Edge, f64)],
+    events: &mut [(usize, f64)],
     lo: f64,
     hi: f64,
     initial: &Windings,
     row: &mut Row,
-    limits: &Limits,
+    winding: &mut Windings,
 ) -> Result<()> {
-    let mut events = vec![lo, hi];
-    let mut ordered: Vec<_> = block.iter().map(|&edge| (edge, edge.x(hi))).collect();
-    // Insertion sorting top order by bottom x visits each strict inversion
-    // once: O(edges + crossings), without merge buffers. Equal bottom positions
-    // meet at the boundary and need no interior crossing event.
-    for i in 1..ordered.len() {
-        let mut j = i;
-        while j > 0 {
-            row.charge(1)?;
-            let (&(a, ax), &(b, bx)) = ordered
-                .get(j - 1)
-                .zip(ordered.get(j))
-                .ok_or(Error::invalid_argument("invalid crossing pair"))?;
-            let d1 = ax - bx;
-            if d1 <= 0.0 {
-                break;
-            }
-            let d0 = a.x(lo) - b.x(lo);
-            if d0 < 0.0 {
-                if events.len() >= limits.path_segments {
-                    return Err(Error::limit("crossing event budget exceeded"));
-                }
-                events.push(lo + (hi - lo) * (d0 / (d0 - d1)));
-            }
-            ordered.swap(j - 1, j);
-            j -= 1;
+    row.sorted(events.len().saturating_add(2))?;
+    events.sort_unstable_by(|(_, a), (_, b)| a.total_cmp(b));
+    let mut start = lo;
+    for end in events.iter().map(|&(_, y)| y).chain(std::iter::once(hi)) {
+        if start == end {
+            continue;
         }
-    }
-    row.sorted(events.len())?;
-    events.sort_unstable_by(f64::total_cmp);
-    events.dedup();
-    for interval in events.windows(2) {
-        let (lo, hi) = (interval[0], interval[1]);
-        row.sorted(ordered.len())?;
-        // Evaluate each edge once per interval, rather than at every comparison.
-        let mid = lo.midpoint(hi);
-        for (edge, x) in &mut ordered {
+        let mid = start.midpoint(end);
+        for (_, edge, x) in ordered.iter_mut() {
             *x = edge.x(mid);
         }
-        ordered.sort_unstable_by(|(a, x), (b, y)| {
-            x.total_cmp(y)
-                .then_with(|| a.slope().total_cmp(&b.slope()))
-                .then(a.id.cmp(&b.id))
-        });
-        let mut winding = initial.clone();
-        for &(edge, _) in &ordered {
-            row.edge(edge, lo, hi, winding.step(edge)?)?;
+        repair(
+            ordered,
+            |(_, a, x), (_, b, y)| cached(*a, *x, *b, *y, false),
+            row,
+        )?;
+        winding.values.clone_from(&initial.values);
+        winding.outside = initial.outside;
+        for &(_, edge, _) in ordered.iter() {
+            row.edge(edge, start, end, winding.step(edge)?)?;
         }
+        start = end;
     }
     Ok(())
 }
