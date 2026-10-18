@@ -120,3 +120,32 @@ pub const KEY_PADDING: Repair = Repair::new("security.key-padding");
 
 /// R2 permission bits violate Table 21's selector; raw hash bytes are preserved.
 pub const PERMISSION_SELECTOR: Repair = Repair::new("security.permission-selector");
+
+/// Malformed tree Limits replaced by actual descendant bounds (7.9.6–7.9.7).
+pub const TREE_LIMITS: Repair = Repair::new("tree.limits");
+/// Tree keys reordered; first physical duplicate retained (7.9.6–7.9.7).
+pub const TREE_ORDER: Repair = Repair::new("tree.order");
+/// A repeated tree node is omitted (7.9.6–7.9.7).
+pub const TREE_CYCLE: Repair = Repair::new("tree.cycle");
+/// Direct children and mixed local-entry/child nodes are traversed (7.9.6–7.9.7).
+pub const TREE_STRUCTURE: Repair = Repair::new("tree.structure");
+/// Forward outline chains prevail over inconsistent reciprocal links (12.3.3).
+pub const OUTLINE_LINKS: Repair = Repair::new("outline.links");
+/// Repeated outline items are omitted (12.3.3).
+pub const OUTLINE_CYCLE: Repair = Repair::new("outline.cycle");
+/// Outline Count magnitudes corrected while signs are retained (12.3.3).
+pub const OUTLINE_COUNT: Repair = Repair::new("outline.count");
+/// Action Next back edges omitted; acyclic reuse is retained (12.6.2).
+pub const ACTION_CYCLE: Repair = Repair::new("action.cycle");
+/// An A entry takes precedence over a conflicting Dest (12.3.3, 12.5.6.5).
+pub const TARGET_CONFLICT: Repair = Repair::new("navigation.target-conflict");
+/// Invalid Unicode or undefined PDFDocEncoding bytes become U+FFFD (7.9.2.2).
+pub const NAVIGATION_TEXT: Repair = Repair::new("navigation.text");
+/// Malformed QuadPoints ignored in favour of Rect (12.5.6.5, Table 176).
+pub const LINK_QUADS: Repair = Repair::new("link.quad-points");
+
+/// A local destination uses a valid zero-based page number (12.3.2.2).
+pub const DESTINATION_PAGE_NUMBER: Repair = Repair::new("destination.page-number");
+
+/// Incorrect optional outline root Type ignored in Outlines context (12.3.3).
+pub const OUTLINE_TYPE: Repair = Repair::new("outline.type");

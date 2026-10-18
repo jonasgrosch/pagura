@@ -13,6 +13,7 @@ mod contents;
 mod diagnostics;
 mod load;
 mod memory;
+pub mod navigation;
 mod object;
 mod object_stream;
 mod page_geometry;

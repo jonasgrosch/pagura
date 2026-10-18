@@ -572,6 +572,164 @@
         "crypto/r3-pdfdocencoding-euro"
       ],
       "gaps": "Only the CLI Unicode password path converts defined Annex D.3 code points to PDFDocEncoding for authenticated R2-R4 handlers. R5/R6 keep UTF-8. Unrepresentable input is never replaced lossily; the Document API and host protocol remain byte-oriented. The independent Euro vector covers both byte and CLI entry points."
+    },
+    {
+      "id": "navigation-trees",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.9.6; Table 36",
+        "7.9.7; Table 37",
+        "7.3.10"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-document navigation::tests::independent_navigation_structures_and_reported_repairs"
+      ],
+      "choices": [
+        "Lookup validates visited nodes on hits; misses and ordered enumeration validate the complete tree. Malformed Limits, order and repeated nodes are reported repairs. Direct child dictionaries and mixed nodes are traversed; local entries precede children and the first duplicate key wins. Unmatched keys and nodes with neither children nor entries remain errors.",
+        "Unresolvable child references are omitted only below a usable root, with tree.structure or tree.cycle reported. Dangling or cyclic Limits references are treated as malformed bounds. Limit errors are always propagated.",
+        "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
+      ],
+      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "review": [
+        {
+          "locator": "7.9.6; Table 36; 7.9.7; Table 37",
+          "rule": "Typed inert navigation data follows the cited clauses; choices describe bounded, reported departures.",
+          "verdict": "implemented for this scope",
+          "expectation_agreement": "Python source structures and explicit formatting rules produce the navigation oracle without running Pagura.",
+          "evidence": "Generated document/navigation-* vectors verify complete typed snapshots, strict repair tags, source context, cycles and resource limits."
+        }
+      ]
+    },
+    {
+      "id": "navigation-destinations",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.3.2.2; Table 149",
+        "12.3.2.4",
+        "J.3.3",
+        "J.3.4",
+        "7.3.9",
+        "7.3.10"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-document navigation::tests::independent_navigation_structures_and_reported_repairs"
+      ],
+      "choices": [
+        "Structure destinations (12.3.2.3) are not interpreted; source dictionaries retain them. Local names prefer legacy Dests, strings prefer the name tree; fallback compares decoded bytes in the other collection.",
+        "destination.page-number accepts a nonnegative local integer page only within the enumerated page tree, using the zero-based remote-destination convention. This is a reported departure from 12.3.2.2, Table 149, observed in existing files; no page is invented.",
+        "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
+        "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
+      ],
+      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "review": [
+        {
+          "locator": "12.3.2.2; Table 149; 12.3.2.4; J.3.3; J.3.4",
+          "rule": "Typed inert navigation data follows the cited clauses; choices describe bounded, reported departures.",
+          "verdict": "implemented for this scope",
+          "expectation_agreement": "Python source structures and explicit formatting rules produce the navigation oracle without running Pagura.",
+          "evidence": "Generated document/navigation-* vectors verify complete typed snapshots, strict repair tags, source context, cycles and resource limits."
+        }
+      ]
+    },
+    {
+      "id": "navigation-outlines",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.3.3; Tables 150-152",
+        "7.9.2.2",
+        "D.3",
+        "7.3.9",
+        "7.3.10"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-document navigation::tests::independent_navigation_structures_and_reported_repairs"
+      ],
+      "choices": [
+        "Forward First/Next chains define order. Inconsistent Parent/Prev/Last and Count magnitudes are repaired, repeated nodes omitted. Invalid Unicode and undefined text bytes are replaced only with a report.",
+        "outline.type ignores an incorrect optional root Type only in the catalog Outlines context, under a reported repair; item traversal still validates required fields and links.",
+        "Text decoding preserves the defined PDFDocEncoding HT, LF and CR characters (D.3); Unicode language-run escapes are metadata and are omitted from displayed text (7.9.2.2.2).",
+        "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
+        "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
+      ],
+      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "review": [
+        {
+          "locator": "12.3.3; Tables 150-152; 7.9.2.2; D.3",
+          "rule": "Typed inert navigation data follows the cited clauses; choices describe bounded, reported departures.",
+          "verdict": "implemented for this scope",
+          "expectation_agreement": "Python source structures and explicit formatting rules produce the navigation oracle without running Pagura.",
+          "evidence": "Generated document/navigation-* vectors verify complete typed snapshots, strict repair tags, source context, cycles and resource limits."
+        }
+      ]
+    },
+    {
+      "id": "navigation-links",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.6.5; Table 176",
+        "12.5.4; Table 168",
+        "12.6.2",
+        "12.6.4.2",
+        "12.6.4.3",
+        "12.6.4.6",
+        "12.6.4.8; Tables 210-211",
+        "12.6.4.12",
+        "12.6.4.17",
+        "7.3.9",
+        "7.3.10"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-document navigation::tests::independent_navigation_structures_and_reported_repairs"
+      ],
+      "choices": [
+        "All action data is inert, including Launch, JavaScript and unknown action names. URI and Base remain separate for host-side RFC 3986 resolution. A precedes a conflicting Dest with a report; action back edges and malformed QuadPoints are reported repairs.",
+        "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
+        "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
+      ],
+      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "review": [
+        {
+          "locator": "12.5.6.5; Table 176; 12.5.4; Table 168; 12.6.2; 12.6.4.2; 12.6.4.3; 12.6.4.6; 12.6.4.8; Tables 210-211; 12.6.4.12; 12.6.4.17",
+          "rule": "Typed inert navigation data follows the cited clauses; choices describe bounded, reported departures.",
+          "verdict": "implemented for this scope",
+          "expectation_agreement": "Python source structures and explicit formatting rules produce the navigation oracle without running Pagura.",
+          "evidence": "Generated document/navigation-* vectors verify complete typed snapshots, strict repair tags, source context, cycles and resource limits."
+        }
+      ]
+    },
+    {
+      "id": "navigation-labels",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.4.2; Table 161",
+        "7.9.7",
+        "7.3.9",
+        "7.3.10"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-document navigation::tests::independent_navigation_structures_and_reported_repairs"
+      ],
+      "choices": [
+        "Formatting is bounded by string/result limits; missing style means prefix only. Repeated-letter labels follow the PDF convention, rather than spreadsheet numbering.",
+        "PageLabels parses ranges once; indexed lookup uses binary search and iteration advances through ranges linearly. Returned strings are caller-owned, individually bounded and never cached by the document.",
+        "Null optional dictionary entries, including indirect null, are absent under 7.3.9. They neither create target conflicts nor require repairs.",
+        "References to undefined objects resolve to null (7.3.10), matching Document::resolve. Optional null entries are absent; required null tree children are omitted only with a reported structural repair."
+      ],
+      "gaps": "Host activation and protocol integration are separate; these APIs never perform actions.",
+      "review": [
+        {
+          "locator": "12.4.2; Table 161; 7.9.7",
+          "rule": "Typed inert navigation data follows the cited clauses; choices describe bounded, reported departures.",
+          "verdict": "implemented for this scope",
+          "expectation_agreement": "Python source structures and explicit formatting rules produce the navigation oracle without running Pagura.",
+          "evidence": "Generated document/navigation-* vectors verify complete typed snapshots, strict repair tags, source context, cycles and resource limits."
+        }
+      ]
     }
   ]
 }

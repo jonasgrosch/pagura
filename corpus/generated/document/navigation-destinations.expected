@@ -1,0 +1,10 @@
+XYZ|0|XYZ:_,42,_
+Fit|1|Fit
+FitH|0|FitH:_
+FitV|1|FitV:12
+FitR|0|FitR:1,2,30,40
+FitB|1|FitB
+FitBH|0|FitBH:7
+FitBV|1|FitBV:_
+alias|1|Fit
+fit-zero|0|XYZ:1,2,_

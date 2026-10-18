@@ -412,6 +412,7 @@ def cases():
     yield from identifier_syntax_cases()
     yield from legacy_selector_cases()
     yield from catalog_identity_cases()
+    yield from navigation_cases()
 
 
 def replace_startxref(data, offset):
@@ -968,3 +969,233 @@ def legacy_selector_cases():
     yield Case("security-legacy-permission-selector",document(objects,b"/Encrypt 5 0 R /ID ["+hex_string(ID)+b" "+hex_string(ID)+b"] "),RENDER,
                ("security-legacy-permissions",),"Nonconforming R2 selector flags preserve the exact raw permissions in the authenticated hash",
                oracle=oracle,strict_valid=False,repairs=("security.permission-selector",))
+
+
+def navigation_value(value):
+    """Small independent serializer for navigation structures and their oracles."""
+    if isinstance(value, tuple):
+        kind, item = value
+        return (b'/%s' % item.encode()) if kind == 'name' else (b'%d 0 R' % item)
+    if value is None:
+        return b'null'
+    if isinstance(value, bool):
+        return b'true' if value else b'false'
+    if isinstance(value, bytes):
+        return b'<' + value.hex().encode() + b'>'
+    if isinstance(value, str):
+        return navigation_value(b'\xfe\xff'+value.encode('utf-16be'))
+    if isinstance(value, dict):
+        return b'<< '+b' '.join(b'/'+key.encode()+b' '+navigation_value(item) for key,item in value.items())+b' >>'
+    if isinstance(value, list):
+        return b'['+b' '.join(map(navigation_value,value))+b']'
+    return str(value).encode()
+
+
+def navigation_base(pages=2):
+    ref = lambda n: ('ref', n)
+    name = lambda n: ('name', n)
+    return {1: dict(Type=name('Catalog'), Pages=ref(2)),
+            2: dict(Type=name('Pages'), Kids=[ref(i+3) for i in range(pages)], Count=pages),
+            **{i+3: dict(Type=name('Page'), Parent=ref(2), MediaBox=[0,0,64,64], Resources={}) for i in range(pages)}}
+
+
+def navigation_vector(identifier, objects, view, expected, *, repair='', **params):
+    from .model import Vector
+    builder = Builder()
+    builder.data = bytearray(HEADER.replace(b'%PDF-1.7',b'%PDF-2.0'))
+    for number, value in sorted(objects.items()):
+        builder.obj(number, value if isinstance(value, bytes) else navigation_value(value))
+    pdf, _ = builder.classic()
+    data = dict(view=view, repair=repair, **params)
+    return Vector(identifier, {'.pdf':pdf, '.expected':expected.encode(),
+        '.params': ''.join(f'{k}={v}\n' for k,v in data.items()).encode()},
+        ('navigation-'+view,), 'Independently constructed '+identifier.replace('-',' '))
+
+
+def navigation_cases():
+    import copy
+    ref = lambda n: ('ref', n)
+    name = lambda n: ('name', n)
+    views = [('XYZ',[None,42,0],'XYZ:_,42,_'), ('Fit',[],'Fit'),
+             ('FitH',[None],'FitH:_'), ('FitV',[12],'FitV:12'),
+             ('FitR',[1,2,30,40],'FitR:1,2,30,40'), ('FitB',[],'FitB'),
+             ('FitBH',[7],'FitBH:7'), ('FitBV',[None],'FitBV:_')]
+    objects = navigation_base()
+    objects[1]['Dests'] = {kind: [ref(3+(i%2)),name(kind),*args] for i,(kind,args,_) in enumerate(views)}
+    objects[1]['Names'] = dict(Dests=ref(10))
+    objects[10] = dict(Names=[b'alias',ref(11),b'fit-zero',[ref(3),name('XYZ'),1,2,None]])
+    objects[11] = dict(D=[ref(4),name('Fit')])
+    expected = ''.join(f'{kind}|{i%2}|{label}\n' for i,(kind,args,label) in enumerate(views))
+    expected += 'alias|1|Fit\nfit-zero|0|XYZ:1,2,_\n'
+    yield navigation_vector('navigation-destinations',objects,'destinations',expected)
+
+    # A broad three-level name tree. Off-path subtrees remain unloaded by a hit.
+    objects = navigation_base()
+    objects[1]['Names'] = dict(Dests=ref(10))
+    objects[10] = dict(Kids=[ref(20+i) for i in range(8)])
+    expected=''
+    for group in range(8):
+        low,high=f'k{group*16:03}',f'k{group*16+15:03}'
+        objects[20+group]=dict(Limits=[low.encode(),high.encode()],Kids=[ref(40+group*4+i) for i in range(4)])
+        for leaf in range(4):
+            start=group*16+leaf*4
+            pairs=[]
+            for k in range(start,start+4):
+                pairs += [f'k{k:03}'.encode(),[ref(3+k%2),name('Fit')]]
+                expected += f'k{k:03}|{k%2}|Fit\n'
+            objects[40+group*4+leaf]=dict(Limits=[f'k{start:03}'.encode(),f'k{start+3:03}'.encode()],Names=pairs)
+    yield navigation_vector('navigation-tree-wide',objects,'trees',expected,query='k073',page=1)
+    objects = navigation_base()
+    objects[1]['Names']=dict(Dests=ref(10))
+    objects[10]=dict(Kids=[ref(11)])
+    for i in range(11,31):
+        objects[i]=dict(Limits=[b'a',b'a'],Kids=[ref(i+1)])
+    objects[31]=dict(Limits=[b'a',b'a'],Names=[b'a',[ref(3),name('Fit')]])
+    yield navigation_vector('navigation-tree-deep',objects,'trees','a|0|Fit\n',query='a',page=0)
+    for suffix, limits in [('limits-type',42),('limits-missing',None),('limits-range',[b'z',b'z'])]:
+        objects=navigation_base()
+        objects[1]['Names']=dict(Dests=ref(10))
+        objects[10]=dict(Kids=[ref(11)])
+        objects[11]=dict(Names=[b'a',[ref(3),name('Fit')]])
+        if limits is not None: objects[11]['Limits']=limits
+        yield navigation_vector('navigation-tree-'+suffix,objects,'trees','a|0|Fit\n',repair='tree.limits',query='a',page=0)
+    objects[11]=dict(Limits=[b'a',b'b'],Names=[b'b',[ref(4),name('Fit')],b'a',[ref(3),name('Fit')],b'a',[ref(4),name('Fit')]])
+    yield navigation_vector('navigation-tree-order',objects,'trees','a|0|Fit\nb|1|Fit\n',repair='tree.order',query='a',page=0)
+    objects=navigation_base()
+    objects[1]['Names']=dict(Dests=ref(10))
+    objects[10]=dict(Kids=[ref(11),ref(12)])
+    objects[11]=dict(Limits=[b'a',b'a'],Names=[b'a',[ref(3),name('Fit')]])
+    objects[12]=dict(Limits=[b'a',b'a'],Kids=[ref(12)])
+    yield navigation_vector('navigation-tree-cycle',objects,'trees','a|0|Fit\n',repair='tree.cycle',query='a',page=0)
+    objects=navigation_base()
+    objects[1]['Names']=dict(Dests=ref(10))
+    objects[10]=dict(Kids=[dict(Limits=[b'a',b'a'],Names=[b'a',[ref(3),name('Fit')]])])
+    yield navigation_vector('navigation-tree-direct',objects,'trees','a|0|Fit\n',repair='tree.structure',query='a',page=0)
+
+    objects=navigation_base()
+    objects[1].update(Outlines=ref(10), Dests=dict(end=[ref(4),name('FitB')]))
+    objects[10]=dict(Type=name('Outlines'),First=ref(11),Last=ref(14),Count=3)
+    objects[11]=dict(Title=b'Root \xa0',Parent=ref(10),Next=ref(14),First=ref(12),Last=ref(12),Count=1,C=[0.2,0.3,0.4],F=3,Dest=[ref(3),name('Fit')])
+    objects[12]=dict(Title='Child 😀',Parent=ref(11),First=ref(13),Last=ref(13),Count=-1,A=dict(S=name('URI'),URI=b'child'))
+    objects[13]=dict(Title=b'Hidden',Parent=ref(12),Dest=name('end'))
+    objects[14]=dict(Title=b'\xef\xbb\xbf\x1benUS\x1bFin',Parent=ref(10),Prev=ref(11),A=dict(S=name('Named'),N=name('LastPage')))
+    expected='Root €|-|0|1|0.2,0.3,0.4|1,1|dest:0:Fit\nChild 😀|0|1|0|0,0,0|0,0|URI:child\nHidden|1|2|0|0,0,0|0,0|dest:1:FitB\nFin|-|0|0|0,0,0|0,0|Named:LastPage\n'
+    yield navigation_vector('navigation-outlines',objects,'outlines',expected)
+    optional=copy.deepcopy(objects);optional[99]=None
+    optional[10]['Type']=ref(99)
+    optional[11]['Prev']=ref(99)
+    optional[12]['Next']=ref(99)
+    optional[14].update(F=ref(99),C=ref(99),First=ref(99),Last=ref(99),Next=ref(99),Dest=ref(99))
+    yield navigation_vector('navigation-outlines-optional-null',optional,'outlines',expected)
+    whitespace=copy.deepcopy(objects);whitespace[11]['Title']=b'Root\t\xa0\n\r'
+    yield navigation_vector('navigation-outlines-pdfdoc-whitespace',whitespace,'outlines',expected.replace('Root €|','Root\t€\n\r|'))
+    for suffix,change,repair in [
+        ('cycle',lambda o:o[14].update(Next=ref(11)),'outline.cycle'),
+        ('links',lambda o:o[14].update(Prev=ref(13)),'outline.links'),
+        ('parent',lambda o:o[12].update(Parent=ref(10)),'outline.links'),
+        ('last',lambda o:o[10].update(Last=ref(13)),'outline.links'),
+        ('dangling',lambda o:o[14].update(Prev=ref(99)),'outline.links'),
+        ('count',lambda o:o[11].update(Count=99),'outline.count'),
+        ('type',lambda o:o[10].update(Type=name('Wrong')),'outline.type'),
+    ]:
+        damaged=copy.deepcopy(objects);change(damaged)
+        yield navigation_vector('navigation-outlines-'+suffix,damaged,'outlines',expected,repair=repair)
+    damaged=copy.deepcopy(objects);damaged[14]['Title']=b'\xfe\xff\xd8\x00'
+    yield navigation_vector('navigation-outlines-text',damaged,'outlines',expected.replace('Fin|','�|'),repair='navigation.text')
+
+    objects=navigation_base()
+    objects[1]['URI']=dict(Base=b'https://example.invalid/docs/')
+    kinds=[dict(S=name('GoTo'),D=[ref(4),name('Fit')]),
+           dict(S=name('GoToR'),F=dict(Type=name('Filespec'),UF='remote.pdf'),D=[77,name('XYZ'),None,None,0],NewWindow=True),
+           dict(S=name('GoToR'),F=b'remote.pdf',D=b'remote'),
+           dict(S=name('URI'),URI=b'../chapter',IsMap=True),
+           *[dict(S=name('Named'),N=name(n)) for n in ['NextPage','PrevPage','FirstPage','LastPage']],
+           dict(S=name('Launch'),F=b'inert.bin',Win=dict(F=b'inert.exe')),
+           dict(S=name('JavaScript'),JS=b'never execute'),
+           dict(S=name('JavaScript'),JS=ref(40))]
+    objects[40]=stream(b'also never execute')
+    labels=['GoTo:1:Fit','GoToR:77:XYZ:_,_,_:true','GoToR:name:remote','URI:../chapter','Named:NextPage','Named:PrevPage','Named:FirstPage','Named:LastPage','Launch:inert.bin','JavaScript:string','JavaScript:stream']
+    objects[3]['Annots']=[ref(10+i) for i in range(len(kinds))]
+    expected=''
+    for i,(action,label) in enumerate(zip(kinds,labels)):
+        objects[10+i]=dict(Type=name('Annot'),Subtype=name('Link'),Rect=[1,2,31,42],QuadPoints=[1,2,31,2,31,42,1,42],H=name(['N','I','O','P'][i%4]),BS=dict(W=2,S=name('D'),D=[3,1]),A=action)
+        expected+=f'{i}|1,2,31,42|1|2|{i%4}|{label}\n'
+    # Next arrays are preorder, and reuse is not mistaken for a cycle.
+    objects[13]['A']['Next']=[dict(S=name('GoTo'),D=[ref(3),name('Fit')],Next=ref(41)),ref(41)]
+    objects[41]=dict(S=name('Named'),N=name('LastPage'))
+    expected=expected.replace('3|1,2,31,42|1|2|3|URI:../chapter\n','3|1,2,31,42|1|2|3|URI:../chapter,GoTo:0:Fit,Named:LastPage,Named:LastPage\n')
+    yield navigation_vector('navigation-links-actions',objects,'links',expected)
+    damaged=copy.deepcopy(objects);damaged[10]['Dest']=[ref(3),name('Fit')]
+    yield navigation_vector('navigation-links-target-conflict',damaged,'links',expected,repair='navigation.target-conflict')
+    damaged=copy.deepcopy(objects);damaged[10]['QuadPoints']=[1,2,3]
+    yield navigation_vector('navigation-links-quads',damaged,'links',expected.replace('0|1,2,31,42|1|','0|1,2,31,42|0|',1),repair='link.quad-points')
+    objects=navigation_base();objects[3]['Annots']=[ref(10)]
+    objects[10]=dict(Subtype=name('Link'),Rect=[1,2,31,42],A=ref(11))
+    objects[11]=dict(S=name('Named'),N=name('NextPage'),Next=ref(11))
+    yield navigation_vector('navigation-action-cycle',objects,'links','0|1,2,31,42|0|1|1|Named:NextPage\n',repair='action.cycle')
+
+    objects=navigation_base(10)
+    styles=[(0,dict(P=b'Intro')),(1,dict(S=name('D'),St=8,P=b'A-')),(3,dict(S=name('R'),St=9)),(4,dict(S=name('r'),St=4)),(5,dict(S=name('A'),St=26)),(6,dict(S=name('A'),St=27)),(7,dict(S=name('a'),St=52)),(8,dict(S=name('a'),St=53)),(9,dict(S=name('D'),P='章-'))]
+    objects[1]['PageLabels']=dict(Kids=[ref(20),ref(21)])
+    objects[20]=dict(Limits=[0,4],Nums=[v for pair in styles[:4] for v in pair])
+    objects[21]=dict(Limits=[5,9],Nums=[v for pair in styles[4:] for v in pair])
+    yield navigation_vector('navigation-page-labels',objects,'labels','Intro\nA-8\nA-9\nIX\niv\nZ\nAA\nzz\naaa\n章-1\n')
+
+    objects=navigation_base()
+    objects[1]['Dests']=dict(zero=[0,name('Fit')],one=[1,name('XYZ'),None,42,0])
+    yield navigation_vector('navigation-destination-page-number',objects,'destinations','zero|0|Fit\none|1|XYZ:_,42,_\n',repair='destination.page-number')
+    objects=navigation_base()
+    objects[1]['Names']=dict(Dests=ref(10))
+    objects[10]=dict(Names=[b'a',[ref(3),name('Fit')]],Kids=[ref(11)])
+    objects[11]=dict(Limits=[b'b',b'b'],Names=[b'b',[ref(4),name('Fit')]])
+    yield navigation_vector('navigation-tree-mixed',objects,'trees','a|0|Fit\nb|1|Fit\n',repair='tree.structure',query='a',page=0)
+    for suffix,view,change,error in [
+        ('tree-unmatched','trees',lambda o:(o[1].update(Names=dict(Dests=ref(10))),o.update({10:dict(Names=[b'bad'])})),'syntax'),
+        ('destination-cycle','destinations',lambda o:o[1].update(Dests=dict(cycle=dict(D=name('cycle')))),'cycle'),
+        ('labels-overflow','labels',lambda o:o[1].update(PageLabels=dict(Nums=[0,dict(S=name('A'),St=9223372036854775807)])),'limit'),
+        ('link-highlight-type','links',lambda o:(o[3].update(Annots=[ref(10)]),o.update({10:dict(Subtype=name('Link'),Rect=[0,0,1,1],H=42)})),'syntax'),
+    ]:
+        objects=navigation_base();change(objects)
+        yield navigation_vector('navigation-'+suffix,objects,view,'',error=error)
+
+    objects=navigation_base()
+    objects[3]['Annots']=[ref(10+i) for i in range(5)]
+    expected=''
+    for i,style in enumerate(['S','D','B','I','U']):
+        objects[10+i]=dict(Subtype=name('Link'),Rect=[31,42,1,2],H=name('I'),Border=42,
+            BS=dict(S=name(style),W=i+1),Dest=[ref(3),name('Fit')],QuadPoints=[0,0,31,2,31,42,1,42])
+        expected+=f'{i}|1,2,31,42|0|{i+1}|1|dest:0:Fit\n'
+    yield navigation_vector('navigation-links-border-styles',objects,'links',expected,
+        border_styles='Solid,Dashed,Beveled,Inset,Underline')
+    objects=navigation_base()
+    objects[3]['Annots']=[ref(10)]
+    objects[10]=dict(Subtype=name('Link'),Rect=[1,2,31,42],Border=[4,5,2,[3,1]],Dest=[ref(3),name('Fit')])
+    yield navigation_vector('navigation-link-border-array',objects,'links','0|1,2,31,42|0|2|1|dest:0:Fit\n',border_styles='Dashed')
+    objects=navigation_base()
+    objects[1]['Names']=dict(Dests=ref(10))
+    objects[10]=dict(Kids=[ref(99),ref(11)])
+    objects[11]=dict(Limits=[b'a',b'a'],Names=[b'a',[ref(3),name('Fit')]])
+    yield navigation_vector('navigation-tree-dangling-child',objects,'trees','a|0|Fit\n',repair='tree.structure',query='a',page=0)
+    objects[10]['Kids']=[ref(11)]
+    objects[11]['Limits']=ref(99)
+    yield navigation_vector('navigation-tree-dangling-limits',objects,'trees','a|0|Fit\n',repair='tree.limits',query='a',page=0)
+
+    objects=navigation_base();objects[99]=None
+    objects[1].update(**{key:ref(99) for key in ['Outlines','Dests','Names','PageLabels','URI']})
+    objects[3]['Annots']=[ref(10+i) for i in range(5)]
+    actions=[dict(A=ref(99),Dest=ref(99)),dict(A=dict(S=name('URI'),URI=b'relative',Next=ref(99))),dict(A=ref(99),Dest=[ref(4),name('Fit')]),dict(A=dict(S=name('URI'),URI=b'relative'),Dest=ref(99)),dict(A=dict(S=name('Launch'),F=ref(99),Win=dict(F=b'inert'),NewWindow=ref(99)))]
+    expected=''
+    for i,(target,label) in enumerate(zip(actions,['none','URI:relative','dest:1:Fit','URI:relative','Launch:platform'])):
+        objects[10+i]=dict(Subtype=name('Link'),Rect=[1,2,31,42],BS=ref(99),Border=ref(99),H=ref(99),QuadPoints=ref(99),**target)
+        expected+=f'{i}|1,2,31,42|0|1|1|{label}\n'
+    yield navigation_vector('navigation-optional-null',objects,'links',expected)
+    undefined=copy.deepcopy(objects);del undefined[99]
+    yield navigation_vector('navigation-optional-undefined',undefined,'links',expected)
+    objects=navigation_base();objects[99]=None
+    objects[1].update(Dests=dict(absent=ref(99),also_absent=ref(88)),Names=dict(Dests=ref(99)))
+    yield navigation_vector('navigation-named-optional-null',objects,'destinations','')
+
+    objects=navigation_base();objects[99]=None
+    objects[3]['Annots']=[ref(10)]
+    objects[10]=dict(Subtype=name('Link'),Rect=[1,2,31,42],A=dict(S=name('Launch'),Win=ref(99)))
+    yield navigation_vector('navigation-launch-null-platform',objects,'links','',error='syntax')

@@ -3147,6 +3147,864 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": []
+    },
+    {
+      "id": "document/navigation-destinations",
+      "kind": "vector",
+      "description": "Independently constructed navigation destinations",
+      "requirements": [
+        "navigation-destinations"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-destinations.expected",
+          "sha256": "40628e36017cd815da142d4753cd9da5b9744223914c2afe87f35019c745ab51"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-destinations.params",
+          "sha256": "3d96d4a464fec52a11aaf140f8f4141178a2aa5215aeb91313e09184dee8dbc7"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-destinations.pdf",
+          "sha256": "4f73f35e43676b5f03e99d39301369fee06256da593cbfe6e1bb593ce2a38cb3"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-tree-wide",
+      "kind": "vector",
+      "description": "Independently constructed navigation tree wide",
+      "requirements": [
+        "navigation-trees"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-tree-wide.expected",
+          "sha256": "76d22303afacaaeca47f9027025a85de7e8c520e75f8d5a70138ef17e060b8b3"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-tree-wide.params",
+          "sha256": "b6aedfccbb2bf3a7004a11672bae5ce42e5965ac2a74d8beaef2e4f7feb1145c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-tree-wide.pdf",
+          "sha256": "790234bb27cc514b6aae41ead93d5ffdc4227258d633c04233588009b2ce3813"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-tree-deep",
+      "kind": "vector",
+      "description": "Independently constructed navigation tree deep",
+      "requirements": [
+        "navigation-trees"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-tree-deep.expected",
+          "sha256": "a02699c7c60a1fbca9e121acd01e6bf0229db426e120481d07c83916b8f2a3fd"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-tree-deep.params",
+          "sha256": "fe0532cefb869cfc07c34bc64d21e7feca014d8472c8db003b1bd54f48d3bee1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-tree-deep.pdf",
+          "sha256": "febd87942f2457fb08bbbb0d363be36d22acd9314bc2ea739950fe0bbaf247c5"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-tree-limits-type",
+      "kind": "vector",
+      "description": "Independently constructed navigation tree limits type",
+      "requirements": [
+        "navigation-trees"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-tree-limits-type.expected",
+          "sha256": "a02699c7c60a1fbca9e121acd01e6bf0229db426e120481d07c83916b8f2a3fd"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-tree-limits-type.params",
+          "sha256": "08712cbd976deedf7900b143478bf58bf9132a67b65d976302c41eeb74c555e5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-tree-limits-type.pdf",
+          "sha256": "ebb962cd9ba1cb44769438693be25114bbb622d37b6baf66bd16298ae6e2f03e"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-tree-limits-missing",
+      "kind": "vector",
+      "description": "Independently constructed navigation tree limits missing",
+      "requirements": [
+        "navigation-trees"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-tree-limits-missing.expected",
+          "sha256": "a02699c7c60a1fbca9e121acd01e6bf0229db426e120481d07c83916b8f2a3fd"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-tree-limits-missing.params",
+          "sha256": "08712cbd976deedf7900b143478bf58bf9132a67b65d976302c41eeb74c555e5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-tree-limits-missing.pdf",
+          "sha256": "edfc37252679f7abece927d904c79cef49d1ada72ccc0da41168e7e3b82b6476"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-tree-limits-range",
+      "kind": "vector",
+      "description": "Independently constructed navigation tree limits range",
+      "requirements": [
+        "navigation-trees"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-tree-limits-range.expected",
+          "sha256": "a02699c7c60a1fbca9e121acd01e6bf0229db426e120481d07c83916b8f2a3fd"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-tree-limits-range.params",
+          "sha256": "08712cbd976deedf7900b143478bf58bf9132a67b65d976302c41eeb74c555e5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-tree-limits-range.pdf",
+          "sha256": "d0e5d7aae0d88d08f46447681432f0817b8eb33843458ae89b77daff8b23f11a"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-tree-order",
+      "kind": "vector",
+      "description": "Independently constructed navigation tree order",
+      "requirements": [
+        "navigation-trees"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-tree-order.expected",
+          "sha256": "f70cc33a611befeccf92a6bf1252a70a45f18ce9efc990d3ccc2ab03151bf768"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-tree-order.params",
+          "sha256": "c5824eda79f616cf18ed39d1ddc8e32b37015647efb197ded92cb2fae3cd6bd9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-tree-order.pdf",
+          "sha256": "f5c03fe67d31e67ad370769ecd238ea1d0ec13bda5afa36e0b8e69bdb1d08a39"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-tree-cycle",
+      "kind": "vector",
+      "description": "Independently constructed navigation tree cycle",
+      "requirements": [
+        "navigation-trees"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-tree-cycle.expected",
+          "sha256": "a02699c7c60a1fbca9e121acd01e6bf0229db426e120481d07c83916b8f2a3fd"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-tree-cycle.params",
+          "sha256": "186b60f660f35123b380582a27283854ab601927b61a1285b9f4090e1e6a8e67"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-tree-cycle.pdf",
+          "sha256": "79cc098efebcf5e040b68d0b20df0f729a5fb35b0897907d12ff433c351753dd"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-tree-direct",
+      "kind": "vector",
+      "description": "Independently constructed navigation tree direct",
+      "requirements": [
+        "navigation-trees"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-tree-direct.expected",
+          "sha256": "a02699c7c60a1fbca9e121acd01e6bf0229db426e120481d07c83916b8f2a3fd"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-tree-direct.params",
+          "sha256": "0728477a1b3df7145867ab9ab11c3d89e225aa721d63d090bbb4c3b063026497"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-tree-direct.pdf",
+          "sha256": "68b95c33fb1d3671633030eff7920ebce6d8747c36fa03227f10c3608597ca2d"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-outlines",
+      "kind": "vector",
+      "description": "Independently constructed navigation outlines",
+      "requirements": [
+        "navigation-outlines"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-outlines.expected",
+          "sha256": "57cf6244b928b0b877fd6db550b75c9aa4272bbc89858d65134f5a6387d63d61"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-outlines.params",
+          "sha256": "5b0f4e17c473beed1cec35103c1e444948443fc793a0183d7a16e6f8dc09d802"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-outlines.pdf",
+          "sha256": "caa87106f2555a08211f4c6316f35ea7eda6383127f22688fa17bdcb1c9541fe"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-outlines-optional-null",
+      "kind": "vector",
+      "description": "Independently constructed navigation outlines optional null",
+      "requirements": [
+        "navigation-outlines"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-outlines-optional-null.expected",
+          "sha256": "57cf6244b928b0b877fd6db550b75c9aa4272bbc89858d65134f5a6387d63d61"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-outlines-optional-null.params",
+          "sha256": "5b0f4e17c473beed1cec35103c1e444948443fc793a0183d7a16e6f8dc09d802"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-outlines-optional-null.pdf",
+          "sha256": "d09c1a665f4866423ce7c52023d1ec1bd708edc78c62687fd5203de5bda50ac5"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-outlines-pdfdoc-whitespace",
+      "kind": "vector",
+      "description": "Independently constructed navigation outlines pdfdoc whitespace",
+      "requirements": [
+        "navigation-outlines"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-outlines-pdfdoc-whitespace.expected",
+          "sha256": "560a195d8bfaf8f5695c55377c3bbd213a2a5acecf819db054a571410fdc29d1"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-outlines-pdfdoc-whitespace.params",
+          "sha256": "5b0f4e17c473beed1cec35103c1e444948443fc793a0183d7a16e6f8dc09d802"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-outlines-pdfdoc-whitespace.pdf",
+          "sha256": "15eef16606cbd8c9b39c328563f1b8b1d4001c028daacef7a24c1d61c347e6f6"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-outlines-cycle",
+      "kind": "vector",
+      "description": "Independently constructed navigation outlines cycle",
+      "requirements": [
+        "navigation-outlines"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-outlines-cycle.expected",
+          "sha256": "57cf6244b928b0b877fd6db550b75c9aa4272bbc89858d65134f5a6387d63d61"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-outlines-cycle.params",
+          "sha256": "f445f0c781514226495ece112f2cad513c29704360fc9c93cae9f1d43162385e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-outlines-cycle.pdf",
+          "sha256": "e10cbbfc627c0a03af24d32b93b0fa17959adba9eaac087afca7e1b5102ea55d"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-outlines-links",
+      "kind": "vector",
+      "description": "Independently constructed navigation outlines links",
+      "requirements": [
+        "navigation-outlines"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-outlines-links.expected",
+          "sha256": "57cf6244b928b0b877fd6db550b75c9aa4272bbc89858d65134f5a6387d63d61"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-outlines-links.params",
+          "sha256": "3fa8d90a9160609112ddc3b7166fc7029d164f5b6fb9a8ed80b651f544dcbbcf"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-outlines-links.pdf",
+          "sha256": "5b4e0c739f1a17e8b10fef48d1546cf801ea0acf2151053bd23454478394c6a6"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-outlines-parent",
+      "kind": "vector",
+      "description": "Independently constructed navigation outlines parent",
+      "requirements": [
+        "navigation-outlines"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-outlines-parent.expected",
+          "sha256": "57cf6244b928b0b877fd6db550b75c9aa4272bbc89858d65134f5a6387d63d61"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-outlines-parent.params",
+          "sha256": "3fa8d90a9160609112ddc3b7166fc7029d164f5b6fb9a8ed80b651f544dcbbcf"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-outlines-parent.pdf",
+          "sha256": "b9d66d4cd023da5cbb8db682e30b84381bfdb2db9c49363547e0b76f92d67588"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-outlines-last",
+      "kind": "vector",
+      "description": "Independently constructed navigation outlines last",
+      "requirements": [
+        "navigation-outlines"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-outlines-last.expected",
+          "sha256": "57cf6244b928b0b877fd6db550b75c9aa4272bbc89858d65134f5a6387d63d61"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-outlines-last.params",
+          "sha256": "3fa8d90a9160609112ddc3b7166fc7029d164f5b6fb9a8ed80b651f544dcbbcf"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-outlines-last.pdf",
+          "sha256": "7c3d2efab256056ff51ff28d90676fa0222b397dbcff154beb2e561f42abfd0b"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-outlines-dangling",
+      "kind": "vector",
+      "description": "Independently constructed navigation outlines dangling",
+      "requirements": [
+        "navigation-outlines"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-outlines-dangling.expected",
+          "sha256": "57cf6244b928b0b877fd6db550b75c9aa4272bbc89858d65134f5a6387d63d61"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-outlines-dangling.params",
+          "sha256": "3fa8d90a9160609112ddc3b7166fc7029d164f5b6fb9a8ed80b651f544dcbbcf"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-outlines-dangling.pdf",
+          "sha256": "e9ce844032e0aaa69e8e60a34d8769d584abdd464c54e688d5e72726ecf98474"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-outlines-count",
+      "kind": "vector",
+      "description": "Independently constructed navigation outlines count",
+      "requirements": [
+        "navigation-outlines"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-outlines-count.expected",
+          "sha256": "57cf6244b928b0b877fd6db550b75c9aa4272bbc89858d65134f5a6387d63d61"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-outlines-count.params",
+          "sha256": "8d1cbc48d077a273dcabd34e9ec3f4dd365da650875d7e67a17636b9608bec8f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-outlines-count.pdf",
+          "sha256": "7e1c593f63bfb4bea1f1b522254ef6fa6a57bf143a62e6be413c349781f6a5de"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-outlines-type",
+      "kind": "vector",
+      "description": "Independently constructed navigation outlines type",
+      "requirements": [
+        "navigation-outlines"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-outlines-type.expected",
+          "sha256": "57cf6244b928b0b877fd6db550b75c9aa4272bbc89858d65134f5a6387d63d61"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-outlines-type.params",
+          "sha256": "a97db3f9e892b60e6f7a33026cc59a4e1454b893b7e8cc60e9367b5877b74d47"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-outlines-type.pdf",
+          "sha256": "95312c00970612e460a37c1eacac3b0135fd7d20102569f31cadacee5662ee97"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-outlines-text",
+      "kind": "vector",
+      "description": "Independently constructed navigation outlines text",
+      "requirements": [
+        "navigation-outlines"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-outlines-text.expected",
+          "sha256": "919527ee70936f4043434e466b668c1b5a22b7dfcea3590ab05298d24d9ef9f7"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-outlines-text.params",
+          "sha256": "efd69450ab2e76fbb170a356b3e8f1b5738b9cc239fecef88a60ceda058762a1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-outlines-text.pdf",
+          "sha256": "69680f14921b1bd8fd52cbd482a0871993b1a2ce0bffde1baaf081d85a3f3769"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-links-actions",
+      "kind": "vector",
+      "description": "Independently constructed navigation links actions",
+      "requirements": [
+        "navigation-links"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-links-actions.expected",
+          "sha256": "887d2256a68f2c7196e61cb0745f325243be61ba0fbaecf06ea00e37ab4e860b"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-links-actions.params",
+          "sha256": "115815da14066c97a454538138b5c75dd47252b860e013691ad633c5d2483f00"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-links-actions.pdf",
+          "sha256": "ab0f19e5677d1617a11ff7c065b0758001bbbde677f7fc727f67922f4205529a"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-links-target-conflict",
+      "kind": "vector",
+      "description": "Independently constructed navigation links target conflict",
+      "requirements": [
+        "navigation-links"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-links-target-conflict.expected",
+          "sha256": "887d2256a68f2c7196e61cb0745f325243be61ba0fbaecf06ea00e37ab4e860b"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-links-target-conflict.params",
+          "sha256": "a7902c4aacc54a4e271626418c4bbde438eaed3f41294024e68f05c5dc4e2762"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-links-target-conflict.pdf",
+          "sha256": "3a0e18338ae02226d790ab904957df1b15247526d016c6e4094c36eb1cbcfb33"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-links-quads",
+      "kind": "vector",
+      "description": "Independently constructed navigation links quads",
+      "requirements": [
+        "navigation-links"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-links-quads.expected",
+          "sha256": "61170a400fb8d09a307e1a20627c8a0770dd01e01bf6ad2e8ce9856683459eea"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-links-quads.params",
+          "sha256": "aa4ad87624aa792d7b6dc1d854dc3c4ba5623f0107262bec22723789624ce059"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-links-quads.pdf",
+          "sha256": "d2c0f48b30c2b6fd6e5b80de20d2c5b1d73205f7d57452ba91ffb8a940eaa0bd"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-action-cycle",
+      "kind": "vector",
+      "description": "Independently constructed navigation action cycle",
+      "requirements": [
+        "navigation-links"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-action-cycle.expected",
+          "sha256": "5e3bf95d73f79d7bebca3001bcb1f55c14ac8d03b94d9d27a896cf799483ef6f"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-action-cycle.params",
+          "sha256": "6c267835397f787d6631bea145945aa00f712f047d58514c3844205c12ffbdda"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-action-cycle.pdf",
+          "sha256": "be7c955c877a4e63bc07d50f3935661e32b8296c5bbc4cd915dfb7f4ac34d29a"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-page-labels",
+      "kind": "vector",
+      "description": "Independently constructed navigation page labels",
+      "requirements": [
+        "navigation-labels"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-page-labels.expected",
+          "sha256": "d08b7467de006772ada8ef4293ec568213f2332c7134e344b2ff8650b1d43009"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-page-labels.params",
+          "sha256": "3e7b27ae48b4d35cb5eca6fde7d58f79ecddbe46b9e849d23d9e7f41f3e0c28c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-page-labels.pdf",
+          "sha256": "1ad71554a15dc681cb5ba2be71352e8e21efeab0f29307253c7762d8627bae76"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-destination-page-number",
+      "kind": "vector",
+      "description": "Independently constructed navigation destination page number",
+      "requirements": [
+        "navigation-destinations"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-destination-page-number.expected",
+          "sha256": "99126f4f14746db133cff80e1937960409468e90553a5695253577ac725f6dd1"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-destination-page-number.params",
+          "sha256": "1bd825010a47fbcb2969346fd3da061b1a2ba1aa101a424018d4ed7c2ca9a8d9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-destination-page-number.pdf",
+          "sha256": "a71c47fb2667995d9c9d2c235ee8d9eae8cfc6466c82b349878a948bb7ef0774"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-tree-mixed",
+      "kind": "vector",
+      "description": "Independently constructed navigation tree mixed",
+      "requirements": [
+        "navigation-trees"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-tree-mixed.expected",
+          "sha256": "f70cc33a611befeccf92a6bf1252a70a45f18ce9efc990d3ccc2ab03151bf768"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-tree-mixed.params",
+          "sha256": "0728477a1b3df7145867ab9ab11c3d89e225aa721d63d090bbb4c3b063026497"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-tree-mixed.pdf",
+          "sha256": "0d058b1441c3a44eba0228f6ee588668727627e299ab39d06f3b91bf014b7138"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-tree-unmatched",
+      "kind": "vector",
+      "description": "Independently constructed navigation tree unmatched",
+      "requirements": [
+        "navigation-trees"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-tree-unmatched.expected",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-tree-unmatched.params",
+          "sha256": "48021c1a58cb0ca91bfc6d70aa8ba9246f56ee09d07576d980c86c068e737ba5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-tree-unmatched.pdf",
+          "sha256": "da1389a773c55bf276d9c43fd548e98c5049575eb9e4fab1825d410e080bd82c"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-destination-cycle",
+      "kind": "vector",
+      "description": "Independently constructed navigation destination cycle",
+      "requirements": [
+        "navigation-destinations"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-destination-cycle.expected",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-destination-cycle.params",
+          "sha256": "6c0af4a9e784b7baafe3ff8bbeeacb2325d567a4147fde406290cecef41f8a00"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-destination-cycle.pdf",
+          "sha256": "705ca3c55e9b9d83814789cddedaed4885921ac041f7dbf0a45b22cbba3c1290"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-labels-overflow",
+      "kind": "vector",
+      "description": "Independently constructed navigation labels overflow",
+      "requirements": [
+        "navigation-labels"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-labels-overflow.expected",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-labels-overflow.params",
+          "sha256": "c403832034027fc753345f5b6fc18086dd073bc50bc865793d50a595b3777ac5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-labels-overflow.pdf",
+          "sha256": "085b9c62a22f3601b6ef3f2b84689d4123cd1df5263ca7422178858eb45fb2f7"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-link-highlight-type",
+      "kind": "vector",
+      "description": "Independently constructed navigation link highlight type",
+      "requirements": [
+        "navigation-links"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-link-highlight-type.expected",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-link-highlight-type.params",
+          "sha256": "cba541d438803adcb3e21ea5ecadf733ec0534ba1316dddee38d12d73301f9b3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-link-highlight-type.pdf",
+          "sha256": "6b4b0086bd7bf134e57f30d3aa4072a22041b7a159cdd6a26f051e83c14640d8"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-links-border-styles",
+      "kind": "vector",
+      "description": "Independently constructed navigation links border styles",
+      "requirements": [
+        "navigation-links"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-links-border-styles.expected",
+          "sha256": "801ed7d966a0a8583f354d442dbde1b7e59bcef42f217ee8336662a80f9ef793"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-links-border-styles.params",
+          "sha256": "68394d253a34e22f97fa654483d34f4d6a09f9d2f33937b208a0628faf306b63"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-links-border-styles.pdf",
+          "sha256": "338d3874a67361347f2f1ff0c15df06325d8e2cbcfe4c3d5b449e2d9417db2aa"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-link-border-array",
+      "kind": "vector",
+      "description": "Independently constructed navigation link border array",
+      "requirements": [
+        "navigation-links"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-link-border-array.expected",
+          "sha256": "7f9f8f73d9e4b6f7f7e110b3218bd5589e7c9ebf22d64684eb99c4a366257de5"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-link-border-array.params",
+          "sha256": "1de0f186e4521cf0f495ec6297b9b4994a14126b30b8fcc68bc0e5ddfdd86632"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-link-border-array.pdf",
+          "sha256": "e4bc7f8883336ca564dac54f60f332c0b91e4f3d1f6914a7015b3dd7d077fd9d"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-tree-dangling-child",
+      "kind": "vector",
+      "description": "Independently constructed navigation tree dangling child",
+      "requirements": [
+        "navigation-trees"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-tree-dangling-child.expected",
+          "sha256": "a02699c7c60a1fbca9e121acd01e6bf0229db426e120481d07c83916b8f2a3fd"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-tree-dangling-child.params",
+          "sha256": "0728477a1b3df7145867ab9ab11c3d89e225aa721d63d090bbb4c3b063026497"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-tree-dangling-child.pdf",
+          "sha256": "bbb887cdb2bd71e2a84a06ec750330fc2bf8262ad070db29f01e631536fe6401"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-tree-dangling-limits",
+      "kind": "vector",
+      "description": "Independently constructed navigation tree dangling limits",
+      "requirements": [
+        "navigation-trees"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-tree-dangling-limits.expected",
+          "sha256": "a02699c7c60a1fbca9e121acd01e6bf0229db426e120481d07c83916b8f2a3fd"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-tree-dangling-limits.params",
+          "sha256": "08712cbd976deedf7900b143478bf58bf9132a67b65d976302c41eeb74c555e5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-tree-dangling-limits.pdf",
+          "sha256": "eec30c6bdcecf8035ecfe88a957a893e2aaaef5ecca531e6704aecd62a021e62"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-optional-null",
+      "kind": "vector",
+      "description": "Independently constructed navigation optional null",
+      "requirements": [
+        "navigation-links"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-optional-null.expected",
+          "sha256": "e32ac3d1122bae59b91b65ea6cf620bc6abd69b79a7efa3d2d758290dc44a13e"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-optional-null.params",
+          "sha256": "115815da14066c97a454538138b5c75dd47252b860e013691ad633c5d2483f00"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-optional-null.pdf",
+          "sha256": "c8a4c5fb2cc57b168121811b366fc7bb0a908a7a960051ea5bd3b9befded6e26"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-optional-undefined",
+      "kind": "vector",
+      "description": "Independently constructed navigation optional undefined",
+      "requirements": [
+        "navigation-links"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-optional-undefined.expected",
+          "sha256": "e32ac3d1122bae59b91b65ea6cf620bc6abd69b79a7efa3d2d758290dc44a13e"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-optional-undefined.params",
+          "sha256": "115815da14066c97a454538138b5c75dd47252b860e013691ad633c5d2483f00"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-optional-undefined.pdf",
+          "sha256": "67f1ecc374195e5ed4b3a390ca38a3d6c18c32399078c21cd64878b9af299808"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-named-optional-null",
+      "kind": "vector",
+      "description": "Independently constructed navigation named optional null",
+      "requirements": [
+        "navigation-destinations"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-named-optional-null.expected",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-named-optional-null.params",
+          "sha256": "3d96d4a464fec52a11aaf140f8f4141178a2aa5215aeb91313e09184dee8dbc7"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-named-optional-null.pdf",
+          "sha256": "053d93011a3d1202519952c2370cfcaab2dddac51b5390f873cbddcdbbec6725"
+        }
+      }
+    },
+    {
+      "id": "document/navigation-launch-null-platform",
+      "kind": "vector",
+      "description": "Independently constructed navigation launch null platform",
+      "requirements": [
+        "navigation-links"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/navigation-launch-null-platform.expected",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/document/navigation-launch-null-platform.params",
+          "sha256": "cba541d438803adcb3e21ea5ecadf733ec0534ba1316dddee38d12d73301f9b3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/navigation-launch-null-platform.pdf",
+          "sha256": "4345eae4cf812fcaf5c5ab3331df80d074fa554991bdf2f81fcaa0f494e1706d"
+        }
+      }
     }
   ]
 }

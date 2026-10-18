@@ -1,0 +1,4 @@
+Root €|-|0|1|0.2,0.3,0.4|1,1|dest:0:Fit
+Child 😀|0|1|0|0,0,0|0,0|URI:child
+Hidden|1|2|0|0,0,0|0,0|dest:1:FitB
+Fin|-|0|0|0,0,0|0,0|Named:LastPage

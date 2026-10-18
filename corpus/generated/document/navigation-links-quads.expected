@@ -1,0 +1,11 @@
+0|1,2,31,42|0|2|0|GoTo:1:Fit
+1|1,2,31,42|1|2|1|GoToR:77:XYZ:_,_,_:true
+2|1,2,31,42|1|2|2|GoToR:name:remote
+3|1,2,31,42|1|2|3|URI:../chapter,GoTo:0:Fit,Named:LastPage,Named:LastPage
+4|1,2,31,42|1|2|0|Named:NextPage
+5|1,2,31,42|1|2|1|Named:PrevPage
+6|1,2,31,42|1|2|2|Named:FirstPage
+7|1,2,31,42|1|2|3|Named:LastPage
+8|1,2,31,42|1|2|0|Launch:inert.bin
+9|1,2,31,42|1|2|1|JavaScript:string
+10|1,2,31,42|1|2|2|JavaScript:stream
