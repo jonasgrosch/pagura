@@ -1,4 +1,4 @@
-//! Read-only interactive forms (ISO 32000-2, 12.7).
+//! Interactive form source views and caller-owned filling (ISO 32000-2, 12.7).
 //!
 //! Fields and widgets borrow unmodified source dictionaries. The field list is
 //! flat preorder; parent indexes precede children. Actions, calculation order,
@@ -9,6 +9,8 @@
 //! the document's retained-cache budget (ADR 0012). No partial result is returned
 //! on failure. Names are display/lookup data, never unique object identities.
 mod attributes;
+pub mod features;
+mod fill;
 mod model;
 mod names;
 mod tree;
@@ -16,6 +18,10 @@ mod values;
 mod widgets;
 
 use crate::Document;
+pub use fill::{
+    ButtonValue, ChoiceSelection, ChoiceValue, FillValue, FilledField, FilledValue, FormFiller,
+    WidgetState,
+};
 pub use model::{
     AcroForm, AdditionalAction, ButtonKind, ChoiceOption, Field, FieldFlags, FieldKind, FieldValue,
     Justification, Widget,
@@ -23,6 +29,16 @@ pub use model::{
 use pagura_core::Result;
 
 impl Document {
+    /// Starts an in-memory form session, or returns None without an AcroForm.
+    /// Original values, bytes, actions and appearances remain unchanged.
+    ///
+    /// # Errors
+    /// As [`Self::acro_form`]; changes have their own bounded storage.
+    pub fn form_filler(&self) -> Result<Option<FormFiller<'_>>> {
+        self.acro_form()
+            .map(|form| form.map(|form| FormFiller::new(self, form)))
+    }
+
     /// Reads the AcroForm and its field/widget tree (12.7.3–12.7.5).
     /// Returns `None` when AcroForm is absent or null (7.3.9).
     ///

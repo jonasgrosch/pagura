@@ -1,0 +1,54 @@
+q
+Q
+/Tx BMC
+q
+2 2 96 36 re W n
+q
+0.6 0.75 0.9 rg
+2 26 96 12 re f
+Q
+BT
+0 Tc
+0 Tw
+100 Tz
+0 TL
+0 Tr
+0 Ts
+0 g
+0 g
+/F1 10 Tf
+1 0 0 1 2 29 Tm
+<4141> Tj
+ET
+BT
+0 Tc
+0 Tw
+100 Tz
+0 TL
+0 Tr
+0 Ts
+0 g
+0 g
+/F1 10 Tf
+1 0 0 1 2 17 Tm
+<4242> Tj
+ET
+q
+0.6 0.75 0.9 rg
+2 2 96 12 re f
+Q
+BT
+0 Tc
+0 Tw
+100 Tz
+0 TL
+0 Tr
+0 Ts
+0 g
+0 g
+/F1 10 Tf
+1 0 0 1 2 5 Tm
+<4343> Tj
+ET
+Q
+EMC

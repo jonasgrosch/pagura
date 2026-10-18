@@ -158,3 +158,21 @@ fn arbitrary_byte_changes_do_not_panic() {
         }
     }
 }
+
+#[test]
+fn form_preparation_hides_a_signature_without_appearance() {
+    use pagura::{form_appearance::Appearance, forms::FillValue};
+    let document = open_strict(fixture("forms", "text-beside-signature.pdf")).unwrap();
+    let mut filler = document.form_filler().unwrap().unwrap();
+    let unchanged = pagura::prepare_form(&filler).unwrap();
+    filler.set(0, FillValue::Text("AB")).unwrap();
+    let filled = pagura::prepare_form(&filler).unwrap();
+    for appearances in [unchanged, filled] {
+        assert_eq!(appearances.len(), 2);
+        assert!(matches!(
+            appearances[0].appearance(),
+            Appearance::Generated(_)
+        ));
+        assert_eq!(appearances[1].appearance(), &Appearance::Hidden);
+    }
+}

@@ -34,6 +34,8 @@ pub use pagura_text::{Provider, SearchOptions, TextMatch, TextPage};
 
 /// Stable tags for rendering capabilities not implemented yet.
 pub mod features;
+/// In-memory form appearance programs and resource dictionaries (12.7.4.3).
+pub mod form_appearance;
 
 /// Options for rendering a page.
 #[derive(Debug, Clone, Copy, PartialEq)]

@@ -4,3 +4,5 @@
 *.png binary
 # Bundled third-party data is stored byte for byte (data/lock.json).
 data/** -text
+# Form values keep their exact line endings (fixtures.py records their hashes).
+corpus/generated/forms/*.value -text

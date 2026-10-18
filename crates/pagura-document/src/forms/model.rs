@@ -188,7 +188,7 @@ pub struct AcroForm<'a> {
     pub fields: Vec<Field<'a>>,
     /// Widgets in field/source order, associated through Widget::field.
     pub widgets: Vec<Widget<'a>>,
-    /// Deprecated appearance-generation request; no generation is performed.
+    /// Deprecated appearance-generation request, retained for explicit preparation.
     pub need_appearances: bool,
     /// Signature flags (Table 225), without signature validation.
     pub signature_flags: u32,
@@ -196,7 +196,7 @@ pub struct AcroForm<'a> {
     pub calculation_order: &'a [Value],
     /// Default resources, borrowed once rather than copied per field.
     pub default_resources: Option<&'a Dictionary>,
-    /// Document-wide DA bytes, never interpreted here.
+    /// Document-wide DA bytes, retained without changing source data.
     pub default_appearance: Option<&'a [u8]>,
     /// Document-wide Q, defaulting to Left.
     pub justification: Justification,

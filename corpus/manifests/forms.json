@@ -1,0 +1,1944 @@
+{
+  "schema": 2,
+  "area": "forms",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "forms/text-quadding-0",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-quadding-0.content",
+          "sha256": "4c357c26e20a766aae533522e900992c3addaa1683c8e1903d6f29dd0434fbe4"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-quadding-0.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-quadding-0.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-quadding-0.pdf",
+          "sha256": "26dac251f311af18a2af349179f3f2c50c3cd032888805fc8449611c6cca4646"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-quadding-0.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-quadding-1",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-quadding-1.content",
+          "sha256": "1e6c81a8f52d29970b202e36f544470a196016698d6bc33ce697426443009956"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-quadding-1.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-quadding-1.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-quadding-1.pdf",
+          "sha256": "089a67f4cbd45bf0a410e5b21d8120c307139fe453c27532d6e3eb93c7e254ef"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-quadding-1.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-quadding-2",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-quadding-2.content",
+          "sha256": "f3884150a4b04fa4598af0058ace69ca7518b375dbb7996a864bfc92590f3ac0"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-quadding-2.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-quadding-2.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-quadding-2.pdf",
+          "sha256": "8963b37035f12dbc0040c98cc3354a3bf78df9377e634076147cc0716663e444"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-quadding-2.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-auto-size",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-auto-size.content",
+          "sha256": "4a5289e9e83d6c11dd21475a90ad6f53973e7b90066190372a2a580939dfdc7e"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-auto-size.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-auto-size.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-auto-size.pdf",
+          "sha256": "a5edfea7c967b6103615a77c60b15b2cfc58b37f61848c5a2bd0e4de1f6c0eb1"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-auto-size.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-auto-shrink",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-auto-shrink.content",
+          "sha256": "8d3f0d0a3054b57e1334e5f03d0bab068da134bed91ae94155e4d009927ec661"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-auto-shrink.expected",
+          "sha256": "8d21ca9e04bcad0c969d07be5aef8c62fbee56236e9e118c559c96deaf0c0ca4"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-auto-shrink.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-auto-shrink.pdf",
+          "sha256": "fa43d650bb6168420847e1636cb432037a1b3caa4190eb05a1a01e8ee90647fa"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-auto-shrink.value",
+          "sha256": "9ac2197d9258257b1ae8463e4214e4cd0a578bc1517f2415928b91be4283fc48"
+        }
+      }
+    },
+    {
+      "id": "forms/text-comb",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-comb.content",
+          "sha256": "505abd2c33e95b4f66b8591dd7ef82ba79366d427d1a20ccbfd11dfce6d3fac6"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-comb.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-comb.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-comb.pdf",
+          "sha256": "c9abc61b6b5ba78155c4efbf0617a1c7588e4a76ada3bc0ebb67066c5f9f6f4f"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-comb.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-comb-right",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-comb-right.content",
+          "sha256": "7783d69781f5da81fadc304fa326999fdfbd277476a4edf4eaa7b03df52071f2"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-comb-right.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-comb-right.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-comb-right.pdf",
+          "sha256": "aade099d5d380d12a2f55bd9596a56d8a88ca952aa56c5a6bd1fb2246b7ffd6b"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-comb-right.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-multiline-wrap",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-multiline-wrap.content",
+          "sha256": "e63a528073835ee1dc0d062662228357d6d078ff3c2d70a0fd830f140871b8fe"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-multiline-wrap.expected",
+          "sha256": "04ee6f6023e804c5f96fd0db09182be178eaf6150fe751592a273341d1a63bb7"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-multiline-wrap.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-multiline-wrap.pdf",
+          "sha256": "6fdd16569a5f26c15b2f9f1181e155c51269d99badfa39696655f34fb90d92b4"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-multiline-wrap.value",
+          "sha256": "7373f2a285958f30d831237287eb9b18bb24f99e44ae0c829d7fe25d3dc9ecc9"
+        }
+      }
+    },
+    {
+      "id": "forms/text-password",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-password.content",
+          "sha256": "633e972b506138bc21dbd6a38d476d131b1e54ea58bb7ee6c54396e98d200a81"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-password.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-password.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-password.pdf",
+          "sha256": "102e10f1f12b880accf28ee9a7e339e0b5e9cec30ebdb54b835c5e7aa46c40ba"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-password.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-unicode-length",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-unicode-length.expected",
+          "sha256": "69a0cf03f7b0016a1ba7991dde823ccc1c689f1902e66899f8dcd2f6f8138d05"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-unicode-length.params",
+          "sha256": "5474b42e5b92399e2cf9049a0396a20fd543cc75cea66b64652e2dd6d0be70ef"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-unicode-length.pdf",
+          "sha256": "50b76b899c6b6f98565c35ed64f83b0f9ee50c737e8a2f3777b4554fae76d17c"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-unicode-length.value",
+          "sha256": "541e157b5da7e26f2e370ab8d045b07b0f2736e6430913681db523a7101162f0"
+        }
+      }
+    },
+    {
+      "id": "forms/text-maxlen",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-maxlen.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-maxlen.params",
+          "sha256": "3c1418821715b08fb5fbbbdf0fe8c65df601af52c237ac1558b81eb2348a4680"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-maxlen.pdf",
+          "sha256": "50b76b899c6b6f98565c35ed64f83b0f9ee50c737e8a2f3777b4554fae76d17c"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-maxlen.value",
+          "sha256": "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+        }
+      }
+    },
+    {
+      "id": "forms/text-read-only",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-read-only.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-read-only.params",
+          "sha256": "3c1418821715b08fb5fbbbdf0fe8c65df601af52c237ac1558b81eb2348a4680"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-read-only.pdf",
+          "sha256": "8fceacd5c3a24c3e9a3873cb7945872fb0a1fc03e303baf64aaee6ac754f182e"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-read-only.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-required-noexport-empty",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-required-noexport-empty.expected",
+          "sha256": "efa5abd0867bf79a78ceb2492fddf4fca2cb8052cd2a4179a767fb15f8fd1e60"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-required-noexport-empty.params",
+          "sha256": "5474b42e5b92399e2cf9049a0396a20fd543cc75cea66b64652e2dd6d0be70ef"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-required-noexport-empty.pdf",
+          "sha256": "6eae07800de506be9192ccb1c29b75c839bd1e678c2e324a93d9bfc1d17bba82"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-required-noexport-empty.value",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "forms/text-singleline-break",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-singleline-break.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-singleline-break.params",
+          "sha256": "3c1418821715b08fb5fbbbdf0fe8c65df601af52c237ac1558b81eb2348a4680"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-singleline-break.pdf",
+          "sha256": "c5d73f362104ad113c097eb9403b0d2cfd87060d7e42a34bb6108b8e8ef181df"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-singleline-break.value",
+          "sha256": "23519a43c66b4c342f25b32e09797ec5f3fc0be388cd8243fb3449afbdce4013"
+        }
+      }
+    },
+    {
+      "id": "forms/text-invalid-comb-0",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-invalid-comb-0.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-invalid-comb-0.params",
+          "sha256": "3c1418821715b08fb5fbbbdf0fe8c65df601af52c237ac1558b81eb2348a4680"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-invalid-comb-0.pdf",
+          "sha256": "d58589b69a9739e495d91bbe143304d35eb1332ec455d5a0668293905ed0519a"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-invalid-comb-0.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-invalid-comb-4096",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-invalid-comb-4096.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-invalid-comb-4096.params",
+          "sha256": "3c1418821715b08fb5fbbbdf0fe8c65df601af52c237ac1558b81eb2348a4680"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-invalid-comb-4096.pdf",
+          "sha256": "cdc51c4f199af4cfc90c12f84c7f41899c59e660246df16065a9e76a331ad798"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-invalid-comb-4096.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-invalid-comb-8192",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-invalid-comb-8192.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-invalid-comb-8192.params",
+          "sha256": "3c1418821715b08fb5fbbbdf0fe8c65df601af52c237ac1558b81eb2348a4680"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-invalid-comb-8192.pdf",
+          "sha256": "7ad7ad7448ebe77eda6cfe814c54796eb39f892aa4834fcdac12d8e36adc795b"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-invalid-comb-8192.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-invalid-comb-1048576",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-invalid-comb-1048576.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-invalid-comb-1048576.params",
+          "sha256": "3c1418821715b08fb5fbbbdf0fe8c65df601af52c237ac1558b81eb2348a4680"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-invalid-comb-1048576.pdf",
+          "sha256": "70182653731216876e7152043abc5a8c83f6269a9c88a99730abe8966949a4ed"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-invalid-comb-1048576.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-rich",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-rich.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-rich.params",
+          "sha256": "168d943aa3606aa83194df379d9109c6a9af15f5f32d32be0fa2da4111e29432"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-rich.pdf",
+          "sha256": "a00b663fbac634e30500ac5906b5c2507d7c20ea29dc43f88ee78becd9229bfd"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-rich.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-xfa",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-xfa.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-xfa.params",
+          "sha256": "061042ae9b85063d80e3aeb6a95cea2b0c7bdbc42f50e18bba4dbc4ab19d787e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-xfa.pdf",
+          "sha256": "0dfdfca271bd5aa0896b379d7f52694612ad4604104b0b739534df1847126f2d"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-xfa.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-update-existing",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-update-existing.content",
+          "sha256": "98aa5d7e91886d15a36cffa09ee0355a0eaf44ba14162aec468ce840df073d9a"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-update-existing.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-update-existing.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-update-existing.pdf",
+          "sha256": "e09048ddd036e8590bb1d67dd96142f817b51452f40bf65593a07be813be9b2c"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-update-existing.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-need-appearances",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-need-appearances.content",
+          "sha256": "98aa5d7e91886d15a36cffa09ee0355a0eaf44ba14162aec468ce840df073d9a"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-need-appearances.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-need-appearances.params",
+          "sha256": "ed5dc3ff9bbf5c6f696eb0ad432adb7b6300efb1240b62d67684fd9f5b5399a8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-need-appearances.pdf",
+          "sha256": "e95a694fae3faedd8e46c37246bd27a956422422006ee57e3223a577d1060a73"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-need-appearances.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-preserve-existing",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-preserve-existing.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-preserve-existing.params",
+          "sha256": "daac74e87b61b8d04344d575f04c26927e716d98a06a329ee5a93fd00b307903"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-preserve-existing.pdf",
+          "sha256": "6895fe341313260773295e454132029eeba49dcecdd31b6598e2bbec77596488"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-preserve-existing.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-background-border",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-appearance-style"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-background-border.content",
+          "sha256": "da9c0ab033718d10b03b8b4d3ee2c4f26236559c46eb541c24b6e05fc6f7fe40"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-background-border.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-background-border.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-background-border.pdf",
+          "sha256": "b545c4f24722ee9f157f7cc8a1f26a094f65c2f40d2e455ac10bb2e47cbeba42"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-background-border.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-combo-0",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/choice-combo-0.content",
+          "sha256": "578fb8514a68ac4012f91b3ec7aa8c56d2fc5a87b4d6e125f705d3ed62af2e64"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/choice-combo-0.expected",
+          "sha256": "ec9a46fffc1d6e7e49cf3326da36d431a941511e087f49588c0e8b46b8d8e378"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-combo-0.params",
+          "sha256": "a60824d284cb667e9afdc2bcecbfae6939d72053235bcdb3b9e4999e27b60902"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-combo-0.pdf",
+          "sha256": "75c08ff040b9d7f82c62426d9de0e509390d5c67df98ae3d73d8f0fe20632ee0"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-combo-0.value",
+          "sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-combo-1",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/choice-combo-1.content",
+          "sha256": "0f5ed084c1cf2736f4cf9ce25e2c6025c96d48a49cecf8ea6e8105f5f5c8b091"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/choice-combo-1.expected",
+          "sha256": "ec9a46fffc1d6e7e49cf3326da36d431a941511e087f49588c0e8b46b8d8e378"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-combo-1.params",
+          "sha256": "a60824d284cb667e9afdc2bcecbfae6939d72053235bcdb3b9e4999e27b60902"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-combo-1.pdf",
+          "sha256": "0d7bb28fac88083586caa27232a1c19fb830931da2a69902e647f55e206b2769"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-combo-1.value",
+          "sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-combo-2",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/choice-combo-2.content",
+          "sha256": "d050f286c902371bb72f53bb4304da16f8983a1f70c81061b500bd0773124283"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/choice-combo-2.expected",
+          "sha256": "ec9a46fffc1d6e7e49cf3326da36d431a941511e087f49588c0e8b46b8d8e378"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-combo-2.params",
+          "sha256": "a60824d284cb667e9afdc2bcecbfae6939d72053235bcdb3b9e4999e27b60902"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-combo-2.pdf",
+          "sha256": "728a8e6e93b7dc9186b901cde9b3326414348ccb421c5c271b4440d9a94d2269"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-combo-2.value",
+          "sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-editable",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/choice-editable.content",
+          "sha256": "44f6bfd6ea2f627dcfca83bfe55636294df6683f4a38feb8c49340d467f011c6"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/choice-editable.expected",
+          "sha256": "428102fe501bcfdf94e51379c2ef2f506d4fe2a898d0623f6d1101b952115f5d"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-editable.params",
+          "sha256": "de016aa37e99e367722f023fff4bd548c33f0835c93dcf3396785958513cb6b9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-editable.pdf",
+          "sha256": "ff5334ad16207a473818a1d81948d1bcf57126b553ef7e37dc3e8ef9370ec456"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-editable.value",
+          "sha256": "7cd5885327fd60e825d67d32f9d22b018227a208aa3c4819da15b36b5d5869d3"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-multi",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/choice-multi.expected",
+          "sha256": "5f8cf8b3ee171adfd050a33be2484c4eacaa873f890f19857a072ea2beec9b67"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-multi.params",
+          "sha256": "b71d336b449e486e09df882852709ee0717f3e95b61909537dc50a6c589cb3e6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-multi.pdf",
+          "sha256": "b4d28ab29f4d1bb52be54618ece12b91e3efe726a188008186b9eb3f9fdf3ac6"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-multi.value",
+          "sha256": "da3e59883b89334cfdb2f44a35bdab076caad9eed92a2af9674540e1abfc2edd"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-duplicate-index",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/choice-duplicate-index.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-duplicate-index.params",
+          "sha256": "6a0a8cfddb7dc328af27376c391a29b3b717afa259c57868e42c5d2efbb53045"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-duplicate-index.pdf",
+          "sha256": "b4d28ab29f4d1bb52be54618ece12b91e3efe726a188008186b9eb3f9fdf3ac6"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-duplicate-index.value",
+          "sha256": "03ebfc2d40db30128bccfcea3aa3e32abd00335d2054f06631f31fe711a3be58"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-index-range",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/choice-index-range.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-index-range.params",
+          "sha256": "6a0a8cfddb7dc328af27376c391a29b3b717afa259c57868e42c5d2efbb53045"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-index-range.pdf",
+          "sha256": "b4d28ab29f4d1bb52be54618ece12b91e3efe726a188008186b9eb3f9fdf3ac6"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-index-range.value",
+          "sha256": "4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-empty",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/choice-empty.expected",
+          "sha256": "0d381a1b0cb07c66a64c01c7b5f3adbac3be3fcee0cdfe598f66f929a8f97d46"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-empty.params",
+          "sha256": "b71d336b449e486e09df882852709ee0717f3e95b61909537dc50a6c589cb3e6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-empty.pdf",
+          "sha256": "b4d28ab29f4d1bb52be54618ece12b91e3efe726a188008186b9eb3f9fdf3ac6"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-empty.value",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-single-multi",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/choice-single-multi.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-single-multi.params",
+          "sha256": "6a0a8cfddb7dc328af27376c391a29b3b717afa259c57868e42c5d2efbb53045"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-single-multi.pdf",
+          "sha256": "7f4df6a1ee96aeb4e998960f430135b59674c9880d7c83518955f8ecd9ceec2a"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-single-multi.value",
+          "sha256": "83b97b859aa5f81b2f0f86ba2a675efaf515ad2d5e2b8652cf2de7e1c2267350"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-custom-noneditable",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/choice-custom-noneditable.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-custom-noneditable.params",
+          "sha256": "b8a847df9b46e44d78249279abadeaa7db82bc182b8d269fc6875565dfa31678"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-custom-noneditable.pdf",
+          "sha256": "7f4df6a1ee96aeb4e998960f430135b59674c9880d7c83518955f8ecd9ceec2a"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-custom-noneditable.value",
+          "sha256": "7cd5885327fd60e825d67d32f9d22b018227a208aa3c4819da15b36b5d5869d3"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-export",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/choice-export.expected",
+          "sha256": "ec9a46fffc1d6e7e49cf3326da36d431a941511e087f49588c0e8b46b8d8e378"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-export.params",
+          "sha256": "f341ae9cac5a8552ad52ed344805991bc2df46376b599338b3c2275778bf1a03"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-export.pdf",
+          "sha256": "7f4df6a1ee96aeb4e998960f430135b59674c9880d7c83518955f8ecd9ceec2a"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-export.value",
+          "sha256": "3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-ambiguous-export",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/choice-ambiguous-export.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-ambiguous-export.params",
+          "sha256": "7ec802053fe11953db564e2bf2d9b8241e0d82d41b9faf93cfab8052d99dbc8d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-ambiguous-export.pdf",
+          "sha256": "bab182e969f991e212b9a92c9e56e52f92823e940cea9b6f57c88609d62661d9"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-ambiguous-export.value",
+          "sha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-invalid-edit",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/choice-invalid-edit.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-invalid-edit.params",
+          "sha256": "b8a847df9b46e44d78249279abadeaa7db82bc182b8d269fc6875565dfa31678"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-invalid-edit.pdf",
+          "sha256": "c0fa2b28188438a40f0863a0eed6875b6f77475e66f82d4f10d6bf478ebcdf98"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-invalid-edit.value",
+          "sha256": "58bb119c35513a451d24dc20ef0e9031ec85b35bfc919d263e7e5d9868909cb5"
+        }
+      }
+    },
+    {
+      "id": "forms/checkbox-widget",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/checkbox-widget.expected",
+          "sha256": "77b0c9a2ca693deba0f5f1628ab5e7283c1e53354a09e82da0038bce86e2627e"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/checkbox-widget.params",
+          "sha256": "ee6823485c6132b36e512101f525c7953ccd567cafc978db16a3019eed443c78"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/checkbox-widget.pdf",
+          "sha256": "71918faf69a875709132703f6c64aebf74e50c2d93ca72581e95fec65e52fd4a"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/checkbox-widget.value",
+          "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+        }
+      }
+    },
+    {
+      "id": "forms/checkbox-off",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/checkbox-off.expected",
+          "sha256": "295819dd3c585225e6352c56bd39c0d37c752669bd1007cebbe5570ba2b6f1e0"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/checkbox-off.params",
+          "sha256": "aecfcd659fd1506ebf7aa0acc6df9df99f2f93171eb0a15a053018139395fc51"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/checkbox-off.pdf",
+          "sha256": "71918faf69a875709132703f6c64aebf74e50c2d93ca72581e95fec65e52fd4a"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/checkbox-off.value",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "forms/radio-widget",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/radio-widget.expected",
+          "sha256": "00e6c3adb26dd0c2dae0d5b5f93fdfb0788fb7811b6787c0e19155f7faa3b426"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/radio-widget.params",
+          "sha256": "ee6823485c6132b36e512101f525c7953ccd567cafc978db16a3019eed443c78"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/radio-widget.pdf",
+          "sha256": "3e8aba18d137ada64daa10678f6eefeaddb34b8b42c51c1bbd7c6ff82544a9fc"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/radio-widget.value",
+          "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+        }
+      }
+    },
+    {
+      "id": "forms/radio-off",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/radio-off.expected",
+          "sha256": "295819dd3c585225e6352c56bd39c0d37c752669bd1007cebbe5570ba2b6f1e0"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/radio-off.params",
+          "sha256": "aecfcd659fd1506ebf7aa0acc6df9df99f2f93171eb0a15a053018139395fc51"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/radio-off.pdf",
+          "sha256": "3e8aba18d137ada64daa10678f6eefeaddb34b8b42c51c1bbd7c6ff82544a9fc"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/radio-off.value",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "forms/radio-ambiguous-state",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/radio-ambiguous-state.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/radio-ambiguous-state.params",
+          "sha256": "29d18dd709ef2d8c3c94cd1272f7d2737a20419b64e382bf30506ddcf871296b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/radio-ambiguous-state.pdf",
+          "sha256": "3e8aba18d137ada64daa10678f6eefeaddb34b8b42c51c1bbd7c6ff82544a9fc"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/radio-ambiguous-state.value",
+          "sha256": "85a39ab345d672ff8ca9b9c6876f3adcacf45ee7c1e2dbd2408fd338bd55e07e"
+        }
+      }
+    },
+    {
+      "id": "forms/radio-unison",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/radio-unison.expected",
+          "sha256": "77b0c9a2ca693deba0f5f1628ab5e7283c1e53354a09e82da0038bce86e2627e"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/radio-unison.params",
+          "sha256": "ee6823485c6132b36e512101f525c7953ccd567cafc978db16a3019eed443c78"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/radio-unison.pdf",
+          "sha256": "164925a7cd2e538b4cd18d8399567b6f8f861e0f8942332a6896b08e989a6312"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/radio-unison.value",
+          "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+        }
+      }
+    },
+    {
+      "id": "forms/radio-no-toggle-off",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/radio-no-toggle-off.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/radio-no-toggle-off.params",
+          "sha256": "e3e9ad5a78885e3faf5d47004498767f4aa3ebdee206302d7d9108c8071b14db"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/radio-no-toggle-off.pdf",
+          "sha256": "b6d4dcb673b70c1929f817fa5ed5aea9ddd2dda4843e949654aaf8ee0ef9b8cb"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/radio-no-toggle-off.value",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "forms/radio-export-opt",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/radio-export-opt.expected",
+          "sha256": "05b49ce8f270b5e8008b4783a4f0603839462291c9888166e03d0020b751d331"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/radio-export-opt.params",
+          "sha256": "257a1d59e39f670562d31075ce39365a49bbbea844ea158b807a1f3920473745"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/radio-export-opt.pdf",
+          "sha256": "f5cf12e38ca675638f3cca774f719949b20356b65d157a0b6ffd77dfa735891f"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/radio-export-opt.value",
+          "sha256": "16367aacb67a4a017c8da8ab95682ccb390863780f7114dda0a0e0c55644c7c4"
+        }
+      }
+    },
+    {
+      "id": "forms/checkbox-generated",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/checkbox-generated.content",
+          "sha256": "06083ad511370cd62d7c0252afee52571ddc15384f09fd68748b5b23bd540bab"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/checkbox-generated.expected",
+          "sha256": "6086625203200095122a71a9042a40744cb7f30b0239f1846fdddf3c53abfcbc"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/checkbox-generated.params",
+          "sha256": "69e6e96c1bde1b3e399a73ce8a5762fde1c79afc7332e490d70c2ba3f2cf2bb5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/checkbox-generated.pdf",
+          "sha256": "398f32c127ee18c3f5d02a2c30831b7800f5ff43a243f4cc7931c8ecd82b45a9"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/checkbox-generated.value",
+          "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+        }
+      }
+    },
+    {
+      "id": "forms/button-push",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/button-push.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/button-push.params",
+          "sha256": "e3e9ad5a78885e3faf5d47004498767f4aa3ebdee206302d7d9108c8071b14db"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/button-push.pdf",
+          "sha256": "42b2a2f22f88598f24e3e9bdca4883361b9effd15aec5a3362497af113e53155"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/button-push.value",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-list-appearance",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/choice-list-appearance.content",
+          "sha256": "49529bfb2a45f7d6c66439a2a203ef815f4272b3bc4ccbde9a92119419f279da"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/choice-list-appearance.expected",
+          "sha256": "5f8cf8b3ee171adfd050a33be2484c4eacaa873f890f19857a072ea2beec9b67"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-list-appearance.params",
+          "sha256": "a60824d284cb667e9afdc2bcecbfae6939d72053235bcdb3b9e4999e27b60902"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-list-appearance.pdf",
+          "sha256": "149496fcd6ec7d598462bba9600606a5083b8fea1d4a804b5a707f2c077a29e8"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-list-appearance.value",
+          "sha256": "da3e59883b89334cfdb2f44a35bdab076caad9eed92a2af9674540e1abfc2edd"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-list-v-overrides-i",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/choice-list-v-overrides-i.content",
+          "sha256": "49529bfb2a45f7d6c66439a2a203ef815f4272b3bc4ccbde9a92119419f279da"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/choice-list-v-overrides-i.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-list-v-overrides-i.params",
+          "sha256": "ed5dc3ff9bbf5c6f696eb0ad432adb7b6300efb1240b62d67684fd9f5b5399a8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-list-v-overrides-i.pdf",
+          "sha256": "6af4fb43e2d2e6d5d783618556300e89d85420c48cebb95cabe1c43fea167874"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-list-v-overrides-i.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/choice-list-source-indices",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-choice"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/choice-list-source-indices.content",
+          "sha256": "49529bfb2a45f7d6c66439a2a203ef815f4272b3bc4ccbde9a92119419f279da"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/choice-list-source-indices.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/choice-list-source-indices.params",
+          "sha256": "ed5dc3ff9bbf5c6f696eb0ad432adb7b6300efb1240b62d67684fd9f5b5399a8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/choice-list-source-indices.pdf",
+          "sha256": "5cb236d3a88b02d1fb66b382110d9e0f98ec8dd91d1939bb98d65a765a1214a2"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/choice-list-source-indices.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-default-appearance-state",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-appearance-style"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-default-appearance-state.content",
+          "sha256": "02ccfaead8249cd208597ace04b09c2a28b4998c9d66e95daab0492ca3cf5a84"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-default-appearance-state.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-default-appearance-state.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-default-appearance-state.pdf",
+          "sha256": "8f0e674d800247678dafef0ec1a7f5cedd895543f67337c6be2f867e54e641ce"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-default-appearance-state.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/radio-generated",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/radio-generated.content",
+          "sha256": "06083ad511370cd62d7c0252afee52571ddc15384f09fd68748b5b23bd540bab"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/radio-generated.expected",
+          "sha256": "6086625203200095122a71a9042a40744cb7f30b0239f1846fdddf3c53abfcbc"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/radio-generated.params",
+          "sha256": "69e6e96c1bde1b3e399a73ce8a5762fde1c79afc7332e490d70c2ba3f2cf2bb5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/radio-generated.pdf",
+          "sha256": "ea096718502c5e75dbb2cb00941987788baa8ab19b24931771bb7f28bfaf815c"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/radio-generated.value",
+          "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+        }
+      }
+    },
+    {
+      "id": "forms/checkbox-generated-off",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/checkbox-generated-off.content",
+          "sha256": "073c7a422ea6a85c69910350680a33caae422f3eca456d15bbee14469aa879aa"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/checkbox-generated-off.expected",
+          "sha256": "b76eefe703bc580f1dbc1c6ed9c5d5c1aa65886eb6911fdfed2da3a7b2c714bb"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/checkbox-generated-off.params",
+          "sha256": "29d6333dce165d95106ab60ce52daccc749b55a0e23491e39123910dc5dbacba"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/checkbox-generated-off.pdf",
+          "sha256": "398f32c127ee18c3f5d02a2c30831b7800f5ff43a243f4cc7931c8ecd82b45a9"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/checkbox-generated-off.value",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "forms/text-no-scroll-overflow",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-no-scroll-overflow.expected",
+          "sha256": "8d21ca9e04bcad0c969d07be5aef8c62fbee56236e9e118c559c96deaf0c0ca4"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-no-scroll-overflow.params",
+          "sha256": "3b04c58722efa4d2c0db48558e4b4fcc81c47a4ad71536a61ea0bdc1d6195bfd"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-no-scroll-overflow.pdf",
+          "sha256": "3e0f51cdb15685b90f2ba3d876cacb30d81526b4b4c248b2911ddb2ab4efa0fe"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-no-scroll-overflow.value",
+          "sha256": "9ac2197d9258257b1ae8463e4214e4cd0a578bc1517f2415928b91be4283fc48"
+        }
+      }
+    },
+    {
+      "id": "forms/text-missing-font-character",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-missing-font-character.expected",
+          "sha256": "5c4dcfe4679c015e6e5c51e4a39df8123fdaf7fb3ac51220f0cd0b1440af3011"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-missing-font-character.params",
+          "sha256": "58b609abc11600e14e0c47d58588b9658ccef353e1a8814ac42fb0443b8755e2"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-missing-font-character.pdf",
+          "sha256": "c5d73f362104ad113c097eb9403b0d2cfd87060d7e42a34bb6108b8e8ef181df"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-missing-font-character.value",
+          "sha256": "e3c622e5fd53065d82b70802b06f30aee09e564e033a7d13c773fa67d5fcf1e8"
+        }
+      }
+    },
+    {
+      "id": "forms/text-invalid-da",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-invalid-da.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-invalid-da.params",
+          "sha256": "885d8604e0d0adeaa90dc597f7062800ebecaa79750f0d3789721d7ce23d618c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-invalid-da.pdf",
+          "sha256": "886026f64f28a2494bd23ae86d8aac32d75b4ca5a55e125fdfe6a8f6219cc858"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-invalid-da.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-oblique-matrix",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-oblique-matrix.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-oblique-matrix.params",
+          "sha256": "794ccecb38400fa991fbacbf5c705167fc8186e1f62485df5e26672385eb7c30"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-oblique-matrix.pdf",
+          "sha256": "03fce8d2710ebdf08ee136f9de07acb839110184f41308726734ac2e9e23125f"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-oblique-matrix.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-rotated-widget",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-text"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-rotated-widget.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-rotated-widget.params",
+          "sha256": "981e1bf01f70377daba2071d0d41ce10d8a5d90c56eec8509d8925f08d7a512d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-rotated-widget.pdf",
+          "sha256": "dd74197356a9322b68100a87d319f06ed2dc6a115f916f2894fd45cd54f216fa"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-rotated-widget.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/radio-duplicate-exports",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/radio-duplicate-exports.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/radio-duplicate-exports.params",
+          "sha256": "b6cf94d3beb2061e86e83f5ae3e824c75a6c750d374d365a772d58561018e98a"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/radio-duplicate-exports.pdf",
+          "sha256": "ee58bf1ccc556300c5123f5e3648d568ceeed2b94b01451b7e054e97338ba951"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/radio-duplicate-exports.value",
+          "sha256": "a4d26868017c0ccffe2efe50944ef4211834660cca834c6e9f86dec6a88246fa"
+        }
+      }
+    },
+    {
+      "id": "forms/checkbox-existing-no-on-state",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/checkbox-existing-no-on-state.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/checkbox-existing-no-on-state.params",
+          "sha256": "39cf9e420afd94fc62b7d2f4cf1d16b940bf46dc7bf4517047eb1ae52f805414"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/checkbox-existing-no-on-state.pdf",
+          "sha256": "8776d301eae7e4127cf4d83095bdc120c19cf4ec3164cb4913e2c8952f04b0da"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/checkbox-existing-no-on-state.value",
+          "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+        }
+      }
+    },
+    {
+      "id": "forms/checkbox-undefined-off-state",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/checkbox-undefined-off-state.expected",
+          "sha256": "b76eefe703bc580f1dbc1c6ed9c5d5c1aa65886eb6911fdfed2da3a7b2c714bb"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/checkbox-undefined-off-state.params",
+          "sha256": "bbfb8c9495648d8f6a4be2421a6bbcd167525d110adffacf7558979e264f07cf"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/checkbox-undefined-off-state.pdf",
+          "sha256": "b9e61fedf2a941b7f635e71b0fe478a0c053c77e8b8c5b36b3b89714a9695012"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/checkbox-undefined-off-state.value",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "forms/text-optional-null",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-appearance-style"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-optional-null.content",
+          "sha256": "4c357c26e20a766aae533522e900992c3addaa1683c8e1903d6f29dd0434fbe4"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-optional-null.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-optional-null.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-optional-null.pdf",
+          "sha256": "bfe8d591f2e615dc4c5ddd3580e68f57bd7ce31651be879b4fba0bd1b8d5692b"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-optional-null.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-existing-state-reset",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-existing-state-reset.content",
+          "sha256": "0b01eaab60f0e5fd1e23a1675a1656dc751f319d71f9cf6eae2c5864385bab01"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-existing-state-reset.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-existing-state-reset.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-existing-state-reset.pdf",
+          "sha256": "f03280fbf08907378be832cab86d93a4bd29b002fd6096bd73f7ea0d0594dbb1"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-existing-state-reset.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/checkbox-absent-ap-custom-state",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-fill-button"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/checkbox-absent-ap-custom-state.content",
+          "sha256": "06083ad511370cd62d7c0252afee52571ddc15384f09fd68748b5b23bd540bab"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/checkbox-absent-ap-custom-state.expected",
+          "sha256": "9c4285d1554df9e3bfad01d1b641cf0b7bf2ca37d08ccef68c1325cc0eb79fad"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/checkbox-absent-ap-custom-state.params",
+          "sha256": "f2626821a165cf16346eb62e438f44699594cef4811195d98922643b491c8b43"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/checkbox-absent-ap-custom-state.pdf",
+          "sha256": "0372ab9b7e7921e35bbb73c3bba24b301ccb79ed662f7c05d29f7f04c13285ba"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/checkbox-absent-ap-custom-state.value",
+          "sha256": "494ca78f7374e46fb2de9ad9f2dbd4aaae89b50b2ca044177a1566a59e06627e"
+        }
+      }
+    },
+    {
+      "id": "forms/text-negative-font-size",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-appearance-style"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-negative-font-size.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-negative-font-size.params",
+          "sha256": "794ccecb38400fa991fbacbf5c705167fc8186e1f62485df5e26672385eb7c30"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-negative-font-size.pdf",
+          "sha256": "8c9a7735ab265acdcdcbf725a757750cbc3797258c6449abbeceba2f18c0d673"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-negative-font-size.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-existing-inside-text-object",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-existing-inside-text-object.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-existing-inside-text-object.params",
+          "sha256": "5dc5733c8c755e1932dd96a3c78a2dee80e4393826263809032d56bc412604f4"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-existing-inside-text-object.pdf",
+          "sha256": "cba86d50fc486c97df71e914a12b7ba109d83ae67e42a87e7ad17d8aeaa97e6d"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-existing-inside-text-object.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-remapped-space-wrap",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-appearance-style"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-remapped-space-wrap.content",
+          "sha256": "58bd32de57dbee695e1544715286210f73f187bbf5a9c3c7ea8f298f9e4cc3a5"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-remapped-space-wrap.expected",
+          "sha256": "e371262e3dc211efba0929bdc15acecf13dbc636edb1c3eeac5302641f259d5e"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-remapped-space-wrap.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-remapped-space-wrap.pdf",
+          "sha256": "e690ac5632233f80c444ee298bda6dc71c6172f2af63c673cc2493ddfed4f94b"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-remapped-space-wrap.value",
+          "sha256": "fea4c5ce720c1d6a1cbc47c1607cc4ea172a69de8948e76d67910120597950fc"
+        }
+      }
+    },
+    {
+      "id": "forms/text-comb-centre-odd-cells",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-appearance-style"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-comb-centre-odd-cells.content",
+          "sha256": "40109bc8e49d76731bb0548fe7220da5efc37858cd54e6be7b558471f6de7374"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-comb-centre-odd-cells.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-comb-centre-odd-cells.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-comb-centre-odd-cells.pdf",
+          "sha256": "86b866d138eb49e7082721529882e6826381b15a3fa4187ae66f869f6449170e"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-comb-centre-odd-cells.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-beside-signature",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "files": {
+        ".content": {
+          "path": "corpus/generated/forms/text-beside-signature.content",
+          "sha256": "4c357c26e20a766aae533522e900992c3addaa1683c8e1903d6f29dd0434fbe4"
+        },
+        ".expected": {
+          "path": "corpus/generated/forms/text-beside-signature.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-beside-signature.params",
+          "sha256": "3a73b36e0665210ca25ec8add14a24f7866726d6f0c3e8454081b89d9dd0015d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-beside-signature.pdf",
+          "sha256": "34495cb46ab6ae4097703d6a86ba45ad50de0fdfd5578e28d58745edd57e01b6"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-beside-signature.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    },
+    {
+      "id": "forms/text-zero-area",
+      "kind": "vector",
+      "description": "Independent typed field replacement or appearance program, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-appearance-update"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/forms/text-zero-area.expected",
+          "sha256": "fd61ac6d5795b7ab102ad3ee56cb152bb35deb3a46ccfa086edf811fdd0bfdd2"
+        },
+        ".params": {
+          "path": "corpus/generated/forms/text-zero-area.params",
+          "sha256": "350c29cf03fa8050dc10c1b1949230c0f4a42147fabd7a3fc5962b01920854fd"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/text-zero-area.pdf",
+          "sha256": "51f3bf1e00d009b2a1c3264674b9cdebaa417d028526302cdb0fa6a41a2df5f5"
+        },
+        ".value": {
+          "path": "corpus/generated/forms/text-zero-area.value",
+          "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
+        }
+      }
+    }
+  ]
+}
