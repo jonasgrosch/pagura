@@ -1,6 +1,6 @@
 //! Logical content references, ISO 32000-2 14.7.2–14.7.5 and 14.8.
 use super::{LogicalText, Name, ObjectId, Range, Result, TextPage};
-use pagura_core::{Diagnostics, Dictionary, Error, Position, Value};
+use pagura_core::{Diagnostics, Dictionary, Error, Meter, Position, Value};
 use pagura_document::{Document, Page};
 use std::collections::{BTreeMap, BTreeSet};
 mod content;
@@ -57,9 +57,17 @@ struct Plan<'a> {
     nodes: Vec<Node<'a>>,
     items: Vec<Item>,
 }
+/// Storage of one map entry with small keys and values, including the
+/// tree's node overhead.
+const MAP_ENTRY_BYTES: usize = 80;
+/// Storage of one marked-content occurrence besides its glyph ranges: its
+/// entries in the occurrence and visibility maps.
+const OCCURRENCE_BYTES: usize = 192;
+
 struct Budget {
-    work: usize,
-    bytes: usize,
+    work: Meter,
+    bytes: Meter,
+    visits: Meter,
     limits: pagura_core::Limits,
     depth_exhausted: bool,
 }
@@ -74,10 +82,14 @@ impl Budget {
         Ok(())
     }
     fn work(&mut self, amount: usize) -> Result<()> {
-        super::charge(&mut self.work, amount, self.limits.operations)
+        self.work.charge(amount)
     }
     fn store(&mut self, amount: usize) -> Result<()> {
-        super::charge(&mut self.bytes, amount, self.limits.document_bytes)
+        self.bytes.charge(amount)
+    }
+    /// One node of the structure tree walk (`traversal_work`).
+    fn visit(&mut self) -> Result<()> {
+        self.visits.charge(1)
     }
 }
 
@@ -150,10 +162,18 @@ fn apply_root(
     if name(document, root, b"Type")?.map(Name::as_bytes) != Some(b"StructTreeRoot") {
         return Err(Error::syntax("invalid structure tree root Type (14.7.2)").into());
     }
+    let limits = document.limits();
     let mut budget = Budget {
-        work: 0,
-        bytes: 0,
-        limits: document.limits(),
+        work: Meter::new(limits.text_work, "logical text work budget exceeded"),
+        bytes: Meter::new(
+            limits.document_bytes,
+            "logical text storage budget exceeded",
+        ),
+        visits: Meter::new(
+            limits.traversal_work,
+            "structure tree traversal budget exceeded",
+        ),
+        limits,
         depth_exhausted: false,
     };
     let result = (|| {

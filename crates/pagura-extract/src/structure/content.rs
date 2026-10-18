@@ -23,7 +23,7 @@ pub(super) fn resolve(
         parents
             .as_ref()
             .map_or(0, ExactSizeIterator::len)
-            .saturating_mul(80),
+            .saturating_mul(super::MAP_ENTRY_BYTES),
     )?;
     if parents.is_none() && (!plan.items.is_empty() || plan.nodes.iter().any(|n| n.other_page)) {
         return Err(Error::syntax(
@@ -130,7 +130,7 @@ fn occurrences(text: &TextPage, page: &Page, budget: &mut Budget) -> Result<Occu
             .content
             .container
             .ok_or(Error::invalid_argument("MCID lacks its source container"))?;
-        budget.store(2 * size_of::<Range<usize>>() + 192)?;
+        budget.store(2 * size_of::<Range<usize>>() + super::OCCURRENCE_BYTES)?;
         let ranges = marked
             .entry(Reference::Marked(container, mcid))
             .or_default();
@@ -150,7 +150,7 @@ fn occurrences(text: &TextPage, page: &Page, budget: &mut Budget) -> Result<Occu
                 .marked_content
                 .iter()
                 .any(|m| m.tag.as_bytes() == b"Artifact");
-        budget.store(2 * size_of::<Range<usize>>() + 192)?;
+        budget.store(2 * size_of::<Range<usize>>() + super::OCCURRENCE_BYTES)?;
         marked
             .entry(Reference::Object(object.object))
             .or_default()
