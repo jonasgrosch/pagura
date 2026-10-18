@@ -1,9 +1,14 @@
 //! Image dictionary validation (ISO 32000-2, 8.9.5, Tables 87–88).
 use crate::{DecodedImage, ImageKind, Samples};
-use pagura_core::{Dictionary, Error, Limits, Result, Value};
+use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Limits, Position, Result, Value};
 use pagura_document::Document;
 
-pub(crate) fn resolved_dictionary(document: &Document, dict: &Dictionary) -> Result<Dictionary> {
+pub(crate) fn resolved_dictionary(
+    document: &Document,
+    dict: &Dictionary,
+    diagnostics: &mut Diagnostics,
+) -> Result<Dictionary> {
+    let stencil = stencil_space(document, dict, diagnostics)?;
     let filter = dict
         .get(b"Filter")
         .map(|v| document.resolve(v))
@@ -18,6 +23,7 @@ pub(crate) fn resolved_dictionary(document: &Document, dict: &Dictionary) -> Res
         .and_then(Value::as_name)
         .is_some_and(|name| name == b"JPXDecode");
     dict.iter()
+        .filter(|(key, _)| !(stencil && key.as_bytes() == b"ColorSpace"))
         .map(|(key, value)| {
             let resolved = if matches!(
                 key.as_bytes(),
@@ -38,6 +44,34 @@ pub(crate) fn resolved_dictionary(document: &Document, dict: &Dictionary) -> Res
             Ok((key.clone(), resolved.clone()))
         })
         .collect()
+}
+
+/// Ignore only the colour entry; finish() still enforces every stencil constraint.
+pub(crate) fn stencil_space(
+    document: &Document,
+    dict: &Dictionary,
+    diagnostics: &mut Diagnostics,
+) -> Result<bool> {
+    let stencil = dict
+        .get(b"ImageMask")
+        .map(|v| document.resolve(v))
+        .transpose()?
+        .and_then(Value::as_bool)
+        == Some(true);
+    if stencil
+        && dict
+            .get(b"ColorSpace")
+            .is_some_and(|v| !document.resolve(v).is_ok_and(Value::is_null))
+    {
+        diagnostics.repair(
+            Diagnostic::new(
+                crate::tags::STENCIL_COLOR_SPACE,
+                "extraneous stencil ColorSpace ignored (8.9.5.1, Table 87)",
+            )
+            .at(Position::Buffer(0)),
+        )?;
+    }
+    Ok(stencil)
 }
 
 pub(crate) fn integer(dict: &Dictionary, key: &[u8], default: i64) -> Result<i64> {
@@ -156,7 +190,7 @@ pub(crate) fn unpack(
         components,
         bits,
         limits,
-        &mut pagura_core::Diagnostics::new(pagura_core::Recovery::Strict),
+        &mut Diagnostics::new(pagura_core::Recovery::Strict),
     )
 }
 
@@ -167,7 +201,7 @@ pub(crate) fn unpack_with_diagnostics(
     components: u8,
     bits: u8,
     limits: &Limits,
-    diagnostics: &mut pagura_core::Diagnostics,
+    diagnostics: &mut Diagnostics,
 ) -> Result<Samples> {
     let count = budget(width, height, components, bits, limits)?;
     let row_values = usize::try_from(u64::from(width) * u64::from(components))
@@ -192,10 +226,8 @@ pub(crate) fn unpack_with_diagnostics(
                 "excess image data ignored (8.9.3, 8.9.5.1)",
             )
         };
-        diagnostics.repair(
-            pagura_core::Diagnostic::new(tag, message)
-                .at(pagura_core::Position::Buffer(data.len().min(length))),
-        )?;
+        diagnostics
+            .repair(Diagnostic::new(tag, message).at(Position::Buffer(data.len().min(length))))?;
     }
     let data = &data[..data.len().min(length)];
     if bits == 16 {

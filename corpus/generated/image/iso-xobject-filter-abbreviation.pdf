@@ -7,7 +7,7 @@ endobj
 << /Type /Pages /Kids [] /Count 0 >>
 endobj
 3 0 obj
-<< /Length 4 /Type /XObject /Subtype /Image /Width 2 /Height 1 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /RL>>
+<< /Length 4 /Type /XObject /Subtype /Image /Width 2 /Height 1 /ColorSpace /DeviceGray /BitsPerComponent 8/Filter /RL>>
 stream
 €
 endstream
@@ -21,5 +21,5 @@ xref
 trailer
 << /Size 4 /Root 1 0 R >>
 startxref
-274
+273
 %%EOF

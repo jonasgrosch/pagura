@@ -1,0 +1,4 @@
+kind=inline
+outcome=repair
+repair=image.stencil-color-space
+stencil=1

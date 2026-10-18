@@ -1,0 +1,8 @@
+kind=pdf-image
+outcome=valid
+width=2
+height=1
+components=1
+bits=8
+space=DeviceGray
+reject_repair=0

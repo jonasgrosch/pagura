@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "image",
-  "scope": "PDF image-layer rules reviewed against the locally supplied ISO_32000-2_sponsored_EC3.txt (ISO 32000-2:2020, errata collection 3): 8.9.3-8.9.7, Tables 87, 88, 90-92; 7.4.6/Table 11, 7.4.7/Table 12, 7.4.8/Table 13, 7.4.9 and 11.6.4.3. This revision additionally checks JPEG entropy padding and application segment framing against local itu-t81-1992.txt B.1.1.4-5, B.2.4.6/Table B.9 and E.1.4; Group 4 EOFB/padding against itu-t6-1988.txt 2.4.1.1-2; and JP2 sample placement and channel definitions against itu-t800-2019.txt B.2, G.4 and I.5.3.6. These are scoped rule reviews, not verification of the complete JPEG/fax/JPEG 2000 algorithms. Adobe Technical Note 5116, JPEG 2000 Part 2 (T.801) and ICC profile semantics remain pending primary-text review. T.81/T.4/T.6/T.88/T.800 are now locally available; unreviewed algorithms remain pending as detailed below. Resource budgets follow ADR 0010, not an ISO numerical limit.",
+  "scope": "PDF image-layer rules reviewed against the locally supplied ISO_32000-2_sponsored_EC3.txt (ISO 32000-2:2020, errata collection 3): 8.9.3-8.9.7, Tables 87, 88, 90-92; 7.4.6/Table 11, 7.4.7/Table 12, 7.4.8/Table 13, 7.4.9 and 11.6.4.3. This revision additionally checks JPEG entropy padding and application segment framing against local itu-t81-1992.txt B.1.1.4-5, B.2.4.6/Table B.9 and E.1.4; Group 4 EOFB/padding against itu-t6-1988.txt 2.4.1.1-2; and JP2 sample placement and channel definitions against itu-t800-2019.txt B.2, G.4 and I.5.3.6. These are scoped rule reviews, not verification of the complete JPEG/fax/JPEG 2000 algorithms. Adobe Technical Note 5116, JPEG 2000 Part 2 (T.801) and ICC profile semantics remain pending primary-text review. T.81/T.4/T.6/T.88/T.800 are now locally available; unreviewed algorithms remain pending as detailed below. Resource budgets follow ADR 0010, not an ISO numerical limit. This revision additionally reviews ISO 32000-2:2020 7.3.9, 7.3.8.1/Table 5, 7.4.1 and 7.4.9 (optional/null filter parameters), 8.9.5.1/Table 87 and 8.9.6.2 (stencil colour), and 8.9.7/Table 92 (the XObject abbreviation prohibition) against the same local ISO text; final entropy-segment MCU counts and EOI are reviewed against local itu-t81-1992.txt B.2.1. Recovery choices are explicit departures, not normative permissions.",
   "requirements": [
     {
       "id": "image-samples",
@@ -91,9 +91,9 @@
         {
           "locator": "8.9.6.2",
           "rule": "A stencil is one bit with no colour space; Decode 0 1 paints zero and Decode 1 0 paints one.",
-          "verdict": "agree",
-          "evidence": "Stencil kind and inversion metadata preserve the two meanings.",
-          "implementation_agreement": "agree",
+          "verdict": "agree in Strict mode; extraneous colour entry ignored with a reported repair",
+          "evidence": "Stencil kind and inversion preserve the two meanings; image-stencil-color-space covers the isolated colour-entry repair and continued rejection of invalid precision, masks and Decode.",
+          "implementation_agreement": "agree in Strict mode; extraneous colour entry ignored with a reported repair",
           "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
         },
         {
@@ -147,9 +147,9 @@
         {
           "locator": "8.9.7; Tables 90-92",
           "rule": "Inline images use BI/ID/EI, accept the listed abbreviations, and ignore unlisted entries; those abbreviations are not XObject abbreviations.",
-          "verdict": "fixed",
-          "evidence": "Added iso-xobject-filter-abbreviation and iso-inline-unknown-entry-ignored.",
-          "implementation_agreement": "fixed",
+          "verdict": "agree in Strict mode; reported XObject compatibility repair",
+          "evidence": "iso-xobject-filter-abbreviation now requires the stable image.filter-abbreviation Strict refusal and exact repaired samples; inline unknown entries remain ignored.",
+          "implementation_agreement": "agree in Strict mode; reported XObject compatibility repair",
           "expectation_agreement": "Agrees for the exercised rule at the stated sample/metadata boundary."
         },
         {
@@ -525,6 +525,120 @@
         "Expand samples as a piecewise-constant plane with border replication before its first sample; the standards fix positions but do not prescribe this interpolation policy."
       ],
       "gaps": "Broader real-world coverage remains."
+    },
+    {
+      "id": "image-decode-params",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.9",
+        "7.3.8.1; Table 5",
+        "7.4.1",
+        "7.4.9"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors"
+      ],
+      "review": [
+        {
+          "locator": "7.3.9; 7.3.8.1; Table 5; 7.4.1; 7.4.9",
+          "rule": "A dictionary null is absence; aligned filter-parameter arrays accept null entries, and JPX interpretation needs no external decode parameters.",
+          "verdict": "agree in Strict mode; reported compatibility choice in Repair mode",
+          "implementation_agreement": "Strict refusal and bounded reported recovery agree with the reviewed rule and explicit choice.",
+          "expectation_agreement": "The independent Python generator derives exact sample and metadata expectations from the reviewed rule and stated recovery; no product decoder is consulted.",
+          "evidence": "jpx-params-null/array-null/indirect-null/array-indirect-null/dictionary are valid without repairs; jpx-params-boolean/integer/name/string-null/array-wrong-type/preserve-predictor and image-params-string-null/indirect-string-null check Strict tags and exact samples. image-params-null keeps valid fax parameters. Wrong counts, cycles, Crypt and unknown parameter spellings stay rejected. jpx-params-encrypted-null retains ordinary decryption; jpx-params-encrypted-wrong-type confirms ciphertext is never decoded through the fallback."
+        }
+      ],
+      "external_primary_text_review": [],
+      "choices": [
+        "image.decode-params treats only the exact string null as the intended absent parameter for a parameterized filter, and ignores wrong-typed JPX parameters. All other parameter dictionaries and filter-array positions are preserved. Wrong array lengths, arbitrary wrong-typed parameters of other filters and reference cycles remain errors."
+      ],
+      "gaps": "Recovery currently requires an internal unencrypted image stream without Crypt. Document::image_stream has no parameter-override API; encrypted streams retain their error rather than bypassing decryption. A document-layer API accepting normalized parameters while retaining security selection is needed for that extension.",
+      "verdict": "Reviewed primary-text rule and independently generated expectations agree; recovery is a documented departure."
+    },
+    {
+      "id": "image-stencil-color-space",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.5.1; Table 87",
+        "8.9.6.2"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors"
+      ],
+      "review": [
+        {
+          "locator": "8.9.5.1; Table 87; 8.9.6.2",
+          "rule": "ImageMask true excludes ColorSpace and masks, requires one-bit samples and admits only the two stencil Decode directions.",
+          "verdict": "agree in Strict mode; reported compatibility choice in Repair mode",
+          "implementation_agreement": "Strict refusal and bounded reported recovery agree with the reviewed rule and explicit choice.",
+          "expectation_agreement": "The independent Python generator derives exact sample and metadata expectations from the reviewed rule and stated recovery; no product decoder is consulted.",
+          "evidence": "stencil-color-space-gray/rgb-inverted/wrong-type/cycle check exact [0,1] samples and inversion; stencil-null-color-space needs no repair; stencil-invalid-precision/mask/soft-mask/decode fail in both modes. inline-stencil-color-space checks the inline diagnostic sink."
+        }
+      ],
+      "external_primary_text_review": [],
+      "choices": [
+        "image.stencil-color-space discards only an extraneous colour entry, including unusable colour descriptions; bits, Decode, Mask and SMask constraints still apply. Actual null colour entries are absence and need no repair."
+      ],
+      "gaps": "The colour value has no stencil meaning and is discarded before colour-space interpretation. No recovery is added for other invalid stencil parameters.",
+      "verdict": "Reviewed primary-text rule and independently generated expectations agree; recovery is a documented departure."
+    },
+    {
+      "id": "image-filter-abbreviation",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.7; Table 92",
+        "8.9.5.1; Table 87"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors"
+      ],
+      "review": [
+        {
+          "locator": "8.9.7; Table 92; 8.9.5.1; Table 87",
+          "rule": "The seven filter abbreviations in Table 92 are allowed only inline, and filter output precision must match the image dictionary.",
+          "verdict": "agree in Strict mode; reported compatibility choice in Repair mode",
+          "implementation_agreement": "Strict refusal and bounded reported recovery agree with the reviewed rule and explicit choice.",
+          "expectation_agreement": "The independent Python generator derives exact sample and metadata expectations from the reviewed rule and stated recovery; no product decoder is consulted.",
+          "evidence": "iso-xobject-filter-abbreviation, xobject-filter-ahx/a85/lzw/fl/dct/ccf and xobject-filter-alias-chain check Strict tags and exact samples; xobject-filter-unknown remains an unsupported error in both modes."
+        }
+      ],
+      "external_primary_text_review": [],
+      "choices": [
+        "image.filter-abbreviation accepts only the seven recognized filter aliases on XObjects, once per object, using the existing codec mapping. Inline aliases stay normative. Unknown filters and mismatched output precision remain errors."
+      ],
+      "gaps": "Only filter-name aliases are recovered; abbreviated XObject dictionary keys and colour-space names are outside this repair.",
+      "verdict": "Reviewed primary-text rule and independently generated expectations agree; recovery is a documented departure."
+    },
+    {
+      "id": "image-jpeg-entropy-excess",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.4.8",
+        "T.81 B.2.1"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura-image tests::independent_vectors"
+      ],
+      "review": [
+        {
+          "locator": "7.4.8; T.81 B.2.1",
+          "rule": "The final entropy segment contains only the MCUs needed to complete the scan; the non-hierarchical image ends at EOI.",
+          "verdict": "agree in Strict mode; reported compatibility choice in Repair mode",
+          "implementation_agreement": "Strict refusal and bounded reported recovery agree with the reviewed rule and explicit choice.",
+          "expectation_agreement": "The independent Python generator derives exact sample and metadata expectations from the reviewed rule and stated recovery; no product decoder is consulted.",
+          "evidence": "jpeg-entropy-excess-one-byte/stuffed/progressive/restart reconstruct exactly 128 from independently encoded zero coefficients. jpeg-entropy-excess-invalid-before-scan/before-restart/no-eoi/invalid-stuffing remain errors in both modes."
+        }
+      ],
+      "external_primary_text_review": [],
+      "choices": [
+        "jpeg.entropy-excess ignores complete extra entropy bytes only after all required scan MCUs and only when the next unstuffed marker is EOI. It obeys FF 00 stuffing, enforces input/work bounds and does not skip later scans, restart markers or malformed stuffing."
+      ],
+      "gaps": "Excess bytes before non-EOI markers remain rejected even where additional application/table markers might permit a broader recovery. No encoded symbols or coefficients are invented.",
+      "verdict": "Reviewed primary-text rule and independently generated expectations agree; recovery is a documented departure."
     }
   ]
 }

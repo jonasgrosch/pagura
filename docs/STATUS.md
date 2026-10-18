@@ -87,6 +87,12 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   empty clips; these are project policy.
 - `font.descriptor-weight` (9.8.1, Table 120): an invalid optional FontWeight
   is ignored when choosing a substitute.
+- `image.decode-params` (7.3.8.1, Table 5; 7.4.1): a `(null)` string or an
+  unused wrong-typed entry in an image's DecodeParms is treated as absent;
+  `jpeg.entropy-excess` (T.81 B.2.1): excess bytes immediately before EOI are
+  discarded; `image.stencil-color-space` (8.9.5.1, Table 87): an image mask's
+  extraneous ColorSpace is ignored; `image.filter-abbreviation` (8.9.7, Table
+  92): the inline-image filter abbreviations are accepted on image XObjects.
 - `font.cff-blue-order` (CFF section 15, Table 23; Type 1 5.3–5.5): unused
   hint zones whose pairs do not ascend are ignored; outlines and widths are
   unchanged.

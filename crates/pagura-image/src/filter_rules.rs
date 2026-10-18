@@ -1,8 +1,13 @@
 //! Dictionary/filter consistency (8.9.5.1 Table 87 and 8.9.7 Table 92).
-use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Position, Result, Value};
 use pagura_document::Document;
 
-pub(crate) fn validate(document: &Document, dict: &Dictionary, inline: bool) -> Result<()> {
+pub(crate) fn validate(
+    document: &Document,
+    dict: &Dictionary,
+    inline: bool,
+    diagnostics: &mut Diagnostics,
+) -> Result<()> {
     let filter = dict
         .get(b"Filter")
         .map(|v| document.resolve(v))
@@ -12,6 +17,7 @@ pub(crate) fn validate(document: &Document, dict: &Dictionary, inline: bool) -> 
         Some(Value::Array(values)) => values.as_slice(),
         Some(value) => std::slice::from_ref(value),
     };
+    let mut abbreviated = false;
     for value in filters {
         let name = document
             .resolve(value)?
@@ -23,10 +29,17 @@ pub(crate) fn validate(document: &Document, dict: &Dictionary, inline: bool) -> 
                 b"AHx" | b"A85" | b"LZW" | b"Fl" | b"RL" | b"CCF" | b"DCT"
             )
         {
-            return Err(Error::syntax(
-                "filter abbreviations are restricted to inline images",
-            ));
+            abbreviated = true;
         }
+    }
+    if abbreviated {
+        diagnostics.repair(
+            Diagnostic::new(
+                crate::tags::FILTER_ABBREVIATION,
+                "recognized inline filter abbreviation used on an image XObject (8.9.7, Table 92)",
+            )
+            .at(Position::Buffer(0)),
+        )?;
     }
     if filters
         .last()

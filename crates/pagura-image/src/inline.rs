@@ -53,9 +53,27 @@ pub(crate) fn decode(
     dictionary: &Dictionary,
     data: &[u8],
 ) -> Result<DecodedImage> {
+    let mut diagnostics = Diagnostics::new(document.recovery());
+    let result = decode_inner(document, resources, dictionary, data, &mut diagnostics);
+    // The caller supplies the containing stream position; these positions are
+    // relative to the inline data, including dictionary faults at offset zero.
+    document.report(diagnostics.take());
+    result
+}
+
+fn decode_inner(
+    document: &Document,
+    resources: &Dictionary,
+    dictionary: &Dictionary,
+    data: &[u8],
+    diagnostics: &mut Diagnostics,
+) -> Result<DecodedImage> {
     let mut dict = expanded(dictionary)?;
+    if p::stencil_space(document, &dict, diagnostics)? {
+        dict.remove(b"ColorSpace");
+    }
     super::filter_rules::inline_space(dict.get(b"ColorSpace"))?;
-    super::filter_rules::validate(document, &dict, true)?;
+    super::filter_rules::validate(document, &dict, true, diagnostics)?;
     if let Some(Value::Name(name)) = dict.get(b"ColorSpace")
         && !matches!(
             name.as_bytes(),
@@ -87,15 +105,8 @@ pub(crate) fn decode(
         return Err(Error::syntax("filter is forbidden in inline images"));
     }
     let codec = chain.split_image();
-    let mut diagnostics = Diagnostics::new(document.recovery());
-    let result = (|| {
-        let decoded = chain.decode(data, document.limits().decoded_bytes, &mut diagnostics)?;
-        dispatch::decode(document, &dict, &decoded, codec.as_ref(), &mut diagnostics)
-    })();
-    // Inline callers have the containing content-stream position; buffer
-    // positions here are relative to the supplied inline data.
-    document.report(diagnostics.take());
-    result
+    let decoded = chain.decode(data, document.limits().decoded_bytes, diagnostics)?;
+    dispatch::decode(document, &dict, &decoded, codec.as_ref(), diagnostics)
 }
 
 pub(crate) fn data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usize> {

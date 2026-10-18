@@ -16,7 +16,7 @@ pub mod jpx;
 use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
 use pagura_document::{Document, IndirectObject};
 
-/// Stable reported repairs of malformed image data (ADR 0003).
+/// Stable reported repairs of malformed image dictionaries and data (ADR 0003).
 pub mod tags {
     use pagura_core::Repair;
     /// Missing packed bytes become zero, including a missing low byte of a
@@ -25,6 +25,14 @@ pub mod tags {
     pub const DATA_SHORT: Repair = Repair::new("image.data-short");
     /// Bytes beyond the declared sample rows are ignored (8.9.3, 8.9.5.1).
     pub const DATA_EXCESS: Repair = Repair::new("image.data-excess");
+    /// Ignore a stencil's extraneous colour space (8.9.5.1, Table 87).
+    pub const STENCIL_COLOR_SPACE: Repair = Repair::new("image.stencil-color-space");
+    /// Recognize Table 92 filter abbreviations on an XObject (8.9.7).
+    pub const FILTER_ABBREVIATION: Repair = Repair::new("image.filter-abbreviation");
+    /// Treat a serialized `(null)` parameter as absent, or ignore a
+    /// wrong-typed parameter for parameterless JPXDecode (7.3.9, 7.3.8.1
+    /// Table 5, 7.4.1, 7.4.9). Actual null values require no repair.
+    pub const DECODE_PARAMS: Repair = Repair::new("image.decode-params");
 }
 
 mod dispatch;
@@ -34,6 +42,7 @@ mod jpx_channels;
 mod jpx_image;
 mod mask;
 mod parameters;
+mod stream;
 
 /// How an image's samples are interpreted.
 #[derive(Debug, Clone, PartialEq)]
@@ -217,11 +226,11 @@ pub fn decode_xobject(document: &Document, image: &IndirectObject) -> Result<Dec
         if dictionary.get(b"Subtype").is_none_or(Value::is_null) {
             return Err(Error::syntax("image XObject requires Subtype Image"));
         }
-        let dictionary = parameters::resolved_dictionary(document, dictionary)?;
-        filter_rules::validate(document, &dictionary, false)?;
+        let dictionary = parameters::resolved_dictionary(document, dictionary, &mut diagnostics)?;
+        filter_rules::validate(document, &dictionary, false, &mut diagnostics)?;
         let (width, height) = parameters::dimensions(&dictionary)?;
         parameters::budget(width, height, 1, 1, &document.limits())?;
-        let stream = document.image_stream(image)?;
+        let stream = stream::read(document, image, &mut diagnostics)?;
         dispatch::decode(
             document,
             &dictionary,

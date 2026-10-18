@@ -19,6 +19,9 @@ pub mod tags {
     /// (ISO 32000-2 7.4.8, Table 13). The extended layout is reader policy;
     /// Adobe Technical Note 5116 remains pending primary-text review.
     pub const ADOBE_MARKER: Repair = Repair::new("jpeg.adobe-marker");
+    /// Ignore excess entropy bytes after the prescribed MCUs only when the
+    /// next unstuffed marker is EOI (T.81 B.2.1). Never skip another scan.
+    pub const ENTROPY_EXCESS: Repair = Repair::new("jpeg.entropy-excess");
 }
 
 /// A decoded JPEG image.
@@ -61,9 +64,11 @@ pub fn decode(data: &[u8], color_transform: Option<i64>, limits: &Limits) -> Res
     )
 }
 
-/// Decodes JPEG with reported padding and extended APP14 repairs. The default
-/// [`decode`] entry point remains strict. Reports at most one padding repair
-/// per image, at its first scan/restart boundary (T.81 B.1.1.5, E.1.4).
+/// Decodes JPEG with reported padding, extended APP14 and final entropy-suffix
+/// repairs. The default [`decode`] entry point remains strict. Reports at most
+/// one padding repair per image, at its first scan/restart boundary (T.81
+/// B.1.1.5, E.1.4). Extra entropy bytes can be discarded only after the required
+/// MCUs and immediately before EOI (T.81 B.2.1; [`tags::ENTROPY_EXCESS`]).
 ///
 /// # Errors
 /// As [`decode`], including stable repair tags when strict mode refuses a repair.

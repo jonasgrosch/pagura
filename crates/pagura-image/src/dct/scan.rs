@@ -3,7 +3,7 @@ use super::{
     Decoder,
     entropy::{Bits, Huffman},
 };
-use pagura_core::{Diagnostics, Error, Limits, Result};
+use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Position, Result};
 
 struct Scan {
     selected: Vec<(usize, usize, usize)>,
@@ -175,10 +175,67 @@ impl Decoder {
             return Err(bits.error("JPEG EOB run exceeds scan"));
         }
         bits.align(diagnostics, &mut self.padding_reported)?;
-        if data.get(bits.offset) != Some(&255) {
-            return Err(bits.error("extra JPEG entropy data"));
+        scan_end(data, bits.offset, &mut self.work, limits, diagnostics)
+    }
+}
+
+/// T.81 B.2.1 fixes the final segment's MCU count. Extra complete bytes can
+/// be discarded only immediately before EOI; byte stuffing is still obeyed.
+fn scan_end(
+    data: &[u8],
+    start: usize,
+    work: &mut usize,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<usize> {
+    let mut offset = start;
+    loop {
+        *work = work
+            .checked_add(1)
+            .filter(|&w| w <= limits.operations)
+            .ok_or(Error::limit("JPEG scan work budget exceeded"))?;
+        let byte = data.get(offset).ok_or_else(|| {
+            Error::syntax("missing JPEG scan terminator").at(Position::Buffer(offset))
+        })?;
+        if *byte == 255 {
+            let marker = offset;
+            while data.get(offset) == Some(&255) {
+                offset += 1;
+                *work = work
+                    .checked_add(1)
+                    .filter(|&w| w <= limits.operations)
+                    .ok_or(Error::limit("JPEG scan work budget exceeded"))?;
+            }
+            let code = data.get(offset).ok_or_else(|| {
+                Error::syntax("truncated JPEG scan marker").at(Position::Buffer(marker))
+            })?;
+            if *code != 0 {
+                if marker == start {
+                    return Ok(marker);
+                }
+                if *code != 0xd9 {
+                    return Err(
+                        Error::syntax("extra JPEG entropy data before another marker")
+                            .at(Position::Buffer(start)),
+                    );
+                }
+                diagnostics.repair(
+                    Diagnostic::new(
+                        super::tags::ENTROPY_EXCESS,
+                        "extra JPEG entropy bytes before final EOI ignored (T.81 B.2.1)",
+                    )
+                    .at(Position::Buffer(start)),
+                )?;
+                return Ok(marker);
+            }
+            // Only FF 00 is a stuffed data byte; FF FF 00 is malformed.
+            if offset != marker + 1 {
+                return Err(
+                    Error::syntax("invalid JPEG byte stuffing").at(Position::Buffer(marker))
+                );
+            }
         }
-        Ok(bits.offset)
+        offset += 1;
     }
 }
 

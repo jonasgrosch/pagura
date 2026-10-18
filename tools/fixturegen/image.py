@@ -438,6 +438,7 @@ def cases():
     yield from iso_review_cases()
     yield from image_codec_cases()
     yield from tolerance_cases()
+    yield from dictionary_repair_cases()
     yield from jpx_options_cases()
     for name, options in [
         ("jpeg-baseline-gray", {}), ("jpeg-extended", dict(extended=True)),
@@ -535,7 +536,6 @@ def iso_review_cases():
     for name, dictionary, data, outcome in [
         ("iso-runlength-eight-bit", common+b" /BitsPerComponent 8 /Filter /RunLengthDecode", b"\x01\x0c\x1a\x80", "valid"),
         ("iso-runlength-one-bit-rejected", common+b" /BitsPerComponent 1 /Filter /RunLengthDecode", b"\x00\x40\x80", "syntax"),
-        ("iso-xobject-filter-abbreviation", common+b" /BitsPerComponent 8 /Filter /RL", b"\x01\x0c\x1a\x80", "syntax"),
         ("iso-xobject-subtype-required", common.replace(b"/Subtype /Image", b"")+b" /BitsPerComponent 8", bytes([12,26]), "syntax"),
     ]:
         yield Vector(name, {".pdf": document(base+[stream(data,dictionary)]), ".out": bytes([12,26]),
@@ -567,17 +567,18 @@ def iso_review_cases():
                  k=1, width=13, height=6, eob=1)
 
 
-def image_pdf_vector(name, encoded, expected, dictionary, *, requirement, width, height, components=1, bits=8, globals=None, alpha=None, outcome="valid", **options):
+def image_pdf_vector(name, encoded, expected, dictionary, *, requirement, width, height, components=1, bits=8, globals=None, alpha=None, extras=(), trailer=b"", outcome="valid", **options):
     """Complete PDF wrapper with a directly calculated sample oracle."""
     objects = [b"<< /Type /Catalog /Pages 2 0 R >>", b"<< /Type /Pages /Kids [] /Count 0 >>",
                stream(encoded, b"/Type /XObject /Subtype /Image /Width %d /Height %d " % (width,height)+dictionary)]
     if globals is not None:
         # Globals is an ordinary PDF stream, decoded before the image codec.
         objects.append(stream(zlib.compress(globals), b"/Filter /FlateDecode"))
-    if b"4 0 R" in dictionary and globals is None:
+    objects.extend(extras)
+    if b"4 0 R" in dictionary and globals is None and not extras:
         objects.append(b"4 0 R")  # Deliberate ignored-value cycle.
     params = dict(kind="pdf-image", outcome=outcome, width=width, height=height, components=components, bits=bits, **options)
-    files = {".pdf": document(objects), ".out": " ".join(str(v) for v in expected).encode(),
+    files = {".pdf": document(objects, trailer), ".out": " ".join(str(v) for v in expected).encode(),
              ".params": "".join(f"{k}={v}\n" for k,v in params.items()).encode()}
     if alpha is not None:
         files[".alpha"] = " ".join(str(v) for v in alpha).encode()
@@ -657,6 +658,30 @@ def image_codec_cases():
         yield Vector("inline-forbidden-"+codec.decode(), {".dict": b"<< /W 1 /H 1 /BPC 8 /CS /G /F /"+codec+b" >>", ".in": b"", ".out": b"", ".params": b"kind=inline\noutcome=syntax\n"}, ("image-inline",), "ISO 32000-2 8.9.7 forbids this inline filter")
 
 
+# T.81 B.2.4.2/C: a one-symbol DC=0 table and AC EOB table encode
+# constant level-shifted zero coefficients. The inverse DCT is exactly 128.
+def constant_jpeg(n=1, padding=1, restart=False, progressive=False, extension=b'', adobe=False):
+    width = 16 if restart else 1
+    result = b'\xff\xd8'
+    if adobe:
+        result += segment(0xee, b'Adobe'+struct.pack('>HHH',100,0,0)+b'\0'+extension)
+    result += segment(0xdb, b'\0'+bytes([1])*64)
+    result += segment(0xc2 if progressive else 0xc0, bytes([8])+struct.pack('>HHB',1,width,n)+b''.join(bytes([i+1,17,0]) for i in range(n)))
+    table = bytes([1]+[0]*15)+b'\0'
+    result += segment(0xc4,b'\0'+table+b'\x10'+table)
+    if restart:
+        result += segment(0xdd,b'\0\1')
+    scans = [(0,0),(1,63)] if progressive else [(0,63)]
+    for start,end in scans:
+        result += segment(0xda,bytes([n])+b''.join(bytes([i+1,0]) for i in range(n))+bytes([start,end,0]))
+        entropy = '0'*(n if progressive else 2*n)
+        byte = int(entropy+str(padding)*(-len(entropy)%8),2)
+        result += bytes([byte])
+        if restart:
+            result += b'\xff\xd0'+bytes([byte])
+    return result+b'\xff\xd9', [128]*(width*n)
+
+
 def tolerance_cases():
     # ISO 8.9.3 defines byte-padded rows; 8.9.5.1 requires consistent data.
     # Zero-byte fill and discarding the suffix are reported reader policies.
@@ -682,29 +707,6 @@ def tolerance_cases():
     yield image_pdf_vector('image-data-empty', b'', [0]*6,
         b'/ColorSpace /DeviceGray /BitsPerComponent 8', requirement='image-length-repairs',
         width=3, height=2, outcome='repair', repair='image.data-short', space='DeviceGray')
-
-    # T.81 B.2.4.2/C: a one-symbol DC=0 table and AC EOB table encode
-    # constant level-shifted zero coefficients. The inverse DCT is exactly 128.
-    def constant_jpeg(n=1, padding=1, restart=False, progressive=False, extension=b'', adobe=False):
-        width = 16 if restart else 1
-        result = b'\xff\xd8'
-        if adobe:
-            result += segment(0xee, b'Adobe'+struct.pack('>HHH',100,0,0)+b'\0'+extension)
-        result += segment(0xdb, b'\0'+bytes([1])*64)
-        result += segment(0xc2 if progressive else 0xc0, bytes([8])+struct.pack('>HHB',1,width,n)+b''.join(bytes([i+1,17,0]) for i in range(n)))
-        table = bytes([1]+[0]*15)+b'\0'
-        result += segment(0xc4,b'\0'+table+b'\x10'+table)
-        if restart:
-            result += segment(0xdd,b'\0\1')
-        scans = [(0,0),(1,63)] if progressive else [(0,63)]
-        for start,end in scans:
-            result += segment(0xda,bytes([n])+b''.join(bytes([i+1,0]) for i in range(n))+bytes([start,end,0]))
-            entropy = '0'*(n if progressive else 2*n)
-            byte = int(entropy+str(padding)*(-len(entropy)%8),2)
-            result += bytes([byte])
-            if restart:
-                result += b'\xff\xd0'+bytes([byte])
-        return result+b'\xff\xd9', [128]*(width*n)
 
     for suffix, options in [('scan',{}),('restart',dict(restart=True)),('progressive',dict(progressive=True))]:
         encoded, expected = constant_jpeg(padding=0,**options)
@@ -820,3 +822,152 @@ def jpx_options_cases():
     yield image_pdf_vector('jpx-reference-grid-alpha',encoded,[v for pixel in zip(*expanded[:3]) for v in pixel],
         b'/Filter /JPXDecode /SMaskInData 1',requirement='image-jpx-placement',width=8,height=7,
         components=3,space='DeviceRGB',mask='embedded',alpha=expanded[3],alpha_bits=8)
+
+
+def dictionary_repair_cases():
+    """ISO Table 5/87/92 and T.81 B.2.1, with direct sample expectations."""
+    import base64
+    from .codec import lzw
+    from .jpx import codestream, jp2
+
+    gray = b'/ColorSpace /DeviceGray /BitsPerComponent 8'
+    plain = bytes([12, 26])
+    for short, encoded in [
+        ('AHx', plain.hex().encode()+b'>'),
+        ('A85', base64.a85encode(plain)+b'~>'),
+        ('LZW', lzw(plain, 1)),
+        ('Fl', zlib.compress(plain)),
+        ('RL', b'\x01'+plain+b'\x80'),
+    ]:
+        name = 'iso-xobject-filter-abbreviation' if short == 'RL' else 'xobject-filter-'+short.lower()
+        yield image_pdf_vector(name, encoded, list(plain), gray+b'/Filter /'+short.encode(),
+            requirement='image-filter-abbreviation', width=2, height=1,
+            outcome='repair', repair='image.filter-abbreviation', space='DeviceGray')
+    encoded, expected = constant_jpeg()
+    yield image_pdf_vector('xobject-filter-dct', encoded, expected, gray+b'/Filter /DCT',
+        requirement='image-filter-abbreviation', width=1, height=1,
+        outcome='repair', repair='image.filter-abbreviation', space='DeviceGray')
+    encoded, _ = ccitt([[0]], k=-1)
+    yield image_pdf_vector('xobject-filter-ccf', encoded, [1],
+        b'/ColorSpace /DeviceGray /BitsPerComponent 1 /Filter /CCF /DecodeParms << /K -1 /Columns 1 >>',
+        requirement='image-filter-abbreviation', width=1, height=1, bits=1,
+        outcome='repair', repair='image.filter-abbreviation', space='DeviceGray')
+    yield image_pdf_vector('xobject-filter-alias-chain', zlib.compress(plain).hex().encode()+b'>', list(plain),
+        gray+b'/Filter [/AHx /Fl] /DecodeParms [null null]',
+        requirement='image-filter-abbreviation', width=2, height=1,
+        outcome='repair', repair='image.filter-abbreviation', space='DeviceGray')
+    yield image_pdf_vector('xobject-filter-unknown', plain, [], gray+b'/Filter /Unknown',
+        requirement='image-filter-abbreviation', width=2, height=1,
+        outcome='unsupported', feature='filter.unknown', reject_repair=1)
+
+    # Stencil meaning comes from ImageMask and Decode, independent of the
+    # discarded colour entry. No colour lookup is needed, even for a cycle.
+    stencil = b'/ImageMask true /BitsPerComponent 1 '
+    for suffix, space, decode in [
+        ('gray', b'/DeviceGray', b'[0 1]'),
+        ('rgb-inverted', b'/DeviceRGB', b'[1 0]'),
+        ('wrong-type', b'42', b'[0 1]'),
+        ('cycle', b'4 0 R', b'[0 1]'),
+    ]:
+        yield image_pdf_vector('stencil-color-space-'+suffix, b'\x40', [0, 1],
+            stencil+b'/ColorSpace '+space+b' /Decode '+decode,
+            requirement='image-stencil-color-space', width=2, height=1, bits=1,
+            outcome='repair', repair='image.stencil-color-space', space='stencil',
+            inverted=int(decode == b'[1 0]'), decode='1,0' if decode == b'[1 0]' else '0,1')
+    for suffix, extra in [
+        ('precision', b'/BitsPerComponent 2'), ('mask', b'/Mask [0 1]'),
+        ('soft-mask', b'/SMask 4 0 R'), ('decode', b'/Decode [0 0]'),
+    ]:
+        yield image_pdf_vector('stencil-invalid-'+suffix, b'\x40', [],
+            b'/ImageMask true /ColorSpace /DeviceRGB '+extra,
+            requirement='image-stencil-color-space', width=2, height=1, bits=1,
+            outcome='syntax', reject_repair=1)
+    yield image_pdf_vector('stencil-null-color-space', b'\x40', [0, 1],
+        stencil+b'/ColorSpace 4 0 R', extras=(b'null',),
+        requirement='image-stencil-color-space', width=2, height=1, bits=1,
+        space='stencil', inverted=0)
+    yield Vector('inline-stencil-color-space', {'.dict': b'<< /W 2 /H 1 /IM true /CS /RGB /D [1 0] >>',
+        '.in': b'\x40', '.out': bytes([0, 1]),
+        '.params': b'kind=inline\noutcome=repair\nrepair=image.stencil-color-space\nstencil=1\n'},
+        ('image-stencil-color-space',), 'Inline stencil discards an extraneous colour space')
+
+    # True null is normative absence (7.3.9 and Table 5), with no repair.
+    wrapped = jp2(codestream([list(plain)], 2, 1), 2, 1, 1)
+    for suffix, params, extras in [
+        ('null', b'null', ()), ('array-null', b'[null]', ()),
+        ('indirect-null', b'4 0 R', (b'null',)),
+        ('array-indirect-null', b'[4 0 R]', (b'null',)),
+        ('dictionary', b'<< /Quality 60 >>', ()),
+    ]:
+        yield image_pdf_vector('jpx-params-'+suffix, wrapped, list(plain),
+            b'/Filter /JPXDecode /DecodeParms '+params, extras=extras,
+            requirement='image-decode-params', width=2, height=1, space='DeviceGray')
+    for suffix, params in [('boolean', b'true'), ('integer', b'42'), ('name', b'/None'),
+                           ('string-null', b'(null)'), ('array-wrong-type', b'[false]')]:
+        yield image_pdf_vector('jpx-params-'+suffix, wrapped, list(plain),
+            b'/Filter /JPXDecode /DecodeParms '+params,
+            requirement='image-decode-params', width=2, height=1,
+            outcome='repair', repair='image.decode-params', space='DeviceGray')
+    # The preceding filter's nondefault predictor must survive normalization.
+    difference = bytes((v-(wrapped[i-1] if i else 0)) % 256 for i, v in enumerate(wrapped))
+    yield image_pdf_vector('jpx-params-preserve-predictor', zlib.compress(b'\1'+difference), list(plain),
+        b'/Filter [/FlateDecode /JPXDecode] /DecodeParms [<< /Predictor 15 /Columns %d >> 42]' % len(wrapped),
+        requirement='image-decode-params', width=2, height=1,
+        outcome='repair', repair='image.decode-params', space='DeviceGray')
+    for suffix, params in [('wrong-count', b'[]'), ('cyclic', b'4 0 R')]:
+        yield image_pdf_vector('jpx-params-'+suffix, wrapped, [],
+            b'/Filter /JPXDecode /DecodeParms '+params,
+            requirement='image-decode-params', width=2, height=1,
+            outcome='limit' if suffix == 'cyclic' else 'syntax', reject_repair=1)
+    yield image_pdf_vector('jpx-params-crypt-not-bypassed', wrapped, [],
+        b'/Filter [/Crypt /JPXDecode] /DecodeParms [null false]',
+        requirement='image-decode-params', width=2, height=1, outcome='syntax', reject_repair=1)
+    # The public document API decrypts normally with valid parameters. Until
+    # it accepts an override, malformed parameters must not bypass that step.
+    from .crypto import parameters, encrypt, encryption_dictionary, ID, hex_string
+    encryption, key = parameters(2, b'', b'owner')
+    for suffix, params, outcome in [('null', b'null', 'valid'), ('wrong-type', b'42', 'syntax')]:
+        yield image_pdf_vector('jpx-params-encrypted-'+suffix, encrypt(key, 'V2', 3, wrapped), list(plain),
+            b'/Filter /JPXDecode /DecodeParms '+params,
+            extras=(encryption_dictionary(encryption, 'V2', False),),
+            trailer=b'/Encrypt 4 0 R /ID ['+hex_string(ID)+b' '+hex_string(ID)+b']',
+            requirement='image-decode-params', width=2, height=1, outcome=outcome,
+            space='DeviceGray', reject_repair=int(outcome == 'syntax'))
+    rows = [[0, 1, 1, 0, 1]]
+    fax, _ = ccitt(rows, k=-1)
+    for suffix, first, extras, outcome in [
+        ('null', b'null', (), 'valid'),
+        ('string-null', b'(null)', (), 'repair'),
+        ('indirect-string-null', b'4 0 R', (b'(null)',), 'repair'),
+        ('wrong-integer', b'42', (), 'syntax'),
+        ('unknown-string', b'(default)', (), 'syntax'),
+    ]:
+        yield image_pdf_vector('image-params-'+suffix, zlib.compress(fax), [1, 0, 0, 1, 0],
+            b'/ImageMask true /Filter [/FlateDecode /CCITTFaxDecode] /DecodeParms ['+first+b' << /K -1 /Columns 5 >>]',
+            extras=extras, requirement='image-decode-params', width=5, height=1, bits=1,
+            outcome=outcome, repair='image.decode-params', space='stencil', reject_repair=int(outcome == 'syntax'))
+
+    # One DC=0/EOB block reconstructs exactly 128. Complete encoded bytes
+    # beyond that block are discarded only before EOI, never before a scan.
+    for suffix, options, trailer in [
+        ('one-byte', {}, b'\x3f'), ('stuffed', {}, b'\xff\x00\x12'),
+        ('progressive', dict(progressive=True), b'\0\x55'),
+        ('restart', dict(restart=True), b'\x3f'),
+    ]:
+        encoded, expected = constant_jpeg(**options)
+        yield image_pdf_vector('jpeg-entropy-excess-'+suffix, encoded[:-2]+trailer+encoded[-2:], expected,
+            gray+b'/Filter /DCTDecode', requirement='image-jpeg-entropy-excess',
+            width=16 if options.get('restart') else 1, height=1,
+            outcome='repair', repair='jpeg.entropy-excess', space='DeviceGray')
+    encoded, _ = constant_jpeg(progressive=True)
+    second_scan = encoded.find(b'\xff\xda', encoded.index(b'\xff\xda')+2)
+    normal, _ = constant_jpeg()
+    for suffix, bad in [
+        ('before-scan', encoded[:second_scan]+b'\x55'+encoded[second_scan:]),
+        ('before-restart', normal[:-2]+b'\x55\xff\xd0'+normal[-2:]),
+        ('no-eoi', normal[:-2]+b'\x55'),
+        ('stuffing', normal[:-2]+b'\x55\xff\xff\x00'+normal[-2:]),
+    ]:
+        yield image_pdf_vector('jpeg-entropy-excess-invalid-'+suffix, bad, [],
+            gray+b'/Filter /DCTDecode', requirement='image-jpeg-entropy-excess',
+            width=1, height=1, outcome='syntax', reject_repair=1)

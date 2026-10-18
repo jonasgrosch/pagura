@@ -1,0 +1,9 @@
+kind=pdf-image
+outcome=valid
+width=5
+height=1
+components=1
+bits=1
+repair=image.decode-params
+space=stencil
+reject_repair=0

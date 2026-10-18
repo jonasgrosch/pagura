@@ -1,0 +1,7 @@
+kind=pdf-image
+outcome=syntax
+width=2
+height=1
+components=1
+bits=1
+reject_repair=1

@@ -1116,28 +1116,6 @@
       }
     },
     {
-      "id": "image/iso-xobject-filter-abbreviation",
-      "kind": "vector",
-      "description": "ISO 32000-2 Table 87/8.9.7 filter and image type consistency",
-      "requirements": [
-        "image-dictionaries"
-      ],
-      "files": {
-        ".out": {
-          "path": "corpus/generated/image/iso-xobject-filter-abbreviation.out",
-          "sha256": "14f651836c8c14cc190c78940eb1f78bcecb33d1af9ade6b42ec5da50ddae55d"
-        },
-        ".params": {
-          "path": "corpus/generated/image/iso-xobject-filter-abbreviation.params",
-          "sha256": "c87246c489a6bccc4fb9c543f050a73bf680400209d4add572cfb08a1cbf64b1"
-        },
-        ".pdf": {
-          "path": "corpus/generated/image/iso-xobject-filter-abbreviation.pdf",
-          "sha256": "ff1c647fcdd2341084cfb4596bee1bc4df33eb1087f6a010ecf82f10272e06a1"
-        }
-      }
-    },
-    {
       "id": "image/iso-xobject-subtype-required",
       "kind": "vector",
       "description": "ISO 32000-2 Table 87/8.9.7 filter and image type consistency",
@@ -2532,6 +2510,1066 @@
         ".params": {
           "path": "corpus/generated/image/inline-checksum.params",
           "sha256": "6f09a54e31c245c353ba3f73b09742f1526c1721814dbec8c360ab0313cd7826"
+        }
+      }
+    },
+    {
+      "id": "image/xobject-filter-ahx",
+      "kind": "vector",
+      "description": "xobject filter ahx",
+      "requirements": [
+        "image-filter-abbreviation"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/xobject-filter-ahx.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/xobject-filter-ahx.params",
+          "sha256": "45296e332aace1cd95b10d6a6e0dea2715fb6bf7e89fb8927047bb2f39acbf8b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/xobject-filter-ahx.pdf",
+          "sha256": "03afda1d1a4431d856daef69f5a5f0cf41e88f5909e434afecdcd90988b0b812"
+        }
+      }
+    },
+    {
+      "id": "image/xobject-filter-a85",
+      "kind": "vector",
+      "description": "xobject filter a85",
+      "requirements": [
+        "image-filter-abbreviation"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/xobject-filter-a85.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/xobject-filter-a85.params",
+          "sha256": "45296e332aace1cd95b10d6a6e0dea2715fb6bf7e89fb8927047bb2f39acbf8b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/xobject-filter-a85.pdf",
+          "sha256": "6a75863aaeed12b4fa7e0015e808c7c2c35af4e8a9ecdb0aac0a2e7aa34aa346"
+        }
+      }
+    },
+    {
+      "id": "image/xobject-filter-lzw",
+      "kind": "vector",
+      "description": "xobject filter lzw",
+      "requirements": [
+        "image-filter-abbreviation"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/xobject-filter-lzw.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/xobject-filter-lzw.params",
+          "sha256": "45296e332aace1cd95b10d6a6e0dea2715fb6bf7e89fb8927047bb2f39acbf8b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/xobject-filter-lzw.pdf",
+          "sha256": "c14330ed2914911c7063691e607d4db2b29130f21a64075e17df90000a1c5a66"
+        }
+      }
+    },
+    {
+      "id": "image/xobject-filter-fl",
+      "kind": "vector",
+      "description": "xobject filter fl",
+      "requirements": [
+        "image-filter-abbreviation"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/xobject-filter-fl.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/xobject-filter-fl.params",
+          "sha256": "45296e332aace1cd95b10d6a6e0dea2715fb6bf7e89fb8927047bb2f39acbf8b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/xobject-filter-fl.pdf",
+          "sha256": "40fe2ea8c1366de571779184585ff852f35f8ced77cbd6aeee4b1c33885992aa"
+        }
+      }
+    },
+    {
+      "id": "image/iso-xobject-filter-abbreviation",
+      "kind": "vector",
+      "description": "iso xobject filter abbreviation",
+      "requirements": [
+        "image-filter-abbreviation"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/iso-xobject-filter-abbreviation.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/iso-xobject-filter-abbreviation.params",
+          "sha256": "45296e332aace1cd95b10d6a6e0dea2715fb6bf7e89fb8927047bb2f39acbf8b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/iso-xobject-filter-abbreviation.pdf",
+          "sha256": "dc500df43bd0f2e55e4704340e6512f3d44a1d63ff787959f08ea0728ae4188c"
+        }
+      }
+    },
+    {
+      "id": "image/xobject-filter-dct",
+      "kind": "vector",
+      "description": "xobject filter dct",
+      "requirements": [
+        "image-filter-abbreviation"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/xobject-filter-dct.out",
+          "sha256": "2747b7c718564ba5f066f0523b03e17f6a496b06851333d2d59ab6d863225848"
+        },
+        ".params": {
+          "path": "corpus/generated/image/xobject-filter-dct.params",
+          "sha256": "462b3e36264c6a09b74c585363dde969bf99909edaaac30b4552c9827698797c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/xobject-filter-dct.pdf",
+          "sha256": "ba1a224c5703e327a6598ace31911e517906b66018aecf5097e05354233496f5"
+        }
+      }
+    },
+    {
+      "id": "image/xobject-filter-ccf",
+      "kind": "vector",
+      "description": "xobject filter ccf",
+      "requirements": [
+        "image-filter-abbreviation"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/xobject-filter-ccf.out",
+          "sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/xobject-filter-ccf.params",
+          "sha256": "71306ebdd07282e949e0bf922bf3a48d35c6c113fd504631e1d5bf800b0ef2d7"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/xobject-filter-ccf.pdf",
+          "sha256": "0d5564891cee3f6f445b8eeffd7d78e5834d958c7337ce016af4ae445df9a65a"
+        }
+      }
+    },
+    {
+      "id": "image/xobject-filter-alias-chain",
+      "kind": "vector",
+      "description": "xobject filter alias chain",
+      "requirements": [
+        "image-filter-abbreviation"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/xobject-filter-alias-chain.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/xobject-filter-alias-chain.params",
+          "sha256": "45296e332aace1cd95b10d6a6e0dea2715fb6bf7e89fb8927047bb2f39acbf8b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/xobject-filter-alias-chain.pdf",
+          "sha256": "18379d35b587295629744fd1bc72d1bbcf09f1fbb491eb835c9657d073fd45eb"
+        }
+      }
+    },
+    {
+      "id": "image/xobject-filter-unknown",
+      "kind": "vector",
+      "description": "xobject filter unknown",
+      "requirements": [
+        "image-filter-abbreviation"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/xobject-filter-unknown.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/xobject-filter-unknown.params",
+          "sha256": "63da69ea91e861e153e0838dfc9be9ef69e42495acc03f7849b80d31e2f1e527"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/xobject-filter-unknown.pdf",
+          "sha256": "5adf6247b229c31e9eb0a1848ccbb4264562270090405c94965ee51228928ba8"
+        }
+      }
+    },
+    {
+      "id": "image/stencil-color-space-gray",
+      "kind": "vector",
+      "description": "stencil color space gray",
+      "requirements": [
+        "image-stencil-color-space"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/stencil-color-space-gray.out",
+          "sha256": "5cc3a6551605a0b4e9c3334f5eb5554c404973daf0b1a58655fa29c0ba3d47b0"
+        },
+        ".params": {
+          "path": "corpus/generated/image/stencil-color-space-gray.params",
+          "sha256": "2cb7ecb340ffc5eaeb3cf7f230d92f6f72dabf2e5c9bcb17cb3aa0288aa9059c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/stencil-color-space-gray.pdf",
+          "sha256": "83522d401d52d857147da060d5954cf1ff96dd82fe9cebc824f035a6ecc03356"
+        }
+      }
+    },
+    {
+      "id": "image/stencil-color-space-rgb-inverted",
+      "kind": "vector",
+      "description": "stencil color space rgb inverted",
+      "requirements": [
+        "image-stencil-color-space"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/stencil-color-space-rgb-inverted.out",
+          "sha256": "5cc3a6551605a0b4e9c3334f5eb5554c404973daf0b1a58655fa29c0ba3d47b0"
+        },
+        ".params": {
+          "path": "corpus/generated/image/stencil-color-space-rgb-inverted.params",
+          "sha256": "e74eee0b1284375a73bddd4452e5b5b920e2fdf746ea1379da766210871c8563"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/stencil-color-space-rgb-inverted.pdf",
+          "sha256": "ee7e0ce4f50fd023c51849cea18f7408afd87c5d6a8c1ab911180788abbaa920"
+        }
+      }
+    },
+    {
+      "id": "image/stencil-color-space-wrong-type",
+      "kind": "vector",
+      "description": "stencil color space wrong type",
+      "requirements": [
+        "image-stencil-color-space"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/stencil-color-space-wrong-type.out",
+          "sha256": "5cc3a6551605a0b4e9c3334f5eb5554c404973daf0b1a58655fa29c0ba3d47b0"
+        },
+        ".params": {
+          "path": "corpus/generated/image/stencil-color-space-wrong-type.params",
+          "sha256": "2cb7ecb340ffc5eaeb3cf7f230d92f6f72dabf2e5c9bcb17cb3aa0288aa9059c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/stencil-color-space-wrong-type.pdf",
+          "sha256": "1b51ffb764d52224a69da611570e177ac4297e50d9182caff75c5ebb7459ac40"
+        }
+      }
+    },
+    {
+      "id": "image/stencil-color-space-cycle",
+      "kind": "vector",
+      "description": "stencil color space cycle",
+      "requirements": [
+        "image-stencil-color-space"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/stencil-color-space-cycle.out",
+          "sha256": "5cc3a6551605a0b4e9c3334f5eb5554c404973daf0b1a58655fa29c0ba3d47b0"
+        },
+        ".params": {
+          "path": "corpus/generated/image/stencil-color-space-cycle.params",
+          "sha256": "2cb7ecb340ffc5eaeb3cf7f230d92f6f72dabf2e5c9bcb17cb3aa0288aa9059c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/stencil-color-space-cycle.pdf",
+          "sha256": "4602a75080840ba8b653db746dbcd22d8a43d5cbdf46ba060216b83399e7bb1e"
+        }
+      }
+    },
+    {
+      "id": "image/stencil-invalid-precision",
+      "kind": "vector",
+      "description": "stencil invalid precision",
+      "requirements": [
+        "image-stencil-color-space"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/stencil-invalid-precision.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/stencil-invalid-precision.params",
+          "sha256": "6349b09aaec929e563fc1fa66e871140e3060eb1c4e396fd9ee0f18692bff6a8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/stencil-invalid-precision.pdf",
+          "sha256": "34fa15d8f5f2ce1cf3f7a3ffad8e3158c9c756475cfe09f517443f6bda58aa90"
+        }
+      }
+    },
+    {
+      "id": "image/stencil-invalid-mask",
+      "kind": "vector",
+      "description": "stencil invalid mask",
+      "requirements": [
+        "image-stencil-color-space"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/stencil-invalid-mask.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/stencil-invalid-mask.params",
+          "sha256": "6349b09aaec929e563fc1fa66e871140e3060eb1c4e396fd9ee0f18692bff6a8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/stencil-invalid-mask.pdf",
+          "sha256": "70f7cddfdb999c1b05563e169afbd8bc3f58fe42881dc1ecfe51930c0d02243e"
+        }
+      }
+    },
+    {
+      "id": "image/stencil-invalid-soft-mask",
+      "kind": "vector",
+      "description": "stencil invalid soft mask",
+      "requirements": [
+        "image-stencil-color-space"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/stencil-invalid-soft-mask.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/stencil-invalid-soft-mask.params",
+          "sha256": "6349b09aaec929e563fc1fa66e871140e3060eb1c4e396fd9ee0f18692bff6a8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/stencil-invalid-soft-mask.pdf",
+          "sha256": "5ceb61385428877c1c6bd45a4ae0dffe01448978e99c1dbf62fd672b17ea18b5"
+        }
+      }
+    },
+    {
+      "id": "image/stencil-invalid-decode",
+      "kind": "vector",
+      "description": "stencil invalid decode",
+      "requirements": [
+        "image-stencil-color-space"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/stencil-invalid-decode.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/stencil-invalid-decode.params",
+          "sha256": "6349b09aaec929e563fc1fa66e871140e3060eb1c4e396fd9ee0f18692bff6a8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/stencil-invalid-decode.pdf",
+          "sha256": "7b388e4882e19f8282afebddd7479045b807ec8ea8ca25f62bb0f7cf9ce4e149"
+        }
+      }
+    },
+    {
+      "id": "image/stencil-null-color-space",
+      "kind": "vector",
+      "description": "stencil null color space",
+      "requirements": [
+        "image-stencil-color-space"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/stencil-null-color-space.out",
+          "sha256": "5cc3a6551605a0b4e9c3334f5eb5554c404973daf0b1a58655fa29c0ba3d47b0"
+        },
+        ".params": {
+          "path": "corpus/generated/image/stencil-null-color-space.params",
+          "sha256": "1620a79a3847ae397ed09c31a9807e3c44e73e291bacc231e7c015ee9ec8336a"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/stencil-null-color-space.pdf",
+          "sha256": "6200017f3aa5b13fb6897eed8f8f99afe7df79d19eaab0c72b338d739284153d"
+        }
+      }
+    },
+    {
+      "id": "image/inline-stencil-color-space",
+      "kind": "vector",
+      "description": "Inline stencil discards an extraneous colour space",
+      "requirements": [
+        "image-stencil-color-space"
+      ],
+      "files": {
+        ".dict": {
+          "path": "corpus/generated/image/inline-stencil-color-space.dict",
+          "sha256": "7355d0945464abe38ba1cb5526b8e357761cbed665def50f1b5c3794e422c947"
+        },
+        ".in": {
+          "path": "corpus/generated/image/inline-stencil-color-space.in",
+          "sha256": "c3641f8544d7c02f3580b07c0f9887f0c6a27ff5ab1d4a3e29caf197cfc299ae"
+        },
+        ".out": {
+          "path": "corpus/generated/image/inline-stencil-color-space.out",
+          "sha256": "b413f47d13ee2fe6c845b2ee141af81de858df4ec549a58b7970bb96645bc8d2"
+        },
+        ".params": {
+          "path": "corpus/generated/image/inline-stencil-color-space.params",
+          "sha256": "d4f020b4b3a87f7bf547ecfa71988b2ee80e74c1726e8ee8c2829874a56d3d1b"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-null",
+      "kind": "vector",
+      "description": "jpx params null",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-null.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-null.params",
+          "sha256": "8f1cc175b6e6f6f7ac783c8582177b86a4bdada870a5021fc003bc13c9babbb0"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-null.pdf",
+          "sha256": "74fef0ab7fed027c5e8e5d5e40185da5a9ab69289ea69bd0791ba943038ae775"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-array-null",
+      "kind": "vector",
+      "description": "jpx params array null",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-array-null.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-array-null.params",
+          "sha256": "8f1cc175b6e6f6f7ac783c8582177b86a4bdada870a5021fc003bc13c9babbb0"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-array-null.pdf",
+          "sha256": "a6e091715fda46cbaa56edaffa8353fe700b7ecb65fc8d3d5ee4a12fbe4c0a13"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-indirect-null",
+      "kind": "vector",
+      "description": "jpx params indirect null",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-indirect-null.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-indirect-null.params",
+          "sha256": "8f1cc175b6e6f6f7ac783c8582177b86a4bdada870a5021fc003bc13c9babbb0"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-indirect-null.pdf",
+          "sha256": "15de2e97d82865ceb6820e9d8a79f74c70aeed6992e6cbd91693f7138040b7ce"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-array-indirect-null",
+      "kind": "vector",
+      "description": "jpx params array indirect null",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-array-indirect-null.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-array-indirect-null.params",
+          "sha256": "8f1cc175b6e6f6f7ac783c8582177b86a4bdada870a5021fc003bc13c9babbb0"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-array-indirect-null.pdf",
+          "sha256": "4f4dca6ed8a679b0a23d4ca96dad15a8e2fb30960501d3b5b1fce1a588018496"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-dictionary",
+      "kind": "vector",
+      "description": "jpx params dictionary",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-dictionary.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-dictionary.params",
+          "sha256": "8f1cc175b6e6f6f7ac783c8582177b86a4bdada870a5021fc003bc13c9babbb0"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-dictionary.pdf",
+          "sha256": "fe393bd2d960301f20dffb71177ab98aeffda8aeb82ad8fd2f2a5efa1e2cb2d8"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-boolean",
+      "kind": "vector",
+      "description": "jpx params boolean",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-boolean.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-boolean.params",
+          "sha256": "e22cc9eb807b66729ca0ee4c09689d904330d8d95ff220e18bf2093967ca17f3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-boolean.pdf",
+          "sha256": "0e8acc604fdbfdccda0021bf69eb52c6a50c3b15e90d6f38766f7fa866a35df4"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-integer",
+      "kind": "vector",
+      "description": "jpx params integer",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-integer.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-integer.params",
+          "sha256": "e22cc9eb807b66729ca0ee4c09689d904330d8d95ff220e18bf2093967ca17f3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-integer.pdf",
+          "sha256": "cf445d63e7152813e13001acd10639e0d344ba02c59f0e5d298be62434498cfa"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-name",
+      "kind": "vector",
+      "description": "jpx params name",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-name.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-name.params",
+          "sha256": "e22cc9eb807b66729ca0ee4c09689d904330d8d95ff220e18bf2093967ca17f3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-name.pdf",
+          "sha256": "114645394163027b122a86aadb9641282d32b98b6e47fea1ec1887d969c778e0"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-string-null",
+      "kind": "vector",
+      "description": "jpx params string null",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-string-null.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-string-null.params",
+          "sha256": "e22cc9eb807b66729ca0ee4c09689d904330d8d95ff220e18bf2093967ca17f3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-string-null.pdf",
+          "sha256": "90db9147bbf4a38d4f393398f3da4651211214485789fe1a89438808af197de7"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-array-wrong-type",
+      "kind": "vector",
+      "description": "jpx params array wrong type",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-array-wrong-type.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-array-wrong-type.params",
+          "sha256": "e22cc9eb807b66729ca0ee4c09689d904330d8d95ff220e18bf2093967ca17f3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-array-wrong-type.pdf",
+          "sha256": "a92ef722bf9b5baffab27b4ad0b58e06c02eb1bf4ded29f4d040c0142938706f"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-preserve-predictor",
+      "kind": "vector",
+      "description": "jpx params preserve predictor",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-preserve-predictor.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-preserve-predictor.params",
+          "sha256": "e22cc9eb807b66729ca0ee4c09689d904330d8d95ff220e18bf2093967ca17f3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-preserve-predictor.pdf",
+          "sha256": "8e128478d23146acee7481902e5377cc872bd62b861d5356edb43babd10a0bcf"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-wrong-count",
+      "kind": "vector",
+      "description": "jpx params wrong count",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-wrong-count.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-wrong-count.params",
+          "sha256": "8632baac4d6171ee5aec7cb808b6d88d8fd9f8381734a00481fd39432a5db317"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-wrong-count.pdf",
+          "sha256": "af3efd0b9f81c4ba8e5ed2ed42c186423f076c1a0b36d43575437257dcae8d7b"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-cyclic",
+      "kind": "vector",
+      "description": "jpx params cyclic",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-cyclic.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-cyclic.params",
+          "sha256": "312683d65cfacc1fcebb57abcb76aa3a16715b6f29c307e9224f07a0bde21217"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-cyclic.pdf",
+          "sha256": "497677396eaa187dd664c10b8bc25db5aadbf06461fa2ab9fd975702150c888f"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-crypt-not-bypassed",
+      "kind": "vector",
+      "description": "jpx params crypt not bypassed",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-crypt-not-bypassed.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-crypt-not-bypassed.params",
+          "sha256": "8632baac4d6171ee5aec7cb808b6d88d8fd9f8381734a00481fd39432a5db317"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-crypt-not-bypassed.pdf",
+          "sha256": "a16866edbacc2286d5112ac02a5852aa8426eb68051c45190ec7c30ead27afef"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-encrypted-null",
+      "kind": "vector",
+      "description": "jpx params encrypted null",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-encrypted-null.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-encrypted-null.params",
+          "sha256": "cfe369d138af440ac7d0a4fe054ea2f21b8aef9e777fae25beac2943cf90b011"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-encrypted-null.pdf",
+          "sha256": "1ebf8e29df181e4fd2e8439d82fd1048c326cdbf92226eedde5931550c6979af"
+        }
+      }
+    },
+    {
+      "id": "image/jpx-params-encrypted-wrong-type",
+      "kind": "vector",
+      "description": "jpx params encrypted wrong type",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-params-encrypted-wrong-type.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-params-encrypted-wrong-type.params",
+          "sha256": "d29cdc1f340a18717b58b57fe0d125ab4bf537391f9cec6611370a85d59b73e9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-params-encrypted-wrong-type.pdf",
+          "sha256": "ac2923ad22d28c942422ebe21767652dfa41030f1623518e58ab45d066f141a4"
+        }
+      }
+    },
+    {
+      "id": "image/image-params-null",
+      "kind": "vector",
+      "description": "image params null",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/image-params-null.out",
+          "sha256": "cf8296bc6931dc0d87f19db96bfa346cff25a05270dd8957b563734894617616"
+        },
+        ".params": {
+          "path": "corpus/generated/image/image-params-null.params",
+          "sha256": "104a26df0569da99529cbb24ef178363f944118261ecf103645987f87912bca2"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/image-params-null.pdf",
+          "sha256": "381e81fbac1b504b8f509d7666bb059f5c37862f25bb7f520fdd474b92d718c8"
+        }
+      }
+    },
+    {
+      "id": "image/image-params-string-null",
+      "kind": "vector",
+      "description": "image params string null",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/image-params-string-null.out",
+          "sha256": "cf8296bc6931dc0d87f19db96bfa346cff25a05270dd8957b563734894617616"
+        },
+        ".params": {
+          "path": "corpus/generated/image/image-params-string-null.params",
+          "sha256": "fa3826c948db122d5195faf5d5cffb554ef9f0ce0e3bd39d68613eb67fdd3f79"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/image-params-string-null.pdf",
+          "sha256": "cc63a76cdcbf09bf701593d0688dad167429581397615c16c608f507ebb4905e"
+        }
+      }
+    },
+    {
+      "id": "image/image-params-indirect-string-null",
+      "kind": "vector",
+      "description": "image params indirect string null",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/image-params-indirect-string-null.out",
+          "sha256": "cf8296bc6931dc0d87f19db96bfa346cff25a05270dd8957b563734894617616"
+        },
+        ".params": {
+          "path": "corpus/generated/image/image-params-indirect-string-null.params",
+          "sha256": "fa3826c948db122d5195faf5d5cffb554ef9f0ce0e3bd39d68613eb67fdd3f79"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/image-params-indirect-string-null.pdf",
+          "sha256": "b6ba7adad76850eb3a058ef7203121c6186996798dc0d8ef5a08df265271d9b4"
+        }
+      }
+    },
+    {
+      "id": "image/image-params-wrong-integer",
+      "kind": "vector",
+      "description": "image params wrong integer",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/image-params-wrong-integer.out",
+          "sha256": "cf8296bc6931dc0d87f19db96bfa346cff25a05270dd8957b563734894617616"
+        },
+        ".params": {
+          "path": "corpus/generated/image/image-params-wrong-integer.params",
+          "sha256": "d4145121edcc74776be4d526ecda0dba7aae4277506fd5bb1180c62c87336403"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/image-params-wrong-integer.pdf",
+          "sha256": "eafa6dd0d86d6b8294aa456c7057e1c6b6eee61e196256da77b0d032e0c29beb"
+        }
+      }
+    },
+    {
+      "id": "image/image-params-unknown-string",
+      "kind": "vector",
+      "description": "image params unknown string",
+      "requirements": [
+        "image-decode-params"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/image-params-unknown-string.out",
+          "sha256": "cf8296bc6931dc0d87f19db96bfa346cff25a05270dd8957b563734894617616"
+        },
+        ".params": {
+          "path": "corpus/generated/image/image-params-unknown-string.params",
+          "sha256": "d4145121edcc74776be4d526ecda0dba7aae4277506fd5bb1180c62c87336403"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/image-params-unknown-string.pdf",
+          "sha256": "0bc58ac7d9d45f6dc13a5f4f1c51831a1a2114b9de7e3191bc79390a6f724e87"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-entropy-excess-one-byte",
+      "kind": "vector",
+      "description": "jpeg entropy excess one byte",
+      "requirements": [
+        "image-jpeg-entropy-excess"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-one-byte.out",
+          "sha256": "2747b7c718564ba5f066f0523b03e17f6a496b06851333d2d59ab6d863225848"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-one-byte.params",
+          "sha256": "5a1bf447fd6b3a2cf841bb71d7f3e401f9eb2bd64808bd481cefb10aea04c56b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-one-byte.pdf",
+          "sha256": "64595db24e1251ba96157b70b105d2e5c4b9e17489a4f7d89fd5df6e3c3cc13c"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-entropy-excess-stuffed",
+      "kind": "vector",
+      "description": "jpeg entropy excess stuffed",
+      "requirements": [
+        "image-jpeg-entropy-excess"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-stuffed.out",
+          "sha256": "2747b7c718564ba5f066f0523b03e17f6a496b06851333d2d59ab6d863225848"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-stuffed.params",
+          "sha256": "5a1bf447fd6b3a2cf841bb71d7f3e401f9eb2bd64808bd481cefb10aea04c56b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-stuffed.pdf",
+          "sha256": "6e7a710ef9d7d0b718a67f1f0d5cac608d30e3f355e0c6c1559c79b40b5a026b"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-entropy-excess-progressive",
+      "kind": "vector",
+      "description": "jpeg entropy excess progressive",
+      "requirements": [
+        "image-jpeg-entropy-excess"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-progressive.out",
+          "sha256": "2747b7c718564ba5f066f0523b03e17f6a496b06851333d2d59ab6d863225848"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-progressive.params",
+          "sha256": "5a1bf447fd6b3a2cf841bb71d7f3e401f9eb2bd64808bd481cefb10aea04c56b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-progressive.pdf",
+          "sha256": "f5c1dc27f8311d43f20015b71fd05ba93fec6d34daaeaf1013cc313a50e50485"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-entropy-excess-restart",
+      "kind": "vector",
+      "description": "jpeg entropy excess restart",
+      "requirements": [
+        "image-jpeg-entropy-excess"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-restart.out",
+          "sha256": "524e27193e3db4104a0ed7864abde0a0a07f425b321c3de897bd9e3274d94b58"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-restart.params",
+          "sha256": "49bc0d4988281a1cee55bc65b03a6094c229ba078366e11f70e8b679f456e998"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-restart.pdf",
+          "sha256": "a1d7a817ebf7c0aff74b138272712ec2fe42c38746c467af571af5c2b471819f"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-entropy-excess-invalid-before-scan",
+      "kind": "vector",
+      "description": "jpeg entropy excess invalid before scan",
+      "requirements": [
+        "image-jpeg-entropy-excess"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-invalid-before-scan.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-invalid-before-scan.params",
+          "sha256": "2d92c0aeb1fc4eb7b745eb1501688e805ed0088fa8b9f50140d560ca76c73bb4"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-invalid-before-scan.pdf",
+          "sha256": "d5870d21a82a5c4cea9ced3daddcb260442b281cf609cccfa60fb4740f68901b"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-entropy-excess-invalid-before-restart",
+      "kind": "vector",
+      "description": "jpeg entropy excess invalid before restart",
+      "requirements": [
+        "image-jpeg-entropy-excess"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-invalid-before-restart.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-invalid-before-restart.params",
+          "sha256": "2d92c0aeb1fc4eb7b745eb1501688e805ed0088fa8b9f50140d560ca76c73bb4"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-invalid-before-restart.pdf",
+          "sha256": "f016d4a41b5dec6c57abf66ff9e2cebb998f84b80349dfb7f39c72867b518310"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-entropy-excess-invalid-no-eoi",
+      "kind": "vector",
+      "description": "jpeg entropy excess invalid no eoi",
+      "requirements": [
+        "image-jpeg-entropy-excess"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-invalid-no-eoi.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-invalid-no-eoi.params",
+          "sha256": "2d92c0aeb1fc4eb7b745eb1501688e805ed0088fa8b9f50140d560ca76c73bb4"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-invalid-no-eoi.pdf",
+          "sha256": "842a7594359dcc919ee76014aae6f73b94c65db3f1dd3adb2aadc57daccc707b"
+        }
+      }
+    },
+    {
+      "id": "image/jpeg-entropy-excess-invalid-stuffing",
+      "kind": "vector",
+      "description": "jpeg entropy excess invalid stuffing",
+      "requirements": [
+        "image-jpeg-entropy-excess"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-invalid-stuffing.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-invalid-stuffing.params",
+          "sha256": "2d92c0aeb1fc4eb7b745eb1501688e805ed0088fa8b9f50140d560ca76c73bb4"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpeg-entropy-excess-invalid-stuffing.pdf",
+          "sha256": "21c237b51528ca3d1697038f7ad00a023381937be8e7b01b28e8e62f3a753f26"
         }
       }
     },

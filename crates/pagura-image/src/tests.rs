@@ -360,6 +360,15 @@ fn inline_vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8])
     }
     let image = result.unwrap_or_else(|e| panic!("{name}: {e}"));
     assert_eq!(image.samples, Samples::Bytes(expected.to_vec()), "{name}");
+    if let Some(inverted) = params.get("stencil") {
+        assert_eq!(
+            image.kind,
+            ImageKind::Stencil {
+                inverted: inverted == "1"
+            },
+            "{name}"
+        );
+    }
     // Later inline images cannot be mistaken for ambiguous data markers.
     let content = [data.as_slice(), b" EI Q BI /L 2 ID xx EI Q"].concat();
     assert_eq!(

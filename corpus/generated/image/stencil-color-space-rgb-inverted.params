@@ -1,0 +1,10 @@
+kind=pdf-image
+outcome=repair
+width=2
+height=1
+components=1
+bits=1
+repair=image.stencil-color-space
+space=stencil
+inverted=1
+decode=1,0

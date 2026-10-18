@@ -30,17 +30,7 @@ pub(super) fn vector(name: &str, params: &BTreeMap<String, String>, expected: &[
     if params["outcome"] == "repair" {
         assert_repairs(name, params, &document);
     } else if params["outcome"] != "valid" {
-        let error = result.unwrap_err();
-        match params["outcome"].as_str() {
-            "syntax" => assert_eq!(error.kind, ErrorKind::Syntax, "{name}: {error}"),
-            "limit" => assert_eq!(error.kind, ErrorKind::Limit, "{name}: {error}"),
-            _ => assert_eq!(
-                error.feature().unwrap().as_str(),
-                params["feature"],
-                "{name}"
-            ),
-        }
-        assert!(error.object.is_some(), "{name}");
+        assert_rejected(name, params, &result.unwrap_err());
         return;
     }
     let image = result.unwrap_or_else(|e| panic!("{name}: {e}"));
@@ -69,6 +59,15 @@ pub(super) fn vector(name: &str, params: &BTreeMap<String, String>, expected: &[
     }
     if let Some(space) = params.get("space") {
         assert_eq!(space_name(&image.kind), space, "{name}");
+    }
+    if let Some(inverted) = params.get("inverted") {
+        assert_eq!(
+            image.kind,
+            ImageKind::Stencil {
+                inverted: inverted == "1"
+            },
+            "{name}"
+        );
     }
     if let Some(decode) = params.get("decode") {
         let expected = if decode == "none" {
@@ -102,6 +101,30 @@ pub(super) fn vector(name: &str, params: &BTreeMap<String, String>, expected: &[
         );
     } else {
         assert_eq!(image.mask, MaskKind::None, "{name}");
+    }
+}
+
+fn assert_rejected(name: &str, params: &BTreeMap<String, String>, error: &pagura_core::Error) {
+    match params["outcome"].as_str() {
+        "syntax" => assert_eq!(error.kind, ErrorKind::Syntax, "{name}: {error}"),
+        "limit" => assert_eq!(error.kind, ErrorKind::Limit, "{name}: {error}"),
+        _ => assert_eq!(
+            error.feature().unwrap().as_str(),
+            params["feature"],
+            "{name}"
+        ),
+    }
+    assert!(error.object.is_some(), "{name}");
+    if params.get("reject_repair").is_some_and(|v| v == "1") {
+        let repaired = Document::open(
+            fixture("image", &format!("{name}.pdf")),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let refused =
+            crate::decode_xobject(&repaired, repaired.object(ObjectId::new(3, 0)).unwrap())
+                .unwrap_err();
+        assert_eq!(refused.kind, error.kind, "{name}");
     }
 }
 
