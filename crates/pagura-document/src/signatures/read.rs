@@ -48,59 +48,58 @@ pub(super) fn read(doc: &Document) -> Result<Signatures<'_>> {
                 position: field.position,
             };
             reader.ctx.step(0, source)?;
-            if widget_counts[index] > 1 {
-                return Err(source.error(Error::syntax(
-                    "signature field cannot have multiple widgets",
-                )));
-            }
             reader.ctx.allocate::<SignatureField<'_>>(1, source)?;
             reader
                 .ctx
                 .allocate::<u8>(field.qualified_name.len(), source)?;
-            let lock = reader
-                .ctx
-                .present(field.dictionary, b"Lock", source)?
-                .map(|value| {
-                    if value.as_reference().is_none() {
-                        return Err(
-                            source.error(Error::syntax("signature field Lock must be indirect"))
-                        );
-                    }
-                    let (d, source) = reader.ctx.dictionary(value, source)?;
-                    transforms::lock(&mut reader.ctx, d, source)
-                })
-                .transpose()?;
-            let signature = if let Some(FieldValue::Signature(dictionary)) = &field.value {
-                let origin = origin(&mut reader.ctx, &form.fields, index)?;
-                Some(reader.signature(dictionary, origin)?)
-            } else {
-                None
+            let parsed = (|| {
+                if widget_counts[index] > 1 {
+                    return Err(source.error(Error::syntax(
+                        "signature field cannot have multiple widgets",
+                    )));
+                }
+                let lock = reader
+                    .ctx
+                    .present(field.dictionary, b"Lock", source)?
+                    .map(|value| {
+                        if value.as_reference().is_none() {
+                            return Err(source
+                                .error(Error::syntax("signature field Lock must be indirect")));
+                        }
+                        let (d, source) = reader.ctx.dictionary(value, source)?;
+                        transforms::lock(&mut reader.ctx, d, source)
+                    })
+                    .transpose()?;
+                let signature = if let Some(FieldValue::Signature(dictionary)) = &field.value {
+                    let origin = origin(&mut reader.ctx, &form.fields, index)?;
+                    Some(reader.signature(dictionary, origin)?)
+                } else {
+                    None
+                };
+                Ok((lock, signature))
+            })();
+            let (lock, signature, error) = match parsed {
+                Ok((lock, signature)) => (lock, signature, None),
+                Err(error) if error.kind == pagura_core::ErrorKind::Limit => return Err(error),
+                Err(error) => (None, None, Some(error)),
             };
             fields.push(SignatureField {
                 object: field.object,
                 dictionary: field.dictionary,
                 qualified_name: field.qualified_name.clone(),
                 lock,
+                error,
                 signature,
             });
         }
     }
-    let (catalog, source) = reader.ctx.catalog()?;
-    let usage_rights = if let Some(perms) = reader.ctx.present(catalog, b"Perms", source)? {
-        let (perms, source) = reader.ctx.dictionary(perms, source)?;
-        reader
-            .ctx
-            .present(perms, b"UR3", source)?
-            .map(|value| {
-                let (dictionary, source) = reader.ctx.dictionary(value, source)?;
-                reader.signature(dictionary, source)
-            })
-            .transpose()?
-    } else {
-        None
-    };
+    let (usage_rights, usage_rights_error) = reader.catalog_signature(b"UR3")?;
+    let (certification, certification_error) = reader.catalog_signature(b"DocMDP")?;
     let mut result = Signatures {
         fields,
+        certification,
+        certification_error,
+        usage_rights_error,
         usage_rights,
     };
     // Later lazy loads can discover repairs. Make every coverage result
@@ -111,6 +110,7 @@ pub(super) fn read(doc: &Document) -> Result<Signatures<'_>> {
             .iter_mut()
             .filter_map(|f| f.signature.as_mut())
             .chain(result.usage_rights.iter_mut())
+            .chain(result.certification.iter_mut())
         {
             signature.results.revision_coverage = RevisionCoverage::RepairedDocument;
         }
@@ -142,6 +142,28 @@ fn origin<'a>(ctx: &mut Context<'a>, fields: &[Field<'a>], mut index: usize) -> 
 }
 
 impl<'a> Reader<'a> {
+    fn catalog_signature(&mut self, key: &[u8]) -> Result<(Option<Signature<'a>>, Option<Error>)> {
+        let parsed = (|| {
+            let (catalog, source) = self.ctx.catalog()?;
+            let Some(perms) = self.ctx.present(catalog, b"Perms", source)? else {
+                return Ok(None);
+            };
+            let (perms, source) = self.ctx.dictionary(perms, source)?;
+            self.ctx
+                .present(perms, key, source)?
+                .map(|value| {
+                    let (dictionary, source) = self.ctx.dictionary(value, source)?;
+                    self.signature(dictionary, source)
+                })
+                .transpose()
+        })();
+        match parsed {
+            Ok(signature) => Ok((signature, None)),
+            Err(error) if error.kind == pagura_core::ErrorKind::Limit => Err(error),
+            Err(error) => Ok((None, Some(error))),
+        }
+    }
+
     fn signature(&mut self, d: &'a Dictionary, source: Source) -> Result<Signature<'a>> {
         self.ctx.step(0, source)?;
         if transforms::name(d, b"Type", source)?
@@ -208,6 +230,9 @@ impl<'a> Reader<'a> {
             location: transforms::string(d, b"Location", source)?,
             results: SignatureResults {
                 integrity,
+                error: None,
+                diagnostics: Vec::new(),
+                certificate_errors: Vec::new(),
                 revision_coverage,
                 permitted_modifications: PermittedModifications::NotAnalysedYet,
                 signer_trust: SignerTrust::NotCheckedYet,

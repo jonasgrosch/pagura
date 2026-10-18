@@ -88,7 +88,7 @@ def patch(pdf, body_at, body, span, revision=0, ranges=None):
 
 
 def vector(name, pdf, rows, req='signature-byte-range', error=None):
-    expectation = '\n'.join(rows) + '\n' if error is None else 'error|' + error + '\n'
+    expectation = '\n'.join(rows) + '\n' if error is None else 'field-error|Approval|' + error + '\n'
     return Vector(name, {'.pdf': bytes(pdf.data), '.expect': expectation.encode()}, (req,),
                   'Independently authored signature structure: ' + name)
 

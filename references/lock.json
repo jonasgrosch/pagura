@@ -1159,8 +1159,11 @@
       "id": "ref-259e141cb609",
       "url": "https://dx.doi.org/10.17487/rfc3161",
       "title": "RFC 3161, Internet X.509 Public Key Infrastructure Time-Stamp Protocol (TSP), (August 2001), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc3161",
-      "status": "indexed-only",
-      "reason": "Publisher page/repository; full document access not established."
+      "status": "locally-supplied",
+      "reason": "Publisher page/repository; full document access not established.",
+      "sha256": "f60d2a07b9e4841dc9cca45c3bd7fb9f78fc3204cdbe9bbd6ac903af6d885cdb",
+      "cache_path": ".cache/references/signatures/rfc/rfc3161.txt.pdf",
+      "bytes": 35299
     },
     {
       "id": "ref-69171a11d7f9",
@@ -1187,8 +1190,11 @@
       "id": "ref-49dcb710a4c6",
       "url": "https://dx.doi.org/10.17487/rfc5035",
       "title": "RFC 5035, Enhanced Security Services (ESS) Update: Adding CertID Algorithm Agility, (August 2007), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5035",
-      "status": "indexed-only",
-      "reason": "Publisher page/repository; full document access not established."
+      "status": "locally-supplied",
+      "reason": "Publisher page/repository; full document access not established.",
+      "sha256": "9d3a538889df94c4a9bc74ac9cd73d7b7907fd73fae915086ffa86132e9c13e0",
+      "cache_path": ".cache/references/signatures/rfc/rfc5035.txt.pdf",
+      "bytes": 23190
     },
     {
       "id": "ref-e66a47ebb562",
@@ -1201,8 +1207,11 @@
       "id": "ref-85a233941233",
       "url": "https://dx.doi.org/10.17487/rfc5480",
       "title": "RFC 5480, Elliptic Curve Cryptography Subject Public Key Information, (March 2009), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5480",
-      "status": "indexed-only",
-      "reason": "Publisher page/repository; full document access not established."
+      "status": "locally-supplied",
+      "reason": "Publisher page/repository; full document access not established.",
+      "sha256": "88f55a9f20232645a15e9049a56d4dc8558bf8b486c5db52fdc8ae0f8caf126a",
+      "cache_path": ".cache/references/signatures/rfc/rfc5480.txt.pdf",
+      "bytes": 24576
     },
     {
       "id": "ref-03479a1f51ba",
@@ -1215,8 +1224,11 @@
       "id": "ref-ee1fdabfe968",
       "url": "https://dx.doi.org/10.17487/rfc5652",
       "title": "RFC 5652, Cryptographic Message Syntax (CMS), (September 2009), Internet Engineering Task Force (IETF), https://dx.doi.org/10.17487/rfc5652",
-      "status": "indexed-only",
-      "reason": "Publisher page/repository; full document access not established."
+      "status": "locally-supplied",
+      "reason": "Publisher page/repository; full document access not established.",
+      "sha256": "a1e50d7aacc295d1ef970622b3c796688dd14bb228da0fe2e279ff436e461d4d",
+      "cache_path": ".cache/references/signatures/rfc/rfc5652.txt.pdf",
+      "bytes": 75801
     },
     {
       "id": "ref-813a4adc10f9",
@@ -1685,6 +1697,56 @@
       "mime": "application/pdf",
       "cache_path": ".cache/references/66821162de1e7130c5fb5eedb22140d8d6d013ec51af4550bb095c2a9481a00e.pdf",
       "retrieved_at": "2026-10-17T20:46:26.215731+00:00"
+    },
+    {
+      "id": "signature-rfc4055",
+      "url": "https://www.rfc-editor.org/rfc/rfc4055",
+      "title": "RFC4055",
+      "status": "locally-supplied",
+      "redistribution": "Reference cache only; not bundled",
+      "sha256": "1178ca52352f124f9d2d188ebfe299dac4718f0cacaa8f0c5efff0e03cf6b669",
+      "cache_path": ".cache/references/signatures/rfc/rfc4055.txt.pdf",
+      "bytes": 33803
+    },
+    {
+      "id": "signature-rfc5758",
+      "url": "https://www.rfc-editor.org/rfc/rfc5758",
+      "title": "RFC5758",
+      "status": "locally-supplied",
+      "redistribution": "Reference cache only; not bundled",
+      "sha256": "4be0d71d335a10bf96fd9d4c37d1f980a3ec169d7d9420fd26595a5c39f1365a",
+      "cache_path": ".cache/references/signatures/rfc/rfc5758.txt.pdf",
+      "bytes": 13221
+    },
+    {
+      "id": "signature-rfc8017",
+      "url": "https://www.rfc-editor.org/rfc/rfc8017",
+      "title": "RFC8017",
+      "status": "locally-supplied",
+      "redistribution": "Reference cache only; not bundled",
+      "sha256": "764e7cdf51a50f49717e8dcbeb99ecd5cc983f10b5a9a9355bf96fafdcdb7480",
+      "cache_path": ".cache/references/signatures/rfc/rfc8017.txt.pdf",
+      "bytes": 106860
+    },
+    {
+      "id": "signature-rfc5816",
+      "url": "https://www.rfc-editor.org/rfc/rfc5816",
+      "title": "RFC 5816",
+      "status": "locally-supplied",
+      "redistribution": "Reference cache only; not bundled",
+      "sha256": "5f326c45fa7311aadef3b84bbd63f6c07f80c95b5862170756e515d455b394eb",
+      "cache_path": ".cache/references/signatures/rfc/rfc5816.txt.pdf",
+      "bytes": 9247
+    },
+    {
+      "id": "signature-rfc8933",
+      "title": "RFC 8933: CMS Signature Algorithm Identifier Protection",
+      "url": "https://www.rfc-editor.org/rfc/rfc8933",
+      "status": "locally-supplied",
+      "redistribution": "Reference cache only; not bundled",
+      "sha256": "c5c3015eaf896ac564e94322f1b8b6fc965d2fc0149a3a6482821df4ec6fbaf9",
+      "cache_path": ".cache/references/signatures/rfc/rfc8933.pdf",
+      "bytes": 125832
     }
   ]
 }

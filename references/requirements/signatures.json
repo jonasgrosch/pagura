@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "signatures",
-  "scope": "PDF clause locators verified against the locally supplied ISO 32000-2:2020 text. Two-range coverage and strict physical source binding are verification policy; result aspects follow ADR 0015. No cryptographic validity is claimed.",
+  "scope": "PDF clause locators verified against the locally supplied ISO 32000-2:2020 text. Two-range coverage and strict physical source binding are verification policy; result aspects follow ADR 0015. Document views are structural; the facade integrity stage is tracked separately in cms-signatures.json.",
   "requirements": [
     {
       "id": "signature-fields",
@@ -16,7 +16,7 @@
         "pagura-document signatures::tests",
         "corpus/manifests/signatures.json"
       ],
-      "description": "Typed fields, signature dictionaries and UR3, including empty fields and encoded metadata.",
+      "description": "Typed fields, signature dictionaries and UR3, including empty fields and encoded metadata. Catalog Perms/DocMDP links to its certification signature. Malformed discovered dictionaries and locks are per-field errors.",
       "gaps": ""
     },
     {
@@ -33,7 +33,7 @@
         "corpus/manifests/signatures.json"
       ],
       "description": "Two ordered in-bounds ranges exclude exactly the physical hexadecimal Contents token. Signed chunks borrow original bytes.",
-      "gaps": "Cryptographic digest and CMS verification are not implemented. Compressed signature dictionaries cannot establish a physical token binding."
+      "gaps": "CMS verification is provided separately by the facade. Compressed signature dictionaries cannot establish a physical token binding."
     },
     {
       "id": "signature-revision-coverage",
@@ -76,7 +76,7 @@
         "corpus/manifests/signatures.json"
       ],
       "description": "Independent integrity, coverage, modification, trust, time, revocation and algorithm states follow ADR 0015 decision 2.",
-      "gaps": "No cryptographic, trust, timestamp, revocation or algorithm verification is performed; legacy encodings are unsupported; adbe.pkcs7.sha1 is weak. The adbe.x509.rsa_sha1 name alone does not identify its digest (Table 260 note a)."
+      "gaps": "Facade CMS integrity is tracked in cms-signatures.json. Trust, modification classification, clock trust and revocation remain unchecked. Legacy encodings remain unsupported."
     }
   ]
 }

@@ -6,7 +6,7 @@
 use crate::der::{Class, Document, Element, Fields, SEQUENCE, SET, Tag, single};
 use crate::x509::{AlgorithmIdentifier, Certificate, CertificateList, Name};
 use crate::{Integer, ObjectIdentifier, types};
-use pagura_core::{Error, Position, Result};
+use pagura_core::{Diagnostics, Error, ErrorKind, Position, Recovery, Result};
 
 /// id-data OID contents, 1.2.840.113549.1.7.1.
 pub const ID_DATA: &[u8] = &[42, 134, 72, 134, 247, 13, 1, 7, 1];
@@ -87,13 +87,20 @@ pub struct Attribute<'a> {
 }
 
 fn attributes(element: Element<'_>) -> Result<Vec<Attribute<'_>>> {
-    let children = element.set_of()?;
+    attributes_reported(element, &mut Diagnostics::new(Recovery::Strict))
+}
+
+fn attributes_reported<'a>(
+    element: Element<'a>,
+    diagnostics: &mut Diagnostics,
+) -> Result<Vec<Attribute<'a>>> {
+    let children = element.set_of_reported(diagnostics)?;
     let mut result = Vec::new();
     for attribute in children {
         let mut fields = Fields::sequence(attribute)?;
         let id = ObjectIdentifier::parse(fields.take()?)?;
         let values = fields.take()?.expect(SET)?;
-        values.set_of()?;
+        values.set_of_reported(diagnostics)?;
         if values.children().next().is_none() {
             return Err(values.error("empty CMS attribute values"));
         }
@@ -222,6 +229,15 @@ impl<'a> SignerInfo<'a> {
     /// # Errors
     /// Rejects structural errors, inconsistent version or non-DER signedAttrs.
     pub fn parse(element: Element<'a>) -> Result<Self> {
+        Self::parse_reported(element, &mut Diagnostics::new(Recovery::Strict))
+    }
+
+    /// Reads a signer, permitting only reported BER unsigned-attribute ordering.
+    /// Signed attributes remain strict DER.
+    ///
+    /// # Errors
+    /// As [`Self::parse`], except unsigned SET OF ordering can be repaired.
+    pub fn parse_reported(element: Element<'a>, diagnostics: &mut Diagnostics) -> Result<Self> {
         let mut fields = Fields::sequence(element)?;
         let version_element = fields.take()?;
         let version = Integer::parse(version_element)?.to_u64()?;
@@ -257,7 +273,7 @@ impl<'a> SignerInfo<'a> {
         let signature = OctetString::parse(fields.take()?)?;
         let unsigned_attributes = fields
             .optional(Tag::context(1, true))
-            .map(|value| attributes(value))
+            .map(|value| attributes_reported(value, diagnostics))
             .transpose()?
             .unwrap_or_default();
         fields.finish()?;
@@ -278,6 +294,14 @@ impl<'a> SignerInfo<'a> {
 pub enum CertificateChoice<'a> {
     /// A parsed X.509 certificate; it is not a trust anchor.
     X509(Box<Certificate<'a>>),
+    /// A structurally framed certificate whose X.509 schema is malformed.
+    /// It is retained for diagnostics and cannot be selected as a signer.
+    Malformed {
+        /// Original certificate encoding.
+        element: Element<'a>,
+        /// Positioned certificate parsing failure.
+        error: Error,
+    },
     /// Extended, attribute or other certificate form, retained without acceptance.
     Other(Element<'a>),
 }
@@ -323,6 +347,19 @@ impl<'a> SignedData<'a> {
     /// # Errors
     /// Rejects wrong content type, absent content or malformed SignedData.
     pub fn from_content_info(element: Element<'a>) -> Result<Self> {
+        Self::from_content_info_reported(element, &mut Diagnostics::new(Recovery::Strict))
+    }
+
+    /// Reads ContentInfo with reported BER set ordering and isolated malformed
+    /// X.509 certificates. No embedded certificate establishes trust.
+    ///
+    /// # Errors
+    /// As [`Self::from_content_info`], except certificate schema failures are
+    /// retained as [`CertificateChoice::Malformed`]. Limit failures still abort.
+    pub fn from_content_info_reported(
+        element: Element<'a>,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Self> {
         let mut fields = Fields::sequence(element)?;
         let content_type = ObjectIdentifier::parse(fields.take()?)?;
         if !content_type.is(ID_SIGNED_DATA) {
@@ -330,7 +367,7 @@ impl<'a> SignedData<'a> {
         }
         let explicit = fields.take()?.expect(Tag::context(0, true))?;
         fields.finish()?;
-        Self::parse(single(explicit)?)
+        Self::parse_reported(single(explicit)?, diagnostics)
     }
 
     /// Reads a bare SignedData SEQUENCE (§5.1).
@@ -339,12 +376,22 @@ impl<'a> SignedData<'a> {
     /// Rejects malformed fields, incorrect version, noncanonical DER sets and
     /// absent/mistyped mandatory signed attributes. No signature is verified.
     pub fn parse(element: Element<'a>) -> Result<Self> {
+        Self::parse_reported(element, &mut Diagnostics::new(Recovery::Strict))
+    }
+
+    /// Reads SignedData with the per-certificate and BER policy of
+    /// [`Self::from_content_info_reported`].
+    ///
+    /// # Errors
+    /// Rejects malformed CMS structure or exceeded budgets; retains individual
+    /// malformed X.509 certificate schemas without accepting them.
+    pub fn parse_reported(element: Element<'a>, diagnostics: &mut Diagnostics) -> Result<Self> {
         let mut fields = Fields::sequence(element)?;
         let version_element = fields.take()?;
         let version = Integer::parse(version_element)?.to_u64()?;
         let algorithms = fields.take()?.expect(SET)?;
         let digest_algorithms = algorithms
-            .set_of()?
+            .set_of_reported(diagnostics)?
             .map(AlgorithmIdentifier::parse)
             .collect::<Result<Vec<_>>>()?;
         let encapsulated = fields.take()?;
@@ -358,9 +405,16 @@ impl<'a> SignedData<'a> {
         let mut required_version = if content_type.is(ID_DATA) { 1 } else { 3 };
         let mut certificates = Vec::new();
         if let Some(set) = fields.optional(Tag::context(0, true)) {
-            for choice in set.set_of()? {
+            for choice in set.set_of_reported(diagnostics)? {
                 let certificate = if choice.tag() == SEQUENCE {
-                    CertificateChoice::X509(Box::new(Certificate::parse(choice)?))
+                    match Certificate::parse(choice) {
+                        Ok(certificate) => CertificateChoice::X509(Box::new(certificate)),
+                        Err(error) if error.kind == ErrorKind::Limit => return Err(error),
+                        Err(error) => CertificateChoice::Malformed {
+                            element: choice,
+                            error,
+                        },
+                    }
                 } else {
                     let tag = choice.tag();
                     if tag.class != Class::Context || !tag.constructed || tag.number > 3 {
@@ -379,7 +433,7 @@ impl<'a> SignedData<'a> {
         }
         let mut revocation = Vec::new();
         if let Some(set) = fields.optional(Tag::context(1, true)) {
-            for choice in set.set_of()? {
+            for choice in set.set_of_reported(diagnostics)? {
                 let info = if choice.tag() == SEQUENCE {
                     RevocationInfo::Crl(Box::new(CertificateList::parse(choice)?))
                 } else {
@@ -396,8 +450,8 @@ impl<'a> SignedData<'a> {
         }
         let signer_set = fields.take()?.expect(SET)?;
         let signers = signer_set
-            .set_of()?
-            .map(SignerInfo::parse)
+            .set_of_reported(diagnostics)?
+            .map(|value| SignerInfo::parse_reported(value, diagnostics))
             .collect::<Result<Vec<_>>>()?;
         fields.finish()?;
         for signer in &signers {

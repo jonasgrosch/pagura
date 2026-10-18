@@ -1,0 +1,1538 @@
+{
+  "schema": 2,
+  "area": "cms-signatures",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "cms-signatures/rsa-sha256",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-sha256",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-sha256.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-sha256.pdf",
+          "sha256": "9d0593b34904a9fa6f85c69d5d4103d19e17061eb095e8de8bdddf24096662a8"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/unsupported-asn1",
+      "kind": "vector",
+      "description": "Independent signed PDF: unsupported-asn1",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/unsupported-asn1.expect",
+          "sha256": "2d1faad92a57d9ea664112477daeb38168ff615869551aeb117edba1292cac15"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/unsupported-asn1.pdf",
+          "sha256": "a54c5c5a4f96fecdc50dca2c4cacca0d389207b045c0eaec7e6b6748c04b7c06"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/unsupported-subfilter",
+      "kind": "vector",
+      "description": "Independent signed PDF: unsupported-subfilter",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/unsupported-subfilter.expect",
+          "sha256": "2c7d9f034778b1fde6b786e8e9b773ec168f127ad2a495767ca3e9dc23a606f9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/unsupported-subfilter.pdf",
+          "sha256": "75ee0242b7200e7fb9bf9bbf1b2e785e19ec5cabdfe2aa06804d48c0d1b38dc7"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/missing-key-null",
+      "kind": "vector",
+      "description": "Independent signed PDF: missing-key-null",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/missing-key-null.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/missing-key-null.pdf",
+          "sha256": "c77d838e9d660def754b69fbc7a6f3a8d5cd0874d6943dc6d22cbe02468a4445"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/wrong-key",
+      "kind": "vector",
+      "description": "Independent signed PDF: wrong-key",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/wrong-key.expect",
+          "sha256": "ef29d24fd8720320dacb4030a0d970f306aed0a5fd6cf3abb0b3f57f38fd66ff"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/wrong-key.pdf",
+          "sha256": "fc580b43d0a05a535675ba2aa58fdfba36093a1a230706c89c13998d25b252dc"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/bad-ski-certificate",
+      "kind": "vector",
+      "description": "Independent signed PDF: bad-ski-certificate",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/bad-ski-certificate.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/bad-ski-certificate.pdf",
+          "sha256": "0442671ffb501b09d126a2ab874892676242bbcf0c5a6bc10b391873dc9dfd91"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/many-certificates",
+      "kind": "vector",
+      "description": "Independent signed PDF: many-certificates",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/many-certificates.expect",
+          "sha256": "9bf3535348e778aa2ec7237885b45a78651e54f5b8f09f395361c96fb8b96782"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/many-certificates.pdf",
+          "sha256": "1dc0b60d071a0ee999ce9d4610dfed816b869bdba03f62f8166bf7a75f130935"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/many-signers",
+      "kind": "vector",
+      "description": "Independent signed PDF: many-signers",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/many-signers.expect",
+          "sha256": "9bf3535348e778aa2ec7237885b45a78651e54f5b8f09f395361c96fb8b96782"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/many-signers.pdf",
+          "sha256": "7a95e520d2c729c1f80d3a4c80bcb2c5dc508624c1f1b83ab7d598cb5dfc477a"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/sha1-unsupported-signature",
+      "kind": "vector",
+      "description": "Independent signed PDF: sha1-unsupported-signature",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/sha1-unsupported-signature.expect",
+          "sha256": "03a0ac7008c6a3df04d24b873e8bcc3f95b5b9b0caddfb686d2b21fda9d3aea9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/sha1-unsupported-signature.pdf",
+          "sha256": "6429ea1f8634da5a8186907808ae0b5ce43625b4545cfdd0787bc3b6cda3b711"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-no-attributes",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-no-attributes",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-no-attributes.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-no-attributes.pdf",
+          "sha256": "0272f3c75af8fda8bfbf640d19143ada394b3f80170999d9821ca4c192e735a0"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-two-signers",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-two-signers",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-two-signers.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-two-signers.pdf",
+          "sha256": "a6a57c999748e47bb2e0e8a687dd0a31af359ceb00ddddfa464dc4a91ad7e71e"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-two-signers-one-invalid",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-two-signers-one-invalid",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-two-signers-one-invalid.expect",
+          "sha256": "ef29d24fd8720320dacb4030a0d970f306aed0a5fd6cf3abb0b3f57f38fd66ff"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-two-signers-one-invalid.pdf",
+          "sha256": "213ead1e4bf67e37e74ff9e5f004c6828f7a841017b065781d26da683a89fd92"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/extra-unknown-digest",
+      "kind": "vector",
+      "description": "Independent signed PDF: extra-unknown-digest",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/extra-unknown-digest.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/extra-unknown-digest.pdf",
+          "sha256": "53060e3fe6dd8538fa40f44d01cea5461d3437ac06b35e0878a771fa70484803"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-empty-signers",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-empty-signers",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-empty-signers.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-empty-signers.pdf",
+          "sha256": "1c29d1fa2d135a2e04e10b7577542f02e5394078f85970abdfa515648cc0d061"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/ess-optional",
+      "kind": "vector",
+      "description": "Independent signed PDF: ess-optional",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/ess-optional.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/ess-optional.pdf",
+          "sha256": "c7b299bc3078edc5e998a48c0be9b854a266fee4ee3d92858d0dc10f4aa5f370"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/wrong-ski",
+      "kind": "vector",
+      "description": "Independent signed PDF: wrong-ski",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/wrong-ski.expect",
+          "sha256": "d358ed8b3ac5112b380030c25dd99c03b13059e037c96a397273227dedb0a652"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/wrong-ski.pdf",
+          "sha256": "cac909c2837c9b863fabe1ca3865e61e30ed62e73ed5bdacd3233cb782404056"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/algorithm-mismatch",
+      "kind": "vector",
+      "description": "Independent signed PDF: algorithm-mismatch",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/algorithm-mismatch.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/algorithm-mismatch.pdf",
+          "sha256": "62b3d587092d2be3c633101ec3f90d62964844b16a50acab5f3a8c695f64fd25"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/only-malformed-certificate",
+      "kind": "vector",
+      "description": "Independent signed PDF: only-malformed-certificate",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/only-malformed-certificate.expect",
+          "sha256": "d358ed8b3ac5112b380030c25dd99c03b13059e037c96a397273227dedb0a652"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/only-malformed-certificate.pdf",
+          "sha256": "5cf5c3cd5d49aec49264d122aed1659cda4d0435b74881dea84fdb041aa288c6"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-sha1",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-sha1",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-sha1.expect",
+          "sha256": "659ffe9b8868cc3c8d71e76b09dba78acbd632d61b789a81618cace2cbb48401"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-sha1.pdf",
+          "sha256": "73aefd6e8b37c6d7a3214380cced3ae6d0092234f61c63442dfb4c140608c8f1"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-sha224",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-sha224",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-sha224.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-sha224.pdf",
+          "sha256": "eef3eb24bd3fc69246f0233ba79a3fb5e40cb2951e1e4c2f2f73ba7d308021b3"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-sha256-ski",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-sha256-ski",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-sha256-ski.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-sha256-ski.pdf",
+          "sha256": "5b06300adeef5f300146bdd354585f9e1b4f60db14b9f3f190637dd4625d0db1"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-sha384",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-sha384",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-sha384.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-sha384.pdf",
+          "sha256": "105c492f11f27e96062563202f77066b738f9fcf4fe2a74b342573e98b10e542"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-sha512",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-sha512",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-sha512.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-sha512.pdf",
+          "sha256": "7a7c8c43ffbdc9bb4d7845ffcfc1561bbdf8d5e45d10d18f0e44d86674c9fbf8"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/ecdsa-p256",
+      "kind": "vector",
+      "description": "Independent signed PDF: ecdsa-p256",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/ecdsa-p256.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/ecdsa-p256.pdf",
+          "sha256": "a5aa35c980b601eb76f913ec556eca459fc1e053bffb37e9d2dfa1d88f3826cf"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/ecdsa-p384",
+      "kind": "vector",
+      "description": "Independent signed PDF: ecdsa-p384",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/ecdsa-p384.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/ecdsa-p384.pdf",
+          "sha256": "fa99d6d4f388ee4459bbc5701cc0147a2eaf9176f8a9655f03e2f50f88104b56"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/ecdsa-p521",
+      "kind": "vector",
+      "description": "Independent signed PDF: ecdsa-p521",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/ecdsa-p521.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/ecdsa-p521.pdf",
+          "sha256": "ce3d41932ed1b5f99f56a582ab49514248e00a78e268af437abb29951034b2c6"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-pss",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-pss",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-pss.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-pss.pdf",
+          "sha256": "9e196f2b577cda523b4df3b95b11e1a8fa8e06ad69bde449c166ca643c438564"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-pss-default-sha1",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-pss-default-sha1",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-pss-default-sha1.expect",
+          "sha256": "659ffe9b8868cc3c8d71e76b09dba78acbd632d61b789a81618cace2cbb48401"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-pss-default-sha1.pdf",
+          "sha256": "081d49abcb67caedb95d61f923684e10e65ca00ca123c3e7d8af1432aad3dc32"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/ecdsa-sha1",
+      "kind": "vector",
+      "description": "Independent signed PDF: ecdsa-sha1",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/ecdsa-sha1.expect",
+          "sha256": "659ffe9b8868cc3c8d71e76b09dba78acbd632d61b789a81618cace2cbb48401"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/ecdsa-sha1.pdf",
+          "sha256": "1ac4deb6e1c5992d0584d99933d1ff0b25770ef3c402092f9b0db1eafe4f3dbf"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-pss-salt-zero",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-pss-salt-zero",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-pss-salt-zero.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-pss-salt-zero.pdf",
+          "sha256": "ae24e7cdb3bfbb9701ab6cc49fb5fa260cfc4e2a08b35c293f541aae40f1ad85"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-pss-mgf-sha1",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-pss-mgf-sha1",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-pss-mgf-sha1.expect",
+          "sha256": "659ffe9b8868cc3c8d71e76b09dba78acbd632d61b789a81618cace2cbb48401"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-pss-mgf-sha1.pdf",
+          "sha256": "3adf7a6a25bddea1043fa7b283651f662bc05b2c50455908f099caf2323319ba"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-pss-restricted-key",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-pss-restricted-key",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-pss-restricted-key.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-pss-restricted-key.pdf",
+          "sha256": "fb25b793fabc25f9c01b33123fdf3295e586aae400180da4ee7bca9d64db1ad0"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-pss-restricted-short-salt",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-pss-restricted-short-salt",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-pss-restricted-short-salt.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-pss-restricted-short-salt.pdf",
+          "sha256": "04d4acd0d198860ba5662b3cae172b553e726af07eda899ef2911bf3ecddcc44"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/rsa-pss-key-rejects-v15",
+      "kind": "vector",
+      "description": "Independent signed PDF: rsa-pss-key-rejects-v15",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/rsa-pss-key-rejects-v15.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/rsa-pss-key-rejects-v15.pdf",
+          "sha256": "430977661867857e5205c83241fa09652b77d4ed7c9824eede67c8ccd076a8b8"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/cades",
+      "kind": "vector",
+      "description": "Independent signed PDF: cades",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/cades.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/cades.pdf",
+          "sha256": "69fcbc3db043540f8fe54f821ca385c1813beff4d156756a91315082757eaa8a"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/cades-ess-v1-sha1",
+      "kind": "vector",
+      "description": "Independent signed PDF: cades-ess-v1-sha1",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/cades-ess-v1-sha1.expect",
+          "sha256": "659ffe9b8868cc3c8d71e76b09dba78acbd632d61b789a81618cace2cbb48401"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/cades-ess-v1-sha1.pdf",
+          "sha256": "18fad25605e84c67c521e15ca6daf9be5fd5bc2dda4cb54cbe34b0c5fd25ceb3"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/cades-ess-v1-sha256",
+      "kind": "vector",
+      "description": "Independent signed PDF: cades-ess-v1-sha256",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/cades-ess-v1-sha256.expect",
+          "sha256": "659ffe9b8868cc3c8d71e76b09dba78acbd632d61b789a81618cace2cbb48401"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/cades-ess-v1-sha256.pdf",
+          "sha256": "407b37148727657bb3a309300f84116eeda4b6d8ef466076079b19f094d0afaf"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/protection-match",
+      "kind": "vector",
+      "description": "Independent signed PDF: protection-match",
+      "requirements": [
+        "cms-integrity",
+        "cms-algorithm-protection",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/protection-match.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/protection-match.pdf",
+          "sha256": "ab36f672f265f4727fd5ecdf4c79c040043750c4b2d9457829d6cdd14f5a3414"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/protection-null-digest",
+      "kind": "vector",
+      "description": "Independent signed PDF: protection-null-digest",
+      "requirements": [
+        "cms-integrity",
+        "cms-algorithm-protection",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/protection-null-digest.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/protection-null-digest.pdf",
+          "sha256": "960bbeb95a2b6a36fea33ba6cb2784a11761079c4c2f21ad47806dcf5fbd045e"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/protection-ecdsa",
+      "kind": "vector",
+      "description": "Independent signed PDF: protection-ecdsa",
+      "requirements": [
+        "cms-integrity",
+        "cms-algorithm-protection",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/protection-ecdsa.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/protection-ecdsa.pdf",
+          "sha256": "d1d4314fefcc3da9e4fa42191e2af15469a6d364c7d71436f2897defd74cbc01"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/protection-pss",
+      "kind": "vector",
+      "description": "Independent signed PDF: protection-pss",
+      "requirements": [
+        "cms-integrity",
+        "cms-algorithm-protection",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/protection-pss.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/protection-pss.pdf",
+          "sha256": "3682f73e2653bc4d802a015dad8e02563eb1b68ce63e2963ebf44f738ff8336a"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/protection-digest-mismatch",
+      "kind": "vector",
+      "description": "Independent signed PDF: protection-digest-mismatch",
+      "requirements": [
+        "cms-integrity",
+        "cms-algorithm-protection",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/protection-digest-mismatch.expect",
+          "sha256": "ef29d24fd8720320dacb4030a0d970f306aed0a5fd6cf3abb0b3f57f38fd66ff"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/protection-digest-mismatch.pdf",
+          "sha256": "45d7066ae287e43c6aff2e41379fa8c7dda2801178f68a8d11dca3f2fd88e258"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/protection-signature-mismatch",
+      "kind": "vector",
+      "description": "Independent signed PDF: protection-signature-mismatch",
+      "requirements": [
+        "cms-integrity",
+        "cms-algorithm-protection",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/protection-signature-mismatch.expect",
+          "sha256": "ef29d24fd8720320dacb4030a0d970f306aed0a5fd6cf3abb0b3f57f38fd66ff"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/protection-signature-mismatch.pdf",
+          "sha256": "15a98934c2a09c763d0cc277f55ede1457594aeae586b52e0cb5a02b0e893474"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/protection-pss-unknown-mgf",
+      "kind": "vector",
+      "description": "Independent signed PDF: protection-pss-unknown-mgf",
+      "requirements": [
+        "cms-integrity",
+        "cms-algorithm-protection",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/protection-pss-unknown-mgf.expect",
+          "sha256": "ef29d24fd8720320dacb4030a0d970f306aed0a5fd6cf3abb0b3f57f38fd66ff"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/protection-pss-unknown-mgf.pdf",
+          "sha256": "ef7a75eda9e468114616a5c9fb5934c433afb779cde40977415938dc94fdfa1d"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/protection-pss-parameters",
+      "kind": "vector",
+      "description": "Independent signed PDF: protection-pss-parameters",
+      "requirements": [
+        "cms-integrity",
+        "cms-algorithm-protection",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/protection-pss-parameters.expect",
+          "sha256": "ef29d24fd8720320dacb4030a0d970f306aed0a5fd6cf3abb0b3f57f38fd66ff"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/protection-pss-parameters.pdf",
+          "sha256": "4336e90c2d7a40a874654350effafe736e987bdb4f0c3f59f52f87fe248d83ac"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/protection-duplicate",
+      "kind": "vector",
+      "description": "Independent signed PDF: protection-duplicate",
+      "requirements": [
+        "cms-integrity",
+        "cms-algorithm-protection",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/protection-duplicate.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/protection-duplicate.pdf",
+          "sha256": "27febdc78254144a0199ed7d0505011fa9e4536e91486cd539c2cb79bbee6a05"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/protection-mac",
+      "kind": "vector",
+      "description": "Independent signed PDF: protection-mac",
+      "requirements": [
+        "cms-integrity",
+        "cms-algorithm-protection",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/protection-mac.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/protection-mac.pdf",
+          "sha256": "f305afdc67f6afc7450e8299ba1e86ba6c1eb642de011f8af2ea45d13bda1b34"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/timestamp",
+      "kind": "vector",
+      "description": "Independent signed PDF: timestamp",
+      "requirements": [
+        "cms-integrity",
+        "cms-timestamp"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/timestamp.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/timestamp.pdf",
+          "sha256": "ac1ae9a663b812f35cdaa5c2be74eedf35c7732c90240da6433475ce6a779e6a"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/timestamp-different-digests",
+      "kind": "vector",
+      "description": "Independent signed PDF: timestamp-different-digests",
+      "requirements": [
+        "cms-integrity",
+        "cms-timestamp"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/timestamp-different-digests.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/timestamp-different-digests.pdf",
+          "sha256": "2adf9eb7d12a63f28be7a03999ee9cbc6df4a5d23a05cc31dc313933f2f0b957"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/timestamp-sha1-imprint",
+      "kind": "vector",
+      "description": "Independent signed PDF: timestamp-sha1-imprint",
+      "requirements": [
+        "cms-integrity",
+        "cms-timestamp"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/timestamp-sha1-imprint.expect",
+          "sha256": "659ffe9b8868cc3c8d71e76b09dba78acbd632d61b789a81618cace2cbb48401"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/timestamp-sha1-imprint.pdf",
+          "sha256": "cc6e1dfccbe84c44f7245f47cfb77b313f9aa53e2c39b18a87131c00d69c0642"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/timestamp-no-ess",
+      "kind": "vector",
+      "description": "Independent signed PDF: timestamp-no-ess",
+      "requirements": [
+        "cms-integrity",
+        "cms-timestamp"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/timestamp-no-ess.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/timestamp-no-ess.pdf",
+          "sha256": "41a915969fa77cffde8b206dacf072d415b62f6e6638c5516bcbde24221b4194"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/timestamp-ess-v1",
+      "kind": "vector",
+      "description": "Independent signed PDF: timestamp-ess-v1",
+      "requirements": [
+        "cms-integrity",
+        "cms-timestamp"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/timestamp-ess-v1.expect",
+          "sha256": "659ffe9b8868cc3c8d71e76b09dba78acbd632d61b789a81618cace2cbb48401"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/timestamp-ess-v1.pdf",
+          "sha256": "e76b349289434d6d5afd2cbb16f19f9b8c4bd24ff40f1cb1c7d21c1657a4aff1"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/timestamp-two-signers",
+      "kind": "vector",
+      "description": "Independent signed PDF: timestamp-two-signers",
+      "requirements": [
+        "cms-integrity",
+        "cms-timestamp"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/timestamp-two-signers.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/timestamp-two-signers.pdf",
+          "sha256": "64ad61faceedc5a71fc81acf4d1856df064f8f134869a4296b501d7d6ae978b5"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/cades-two-signers",
+      "kind": "vector",
+      "description": "Independent signed PDF: cades-two-signers",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/cades-two-signers.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/cades-two-signers.pdf",
+          "sha256": "826226142c09c7bfeecda0ff3e91263f2cd31a852f98d6c861079005ceb075ab"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/timestamp-pss",
+      "kind": "vector",
+      "description": "Independent signed PDF: timestamp-pss",
+      "requirements": [
+        "cms-integrity",
+        "cms-timestamp"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/timestamp-pss.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/timestamp-pss.pdf",
+          "sha256": "03de23be35a0f77ea2883cb3d5ad97728c30856f12f75971df01c03790aba0b0"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/timestamp-ecdsa",
+      "kind": "vector",
+      "description": "Independent signed PDF: timestamp-ecdsa",
+      "requirements": [
+        "cms-integrity",
+        "cms-timestamp"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/timestamp-ecdsa.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/timestamp-ecdsa.pdf",
+          "sha256": "8758672c7f6bc1c8f5bafa72adc3ba35ed63f088dd0059b6cfb233e7c8a4801a"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/timestamp-wrong-imprint",
+      "kind": "vector",
+      "description": "Independent signed PDF: timestamp-wrong-imprint",
+      "requirements": [
+        "cms-integrity",
+        "cms-timestamp"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/timestamp-wrong-imprint.expect",
+          "sha256": "fab1e277762ffacad8aa3711ad8d6942d3a7b52567afada8c82330cbffae6d41"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/timestamp-wrong-imprint.pdf",
+          "sha256": "94630ceda5e875a11d2c4bb76f1de79324489f00a442013a8cca91c4038370a4"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/timestamp-wrong-content-type",
+      "kind": "vector",
+      "description": "Independent signed PDF: timestamp-wrong-content-type",
+      "requirements": [
+        "cms-integrity",
+        "cms-timestamp"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/timestamp-wrong-content-type.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/timestamp-wrong-content-type.pdf",
+          "sha256": "25ae1fe9229edaf7833abd1eb20364db902f5df0b72e443afd7dcde286c18805"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/certification",
+      "kind": "vector",
+      "description": "Independent signed PDF: certification",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/certification.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/certification.pdf",
+          "sha256": "062f047c4600cd8b5ef2b6884e93e20a809c0fef19cbc877c4a7e423b86cfa58"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/certification-64-signers",
+      "kind": "vector",
+      "description": "Independent signed PDF: certification-64-signers",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/certification-64-signers.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/certification-64-signers.pdf",
+          "sha256": "fc3397b2f1fee1a4c6340d707d268b6acf5becf6bd95206600f564b4dd8355ef"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/certification-ber",
+      "kind": "vector",
+      "description": "Independent signed PDF: certification-ber",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/certification-ber.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/certification-ber.pdf",
+          "sha256": "3838574f14a16a41c7f306108a5b0ffddfb3e67b19c47cefd673ecfe8feb5aa3"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/ber-unsorted",
+      "kind": "vector",
+      "description": "Independent signed PDF: ber-unsorted",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/ber-unsorted.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/ber-unsorted.pdf",
+          "sha256": "481d51a1be4ce3988f00f2b9dcb17b0d0dd3dd0826f7ae846c9416607f8638de"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/malformed-extra-certificate",
+      "kind": "vector",
+      "description": "Independent signed PDF: malformed-extra-certificate",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/malformed-extra-certificate.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/malformed-extra-certificate.pdf",
+          "sha256": "ab675c6cb0684dd30b1b45dd1e7398ac9767564395c920777624bbe4a86cafdd"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/byte-flip",
+      "kind": "vector",
+      "description": "Independent signed PDF: byte-flip",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/byte-flip.expect",
+          "sha256": "fab1e277762ffacad8aa3711ad8d6942d3a7b52567afada8c82330cbffae6d41"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/byte-flip.pdf",
+          "sha256": "45f7984f3d77f7df9b3af23e886118aba097c83c27d5d88758b9f631060aa5b5"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/message-digest",
+      "kind": "vector",
+      "description": "Independent signed PDF: message-digest",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/message-digest.expect",
+          "sha256": "fab1e277762ffacad8aa3711ad8d6942d3a7b52567afada8c82330cbffae6d41"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/message-digest.pdf",
+          "sha256": "81d09dae397cea74492ffc4bf02e1d2d41f6ae6b5844d2ffccd866dd3b3988a0"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/signature",
+      "kind": "vector",
+      "description": "Independent signed PDF: signature",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/signature.expect",
+          "sha256": "ef29d24fd8720320dacb4030a0d970f306aed0a5fd6cf3abb0b3f57f38fd66ff"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/signature.pdf",
+          "sha256": "911ac71c70a23bac819ac7b52e9ffb59a8374223bf32cb18b4bb2fc6f65bdebd"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/wrong-certificate",
+      "kind": "vector",
+      "description": "Independent signed PDF: wrong-certificate",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/wrong-certificate.expect",
+          "sha256": "d358ed8b3ac5112b380030c25dd99c03b13059e037c96a397273227dedb0a652"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/wrong-certificate.pdf",
+          "sha256": "215f51ef249c0e4c29314d146df3b7d8718602f01b052a6803c5caea40a3e805"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/sid",
+      "kind": "vector",
+      "description": "Independent signed PDF: sid",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/sid.expect",
+          "sha256": "d358ed8b3ac5112b380030c25dd99c03b13059e037c96a397273227dedb0a652"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/sid.pdf",
+          "sha256": "d1bfb45d95e157b6e022b5acf609b7cb0367b3b16145f07bd8d9255ecf281a69"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/content-type",
+      "kind": "vector",
+      "description": "Independent signed PDF: content-type",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/content-type.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/content-type.pdf",
+          "sha256": "8a4979ecd02ecd09dd231cb5711a7179d48ab7abef9f6483d3d12c50536bb0e0"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/duplicate-digest",
+      "kind": "vector",
+      "description": "Independent signed PDF: duplicate-digest",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/duplicate-digest.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/duplicate-digest.pdf",
+          "sha256": "a5958b9110176e67513b19c5c5aafd121973493fa9590be37e8c4a9009a5b842"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/unsorted-signed",
+      "kind": "vector",
+      "description": "Independent signed PDF: unsorted-signed",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/unsorted-signed.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/unsorted-signed.pdf",
+          "sha256": "a68c639f50877891f5a4dde27ecd915759f852c346da447ff8473867a511f3db"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/padding",
+      "kind": "vector",
+      "description": "Independent signed PDF: padding",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/padding.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/padding.pdf",
+          "sha256": "6b23a6f90adb1e9b091b888abdb104346e476e1a101c1731f934edb75d5b8ca2"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/unsupported-hash",
+      "kind": "vector",
+      "description": "Independent signed PDF: unsupported-hash",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/unsupported-hash.expect",
+          "sha256": "8e2df85d917115c4b9c25dc86ece38ca50c502b290a069fdc2bae02eb74b1c18"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/unsupported-hash.pdf",
+          "sha256": "30935a66c4f00e47d3978813f68e4e84e61655b187473c1de1bd447ca97c394c"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/unsupported-signature",
+      "kind": "vector",
+      "description": "Independent signed PDF: unsupported-signature",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/unsupported-signature.expect",
+          "sha256": "8e2df85d917115c4b9c25dc86ece38ca50c502b290a069fdc2bae02eb74b1c18"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/unsupported-signature.pdf",
+          "sha256": "15881eb6ac0e924318bda90b97794940b1659918179ff38450e9c39d4bf3b448"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/pss-digest-mismatch",
+      "kind": "vector",
+      "description": "Independent signed PDF: pss-digest-mismatch",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/pss-digest-mismatch.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/pss-digest-mismatch.pdf",
+          "sha256": "d3241004d9fa7268b4154b7f7b60b2c4ea139e6bdaedf2ebd313c8962feccef2"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/ess-hash",
+      "kind": "vector",
+      "description": "Independent signed PDF: ess-hash",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/ess-hash.expect",
+          "sha256": "ef29d24fd8720320dacb4030a0d970f306aed0a5fd6cf3abb0b3f57f38fd66ff"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/ess-hash.pdf",
+          "sha256": "937cfe31583da2f1466ece7827e14e7413df2288a9051d6e407d28ac76177b05"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/ess-serial",
+      "kind": "vector",
+      "description": "Independent signed PDF: ess-serial",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/ess-serial.expect",
+          "sha256": "ef29d24fd8720320dacb4030a0d970f306aed0a5fd6cf3abb0b3f57f38fd66ff"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/ess-serial.pdf",
+          "sha256": "3d031527514a114f94a388ae34283833eb0d45e0b9461389c3f075d1f2b24b09"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/ess-missing",
+      "kind": "vector",
+      "description": "Independent signed PDF: ess-missing",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/ess-missing.expect",
+          "sha256": "b509ebf05ec6d6b328044a751c0348669581823e5bb21e9bf4a8ea64fb1f7771"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/ess-missing.pdf",
+          "sha256": "94aec28fc95df40cd7c9314f80fa784b4cb49b584b057301dd1e5c11006f01f4"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/two-independent-revisions",
+      "kind": "vector",
+      "description": "Two independent signatures across revisions with a changed first signed range",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/two-independent-revisions.expect",
+          "sha256": "b742dcea78415d0e4af18ec0cd0926c798db24fad0745b4fb4d121cc2e2fc1c5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/two-independent-revisions.pdf",
+          "sha256": "07e5f076439b9208c36fbdc4b8a2fcf2e66ed7f65195c1f7d3af5d973df77e64"
+        }
+      }
+    },
+    {
+      "id": "cms-signatures/certification-shared-container",
+      "kind": "vector",
+      "description": "Distinct signature dictionaries in one object retain separate integrity results",
+      "requirements": [
+        "cms-integrity",
+        "cms-detached"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/cms-signatures/certification-shared-container.expect",
+          "sha256": "12124cabf3d002ddbbdab6048a474bda2a60ca81ac7e45e9cc4eeb65171d86b6"
+        },
+        ".pdf": {
+          "path": "corpus/generated/cms-signatures/certification-shared-container.pdf",
+          "sha256": "93256b6a692364d1acbcb95438a8b6b03d1531cd5f8c9bb1a8aa1a3950c581af"
+        }
+      }
+    }
+  ]
+}

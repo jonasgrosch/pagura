@@ -8,8 +8,8 @@ Normative reference entries indexed: 82.
 |---|---:|
 | acquired-separately | 12 |
 | cached | 84 |
-| indexed-only | 52 |
-| locally-supplied | 1 |
+| indexed-only | 48 |
+| locally-supplied | 10 |
 | unavailable | 8 |
 
 ## Access gaps

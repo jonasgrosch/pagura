@@ -644,7 +644,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/signatures/docmdp-bad-permission.expect",
-          "sha256": "4e1f4816a27f3f30c182bee7cbd6a66fc14b34feaef7e7b6a6f4810cdb558611"
+          "sha256": "a337e7d66bbcec1a0a080b474c7bab57ff793568d6585b2e603519f8f4ee1bb6"
         },
         ".pdf": {
           "path": "corpus/generated/signatures/docmdp-bad-permission.pdf",
@@ -662,7 +662,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/signatures/lock-bad-action.expect",
-          "sha256": "4e1f4816a27f3f30c182bee7cbd6a66fc14b34feaef7e7b6a6f4810cdb558611"
+          "sha256": "a337e7d66bbcec1a0a080b474c7bab57ff793568d6585b2e603519f8f4ee1bb6"
         },
         ".pdf": {
           "path": "corpus/generated/signatures/lock-bad-action.pdf",
@@ -680,7 +680,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/signatures/fieldmdp-missing-data.expect",
-          "sha256": "4e1f4816a27f3f30c182bee7cbd6a66fc14b34feaef7e7b6a6f4810cdb558611"
+          "sha256": "a337e7d66bbcec1a0a080b474c7bab57ff793568d6585b2e603519f8f4ee1bb6"
         },
         ".pdf": {
           "path": "corpus/generated/signatures/fieldmdp-missing-data.pdf",
@@ -914,7 +914,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/signatures/multiple-widgets.expect",
-          "sha256": "4e1f4816a27f3f30c182bee7cbd6a66fc14b34feaef7e7b6a6f4810cdb558611"
+          "sha256": "a337e7d66bbcec1a0a080b474c7bab57ff793568d6585b2e603519f8f4ee1bb6"
         },
         ".pdf": {
           "path": "corpus/generated/signatures/multiple-widgets.pdf",

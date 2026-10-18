@@ -121,9 +121,12 @@ fn independent_structures() {
         let expected = std::fs::read_to_string(&path).unwrap();
         let doc = open(name, Limits::default());
         let result = doc.signatures();
-        if expected.starts_with("error|") {
+        if expected.starts_with("field-error|") {
             assert_eq!(
-                format!("error|{:?}\n", result.unwrap_err().kind),
+                format!(
+                    "field-error|Approval|{:?}\n",
+                    result.unwrap().fields[0].error.as_ref().unwrap().kind
+                ),
                 expected,
                 "{name}"
             );
