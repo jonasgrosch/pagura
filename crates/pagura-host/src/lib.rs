@@ -9,6 +9,7 @@ mod control;
 pub mod protocol;
 pub mod reading;
 mod session;
+mod wire;
 
 pub use control::Cancellation;
 pub use session::{Session, SessionEnd};
