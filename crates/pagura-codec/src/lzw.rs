@@ -1,5 +1,6 @@
 //! PDF LZW, MSB-first codes and EarlyChange (ISO 32000-2 7.4.4.2).
-use crate::{Predictor, output::Output, repair, syntax, tags, trailing};
+use crate::report::{repair, syntax, trailing};
+use crate::{Predictor, output::Output, tags};
 use pagura_core::{Diagnostics, Result};
 
 pub(crate) fn decode(
