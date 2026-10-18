@@ -1,6 +1,7 @@
 # ADR 0010: Images and image codecs
 
-Status: accepted, 2026-10-17.
+Status: accepted, 2026-10-17. Amended by ADR 0027: the decoders live in
+`pagura-imagecodec`.
 
 ## Decision
 
