@@ -1,5 +1,6 @@
 //! Encoder fixtures, independent Python decoding, and resource boundaries.
-use crate::{
+use super::options;
+use pagura_codec::{
     Filter, Predictor,
     flate::{self, Level},
     png::{self, ColorType, Options},
@@ -62,7 +63,7 @@ fn every_codec_vector_round_trips_and_python_checks_the_compressed_bytes() {
     let mut batch = Vec::new();
     let mut types = [false; 3];
     for name in names() {
-        let params = crate::vectors::options(&name);
+        let params = options(&name);
         for suffix in ["in", "out"] {
             let plain = fixture("codec", &format!("{name}.{suffix}"));
             for level in [Level::Fast, Level::Default] {
@@ -101,7 +102,7 @@ fn independent_png_decode_checks_pixels_crc_chunks_filters_and_straight_alpha() 
     let mut batch = Vec::new();
     let mut count = 0;
     for name in names() {
-        let params = crate::vectors::options(&name);
+        let params = options(&name);
         if params["filter"] != "encode-png" {
             continue;
         }
