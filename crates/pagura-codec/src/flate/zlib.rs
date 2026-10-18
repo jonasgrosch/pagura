@@ -112,7 +112,7 @@ mod tests {
         adler.update(b"pedia");
         assert_eq!(adler.finish(), 0x11e6_0398);
         let mut long = Adler32::new();
-        long.update(&[0xff; 100_000]);
+        long.update(&vec![0xff; 100_000]);
         let (mut a, mut b) = (1_u64, 0_u64);
         for _ in 0..100_000 {
             a = (a + 0xff) % 65521;
