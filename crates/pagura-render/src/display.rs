@@ -5,8 +5,8 @@ use crate::{RenderOptions, Tile};
 use pagura_core::{Error, Limits, Rect, Result};
 use pagura_document::{Page, Rotation};
 use pagura_raster::{
-    FillRule, Mask, Paint, Path, PathBuilder, Pixmap, Stroke, Transform, fill_path_at,
-    stroke_path_adjusted_at, stroke_path_at,
+    FillRule, Mask, Paint, Path, PathBuilder, Pixmap, Rasterizer, Stroke, Transform,
+    adjusted_stroke_outline, stroke_outline,
 };
 use std::sync::Arc;
 
@@ -176,6 +176,7 @@ impl DisplayList {
             self.limits,
             (tile.x, tile.y),
         )?;
+        let mut raster = Rasterizer::default();
         let mut last_clip = None;
         let mut mask = crop.clone();
         let mut stack = vec![self.commands.iter()];
@@ -221,7 +222,7 @@ impl DisplayList {
                 last_clip = identity;
             }
             command
-                .rasterize(&mut target, device, &mask, (tile.x, tile.y))
+                .rasterize(&mut target, device, &mask, &mut raster, self.limits)
                 .map_err(|e| contextual(e, command.position))?;
         }
         Ok(target)
@@ -258,41 +259,36 @@ impl PathCommand {
         target: &mut Pixmap,
         device: Transform,
         mask: &Mask,
-        origin: (u32, u32),
+        raster: &mut Rasterizer,
+        limits: Limits,
     ) -> Result<()> {
         let paint = Paint::Solid(
             self.color
                 .to_rgba(self.transfer.as_ref(), self.composite.conversion.intent)?,
         );
         match &self.mark {
-            Mark::Fill(rule) => fill_path_at(
-                target,
-                &self.path,
-                device,
-                *rule,
-                &paint,
-                Some(mask),
-                origin,
-            )?,
+            Mark::Fill(rule) => {
+                raster.fill_path(target, Arc::clone(&self.path), device, *rule, &paint, mask)?;
+            }
             Mark::Stroke(stroke, ctm, adjust) => {
                 let inverse = ctm.inverse().ok_or(Error::unsupported(
                     crate::features::SINGULAR_STROKE,
                     "singular stroke transform is not implemented",
                 ))?;
                 let path = self.path.transformed(inverse);
-                let rasterize = if *adjust {
-                    stroke_path_adjusted_at
+                let outline = if *adjust {
+                    adjusted_stroke_outline
                 } else {
-                    stroke_path_at
+                    stroke_outline
                 };
-                rasterize(
+                let (path, transform) = outline(&path, ctm.then(device), stroke, &limits)?;
+                raster.fill_path(
                     target,
-                    &path,
-                    ctm.then(device),
-                    stroke,
+                    Arc::new(path),
+                    transform,
+                    FillRule::NonZero,
                     &paint,
-                    Some(mask),
-                    origin,
+                    mask,
                 )?;
             }
         }

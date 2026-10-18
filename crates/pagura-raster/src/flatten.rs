@@ -40,47 +40,61 @@ pub(crate) fn bounded(point: Point) -> Result<()> {
 }
 
 pub(crate) fn flatten(path: &Path, transform: Transform, limits: &Limits) -> Result<Vec<Polyline>> {
+    let mut result = Vec::new();
+    let count = flatten_into(path, transform, limits, &mut result)?;
+    result.truncate(count);
+    Ok(result)
+}
+
+pub(crate) fn flatten_into(
+    path: &Path,
+    transform: Transform,
+    limits: &Limits,
+    result: &mut Vec<Polyline>,
+) -> Result<usize> {
     if !transform.is_finite() {
         return Err(Error::invalid_argument("path transform is not finite"));
     }
     if path.segments().len() > limits.path_segments {
         return Err(Error::limit("path segment budget exceeded"));
     }
-    let mut result = Vec::new();
-    let mut points = Vec::new();
-    let mut closed = false;
-    let mut degenerate = true;
+    let mut contour = 0;
     let mut count = 0;
+    let mut current = prepare(result, contour);
     for segment in path.segments() {
+        // A line or curve following Close reopens at the subpath start.
+        // Preserve the closed contour separately, including its point buffer.
+        if current.closed && matches!(segment, Segment::LineTo(_) | Segment::CubicTo(..)) {
+            let start = current.points.first().copied();
+            contour += 1;
+            current = prepare(result, contour);
+            current.points.extend(start);
+        }
         match *segment {
             Segment::MoveTo(point) => {
-                if !points.is_empty() {
-                    result.push(Polyline {
-                        points: std::mem::take(&mut points),
-                        closed,
-                        degenerate,
-                    });
+                if !current.points.is_empty() {
+                    contour += 1;
+                    current = prepare(result, contour);
                 }
                 bounded(point)?;
                 bounded(point * transform)?;
-                append(&mut points, point, &mut count, limits)?;
-                closed = false;
-                degenerate = true;
+                append(&mut current.points, point, &mut count, limits)?;
+                current.closed = false;
+                current.degenerate = true;
             }
             Segment::LineTo(point) => {
                 bounded(point)?;
                 bounded(point * transform)?;
-                reopen(&mut points, &mut closed, &mut degenerate, &mut result);
-                degenerate &= points.first().is_none_or(|p| *p == point);
-                append(&mut points, point, &mut count, limits)?;
+                current.degenerate &= current.points.first().is_none_or(|p| *p == point);
+                append(&mut current.points, point, &mut count, limits)?;
             }
             Segment::CubicTo(first, second, end) => {
-                reopen(&mut points, &mut closed, &mut degenerate, &mut result);
-                let start = points
+                let start = current
+                    .points
                     .last()
                     .copied()
                     .ok_or(Error::invalid_argument("curve has no current point"))?;
-                degenerate &= [first, second, end].iter().all(|p| *p == start);
+                current.degenerate &= [first, second, end].iter().all(|p| *p == start);
                 for point in [first, second, end] {
                     bounded(point)?;
                     bounded(point * transform)?;
@@ -89,43 +103,30 @@ pub(crate) fn flatten(path: &Path, transform: Transform, limits: &Limits) -> Res
                     [start, first, second, end],
                     transform,
                     0,
-                    &mut points,
+                    &mut current.points,
                     &mut count,
                     limits,
                 )?;
             }
-            Segment::Close => closed = true,
+            Segment::Close => current.closed = true,
         }
     }
-    if !points.is_empty() {
-        result.push(Polyline {
-            points,
-            closed,
-            degenerate,
-        });
-    }
-    Ok(result)
+    Ok(contour + usize::from(!current.points.is_empty()))
 }
 
-// A segment following Close starts at the original subpath start. Preserve the
-// already closed contour separately rather than drawing from its last vertex.
-fn reopen(
-    points: &mut Vec<Point>,
-    closed: &mut bool,
-    degenerate: &mut bool,
-    result: &mut Vec<Polyline>,
-) {
-    if *closed {
-        let start = points.first().copied();
+fn prepare(result: &mut Vec<Polyline>, index: usize) -> &mut Polyline {
+    if index == result.len() {
         result.push(Polyline {
-            points: std::mem::take(points),
-            closed: true,
-            degenerate: *degenerate,
+            points: Vec::new(),
+            closed: false,
+            degenerate: true,
         });
-        points.extend(start);
-        *closed = false;
-        *degenerate = true;
     }
+    let current = &mut result[index];
+    current.points.clear();
+    current.closed = false;
+    current.degenerate = true;
+    current
 }
 
 fn append(points: &mut Vec<Point>, point: Point, count: &mut usize, limits: &Limits) -> Result<()> {

@@ -7,7 +7,7 @@
 //! Horizontal clipping projects outside geometry onto viewport boundaries,
 //! preserving winding and bounding work by the surface.
 
-use crate::flatten::{bounded, flatten};
+use crate::flatten::{Polyline, bounded, flatten_into};
 use crate::{FillRule, Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Result};
 use std::sync::Arc;
@@ -69,18 +69,12 @@ impl Edge {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Windings {
     values: Vec<i64>,
     outside: usize,
 }
 impl Windings {
-    fn new(count: usize) -> Self {
-        Self {
-            values: vec![0; count],
-            outside: count,
-        }
-    }
     fn reset(&mut self) {
         self.values.fill(0);
         self.outside = self.values.len();
@@ -107,7 +101,7 @@ impl Windings {
 }
 
 // Scratch belongs to one coverage sweep and retains capacity between strips.
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Sweep {
     // Certified at the previous strip end; admissions invalidate this order.
     sorted: bool,
@@ -116,6 +110,7 @@ struct Sweep {
     winding: Windings,
 }
 
+#[derive(Debug, Default)]
 struct Row {
     areas: Vec<f64>,
     covers: Vec<f64>,
@@ -125,23 +120,18 @@ struct Row {
     maximum_events: usize,
 }
 impl Row {
-    fn new(width: usize, origin: u32, limits: &Limits) -> Result<Self> {
-        let mut buffers = [Vec::new(), Vec::new()];
-        for buffer in &mut buffers {
+    fn reset(&mut self, width: usize, origin: u32, limits: &Limits) -> Result<()> {
+        for buffer in [&mut self.areas, &mut self.covers] {
             buffer
-                .try_reserve_exact(width)
+                .try_reserve_exact(width.saturating_sub(buffer.len()))
                 .map_err(|_| Error::limit("scanline allocation failed"))?;
             buffer.resize(width, 0.0);
         }
-        let [areas, covers] = buffers;
-        Ok(Self {
-            areas,
-            covers,
-            origin,
-            work: 0,
-            maximum: limits.raster_work,
-            maximum_events: limits.path_segments,
-        })
+        self.origin = origin;
+        self.work = 0;
+        self.maximum = limits.raster_work;
+        self.maximum_events = limits.path_segments;
+        Ok(())
     }
     fn charge(&mut self, amount: usize) -> Result<()> {
         charge(&mut self.work, amount, self.maximum)
@@ -186,6 +176,48 @@ impl Row {
     }
 }
 
+type BoundaryEvent = (usize, f64, f64, i64, FillRule);
+
+/// Temporary sweep storage; no path or coverage is cached.
+#[derive(Debug, Default)]
+pub(crate) struct Scratch {
+    row: Row,
+    contours: Vec<Polyline>,
+    edges: Vec<Edge>,
+    raw: Vec<Edge>,
+    boundary: Vec<BoundaryEvent>,
+    vertices: Vec<f64>,
+    active: Vec<Edge>,
+    winding: Windings,
+    sweep: Sweep,
+}
+impl Scratch {
+    pub(crate) fn retained_bytes(&self) -> usize {
+        let buffers = [
+            bytes(&self.row.areas),
+            bytes(&self.row.covers),
+            bytes(&self.edges),
+            bytes(&self.raw),
+            bytes(&self.boundary),
+            bytes(&self.vertices),
+            bytes(&self.active),
+            bytes(&self.winding.values),
+            bytes(&self.sweep.winding.values),
+            bytes(&self.sweep.events),
+            bytes(&self.sweep.ordered),
+            bytes(&self.contours),
+        ];
+        buffers
+            .into_iter()
+            .chain(self.contours.iter().map(|contour| bytes(&contour.points)))
+            .fold(0, usize::saturating_add)
+    }
+}
+
+fn bytes<T>(values: &Vec<T>) -> usize {
+    values.capacity().saturating_mul(size_of::<T>())
+}
+
 pub(crate) fn coverage(
     width: u32,
     height: u32,
@@ -193,10 +225,34 @@ pub(crate) fn coverage(
     out: &mut [u8],
     origin: (u32, u32),
     limits: &Limits,
+    scratch: &mut Scratch,
 ) -> Result<()> {
+    let Scratch {
+        row,
+        contours,
+        edges,
+        raw,
+        boundary,
+        vertices,
+        active,
+        winding,
+        sweep,
+    } = scratch;
     let stride = usize::try_from(width).map_err(|_| Error::limit("mask width exceeds usize"))?;
-    let mut row = Row::new(stride, origin.0, limits)?;
-    let mut edges = edges(shapes, (width, height), origin, limits, &mut row)?;
+    row.reset(stride, origin.0, limits)?;
+    edges.clear();
+    raw.clear();
+    boundary.clear();
+    build_edges(shapes, (width, height), origin, limits, row, raw, contours)?;
+    normalize_boundaries(
+        raw,
+        edges,
+        boundary,
+        f64::from(origin.0),
+        f64::from(origin.0) + f64::from(width),
+        limits,
+        row,
+    )?;
     // Edges have already validated the geometry and its budgets. A rectangular
     // intersection containing the whole viewport has exactly unit area in every
     // cell; no scanline arithmetic or sorting is needed.
@@ -212,7 +268,7 @@ pub(crate) fn coverage(
         .first()
         .map(|e| [e.a.y, e.b.y])
         .filter(|&[lo, hi]| edges.iter().all(|e| e.a.y == lo && e.b.y == hi));
-    let mut vertices = Vec::new();
+    vertices.clear();
     if extent.is_none() {
         row.sorted(edges.len())?;
         edges.sort_unstable_by(|a, b| a.a.y.total_cmp(&b.a.y));
@@ -221,11 +277,15 @@ pub(crate) fn coverage(
         vertices.sort_unstable_by(f64::total_cmp);
         vertices.dedup();
     }
-    let mut vertices = extent.into_iter().flatten().chain(vertices).peekable();
-    let mut active: Vec<Edge> = Vec::new();
+    let mut vertices = extent
+        .into_iter()
+        .flatten()
+        .chain(vertices.iter().copied())
+        .peekable();
+    active.clear();
     let mut admitted = 0;
-    let mut winding = Windings::new(shapes.len());
-    let mut sweep = Sweep::default();
+    winding.values.resize(shapes.len(), 0);
+    sweep.sorted = false;
     out.fill(0);
     for (y, output) in out.chunks_exact_mut(stride).enumerate() {
         let lo = f64::from(u32::try_from(y).map_err(|_| Error::limit("row exceeds u32"))?)
@@ -256,7 +316,7 @@ pub(crate) fn coverage(
                 admitted += 1;
             }
             if !active.is_empty() {
-                strip(&mut active, start, end, &mut winding, &mut row, &mut sweep)?;
+                strip(active, start, end, winding, row, sweep)?;
             }
             if end == hi {
                 break;
@@ -433,51 +493,54 @@ fn crossing(
     Ok(())
 }
 
-fn edges(
+fn build_edges(
     shapes: &[Shape],
     size: (u32, u32),
     origin: (u32, u32),
     limits: &Limits,
     row: &mut Row,
-) -> Result<Vec<Edge>> {
-    let mut edges = Vec::new();
+    edges: &mut Vec<Edge>,
+    contours: &mut Vec<Polyline>,
+) -> Result<()> {
     let left = f64::from(origin.0);
     let right = left + f64::from(size.0);
     let top = f64::from(origin.1);
     let bottom = top + f64::from(size.1);
     for (group, shape) in shapes.iter().enumerate() {
-        let contours = flatten(&shape.path, shape.transform, limits)?;
-        let count = contours.len();
-        for (i, contour) in contours.into_iter().enumerate() {
+        let count = flatten_into(&shape.path, shape.transform, limits, contours)?;
+        contours.truncate(count);
+        for (i, contour) in contours.iter_mut().take(count).enumerate() {
             if i + 1 == count && !contour.closed && contour.points.len() == 1 {
                 continue;
             }
-            let mut transformed: Vec<_> = contour
-                .points
-                .into_iter()
-                .map(|p| p * shape.transform)
-                .collect();
-            if let Some(&point) = transformed.first()
-                && contour.degenerate
-            {
-                // 8.5.3.3.1: a degenerate filled subpath encloses its device pixel.
-                // Device choice at integral boundaries: the half-open floor cell.
-                let (x, y) = (point.x.floor(), point.y.floor());
-                transformed = vec![
-                    Point::new(x, y),
-                    Point::new(x + 1.0, y),
-                    Point::new(x + 1.0, y + 1.0),
-                    Point::new(x, y + 1.0),
-                ];
+            for point in &mut contour.points {
+                *point = *point * shape.transform;
             }
-            let mut points = transformed.into_iter();
+            let corners = contour
+                .points
+                .first()
+                .filter(|_| contour.degenerate)
+                .map(|point| {
+                    // 8.5.3.3.1: a degenerate fill encloses its half-open floor cell.
+                    let (x, y) = (point.x.floor(), point.y.floor());
+                    [
+                        Point::new(x, y),
+                        Point::new(x + 1.0, y),
+                        Point::new(x + 1.0, y + 1.0),
+                        Point::new(x, y + 1.0),
+                    ]
+                });
+            let points = corners
+                .as_ref()
+                .map_or(contour.points.as_slice(), |c| c.as_slice());
+            let mut points = points.iter().copied();
             let Some(first) = points.next() else { continue };
             let mut previous = first;
             for next in points.chain(std::iter::once(first)) {
                 bounded(next)?;
                 row.charge(3)?;
                 clipped(
-                    &mut edges,
+                    edges,
                     previous,
                     next,
                     group,
@@ -489,19 +552,19 @@ fn edges(
             }
         }
     }
-    normalize_boundaries(edges, left, right, limits, row)
+    Ok(())
 }
 
 fn normalize_boundaries(
-    edges: Vec<Edge>,
+    edges: &mut Vec<Edge>,
+    output: &mut Vec<Edge>,
+    events: &mut Vec<BoundaryEvent>,
     left: f64,
     right: f64,
     limits: &Limits,
     row: &mut Row,
-) -> Result<Vec<Edge>> {
-    let mut output = Vec::new();
-    let mut events = Vec::new();
-    for edge in edges {
+) -> Result<()> {
+    for edge in edges.drain(..) {
         if edge.a.x == edge.b.x && (edge.a.x == left || edge.a.x == right) {
             events.push((edge.group, edge.a.x, edge.a.y, edge.winding, edge.rule));
             events.push((edge.group, edge.a.x, edge.b.y, -edge.winding, edge.rule));
@@ -517,7 +580,7 @@ fn normalize_boundaries(
     });
     let mut previous = None;
     let mut winding = 0_i64;
-    for (group, x, y, delta, rule) in events {
+    for (group, x, y, delta, rule) in events.drain(..) {
         row.charge(1)?;
         if let Some((previous_group, previous_x, previous_y)) = previous {
             if previous_group == group && previous_x == x {
@@ -546,7 +609,7 @@ fn normalize_boundaries(
     for (id, edge) in output.iter_mut().enumerate() {
         edge.id = id;
     }
-    Ok(output)
+    Ok(())
 }
 
 fn clipped(

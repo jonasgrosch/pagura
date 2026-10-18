@@ -1,8 +1,11 @@
 //! Filling, stroking and clipping with exact polygon area coverage.
 
 use crate::coverage::Shape;
+
+mod reuse;
 use crate::{Paint, Path, Pixmap, Transform};
 use pagura_core::{Error, Limits, Result};
+pub use reuse::Rasterizer;
 use std::sync::Arc;
 
 /// Which points a fill covers (ISO 32000-2 clause 8.5.3.3).
@@ -217,7 +220,15 @@ impl Mask {
             .try_reserve_exact(count)
             .map_err(|_| Error::limit("mask allocation failed"))?;
         coverage.resize(count, 0);
-        crate::coverage::coverage(width, height, &shapes, &mut coverage, origin, &limits)?;
+        crate::coverage::coverage(
+            width,
+            height,
+            &shapes,
+            &mut coverage,
+            origin,
+            &limits,
+            &mut crate::coverage::Scratch::default(),
+        )?;
         Ok(Self {
             width,
             height,
@@ -291,6 +302,7 @@ impl Mask {
             &mut coverage,
             self.origin,
             &self.limits,
+            &mut crate::coverage::Scratch::default(),
         )?;
         self.coverage = coverage;
         self.shapes = shapes;
@@ -485,7 +497,12 @@ fn check_clip(target: &Pixmap, clip: Option<&Mask>) -> Result<()> {
     Ok(())
 }
 
-fn composite(target: &mut Pixmap, mask: &Mask, paint: Paint, offset: (u32, u32)) -> Result<()> {
+pub(super) fn composite(
+    target: &mut Pixmap,
+    mask: &Mask,
+    paint: Paint,
+    offset: (u32, u32),
+) -> Result<()> {
     let Paint::Solid(color) = paint;
     let stride =
         usize::try_from(target.width()).map_err(|_| Error::limit("surface width exceeds usize"))?;

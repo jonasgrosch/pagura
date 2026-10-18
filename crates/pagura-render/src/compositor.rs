@@ -185,6 +185,16 @@ impl Context {
             .ok_or(Error::limit("compositing work budget exceeded"))?;
         Ok(())
     }
+    fn trim_raster(&mut self, bytes: usize) {
+        if self
+            .allocated
+            .saturating_add(bytes)
+            .saturating_add(self.bounds.raster.retained_bytes())
+            > self.limits.decoded_bytes
+        {
+            self.bounds.raster.clear();
+        }
+    }
     fn surface(&mut self, tile: Tile, initial: Backdrop<'_>) -> Result<Surface> {
         let count = usize::try_from(u64::from(tile.width) * u64::from(tile.height))
             .ok()
@@ -193,6 +203,7 @@ impl Context {
         let bytes = count
             .checked_mul(size_of::<Pixel>())
             .ok_or(Error::limit("group byte size overflow"))?;
+        self.trim_raster(bytes);
         self.allocated = self
             .allocated
             .checked_add(bytes)
@@ -280,6 +291,13 @@ impl Context {
         if depth >= self.limits.depth {
             return Err(Error::limit("compositing depth exceeded"));
         }
+        // Only knockout elements use the group's initial backdrop (11.4.6).
+        // Select this once, so Normal source-over never reads unused pixels.
+        let initial = if knockout {
+            initial
+        } else {
+            Backdrop::Transparent
+        };
         self.charge(commands.len())?;
         for command in commands {
             let result = match command {
@@ -321,6 +339,19 @@ impl Context {
         let Some(mask) = self.path_mask(p, target.tile)? else {
             return Ok(());
         };
+        let result = self.paint_path((p, &mask), target, initial, model, knockout, depth);
+        self.bounds.raster.recycle(mask);
+        result
+    }
+    fn paint_path(
+        &mut self,
+        (p, mask): (&PathCommand, &Mask),
+        target: &mut Surface,
+        initial: Backdrop<'_>,
+        model: Model,
+        knockout: bool,
+        depth: usize,
+    ) -> Result<()> {
         if let crate::color::Color::Pattern {
             selected: Some(pattern),
             ..
@@ -331,7 +362,7 @@ impl Context {
                 p,
                 pattern.transform,
                 tiling,
-                &mask,
+                mask,
                 target,
                 initial,
                 model,
@@ -431,8 +462,20 @@ impl Context {
             return Ok(None);
         }
         let clip = self.clip(p.clip.as_ref(), tile)?;
+        // Retained raster buffers share the live group-surface byte allowance.
+        // Surface admissions can release this optional storage before failing.
+        let limits = Limits {
+            decoded_bytes: self.limits.decoded_bytes.saturating_sub(self.allocated),
+            ..self.limits
+        };
         let mask = match &p.mark {
-            Mark::Fill(rule) => clip.clipped_path(&p.path, self.device, *rule, self.limits)?,
+            Mark::Fill(rule) => self.bounds.raster.clipped_path(
+                &clip,
+                Arc::clone(&p.path),
+                self.device,
+                *rule,
+                limits,
+            )?,
             Mark::Stroke(stroke, ctm, adjust) => {
                 let path = p.path.transformed(inverse);
                 let outline = if *adjust {
@@ -442,7 +485,13 @@ impl Context {
                 };
                 let (path, transform) =
                     outline(&path, ctm.then(self.device), stroke, &self.limits)?;
-                clip.clipped_path(&path, transform, FillRule::NonZero, self.limits)?
+                self.bounds.raster.clipped_path(
+                    &clip,
+                    Arc::new(path),
+                    transform,
+                    FillRule::NonZero,
+                    limits,
+                )?
             }
         };
         let Some(mask) = mask else { return Ok(None) };
@@ -778,6 +827,7 @@ impl Context {
         let bytes = count
             .checked_mul(size_of::<f64>())
             .ok_or(Error::limit("mask bytes overflow"))?;
+        self.trim_raster(bytes);
         self.allocated = self
             .allocated
             .checked_add(bytes)
@@ -992,4 +1042,66 @@ fn path_active(p: &PathCommand, model: Model) -> Result<bool> {
         ));
     }
     Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn soft_mask_values_share_the_live_raster_memory_allowance() {
+        let limits = Limits::default();
+        let mut path = PathBuilder::new();
+        path.rect(0.0, 0.0, 2.0, 2.0);
+        let path = Arc::new(path.finish());
+        let clip = Mask::from_path(2, 2, &path, Transform::IDENTITY, FillRule::NonZero, 4).unwrap();
+        let mut context = Context {
+            bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
+            limits,
+            device: Transform::IDENTITY,
+            page_device: Transform::IDENTITY,
+            view_unit: 1.0,
+            crop: (*path).clone(),
+            allocated: 0,
+            work: 0,
+            clip: None,
+            mask: None,
+            function_work: 0,
+            soft_source: false,
+        };
+        let mask = context
+            .bounds
+            .raster
+            .clipped_path(&clip, path, Transform::IDENTITY, FillRule::NonZero, limits)
+            .unwrap()
+            .unwrap();
+        context.bounds.raster.recycle(mask);
+        let retained = context.bounds.raster.retained_bytes();
+        assert!(retained >= 512);
+        context.limits.decoded_bytes = retained + 64;
+        let mask = Arc::new(SoftMask {
+            group: Group {
+                position: pagura_core::Position::Unknown,
+                bounds: None,
+                commands: Vec::new(),
+                attributes: crate::transparency::Attributes::default(),
+                composite: Composite::opaque(),
+            },
+            method: MaskMethod::Alpha,
+            backdrop: [0.0; 4],
+            transfer: None,
+        });
+        let tile = Tile {
+            x: 0,
+            y: 0,
+            width: 8,
+            height: 8,
+        };
+        let values = context.soft_mask(&mask, tile, Model::Rgb, 0).unwrap();
+        // An empty alpha-mask group contributes no opacity (11.6.5.1).
+        assert_eq!(values.as_slice(), [0.0; 64]);
+        assert_eq!(context.bounds.raster.retained_bytes(), 0);
+        assert_eq!(context.allocated, 512);
+        assert!(context.allocated <= context.limits.decoded_bytes);
+    }
 }
