@@ -1,6 +1,7 @@
 //! CIE-based colour space dictionaries (8.6.5.2–8.6.5.4). The colorimetry
 //! is `pagura_color::cie`; this module reads the PDF parameters.
 
+use crate::color::Components;
 use crate::numbers;
 use pagura_color::cie::Calibrated;
 use pagura_core::{Dictionary, Error, Result};
@@ -55,16 +56,18 @@ pub(crate) fn parse(document: &Document, family: &[u8], d: &Dictionary) -> Resul
 }
 
 /// Maps Indexed lookup bytes to the space's source range (8.6.6.3).
-pub(crate) fn decode_lookup(space: &Cie, bytes: &[u8]) -> Vec<f64> {
+pub(crate) fn decode_lookup(space: &Cie, bytes: &[u8]) -> Components {
     let n = |i: usize| f64::from(bytes.get(i).copied().unwrap_or(0)) / 255.0;
     match (space.components(), space.lab_range()) {
-        (_, Some(r)) => vec![
+        (_, Some(r)) => [
             100.0 * n(0),
             r[0] + n(1) * (r[1] - r[0]),
             r[2] + n(2) * (r[3] - r[2]),
-        ],
-        (1, None) => vec![n(0)],
-        _ => vec![n(0), n(1), n(2)],
+        ]
+        .into_iter()
+        .collect(),
+        (1, None) => [n(0)].into_iter().collect(),
+        _ => [n(0), n(1), n(2)].into_iter().collect(),
     }
 }
 

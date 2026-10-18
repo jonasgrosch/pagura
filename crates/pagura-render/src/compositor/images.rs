@@ -288,12 +288,9 @@ fn expand_indexed<'a>(
         .as_ref()
         .ok_or(Error::syntax("colour image missing space"))?;
     if let Space::Indexed { base, high, lookup } = space {
-        let n = base.components();
-        let decoded = crate::color::indexed_components(base, *high, lookup, values[0])?;
-        for (out, value) in values.iter_mut().zip(decoded) {
-            *out = value;
-        }
-        Ok((base, n))
+        let decoded = Space::lookup(base, *high, lookup, values[0])?;
+        values[..decoded.len()].copy_from_slice(&decoded);
+        Ok((base, decoded.len()))
     } else {
         Ok((space, usize::from(image.decoded.components)))
     }

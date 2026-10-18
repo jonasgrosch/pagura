@@ -8,6 +8,9 @@
 //! fallback independently to each axis.
 
 use super::{interpolate, numbers, pairs_unordered};
+use crate::color::MAX_COMPONENTS;
+use pagura_core::bytes::{BitCursor, Cursor, Plain};
+use pagura_core::convert;
 use pagura_core::{Dictionary, Error, Limits, Result, Value};
 use pagura_document::Document;
 use std::sync::Arc;
@@ -108,18 +111,20 @@ impl Sampled {
             decode,
         })
     }
+    /// Interpolates the samples around `input` into `output` (7.10.2).
     pub(super) fn evaluate(
         &self,
         input: &[f64],
         domain: &[[f64; 2]],
-        outputs: usize,
+        output: &mut [f64],
         work: &mut usize,
         limits: &Limits,
-    ) -> Result<Vec<f64>> {
-        let mut positions = Vec::with_capacity(input.len());
+    ) -> Result<()> {
+        let mut positions = [Weights::EMPTY; MAX_COMPONENTS];
         let mut vertices = 1_usize;
-        for (((&x, domain), encode), &size) in
-            input.iter().zip(domain).zip(&self.encode).zip(&self.size)
+        for (slot, (((&x, domain), encode), &size)) in positions
+            .iter_mut()
+            .zip(input.iter().zip(domain).zip(&self.encode).zip(&self.size))
         {
             let x = interpolate(x, *domain, *encode).clamp(0.0, (size - 1) as f64);
             if !x.is_finite() {
@@ -130,9 +135,11 @@ impl Sampled {
                 .checked_mul(position.len)
                 .filter(|&n| n <= limits.operations)
                 .ok_or(Error::limit("sampled interpolation corner budget exceeded"))?;
-            positions.push(position);
+            *slot = position;
         }
-        let mut result = vec![0.0; outputs];
+        let positions = &positions[..input.len().min(MAX_COMPONENTS)];
+        let outputs = output.len();
+        output.fill(0.0);
         for corner in 0..vertices {
             *work = work
                 .checked_add(input.len() + outputs)
@@ -155,7 +162,7 @@ impl Sampled {
             if weight == 0.0 {
                 continue;
             }
-            for (component, value) in result.iter_mut().enumerate() {
+            for (component, value) in output.iter_mut().enumerate() {
                 let sample = self.sample(
                     offset
                         .checked_add(component)
@@ -164,40 +171,49 @@ impl Sampled {
                 *value += weight * sample;
             }
         }
-        for (value, range) in result.iter_mut().zip(&self.decode) {
+        for (value, range) in output.iter_mut().zip(&self.decode) {
             *value = interpolate(*value, [0.0, 1.0], *range);
         }
-        Ok(result)
+        Ok(())
     }
+    /// The sample at `index`, normalized to `0..=1`.
     fn sample(&self, index: usize) -> Result<f64> {
-        let width =
-            usize::try_from(self.bits).map_err(|_| Error::limit("sample width exceeds usize"))?;
+        let bits = self.bits;
         let start = index
-            .checked_mul(width)
+            .checked_mul(convert::u32_to_usize(bits))
             .ok_or(Error::limit("sample offset overflows"))?;
-        let mut value = 0_u64;
-        for bit in start
-            ..start
-                .checked_add(width)
-                .ok_or(Error::limit("sample extent overflows"))?
-        {
-            let byte = self
-                .data
-                .get(bit / 8)
-                .copied()
-                .ok_or(Error::syntax("truncated sampled function"))?;
-            value = (value << 1) | u64::from((byte >> (7 - bit % 8)) & 1);
-        }
-        Ok(value as f64 / ((1_u64 << self.bits) - 1) as f64)
+        let mut bytes = Cursor::new(&self.data).with_message("truncated sampled function");
+        let value = match bits {
+            8 => {
+                bytes.seek(start / 8)?;
+                u32::from(bytes.u8()?)
+            }
+            16 => {
+                bytes.seek(start / 8)?;
+                u32::from(bytes.u16()?)
+            }
+            _ => {
+                bytes.seek(start / 8)?;
+                let mut reader = BitCursor::<Plain>::new(bytes);
+                reader.bits(u32::try_from(start % 8).unwrap_or(0))?;
+                reader.bits(bits)?
+            }
+        };
+        Ok(f64::from(value) / ((1_u64 << bits) - 1) as f64)
     }
 }
 
 /// Nonzero support in one sample dimension; tensor products are budgeted above.
+#[derive(Clone, Copy)]
 struct Weights {
     values: [(usize, f64); 4],
     len: usize,
 }
 impl Weights {
+    const EMPTY: Self = Self {
+        values: [(0, 0.0); 4],
+        len: 1,
+    };
     fn new(x: f64, size: usize, cubic: bool) -> Self {
         #[expect(
             clippy::cast_possible_truncation,
@@ -257,7 +273,11 @@ mod tests {
         let function =
             super::super::Function::parse(&document, &Value::Reference(ObjectId::new(5, 0)), 32, 1)
                 .unwrap();
-        assert_eq!(function.evaluate(&[0.0; 32]).unwrap(), [128.0 / 255.0]);
+        let mut output = [0.0];
+        function
+            .evaluate_into(&[0.0; 32], &mut output, &mut 0)
+            .unwrap();
+        assert_eq!(output, [128.0 / 255.0]);
         let limited = Document::open(
             bytes,
             &OpenOptions {
@@ -273,7 +293,10 @@ mod tests {
             super::super::Function::parse(&limited, &Value::Reference(ObjectId::new(5, 0)), 32, 1)
                 .unwrap();
         assert_eq!(
-            function.evaluate(&[0.0; 32]).unwrap_err().kind,
+            function
+                .evaluate_into(&[0.0; 32], &mut output, &mut 0)
+                .unwrap_err()
+                .kind,
             ErrorKind::Limit
         );
     }

@@ -1,6 +1,7 @@
 //! Bounded PDF functions (7.10). Input and output clipping is part of evaluation.
 
-use pagura_core::{Dictionary, Error, Limits, ObjectId, Result, Value};
+use crate::color::MAX_COMPONENTS;
+use pagura_core::{Dictionary, Error, Limits, ObjectId, Result, ResultExt, Value};
 use pagura_document::Document;
 use std::sync::Arc;
 mod calculator;
@@ -66,13 +67,7 @@ impl Function {
         if object.is_some() {
             ancestors.pop();
         }
-        result.map_err(|e| {
-            if let Some(id) = object {
-                e.in_object(id)
-            } else {
-                e
-            }
-        })
+        result.in_object_opt(object)
     }
     fn dictionary(
         document: &Document,
@@ -84,7 +79,10 @@ impl Function {
     ) -> Result<Self> {
         let dictionary = document.resolve_dictionary(value)?;
         let domain = pairs(document, dictionary, b"Domain", None)?;
-        if domain.len() != inputs || inputs == 0 || outputs == 0 {
+        if domain.len() != inputs
+            || !(1..=MAX_COMPONENTS).contains(&inputs)
+            || !(1..=MAX_COMPONENTS).contains(&outputs)
+        {
             return Err(Error::syntax("wrong function input dimension"));
         }
         let range = if dictionary.contains_key(b"Range") {
@@ -173,8 +171,23 @@ impl Function {
             object: value.as_reference(),
         })
     }
-    pub(crate) fn evaluate(&self, inputs: &[f64]) -> Result<Vec<f64>> {
-        self.evaluate_with_work(inputs, &mut 0)
+    /// The identity function `[0 1] → [0 1]`, for `/Identity` transfers.
+    fn identity(limits: Limits) -> Self {
+        Self {
+            domain: vec![[0.0, 1.0]],
+            range: None,
+            outputs: 1,
+            body: Body::Exponential {
+                low: vec![0.0],
+                high: vec![1.0],
+                power: 1.0,
+            },
+            limits,
+            object: None,
+        }
+    }
+    pub(crate) fn outputs(&self) -> usize {
+        self.outputs
     }
     pub(crate) fn covers_domain(&self, domain: &[[f64; 2]]) -> bool {
         domain.len() == self.domain.len()
@@ -183,62 +196,40 @@ impl Function {
                 .zip(&self.domain)
                 .all(|(a, b)| a[0] >= b[0] && a[1] <= b[1])
     }
-    /// Evaluate common exponential gradients without allocating per sample.
+    /// Evaluates the function, writing its `outputs()` values into
+    /// `output`, without allocating. `work` counts evaluation steps of one
+    /// page compilation or rendering.
+    ///
+    /// # Errors
+    /// `Syntax` for non-finite inputs or undefined arithmetic, `Limit` when
+    /// `work` exceeds the budget.
     pub(crate) fn evaluate_into(
         &self,
         inputs: &[f64],
         output: &mut [f64],
         work: &mut usize,
     ) -> Result<()> {
-        self.fill_output(inputs, output, work)
-            .map_err(|error| self.object.map_or(error.clone(), |id| error.in_object(id)))
+        debug_assert_eq!(
+            output.len(),
+            self.outputs,
+            "output buffer fits the function"
+        );
+        self.run(inputs, output, 0, work).in_object_opt(self.object)
     }
-    fn fill_output(&self, inputs: &[f64], output: &mut [f64], work: &mut usize) -> Result<()> {
-        if inputs.len() != self.domain.len() || inputs.iter().any(|v| !v.is_finite()) {
-            return Err(Error::syntax("invalid function inputs"));
-        }
-        if output.len() != self.outputs {
-            return Err(Error::invalid_argument("wrong function output buffer"));
-        }
-        if let Body::Exponential { low, high, power } = &self.body {
-            if *work >= self.limits.operations {
-                return Err(Error::limit("function evaluation budget exceeded"));
-            }
-            *work += 1;
-            let [value] = inputs else {
-                return Err(Error::syntax("wrong function input count"));
-            };
-            let range = self
-                .domain
-                .first()
-                .ok_or(Error::syntax("missing function domain"))?;
-            let value = value.clamp(range[0], range[1]).powf(*power);
-            for (i, ((out, &low), &high)) in output.iter_mut().zip(low).zip(high).enumerate() {
-                *out = low + value * (high - low);
-                if !out.is_finite() {
-                    return Err(Error::syntax(
-                        "function arithmetic is undefined or overflows",
-                    ));
-                }
-                if let Some(range) = self.range.as_ref().and_then(|r| r.get(i)) {
-                    *out = out.clamp(range[0], range[1]);
-                }
-            }
-            return Ok(());
-        }
-        output.copy_from_slice(&self.evaluate_with_work(inputs, work)?);
-        Ok(())
+    /// Evaluates a one-in, one-out function (transfers, mask transfers,
+    /// black generation and undercolour removal).
+    pub(crate) fn evaluate_scalar(&self, input: f64, work: &mut usize) -> Result<f64> {
+        let mut output = [0.0];
+        self.evaluate_into(&[input], &mut output, work)?;
+        Ok(output[0])
     }
-    pub(crate) fn evaluate_with_work(&self, inputs: &[f64], work: &mut usize) -> Result<Vec<f64>> {
-        self.run(inputs, 0, work).map_err(|e| {
-            if let Some(id) = self.object {
-                e.in_object(id)
-            } else {
-                e
-            }
-        })
-    }
-    fn run(&self, inputs: &[f64], depth: usize, work: &mut usize) -> Result<Vec<f64>> {
+    fn run(
+        &self,
+        inputs: &[f64],
+        output: &mut [f64],
+        depth: usize,
+        work: &mut usize,
+    ) -> Result<()> {
         if depth >= self.limits.depth || *work >= self.limits.operations {
             return Err(Error::limit("function evaluation budget exceeded"));
         }
@@ -246,22 +237,24 @@ impl Function {
         if inputs.len() != self.domain.len() || inputs.iter().any(|v| !v.is_finite()) {
             return Err(Error::syntax("invalid function inputs"));
         }
-        let input: Vec<_> = inputs
-            .iter()
-            .zip(&self.domain)
-            .map(|(&v, r)| v.clamp(r[0], r[1]))
-            .collect();
-        let mut result = match &self.body {
+        // Parsing bounds the dimension by MAX_COMPONENTS.
+        let mut clamped = [0.0; MAX_COMPONENTS];
+        let input = clamped
+            .get_mut(..inputs.len())
+            .ok_or(Error::syntax("invalid function inputs"))?;
+        for ((out, &v), r) in input.iter_mut().zip(inputs).zip(&self.domain) {
+            *out = v.clamp(r[0], r[1]);
+        }
+        match &self.body {
             Body::Exponential { low, high, power } => {
                 let x = input
                     .first()
                     .copied()
                     .ok_or(Error::syntax("missing function input"))?
                     .powf(*power);
-                low.iter()
-                    .zip(high)
-                    .map(|(&a, &b)| a + x * (b - a))
-                    .collect::<Vec<_>>()
+                for ((out, &a), &b) in output.iter_mut().zip(low).zip(high) {
+                    *out = a + x * (b - a);
+                }
             }
             Body::Stitch {
                 functions,
@@ -299,26 +292,26 @@ impl Function {
                 functions
                     .get(index)
                     .ok_or(Error::syntax("invalid stitching index"))?
-                    .run(&[x], depth + 1, work)?
+                    .run(&[x], output, depth + 1, work)?;
             }
             Body::Calculator(calculator) => {
-                calculator.evaluate(&input, self.outputs, work, &self.limits)?
+                calculator.evaluate(input, output, work, &self.limits)?;
             }
             Body::Sampled(sampled) => {
-                sampled.evaluate(&input, &self.domain, self.outputs, work, &self.limits)?
+                sampled.evaluate(input, &self.domain, output, work, &self.limits)?;
             }
-        };
-        if result.len() != self.outputs || result.iter().any(|v| !v.is_finite()) {
+        }
+        if output.iter().any(|v| !v.is_finite()) {
             return Err(Error::syntax(
                 "function arithmetic is undefined or overflows",
             ));
         }
         if let Some(range) = &self.range {
-            for (v, r) in result.iter_mut().zip(range) {
+            for (v, r) in output.iter_mut().zip(range) {
                 *v = v.clamp(r[0], r[1]);
             }
         }
-        Ok(result)
+        Ok(())
     }
 }
 
@@ -422,7 +415,9 @@ fn pairs(
     Ok(values)
 }
 
-pub(crate) type Transfer = Arc<[Function; 3]>;
+/// Transfer functions for the red, green and blue components (10.5);
+/// one function given for all three is shared.
+pub(crate) type Transfer = Arc<[Arc<Function>; 3]>;
 pub(crate) fn transfer(document: &Document, value: &Value) -> Result<Option<Transfer>> {
     let resolved = document.resolve(value)?;
     if resolved
@@ -431,65 +426,37 @@ pub(crate) fn transfer(document: &Document, value: &Value) -> Result<Option<Tran
     {
         return Ok(None);
     }
-    let functions = if let Some(array) = resolved.as_array() {
-        if array.len() != 4 {
-            return Err(Error::syntax("transfer array requires four functions"));
-        }
-        // 10.5: Identity on every device component is the default transfer.
-        // Preserve that identity in transparency classification (11.7.5.2),
-        // rather than treating a syntactic array as a nondefault function.
-        let mut identity = true;
-        for value in array {
-            identity &= document
-                .resolve(value)?
-                .as_name()
-                .is_some_and(|n| n == b"Identity");
-        }
-        if identity {
-            return Ok(None);
-        }
-        let values = array
-            .iter()
-            .map(|v| {
-                if document
-                    .resolve(v)?
-                    .as_name()
-                    .is_some_and(|n| n == b"Identity")
-                {
-                    Ok(Function {
-                        domain: vec![[0.0, 1.0]],
-                        range: None,
-                        outputs: 1,
-                        body: Body::Exponential {
-                            low: vec![0.0],
-                            high: vec![1.0],
-                            power: 1.0,
-                        },
-                        limits: document.limits(),
-                        object: None,
-                    })
-                } else {
-                    Function::parse(document, v, 1, 1)
-                }
-            })
-            .collect::<Result<Vec<_>>>()?;
-        [
-            values
-                .first()
-                .cloned()
-                .ok_or(Error::syntax("missing transfer"))?,
-            values
-                .get(1)
-                .cloned()
-                .ok_or(Error::syntax("missing transfer"))?,
-            values
-                .get(2)
-                .cloned()
-                .ok_or(Error::syntax("missing transfer"))?,
-        ]
-    } else {
-        let function = Function::parse(document, value, 1, 1)?;
-        [function.clone(), function.clone(), function]
+    let Some(array) = resolved.as_array() else {
+        let function = Arc::new(Function::parse(document, value, 1, 1)?);
+        return Ok(Some(Arc::new([
+            Arc::clone(&function),
+            Arc::clone(&function),
+            function,
+        ])));
     };
-    Ok(Some(Arc::new(functions)))
+    let [red, green, blue, gray] = <&[Value; 4]>::try_from(array)
+        .map_err(|_| Error::syntax("transfer array requires four functions"))?;
+    let read = |value: &Value| -> Result<Option<Arc<Function>>> {
+        if document
+            .resolve(value)?
+            .as_name()
+            .is_some_and(|n| n == b"Identity")
+        {
+            Ok(None)
+        } else {
+            Function::parse(document, value, 1, 1).map(|f| Some(Arc::new(f)))
+        }
+    };
+    let channels = [read(red)?, read(green)?, read(blue)?];
+    // The fourth (grey) transfer is validated but has no effect on RGB output.
+    read(gray)?;
+    // 10.5: Identity on every applied component is the default transfer, so
+    // transparency classification (11.7.5.2) treats it as no transfer.
+    if channels.iter().all(Option::is_none) {
+        return Ok(None);
+    }
+    let identity = || Arc::new(Function::identity(document.limits()));
+    Ok(Some(Arc::new(
+        channels.map(|channel| channel.unwrap_or_else(identity)),
+    )))
 }

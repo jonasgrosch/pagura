@@ -326,13 +326,10 @@ impl GlyphRun {
         mask: &Mask,
         raster: &mut Rasterizer,
         cache: &mut GlyphCache,
+        paint: &Paint,
         limits: Limits,
         glyphs: &mut Meter,
     ) -> Result<()> {
-        let paint = Paint::Solid(self.paint.color.to_rgba(
-            self.paint.transfer.as_ref(),
-            self.paint.composite.conversion.intent,
-        )?);
         for (index, &placement) in self.glyphs.iter().enumerate() {
             let geometry = cache
                 .geometry(self, placement, device, &limits, raster)
@@ -348,7 +345,7 @@ impl GlyphRun {
                 raster.clear();
             }
             raster
-                .fill_glyph(target, geometry, placement.origin * device, &paint, mask)
+                .fill_glyph(target, geometry, placement.origin * device, paint, mask)
                 .map_err(|e| contextual(e, self.position(index)))?;
             if cache
                 .retained_bytes()
@@ -670,6 +667,8 @@ impl DisplayList {
         )?;
         let mut raster = Rasterizer::default();
         let mut glyph_cache = GlyphCache::new(self.limits.decoded_bytes);
+        // Function evaluation work shared by the page's colours and transfers.
+        let mut work = 0;
         // Glyph placements share one geometry per outline, so each charges
         // its scan here; the compositor charges the same to its raster work.
         let mut glyphs = Meter::new(self.limits.raster_work, "glyph raster work exceeded");
@@ -719,6 +718,15 @@ impl DisplayList {
                 }
                 last_clip = identity;
             }
+            let paint = command
+                .color
+                .to_rgba(
+                    command.transfer.as_ref(),
+                    command.composite.conversion.intent,
+                    &mut work,
+                )
+                .map(Paint::Solid)
+                .map_err(|e| contextual(e, command.position))?;
             let result = if let Command::Glyphs(run) = original {
                 run.rasterize(
                     &mut target,
@@ -726,11 +734,12 @@ impl DisplayList {
                     &mask,
                     &mut raster,
                     &mut glyph_cache,
+                    &paint,
                     self.limits,
                     &mut glyphs,
                 )
             } else {
-                command.rasterize(&mut target, device, &mask, &mut raster, self.limits)
+                command.rasterize(&mut target, device, &mask, &mut raster, &paint, self.limits)
             };
             result.map_err(|e| contextual(e, command.position))?;
         }
@@ -770,15 +779,12 @@ impl PathCommand {
         device: Transform,
         mask: &Mask,
         raster: &mut Rasterizer,
+        paint: &Paint,
         limits: Limits,
     ) -> Result<()> {
-        let paint = Paint::Solid(
-            self.color
-                .to_rgba(self.transfer.as_ref(), self.composite.conversion.intent)?,
-        );
         match &self.mark {
             Mark::Fill(rule) => {
-                raster.fill_path(target, Arc::clone(&self.path), device, *rule, &paint, mask)?;
+                raster.fill_path(target, Arc::clone(&self.path), device, *rule, paint, mask)?;
             }
             Mark::Stroke {
                 pen: stroke,
@@ -801,7 +807,7 @@ impl PathCommand {
                     Arc::new(path),
                     transform,
                     FillRule::NonZero,
-                    &paint,
+                    paint,
                     mask,
                 )?;
             }

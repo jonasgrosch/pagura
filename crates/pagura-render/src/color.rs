@@ -10,6 +10,57 @@ use std::sync::Arc;
 /// (Annex C, Table C.1 discusses practical processor limits).
 pub(crate) const MAX_COMPONENTS: usize = 32;
 
+/// Up to [`MAX_COMPONENTS`] colour components, without allocating.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Components {
+    values: [f64; MAX_COMPONENTS],
+    len: usize,
+}
+impl Components {
+    /// `len` zero components; `len` is at most [`MAX_COMPONENTS`].
+    pub(crate) fn zeros(len: usize) -> Self {
+        Self {
+            values: [0.0; MAX_COMPONENTS],
+            len: len.min(MAX_COMPONENTS),
+        }
+    }
+}
+impl std::ops::Deref for Components {
+    type Target = [f64];
+    fn deref(&self) -> &[f64] {
+        &self.values[..self.len]
+    }
+}
+impl std::ops::DerefMut for Components {
+    fn deref_mut(&mut self) -> &mut [f64] {
+        &mut self.values[..self.len]
+    }
+}
+impl FromIterator<f64> for Components {
+    /// Collects at most [`MAX_COMPONENTS`] values; any more are dropped.
+    fn from_iter<I: IntoIterator<Item = f64>>(values: I) -> Self {
+        let mut out = Self::zeros(0);
+        for (slot, value) in out.values.iter_mut().zip(values) {
+            *slot = value;
+            out.len += 1;
+        }
+        out
+    }
+}
+
+/// The alternate-space components a Separation or DeviceN tint transform
+/// gives for `c` (8.6.6.4), each tint clamped to `0..=1` first.
+pub(crate) fn tint(
+    function: &crate::functions::Function,
+    c: &[f64],
+    work: &mut usize,
+) -> Result<Components> {
+    let input: Components = c.iter().map(|v| v.clamp(0.0, 1.0)).collect();
+    let mut output = Components::zeros(function.outputs());
+    function.evaluate_into(&input, &mut output, work)?;
+    Ok(output)
+}
+
 #[derive(Debug, Clone)]
 pub(crate) enum Space {
     Pattern(Option<Arc<Self>>),
@@ -129,6 +180,7 @@ impl Color {
         &self,
         transfer: Option<&crate::functions::Transfer>,
         intent: crate::icc::Intent,
+        work: &mut usize,
     ) -> Result<Rgba8> {
         let Self::Solid { space, components } = self else {
             return Err(Error::invalid_argument("pattern is not a uniform colour"));
@@ -136,14 +188,10 @@ impl Color {
         if !space.paints() {
             return Ok(Rgba8::TRANSPARENT);
         }
-        let mut rgb = space.convert_with_intent(components, intent)?;
+        let mut rgb = space.convert(components, intent, work)?;
         if let Some(transfer) = transfer {
             for (channel, function) in rgb.iter_mut().zip(transfer.iter()) {
-                *channel = function
-                    .evaluate(&[channel.clamp(0.0, 1.0)])?
-                    .first()
-                    .copied()
-                    .ok_or(Error::syntax("transfer function has no output"))?;
+                *channel = function.evaluate_scalar(channel.clamp(0.0, 1.0), work)?;
             }
         }
         let [r, g, b] = rgb.map(crate::device::quantize_unit);
@@ -163,7 +211,7 @@ impl Space {
     }
 
     /// Map Indexed lookup bytes to the base space's source range (8.6.6.3).
-    pub(crate) fn decode_lookup(&self, bytes: &[u8]) -> Vec<f64> {
+    pub(crate) fn decode_lookup(&self, bytes: &[u8]) -> Components {
         match self {
             Self::Cie(cie) => crate::cie::decode_lookup(cie, bytes),
             Self::Icc { range, .. } => bytes
@@ -175,6 +223,27 @@ impl Space {
                 .collect(),
             _ => bytes.iter().map(|&v| f64::from(v) / 255.0).collect(),
         }
+    }
+
+    /// The base-space components of entry `value` of an Indexed palette,
+    /// rounded and clamped to `0..=high` (8.6.6.3).
+    ///
+    /// # Errors
+    /// `Syntax` if the palette lacks the entry; parsing admits only
+    /// complete palettes.
+    pub(crate) fn lookup(base: &Self, high: u8, lookup: &[u8], value: f64) -> Result<Components> {
+        let value = value.round().clamp(0.0, f64::from(high));
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "index is rounded and clamped to 0..=255"
+        )]
+        let index = value as usize;
+        let count = base.components();
+        let bytes = lookup
+            .get(index * count..(index + 1) * count)
+            .ok_or(Error::syntax("truncated Indexed colour lookup"))?;
+        Ok(base.decode_lookup(bytes))
     }
 
     /// None contributes neither colour, opacity nor shape (8.6.6.4–8.6.6.5).
@@ -215,10 +284,13 @@ impl Space {
         }
     }
 
-    pub(crate) fn convert_with_intent(
+    /// Converts components to encoded sRGB: the one device conversion,
+    /// through Indexed palettes, tint transforms and ICC alternates.
+    pub(crate) fn convert(
         &self,
         c: &[f64],
         intent: crate::icc::Intent,
+        work: &mut usize,
     ) -> Result<[f64; 3]> {
         let n = |i: usize| c.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0);
         match self {
@@ -246,44 +318,24 @@ impl Space {
                 let clipped = Self::clip_icc(c, range);
                 let clipped = &clipped[..base.components()];
                 profile.as_ref().map_or_else(
-                    || base.convert_with_intent(clipped, intent),
+                    || base.convert(clipped, intent, work),
                     |p| p.convert(clipped, intent),
                 )
             }
             Self::Tint { base, function, .. } => {
-                let tint: Vec<_> = c.iter().map(|v| v.clamp(0.0, 1.0)).collect();
-                base.convert_with_intent(&function.evaluate(&tint)?, intent)
+                let alternate = tint(function, c, work)?;
+                base.convert(&alternate, intent, work)
             }
             Self::Indexed { base, high, lookup } => {
                 let components =
-                    indexed_components(base, *high, lookup, c.first().copied().unwrap_or(0.0))?;
-                base.convert_with_intent(&components, intent)
+                    Self::lookup(base, *high, lookup, c.first().copied().unwrap_or(0.0))?;
+                base.convert(&components, intent, work)
             }
         }
     }
 }
 
 /// Decode one Indexed entry in its base space's source range (8.6.6.3).
-pub(crate) fn indexed_components(
-    base: &Space,
-    high: u8,
-    lookup: &[u8],
-    value: f64,
-) -> Result<Vec<f64>> {
-    let value = value.round().clamp(0.0, f64::from(high));
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "index rounded and clamped to 0..255"
-    )]
-    let index = value as usize;
-    let count = base.components();
-    let bytes = lookup
-        .get(index * count..(index + 1) * count)
-        .ok_or(Error::syntax("truncated Indexed colour lookup"))?;
-    Ok(base.decode_lookup(bytes))
-}
-
 pub(crate) fn named(
     document: &ColorContext<'_>,
     resources: &Dictionary,

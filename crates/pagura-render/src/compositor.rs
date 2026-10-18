@@ -1263,10 +1263,7 @@ impl Context {
                 if value != last {
                     mapped = if let Some(function) = &mask.transfer {
                         function
-                            .evaluate_with_work(&[value], &mut self.function_work)?
-                            .first()
-                            .copied()
-                            .ok_or(Error::syntax("mask transfer has no output"))?
+                            .evaluate_scalar(value, &mut self.function_work)?
                             .clamp(0.0, 1.0)
                     } else {
                         value

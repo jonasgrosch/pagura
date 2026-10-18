@@ -135,19 +135,14 @@ impl Model {
             return self.source(base, &clipped[..base.components()], conversion, work);
         }
         if let Space::Tint { base, function, .. } = space {
-            let input: Vec<_> = components.iter().map(|v| v.clamp(0.0, 1.0)).collect();
-            return self.source(
-                base,
-                &function.evaluate_with_work(&input, work)?,
-                conversion,
-                work,
-            );
+            let alternate = crate::color::tint(function, components, work)?;
+            return self.source(base, &alternate, conversion, work);
         }
         if let Some((base, decoded)) = indexed(space, components)? {
             return self.source(base, &decoded, conversion, work);
         }
         self.encode_rgb(
-            space.convert_with_intent(components, conversion.intent)?,
+            space.convert(components, conversion.intent, work)?,
             conversion,
             work,
         )
@@ -228,19 +223,12 @@ impl Model {
 pub(crate) fn indexed<'a>(
     space: &'a Space,
     components: &[f64],
-) -> Result<Option<(&'a Space, Vec<f64>)>> {
+) -> Result<Option<(&'a Space, crate::color::Components)>> {
     let Space::Indexed { base, high, lookup } = space else {
         return Ok(None);
     };
-    Ok(Some((
-        base,
-        crate::color::indexed_components(
-            base,
-            *high,
-            lookup,
-            components.first().copied().unwrap_or(0.0),
-        )?,
-    )))
+    let value = components.first().copied().unwrap_or(0.0);
+    Ok(Some((base, Space::lookup(base, *high, lookup, value)?)))
 }
 
 fn group_space_error() -> Error {
@@ -251,11 +239,7 @@ fn group_space_error() -> Error {
 }
 
 fn scalar(function: Option<&Function>, value: f64, work: &mut usize) -> Result<f64> {
-    let mut result = [value];
-    if let Some(function) = function {
-        function.evaluate_into(&[value], &mut result, work)?;
-    }
-    Ok(result[0])
+    function.map_or(Ok(value), |function| function.evaluate_scalar(value, work))
 }
 
 #[derive(Debug, Clone, Copy, Default)]
