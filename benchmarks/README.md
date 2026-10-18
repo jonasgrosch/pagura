@@ -105,12 +105,28 @@ end to the same CLI. It replaces only process instrumentation with `wait4`:
 each raw document sample retains `cpu_user_ns`, `cpu_system_ns`, their sum
 `cpu_ns`, wall `elapsed_ns`, `cpu_wall_ratio`, and `cpu_parallelism_flag` (>1.05).
 CPU accounting starts at zero for each child and is read after that child exits;
-it is never a cumulative delta across unrelated children. Launch/runtime startup
+it is never a cumulative delta across unrelated children. Engine launch/runtime startup
 is included in process CPU and wall, separately from engine stages. A ratio below
 1.05 does not prove that no worker ever ran. Waited-for descendants contribute
 CPU; RSS is an individual-process high-water mark, not a summed process tree.
-No `/usr/bin/time` wrapper or unavailable RSS fallback is used on this path.
-Timeouts kill the child process group; absent `wait4` fails explicitly.
+On Linux, a small `python3 -I -S` supervisor starts the engine with
+`os.posix_spawnp` and reports that engine child's own `wait4` CPU, RSS and exact
+exit status in a fixed plain-text record. It times just before the engine is
+spawned through the return of `wait4`. Its isolated address space
+sets an RSS floor measured separately for each run. The supervisor's inherited
+`maxrss` is never used: Linux retains the old address space's high-water mark
+across exec, including `posix_spawn` and shell exec. No GNU `time` installation
+is needed; the runner's existing Python and `benchmarks/linux_process.py` suffice.
+The macOS path continues to read the directly launched engine's `wait4` usage.
+Timeouts kill the supervisor's entire process group, including the engine and
+its descendants. A killed Linux supervisor cannot return the engine's final
+accounting, so timeout samples retain wall time and the negative signal status
+with CPU/RSS explicitly unavailable. Missing or invalid accounting fails the
+sample; it never falls back to the supervisor's inflated RSS. Absent `wait4`
+fails explicitly. Non-timeout samples use the supervisor's engine wall/CPU
+values, excluding the supervisor's Python startup, imports, accounting
+serialization and exit.
+Timeouts retain the outer wall time. Engine stage timers are unchanged.
 
 `adapters/wasm_convert.rs` calls the same public facade and rendering function as
 `pagura convert`. It is built against the native and `wasm32-wasip1` release
@@ -126,8 +142,10 @@ only input/output directories preopened. V8 uses `--single-threaded --no-liftoff
 before Rust stage timers, and remains included in process CPU/wall/RSS. Wasmtime
 49.0.3 uses a locally generated, hash-recorded Cranelift AOT artifact (optimization
 level 2, parallel compilation disabled). Never load an untrusted AOT artifact.
-Both use explicit SIMD128 compiler flags; native uses the target's NEON baseline
-and compiler autovectorization. Other engines' ISA dispatch is not audited.
+Both use explicit SIMD128 compiler flags; native uses compiler autovectorization
+at the Rust target baseline. The compiler's enabled target features are recorded:
+NEON on aarch64, and SSE2 (without AVX2 or AVX-512) on default x86_64 targets.
+Inherited Rust target flags are cleared. Other engines' ISA dispatch is not audited.
 
 Every warmup and measured WASI output must be byte-identical to its block's
 native Pagura pixels. A mismatch is retained as `runtime-parity-mismatch` and
@@ -140,10 +158,13 @@ cannot be ruled out from that API alone: every CPU/wall flag remains visible.
 
 ### One unattended round-5 entry point
 
-Prepare an Apple Silicon Mac with Python 3.11+, the repository's pinned Rust
-1.99.1 toolchain including `wasm32-wasip1`, Node 26.8.1, Xcode command-line tools
-(Swift/CoreGraphics), and Poppler 26.10.0. Install competitors **outside the
-repository** with the explicitly networked `python3 tools/competitors.py setup`
+Prepare a macOS or Linux runner (aarch64 or x86_64) with Python 3.11+, the
+repository's pinned Rust 1.99.1 toolchain including `wasm32-wasip1`, Node 26.8.1,
+and the operating system's Poppler. The actual Poppler version and executable
+hash are recorded per runner in `engines.json`; no Poppler version is enforced.
+macOS additionally needs Xcode command-line tools (Swift/CoreGraphics).
+Install competitors **outside the repository** with the explicitly networked
+`python3 tools/competitors.py setup`
 before running. The checked-in Python/Node/Cargo locks pin pypdfium2 5.14.0
 (PDFium 156), PyMuPDF 1.28.2, Pillow 13.0.0, pdf.js 6.4.299, Canvas 1.0.11 and
 hayro 0.8.0. Supply Wasmtime 49.0.3 separately, verifying its downloaded archive
@@ -173,8 +194,9 @@ From a clean checkout, after setting that environment, run exactly:
 
 The entry point builds Pagura and its WASI conversion adapter offline in a fresh
 output-local target, checks every input hash and engine availability, and runs
-the CoreGraphics geometry and independent native/WASI analytic controls before
-measurement. It uses all 40 pages at 72 and 150 dpi. To bound the unattended
+the independent native/WASI analytic controls before measurement. macOS also
+runs the CoreGraphics geometry control; CoreGraphics is omitted on Linux.
+It uses all 40 pages at 72 and 150 dpi. To bound the unattended
 round's two-hour budget, the command predeclares 20 pages at 300 dpi: five per
 content category, 4 small/13 standard/3 large, from 20 distinct files/producers.
 Selection is seeded and independent of timings, and never enlarges the existing
@@ -182,14 +204,16 @@ Selection is seeded and independent of timings, and never enlarges the existing
 `--dpi300-pages 40` includes every page, retaining any budget-refused cells.
 The manifest is read in place and is never copied into the repository.
 
-Document/DPI jobs and all nine engines are randomized in complete paired blocks
-(seed 52018): one open/process per document range/engine/block, three warmups,
+Document/DPI jobs and all applicable engines (nine on macOS, eight on Linux)
+are randomized in complete paired blocks (seed 52018): one open/process per
+document range/engine/block, three warmups,
 ten samples. Pagura's sample is shared across comparisons, so those comparisons
 are correlated. Each cell is measured once; failures and warmup failures remain.
 The two-hour deadline includes build/preflight work and is checked before each
 job, block and process; child timeouts are bounded by its remaining time. Partial
 results are labelled incomplete. Machine/process/power observations precede each
-job and finish the run. Other processes above 25% CPU trigger up to three 30-second pauses, then an
+job and finish the run. The harness and its probe descendants are excluded from
+the idle check. Other processes at or above 25% CPU trigger up to three 30-second pauses, then an
 explicit failure; denied process inspection is recorded as unavailable, not idle.
 
 All artifacts are under the one new output directory: `blocks.jsonl` (every
@@ -200,6 +224,11 @@ bootstrap bounds, parity and exact representative differences), `cpu-summary.jso
 `engines.json`, `compiler.json`,
 `status.json`, build/preflight logs, representative PPMs, bounded `failures/`
 artifacts and `summary.md`.
+On Linux, `conversion.json` records the supervisor command and the measured
+`/bin/true` RSS floor in `measurement_options` (`rss_launcher`,
+`rss_floor_command`, `rss_floor_bytes`). This calibration runs once per matrix
+run, outside measured blocks; it is reported as a floor, never subtracted from
+engine peaks.
 No image is resized or realigned. Different dimensions remain incomparable;
 representative outliers are flagged for visual review (dimension mismatch,
 mean channel error >=10/255, or max >=200 with >=2% changed channels).
