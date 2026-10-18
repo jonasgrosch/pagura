@@ -520,7 +520,8 @@ fn property(
         if name == b"E" {
             return Ok(None);
         }
-        pagura_text::decode_text_string(bytes, document.limits()).map(Some)
+        let mut strict = pagura_core::Diagnostics::new(pagura_core::Recovery::Strict);
+        pagura_core::text_string::decode(bytes, &document.limits(), &mut strict).map(Some)
     })();
     match result {
         Err(error) => {

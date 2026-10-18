@@ -1,6 +1,6 @@
 //! Logical content references, ISO 32000-2 14.7.2–14.7.5 and 14.8.
 use super::{LogicalText, Name, ObjectId, Range, Result, TextPage};
-use pagura_core::{Dictionary, Error, Feature, Position, Value};
+use pagura_core::{Diagnostics, Dictionary, Error, Feature, Position, Value};
 use pagura_document::{Document, Page};
 use std::collections::{BTreeMap, BTreeSet};
 mod content;
@@ -182,6 +182,21 @@ fn entry<'a>(
         Some(value) if !doc.resolve(value)?.is_null() => Ok(Some(value)),
         _ => Ok(None),
     }
+}
+
+/// Decodes a text string (7.9.2.2) under the document's recovery mode:
+/// repair mode reports invalid sequences and keeps U+FFFD in their place.
+fn text_string(doc: &Document, bytes: &[u8], object: Option<ObjectId>) -> Result<String> {
+    let mut diagnostics = Diagnostics::new(doc.recovery());
+    let text = pagura_core::text_string::decode(bytes, &doc.limits(), &mut diagnostics)
+        .map_err(|error| error.in_object_opt(object))?;
+    doc.report(
+        diagnostics
+            .take()
+            .into_iter()
+            .map(|diagnostic| diagnostic.in_object_opt(object)),
+    );
+    Ok(text)
 }
 
 fn name<'a>(doc: &'a Document, dictionary: &'a Dictionary, key: &[u8]) -> Result<Option<&'a Name>> {
