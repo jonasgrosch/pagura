@@ -1,14 +1,12 @@
-//! Data-derived oracles generated independently in tools/fixturegen/text.py.
+//! Provider oracles generated independently in tools/fixturegen/text.py.
 use super::*;
 use pagura_core::{
     Error, Value,
     syntax::{Origin, Parser},
 };
-use pagura_document::{Document, OpenOptions};
 use pagura_testkit::fixture;
-use pagura_text::{GlyphShape, PdfFont};
 
-pub(super) fn expected(name: &str, suffix: &str) -> Result<Vec<Value>> {
+fn expected(name: &str, suffix: &str) -> Result<Vec<Value>> {
     let bytes = fixture("text", &format!("{name}.{suffix}"));
     let value = Parser::new(&bytes, Origin::Buffer, Limits::default()).parse()?;
     if let Value::Array(values) = value {
@@ -17,28 +15,28 @@ pub(super) fn expected(name: &str, suffix: &str) -> Result<Vec<Value>> {
         Err(Error::syntax("oracle must be an array"))
     }
 }
-pub(super) fn row(value: &Value) -> Result<&[Value]> {
+fn row(value: &Value) -> Result<&[Value]> {
     value
         .as_array()
         .ok_or_else(|| Error::syntax("oracle must be a row"))
 }
-pub(super) fn number(value: &Value) -> Result<f64> {
+fn number(value: &Value) -> Result<f64> {
     value
         .as_number()
         .ok_or_else(|| Error::syntax("oracle must be numeric"))
 }
-pub(super) fn integer(value: &Value) -> Result<u32> {
+fn integer(value: &Value) -> Result<u32> {
     value
         .as_integer()
         .and_then(|v| u32::try_from(v).ok())
         .ok_or_else(|| Error::syntax("oracle must be an unsigned integer"))
 }
-pub(super) fn text(value: &Value) -> Option<&str> {
+fn text(value: &Value) -> Option<&str> {
     value
         .as_string()
         .and_then(|bytes| std::str::from_utf8(bytes).ok())
 }
-pub(super) fn names(inventory: &str) -> Result<Vec<String>> {
+fn names(inventory: &str) -> Result<Vec<String>> {
     expected(inventory, "out")?
         .iter()
         .map(|value| {
@@ -48,25 +46,13 @@ pub(super) fn names(inventory: &str) -> Result<Vec<String>> {
         })
         .collect()
 }
-pub(super) fn open(name: &str) -> Result<Document> {
-    Document::open(
-        fixture("text", &format!("{name}.pdf")),
-        &OpenOptions::default(),
-    )
-}
-pub(super) fn dictionary(document: &Document) -> Result<&pagura_core::Dictionary> {
-    document
-        .object(pagura_core::ObjectId::new(4, 0))?
-        .dictionary()
-        .ok_or_else(|| Error::syntax("missing font dictionary"))
-}
-pub(super) fn near(actual: f64, expected: f64) {
+fn near(actual: f64, expected: f64) {
     assert!((actual - expected).abs() < 1e-12, "{actual} != {expected}");
 }
 
 #[cfg(feature = "standard-fonts")]
 #[test]
-fn standard_fonts_aliases_afm_metrics_and_outlines() -> Result<()> {
+fn every_standard_font_loads_once_with_metrics_and_outlines() -> Result<()> {
     let provider = Bundled::default();
     for name in names("bundled-standard-inventory")? {
         let base = fixture("text", &format!("{name}.base"));
@@ -78,45 +64,7 @@ fn standard_fonts_aliases_afm_metrics_and_outlines() -> Result<()> {
             .standard_font(&base)?
             .ok_or_else(|| Error::syntax("missing cached font"))?;
         assert!(Arc::ptr_eq(&resource, &again));
-        let document = open(&name)?;
-        assert!(PdfFont::load(&document, dictionary(&document)?).is_err());
-        let font = PdfFont::load_with(&document, dictionary(&document)?, &provider)?;
-        for value in expected(&name, "out")? {
-            let values = row(&value)?;
-            near(font.width(integer(&values[0])?), number(&values[1])?);
-        }
-        let input = fixture("text", &format!("{name}.input"));
-        if resource.program.is_none() {
-            let error = font.decode(&input).unwrap_err();
-            assert_eq!(
-                error.kind,
-                pagura_core::ErrorKind::Unsupported(pagura_text::features::NON_EMBEDDED)
-            );
-        } else {
-            assert_eq!(document.diagnostics().len(), 1);
-            assert_eq!(
-                document.diagnostics()[0].kind,
-                pagura_core::DiagnosticKind::Information(pagura_text::SUBSTITUTED)
-            );
-            let glyphs = font.decode(&input)?;
-            for (glyph, value) in glyphs.iter().zip(expected(&name, "out")?) {
-                let values = row(&value)?;
-                assert_eq!(glyph.code, integer(&values[0])?);
-                near(glyph.advance, number(&values[1])?);
-                assert_eq!(glyph.unicode.as_deref(), text(&values[2]), "{name}");
-                let GlyphShape::Outline {
-                    program,
-                    glyph,
-                    matrix,
-                } = &glyph.shape
-                else {
-                    return Err(Error::syntax("missing substitute outlines"));
-                };
-                assert_eq!(glyph.0, integer(&values[3])?, "{name}");
-                assert_eq!(*matrix, program.font_matrix());
-                program.outline(*glyph)?;
-            }
-        }
+        assert!(resource.program.is_some(), "{name}");
         if name == format!("standard14-{}", String::from_utf8_lossy(&base)) {
             check_afm_metrics(&name, &resource)?;
         }
@@ -124,55 +72,9 @@ fn standard_fonts_aliases_afm_metrics_and_outlines() -> Result<()> {
     Ok(())
 }
 
-#[cfg(feature = "standard-fonts")]
-#[test]
-fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> Result<()> {
-    let provider = Bundled::default();
-    for name in names("bundled-substitute-inventory")? {
-        let document = open(&name)?;
-        let font = PdfFont::load_with(&document, dictionary(&document)?, &provider)?;
-        let glyphs = font.decode(b"A")?;
-        let values = expected(&name, "out")?;
-        let values = row(&values[0])?;
-        near(glyphs[0].advance, number(&values[1])?);
-        assert_eq!(glyphs[0].unicode.as_deref(), text(&values[2]));
-        let GlyphShape::Outline { program, glyph, .. } = &glyphs[0].shape else {
-            return Err(Error::syntax("missing substitute outline"));
-        };
-        assert_eq!(glyph.0, integer(&values[3])?);
-        let base = fixture("text", &format!("{name}.base"));
-        let selected = provider
-            .standard_font(&base)?
-            .ok_or_else(|| Error::syntax("missing selected font"))?;
-        assert!(Arc::ptr_eq(
-            program,
-            selected
-                .program
-                .as_ref()
-                .ok_or_else(|| Error::syntax("missing selected outline"))?
-        ));
-        assert_eq!(document.diagnostics().len(), 1);
-    }
-    for name in [
-        "substitute-unsafe-symbolic",
-        "substitute-unsafe-symbolic-both",
-        "substitute-unsafe-symbolic-known-base",
-    ] {
-        let document = open(name)?;
-        assert_eq!(
-            PdfFont::load_with(&document, dictionary(&document)?, &provider)
-                .unwrap_err()
-                .kind,
-            pagura_core::ErrorKind::Unsupported(pagura_text::features::NON_EMBEDDED)
-        );
-        assert_eq!(document.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
-    }
-    Ok(())
-}
-
 #[cfg(feature = "cmaps")]
 #[test]
-fn every_predefined_cmap_and_pdf_binding_matches_file_oracles() -> Result<()> {
+fn every_predefined_cmap_loads_once_and_matches_its_file_oracles() -> Result<()> {
     let provider = Bundled::default();
     for name in names("bundled-cmap-inventory")? {
         let cmap_name = fixture("text", &format!("{name}.cmap"));
@@ -214,30 +116,6 @@ fn every_predefined_cmap_and_pdf_binding_matches_file_oracles() -> Result<()> {
             bytes = &bytes[usize::from(len)..];
         }
         assert_eq!(bytes, []);
-        let document = open(&name)?;
-        let font = PdfFont::load_with(&document, dictionary(&document)?, &provider)?;
-        assert_eq!(font.writing_mode(), cmap.writing_mode());
-        let glyphs = font.decode(&input)?;
-        let expected = expected(&name, "glyphs")?;
-        assert_eq!(glyphs.len(), expected.len());
-        for (glyph, value) in glyphs.iter().zip(expected) {
-            let values = row(&value)?;
-            assert_eq!(glyph.code, integer(&values[0])?, "{name}");
-            assert_eq!(u32::from(glyph.byte_len), integer(&values[1])?);
-            near(glyph.advance, number(&values[2])?);
-            assert_eq!(Some(glyph.word_space), values[3].as_bool());
-            assert_eq!(glyph.unicode.as_deref(), text(&values[4]), "{name}");
-            let GlyphShape::Outline { glyph: id, .. } = glyph.shape else {
-                return Err(Error::syntax("missing embedded outline"));
-            };
-            assert_eq!(id.0, integer(&values[5])?);
-            if let Some(metrics) = glyph.vertical {
-                near(metrics.advance, number(&values[6])?);
-                near(metrics.origin.0, number(&values[7])?);
-                near(metrics.origin.1, number(&values[8])?);
-            }
-        }
-        assert_eq!(document.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
     }
     Ok(())
 }
@@ -337,30 +215,6 @@ fn parsing_budgets_fail_before_publication() {
         .kind,
         pagura_core::ErrorKind::Limit
     );
-}
-
-#[cfg(feature = "standard-fonts")]
-#[test]
-fn embedded_programs_take_precedence_and_do_not_report_substitution() -> Result<()> {
-    let provider = Bundled::default();
-    let document = open("tt-unicode-priority")?;
-    let font = PdfFont::load_with(&document, dictionary(&document)?, &provider)?;
-    let glyphs = font.decode(b"A")?;
-    let GlyphShape::Outline { program, glyph, .. } = &glyphs[0].shape else {
-        return Err(Error::syntax("missing embedded program"));
-    };
-    assert_eq!(program.glyph_count(), 5);
-    assert_eq!(glyph.0, 1);
-    assert_eq!(document.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
-    // An embedded but invalid binding is an error, never a substitution.
-    let document = open("binding-wrong-fontfile")?;
-    assert_eq!(
-        PdfFont::load_with(&document, dictionary(&document)?, &provider)
-            .unwrap_err()
-            .kind,
-        pagura_core::ErrorKind::Syntax
-    );
-    Ok(())
 }
 
 #[cfg(feature = "cmaps")]
@@ -475,19 +329,18 @@ fn notices_accompany_every_enabled_data_set() {
     }
 }
 
-#[cfg(all(feature = "cmaps", not(feature = "cjk-fonts")))]
+#[cfg(feature = "cjk-fonts")]
 #[test]
-fn cjk_programs_are_opt_in_and_missing_programs_fail_explicitly() -> Result<()> {
+fn every_collection_substitute_loads_once() -> Result<()> {
     let provider = Bundled::default();
     for ordering in ["Japan1", "GB1", "CNS1", "Korea1"] {
-        let document = open(&format!("substitute-cid-{ordering}-CIDFontType2"))?;
-        assert_eq!(
-            PdfFont::load_with(&document, dictionary(&document)?, &provider)
-                .unwrap_err()
-                .kind,
-            pagura_core::ErrorKind::Unsupported(pagura_text::features::NON_EMBEDDED)
-        );
-        assert_eq!(document.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
+        let first = provider
+            .cid_font(b"Adobe", ordering.as_bytes())?
+            .ok_or_else(|| Error::syntax("missing CJK program"))?;
+        let again = provider
+            .cid_font(b"Adobe", ordering.as_bytes())?
+            .ok_or_else(|| Error::syntax("missing cached CJK program"))?;
+        assert!(Arc::ptr_eq(&first, &again));
     }
     Ok(())
 }

@@ -23,5 +23,4 @@ pagura-font.workspace = true
 pagura-text.workspace = true
 
 [dev-dependencies]
-pagura-document.workspace = true
 pagura-testkit.workspace = true

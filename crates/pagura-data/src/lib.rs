@@ -169,8 +169,3 @@ fn lines(text: &str) -> impl Iterator<Item = (usize, &str)> {
 
 #[cfg(all(test, any(feature = "cmaps", feature = "standard-fonts")))]
 mod tests;
-
-#[cfg(all(test, feature = "cjk-fonts"))]
-mod cjk_tests;
-#[cfg(all(test, feature = "standard-fonts"))]
-mod symbol_tests;

@@ -55,7 +55,6 @@ name = "pagura-data"
 version = "0.1.0"
 dependencies = [
  "pagura-core",
- "pagura-document",
  "pagura-font",
  "pagura-testkit",
  "pagura-text",
