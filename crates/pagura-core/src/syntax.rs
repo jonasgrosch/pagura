@@ -674,10 +674,17 @@ impl<'a> Parser<'a> {
             .or_else(|| token.strip_prefix(b"-"));
         let signed = digits.is_some();
         let digits = digits.unwrap_or(token);
-        let dots = digits.iter().filter(|&&b| b == b'.').count();
-        let valid = dots <= 1
-            && digits.iter().any(u8::is_ascii_digit)
-            && digits.iter().all(|&b| b.is_ascii_digit() || b == b'.');
+        let mut dots = 0;
+        let valid = !digits.is_empty()
+            && digits != b"."
+            && digits.iter().all(|&byte| match byte {
+                b'0'..=b'9' => true,
+                b'.' => {
+                    dots += 1;
+                    dots == 1
+                }
+                _ => false,
+            });
         if !valid {
             return Err(Error::syntax("invalid number").at(self.origin.position(start)));
         }
