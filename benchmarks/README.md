@@ -147,6 +147,20 @@ at the Rust target baseline. The compiler's enabled target features are recorded
 NEON on aarch64, and SSE2 (without AVX2 or AVX-512) on default x86_64 targets.
 Inherited Rust target flags are cleared. Other engines' ISA dispatch is not audited.
 
+The optional `round5.py --pagura-x86-64-v3` track builds a separate
+`pagura-x86-64-v3` binary with `RUSTFLAGS="-C target-cpu=x86-64-v3"` in an
+isolated target directory. It appears under that name in its own comparison
+rows; portable `pagura` remains the headline and paired reference. The optional
+track must match the portable build's pixels exactly in every block, including
+warmups, before ratios can be reported. It is reported unavailable on other
+architectures or x86 hosts missing the required instructions. Compiler-enabled
+target features, host feature checks and flags are retained in `compiler.json`
+and `machine.json`. Competitor tuning is unchanged; these exploratory rows do
+not establish an equivalently tuned release comparison. The track is a Pagura
+build: with `--engines` it requires `pagura` and is timed alongside it, and with
+`--reference` it is re-timed against stored competitor medians but never counts
+as the best competitor.
+
 Every warmup and measured WASI output must be byte-identical to its block's
 native Pagura pixels. A mismatch is retained as `runtime-parity-mismatch` and
 suppresses ratios; native output is a runtime parity reference, not a PDF oracle.
@@ -307,7 +321,7 @@ Controls do not replace stored competitor medians.
 `medians.json` retains newly measured per-page render/emit and per-document
 stage/process/CPU/RSS medians. `comparison.json` and `summary.md` compare Pagura
 with every engine, the fastest applicable competitor per cell, and reference
-Pagura. Best excludes the stored V8/Wasmtime builds of Pagura. Each category/DPI
+Pagura. Best excludes Pagura's V8/Wasmtime and x86-64-v3 builds. Each category/DPI
 entry is the median of its cell ratios of medians; reference values are used
 only for engines absent from `--engines`. Render
 cells are pages; engine contribution (`open + render`) and process cells are
