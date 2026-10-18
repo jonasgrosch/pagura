@@ -1,9 +1,9 @@
 //! Confirm revision ends by parsing at Prev-chain offsets, not by searching for
 //! marker text inside arbitrary document data (7.5.6; 12.8.1).
 use super::RevisionCoverage;
-use crate::navigation::context::{Context, Source};
 pub(super) use crate::revision_bounds::Boundary;
 use crate::revision_bounds::boundary;
+use crate::view::{Context, Source};
 use pagura_core::{Position, Result};
 
 pub(super) fn read(ctx: &mut Context<'_>) -> Result<Vec<Option<Boundary>>> {

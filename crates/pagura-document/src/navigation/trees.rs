@@ -1,5 +1,5 @@
 //! One traversal for name and number trees (7.9.6–7.9.7, Tables 36–37).
-use super::context::{Context, Source, identity};
+use crate::view::{Context, Source, identity};
 use crate::{Document, tags};
 use pagura_core::{Error, ErrorKind, Result, Value};
 use std::{collections::BTreeSet, fmt::Debug, marker::PhantomData};

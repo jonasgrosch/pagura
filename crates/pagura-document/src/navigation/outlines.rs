@@ -1,9 +1,6 @@
 //! Flat, bounded outline traversal (12.3.3, Tables 150–152).
-use super::{
-    context::{Context, Source, identity, number},
-    destinations::{self, Target},
-    text,
-};
+use super::destinations::{self, Target};
+use crate::view::{Context, Source, identity, number, text};
 use crate::{Document, tags};
 use pagura_core::{Dictionary, Error, Result, Value};
 use std::collections::BTreeSet;

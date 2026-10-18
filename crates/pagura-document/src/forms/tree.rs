@@ -5,9 +5,8 @@ use super::{
     names, values, widgets,
 };
 use crate::{
-    Document,
-    navigation::context::{Context, Source, identity},
-    tags,
+    Document, tags,
+    view::{Context, Source, identity},
 };
 use pagura_core::{Dictionary, Error, Result, Value};
 use std::collections::{BTreeMap, BTreeSet};

@@ -1,8 +1,6 @@
 //! Link annotations, their hit geometry and inert targets (12.5.6.5).
-use super::{
-    context::{Context, Source, number},
-    destinations::{self, Target},
-};
+use super::destinations::{self, Target};
+use crate::view::{Context, Source, number};
 use crate::{Document, Page, tags};
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
 

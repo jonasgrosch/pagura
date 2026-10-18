@@ -1,5 +1,7 @@
 //! Indirect objects (ISO 32000-2 clause 7.3.10) and stream extents.
 
+pub(crate) mod stream;
+
 use crate::Document;
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Result, Value};
 use std::ops::Range;

@@ -1,9 +1,6 @@
 //! Page labels (12.4.2, Table 161), including repeated-letter numbering.
-use super::{
-    context::{Context, Source},
-    text,
-};
 use crate::Document;
+use crate::view::{Context, Source, text};
 use pagura_core::{Error, ErrorKind, Result};
 
 /// The numbering convention of a page-label range.

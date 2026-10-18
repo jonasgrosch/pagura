@@ -1,5 +1,5 @@
 //! Strict Prev-chain revision terminators (7.5.6).
-use crate::navigation::context::{Context, Source};
+use crate::view::{Context, Source};
 use pagura_core::{
     Error, Result, Value,
     syntax::{Origin, Parser, is_whitespace},

@@ -1,9 +1,7 @@
 //! Lazy object loading, dependency budgets and reference resolution (7.3.10).
 
-use crate::{
-    Document, IndirectObject, Location, OpenOptions, Slot, object, object_stream, rebuild,
-    security, xref,
-};
+use crate::xref::rebuild;
+use crate::{Document, IndirectObject, Location, OpenOptions, Slot, object, security, xref};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Error, ObjectId, Result, Value};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -123,7 +121,7 @@ impl Document {
         let result = match slot.location {
             Location::Offset(offset) => object::parse_at(self, id, offset, path),
             Location::Compressed { stream, index } => {
-                object_stream::parse(self, id, stream, index, path)
+                object::stream::parse(self, id, stream, index, path)
             }
             Location::Free => Err(Error::missing_object("object is free").in_object(id)),
         };

@@ -3,7 +3,7 @@ use super::ObjectRole;
 use crate::{
     Document, Location,
     forms::{FieldKind, FieldValue},
-    navigation::context::{Context, Source},
+    view::{Context, Source},
 };
 use pagura_core::{Dictionary, Error, ErrorKind, ObjectId, Result, Value};
 use std::collections::{BTreeMap, BTreeSet};

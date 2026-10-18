@@ -1,6 +1,6 @@
 //! Text strings (7.9.2.2, Annex D.3), decoded independently of page fonts.
-use super::context::{Context, Source};
 use crate::tags;
+use crate::view::{Context, Source};
 use pagura_core::{Error, Result};
 
 pub(crate) fn decode(ctx: &mut Context<'_>, bytes: &[u8], source: Source) -> Result<String> {

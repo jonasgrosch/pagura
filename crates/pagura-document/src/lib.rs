@@ -9,7 +9,6 @@
 //! [`Document::diagnostics`].
 
 mod catalog;
-mod contents;
 mod diagnostics;
 pub mod forms;
 mod history;
@@ -17,20 +16,14 @@ mod load;
 mod memory;
 pub mod navigation;
 mod object;
-mod object_stream;
-mod page_geometry;
 mod pages;
-mod rebuild;
 mod revision_bounds;
 mod security;
-mod security_dictionary;
-mod security_padding;
-mod security_repair;
 pub mod signatures;
 mod stream;
 pub mod tags;
+mod view;
 mod xref;
-mod xref_stream;
 
 pub use object::{IndirectObject, ObjectSource};
 pub use pages::{Page, Rotation};
@@ -76,7 +69,7 @@ pub struct Document {
     slots: BTreeMap<ObjectId, Slot>,
     pages: OnceLock<Result<Box<[Page]>>>,
     revisions: Vec<Revision>,
-    object_streams: BTreeMap<u32, OnceLock<Result<object_stream::Contents>>>,
+    object_streams: BTreeMap<u32, OnceLock<Result<object::stream::Contents>>>,
     security: Option<security::Security>,
     diagnostics: Mutex<diagnostics::Log>,
     retained: Arc<memory::Budget>,
@@ -120,7 +113,7 @@ impl Document {
             Err(error)
                 if primary && options.recovery == Recovery::Repair && xref::structural(&error) =>
             {
-                let table = rebuild::read(&bytes, limits, &mut diagnostics, error.position)?;
+                let table = xref::rebuild::read(&bytes, limits, &mut diagnostics, error.position)?;
                 Self::from_table(bytes, options, table, diagnostics.take())
             }
             Err(error) => Err(error),
@@ -369,12 +362,9 @@ impl Document {
     /// from loading the stream objects. Repaired direct streams use their
     /// containing object's identity and retain individual file source ranges.
     pub fn content_streams(&self, page: &Page) -> Result<Vec<&IndirectObject>> {
-        contents::read(self, page)
+        pages::contents::read(self, page)
     }
 }
 
 #[cfg(test)]
 mod tests;
-
-#[cfg(test)]
-mod security_tests;

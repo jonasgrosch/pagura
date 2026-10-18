@@ -1,10 +1,7 @@
 //! Inherited field entries and shared primitive readers (12.7.4.1).
 use super::{AdditionalAction, Justification};
-use crate::navigation::{
-    actions,
-    context::{Context, Source},
-    text,
-};
+use crate::navigation::actions;
+use crate::view::{Context, Source, text};
 use pagura_core::{Dictionary, Error, Result, Value};
 
 #[derive(Clone, Copy)]

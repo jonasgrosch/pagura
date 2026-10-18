@@ -1,9 +1,13 @@
 //! Standard-handler integration and encryption exceptions, clause 7.6.
 
-use crate::security_dictionary::Policy;
+mod padding;
+mod policy;
+mod repair;
+
 use crate::{Document, IndirectObject, ObjectSource, tags};
 use pagura_core::{Dictionary, Error, Feature, Name, ObjectId, Result, Value};
 use pagura_crypto::standard::{CryptMethod, FileKey, SecurityParams};
+use policy::Policy;
 use std::collections::BTreeMap;
 
 #[derive(Debug)]
@@ -19,7 +23,7 @@ pub(crate) struct Security {
     embedded_authorization: bool,
     encrypt_metadata: bool,
     crypt_filters: bool,
-    derivation: crate::security_padding::Derivation,
+    derivation: padding::Derivation,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -58,7 +62,7 @@ pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
     // Normalize one scalar without cloning the source dictionary/value tree.
     let mut params = parameters(dictionary, document.trailer(), permissions)?;
     policy.identifiers(document.trailer())?;
-    crate::security_repair::hashes(document, id, &mut params, &mut policy.diagnostics)?;
+    repair::hashes(document, id, &mut params, &mut policy.diagnostics)?;
     let (filters, strings, streams, embedded) = methods(
         dictionary,
         &params,
@@ -81,7 +85,7 @@ pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
         (strings, streams),
         &mut policy,
     )?;
-    let derivation = crate::security_padding::select(
+    let derivation = padding::select(
         document,
         key.as_ref(),
         params.version == 4 && params.revision == 4 && params.key_length != 16,
@@ -142,7 +146,7 @@ fn authenticate_document(
             &document.options.password,
         )
     } else {
-        crate::security_repair::authenticate(
+        repair::authenticate(
             document,
             id,
             params,
@@ -497,9 +501,7 @@ impl Security {
         data: &[u8],
     ) -> Result<Vec<u8>> {
         match (&self.key, method) {
-            (Some(key), CryptMethod::Rc4)
-                if self.derivation == crate::security_padding::Derivation::ZeroPadded =>
-            {
+            (Some(key), CryptMethod::Rc4) if self.derivation == padding::Derivation::ZeroPadded => {
                 key.decrypt_legacy_zero_padded(id, data)
             }
             (Some(key), _) => key.decrypt(method, id, data),
@@ -544,14 +546,13 @@ impl Security {
 fn decrypt_strings(
     key: &FileKey,
     method: CryptMethod,
-    derivation: crate::security_padding::Derivation,
+    derivation: padding::Derivation,
     id: ObjectId,
     value: &mut Value,
 ) -> Result<()> {
     match value {
         Value::String(bytes) => {
-            *bytes = if derivation == crate::security_padding::Derivation::ZeroPadded
-                && method == CryptMethod::Rc4
+            *bytes = if derivation == padding::Derivation::ZeroPadded && method == CryptMethod::Rc4
             {
                 key.decrypt_legacy_zero_padded(id, bytes)
             } else {
@@ -585,7 +586,10 @@ fn decrypt_strings(
 }
 
 #[cfg(test)]
-mod tests {
+mod tests;
+
+#[cfg(test)]
+mod unit {
     use super::lookup;
     fn methods<'a>(
         dictionary: &'a Dictionary,
@@ -596,7 +600,7 @@ mod tests {
             dictionary,
             params,
             resolve,
-            &mut crate::security_dictionary::Policy::permissive(),
+            &mut crate::security::policy::Policy::permissive(),
         )
     }
     use crate::stream::validate_crypt;

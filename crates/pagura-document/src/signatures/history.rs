@@ -2,7 +2,7 @@
 use super::{HistoricalSignature, RevisionCoverage, Signature, Signatures, read};
 use crate::{
     Document, ObjectSource,
-    navigation::context::{Context, Source},
+    view::{Context, Source},
 };
 use pagura_core::{ErrorKind, ObjectId, Result};
 use std::collections::{BTreeMap, BTreeSet};

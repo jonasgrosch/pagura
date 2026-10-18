@@ -205,7 +205,7 @@ fn skip_stream(
     let before = parser.offset();
     let mut exact = Parser::with_offset(parser.data(), before, Origin::File, limits)?;
     let mut attempt = Diagnostics::new(diagnostics.mode());
-    match crate::xref_stream::direct_stream(&mut exact, dictionary, limits, &mut attempt) {
+    match crate::xref::stream::direct_stream(&mut exact, dictionary, limits, &mut attempt) {
         Ok(_) => {
             diagnostics.absorb(attempt.take())?;
             parser.seek(exact.offset())?;
@@ -297,7 +297,7 @@ pub(crate) fn load_streams(
             let dictionary = object
                 .dictionary()
                 .ok_or_else(|| Error::syntax("object stream must be a dictionary").in_object(id))?;
-            crate::object_stream::headers(
+            crate::object::stream::headers(
                 document.stream_data(object)?.into_owned(),
                 dictionary,
                 Limits {

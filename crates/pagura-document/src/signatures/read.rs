@@ -7,7 +7,7 @@ use super::{
 use crate::{
     Document,
     forms::{Field, FieldKind, FieldValue},
-    navigation::context::{Context, Source},
+    view::{Context, Source},
 };
 use pagura_core::{Dictionary, Error, Result};
 

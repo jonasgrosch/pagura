@@ -3,10 +3,7 @@ use super::{
     ButtonKind, ChoiceOption, FieldFlags, FieldKind, FieldValue,
     attributes::{self, Entry, Inherited},
 };
-use crate::navigation::{
-    context::{Context, Source, identity},
-    text,
-};
+use crate::view::{Context, Source, identity, text};
 use pagura_core::{Dictionary, Error, Name, Result, Value};
 
 pub(super) fn kind<'a>(
