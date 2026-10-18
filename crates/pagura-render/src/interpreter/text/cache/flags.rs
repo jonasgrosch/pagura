@@ -1,13 +1,12 @@
-//! Read-only descriptor normalization (ISO 32000-2 9.8.2/Table 121).
-//! Preserve Symbolic as the primary bit unless concrete encoding evidence
-//! determines another usable route (9.6.5.2/4). Source objects stay immutable.
+//! Repair invalid flag pairs, preserving the primary Symbolic bit (9.8.2).
+//! Valid flags select the existing 9.6.5.2/4 routes, including the permitted
+//! TrueType fallbacks. Repertoire metadata alone never changes that selection.
+//! Source objects stay immutable.
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Name, Position, Result, Value};
 use pagura_document::Document;
-use pagura_text::{FontKind, GlyphShape, PdfFont, Provider};
-use std::borrow::Cow;
+use pagura_text::{PdfFont, Provider};
 
 mod descriptor;
-mod evidence;
 
 pub(super) fn load(
     document: &Document,
@@ -22,42 +21,13 @@ pub(super) fn load(
         return original(document, font, provider);
     };
     let symbolic = flags & 4 != 0;
-    let invalid = symbolic == (flags & 32 != 0);
-    let mut input = Cow::Borrowed(font);
-    if invalid {
-        report(document, &descriptor, position)?;
-        input = Cow::Owned(descriptor.corrected(document, symbolic)?);
+    if symbolic != (flags & 32 != 0) {
+        return original(document, font, provider);
     }
-    let loaded = original(document, &input, provider)?;
-    if matches!(loaded.kind(), FontKind::Type0 | FontKind::Type3) {
-        return Ok(loaded);
-    }
-    let glyphs = match loaded.decode(&[0]) {
-        Ok(glyphs) => glyphs,
-        Err(error)
-            if error.kind
-                == pagura_core::ErrorKind::Unsupported(pagura_text::features::NON_EMBEDDED) =>
-        {
-            return Ok(loaded);
-        }
-        Err(error) => return Err(error),
-    };
-    let Some(GlyphShape::Outline { program, .. }) = glyphs.first().map(|g| &g.shape) else {
-        return Ok(loaded);
-    };
-    let latin = loaded.kind() == FontKind::TrueType && latin_encoding(document, font, symbolic)?;
-    let Some(resolved) = evidence::symbolic(program, loaded.kind(), latin) else {
-        return Ok(loaded);
-    };
-    if symbolic == resolved {
-        return Ok(loaded);
-    }
-    if !invalid {
-        report(document, &descriptor, position)?;
-    }
+    report(document, &descriptor, position)?;
     original(
         document,
-        &descriptor.corrected(document, resolved)?,
+        &descriptor.corrected(document, symbolic)?,
         provider,
     )
 }
@@ -73,31 +43,6 @@ fn original(
     )
 }
 
-fn latin_encoding(document: &Document, font: &Dictionary, ignored: bool) -> Result<bool> {
-    let Some(value) = font.get(b"Encoding") else {
-        return Ok(false);
-    };
-    // On the Symbolic route Encoding is ignored (9.6.5.4). Only literal
-    // metadata can provide contrary evidence; never follow its references.
-    let resolve = |value| {
-        if ignored {
-            Ok(value)
-        } else {
-            document.resolve(value)
-        }
-    };
-    let value = resolve(value)?;
-    let name = if let Some(dict) = value.as_dictionary() {
-        dict.get(b"BaseEncoding")
-            .map(resolve)
-            .transpose()?
-            .and_then(Value::as_name)
-    } else {
-        value.as_name()
-    };
-    Ok(name.is_some_and(|n| matches!(n.as_bytes(), b"WinAnsiEncoding" | b"MacRomanEncoding")))
-}
-
 fn report(
     document: &Document,
     descriptor: &descriptor::Descriptor<'_>,
@@ -106,7 +51,7 @@ fn report(
     let mut diagnostics = Diagnostics::new(document.recovery());
     let mut diagnostic = Diagnostic::new(
         pagura_font::tags::DESCRIPTOR_FLAGS,
-        "font descriptor flags resolved from Symbolic and encoding evidence (9.8.2, Table 121)",
+        "font descriptor must set exactly one of Symbolic and Nonsymbolic (9.8.2, Table 121)",
     )
     .at(position);
     diagnostic.object = descriptor.object;

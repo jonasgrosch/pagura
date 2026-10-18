@@ -6196,7 +6196,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/descriptor-both.expect",
-          "sha256": "05380f495ba576a8279e8d8f4f488ffd0cb6a02e5f99dc14c8fdc8513b5cff87"
+          "sha256": "01d953ac151148fe175519f5efaf91f428495596abc5aa19dbb6a75b651def9f"
         },
         ".pdf": {
           "path": "corpus/generated/font/descriptor-both.pdf",
@@ -6254,7 +6254,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/descriptor-symbolic-latin.expect",
-          "sha256": "05380f495ba576a8279e8d8f4f488ffd0cb6a02e5f99dc14c8fdc8513b5cff87"
+          "sha256": "01d953ac151148fe175519f5efaf91f428495596abc5aa19dbb6a75b651def9f"
         },
         ".pdf": {
           "path": "corpus/generated/font/descriptor-symbolic-latin.pdf",
@@ -6266,12 +6266,10 @@
         },
         ".strict": {
           "path": "corpus/generated/font/descriptor-symbolic-latin.strict",
-          "sha256": "b823c5af7647df9943f5d1759f3f720a8993cb293805b209345be9313a80aa8c"
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
         }
       },
-      "repairs": [
-        "font.descriptor-flags"
-      ]
+      "repairs": []
     },
     {
       "id": "font/descriptor-nonsymbolic-symbol",
@@ -6283,7 +6281,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/descriptor-nonsymbolic-symbol.expect",
-          "sha256": "01d953ac151148fe175519f5efaf91f428495596abc5aa19dbb6a75b651def9f"
+          "sha256": "e7f59895aef4979cf007b844c09ce3d0fc4ae0fd362540def3d83e7b56ba3bce"
         },
         ".pdf": {
           "path": "corpus/generated/font/descriptor-nonsymbolic-symbol.pdf",
@@ -6295,12 +6293,91 @@
         },
         ".strict": {
           "path": "corpus/generated/font/descriptor-nonsymbolic-symbol.strict",
-          "sha256": "b823c5af7647df9943f5d1759f3f720a8993cb293805b209345be9313a80aa8c"
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
         }
       },
-      "repairs": [
-        "font.descriptor-flags"
-      ]
+      "repairs": []
+    },
+    {
+      "id": "font/descriptor-nonsymbolic-symbol-encoding",
+      "kind": "vector",
+      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-nonsymbolic-symbol-encoding.expect",
+          "sha256": "05380f495ba576a8279e8d8f4f488ffd0cb6a02e5f99dc14c8fdc8513b5cff87"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-nonsymbolic-symbol-encoding.pdf",
+          "sha256": "f76405718981472f7a1d6b55c049c4d1882521e654e92e2d56ec5a75156b25c3"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-nonsymbolic-symbol-encoding.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-nonsymbolic-symbol-encoding.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
+    },
+    {
+      "id": "font/descriptor-symbolic-latin-differences",
+      "kind": "vector",
+      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-symbolic-latin-differences.expect",
+          "sha256": "01d953ac151148fe175519f5efaf91f428495596abc5aa19dbb6a75b651def9f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-symbolic-latin-differences.pdf",
+          "sha256": "029186deaf3cce490bbdac3d935f0d0675afdf1051342c51d80704c37187556f"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-symbolic-latin-differences.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-symbolic-latin-differences.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
+    },
+    {
+      "id": "font/descriptor-nonsymbolic-latin-differences",
+      "kind": "vector",
+      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-nonsymbolic-latin-differences.expect",
+          "sha256": "a95329807799c1e0d900738240d0121e29a2448ecdcca10ad4c8ce0b4b1fc1bc"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-nonsymbolic-latin-differences.pdf",
+          "sha256": "7d7ba1313f07e0b3fbe3bc960943c62c143d81b62b4faf505f376dc0e5006f40"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-nonsymbolic-latin-differences.ppm",
+          "sha256": "211d551a25cc9d92089ef7966b55b05cf074bdb27c96568fabe11a48af59711e"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-nonsymbolic-latin-differences.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
     },
     {
       "id": "font/descriptor-symbol-post-named",
@@ -6532,7 +6609,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/descriptor-type1-symbolic-latin.expect",
-          "sha256": "05380f495ba576a8279e8d8f4f488ffd0cb6a02e5f99dc14c8fdc8513b5cff87"
+          "sha256": "55b82a3b60951311a37bde643d935477cc9625d4d03469d8f21bb34aed75cc18"
         },
         ".pdf": {
           "path": "corpus/generated/font/descriptor-type1-symbolic-latin.pdf",
@@ -6544,12 +6621,10 @@
         },
         ".strict": {
           "path": "corpus/generated/font/descriptor-type1-symbolic-latin.strict",
-          "sha256": "b823c5af7647df9943f5d1759f3f720a8993cb293805b209345be9313a80aa8c"
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
         }
       },
-      "repairs": [
-        "font.descriptor-flags"
-      ]
+      "repairs": []
     },
     {
       "id": "font/descriptor-type1-nonsymbolic-symbol",
@@ -6561,7 +6636,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/font/descriptor-type1-nonsymbolic-symbol.expect",
-          "sha256": "03916b13491a6dd9f5767cfea593a942199659572407f7d13a5fb3d9d8c4e45c"
+          "sha256": "a348297e42fd3b7e4bfba8ed57cf48311d05fd9855e77b272d5813f17e80973e"
         },
         ".pdf": {
           "path": "corpus/generated/font/descriptor-type1-nonsymbolic-symbol.pdf",
@@ -6573,12 +6648,37 @@
         },
         ".strict": {
           "path": "corpus/generated/font/descriptor-type1-nonsymbolic-symbol.strict",
-          "sha256": "b823c5af7647df9943f5d1759f3f720a8993cb293805b209345be9313a80aa8c"
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
         }
       },
-      "repairs": [
-        "font.descriptor-flags"
-      ]
+      "repairs": []
+    },
+    {
+      "id": "font/descriptor-type1-nonsymbolic-override",
+      "kind": "vector",
+      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-type1-nonsymbolic-override.expect",
+          "sha256": "a348297e42fd3b7e4bfba8ed57cf48311d05fd9855e77b272d5813f17e80973e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-type1-nonsymbolic-override.pdf",
+          "sha256": "3c586e72497ecfa3db0d1e27a106ef71c56b7ad3018037758fa4c446baa00dfe"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-type1-nonsymbolic-override.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-type1-nonsymbolic-override.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
     },
     {
       "id": "font/cff-nonfinite",
