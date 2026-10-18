@@ -9,10 +9,11 @@ use super::segments::{self, Segment};
 #[derive(Clone, Copy, Default)]
 pub(super) struct Sample {
     magnitude: u32,
-    negative: bool,
-    visited: bool,
-    refined: bool,
+    flags: u8,
+    // Plane + 1 is a visitation epoch; zero means no propagation pass visited it.
+    visited_plane: u8,
     missing: u8,
+    neighbours: u8,
 }
 
 impl Sample {
@@ -32,9 +33,29 @@ impl Sample {
         } else {
             f64::from(1_u32 << missing) * 0.5
         };
-        (f64::from(magnitude) + offset) * if self.negative { -1.0 } else { 1.0 }
+        (f64::from(magnitude) + offset)
+            * if self.flags & NEGATIVE != 0 {
+                -1.0
+            } else {
+                1.0
+            }
     }
 }
+
+const NEGATIVE: u8 = 1;
+const REFINED: u8 = 2;
+
+// D.3, Figure D.2: row-major neighbours, excluding the centre.
+const NEIGHBOURS: [(isize, isize, u8); 8] = [
+    (-1, -1, 1),
+    (0, -1, 2),
+    (1, -1, 4),
+    (-1, 0, 8),
+    (1, 0, 16),
+    (-1, 1, 32),
+    (0, 1, 64),
+    (1, 1, 128),
+];
 
 struct Block {
     samples: Vec<Sample>,
@@ -42,59 +63,31 @@ struct Block {
     height: usize,
     orientation: u8,
     causal: bool,
+    insignificant: usize,
 }
 
 impl Block {
-    fn neighbours(&self, x: usize, y: usize) -> (usize, usize, usize, i8, i8) {
-        let mut horizontal = 0;
-        let mut vertical = 0;
-        let mut diagonal = 0;
-        let mut sign_h = 0;
-        let mut sign_v = 0;
-        for dy in -1_i32..=1 {
-            for dx in -1_i32..=1 {
-                if (dx == 0 && dy == 0) || (self.causal && y % 4 == 3 && dy == 1) {
-                    continue;
-                }
-                let Some(nx) = x
-                    .checked_add_signed(dx as isize)
-                    .filter(|&n| n < self.width)
-                else {
-                    continue;
-                };
-                let Some(ny) = y
-                    .checked_add_signed(dy as isize)
-                    .filter(|&n| n < self.height)
-                else {
-                    continue;
-                };
-                let sample = self.samples[ny * self.width + nx];
-                if sample.magnitude == 0 {
-                    continue;
-                }
-                let sign = if sample.negative { -1 } else { 1 };
-                if dy == 0 {
-                    horizontal += 1;
-                    sign_h += sign;
-                } else if dx == 0 {
-                    vertical += 1;
-                    sign_v += sign;
-                } else {
-                    diagonal += 1;
-                }
+    fn update_neighbours(&mut self, x: usize, y: usize) {
+        // Significance is monotonic (D.3). Update the eight dependent contexts
+        // once, rather than rescanning their neighbourhoods on every pass.
+        for (dx, dy, mask) in NEIGHBOURS {
+            let Some(nx) = x.checked_add_signed(-dx).filter(|&n| n < self.width) else {
+                continue;
+            };
+            let Some(ny) = y.checked_add_signed(-dy).filter(|&n| n < self.height) else {
+                continue;
+            };
+            if !(self.causal && ny % 4 == 3 && dy == 1) {
+                self.samples[ny * self.width + nx].neighbours |= mask;
             }
         }
-        (
-            horizontal,
-            vertical,
-            diagonal,
-            sign_h.clamp(-1, 1),
-            sign_v.clamp(-1, 1),
-        )
     }
 
     fn significance_context(&self, x: usize, y: usize) -> usize {
-        let (mut h, mut v, d, _, _) = self.neighbours(x, y);
+        let neighbours = self.samples[y * self.width + x].neighbours;
+        let mut h = (neighbours & 0b0001_1000).count_ones();
+        let mut v = (neighbours & 0b0100_0010).count_ones();
+        let d = (neighbours & 0b1010_0101).count_ones();
         if self.orientation == 1 {
             std::mem::swap(&mut h, &mut v);
         }
@@ -127,7 +120,35 @@ impl Block {
     }
 
     fn sign(&self, decoder: &mut Entropy<'_>, x: usize, y: usize) -> Result<bool> {
-        let (_, _, _, mut h, mut v) = self.neighbours(x, y);
+        if decoder.raw() {
+            return decoder.bit(0);
+        }
+        let mut h: i8 = 0;
+        let mut v: i8 = 0;
+        let neighbours = self.samples[y * self.width + x].neighbours;
+        for (dx, dy, mask) in NEIGHBOURS {
+            if dx != 0 && dy != 0 || neighbours & mask == 0 {
+                continue;
+            }
+            // A set context bit guarantees this neighbour is inside the block.
+            let nx = x
+                .checked_add_signed(dx)
+                .ok_or_else(|| syntax("JPEG 2000 neighbour overflow", 0))?;
+            let ny = y
+                .checked_add_signed(dy)
+                .ok_or_else(|| syntax("JPEG 2000 neighbour overflow", 0))?;
+            let sign = if self.samples[ny * self.width + nx].flags & NEGATIVE != 0 {
+                -1
+            } else {
+                1
+            };
+            if dy == 0 {
+                h += sign;
+            } else {
+                v += sign;
+            }
+        }
+        let (mut h, mut v) = (h.clamp(-1, 1), v.clamp(-1, 1));
         let prediction = h < 0 || (h == 0 && v < 0);
         if prediction {
             h = -h;
@@ -140,11 +161,7 @@ impl Block {
             (_, 0) => 12,
             _ => 13,
         };
-        if decoder.raw() {
-            decoder.bit(0)
-        } else {
-            Ok(decoder.bit(context)? ^ prediction)
-        }
+        Ok(decoder.bit(context)? ^ prediction)
     }
 
     fn make_significant(
@@ -157,21 +174,30 @@ impl Block {
         let negative = self.sign(decoder, x, y)?;
         let sample = &mut self.samples[y * self.width + x];
         sample.magnitude = 1 << plane;
-        sample.negative = negative;
+        sample.flags = u8::from(negative) * NEGATIVE;
         sample.missing = plane;
+        self.insignificant -= 1;
+        self.update_neighbours(x, y);
         Ok(())
     }
 
     fn propagation(&mut self, decoder: &mut Entropy<'_>, plane: u8) -> Result<()> {
+        if self.insignificant == 0 {
+            return Ok(());
+        }
         for stripe in (0..self.height).step_by(4) {
             for x in 0..self.width {
                 for y in stripe..(stripe + 4).min(self.height) {
                     let index = y * self.width + x;
-                    if self.samples[index].magnitude != 0 || self.significance_context(x, y) == 0 {
+                    if self.samples[index].magnitude != 0 {
                         continue;
                     }
-                    self.samples[index].visited = true;
-                    if decoder.bit(self.significance_context(x, y))? {
+                    let context = self.significance_context(x, y);
+                    if context == 0 {
+                        continue;
+                    }
+                    self.samples[index].visited_plane = plane + 1;
+                    if decoder.bit(context)? {
                         self.make_significant(decoder, x, y, plane)?;
                     }
                 }
@@ -186,17 +212,17 @@ impl Block {
                 for y in stripe..(stripe + 4).min(self.height) {
                     let index = y * self.width + x;
                     let sample = self.samples[index];
-                    if sample.magnitude == 0 || sample.visited {
+                    if sample.magnitude == 0 || sample.visited_plane == plane + 1 {
                         continue;
                     }
-                    let context = if sample.refined {
+                    let context = if sample.flags & REFINED != 0 {
                         16
                     } else {
                         14 + usize::from(self.significance_context(x, y) != 0)
                     };
                     let value = decoder.bit(context)?;
                     self.samples[index].magnitude |= u32::from(value) << plane;
-                    self.samples[index].refined = true;
+                    self.samples[index].flags |= REFINED;
                     self.samples[index].missing = plane;
                 }
             }
@@ -205,13 +231,18 @@ impl Block {
     }
 
     fn cleanup(&mut self, decoder: &mut Entropy<'_>, plane: u8) -> Result<()> {
+        if self.insignificant == 0 {
+            return Ok(());
+        }
         for stripe in (0..self.height).step_by(4) {
             for x in 0..self.width {
                 let end = (stripe + 4).min(self.height);
                 let run_mode = end - stripe == 4
                     && (stripe..end).all(|y| {
                         let s = self.samples[y * self.width + x];
-                        s.magnitude == 0 && !s.visited && self.significance_context(x, y) == 0
+                        s.magnitude == 0
+                            && s.visited_plane != plane + 1
+                            && self.significance_context(x, y) == 0
                     });
                 let mut start = stripe;
                 if run_mode {
@@ -226,16 +257,13 @@ impl Block {
                 for y in start..end {
                     let sample = self.samples[y * self.width + x];
                     if sample.magnitude == 0
-                        && !sample.visited
+                        && sample.visited_plane != plane + 1
                         && decoder.bit(self.significance_context(x, y))?
                     {
                         self.make_significant(decoder, x, y, plane)?;
                     }
                 }
             }
-        }
-        for sample in &mut self.samples {
-            sample.visited = false;
         }
         Ok(())
     }
@@ -356,21 +384,17 @@ pub(super) fn decode(
         return Err(syntax("invalid JPEG 2000 bit planes", base));
     }
     let count = p.width * p.height;
-    budget.work(
-        count
-            .checked_mul(p.passes)
-            .ok_or_else(|| pagura_core::Error::limit("JPEG 2000 code-block work overflow"))?,
-    )?;
     let mut block = Block {
         samples: budget.filled(count, Sample::default())?,
         width: p.width,
         height: p.height,
         orientation: p.orientation,
         causal: p.modes & segments::CAUSAL != 0,
+        insignificant: count,
     };
     let mut contexts = Decoder::initial_contexts();
     for segment in segments {
-        decode_segment(&mut block, segment, p, &mut contexts)?;
+        decode_segment(&mut block, segment, p, &mut contexts, budget)?;
     }
     Ok(block.samples)
 }
@@ -380,6 +404,7 @@ fn decode_segment_inner(
     segment: &Segment,
     p: &Parameters,
     contexts: &mut [Context; 19],
+    budget: &mut Budget<'_>,
 ) -> Result<()> {
     // B.10.6/D.4: a final layer may end at a nonterminated coding pass.
     let end = segment.first + segment.passes;
@@ -403,6 +428,11 @@ fn decode_segment_inner(
             - 1
             - u8::try_from(pass.div_ceil(3))
                 .map_err(|_| syntax("JPEG 2000 bit plane overflow", 0))?;
+        // D.3.1/D.3.4: propagation and cleanup cannot code a significant
+        // coefficient. Even empty passes still reset contexts and read symbols.
+        if pass % 3 == 2 || block.insignificant != 0 {
+            budget.work(block.samples.len())?;
+        }
         match pass % 3 {
             1 => block.propagation(&mut decoder, plane)?,
             2 => block.refinement(&mut decoder, plane)?,
@@ -441,8 +471,9 @@ fn decode_segment(
     segment: &Segment,
     p: &Parameters,
     contexts: &mut [Context; 19],
+    budget: &mut Budget<'_>,
 ) -> Result<()> {
-    decode_segment_inner(block, segment, p, contexts).map_err(|mut error| {
+    decode_segment_inner(block, segment, p, contexts, budget).map_err(|mut error| {
         if let pagura_core::Position::Buffer(offset) = error.position {
             error.position = pagura_core::Position::Buffer(super::io::source_position(
                 &segment.spans,
@@ -452,4 +483,60 @@ fn decode_segment(
         }
         error
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Block, NEIGHBOURS, Sample};
+
+    #[test]
+    fn monotonic_contexts_match_current_neighbours_at_edges_and_stripes() {
+        assert_eq!(size_of::<Sample>(), 8);
+        for width in [1, 2, 5] {
+            for height in [1, 3, 4, 5, 9] {
+                for causal in [false, true] {
+                    let mut block = Block {
+                        samples: vec![Sample::default(); width * height],
+                        width,
+                        height,
+                        orientation: 0,
+                        causal,
+                        insignificant: width * height,
+                    };
+                    // Insert in reverse scan order to exercise neighbours on both
+                    // sides of stripe boundaries (D.3, D.7), including partial stripes.
+                    for index in (0..width * height).rev() {
+                        block.samples[index].magnitude = 1;
+                        block.update_neighbours(index % width, index / width);
+                        for y in 0..height {
+                            for x in 0..width {
+                                let mut expected = 0;
+                                for (dx, dy, mask) in NEIGHBOURS {
+                                    if causal && y % 4 == 3 && dy == 1 {
+                                        continue;
+                                    }
+                                    let Some(nx) = x.checked_add_signed(dx).filter(|&n| n < width)
+                                    else {
+                                        continue;
+                                    };
+                                    let Some(ny) = y.checked_add_signed(dy).filter(|&n| n < height)
+                                    else {
+                                        continue;
+                                    };
+                                    if block.samples[ny * width + nx].magnitude != 0 {
+                                        expected |= mask;
+                                    }
+                                }
+                                assert_eq!(
+                                    block.samples[y * width + x].neighbours,
+                                    expected,
+                                    "{width}x{height}, causal {causal}, insert {index}, at ({x}, {y})"
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

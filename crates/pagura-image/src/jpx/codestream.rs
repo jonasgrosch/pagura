@@ -276,7 +276,7 @@ impl Tile {
                 for orientation in if resolution == 0 { 0..=0 } else { 1..=3 } {
                     let [bx0, by0, bx1, by1] = progression::band_bounds(bounds, orientation);
                     bands.push(Band::new(
-                        Plane::new(bx0, by0, bx1, by1, budget)?,
+                        Plane::new(bx0, by0, bx1, by1),
                         orientation,
                         block,
                         &precincts,
@@ -375,27 +375,40 @@ impl Tile {
                 budget,
             )?);
         }
-        if self.config.transform {
-            component_transform(&mut planes, self.config.styles[0].reversible, budget)?;
-        }
-        for ((plane, source), output) in planes
-            .into_iter()
-            .zip(&size.components)
+        let shared_luma = self.config.transform
+            && component_transform(&mut planes, self.config.styles[0].reversible, budget)?;
+        for ((index, source), output) in size
+            .components
+            .iter()
+            .enumerate()
             .zip(&mut image.components)
         {
+            let plane = &planes[if shared_luma && index < 3 { 0 } else { index }];
             let origin_x = size.x0.div_ceil(source.dx);
             let origin_y = size.y0.div_ceil(source.dy);
             let width = usize_from(output.width)?;
             let plane_width = usize_from(plane.width)?;
-            budget.work(plane.values.len())?;
+            budget.work(area(plane.width, plane.height)?)?;
             let level = f64::from(1_u32 << (source.bits - 1));
             let maximum = f64::from((1_u32 << source.bits) - 1);
-            for (index, value) in plane.values.into_iter().enumerate() {
-                let x = usize_from(plane.x0 - origin_x)? + index % plane_width;
-                let y = usize_from(plane.y0 - origin_y)? + index / plane_width;
-                // Signed samples are exposed with the same unsigned offset as unsigned samples.
-                let shifted = (value.round() + level).clamp(0.0, maximum);
-                output.samples[y * width + x] = sample_u16(shifted);
+            if plane.values.is_empty() {
+                for y in 0..usize_from(plane.height)? {
+                    let start = (usize_from(plane.y0 - origin_y)? + y) * width
+                        + usize_from(plane.x0 - origin_x)?;
+                    output.samples[start..start + plane_width].fill(sample_u16(level));
+                }
+                continue;
+            }
+            for (y, row) in plane.values.chunks_exact(plane_width).enumerate() {
+                let start = (usize_from(plane.y0 - origin_y)? + y) * width
+                    + usize_from(plane.x0 - origin_x)?;
+                for (sample, value) in output.samples[start..start + plane_width]
+                    .iter_mut()
+                    .zip(row)
+                {
+                    // Signed samples use the same unsigned offset as unsigned samples.
+                    *sample = sample_u16((value.round() + level).clamp(0.0, maximum));
+                }
             }
         }
         Ok(())
@@ -501,11 +514,21 @@ fn reconstruct_component(
                 };
                 let values = tier1::decode(&block.segments, &parameters, budget)?;
                 let width = usize_from(band.plane.width)?;
-                for (index, value) in values.into_iter().enumerate() {
-                    let coefficient = value.reconstruct(roi, style.reversible);
-                    band.plane.values
-                        [(block.y + index / block.width) * width + block.x + index % block.width] =
-                        coefficient * step;
+                for (y, row) in values.chunks_exact(block.width).enumerate() {
+                    let start = (block.y + y) * width + block.x;
+                    let mut nonzero = false;
+                    for (x, value) in row.iter().enumerate() {
+                        let coefficient = value.reconstruct(roi, style.reversible);
+                        if coefficient == 0.0 {
+                            continue;
+                        }
+                        band.plane.materialize(budget)?;
+                        band.plane.values[start + x] = coefficient * step;
+                        nonzero = true;
+                    }
+                    if nonzero {
+                        band.plane.include_rows(block.y + y..block.y + y + 1);
+                    }
                 }
             }
             band_index += 1;
@@ -548,7 +571,7 @@ fn component_transform(
     planes: &mut [Plane],
     reversible: bool,
     budget: &mut Budget<'_>,
-) -> Result<()> {
+) -> Result<bool> {
     let (first, rest) = planes.split_at_mut(1);
     let (second, rest) = rest.split_at_mut(1);
     let a = &mut first[0];
@@ -566,26 +589,60 @@ fn component_transform(
             0,
         ));
     }
+    // G.2/G.3: zero chroma makes all three transformed channels equal to Y.
+    // Keep one luma plane and let the output conversion sample it three times.
+    if b.values.is_empty() && c.values.is_empty() {
+        return Ok(true);
+    }
+    let cb_zero = b.values.is_empty();
+    let cr_zero = c.values.is_empty();
+    a.materialize(budget)?;
+    b.materialize(budget)?;
+    c.materialize(budget)?;
     budget.work(
         a.values
             .len()
-            .checked_mul(8)
+            .checked_mul(if cb_zero || cr_zero {
+                if reversible { 6 } else { 4 }
+            } else {
+                8
+            })
             .ok_or_else(|| Error::limit("JPEG 2000 component transform work overflow"))?,
     )?;
     for ((a, b), c) in a.values.iter_mut().zip(&mut b.values).zip(&mut c.values) {
         let (y, cb, cr) = (*a, *b, *c);
         if reversible {
-            let green = y - ((cb + cr) / 4.0).floor();
-            *a = cr + green;
+            let sum = if cb_zero {
+                cr
+            } else if cr_zero {
+                cb
+            } else {
+                cb + cr
+            };
+            let green = y - (sum / 4.0).floor();
+            *a = if cr_zero { green } else { cr + green };
             *b = green;
-            *c = cb + green;
+            *c = if cb_zero { green } else { cb + green };
         } else {
-            *a = y + 1.402 * cr;
-            *b = y - 0.344_13 * cb - 0.714_14 * cr;
-            *c = y + 1.772 * cb;
+            *a = if cr_zero { y } else { y + 1.402 * cr };
+            *b = if cb_zero { y } else { y - 0.344_13 * cb };
+            if !cr_zero {
+                *b -= 0.714_14 * cr;
+            }
+            *c = if cb_zero { y } else { y + 1.772 * cb };
         }
     }
-    Ok(())
+    let start = [&*a, &*b, &*c]
+        .iter()
+        .filter(|p| !p.rows.is_empty())
+        .map(|p| p.rows.start)
+        .min()
+        .unwrap_or(0);
+    let end = a.rows.end.max(b.rows.end).max(c.rows.end);
+    for plane in [a, b, c] {
+        plane.rows = start..end;
+    }
+    Ok(false)
 }
 
 fn allocate_image(size: &Size, budget: &mut Budget<'_>) -> Result<Decoded> {
@@ -901,4 +958,40 @@ fn read_header(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<MainH
         next,
         ppm,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Budget, Plane, component_transform, sample_u16};
+    use pagura_core::Limits;
+
+    #[test]
+    fn zero_chroma_uses_the_rct_and_ict_identities() -> pagura_core::Result<()> {
+        // G.2/G.3 with Y=10 and either Cb=4 or Cr=4, then nearest rounding.
+        for (reversible, cb, cr, expected) in [
+            (true, 0.0, 4.0, [13, 9, 9]),
+            (true, 4.0, 0.0, [9, 9, 13]),
+            (false, 0.0, 4.0, [16, 7, 10]),
+            (false, 4.0, 0.0, [10, 9, 17]),
+        ] {
+            let limits = Limits::default();
+            let mut budget = Budget::new(&limits);
+            let mut planes = Vec::new();
+            for value in [10.0, cb, cr] {
+                let mut plane = Plane::new(1, 3, 2, 4);
+                if value != 0.0 {
+                    plane.materialize(&mut budget)?;
+                    plane.values[0] = value;
+                    plane.include_rows(0..1);
+                }
+                planes.push(plane);
+            }
+            assert!(!component_transform(&mut planes, reversible, &mut budget)?);
+            for (plane, expected) in planes.iter().zip(expected) {
+                assert_eq!(sample_u16(plane.values[0].round()), expected);
+                assert_eq!(plane.rows, 0..1);
+            }
+        }
+        Ok(())
+    }
 }
