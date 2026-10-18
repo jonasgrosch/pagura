@@ -15,19 +15,31 @@ impl Provider for Outlines {
         let bytes: &[u8] = match base {
             b"Helvetica" => include_bytes!("../../../data/fonts/Arimo-Regular.ttf"),
             b"Helvetica-Bold" => include_bytes!("../../../data/fonts/Arimo-Bold.ttf"),
+            b"Helvetica-Oblique" => include_bytes!("../../../data/fonts/Arimo-Italic.ttf"),
             b"Times-Roman" => include_bytes!("../../../data/fonts/Tinos-Regular.ttf"),
             b"Times-Italic" => include_bytes!("../../../data/fonts/Tinos-Italic.ttf"),
+            b"Symbol" => include_bytes!("../../../data/fonts/FoxitSymbol.cff"),
+            b"ZapfDingbats" => include_bytes!("../../../data/fonts/FoxitDingbats.cff"),
             _ => return Ok(None),
         };
-        let program =
-            FontProgram::parse(bytes, pagura_font::FontFormat::TrueType, &Limits::default())?;
-        // These fixtures carry explicit PDF widths and Encoding. The provider
-        // supplies only locked outlines; no oracle values enter this resource.
+        let symbolic = matches!(base, b"Symbol" | b"ZapfDingbats");
+        let format = if symbolic {
+            pagura_font::FontFormat::Cff
+        } else {
+            pagura_font::FontFormat::TrueType
+        };
+        let program = FontProgram::parse(bytes, format, &Limits::default())?;
+        // Resources use locked data, never the fixtures' expected glyphs.
+        let widths = match base {
+            b"Symbol" => afm_widths(include_str!("../../../data/afm/Symbol.afm"))?,
+            b"ZapfDingbats" => afm_widths(include_str!("../../../data/afm/ZapfDingbats.afm"))?,
+            _ => BTreeMap::new(),
+        };
         Ok(Some(Arc::new(StandardFont {
             metrics: Arc::new(StandardMetrics {
                 name: Name::new(base),
-                encoding: std::array::from_fn(|_| None),
-                widths: BTreeMap::new(),
+                encoding: encoding::base(if symbolic { base } else { b"StandardEncoding" })?,
+                widths,
                 descriptor: StandardDescriptor::default(),
             }),
             program: Some(Arc::new(program)),
@@ -39,6 +51,24 @@ impl Provider for Outlines {
     fn cid_to_unicode(&self, _: &[u8], _: &[u8]) -> Result<Option<Arc<CidToUnicode>>> {
         Ok(None)
     }
+}
+
+fn afm_widths(afm: &str) -> Result<BTreeMap<Name, f64>> {
+    afm.lines()
+        .filter(|line| line.starts_with("C "))
+        .map(|line| {
+            let mut fields = line.split(';').map(str::trim);
+            let width = fields
+                .clone()
+                .find_map(|field| field.strip_prefix("WX "))
+                .and_then(|width| width.parse().ok())
+                .ok_or_else(|| Error::syntax("invalid AFM test resource width"))?;
+            let name = fields
+                .find_map(|field| field.strip_prefix("N "))
+                .ok_or_else(|| Error::syntax("invalid AFM test resource name"))?;
+            Ok((Name::new(name.as_bytes()), width))
+        })
+        .collect()
 }
 
 fn values(name: &str, suffix: &str) -> Result<Vec<Value>> {
@@ -146,6 +176,48 @@ fn check_glyphs(name: &str, font: &PdfFont) -> Result<()> {
             .zip(matrix_expected)
         {
             assert_eq!(Some(*actual), expected.as_number());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn descriptor_styles_and_symbol_aliases_preserve_pdf_positions_in_both_modes() -> Result<()> {
+    for value in values("substitute-style-inventory", "out")? {
+        let name = value
+            .as_array()
+            .and_then(|row| row.first())
+            .and_then(Value::as_string)
+            .and_then(|bytes| std::str::from_utf8(bytes).ok())
+            .ok_or_else(|| Error::syntax("invalid fixture name"))?;
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            let document = Document::open(
+                fixture("text", &format!("{name}.pdf")),
+                &OpenOptions {
+                    recovery,
+                    ..Default::default()
+                },
+            )?;
+            let dictionary = document
+                .object(ObjectId::new(4, 0))?
+                .dictionary()
+                .ok_or_else(|| Error::syntax("missing font"))?;
+            let font = PdfFont::load_with(&document, dictionary, &Outlines)?;
+            check_glyphs(name, &font)?;
+            let glyphs = font.decode(&fixture("text", &format!("{name}.input")))?;
+            let mut position = 0.0;
+            for (glyph, expected) in glyphs.iter().zip(values(name, "positions")?) {
+                assert!((position - expected.as_number().unwrap()).abs() < 1e-12);
+                position += glyph.advance;
+            }
+            assert_eq!(document.diagnostics().len(), 1, "{name}");
+            let diagnostic = &document.diagnostics()[0];
+            assert_eq!(diagnostic.repair, SUBSTITUTED);
+            let base = fixture("text", &format!("{name}.base"));
+            assert_eq!(
+                diagnostic.message,
+                format!("substitute outlines for {}", String::from_utf8_lossy(&base))
+            );
         }
     }
     Ok(())

@@ -14018,6 +14018,266 @@
       "driver": "glyph-name"
     },
     {
+      "id": "text/substitute-style-angle",
+      "kind": "vector",
+      "description": "Descriptor angle and weight choose bundled outlines; Widths and MissingWidth set positions; unused FontFamily is ignored",
+      "requirements": [
+        "text-font-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-style-angle.base",
+          "sha256": "7bb6a80e2f2596ac9be1e99b281a1c352cb88a646cef37a50b13a04eb5187e70"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-style-angle.input",
+          "sha256": "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-style-angle.matrix",
+          "sha256": "c3c3644eece4c942c8c81ebca8fb1de7f8df9032e852631290376bbb87fa9c2a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-style-angle.out",
+          "sha256": "b599511999ab3427def6bf16ef3bf839537b854bee1af9fb7197ec56b8676363"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-style-angle.pdf",
+          "sha256": "59a483d046153d61df3454326230807c3d68b8c64b1b864920c1adf883dc330f"
+        },
+        ".positions": {
+          "path": "corpus/generated/text/substitute-style-angle.positions",
+          "sha256": "fa38e5a7295b18544a7ea2a5a60ff1c91dc4e487c1e13a0679e197ed79dab098"
+        }
+      },
+      "driver": "style-substitution"
+    },
+    {
+      "id": "text/substitute-style-medium-weight",
+      "kind": "vector",
+      "description": "Descriptor angle and weight choose bundled outlines; Widths and MissingWidth set positions; unused FontFamily is ignored",
+      "requirements": [
+        "text-font-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-style-medium-weight.base",
+          "sha256": "44768824fe10901e89c17b4621a05942b5fc3b6469b9e9e780e366472a2903bf"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-style-medium-weight.input",
+          "sha256": "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-style-medium-weight.matrix",
+          "sha256": "c3c3644eece4c942c8c81ebca8fb1de7f8df9032e852631290376bbb87fa9c2a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-style-medium-weight.out",
+          "sha256": "b599511999ab3427def6bf16ef3bf839537b854bee1af9fb7197ec56b8676363"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-style-medium-weight.pdf",
+          "sha256": "a6abee486900c7065ab2738bbf3e8ce5f0f60f82fe42e26af06dd72e2101b499"
+        },
+        ".positions": {
+          "path": "corpus/generated/text/substitute-style-medium-weight.positions",
+          "sha256": "fa38e5a7295b18544a7ea2a5a60ff1c91dc4e487c1e13a0679e197ed79dab098"
+        }
+      },
+      "driver": "style-substitution"
+    },
+    {
+      "id": "text/substitute-style-bold-weight",
+      "kind": "vector",
+      "description": "Descriptor angle and weight choose bundled outlines; Widths and MissingWidth set positions; unused FontFamily is ignored",
+      "requirements": [
+        "text-font-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-style-bold-weight.base",
+          "sha256": "416de5f0b24afda53975b3dc61b1dd59bf682e350a77ecefb022c5c5f9f59223"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-style-bold-weight.input",
+          "sha256": "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-style-bold-weight.matrix",
+          "sha256": "c3c3644eece4c942c8c81ebca8fb1de7f8df9032e852631290376bbb87fa9c2a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-style-bold-weight.out",
+          "sha256": "b599511999ab3427def6bf16ef3bf839537b854bee1af9fb7197ec56b8676363"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-style-bold-weight.pdf",
+          "sha256": "03dc3a416d7e18bd4c278ef650efdb0eba4170a16f5387bcb44a6dc4eecc1caf"
+        },
+        ".positions": {
+          "path": "corpus/generated/text/substitute-style-bold-weight.positions",
+          "sha256": "fa38e5a7295b18544a7ea2a5a60ff1c91dc4e487c1e13a0679e197ed79dab098"
+        }
+      },
+      "driver": "style-substitution"
+    },
+    {
+      "id": "text/substitute-style-symbol-italic",
+      "kind": "vector",
+      "description": "Known symbol style aliases use reported regular outlines; PDF widths override AFM and indirect symbolic Flags suppress Differences",
+      "requirements": [
+        "text-font-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-style-symbol-italic.base",
+          "sha256": "ba0e4afa93400b805dfcc4b9e6aef549269946e2d1af5ababfc3a73c67912d89"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-style-symbol-italic.input",
+          "sha256": "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-style-symbol-italic.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-style-symbol-italic.out",
+          "sha256": "0ae885cb35500d11ec53bcf49ca65c128a361daf4c10f3e456d22dfc53fea3c8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-style-symbol-italic.pdf",
+          "sha256": "602b9982172753f5a0928fc490f875ec8bc1a69a8b9eb9538e5765917031f5ac"
+        },
+        ".positions": {
+          "path": "corpus/generated/text/substitute-style-symbol-italic.positions",
+          "sha256": "4cc15a78a3238080f4965400c0139f91c3b9536e0ebd24acd5e33d7b65ba05eb"
+        }
+      },
+      "driver": "style-substitution"
+    },
+    {
+      "id": "text/substitute-style-symbol-bold",
+      "kind": "vector",
+      "description": "Known symbol style aliases use reported regular outlines; PDF widths override AFM and indirect symbolic Flags suppress Differences",
+      "requirements": [
+        "text-font-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-style-symbol-bold.base",
+          "sha256": "ba0e4afa93400b805dfcc4b9e6aef549269946e2d1af5ababfc3a73c67912d89"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-style-symbol-bold.input",
+          "sha256": "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-style-symbol-bold.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-style-symbol-bold.out",
+          "sha256": "4c7d893393d6f431bd50e6cfe54be6912861513294bd564a13eea896bc442e72"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-style-symbol-bold.pdf",
+          "sha256": "4a6780a352b15ab143486b6b483a65b9636b5612b6f33f2e607fed1fb5d67349"
+        },
+        ".positions": {
+          "path": "corpus/generated/text/substitute-style-symbol-bold.positions",
+          "sha256": "b90a9572eec79709b5109c522f8c59f0b4dedc04591e022e9efdee49d192ddd1"
+        }
+      },
+      "driver": "style-substitution"
+    },
+    {
+      "id": "text/substitute-style-symbol-subset",
+      "kind": "vector",
+      "description": "Known symbol style aliases use reported regular outlines; PDF widths override AFM and indirect symbolic Flags suppress Differences",
+      "requirements": [
+        "text-font-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-style-symbol-subset.base",
+          "sha256": "ba0e4afa93400b805dfcc4b9e6aef549269946e2d1af5ababfc3a73c67912d89"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-style-symbol-subset.input",
+          "sha256": "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-style-symbol-subset.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-style-symbol-subset.out",
+          "sha256": "4c7d893393d6f431bd50e6cfe54be6912861513294bd564a13eea896bc442e72"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-style-symbol-subset.pdf",
+          "sha256": "4271f01bc29f72f8f7418349a0c446cb0f2146709cf36ad94e43cbad64788dbf"
+        },
+        ".positions": {
+          "path": "corpus/generated/text/substitute-style-symbol-subset.positions",
+          "sha256": "b90a9572eec79709b5109c522f8c59f0b4dedc04591e022e9efdee49d192ddd1"
+        }
+      },
+      "driver": "style-substitution"
+    },
+    {
+      "id": "text/substitute-style-dingbats-italic",
+      "kind": "vector",
+      "description": "Known symbol style aliases use reported regular outlines; PDF widths override AFM and indirect symbolic Flags suppress Differences",
+      "requirements": [
+        "text-font-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-style-dingbats-italic.base",
+          "sha256": "af08b5c8c9dc4e2a131194f31bf0578feb273bc572af49369e031f4e24a703cb"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-style-dingbats-italic.input",
+          "sha256": "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-style-dingbats-italic.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-style-dingbats-italic.out",
+          "sha256": "d32364e69ad5b9a4f2160863adcd10aa44d6073f4d5eb063d295ebdca7295b46"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-style-dingbats-italic.pdf",
+          "sha256": "50909c0aaed7ac60f5d29677fe4f9d05eb12b4d7240c79987e3b233bde26df30"
+        },
+        ".positions": {
+          "path": "corpus/generated/text/substitute-style-dingbats-italic.positions",
+          "sha256": "ef56c784bf408a54a4abf0ba892d75115cc1db3efd87946bd75e230dfb1bc656"
+        }
+      },
+      "driver": "style-substitution"
+    },
+    {
+      "id": "text/substitute-style-inventory",
+      "kind": "vector",
+      "description": "Descriptor style and symbol alias cases",
+      "requirements": [
+        "text-font-substitution"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/text/substitute-style-inventory.out",
+          "sha256": "1eebffbb03ad1520ba141bd04c1174e373695ddb973c73c3c0a6c3b1c69f2251"
+        }
+      },
+      "driver": "inventory"
+    },
+    {
       "id": "text/unicode-ignored-stream-metadata",
       "kind": "vector",
       "description": "CMap code lengths, mappings and undefined-code consumption",
