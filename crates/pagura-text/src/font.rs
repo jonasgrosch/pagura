@@ -90,7 +90,7 @@ pub(crate) fn load_with(
             if let Some(descriptor) = descriptor {
                 descriptor.normalized_flags(document, position)?;
             }
-            return crate::cid_substitute::load(
+            return crate::substitute::cid::load(
                 document,
                 font,
                 metrics_font,
@@ -413,7 +413,7 @@ impl PdfFont {
             Source::CidSubstitute { program } => Cid::try_from(selector)
                 .ok()
                 .and_then(|cid| {
-                    crate::cid_substitute::glyph(program, self.cid_unicode.as_deref(), cid)
+                    crate::substitute::cid::glyph(program, self.cid_unicode.as_deref(), cid)
                 })
                 .map_or(GlyphShape::Blank, |glyph| GlyphShape::Outline {
                     program: Arc::clone(program),

@@ -1,6 +1,8 @@
 //! Character identifiers (9.7.2) and the CIDToGIDMap stream (9.7.4.2).
 use pagura_core::{Error, Result};
 
+pub(crate) mod map;
+
 /// A CID. PDF character identifiers are 0 to 65,535 (9.7.2; Annex C), so the
 /// range invariant cannot be violated once a value exists.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]

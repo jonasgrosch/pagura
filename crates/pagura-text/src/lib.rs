@@ -26,8 +26,6 @@ use pagura_raster::Transform;
 use std::sync::Arc;
 
 mod cid;
-mod cid_substitute;
-mod cidmap;
 mod cmap;
 mod descriptor;
 mod encoding;
