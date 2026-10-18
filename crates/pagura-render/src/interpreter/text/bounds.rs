@@ -47,7 +47,9 @@ pub(super) fn bounds(commands: &[Command]) -> Option<Arc<Path>> {
                 }
             }
             Command::Group(g) => stack.push(g.commands.iter()),
-            Command::Shading(_) => return None,
+            // Canonical glyph extents must be combined with device origins
+            // after scaling; a user-space envelope can lose those extents.
+            Command::Glyphs(_) | Command::Shading(_) => return None,
         }
     }
     if !low.is_finite() || !high.is_finite() {

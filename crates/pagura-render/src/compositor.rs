@@ -176,6 +176,7 @@ impl Backdrop<'_> {
 struct Context {
     elide_opaque_groups: bool,
     bounds: regions::Prepared,
+    glyphs: crate::display::GlyphCache,
     raster: pagura_raster::Rasterizer,
     limits: Limits,
     device: Transform,
@@ -219,9 +220,11 @@ impl Context {
             .allocated
             .saturating_add(bytes)
             .saturating_add(self.raster.retained_bytes())
+            .saturating_add(self.glyphs.retained_bytes())
             > self.limits.decoded_bytes
         {
             self.raster.clear();
+            self.glyphs.clear();
         }
     }
     fn surface(&mut self, tile: Tile, initial: Backdrop<'_>) -> Result<Surface> {
@@ -340,6 +343,9 @@ impl Context {
                 {
                     Ok(())
                 }
+                Command::Glyphs(run) => {
+                    self.glyphs(run, target.tile, target, initial, model, knockout, depth)
+                }
                 Command::Path(path) => self.path(path, target, initial, model, knockout, depth),
                 Command::Image(image) => self.image(image, target, initial, model, knockout, depth),
                 Command::Shading(shading) => {
@@ -350,6 +356,102 @@ impl Context {
                 }
             };
             result.map_err(|e| crate::display::contextual(e, command.position()))?;
+        }
+        Ok(())
+    }
+    #[expect(clippy::too_many_arguments, reason = "explicit mark and group state")]
+    fn glyphs(
+        &mut self,
+        run: &crate::display::GlyphRun,
+        tile: Tile,
+        target: &mut Surface,
+        initial: Backdrop<'_>,
+        model: Model,
+        knockout: bool,
+        depth: usize,
+    ) -> Result<()> {
+        if !run.paint.color.paints() || !path_active(&run.paint, model)? {
+            return Ok(());
+        }
+        self.charge(run.glyphs.len())?;
+        self.charge(run.bounds_work()?)?;
+        if !regions::run_visible(run, self.device, tile) {
+            // Preserve the per-instance bounds charges while avoiding their work.
+            let remaining = self.limits.raster_work - self.work;
+            if run.glyphs.len() > remaining {
+                self.work = self.limits.raster_work;
+                return Err(crate::display::contextual(
+                    Error::limit("glyph bounds work exceeded"),
+                    run.position(remaining),
+                ));
+            }
+            self.work += run.glyphs.len();
+            return Ok(());
+        }
+        let mut clip = None;
+        let mut positions = run.positions.iter().peekable();
+        let mut position = run.paint.position;
+        for (index, &placement) in run.glyphs.iter().enumerate() {
+            while let Some(&(_, p)) = positions.next_if(|(i, _)| *i <= index) {
+                position = p;
+            }
+            let result = (|| {
+                let hull = run
+                    .source(placement)?
+                    .device_hull(placement.origin, self.device);
+                if !regions::glyph_visible(hull, tile, &mut self.work, self.limits.raster_work)? {
+                    return Ok(());
+                }
+                let geometry = self.glyphs.geometry(
+                    run,
+                    placement,
+                    self.device,
+                    &Limits {
+                        decoded_bytes: self.limits.decoded_bytes.saturating_sub(self.allocated),
+                        ..self.limits
+                    },
+                    &mut self.raster,
+                )?;
+                let bytes = geometry.retained_bytes();
+                self.trim_raster(bytes);
+                self.allocated = self
+                    .allocated
+                    .checked_add(bytes)
+                    .filter(|&n| n <= self.limits.decoded_bytes)
+                    .ok_or(Error::limit("glyph geometry memory exceeded"))?;
+                let clip = if let Some(clip) = &clip {
+                    Arc::clone(clip)
+                } else {
+                    let value = self.clip(run.paint.clip.as_ref(), tile)?;
+                    clip = Some(Arc::clone(&value));
+                    value
+                };
+                let limits = Limits {
+                    decoded_bytes: self.limits.decoded_bytes.saturating_sub(self.allocated),
+                    ..self.limits
+                };
+                let Some(mask) = self.raster.clipped_glyph(
+                    &clip,
+                    geometry,
+                    placement.origin * self.device,
+                    limits,
+                )?
+                else {
+                    self.allocated -= bytes;
+                    return Ok(());
+                };
+                let Some(mask) = self.pattern_mask(&run.paint, mask)? else {
+                    self.allocated -= bytes;
+                    return Ok(());
+                };
+                let result =
+                    self.paint_path((&run.paint, &mask), target, initial, model, knockout, depth);
+                self.raster.recycle(mask);
+                self.allocated -= bytes;
+                self.trim_raster(0);
+                result
+            })();
+            result.map_err(|e| crate::display::contextual(e, position))?;
         }
         Ok(())
     }
@@ -540,6 +642,9 @@ impl Context {
             }
         };
         let Some(mask) = mask else { return Ok(None) };
+        self.pattern_mask(p, mask)
+    }
+    fn pattern_mask(&self, p: &PathCommand, mask: Mask) -> Result<Option<Mask>> {
         if let crate::color::Color::Pattern {
             selected: Some(pattern),
             ..
@@ -576,9 +681,21 @@ impl Context {
         }
         self.charge(group.commands.len())?;
         for command in &group.commands {
+            if let Command::Glyphs(run) = command {
+                self.glyphs(
+                    run,
+                    tile,
+                    parent,
+                    Backdrop::Transparent,
+                    parent_model,
+                    false,
+                    depth + 1,
+                )?;
+                continue;
+            }
             let Command::Path(p) = command else {
                 return Err(Error::invalid_argument(
-                    "opaque knockout has a non-path member",
+                    "opaque knockout has a non-fill member",
                 ));
             };
             if p.color.paints() {
@@ -975,6 +1092,7 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
             && normal_scene(&list.commands),
         raster: pagura_raster::Rasterizer::default(),
         bounds: regions::Prepared::new(list.device_transform(options), list.limits.decoded_bytes),
+        glyphs: crate::display::GlyphCache::new(list.limits.decoded_bytes),
         limits: list.limits,
         device: list.device_transform(options),
         page_device: list.device_transform(options),
@@ -1063,14 +1181,21 @@ fn opaque_knockout(group: &Group) -> bool {
         && group.attributes.model.is_none_or(|m| m == Model::Rgb)
         && group.composite.simple()
         && group.commands.iter().all(|c| {
-            matches!(c, Command::Path(p)
-            if matches!(p.mark, Mark::Fill(_)) && p.composite.simple()
-            && p.transfer.is_none() && matches!(p.color, crate::color::Color::Solid { .. }))
+            let p = match c {
+                Command::Path(p) => p,
+                Command::Glyphs(run) => &run.paint,
+                _ => return false,
+            };
+            matches!(p.mark, Mark::Fill(_))
+                && p.composite.simple()
+                && p.transfer.is_none()
+                && matches!(p.color, crate::color::Color::Solid { .. })
         })
 }
 // A changed backdrop must never feed an amplifying blend, transfer or mask.
 fn normal_scene(commands: &[Command]) -> bool {
     commands.iter().all(|command| match command {
+        Command::Glyphs(run) => normal_paint(&run.paint),
         Command::Path(p) => {
             matches!(p.color, crate::color::Color::Solid { .. })
                 && p.composite.blend == crate::blend::BlendMode::Normal
@@ -1094,6 +1219,13 @@ fn normal_scene(commands: &[Command]) -> bool {
                 && normal_scene(&g.commands)
         }
     })
+}
+
+fn normal_paint(p: &PathCommand) -> bool {
+    matches!(p.color, crate::color::Color::Solid { .. })
+        && p.composite.blend == crate::blend::BlendMode::Normal
+        && p.composite.mask.is_none()
+        && p.transfer.is_none()
 }
 
 fn mask_value(mask: &SoftMask, pixel: Pixel, model: Model) -> f64 {
@@ -1233,6 +1365,7 @@ mod tests {
             elide_opaque_groups: false,
             raster: pagura_raster::Rasterizer::default(),
             bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
+            glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
             limits,
             device: Transform::IDENTITY,
             page_device: Transform::IDENTITY,
@@ -1290,5 +1423,157 @@ mod tests {
         assert_eq!(context.raster.retained_bytes(), 0);
         assert_eq!(context.allocated, 512);
         assert!(context.allocated <= context.limits.decoded_bytes);
+    }
+    fn glyph_context(limits: Limits) -> Context {
+        let mut crop = PathBuilder::new();
+        crop.rect(0.0, 0.0, 4.0, 4.0);
+        Context {
+            elide_opaque_groups: false,
+            bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
+            glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
+            raster: pagura_raster::Rasterizer::default(),
+            limits,
+            device: Transform::IDENTITY,
+            page_device: Transform::IDENTITY,
+            view_unit: 1.0,
+            crop: crop.finish(),
+            allocated: 0,
+            work: 0,
+            clip: None,
+            mask: None,
+            function_work: 0,
+            soft_source: false,
+        }
+    }
+    fn glyph_run() -> crate::display::GlyphRun {
+        let paint = PathCommand {
+            path: Arc::default(),
+            mark: Mark::Fill(FillRule::NonZero),
+            clip: None,
+            color: crate::color::Color::Solid {
+                space: crate::color::Space::Rgb,
+                components: vec![0.2, 0.5, 0.8],
+            },
+            position: pagura_core::Position::Unknown,
+            transfer: None,
+            composite: Composite {
+                alpha: 0.5,
+                ..Default::default()
+            },
+        };
+        let mut run = crate::display::GlyphRun::new(paint);
+        for (width, x) in [(0.4, 0.0), (0.6, 0.2), (0.8, 0.4), (0.4, 100.0)] {
+            let mut path = PathBuilder::new();
+            path.rect(0.0, 0.0, width, 1.0);
+            run.push(
+                Arc::new(path.finish()),
+                Transform::translate(x, 0.25),
+                pagura_core::Position::Unknown,
+            )
+            .unwrap();
+        }
+        run
+    }
+    fn glyph_surface() -> Surface {
+        Surface {
+            tile: Tile {
+                x: 0,
+                y: 0,
+                width: 4,
+                height: 4,
+            },
+            pixels: vec![Pixel::source([0.3, 0.6, 0.9, 0.0], 1.0); 16],
+        }
+    }
+    #[test]
+    fn batched_spans_preserve_the_f64_fold_and_cache_blind_limits() {
+        let mut run = glyph_run();
+        let limits = Limits::default();
+        let initial = Backdrop::Color([0.3, 0.6, 0.9, 0.0]);
+        for blend in [
+            crate::blend::BlendMode::Normal,
+            crate::blend::BlendMode::Multiply,
+            crate::blend::BlendMode::Dodge,
+        ] {
+            run.paint.composite.blend = blend;
+            for knockout in [false, true] {
+                let mut reference = glyph_surface();
+                let mut context = glyph_context(limits);
+                for &placement in &run.glyphs {
+                    let clip = context
+                        .clip(run.paint.clip.as_ref(), reference.tile)
+                        .unwrap();
+                    let geometry = run
+                        .geometry(placement, Transform::IDENTITY, &limits)
+                        .unwrap();
+                    if let Some(mask) = context
+                        .raster
+                        .clipped_glyph(&clip, geometry, placement.origin, limits)
+                        .unwrap()
+                    {
+                        context
+                            .paint_path(
+                                (&run.paint, &mask),
+                                &mut reference,
+                                initial,
+                                Model::Rgb,
+                                knockout,
+                                0,
+                            )
+                            .unwrap();
+                        context.raster.recycle(mask);
+                    }
+                }
+                for capacity in [0, 16 * 1024, limits.decoded_bytes] {
+                    let mut context = glyph_context(limits);
+                    context.glyphs = crate::display::GlyphCache::new(capacity);
+                    let mut actual = glyph_surface();
+                    context
+                        .glyphs(
+                            &run,
+                            actual.tile,
+                            &mut actual,
+                            initial,
+                            Model::Rgb,
+                            knockout,
+                            0,
+                        )
+                        .unwrap();
+                    for (a, b) in actual.pixels.iter().zip(&reference.pixels) {
+                        assert_eq!(a.color.map(f64::to_bits), b.color.map(f64::to_bits));
+                        assert_eq!(
+                            [a.alpha, a.group, a.shape].map(f64::to_bits),
+                            [b.alpha, b.group, b.shape].map(f64::to_bits)
+                        );
+                    }
+                }
+            }
+        }
+        for work in [1, 4, 8, 16, 32, 64, 128, 256, 512, 1024] {
+            let limits = Limits {
+                raster_work: work,
+                ..limits
+            };
+            let mut outcomes = Vec::new();
+            for capacity in [0, 16 * 1024, limits.decoded_bytes] {
+                let mut context = glyph_context(limits);
+                context.glyphs = crate::display::GlyphCache::new(capacity);
+                let mut target = glyph_surface();
+                outcomes.push(
+                    context
+                        .glyphs(
+                            &run,
+                            target.tile,
+                            &mut target,
+                            initial,
+                            Model::Rgb,
+                            false,
+                            0,
+                        )
+                        .map_err(|e| (e.kind, e.position, e.object)),
+                );
+            }
+            assert!(outcomes.windows(2).all(|pair| pair[0] == pair[1]));
+        }
     }
 }

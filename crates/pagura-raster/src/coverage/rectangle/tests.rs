@@ -12,17 +12,24 @@ fn shape(points: &[Point], close: bool) -> Shape {
         path.close();
     }
     Shape {
-        path: Arc::new(path.finish()),
+        geometry: Geometry::Path(Arc::new(path.finish())),
         transform: Transform::IDENTITY,
         rule: FillRule::NonZero,
     }
+}
+
+fn path(shape: &Shape) -> &crate::Path {
+    let Geometry::Path(path) = &shape.geometry else {
+        panic!("expected path geometry")
+    };
+    path
 }
 
 fn mask(shape: &Shape, size: u32, origin: (u32, u32)) -> Mask {
     Mask::from_path_at(
         size,
         size,
-        &shape.path,
+        path(shape),
         shape.transform,
         shape.rule,
         64,
@@ -213,7 +220,7 @@ fn only_single_nondegenerate_device_rectangles_take_the_closed_form() {
         Mask::from_path(
             2,
             2,
-            &rectangle.path,
+            path(&rectangle),
             rectangle.transform,
             rectangle.rule,
             4
@@ -226,7 +233,7 @@ fn only_single_nondegenerate_device_rectangles_take_the_closed_form() {
         Mask::from_path(
             2,
             2,
-            &rectangle.path,
+            path(&rectangle),
             rectangle.transform,
             rectangle.rule,
             4
@@ -257,10 +264,66 @@ fn butt_capped_axis_aligned_strokes_already_form_rectangles() {
     )
     .unwrap();
     let rectangle = Shape {
-        path: Arc::new(outline),
+        geometry: Geometry::Path(Arc::new(outline)),
         transform,
         rule: FillRule::NonZero,
     };
     assert!(rectangle.rectangle().is_some());
     assert_eq!(mask(&rectangle, 2, (0, 0)).coverage(), [96; 4]);
+}
+
+#[test]
+fn canonical_glyph_rectangles_use_closed_form_area_but_points_do_not() {
+    let original = shape(
+        &[
+            Point::new(0.25, 0.5),
+            Point::new(1.75, 0.5),
+            Point::new(1.75, 1.5),
+            Point::new(0.25, 1.5),
+        ],
+        true,
+    );
+    let glyph = Shape {
+        geometry: Geometry::Glyph(Arc::new(
+            crate::GlyphGeometry::new(path(&original), [1.0, 0.0, 0.0, 1.0], &Limits::default())
+                .unwrap(),
+        )),
+        transform: Transform::IDENTITY,
+        rule: FillRule::NonZero,
+    };
+    assert!(glyph.rectangle().is_some());
+    let mut out = [0; 4];
+    crate::coverage::coverage(
+        2,
+        2,
+        &[glyph],
+        &mut out,
+        (0, 0),
+        &Limits::default(),
+        &mut crate::coverage::Scratch::default(),
+    )
+    .unwrap();
+    assert_eq!(out, [96; 4]);
+    let original = shape(&[Point::new(0.25, 0.25); 4], true);
+    let glyph = Shape {
+        geometry: Geometry::Glyph(Arc::new(
+            crate::GlyphGeometry::new(path(&original), [1.0, 0.0, 0.0, 1.0], &Limits::default())
+                .unwrap(),
+        )),
+        transform: Transform::IDENTITY,
+        rule: FillRule::NonZero,
+    };
+    assert!(glyph.rectangle().is_none());
+    let mut out = [0; 4];
+    crate::coverage::coverage(
+        2,
+        2,
+        &[glyph],
+        &mut out,
+        (0, 0),
+        &Limits::default(),
+        &mut crate::coverage::Scratch::default(),
+    )
+    .unwrap();
+    assert_eq!(out, [255, 0, 0, 0]);
 }

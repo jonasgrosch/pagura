@@ -91,6 +91,13 @@ fn commands_region(
     let mut total = None;
     for command in commands {
         let (region, clip) = match command {
+            Command::Glyphs(run) => {
+                work.charge(run.bounds_work()?)?;
+                (
+                    hull_region(run.device_hull(device), tile, (1.0, 1.0)),
+                    run.paint.clip.as_ref(),
+                )
+            }
             Command::Path(p) => (paint_region(p, tile, device, work)?, p.clip.as_ref()),
             Command::Image(i) => {
                 let mut path = pagura_raster::PathBuilder::new();
@@ -140,6 +147,24 @@ pub(super) fn path_visible(
         },
     )?
     .is_some())
+}
+pub(super) fn run_visible(run: &crate::display::GlyphRun, device: Transform, tile: Tile) -> bool {
+    hull_region(run.device_hull(device), tile, (1.0, 1.0)).is_some()
+}
+pub(super) fn glyph_visible(
+    hull: [Point; 2],
+    tile: Tile,
+    work: &mut usize,
+    maximum: usize,
+) -> Result<bool> {
+    *work = work
+        .checked_add(1)
+        .filter(|&n| n <= maximum)
+        .ok_or(Error::limit("glyph bounds work exceeded"))?;
+    if hull.iter().any(|p| p.x.is_nan() || p.y.is_nan()) {
+        return Err(Error::limit("glyph bounds overflow"));
+    }
+    Ok(hull_region(hull, tile, (1.0, 1.0)).is_some())
 }
 fn paint_region(
     p: &PathCommand,
@@ -299,6 +324,13 @@ fn content_region(
     let mut total: Option<Rect> = None;
     for command in commands {
         let (bounds, chain) = match command {
+            Command::Glyphs(run) if !run.paint.color.paints() => continue,
+            Command::Glyphs(run) => {
+                let r = run.bounds;
+                let r = Rect::from_corners(r.x0 - 1.0, r.y0 - 1.0, r.x1 + 1.0, r.y1 + 1.0)
+                    .ok_or(Error::limit("content bounds overflow"))?;
+                (Some(r), run.paint.clip.as_ref())
+            }
             Command::Path(p) if !p.color.paints() => continue,
             Command::Path(p) => {
                 let bounds = content_hull(&p.path, work)?;
