@@ -42,7 +42,13 @@ impl Provider for Outlines {
         Ok(Some(Arc::new(StandardFont {
             metrics: Arc::new(StandardMetrics {
                 name: Name::new(base),
-                encoding: encoding::base(if symbolic { base } else { b"StandardEncoding" })?,
+                encoding: encoding::BaseEncoding::from_table_name(if symbolic {
+                    base
+                } else {
+                    b"StandardEncoding"
+                })
+                .ok_or_else(|| Error::syntax("unknown base encoding"))?
+                .names(),
                 widths,
                 descriptor: StandardDescriptor::default(),
             }),

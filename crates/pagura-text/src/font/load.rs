@@ -7,7 +7,7 @@ use crate::{
     cid::CidToGidMap,
     cmap,
     descriptor::{Descriptor, FontFlags},
-    encoding::{self, SimpleMapping},
+    encoding::{self, BaseEncoding, SimpleMapping},
     features,
     metrics::{GLYPH_SPACE_UNITS, Metrics},
     objects::{array, optional, required},
@@ -182,19 +182,16 @@ fn simple_mapping(
     if kind == FontKind::TrueType && route == Route::Raw {
         return SimpleMapping::new(std::array::from_fn(|_| None), document.limits(), b"");
     }
-    let default = if kind == FontKind::TrueType {
-        encoding::base(b"StandardEncoding")?
-    } else {
-        builtin
-            .cloned()
-            .unwrap_or(encoding::base(b"StandardEncoding")?)
+    let default = match builtin {
+        Some(builtin) if kind != FontKind::TrueType => builtin.clone(),
+        _ => BaseEncoding::Standard.names(),
     };
     let mut names = encoding::load(document, font.get(b"Encoding"), default)?;
     if kind == FontKind::TrueType
         && optional(document, font, b"Encoding")?
             .is_some_and(|value| value.as_dictionary().is_some())
     {
-        for (slot, fallback) in names.iter_mut().zip(encoding::base(b"StandardEncoding")?) {
+        for (slot, fallback) in names.iter_mut().zip(BaseEncoding::Standard.names()) {
             if slot.is_none() {
                 *slot = fallback;
             }
@@ -325,17 +322,36 @@ mod tests {
 
     #[test]
     fn symbolic_truetype_ignores_encoding_and_nonsymbolic_uses_names() -> Result<()> {
-        let document = Document::open(
-            fixture("text", "type3-differences.pdf"),
-            &OpenOptions::default(),
-        )?;
+        let open = |recovery| {
+            Document::open(
+                fixture("text", "type3-differences.pdf"),
+                &OpenOptions {
+                    recovery,
+                    ..OpenOptions::default()
+                },
+            )
+        };
+        let document = open(pagura_core::Recovery::Repair)?;
         let font: Dictionary = [(Name::new(b"Encoding"), Value::name(b"InvalidEncoding"))]
             .into_iter()
             .collect();
         let mapping = simple_mapping(&document, &font, FontKind::TrueType, Route::Raw, None)?;
         assert!(mapping.names.iter().all(Option::is_none));
         assert!(mapping.unicode.iter().all(Option::is_none));
-        assert!(simple_mapping(&document, &font, FontKind::TrueType, Route::Named, None).is_err());
+        // An unknown encoding name is a reported repair: StandardEncoding applies.
+        let mapping = simple_mapping(&document, &font, FontKind::TrueType, Route::Named, None)?;
+        assert_eq!(mapping.unicode[65].as_deref(), Some("A"));
+        assert!(
+            document
+                .diagnostics()
+                .iter()
+                .any(|d| d.repair() == Some(crate::repairs::ENCODING_NAME))
+        );
+        let strict = open(pagura_core::Recovery::Strict)?;
+        let error = simple_mapping(&strict, &font, FontKind::TrueType, Route::Named, None)
+            .err()
+            .map(|error| error.repair);
+        assert_eq!(error, Some(Some(crate::repairs::ENCODING_NAME)));
         let mapping = simple_mapping(
             &document,
             &Dictionary::new(),

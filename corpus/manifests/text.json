@@ -5017,6 +5017,68 @@
       "driver": "text-repair"
     },
     {
+      "id": "text/repair-encoding-name",
+      "kind": "vector",
+      "description": "Strict rejects an encoding name Table 112 does not define; repair mode uses the font's default encoding",
+      "requirements": [
+        "text-simple-encoding"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-encoding-name.input",
+          "sha256": "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-encoding-name.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-encoding-name.out",
+          "sha256": "9a823d53c73f15c31ad4e2268c54e237c5e425c48178ec91a99574f9deab7e77"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-encoding-name.pdf",
+          "sha256": "a95ab242f94485424b9ce902f8f4a8d841754841a2c684501a6753feb37fd4c8"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-encoding-name.repair",
+          "sha256": "0331cb2f2b4706496fc95f8d12cd490943e5673666189e834ef2888a9cdbf851"
+        }
+      },
+      "driver": "text-repair"
+    },
+    {
+      "id": "text/repair-encoding-base",
+      "kind": "vector",
+      "description": "Strict rejects an encoding name Table 112 does not define; repair mode uses the font's default encoding",
+      "requirements": [
+        "text-simple-encoding"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-encoding-base.input",
+          "sha256": "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-encoding-base.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-encoding-base.out",
+          "sha256": "a6c1506d2af21fa75090c4e0ba7e5cf8eaec376bf3830daaeb28db685e32c46b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-encoding-base.pdf",
+          "sha256": "184c3056dcf9b38946685424d934cfe8cf8c6474ec6aef2f871fa41278098019"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-encoding-base.repair",
+          "sha256": "0331cb2f2b4706496fc95f8d12cd490943e5673666189e834ef2888a9cdbf851"
+        }
+      },
+      "driver": "text-repair"
+    },
+    {
       "id": "text/strict-substitution-simple",
       "kind": "vector",
       "description": "Strict rejects malformed Unicode before returning a substitute; Repair keeps its outline, PDF width and fallback Unicode",

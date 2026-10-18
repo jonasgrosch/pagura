@@ -1306,6 +1306,16 @@ def tolerance_cases():
         files = {".pdf": embedded_document(program, stream_extra=b"/Length1 %d" % len(program), first=65, last=last, widths=widths),
                  ".input": b"ABCD", ".out": expected(rows), ".repair": b"font.widths-length\n", ".matrix": expected([(.001,0,0,.001,0,0)])}
         yield Vector("repair-widths-"+name, files, ("text-simple-widths",), "Strict rejects a Widths length that disagrees with FirstChar and LastChar; repair mode uses MissingWidth past the array", {"driver": "text-repair"})
+    # Table 112 names only three predefined encodings. Another name, directly or
+    # as BaseEncoding, falls back to the default (StandardEncoding for a
+    # nonsymbolic TrueType font, 9.6.5.4); Differences still apply.
+    for name, encoding, rows in [
+        ("name", b"/StandardEncoding", [row(65+i, i+1, chr(65+i)) for i in range(4)]),
+        ("base", b"<< /BaseEncoding /Identity-H /Differences [66 /C] >>", [row(65, 1, "A"), row(66, 3, "C"), row(67, 3, "C"), row(68, 4, "D")]),
+    ]:
+        files = {".pdf": embedded_document(program, stream_extra=b"/Length1 %d" % len(program), encoding=encoding),
+                 ".input": b"ABCD", ".out": expected(rows), ".repair": b"font.encoding-name\n", ".matrix": expected([(.001,0,0,.001,0,0)])}
+        yield Vector("repair-encoding-"+name, files, ("text-simple-encoding",), "Strict rejects an encoding name Table 112 does not define; repair mode uses the font's default encoding", {"driver": "text-repair"})
 
 
 def tolerance_paint_cases():
