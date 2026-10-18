@@ -3,6 +3,8 @@
 /// The mathematical result of a signature verification, separate from malformed
 /// inputs, resource errors, algorithm policy, signer trust and PDF revision
 /// coverage (ADR 0015). A successful `Result` must still have its outcome checked.
+/// A signature either satisfies the verification equation or not, so the
+/// enum is exhaustive.
 ///
 /// Using `?` alone does not consume this outcome:
 ///

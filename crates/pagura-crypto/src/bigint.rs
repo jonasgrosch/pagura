@@ -14,7 +14,7 @@ pub const MAX_MODULUS_BITS: usize = 16_384;
 
 /// An odd modulus with reusable Montgomery constants, for public data only.
 #[derive(Clone, Debug)]
-pub struct Modulus {
+pub(crate) struct Modulus {
     limbs: Vec<u64>,
     inverse: u64,
     r_squared: Vec<u64>,
@@ -28,7 +28,7 @@ impl Modulus {
     /// # Errors
     /// Returns `Syntax` for a noncanonical, even or trivial modulus, or `Limit`
     /// when it exceeds `max_bits` or [`MAX_MODULUS_BITS`].
-    pub fn new(bytes: &[u8], max_bits: usize) -> Result<Self> {
+    pub(crate) fn new(bytes: &[u8], max_bits: usize) -> Result<Self> {
         let bits = bit_length(bytes, max_bits.min(MAX_MODULUS_BITS))?;
         if bits < 2 || bytes.last().is_none_or(|byte| byte & 1 == 0) {
             return Err(Error::syntax("modulus must be odd and greater than one")
@@ -55,12 +55,12 @@ impl Modulus {
     }
 
     /// The exact bit length of the modulus.
-    pub const fn bits(&self) -> usize {
+    pub(crate) const fn bits(&self) -> usize {
         self.bits
     }
 
     /// Its unsigned big-endian byte width.
-    pub const fn bytes(&self) -> usize {
+    pub(crate) const fn bytes(&self) -> usize {
         self.bits.div_ceil(8)
     }
 
@@ -75,7 +75,7 @@ impl Modulus {
     /// # Errors
     /// Returns `Syntax` for an out-of-range base or noncanonical exponent, or
     /// `Limit` for an excessive exponent size or multiplication work.
-    pub fn pow(
+    pub(crate) fn pow(
         &self,
         base: &[u8],
         exponent: &[u8],

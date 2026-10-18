@@ -6,19 +6,19 @@ use super::{Parameters, Uint};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Point {
-    pub x: Uint,
-    pub y: Uint,
-    pub z: Uint,
+    pub(crate) x: Uint,
+    pub(crate) y: Uint,
+    pub(crate) z: Uint,
 }
 
 impl Point {
-    pub const IDENTITY: Self = Self {
+    pub(crate) const IDENTITY: Self = Self {
         x: Uint::ZERO,
         y: Uint::ONE,
         z: Uint::ZERO,
     };
 
-    pub fn affine(x: Uint, y: Uint, parameters: &Parameters) -> Self {
+    pub(crate) fn affine(x: Uint, y: Uint, parameters: &Parameters) -> Self {
         Self {
             x,
             y,
@@ -26,7 +26,7 @@ impl Point {
         }
     }
 
-    pub fn double(self, parameters: &Parameters) -> Self {
+    pub(crate) fn double(self, parameters: &Parameters) -> Self {
         if self.z.is_zero() || self.y.is_zero() {
             return Self::IDENTITY;
         }
@@ -49,7 +49,7 @@ impl Point {
         Self { x, y, z }
     }
 
-    pub fn add(self, other: Self, parameters: &Parameters) -> Self {
+    pub(crate) fn add(self, other: Self, parameters: &Parameters) -> Self {
         if self.z.is_zero() {
             return other;
         }
@@ -84,7 +84,7 @@ impl Point {
         Self { x, y, z }
     }
 
-    pub fn affine_coordinates(self, parameters: &Parameters) -> Option<(Uint, Uint)> {
+    pub(crate) fn affine_coordinates(self, parameters: &Parameters) -> Option<(Uint, Uint)> {
         let f = &parameters.field;
         let inverse = f.inverse(self.z)?;
         let inverse_squared = f.square(inverse);
@@ -95,7 +95,13 @@ impl Point {
     }
 
     /// Shamir's trick uses one doubling per scalar bit, for public scalars.
-    pub fn double_scalar(self, u: Uint, v: Uint, parameters: &Parameters, bits: usize) -> Self {
+    pub(crate) fn double_scalar(
+        self,
+        u: Uint,
+        v: Uint,
+        parameters: &Parameters,
+        bits: usize,
+    ) -> Self {
         let generator = parameters.generator();
         let table = [
             Self::IDENTITY,

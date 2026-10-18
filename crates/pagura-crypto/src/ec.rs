@@ -11,8 +11,10 @@ pub(super) use field::Uint;
 pub(super) use parameters::Parameters;
 pub(super) use point::Point;
 
-/// NIST prime curves from SP 800-186 sections 3.2.1.3–3.2.1.5.
+/// NIST prime curves from SP 800-186 sections 3.2.1.3–3.2.1.5. SP 800-186
+/// defines more curves, so further variants may be added.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Curve {
     /// The 256-bit prime curve, also called secp256r1.
     P256,

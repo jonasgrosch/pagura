@@ -17,7 +17,9 @@ mod pss;
 pub use pss::PssParameters;
 
 /// Hash algorithms supported by RSA verification (RFC 8017 Appendix B.1).
+/// RFC 8017 lists more, so further variants may be added.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum HashAlgorithm {
     /// SHA-1, weak; available only for historical mathematical verification.
     Sha1,
@@ -110,6 +112,7 @@ impl HashAlgorithm {
 /// [`MAX_MODULUS_BITS`]. Work is measured in RSA limb products; ECDSA's fixed
 /// per-call bounds do not consume this budget.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub struct RsaLimits {
     /// Maximum modulus size in bits (default 16,384).
     pub modulus_bits: usize,
