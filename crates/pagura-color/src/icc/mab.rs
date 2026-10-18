@@ -1,6 +1,7 @@
 //! Forward multi-stage transforms (ICC.1:2010 10.10, Tables 42–43).
 
-use super::{Budget, clut::Clut, curves::Curve, fixed, format::zeros, slice, u32_at};
+use super::{At, Budget, clut::Clut, curves::Curve, format::zeros};
+use pagura_core::bytes::Cursor;
 use pagura_core::{Error, Result};
 
 #[derive(Debug, Clone)]
@@ -12,18 +13,19 @@ pub(super) struct Mab {
     b: Vec<Curve>,
 }
 impl Mab {
-    pub(super) fn parse(data: &[u8], inputs: usize, budget: &mut Budget) -> Result<Self> {
-        zeros(slice(data, 4, 4)?)?;
-        let channels = slice(data, 8, 4)?;
+    pub(super) fn parse(data: &Cursor<'_>, inputs: usize, budget: &mut Budget) -> Result<Self> {
+        zeros(data, 4, 4)?;
+        let channels = data.bytes(8, 4)?;
         if usize::from(channels[0]) != inputs || channels[1] != 3 || channels[2..] != [0, 0] {
             return Err(Error::syntax("invalid ICC mAB channels or padding"));
         }
+        let length = data.data().len();
+        let mut fields = data.cursor_at(12)?;
         let mut offsets = [0; 5];
-        for (i, offset) in offsets.iter_mut().enumerate() {
-            *offset = usize::try_from(u32_at(data, 12 + i * 4)?)
+        for offset in &mut offsets {
+            *offset = usize::try_from(fields.u32()?)
                 .map_err(|_| Error::limit("ICC mAB offset overflow"))?;
-            if *offset != 0 && (*offset < 32 || !offset.is_multiple_of(4) || *offset >= data.len())
-            {
+            if *offset != 0 && (*offset < 32 || !offset.is_multiple_of(4) || *offset >= length) {
                 return Err(Error::syntax("invalid ICC mAB element offset"));
             }
         }
@@ -35,44 +37,47 @@ impl Mab {
         {
             return Err(Error::syntax("invalid ICC mAB element combination"));
         }
-        let element = |offset| -> Result<&[u8]> {
+        let element = |offset| -> Result<Cursor<'_>> {
             let end = offsets
                 .iter()
                 .copied()
                 .filter(|&v| v > offset)
                 .min()
-                .unwrap_or(data.len());
-            slice(data, offset, end - offset)
+                .unwrap_or(length);
+            data.sub(offset, end - offset)
         };
-        let b = curves(element(b)?, 3, budget)?;
+        let b = curves(&element(b)?, 3, budget)?;
         let a = if a == 0 {
             Vec::new()
         } else {
-            curves(element(a)?, inputs, budget)?
+            curves(&element(a)?, inputs, budget)?
         };
         let m = if m == 0 {
             Vec::new()
         } else {
-            curves(element(m)?, 3, budget)?
+            curves(&element(m)?, 3, budget)?
         };
         let clut = if clut == 0 {
             None
         } else {
-            Some(parse_clut(element(clut)?, inputs, budget)?)
+            Some(parse_clut(&element(clut)?, inputs, budget)?)
         };
         let matrix = if matrix == 0 {
             None
         } else {
-            let bytes = element(matrix)?;
-            if bytes.len() != 48 {
-                return Err(Error::syntax("invalid ICC mAB matrix extent"));
+            let mut bytes = element(matrix)?;
+            if bytes.data().len() != 48 {
+                return Err(bytes.error("invalid ICC mAB matrix extent"));
             }
+            // Nine coefficients row by row, then the three offsets (10.10.3).
             let mut values = [[0.0; 4]; 3];
-            for (row, values) in values.iter_mut().enumerate() {
-                for (col, v) in values.iter_mut().take(3).enumerate() {
-                    *v = fixed(bytes, (row * 3 + col) * 4)?;
+            for row in &mut values {
+                for v in row.iter_mut().take(3) {
+                    *v = bytes.fixed()?;
                 }
-                values[3] = fixed(bytes, 36 + row * 4)?;
+            }
+            for row in &mut values {
+                row[3] = bytes.fixed()?;
             }
             Some(values)
         };
@@ -116,48 +121,50 @@ fn apply(curves: &[Curve], values: &mut [f64; 4]) -> Result<()> {
     }
     Ok(())
 }
-fn curves(data: &[u8], count: usize, budget: &mut Budget) -> Result<Vec<Curve>> {
+fn curves(data: &Cursor<'_>, count: usize, budget: &mut Budget) -> Result<Vec<Curve>> {
+    let length = data.data().len();
     let mut curves = Vec::with_capacity(count);
     let mut at = 0;
     for i in 0..count {
-        let rest = data
-            .get(at..)
-            .ok_or(Error::syntax("truncated ICC mAB curve"))?;
-        let length = Curve::extent(rest)?;
-        curves.push(Curve::parse(slice(rest, 0, length)?, budget)?);
+        let curve = data.cursor_at(at)?;
+        let extent = Curve::extent(&curve)?;
+        curves.push(Curve::parse(&data.sub(at, extent)?, budget)?);
         at = at
-            .checked_add(length)
+            .checked_add(extent)
             .ok_or(Error::limit("ICC mAB curve offset overflow"))?;
         // The final tag's external alignment bytes are excluded from its
         // declared size (7.3.5). Internal element boundaries remain aligned.
-        if i + 1 == count && at == data.len() {
+        if i + 1 == count && at == length {
             break;
         }
         let padding = (4 - at % 4) % 4;
-        zeros(slice(data, at, padding)?)?;
+        zeros(data, at, padding)?;
         at += padding;
     }
-    if at != data.len() {
+    if at != length {
         return Err(Error::syntax("invalid ICC mAB curve block extent"));
     }
     Ok(curves)
 }
-fn parse_clut(data: &[u8], inputs: usize, budget: &mut Budget) -> Result<Clut> {
-    let grids = slice(data, 0, 16)?;
-    zeros(&grids[inputs..])?;
-    zeros(slice(data, 17, 3)?)?;
-    let precision = usize::from(slice(data, 16, 1)?[0]);
-    let rest = data
-        .get(20..)
-        .ok_or(Error::syntax("truncated ICC mAB CLUT"))?;
-    let clut = Clut::parse(rest, &grids[..inputs], precision, budget)?;
+fn parse_clut(data: &Cursor<'_>, inputs: usize, budget: &mut Budget) -> Result<Clut> {
+    let length = data.data().len();
+    let grids = data.bytes(0, 16)?;
+    zeros(data, inputs, 16 - inputs)?;
+    zeros(data, 17, 3)?;
+    let precision = usize::from(data.u8_at(16)?);
+    let clut = Clut::parse(
+        &data.cursor_at(20)?,
+        grids.get(..inputs).unwrap_or_default(),
+        precision,
+        budget,
+    )?;
     let end = 20 + clut.encoded_len(precision);
-    if end == data.len() {
+    if end == length {
         return Ok(clut);
     }
     let padding = (4 - end % 4) % 4;
-    zeros(slice(data, end, padding)?)?;
-    if end + padding != data.len() {
+    zeros(data, end, padding)?;
+    if end + padding != length {
         return Err(Error::syntax("invalid ICC mAB CLUT extent"));
     }
     Ok(clut)

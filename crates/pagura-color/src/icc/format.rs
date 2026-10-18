@@ -1,20 +1,34 @@
 //! Profile admission: ICC.1:2010 7.2–7.4, 8.2–8.7 and 9.2.15/34.
 
-use super::{Budget, D50, slice, u16_at, u32_at, xyz};
-use pagura_core::{Error, Limits, Result};
+use super::{At, Budget, D50, xyz};
+use pagura_core::bytes::Cursor;
+use pagura_core::{Error, Result};
 use std::collections::BTreeMap;
 
-pub(super) type Tags<'a> = BTreeMap<[u8; 4], &'a [u8]>;
+/// Tag bodies by signature, each a cursor over exactly its declared extent.
+pub(super) type Tags<'a> = BTreeMap<[u8; 4], Cursor<'a>>;
 
-pub(super) fn header(data: &[u8], components: usize, limits: Limits) -> Result<Tags<'_>> {
-    if usize::try_from(u32_at(data, 0)?).ok() != Some(data.len()) || slice(data, 36, 4)? != b"acsp"
+/// Profile header size before the tag count (7.2).
+const HEADER: usize = 128;
+/// One tag table entry: signature, offset and size (7.3).
+const TAG_ENTRY: usize = 12;
+/// Estimated working storage of one parsed tag table entry.
+pub(super) const TAG_BYTES: usize = 96;
+
+pub(super) fn header<'a>(
+    profile: &Cursor<'a>,
+    components: usize,
+    budget: &mut Budget,
+) -> Result<Tags<'a>> {
+    let length = profile.data().len();
+    if usize::try_from(profile.u32_at(0)?).ok() != Some(length) || profile.bytes(36, 4)? != b"acsp"
     {
         return Err(Error::syntax("invalid ICC profile header or size"));
     }
-    if !matches!(slice(data, 12, 4)?, b"scnr" | b"mntr" | b"prtr" | b"spac") {
+    if !matches!(profile.bytes(12, 4)?, b"scnr" | b"mntr" | b"prtr" | b"spac") {
         return Err(Error::syntax("invalid PDF ICC profile class"));
     }
-    let actual = match slice(data, 16, 4)? {
+    let actual = match profile.bytes(16, 4)? {
         b"GRAY" => 1,
         b"RGB " | b"Lab " => 3,
         b"CMYK" => 4,
@@ -23,58 +37,62 @@ pub(super) fn header(data: &[u8], components: usize, limits: Limits) -> Result<T
     if actual != components {
         return Err(Error::syntax("ICC profile N differs from header"));
     }
-    if !matches!(slice(data, 20, 4)?, b"XYZ " | b"Lab ") {
+    if !matches!(profile.bytes(20, 4)?, b"XYZ " | b"Lab ") {
         return Err(Error::syntax("invalid ICC PCS signature"));
     }
-    let version = slice(data, 8, 4)?;
+    let version = profile.bytes(8, 4)?;
     if version[..2].iter().any(|b| b >> 4 > 9 || b & 15 > 9) || version[2..] != [0, 0] {
         return Err(Error::syntax("invalid ICC version encoding"));
     }
+    let v4 = version[0] == 4;
     // ICC.1:2010 validates v4 metadata. Legacy v2 metadata conventions are not
     // inferred from v4 rules; its transforms retain their explicit encodings.
-    if version[0] == 4 {
-        validate_v4(data)?;
+    if v4 {
+        validate_v4(profile)?;
     }
+    let mut table = profile.cursor_at(HEADER)?;
     let count =
-        usize::try_from(u32_at(data, 128)?).map_err(|_| Error::limit("ICC tag count overflow"))?;
-    if count > limits.value_nodes || count > limits.decoded_bytes / 96 {
-        return Err(Error::limit("ICC tag budget exceeded"));
-    }
+        usize::try_from(table.u32()?).map_err(|_| Error::limit("ICC tag count overflow"))?;
+    budget.work.charge(count)?;
+    budget.bytes.charge_product(count, TAG_BYTES)?;
     let end = count
-        .checked_mul(12)
-        .and_then(|v| v.checked_add(132))
+        .checked_mul(TAG_ENTRY)
+        .and_then(|v| v.checked_add(HEADER + 4))
         .ok_or(Error::limit("ICC tag table overflow"))?;
-    slice(data, 0, end)?;
+    let mut entries = table.take_cursor(end - HEADER - 4)?;
     let mut tags = Tags::new();
-    let mut extents = Vec::with_capacity(count);
-    for i in 0..count {
-        let entry = 132 + i * 12;
-        let name = slice(data, entry, 4)?
-            .try_into()
-            .map_err(|_| Error::syntax("invalid ICC tag signature"))?;
-        let offset = usize::try_from(u32_at(data, entry + 4)?)
-            .map_err(|_| Error::limit("ICC offset overflow"))?;
-        let length = usize::try_from(u32_at(data, entry + 8)?)
-            .map_err(|_| Error::limit("ICC tag size overflow"))?;
+    let mut extents = Vec::new();
+    extents
+        .try_reserve_exact(count)
+        .map_err(|_| Error::limit("ICC tag table allocation failed"))?;
+    for _ in 0..count {
+        let name = entries.take_array::<4>()?;
+        let offset =
+            usize::try_from(entries.u32()?).map_err(|_| Error::limit("ICC offset overflow"))?;
+        let length =
+            usize::try_from(entries.u32()?).map_err(|_| Error::limit("ICC tag size overflow"))?;
         if offset < end || !offset.is_multiple_of(4) || length < 8 {
-            return Err(Error::syntax("invalid ICC tag extent"));
+            return Err(Error::syntax("invalid ICC tag extent").at(entries.position()));
         }
-        if tags.insert(name, slice(data, offset, length)?).is_some() {
-            return Err(Error::syntax("duplicate ICC tag"));
+        if tags.insert(name, profile.sub(offset, length)?).is_some() {
+            return Err(Error::syntax("duplicate ICC tag").at(entries.position()));
         }
         extents.push((offset, length));
     }
-    validate_extents(data, end, &mut extents, version[0] == 4)?;
+    validate_extents(profile, end, &mut extents, v4)?;
     Ok(tags)
 }
 
-fn validate_v4(data: &[u8]) -> Result<()> {
-    let [year, month, day, hour, minute, second] = [24, 26, 28, 30, 32, 34]
-        .map(|at| u16_at(data, at))
-        .into_iter()
-        .collect::<Result<Vec<_>>>()?
-        .try_into()
-        .map_err(|_| Error::syntax("invalid ICC date"))?;
+fn validate_v4(profile: &Cursor<'_>) -> Result<()> {
+    let mut date = profile.cursor_at(24)?;
+    let [year, month, day, hour, minute, second] = [
+        date.u16()?,
+        date.u16()?,
+        date.u16()?,
+        date.u16()?,
+        date.u16()?,
+        date.u16()?,
+    ];
     let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
     let days = match month {
         2 => {
@@ -91,25 +109,27 @@ fn validate_v4(data: &[u8]) -> Result<()> {
     if year == 0 || day == 0 || day > days || hour > 23 || minute > 59 || second > 59 {
         return Err(Error::syntax("invalid ICC creation date"));
     }
-    if u32_at(data, 60)? & !15 != 0 || u32_at(data, 64)? > 3 {
+    if profile.u32_at(60)? & !15 != 0 || profile.u32_at(64)? > 3 {
         return Err(Error::syntax("invalid ICC attributes or rendering intent"));
     }
-    for (i, white) in [63190, 65536, 54061].into_iter().enumerate() {
-        if u32_at(data, 68 + 4 * i)? != white {
+    let mut illuminant = profile.cursor_at(68)?;
+    for white in [63190, 65536, 54061] {
+        if illuminant.u32()? != white {
             return Err(Error::syntax("ICC PCS illuminant is not D50"));
         }
     }
-    zeros(slice(data, 100, 28)?)?;
-    let id = slice(data, 84, 16)?;
+    zeros(profile, 100, 28)?;
+    let id = profile.bytes(84, 16)?;
     if id.iter().any(|&v| v != 0) {
+        let length = profile.data().len();
         let mut digest = pagura_crypto::Md5::default();
-        digest.update(slice(data, 0, 44)?);
+        digest.update(profile.bytes(0, 44)?);
         digest.update(&[0; 4]);
-        digest.update(slice(data, 48, 16)?);
+        digest.update(profile.bytes(48, 16)?);
         digest.update(&[0; 4]);
-        digest.update(slice(data, 68, 16)?);
+        digest.update(profile.bytes(68, 16)?);
         digest.update(&[0; 16]);
-        digest.update(slice(data, 100, data.len() - 100)?);
+        digest.update(profile.bytes(100, length - 100)?);
         if digest.finalize() != id {
             return Err(Error::syntax("ICC profile ID does not match profile data"));
         }
@@ -118,7 +138,7 @@ fn validate_v4(data: &[u8]) -> Result<()> {
 }
 
 fn validate_extents(
-    data: &[u8],
+    profile: &Cursor<'_>,
     mut cursor: usize,
     extents: &mut Vec<(usize, usize)>,
     tight: bool,
@@ -134,44 +154,51 @@ fn validate_extents(
             .ok_or(Error::limit("ICC extent overflow"))?;
         if tight {
             let padding = (4 - cursor % 4) % 4;
-            zeros(slice(data, cursor, padding)?)?;
+            zeros(profile, cursor, padding)?;
             cursor += padding;
         }
     }
-    if tight && cursor != data.len() {
+    if tight && cursor != profile.data().len() {
         return Err(Error::syntax("ICC profile has trailing tag data"));
     }
     Ok(())
 }
 
-pub(super) fn zeros(data: &[u8]) -> Result<()> {
-    if data.iter().any(|&v| v != 0) {
-        return Err(Error::syntax("nonzero ICC reserved or padding bytes"));
+/// Requires `length` reserved or padding bytes at `offset` to be zero.
+pub(super) fn zeros(data: &Cursor<'_>, offset: usize, length: usize) -> Result<()> {
+    let bytes = data.sub(offset, length)?;
+    if bytes.data().iter().any(|&v| v != 0) {
+        return Err(bytes.error("nonzero ICC reserved or padding bytes"));
     }
     Ok(())
 }
 
-pub(super) fn required<'a>(tags: &Tags<'a>, name: &[u8]) -> Result<&'a [u8]> {
+pub(super) fn required<'t, 'a>(tags: &'t Tags<'a>, name: &[u8; 4]) -> Result<&'t Cursor<'a>> {
     tags.get(name)
-        .copied()
         .ok_or(Error::syntax("missing required ICC tag"))
 }
 
-pub(super) fn model_tags(data: &[u8], tags: &Tags<'_>, budget: &mut Budget) -> Result<[f64; 3]> {
+pub(super) fn model_tags(
+    profile: &Cursor<'_>,
+    tags: &Tags<'_>,
+    budget: &mut Budget,
+) -> Result<[f64; 3]> {
     let white = xyz(required(tags, b"wtpt")?)?;
-    if data[8] == 4 {
+    let class = profile.bytes(12, 4)?;
+    let space = profile.bytes(16, 4)?;
+    if profile.u8_at(8)? == 4 {
         required(tags, b"desc")?;
         required(tags, b"cprt")?;
-        if slice(data, 12, 4)? == b"mntr" && white != D50.map(|v| (v * 65536.0).round() / 65536.0) {
+        if class == b"mntr" && white != D50.map(|v| (v * 65536.0).round() / 65536.0) {
             return Err(Error::syntax("ICC display media white is not PCS D50"));
         }
-        let gray = tags.contains_key(b"kTRC") && slice(data, 16, 4)? == b"GRAY";
-        let matrix = slice(data, 16, 4)? == b"RGB "
-            && slice(data, 20, 4)? == b"XYZ "
+        let gray = tags.contains_key(b"kTRC") && space == b"GRAY";
+        let matrix = space == b"RGB "
+            && profile.bytes(20, 4)? == b"XYZ "
             && [b"rXYZ", b"gXYZ", b"bXYZ", b"rTRC", b"gTRC", b"bTRC"]
                 .iter()
                 .all(|v| tags.contains_key(*v));
-        match slice(data, 12, 4)? {
+        match class {
             b"scnr" if !gray && !matrix => {
                 required(tags, b"A2B0")?;
             }
@@ -194,18 +221,19 @@ pub(super) fn model_tags(data: &[u8], tags: &Tags<'_>, budget: &mut Budget) -> R
         }
     }
     if let Some(chad) = tags.get(b"chad") {
-        budget.charge(9)?;
-        if slice(chad, 0, 4)? != b"sf32" || chad.len() != 44 {
+        budget.values(9)?;
+        if chad.bytes(0, 4)? != b"sf32" || chad.data().len() != 44 {
             return Err(Error::syntax(
                 "invalid ICC chromatic adaptation type or extent",
             ));
         }
-        zeros(slice(chad, 4, 4)?)?;
+        zeros(chad, 4, 4)?;
         // Fixed coefficients are integer multiples of 2^-16. A determinant
         // of three i32 factors fits i128, avoiding cancellation near singularity.
+        let mut values = chad.cursor_at(8)?;
         let mut m = [0_i128; 9];
-        for (i, v) in m.iter_mut().enumerate() {
-            *v = i128::from(i32::from_be_bytes(u32_at(chad, 8 + 4 * i)?.to_be_bytes()));
+        for v in &mut m {
+            *v = i128::from(values.i32()?);
         }
         let determinant = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6])
             + m[2] * (m[3] * m[7] - m[4] * m[6]);

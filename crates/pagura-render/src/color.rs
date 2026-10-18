@@ -206,7 +206,7 @@ impl Space {
     /// Map Indexed lookup bytes to the base space's source range (8.6.6.3).
     pub(crate) fn decode_lookup(&self, bytes: &[u8]) -> Vec<f64> {
         match self {
-            Self::Cie(cie) => cie.decode_lookup(bytes),
+            Self::Cie(cie) => crate::cie::decode_lookup(cie, bytes),
             Self::Icc { range, .. } => bytes
                 .iter()
                 .zip(range)
@@ -457,7 +457,7 @@ fn array_space(
         (b"ICCBased", [_, profile]) => icc_space(document, resources, profile, depth),
         (b"CalGray" | b"CalRGB" | b"Lab", [_, parameters]) => {
             let parameters = document.resolve_dictionary(parameters)?;
-            Ok(Space::Cie(Arc::new(crate::cie::Cie::parse(
+            Ok(Space::Cie(Arc::new(crate::cie::parse(
                 document,
                 family.as_bytes(),
                 parameters,
