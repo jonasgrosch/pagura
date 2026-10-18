@@ -31,7 +31,7 @@ fn curve(value: &str) -> Curve {
 
 fn python(script: &str, arguments: &[&str]) -> String {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("src/ecdsa/tests")
+        .join("../../tools/fixturegen")
         .join(script);
     let output = Command::new("python3")
         .arg(path)
@@ -49,7 +49,7 @@ fn python(script: &str, arguments: &[&str]) -> String {
 
 #[test]
 fn modular_arithmetic_matches_independent_python_integers() {
-    let output = python("oracle.py", &["arithmetic"]);
+    let output = python("ecdsa_oracle.py", &["arithmetic"]);
     let mut count = 0;
     for line in output.lines() {
         let fields: Vec<_> = line.split('\t').collect();
@@ -102,7 +102,7 @@ fn verify_vectors(output: &str) -> usize {
         let curve = curve(fields[2]);
         let key = PublicKey::from_sec1(curve, &hex(fields[4]));
         let actual = key.and_then(|key| key.verify_der(&hex(fields[3]), &hex(fields[5])));
-        let accepted = matches!(actual, Ok(true));
+        let accepted = matches!(actual, Ok(Verification::Valid));
         let expected = fields[6] == "1";
         let entry = counts.entry((fields[0], fields[2])).or_default();
         entry.0 += usize::from(accepted == expected);
@@ -126,14 +126,14 @@ fn verify_vectors(output: &str) -> usize {
 #[test]
 fn random_signatures_match_independent_affine_python_oracle() {
     assert_eq!(
-        verify_vectors(&python("oracle.py", &["vectors"])),
+        verify_vectors(&python("ecdsa_oracle.py", &["vectors"])),
         3 * (4 * 64 + 2)
     );
 }
 
 #[test]
 fn complete_cached_nist_and_wycheproof_signature_suites() {
-    let output = python("vectors.py", &[]);
+    let output = python("ecdsa_vectors.py", &[]);
     let count = verify_vectors(&output);
     eprintln!(
         "Cached ECDSA reference vectors: {count} (cache is optional; independent oracles always run)"
@@ -294,7 +294,12 @@ fn strict_der_rejects_lengths_types_signs_padding_ranges_and_trailing_bytes() {
             key.verify_digest(&[], &signature).unwrap_err().kind,
             pagura_core::ErrorKind::InvalidArgument
         );
-        assert!(!key.verify_digest(&[1], &signature).unwrap());
+        assert_eq!(
+            key.verify_digest(&[1], &signature).unwrap(),
+            Verification::Invalid
+        );
+        assert_eq!(key.verify_der(&[1], &valid).unwrap(), Verification::Invalid);
+        assert!(key.verify_der(&[1], &hex("3006020100020101")).is_err());
         let other = if curve == Curve::P256 {
             Curve::P384
         } else {
@@ -337,6 +342,9 @@ fn generator_key_verifies_its_own_public_equation() {
         let s = parameters.scalar.add(r, Uint::ONE);
         let signature = Signature { curve, r, s };
         let key = PublicKey::from_sec1(curve, &generator_key(curve, true)).unwrap();
-        assert!(key.verify_digest(&[1], &signature).unwrap());
+        assert_eq!(
+            key.verify_digest(&[1], &signature).unwrap(),
+            Verification::Valid
+        );
     }
 }

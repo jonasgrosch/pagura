@@ -41,6 +41,14 @@ pub struct Limits {
     pub mask_sources: usize,
     /// Maximum number of painted marks in one page's display list.
     pub display_commands: usize,
+    /// Maximum RSA modulus bit length, also bounded by the implementation ceiling.
+    pub rsa_modulus_bits: usize,
+    /// Maximum RSA public exponent bit length.
+    pub rsa_exponent_bits: usize,
+    /// Maximum radix-2^64 limb products in one RSA verification, including
+    /// Montgomery reduction. Key setup is bounded by `rsa_modulus_bits`.
+    /// The caller must separately bound the number of verifications.
+    pub rsa_work: usize,
 }
 
 impl Default for Limits {
@@ -63,6 +71,9 @@ impl Default for Limits {
             raster_work: 2_000_000_000,
             mask_sources: 256,
             display_commands: 10_000_000,
+            rsa_modulus_bits: 16_384,
+            rsa_exponent_bits: 256,
+            rsa_work: 64_000_000,
         }
     }
 }

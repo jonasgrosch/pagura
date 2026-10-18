@@ -10,7 +10,10 @@ import io
 import os
 from pathlib import Path
 import zipfile
-from oracle import CURVES, emit, signature
+if __package__:
+    from .ecdsa_oracle import CURVES, emit, signature
+else:
+    from ecdsa_oracle import CURVES, emit, signature
 
 ROOT = Path(os.environ.get('PAGURA_REFERENCES_DIR', '~/.cache/pagura-references')).expanduser() / 'signatures'
 NAMES = {'P-256': 'P256', 'P-384': 'P384', 'P-521': 'P521',
