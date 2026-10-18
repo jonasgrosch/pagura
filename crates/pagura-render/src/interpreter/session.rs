@@ -100,6 +100,7 @@ impl<'a> Session<'a> {
 }
 
 /// A content stream interpreted inside another one.
+#[derive(Clone, Copy)]
 pub(super) enum Child<'k> {
     /// A form XObject (8.10.1) in the parent's graphics state, clipped to its
     /// BBox. A transparency group (11.6.6) also starts with opaque Normal

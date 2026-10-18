@@ -62,7 +62,7 @@ impl Compiler<'_> {
             }
             _ => None,
         };
-        let pattern = self.pattern(definition, color)?;
+        let pattern = self.pattern(definition, color.as_ref())?;
         if let Color::Pattern { selected, .. } = self.color_mut(target) {
             *selected = Some(pattern);
         }
@@ -78,7 +78,7 @@ impl Compiler<'_> {
 
     /// The pattern a definition describes. A coloured pattern selected
     /// again in this context reuses its interpreted cell.
-    fn pattern(&mut self, definition: Definition, color: Option<Color>) -> Result<Arc<Pattern>> {
+    fn pattern(&mut self, definition: Definition, color: Option<&Color>) -> Result<Arc<Pattern>> {
         let reuse = definition.object.filter(|_| color.is_none());
         if let Some(pattern) = reuse.and_then(|id| self.patterns.get(&id)) {
             return Ok(Arc::clone(pattern));
@@ -94,9 +94,7 @@ impl Compiler<'_> {
                 }
                 Kind::Shading(shading)
             }
-            DefinitionKind::Tiling(tiling) => {
-                Kind::Tiling(self.tiling_cell(tiling, color.as_ref())?)
-            }
+            DefinitionKind::Tiling(tiling) => Kind::Tiling(self.tiling_cell(tiling, color)?),
         };
         let pattern = Arc::new(Pattern {
             kind,

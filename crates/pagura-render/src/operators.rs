@@ -333,7 +333,77 @@ impl Operator {
     ///
     /// # Errors
     /// `Syntax` for a wrong operand count or type.
+    /// Checks the operands (Annex A) and decodes the operation.
+    ///
+    /// # Errors
+    /// `Syntax` for a wrong operand count or type.
     pub(crate) fn decode(self, v: &[Value]) -> Result<Operation<'_>> {
+        if matches!(
+            self,
+            Self::MoveTo
+                | Self::LineTo
+                | Self::CurveTo
+                | Self::CurveToInitial
+                | Self::CurveToFinal
+                | Self::ClosePath
+                | Self::Rectangle
+                | Self::Stroke
+                | Self::CloseStroke
+                | Self::Fill
+                | Self::FillObsolete
+                | Self::FillEvenOdd
+                | Self::FillStroke
+                | Self::FillStrokeEvenOdd
+                | Self::CloseFillStroke
+                | Self::CloseFillStrokeEvenOdd
+                | Self::EndPath
+                | Self::Clip
+                | Self::ClipEvenOdd
+        ) {
+            self.decode_path(v)
+        } else if matches!(
+            self,
+            Self::StrokeSpace
+                | Self::FillSpace
+                | Self::StrokeGray
+                | Self::FillGray
+                | Self::StrokeRgb
+                | Self::FillRgb
+                | Self::StrokeCmyk
+                | Self::FillCmyk
+                | Self::StrokeColor
+                | Self::FillColor
+                | Self::StrokeColorN
+                | Self::FillColorN
+        ) {
+            self.decode_color(v)
+        } else if matches!(
+            self,
+            Self::BeginText
+                | Self::EndText
+                | Self::CharacterSpacing
+                | Self::WordSpacing
+                | Self::HorizontalScaling
+                | Self::Leading
+                | Self::Rise
+                | Self::RenderMode
+                | Self::Font
+                | Self::TextMatrix
+                | Self::MoveText
+                | Self::MoveTextSetLeading
+                | Self::NextLine
+                | Self::ShowText
+                | Self::NextLineShowText
+                | Self::ShowTextArray
+                | Self::NextLineShowSpaced
+        ) {
+            Ok(Operation::Text(self.decode_text(v)?))
+        } else {
+            self.decode_other(v)
+        }
+    }
+
+    fn decode_other(self, v: &[Value]) -> Result<Operation<'_>> {
         use Operation as O;
         Ok(match self {
             Self::Save => none(v, O::Save)?,
@@ -357,95 +427,6 @@ impl Operator {
                 _ => return Err(count_error()),
             },
             Self::GraphicsState => O::GraphicsState(one_name(v)?),
-            Self::MoveTo => O::Construct(Construct::MoveTo(point(v)?)),
-            Self::LineTo => O::Construct(Construct::LineTo(point(v)?)),
-            Self::CurveTo => O::Construct(Construct::CurveTo(points::<3>(v)?)),
-            Self::CurveToInitial => O::Construct(Construct::CurveToInitial(points::<2>(v)?)),
-            Self::CurveToFinal => O::Construct(Construct::CurveToFinal(points::<2>(v)?)),
-            Self::ClosePath => none(v, O::Construct(Construct::Close))?,
-            Self::Rectangle => {
-                let [x, y, width, height] = numbers::<4>(v)?;
-                O::Construct(Construct::Rectangle {
-                    origin: Point::new(x, y),
-                    width,
-                    height,
-                })
-            }
-            Self::Stroke => paint(v, false, None, true)?,
-            Self::CloseStroke => paint(v, true, None, true)?,
-            Self::Fill | Self::FillObsolete => paint(v, false, Some(FillRule::NonZero), false)?,
-            Self::FillEvenOdd => paint(v, false, Some(FillRule::EvenOdd), false)?,
-            Self::FillStroke => paint(v, false, Some(FillRule::NonZero), true)?,
-            Self::FillStrokeEvenOdd => paint(v, false, Some(FillRule::EvenOdd), true)?,
-            Self::CloseFillStroke => paint(v, true, Some(FillRule::NonZero), true)?,
-            Self::CloseFillStrokeEvenOdd => paint(v, true, Some(FillRule::EvenOdd), true)?,
-            Self::EndPath => paint(v, false, None, false)?,
-            Self::Clip => none(v, O::Clip(FillRule::NonZero))?,
-            Self::ClipEvenOdd => none(v, O::Clip(FillRule::EvenOdd))?,
-            Self::StrokeSpace => O::Color(Target::Stroke, ColorOperation::Space(one_name(v)?)),
-            Self::FillSpace => O::Color(Target::Fill, ColorOperation::Space(one_name(v)?)),
-            Self::StrokeGray => device(v, Target::Stroke, Device::Gray, 1)?,
-            Self::FillGray => device(v, Target::Fill, Device::Gray, 1)?,
-            Self::StrokeRgb => device(v, Target::Stroke, Device::Rgb, 3)?,
-            Self::FillRgb => device(v, Target::Fill, Device::Rgb, 3)?,
-            Self::StrokeCmyk => device(v, Target::Stroke, Device::Cmyk, 4)?,
-            Self::FillCmyk => device(v, Target::Fill, Device::Cmyk, 4)?,
-            Self::StrokeColor => components(v, Target::Stroke, false)?,
-            Self::FillColor => components(v, Target::Fill, false)?,
-            Self::StrokeColorN => components(v, Target::Stroke, true)?,
-            Self::FillColorN => components(v, Target::Fill, true)?,
-            Self::BeginText => none(v, O::Text(TextOperation::Begin))?,
-            Self::EndText => none(v, O::Text(TextOperation::End))?,
-            Self::CharacterSpacing => O::Text(TextOperation::CharacterSpacing(one_number(v)?)),
-            Self::WordSpacing => O::Text(TextOperation::WordSpacing(one_number(v)?)),
-            Self::HorizontalScaling => O::Text(TextOperation::HorizontalScaling(one_number(v)?)),
-            Self::Leading => O::Text(TextOperation::Leading(one_number(v)?)),
-            Self::Rise => O::Text(TextOperation::Rise(one_number(v)?)),
-            Self::RenderMode => O::Text(TextOperation::RenderMode(one_integer(v)?)),
-            Self::Font => match v {
-                [Value::Name(name), size] => O::Text(TextOperation::Font {
-                    name,
-                    size: number(size)?,
-                }),
-                [_, _] => return Err(type_error()),
-                _ => return Err(count_error()),
-            },
-            Self::TextMatrix => O::Text(TextOperation::Matrix(matrix(v)?)),
-            Self::MoveText | Self::MoveTextSetLeading => {
-                let [x, y] = numbers::<2>(v)?;
-                O::Text(TextOperation::Move {
-                    x,
-                    y,
-                    set_leading: self == Self::MoveTextSetLeading,
-                })
-            }
-            Self::NextLine => none(v, O::Text(TextOperation::NextLine))?,
-            Self::ShowText => O::Text(TextOperation::Show(one_string(v)?)),
-            Self::NextLineShowText => O::Text(TextOperation::NextLineShow(one_string(v)?)),
-            Self::ShowTextArray => match v {
-                [Value::Array(array)] => {
-                    if array
-                        .iter()
-                        .any(|v| v.as_number().is_none() && v.as_string().is_none())
-                    {
-                        return Err(Error::syntax("TJ array requires numbers or strings"));
-                    }
-                    O::Text(TextOperation::ShowArray(array))
-                }
-                [_] => return Err(type_error()),
-                _ => return Err(count_error()),
-            },
-            Self::NextLineShowSpaced => match v {
-                [word, character, Value::String(text)] => {
-                    O::Text(TextOperation::NextLineShowSpaced {
-                        word: number(word)?,
-                        character: number(character)?,
-                        text,
-                    })
-                }
-                [_, _, _] => return Err(type_error()),
-                _ => return Err(count_error()),
-            },
             Self::GlyphWidth => O::Glyph(GlyphMetrics::Width(numbers::<2>(v)?)),
             Self::GlyphBox => {
                 let [wx, wy, x0, y0, x1, y1] = numbers::<6>(v)?;
@@ -479,6 +460,115 @@ impl Operator {
             Self::BeginCompatibility => none(v, O::BeginCompatibility)?,
             Self::EndCompatibility => none(v, O::EndCompatibility)?,
             Self::BeginImage | Self::ImageData | Self::EndImage => none(v, O::ImageDelimiter)?,
+            _ => return Err(type_error()),
+        })
+    }
+
+    fn decode_path(self, v: &[Value]) -> Result<Operation<'_>> {
+        use Operation as O;
+        Ok(match self {
+            Self::MoveTo => O::Construct(Construct::MoveTo(point(v)?)),
+            Self::LineTo => O::Construct(Construct::LineTo(point(v)?)),
+            Self::CurveTo => O::Construct(Construct::CurveTo(points::<3>(v)?)),
+            Self::CurveToInitial => O::Construct(Construct::CurveToInitial(points::<2>(v)?)),
+            Self::CurveToFinal => O::Construct(Construct::CurveToFinal(points::<2>(v)?)),
+            Self::ClosePath => none(v, O::Construct(Construct::Close))?,
+            Self::Rectangle => {
+                let [x, y, width, height] = numbers::<4>(v)?;
+                O::Construct(Construct::Rectangle {
+                    origin: Point::new(x, y),
+                    width,
+                    height,
+                })
+            }
+            Self::Stroke => paint(v, false, None, true)?,
+            Self::CloseStroke => paint(v, true, None, true)?,
+            Self::Fill | Self::FillObsolete => paint(v, false, Some(FillRule::NonZero), false)?,
+            Self::FillEvenOdd => paint(v, false, Some(FillRule::EvenOdd), false)?,
+            Self::FillStroke => paint(v, false, Some(FillRule::NonZero), true)?,
+            Self::FillStrokeEvenOdd => paint(v, false, Some(FillRule::EvenOdd), true)?,
+            Self::CloseFillStroke => paint(v, true, Some(FillRule::NonZero), true)?,
+            Self::CloseFillStrokeEvenOdd => paint(v, true, Some(FillRule::EvenOdd), true)?,
+            Self::EndPath => paint(v, false, None, false)?,
+            Self::Clip => none(v, O::Clip(FillRule::NonZero))?,
+            Self::ClipEvenOdd => none(v, O::Clip(FillRule::EvenOdd))?,
+            _ => return Err(type_error()),
+        })
+    }
+
+    fn decode_color(self, v: &[Value]) -> Result<Operation<'_>> {
+        use Operation as O;
+        Ok(match self {
+            Self::StrokeSpace => O::Color(Target::Stroke, ColorOperation::Space(one_name(v)?)),
+            Self::FillSpace => O::Color(Target::Fill, ColorOperation::Space(one_name(v)?)),
+            Self::StrokeGray => device(v, Target::Stroke, Device::Gray, 1)?,
+            Self::FillGray => device(v, Target::Fill, Device::Gray, 1)?,
+            Self::StrokeRgb => device(v, Target::Stroke, Device::Rgb, 3)?,
+            Self::FillRgb => device(v, Target::Fill, Device::Rgb, 3)?,
+            Self::StrokeCmyk => device(v, Target::Stroke, Device::Cmyk, 4)?,
+            Self::FillCmyk => device(v, Target::Fill, Device::Cmyk, 4)?,
+            Self::StrokeColor => components(v, Target::Stroke, false)?,
+            Self::FillColor => components(v, Target::Fill, false)?,
+            Self::StrokeColorN => components(v, Target::Stroke, true)?,
+            Self::FillColorN => components(v, Target::Fill, true)?,
+            _ => return Err(type_error()),
+        })
+    }
+
+    fn decode_text(self, v: &[Value]) -> Result<TextOperation<'_>> {
+        use TextOperation as T;
+        Ok(match self {
+            Self::BeginText => none_text(v, T::Begin)?,
+            Self::EndText => none_text(v, T::End)?,
+            Self::CharacterSpacing => T::CharacterSpacing(one_number(v)?),
+            Self::WordSpacing => T::WordSpacing(one_number(v)?),
+            Self::HorizontalScaling => T::HorizontalScaling(one_number(v)?),
+            Self::Leading => T::Leading(one_number(v)?),
+            Self::Rise => T::Rise(one_number(v)?),
+            Self::RenderMode => T::RenderMode(one_integer(v)?),
+            Self::Font => match v {
+                [Value::Name(name), size] => T::Font {
+                    name,
+                    size: number(size)?,
+                },
+                [_, _] => return Err(type_error()),
+                _ => return Err(count_error()),
+            },
+            Self::TextMatrix => T::Matrix(matrix(v)?),
+            Self::MoveText | Self::MoveTextSetLeading => {
+                let [x, y] = numbers::<2>(v)?;
+                T::Move {
+                    x,
+                    y,
+                    set_leading: self == Self::MoveTextSetLeading,
+                }
+            }
+            Self::NextLine => none_text(v, T::NextLine)?,
+            Self::ShowText => T::Show(one_string(v)?),
+            Self::NextLineShowText => T::NextLineShow(one_string(v)?),
+            Self::ShowTextArray => match v {
+                [Value::Array(array)] => {
+                    if array
+                        .iter()
+                        .any(|v| v.as_number().is_none() && v.as_string().is_none())
+                    {
+                        return Err(Error::syntax("TJ array requires numbers or strings"));
+                    }
+                    T::ShowArray(array)
+                }
+                [_] => return Err(type_error()),
+                _ => return Err(count_error()),
+            },
+            Self::NextLineShowSpaced => match v {
+                [word, character, Value::String(text)] => T::NextLineShowSpaced {
+                    word: number(word)?,
+                    character: number(character)?,
+                    text,
+                },
+                [_, _, _] => return Err(type_error()),
+                _ => return Err(count_error()),
+            },
+            _ => return Err(type_error()),
         })
     }
 }
@@ -488,6 +578,13 @@ fn count_error() -> Error {
 }
 fn type_error() -> Error {
     Error::syntax("wrong operand type")
+}
+fn none_text<'v>(v: &[Value], operation: TextOperation<'v>) -> Result<TextOperation<'v>> {
+    if v.is_empty() {
+        Ok(operation)
+    } else {
+        Err(count_error())
+    }
 }
 fn none<'v>(v: &[Value], operation: Operation<'v>) -> Result<Operation<'v>> {
     if v.is_empty() {
@@ -538,7 +635,7 @@ fn points<const N: usize>(v: &[Value]) -> Result<[Point; N]> {
         return Err(count_error());
     }
     let mut out = [Point::default(); N];
-    for (out, pair) in out.iter_mut().zip(v.chunks_exact(2)) {
+    for (out, pair) in out.iter_mut().zip(v.as_chunks::<2>().0) {
         *out = point(pair)?;
     }
     Ok(out)
