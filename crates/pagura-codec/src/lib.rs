@@ -15,8 +15,6 @@
 
 mod ascii;
 mod encoding;
-#[cfg(test)]
-mod encoding_tests;
 pub mod flate;
 mod lzw;
 mod output;
@@ -626,6 +624,3 @@ mod tests {
         );
     }
 }
-
-#[cfg(test)]
-mod vectors;

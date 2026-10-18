@@ -7,7 +7,7 @@ use crate::{Predictor, output::Output, repair, syntax, tags, trailing};
 use pagura_core::{Diagnostics, Error, Result};
 
 mod adler;
-mod encode;
+mod deflate;
 mod huffman;
 mod matcher;
 
@@ -44,7 +44,7 @@ pub enum Level {
 /// # Ok::<(), pagura_core::Error>(())
 /// ```
 pub fn compress(data: &[u8], level: Level, limits: &pagura_core::Limits) -> Result<Vec<u8>> {
-    encode::compress(data, level, limits)
+    deflate::compress(data, level, limits)
 }
 
 // RFC 1951 3.2.5, length and distance tables.
