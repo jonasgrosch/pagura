@@ -1,8 +1,6 @@
 //! PDF embedding bindings, ISO 32000-2 9.9.1 Tables 124–125.
 use crate::{FontKind, features, objects::optional};
-use pagura_core::{
-    Diagnostic, Diagnostics, Dictionary, Error, ObjectId, Position, Repair, Result, Value,
-};
+use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ObjectId, Position, Result, Value};
 use pagura_document::Document;
 use pagura_document::Prefix;
 use pagura_font::{FontFormat, FontProgram};
@@ -59,7 +57,8 @@ fn load_stream(
         // The decoded program describes its own extent; the Length entries
         // are bookkeeping that writers often get wrong (Table 125).
         let mut diagnostics = Diagnostics::new(document.recovery());
-        diagnostics.repair(Diagnostic::new(STREAM_LENGTHS, problem).in_object(id))?;
+        diagnostics
+            .repair(Diagnostic::new(crate::repairs::STREAM_LENGTHS, problem).in_object(id))?;
         document.report(diagnostics.take());
     }
     // Program-level repairs (damaged tables, glyphs and cmaps) are reported
@@ -213,10 +212,6 @@ fn directory_end(data: &[u8], length: usize) -> Prefix {
         Prefix::More
     }
 }
-
-/// A font stream whose `Length1` to `Length3` are absent, invalid or disagree
-/// with its decoded program (Table 125). The program is parsed as decoded.
-pub const STREAM_LENGTHS: Repair = Repair::new("font.stream-lengths");
 
 /// Why the stream's Length entries disagree with its decoded program, if they
 /// do: TrueType needs `Length1` equal to the program, Type 1 needs the three

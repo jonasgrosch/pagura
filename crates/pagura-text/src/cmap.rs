@@ -2,8 +2,8 @@
 use crate::{
     WritingMode,
     cidmap::{CidMap, CidRange},
-    features,
-    repairs::{self, Report},
+    features, repairs,
+    report::Report,
 };
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Error, Limits, Name, ObjectId, Result, Value};

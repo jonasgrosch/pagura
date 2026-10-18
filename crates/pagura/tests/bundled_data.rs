@@ -111,7 +111,10 @@ fn standard_fonts_use_afm_widths_and_substitute_outlines() -> Result<()> {
             continue;
         }
         assert_eq!(document.diagnostics().len(), 1);
-        assert!(information(&document, pagura_text::SUBSTITUTED));
+        assert!(information(
+            &document,
+            pagura_text::information::SUBSTITUTED
+        ));
         let glyphs = loaded.decode(&input)?;
         for (glyph, value) in glyphs.iter().zip(rows(&name, "out")?) {
             let values = row(&value)?;
@@ -275,7 +278,10 @@ fn symbol_substitutes_select_glyphs_by_afm_name_and_keep_pdf_widths() -> Result<
             program.outline(*glyph)?;
         }
         assert_eq!(document.diagnostics().len(), 1);
-        assert!(information(&document, pagura_text::SUBSTITUTED));
+        assert!(information(
+            &document,
+            pagura_text::information::SUBSTITUTED
+        ));
         assert_eq!(
             document.diagnostics()[0].message,
             if name.contains("ZapfDingbats") {
@@ -370,9 +376,15 @@ mod cjk {
                     program.outline(*glyph)?;
                 }
             }
-            assert!(information(&document, pagura_text::SUBSTITUTED));
+            assert!(information(
+                &document,
+                pagura_text::information::SUBSTITUTED
+            ));
             if name.contains("missing") {
-                assert!(information(&document, pagura_text::CID_GLYPH_MISSING));
+                assert!(information(
+                    &document,
+                    pagura_text::information::CID_GLYPH_MISSING
+                ));
             }
             assert!(loaded.retained_bytes() < program.data().len());
             let before = loaded.retained_bytes();

@@ -15,9 +15,6 @@ mod family;
 use family::Family;
 pub(crate) use family::standard_name;
 
-/// Diagnostic tag for an explicitly provided replacement outline.
-pub const SUBSTITUTED: &str = "font.substituted";
-
 pub(crate) fn load(
     document: &Document,
     font: &Dictionary,
@@ -99,7 +96,10 @@ pub(crate) fn load(
     if data.program.is_some() {
         // Substitution is permitted PDF behavior, not a repair of malformed input.
         // Report it in strict mode too; no recovery permission is consumed.
-        let mut diagnostic = Diagnostic::information(SUBSTITUTED, substitution_message(selected));
+        let mut diagnostic = Diagnostic::information(
+            crate::information::SUBSTITUTED,
+            substitution_message(selected),
+        );
         if let Some(id) = font.get(b"FontDescriptor").and_then(Value::as_reference) {
             diagnostic = diagnostic.in_object(id);
         }
@@ -164,7 +164,7 @@ fn weight(document: &Document, descriptor: &Dictionary, id: Option<ObjectId>) ->
         "invalid optional FontWeight ignored; using normal weight (9.8.1, Table 120)",
     );
     diagnostic.object = id;
-    crate::repairs::Report::new(document).diagnostic(diagnostic)?;
+    crate::report::Report::new(document).diagnostic(diagnostic)?;
     Ok(400.0)
 }
 
