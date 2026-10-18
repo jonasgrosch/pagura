@@ -75,6 +75,18 @@ composition targets premultiplied RGBA8 tiles. Glyphs are rasterized at their
 exact device positions without a coverage cache (ADR 0013). A deterministic CPU
 renderer is the diagnostic reference, not an infallible oracle.
 
+## Reading (M6)
+
+See ADR 0014.
+- **Text:** the content interpreter optionally records positioned glyphs as
+  output separate from the display list. `pagura-text` lays them out into
+  words, lines and a reading order and searches them; replacement text
+  follows 14.9.4, and the rest is documented policy.
+- **Navigation:** `pagura_document::navigation` reads outlines, destinations,
+  links, actions and page labels as bounded views. Actions are inert data: the
+  engine never follows a URI, opens a file or runs a script, and the host
+  decides.
+
 ## Editing (M7)
 
 Editing uses immutable snapshots and transactions with copy-on-write resources,
