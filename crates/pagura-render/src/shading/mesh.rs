@@ -1,7 +1,7 @@
 //! Mesh stream decoding and spatial queries (8.7.4.5.5–8.7.4.5.8).
 mod patches;
 mod spatial;
-use super::{Functions, numbers};
+use super::Functions;
 use crate::icc::ColorContext;
 use pagura_core::{Dictionary, Error, Limits, Result, Value};
 use pagura_raster::Point;
@@ -287,7 +287,12 @@ impl<'a> Decoder<'a> {
             .as_chunks::<2>()
             .0
             .iter()
-            .map(|v| numbers::<2>(document, &Value::Array(v.to_vec())))
+            .map(|[low, high]| {
+                Ok([
+                    crate::numbers::number(document, low, crate::numbers::GEOMETRY)?,
+                    crate::numbers::number(document, high, crate::numbers::GEOMETRY)?,
+                ])
+            })
             .collect::<Result<Vec<_>>>()?;
         Ok(Self {
             data,
