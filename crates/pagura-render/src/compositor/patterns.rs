@@ -59,7 +59,7 @@ impl Context {
                     self.clip = None;
                     self.discard_mask();
                     self.commands(
-                        &pattern.commands,
+                        (&pattern.commands, None),
                         &mut surface,
                         backdrop,
                         model,

@@ -6,6 +6,7 @@
 //! (11.4.4). Knockout replaces prior contributions according to shape, not alpha.
 
 mod images;
+mod occlusion;
 mod patterns;
 mod reduced;
 mod regions;
@@ -310,7 +311,7 @@ impl Context {
     }
     fn commands(
         &mut self,
-        commands: &[Command],
+        (commands, occlusion): (&[Command], Option<&occlusion::Plan>),
         target: &mut Surface,
         initial: Backdrop<'_>,
         model: Model,
@@ -340,7 +341,13 @@ impl Context {
                 {
                     Ok(())
                 }
-                Command::Path(path) => self.path(path, target, initial, model, knockout, depth),
+                Command::Path(path) => {
+                    if let Some(regions) = occlusion.and_then(|plan| plan.regions(path)) {
+                        self.occluded_rectangle(path, regions, target)
+                    } else {
+                        self.path(path, target, initial, model, knockout, depth)
+                    }
+                }
                 Command::Image(image) => self.image(image, target, initial, model, knockout, depth),
                 Command::Shading(shading) => {
                     self.shading(shading, target, initial, model, knockout, depth)
@@ -629,7 +636,7 @@ impl Context {
         };
         let mut surface = self.surface(tile, initial)?;
         self.commands(
-            &group.commands,
+            (&group.commands, None),
             &mut surface,
             initial,
             model,
@@ -894,7 +901,7 @@ impl Context {
             let previous = std::mem::replace(&mut self.soft_source, true);
             self.clip = None;
             let result = self.commands(
-                &mask.group.commands,
+                (&mask.group.commands, None),
                 surface,
                 initial,
                 model,
@@ -988,6 +995,7 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
         soft_source: false,
     };
     let model = list.group.model.unwrap_or(Model::Rgb);
+    let occlusion = occlusion::Plan::for_list(list, options, tile);
     let mut output =
         Pixmap::new_with_limits(tile.width, tile.height, options.background, list.limits)?;
     // Keep the high-precision page backdrop bounded too. Global device
@@ -1008,7 +1016,7 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
             context.discard_mask();
             let mut page = context.surface(region, Backdrop::Transparent)?;
             context.commands(
-                &list.commands,
+                (&list.commands, occlusion.as_ref()),
                 &mut page,
                 Backdrop::Transparent,
                 model,
