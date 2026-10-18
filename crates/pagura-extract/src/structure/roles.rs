@@ -50,6 +50,7 @@ impl<'a> Types<'a> {
     ) -> Result<(StructureNamespace, Option<Name>)> {
         let (namespace, roles) = if let Some(value) = super::entry(doc, element, b"NS")? {
             let ns = doc.resolve_dictionary(value)?;
+            let ns_object = value.as_reference();
             budget.work(self.namespaces.len())?;
             if !self.namespaces.iter().any(|n| std::ptr::eq(*n, ns)) {
                 return Err(Error::syntax(
@@ -72,7 +73,7 @@ impl<'a> Types<'a> {
                 .and_then(Value::as_string)
                 .ok_or(Error::syntax("namespace NS must be a string"))?;
             budget.store(value.len())?;
-            let name = pagura_text::decode_text_string(value, doc.limits())?;
+            let name = super::text_string(doc, value, ns_object)?;
             let namespace = match name.as_str() {
                 "http://iso.org/pdf/ssn" => StructureNamespace::Pdf17,
                 "http://iso.org/pdf2/ssn" => StructureNamespace::Pdf20,

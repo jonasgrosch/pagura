@@ -110,8 +110,8 @@ fn element<'a>(
         .and_then(Value::as_name)
         .ok_or(Error::syntax("structure element S must be a name"))?;
     let (namespace, standard_type) = types.resolve(doc, dictionary, role, budget)?;
-    let actual = property(doc, dictionary, b"ActualText")?;
-    let alt = property(doc, dictionary, b"Alt")?;
+    let actual = property(doc, dictionary, object, b"ActualText")?;
+    let alt = property(doc, dictionary, object, b"Alt")?;
     let replacement = actual
         .map(|text| super::ReplacementText {
             text,
@@ -242,14 +242,19 @@ fn item(plan: &mut Plan<'_>, node: usize, reference: Reference, budget: &mut Bud
     plan.nodes[node].relevant = true;
     Ok(())
 }
-fn property(doc: &Document, dictionary: &Dictionary, key: &[u8]) -> Result<Option<String>> {
+fn property(
+    doc: &Document,
+    dictionary: &Dictionary,
+    object: Option<ObjectId>,
+    key: &[u8],
+) -> Result<Option<String>> {
     super::entry(doc, dictionary, key)?
         .map(|v| {
             let bytes = doc
                 .resolve(v)?
                 .as_string()
                 .ok_or(Error::syntax("structure replacement must be a text string"))?;
-            pagura_text::decode_text_string(bytes, doc.limits())
+            super::text_string(doc, bytes, object)
         })
         .transpose()
 }

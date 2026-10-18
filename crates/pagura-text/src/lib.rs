@@ -35,9 +35,7 @@ mod program;
 mod provider;
 pub mod repairs;
 mod report;
-mod strings;
 mod substitute;
-pub use strings::decode_text_string;
 
 pub use provider::{
     CMapCode, CidToUnicode, PredefinedCMap, Provider, StandardDescriptor, StandardFont,
