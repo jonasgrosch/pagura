@@ -87,7 +87,11 @@ pub(crate) fn finite_path(path: &pagura_raster::Path) -> Result<()> {
     for segment in path.segments() {
         let finite = match *segment {
             Segment::MoveTo(p) | Segment::LineTo(p) => p.is_finite(),
-            Segment::CubicTo(a, b, c) => a.is_finite() && b.is_finite() && c.is_finite(),
+            Segment::CubicTo {
+                c1: a,
+                c2: b,
+                end: c,
+            } => a.is_finite() && b.is_finite() && c.is_finite(),
             Segment::Close => true,
         };
         if !finite {

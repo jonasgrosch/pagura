@@ -86,7 +86,7 @@ fn diagonal_quadrilateral_components(segments: &[Segment], transform: crate::Tra
 fn small_first_contour(segments: &[Segment]) -> bool {
     for segment in segments.iter().take(6) {
         match segment {
-            Segment::CubicTo(..) => return false,
+            Segment::CubicTo { .. } => return false,
             Segment::Close => return true,
             _ => {}
         }
@@ -113,7 +113,7 @@ fn within_frame(shape: &Shape, anchor: Point) -> bool {
     match &shape.geometry {
         Geometry::Path(path) => path.segments().iter().all(|segment| match *segment {
             Segment::MoveTo(p) | Segment::LineTo(p) => point(p),
-            Segment::CubicTo(a, b, c) => point(a) && point(b) && point(c),
+            Segment::CubicTo { c1, c2, end } => point(c1) && point(c2) && point(end),
             Segment::Close => true,
         }),
         Geometry::Glyph(glyph) => glyph

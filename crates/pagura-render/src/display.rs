@@ -204,7 +204,11 @@ impl GlyphRun {
                     pagura_raster::Segment::MoveTo(p) | pagura_raster::Segment::LineTo(p) => {
                         record(p)?;
                     }
-                    pagura_raster::Segment::CubicTo(a, b, c) => {
+                    pagura_raster::Segment::CubicTo {
+                        c1: a,
+                        c2: b,
+                        end: c,
+                    } => {
                         record(a)?;
                         record(b)?;
                         record(c)?;

@@ -492,7 +492,11 @@ fn validate_path(path: &Path) -> Result<()> {
     for segment in path.segments() {
         match *segment {
             Segment::MoveTo(p) | Segment::LineTo(p) => super::finite(p)?,
-            Segment::CubicTo(a, b, c) => {
+            Segment::CubicTo {
+                c1: a,
+                c2: b,
+                end: c,
+            } => {
                 super::finite(a)?;
                 super::finite(b)?;
                 super::finite(c)?;

@@ -35,10 +35,10 @@ pub(crate) fn region(
     for segment in path.segments() {
         match *segment {
             Segment::MoveTo(p) | Segment::LineTo(p) => record(p)?,
-            Segment::CubicTo(a, b, c) => {
-                record(a)?;
-                record(b)?;
-                record(c)?;
+            Segment::CubicTo { c1, c2, end } => {
+                record(c1)?;
+                record(c2)?;
+                record(end)?;
             }
             Segment::Close => {}
         }
