@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "font",
-  "scope": "Reviewed the supported font-program behavior against the local Adobe Type 1 Font Format (chapters 2, 3, 5-8 and 10), TN 5176 CFF (sections 2-19, appendices A-C/F/H), TN 5177 Type 2 (sections 2-4, appendices A-C), and TN 5014 CIDFont (sections 2.3/2.4, 3.2 and 4.1/4.2). The itemized verdicts below distinguish corrected behavior, agreement, unhinted outline policy and incomplete structural validation; this is not full PostScript or font conformance certification. The previous PDF-side review remains ISO 32000-2:2020 sponsored EC3, 9.6.3, 9.6.5.1/2/4, 9.7.4.1/2/3, 9.9.1/2 and Tables 124/125. Only unavailable primary texts remain pending: OpenType/ISO 14496-22 and TrueType Reference Manual (including CFF2), TN 5015 Type 1 supplements including lenIV -1, and TN 5040 PFB packaging. Project budgets are separate from format limits. Reported recovery is checked as ADR 0003 project policy against ISO 9.9.1/Table 124 and PDF cmap selection in 9.6.5.4; unknown charstring escape policy is checked against Type 1 6.3/Appendix 2 and TN 5177 3.3/Appendix A. The sfnt alignment, extent, loca, component-flag and cmap layout details still await the unavailable TrueType/OpenType primary texts; corpus inspection is secondary evidence, not primary-format verification. Static Type 1 RD/ND/NP aliases and bounded procedure definitions have additionally been checked against Type 1 2.4, 7.3 and 10.3. CFF blue-hint ordering recovery is checked against TN 5176 section 15/Table 23 and Type 1 5.3-5.5: each zone pair ascends, while zones themselves need not be globally sorted. FontProgram retained_bytes is an ADR 0012 accounting model, not a format requirement or allocator measurement.",
+  "scope": "Reviewed the supported font-program behavior against the local Adobe Type 1 Font Format (chapters 2, 3, 5-8 and 10), TN 5176 CFF (sections 2-19, appendices A-C/F/H), TN 5177 Type 2 (sections 2-4, appendices A-C), and TN 5014 CIDFont (sections 2.3/2.4, 3.2 and 4.1/4.2). The itemized verdicts below distinguish corrected behavior, agreement, unhinted outline policy and incomplete structural validation; this is not full PostScript or font conformance certification. The previous PDF-side review remains ISO 32000-2:2020 sponsored EC3, 9.6.3, 9.6.5.1/2/4, 9.7.4.1/2/3, 9.9.1/2 and Tables 124/125. Only unavailable primary texts remain pending: OpenType/ISO 14496-22 and TrueType Reference Manual (including CFF2), TN 5015 Type 1 supplements including lenIV -1, and TN 5040 PFB packaging. Project budgets are separate from format limits. Reported recovery is checked as ADR 0003 project policy against ISO 9.9.1/Table 124 and PDF cmap selection in 9.6.5.4; unknown charstring escape policy is checked against Type 1 6.3/Appendix 2 and TN 5177 3.3/Appendix A. The sfnt alignment, extent, loca, component-flag and cmap layout details still await the unavailable TrueType/OpenType primary texts; corpus inspection is secondary evidence, not primary-format verification. Static Type 1 RD/ND/NP aliases and bounded procedure definitions have additionally been checked against Type 1 2.4, 7.3 and 10.3. CFF blue-hint ordering recovery is checked against TN 5176 section 15/Table 23 and Type 1 5.3-5.5: each zone pair ascends, while zones themselves need not be globally sorted. FontProgram retained_bytes is an ADR 0012 accounting model, not a format requirement or allocator measurement. DICT recovery was additionally reviewed against TN 5176 section 4/Table 6, section 15/Table 23 and Appendix H; encoding supplement recovery against section 12/Tables 14-15; repeated Type 1 CharStrings names against chapters 6 and 10. First-definition retention and dropping malformed metadata are explicit ADR 0003 choices, not claims that the format standards prescribe those recoveries.",
   "requirements": [
     {
       "id": "font-truetype",
@@ -1811,7 +1811,7 @@
         "font/memory-type1-small",
         "font/memory-type1-large"
       ],
-      "gaps": "Allocator padding/fragmentation and private core Name representation are estimated. A clone reports the full shared estimate; callers charge once per distinct program. pagura-text must replace its proxy and continue charging its own outer Arc and FontProgram value separately.",
+      "gaps": "Allocator padding/fragmentation and private core Name representation are estimated. A clone reports the full shared estimate; callers charge once per distinct program. pagura-text uses the estimate and charges its own outer Arc and FontProgram value separately.",
       "verification": {
         "primary_text": "ADR 0012; public pagura-core Name API",
         "locator": "ADR 0012 retained-cache accounting model; docs/ARCHITECTURE.md performance policy",
@@ -1820,6 +1820,148 @@
         "implementation": "Compute once at successful parse and return a cached usize. Input bytes and CFF INDEX ranges are not double-counted. Type 1 decrypted subroutines/charstrings are retained separately. Tree entries add 64 bytes of estimated bookkeeping and names add logical payload lengths, conservatively including inline names. Exclude FontProgram inline storage, a caller-owned surrounding Arc, temporary parsing/outlining and external diagnostics.",
         "expectations": "Independent Python font writers derive paths and metrics analytically; Rust API tests check the documented memory model and stable recovery tags without importing or running the engine from the generator."
       }
+    },
+    {
+      "id": "font-cff-dict-recovery",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.9.1"
+      ],
+      "tables": [
+        "124"
+      ],
+      "status": "Reported recovery of unused hint operand arity and reserved operator slots; consumed values and dictionary domains remain strict.",
+      "tests": [
+        "font/repair-cff-empty-blue-values",
+        "font/repair-cff-empty-other-blues",
+        "font/repair-cff-empty-family-blues",
+        "font/repair-cff-empty-family-other-blues",
+        "font/repair-cff-empty-snap-h",
+        "font/repair-cff-empty-snap-v",
+        "font/repair-cff-scalar-hint-arity",
+        "font/repair-cff-reserved-private",
+        "font/repair-cff-reserved-top",
+        "font/repair-cff-reserved-repeated",
+        "font/cff-dict-width-arity",
+        "font/cff-dict-subrs-arity",
+        "font/cff-dict-seed-arity",
+        "font/cff-dict-matrix-arity",
+        "font/cff-dict-reserved-number-31",
+        "font/cff-dict-reserved-number-255"
+      ],
+      "gaps": "No general DICT salvage or CFF2 operator recovery. Invalid numeric encodings, structural ambiguity, consumed values, duplicate known operators and resource limits remain errors.",
+      "verification": {
+        "primary_text": "Local Adobe TN 5176 CFF",
+        "locator": "4/Table 6; 9/Table 9; 15/Table 23; Appendix H; ADR 0003",
+        "rule": "DICT operators consume the preceding operand group, arrays and deltas have one or more values, and scalar hints have one value. Appendix H marks reserved operator slots. It does not define how to recover them.",
+        "verdict": "format rule reviewed; recovery is documented ADR 0003 policy, tested with independent vectors",
+        "implementation": "Discard only malformed unused Private hint entries. Skip reserved operator slots and clear their operands. Keep widths, offsets, matrices, seed operands and known operators in the wrong dictionary fatal. Reserved number markers 31 and 255 remain errors because no payload size is defined.",
+        "expectations": "The independent Python writer supplies chosen rectangles, widths, names and mappings. Strict tags and exact repaired results are checked together; rejected consumed operands and numeric markers are tested in repair mode as well."
+      },
+      "repairs": [
+        {
+          "tag": "font.cff-dict-operands",
+          "locator": "4/Table 6; 15/Table 23",
+          "rule": "Drop malformed unused hint entries.",
+          "vectors": [
+            "font/repair-cff-empty-blue-values",
+            "font/repair-cff-empty-other-blues",
+            "font/repair-cff-empty-family-blues",
+            "font/repair-cff-empty-family-other-blues",
+            "font/repair-cff-empty-snap-h",
+            "font/repair-cff-empty-snap-v",
+            "font/repair-cff-scalar-hint-arity"
+          ]
+        },
+        {
+          "tag": "font.cff-dict-operator",
+          "locator": "4; Appendix H",
+          "rule": "Skip reserved operator slots and discard only their preceding operands.",
+          "vectors": [
+            "font/repair-cff-reserved-private",
+            "font/repair-cff-reserved-top",
+            "font/repair-cff-reserved-repeated"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-type1-duplicate-glyph",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.9.1"
+      ],
+      "tables": [
+        "124"
+      ],
+      "status": "Reported first-definition retention for repeated CharStrings names, including .notdef and the empty name.",
+      "tests": [
+        "font/repair-type1-duplicate-name",
+        "font/repair-type1-duplicate-notdef",
+        "font/repair-type1-duplicate-empty"
+      ],
+      "gaps": "No PostScript execution or inference of computed bindings. Unreadable record lengths and nonstatic terminators remain fatal. Repeated empty names are not classified as invalid name syntax.",
+      "verification": {
+        "primary_text": "Local Adobe Type 1 Font Format",
+        "locator": "6 (CharStrings dictionary); 10.3 (static organization); ADR 0003",
+        "rule": "CharStrings binds character names to length-delimited encrypted procedures. The book describes dictionary bindings and does not require first-definition retention for repeated physical assignments.",
+        "verdict": "format rule reviewed; recovery is documented ADR 0003 policy, tested with independent vectors",
+        "implementation": "Strict mode rejects repeated names as an ambiguity of static extraction. Repair mode consumes each later binary record and checks its terminator, then drops it without allocating or decrypting a retained glyph. The first binding, widths and outlines stay intact; .notdef remains GID zero. This is explicit project policy, not execution of PostScript replacement semantics.",
+        "expectations": "The independent Python writer supplies chosen rectangles, widths, names and mappings. Strict tags and exact repaired results are checked together; rejected consumed operands and numeric markers are tested in repair mode as well."
+      },
+      "repairs": [
+        {
+          "tag": "font.type1-duplicate-glyph",
+          "locator": "Type 1 6; 10.3; ADR 0003",
+          "rule": "Keep the first static binding for each name.",
+          "vectors": [
+            "font/repair-type1-duplicate-name",
+            "font/repair-type1-duplicate-notdef",
+            "font/repair-type1-duplicate-empty"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "font-cff-encoding-supplement",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.9.1"
+      ],
+      "tables": [
+        "124"
+      ],
+      "status": "Reported omission of invalid or incomplete supplemental mappings while retaining the main encoding and valid records.",
+      "tests": [
+        "font/repair-cff-supplement-unencoded",
+        "font/repair-cff-supplement-missing-sid",
+        "font/repair-cff-supplement-conflict",
+        "font/repair-cff-supplement-truncated",
+        "font/repair-cff-supplement-missing-count"
+      ],
+      "gaps": "Invalid main encodings and unusable charsets still reject. Dropped records provide no guessed mapping. Record truncation can only be detected within the available CFF buffer because the format has no encoding byte length.",
+      "verification": {
+        "primary_text": "Local Adobe TN 5176 CFF",
+        "locator": "12/Tables 14-15; ADR 0003",
+        "rule": "A supplement gives another code to a glyph already named by the main encoding. Records contain a one-byte code and a SID, preceded by their count.",
+        "verdict": "format rule reviewed; recovery is documented ADR 0003 policy, tested with independent vectors",
+        "implementation": "Drop records whose SID is not main-encoded or whose code is already mapped. Keep the main mapping or first accepted supplementary mapping; retain later valid records. Drop an incomplete remaining tail without fabricating SIDs or codes. Original charstrings and widths are untouched.",
+        "expectations": "The independent Python writer supplies chosen rectangles, widths, names and mappings. Strict tags and exact repaired results are checked together; rejected consumed operands and numeric markers are tested in repair mode as well."
+      },
+      "repairs": [
+        {
+          "tag": "font.cff-encoding-supplement",
+          "locator": "12/Tables 14-15; ADR 0003",
+          "rule": "Omit unusable supplemental records; never overwrite existing codes.",
+          "vectors": [
+            "font/repair-cff-supplement-unencoded",
+            "font/repair-cff-supplement-missing-sid",
+            "font/repair-cff-supplement-conflict",
+            "font/repair-cff-supplement-truncated",
+            "font/repair-cff-supplement-missing-count"
+          ]
+        }
+      ]
     }
   ]
 }

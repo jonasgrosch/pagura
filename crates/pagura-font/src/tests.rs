@@ -62,6 +62,10 @@ fn check_vector(
                     .as_bytes(),
                 words[2].as_bytes()
             ),
+            "encoding-none" => assert!(
+                font.builtin_encoding().unwrap()[usize::try_from(u(1)).unwrap()].is_none(),
+                "{name}"
+            ),
             "has" => {
                 let selection = selection(words[1]);
                 assert_eq!(font.has_cmap_subtable(selection), u(2) != 0, "{name}");

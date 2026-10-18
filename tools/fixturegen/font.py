@@ -523,6 +523,7 @@ def cases():
     yield from specification_cases()
     yield from recovery_cases()
     yield from static_font_cases()
+    yield from metadata_recovery_cases()
 
     yield vector("cff-nonfinite",cff_font(conforming=True,hostile="nonfinite"),"outline-error 1\n","font-bounds","cff")
 
@@ -598,7 +599,7 @@ def extended_cmap(fmt, malformed=None):
     return u16(0)+u16(1)+u16(platform)+u16(encoding)+u32(12)+sub
 
 
-def reviewed_cff(program, subrs=(), global_subrs=(), private=b"", top=b"", omit_private=False, header_size=4):
+def reviewed_cff(program, subrs=(), global_subrs=(), private=b"", top=b"", omit_private=False, header_size=4, encoding=None):
     """Two-glyph CFF, authored from TN 5176 sections 4-16, not an engine."""
     names, strings, globals_ = index([b"Reviewed"]), index([]), index(global_subrs)
     # FontMatrix/charset/Encoding defaults deliberately omitted.
@@ -606,6 +607,8 @@ def reviewed_cff(program, subrs=(), global_subrs=(), private=b"", top=b"", omit_
         result = top+offset(chars_at)+b"\x11"
         if not omit_private:
             result += offset(size)+offset(private_at)+b"\x12"
+        if encoding is not None:
+            result += offset(private_at+size+len(index(subrs) if subrs else b""))+b"\x10"
         return result
     extra = private
     if subrs:
@@ -615,7 +618,7 @@ def reviewed_cff(program, subrs=(), global_subrs=(), private=b"", top=b"", omit_
     at = header_size+len(names)+len(index([dummy]))+len(strings)+len(globals_)
     return (bytes([1,0,header_size,4])+bytes(header_size-4)+names
             +index([dictionary(at,at+len(chars),len(extra))])+strings+globals_+chars
-            +extra+(index(subrs) if subrs else b""))
+            +extra+(index(subrs) if subrs else b"")+(encoding or b""))
 
 
 def specification_cases():
@@ -941,7 +944,7 @@ def recovery_cases():
 
 
 def static_type1(aliases=(b"-|", b"|-", b"|"), subrs=1, clear_definitions=False,
-                 qualifier=b"executeonly", short=False, comments=False, computed=None):
+                 qualifier=b"executeonly", short=False, comments=False, computed=None, duplicate=None):
     """Type 1 2.4/7.3/10.3: explicit procedures and length-delimited cipher bytes."""
     reader, define, put = aliases
     bodies = [b"string currentfile exch readstring pop", b"def" if short else b"noaccess def",
@@ -966,10 +969,14 @@ def static_type1(aliases=(b"-|", b"|-", b"|"), subrs=1, clear_definitions=False,
     for i in range(subrs):
         cipher = encrypt(bytes(4)+(line if i==0 else b"\x0b"),4330)
         private += b"dup "+str(i).encode()+b" "+str(len(cipher)).encode()+b" "+reader+b" "+cipher+b" "+put+b"\n"
-    private += define+b"\n2 index /CharStrings 2 dict dup begin\n"
+    private += define+b"\n2 index /CharStrings "+(b"4" if duplicate==b"" else b"3" if duplicate is not None else b"2")+b" dict dup begin\n"
     width = operands(0,600)+b"\x0d"
     glyphs = [(b".notdef",width+b"\x0e"),
               (b"A",width+operands(0,0)+b"\x15"+operands(0)+b"\x0a\x0e")]
+    if duplicate is not None:
+        if duplicate==b"":
+            glyphs.append((b"",width+b"\x0e"))
+        glyphs.append((duplicate,operands(0,800)+b"\x0d\x0e"))
     for name, program in glyphs:
         cipher = encrypt(bytes(4)+program,4330)
         private += b"/"+name+b" "+str(len(cipher)).encode()+b" "+reader+b" "+cipher+b" "+define+b"\n"
@@ -1029,3 +1036,59 @@ def static_font_cases():
         ("type1-large", static_type1(subrs=65), "type1"),
     ]:
         yield vector("memory-"+name, data, "outline 1\n"+("m 0 0\nl 130 0\nl 130 200\nl 0 200\nh\n" if name=="cff2" else "m 0 0\nl 200 0\nl 200 400\nl 0 400\nh\n" if name=="cff-cid" else RECT), "font-retained-bytes", fmt)
+
+
+def metadata_recovery_cases():
+    """TN 5176 4/12/15 and Type 1 6/10; reported, bounded admission policy."""
+    rect = operands(0,0)+b"\x15"+operands(100,0,0,200,-100,0)+b"\x05\x0e"
+    width = operands(600)+b"\x14"
+    expected = "count 2\nadvance 1 600\noutline 0\noutline 1\n"+RECT
+    for name, private in [
+        ("empty-blue-values", b"\x06"),
+        ("empty-other-blues", operands(-10,10)+b"\x06\x07"),
+        ("empty-family-blues", b"\x08"),
+        ("empty-family-other-blues", operands(-10,10)+b"\x08\x09"),
+        ("empty-snap-h", b"\x0c\x0c"),
+        ("empty-snap-v", b"\x0c\x0d"),
+        ("scalar-hint-arity", operands(12,34)+b"\x0a"),
+    ]:
+        yield recovery_vector("cff-"+name, reviewed_cff(rect,private=private+width),
+                              expected,"font.cff-dict-operands",fmt="cff",requirement="font-cff-dict-recovery")
+    for name, options in [
+        ("reserved-private", {"private":operands(11,22)+b"\x0c\x0f"+width}),
+        ("reserved-top", {"top":operands(11,22)+b"\x16", "private":width}),
+        ("reserved-repeated", {"private":(operands(11)+b"\x0c\xff")*64+width}),
+    ]:
+        yield recovery_vector("cff-"+name,reviewed_cff(rect,**options),expected,
+                              "font.cff-dict-operator",fmt="cff",requirement="font-cff-dict-recovery")
+    for name, options in [
+        ("width-arity", {"private":operands(600,700)+b"\x14"}),
+        ("subrs-arity", {"private":b"\x13"+width}),
+        ("seed-arity", {"private":operands(1,2)+b"\x0c\x13"+width}),
+        ("matrix-arity", {"top":operands(1,0,0,1,0)+b"\x0c\x07", "private":width}),
+        ("reserved-number-31", {"private":b"\x1f"+width}),
+        ("reserved-number-255", {"private":b"\xff"+width}),
+    ]:
+        yield vector("cff-dict-"+name,reviewed_cff(rect,**options),"parse-error\n",
+                     "font-cff-dict-recovery","cff")
+    for name, duplicate in [("name",b"A"),("notdef",b".notdef"),("empty",b"")]:
+        result = expected.replace("count 2", "count 3" if duplicate==b"" else "count 2")
+        result += "name A 1\nadvance 0 600\n"
+        if duplicate==b"":
+            result += "advance 2 600\noutline 2\n"
+        yield recovery_vector("type1-duplicate-"+name,static_type1(duplicate=duplicate),result,
+                              "font.type1-duplicate-glyph",fmt="type1",requirement="font-type1-duplicate-glyph")
+    # A supplement may add another code only for a main-encoded glyph.
+    # GID 1 has ISOAdobe SID 1 (space); no engine supplies these mappings.
+    for name, encoding, mappings in [
+        ("unencoded",b"\x80\x00\x01"+bytes([67])+u16(1),"encoding-none 67\n"),
+        ("missing-sid",b"\x80\x01\x41\x02"+bytes([67])+u16(65000)+bytes([66])+u16(1),
+         "encoding 65 space\nencoding-none 67\nencoding 66 space\n"),
+        ("conflict",b"\x80\x01\x41\x02"+bytes([65])+u16(1)+bytes([66])+u16(1),
+         "encoding 65 space\nencoding 66 space\n"),
+        ("truncated",b"\x80\x01\x41\x02"+bytes([66])+u16(1)+bytes([67]),
+         "encoding 65 space\nencoding 66 space\nencoding-none 67\n"),
+        ("missing-count",b"\x80\x01\x41","encoding 65 space\n"),
+    ]:
+        yield recovery_vector("cff-supplement-"+name,reviewed_cff(rect,private=width,encoding=encoding),
+                              expected+mappings,"font.cff-encoding-supplement",fmt="cff",requirement="font-cff-encoding-supplement")

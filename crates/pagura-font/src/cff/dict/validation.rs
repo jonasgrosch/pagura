@@ -1,11 +1,19 @@
 //! Operand types and dictionary domains from TN 5176 Tables 9, 10 and 23.
 use super::{Dict, integer};
 use crate::read::bad;
-use pagura_core::Result;
+use pagura_core::{Diagnostics, Position, Result};
 
 impl Dict {
-    pub(super) fn validate(&self, private: bool, strings: usize) -> Result<()> {
-        for (&op, values) in &self.entries {
+    pub(super) fn validate(
+        &mut self,
+        private: bool,
+        strings: usize,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<()> {
+        let mut ignored = Vec::new();
+        for (&op, entry) in &self.entries {
+            let values = &entry.values;
+            let at = entry.at;
             let count = values.len();
             let valid = if private {
                 match op {
@@ -31,20 +39,33 @@ impl Dict {
                 }
             };
             if !valid {
-                return Err(bad(self.at, "invalid CFF DICT operator or operands"));
+                if private && matches!(op, 6..=11 | 0x0c09..=0x0c0e | 0x0c11..=0x0c12) {
+                    crate::recovery::repair(
+                        diagnostics,
+                        crate::tags::CFF_DICT_OPERANDS,
+                        "unused CFF hint operator with invalid operands ignored",
+                        Position::Buffer(at),
+                    )?;
+                    ignored.push(op);
+                    continue;
+                }
+                return Err(bad(at, "invalid CFF DICT operator or operands"));
             }
             if matches!(op, 0x0c01 | 0x0c0e) && !matches!(values.as_slice(), [0.0 | 1.0]) {
-                return Err(bad(self.at, "invalid CFF boolean"));
+                return Err(bad(at, "invalid CFF boolean"));
             }
             if !private && matches!(op, 0..=4 | 0x0c00 | 0x0c15 | 0x0c16 | 0x0c26 | 0x0c1e) {
                 let sids = if op == 0x0c1e { &values[..2] } else { values };
                 for &sid in sids {
-                    let sid = integer(sid, self.at)?;
+                    let sid = integer(sid, at)?;
                     if sid >= 65000 || sid >= 391 + strings {
-                        return Err(bad(self.at, "CFF DICT SID outside String INDEX"));
+                        return Err(bad(at, "CFF DICT SID outside String INDEX"));
                     }
                 }
             }
+        }
+        for op in ignored {
+            self.entries.remove(&op);
         }
         Ok(())
     }

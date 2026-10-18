@@ -1,6 +1,6 @@
 //! CFF DICT evaluation (TN 5176 section 4); CFF2 extensions await primary review.
 use crate::read::{Read, bad, cap};
-use pagura_core::{Limits, Result};
+use pagura_core::{Diagnostics, Limits, Position, Result};
 use pagura_raster::Transform;
 use std::collections::BTreeMap;
 
@@ -8,16 +8,25 @@ mod blues;
 mod validation;
 
 pub(super) struct Dict {
-    entries: BTreeMap<u16, Vec<f64>>,
+    entries: BTreeMap<u16, Entry>,
     at: usize,
     blue_order_fault: Option<usize>,
 }
+struct Entry {
+    values: Vec<f64>,
+    at: usize,
+}
 impl Dict {
-    pub(super) fn check(&self, private: bool, strings: usize) -> Result<()> {
-        self.validate(private, strings)
+    pub(super) fn check(
+        &mut self,
+        private: bool,
+        strings: usize,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<()> {
+        self.validate(private, strings, diagnostics)
     }
     pub fn values(&self, op: u16) -> Option<&[f64]> {
-        self.entries.get(&op).map(Vec::as_slice)
+        self.entries.get(&op).map(|entry| entry.values.as_slice())
     }
     pub fn has(&self, op: u16) -> bool {
         self.entries.contains_key(&op)
@@ -101,16 +110,22 @@ fn real_number(r: &mut Read<'_>) -> Result<f64> {
         }
     }
 }
-pub(super) fn parse(r: Read<'_>, limits: &Limits) -> Result<Dict> {
-    parse_inner(r, limits, None, false)
+pub(super) fn parse(r: Read<'_>, limits: &Limits, diagnostics: &mut Diagnostics) -> Result<Dict> {
+    parse_inner(r, limits, None, false, diagnostics)
 }
 
 pub(super) fn parse_private(r: Read<'_>, limits: &Limits, variations: &[Vec<f64>]) -> Result<Dict> {
-    parse_inner(r, limits, Some(variations), true)
+    parse_inner(
+        r,
+        limits,
+        Some(variations),
+        true,
+        &mut Diagnostics::default(),
+    )
 }
 
 pub(super) fn parse_cff2(r: Read<'_>, limits: &Limits) -> Result<Dict> {
-    parse_inner(r, limits, None, true)
+    parse_inner(r, limits, None, true, &mut Diagnostics::default())
 }
 
 fn parse_inner(
@@ -118,6 +133,7 @@ fn parse_inner(
     limits: &Limits,
     variations: Option<&[Vec<f64>]>,
     cff2: bool,
+    diagnostics: &mut Diagnostics,
 ) -> Result<Dict> {
     let mut entries = BTreeMap::new();
     let mut blue_order_fault = None;
@@ -127,6 +143,7 @@ fn parse_inner(
     while r.pos < r.data.len() {
         work += 1;
         cap(work, limits.operations, r.at())?;
+        let at = r.at();
         let byte = r.u8()?;
         if byte >= 28 {
             cap(
@@ -150,7 +167,13 @@ fn parse_inner(
                     if vsindex >= variations.len() {
                         return Err(bad(r.at(), "CFF2 DICT vsindex out of range"));
                     }
-                    entries.insert(22, std::mem::take(&mut stack));
+                    entries.insert(
+                        22,
+                        Entry {
+                            values: std::mem::take(&mut stack),
+                            at,
+                        },
+                    );
                     cap(entries.len(), limits.value_nodes, r.at())?;
                     continue;
                 }
@@ -159,13 +182,29 @@ fn parse_inner(
                     continue;
                 }
             }
-            if !cff2 && matches!(op, 22..=27) {
-                return Err(bad(r.at(), "reserved CFF DICT operator"));
+            if !cff2 && reserved(op) {
+                crate::recovery::repair(
+                    diagnostics,
+                    crate::tags::CFF_DICT_OPERATOR,
+                    "reserved CFF DICT operator ignored",
+                    Position::Buffer(at),
+                )?;
+                stack.clear();
+                continue;
             }
             if matches!(op, 7 | 9) && !entries.contains_key(&(op - 1)) {
                 blue_order_fault.get_or_insert(r.at() - 1);
             }
-            if entries.insert(op, std::mem::take(&mut stack)).is_some() {
+            if entries
+                .insert(
+                    op,
+                    Entry {
+                        values: std::mem::take(&mut stack),
+                        at,
+                    },
+                )
+                .is_some()
+            {
                 return Err(bad(r.at(), "duplicate CFF DICT operator"));
             }
             cap(entries.len(), limits.value_nodes, r.at())?;
@@ -179,6 +218,12 @@ fn parse_inner(
         at: r.base,
         blue_order_fault,
     })
+}
+
+// TN 5176 Appendix H identifies operator slots with no defined semantics.
+// Reserved number bytes 31/255 remain errors: no payload length is defined.
+fn reserved(op: u16) -> bool {
+    matches!(op, 22..=27 | 0x0c0f..=0x0c10 | 0x0c18..=0x0c1d | 0x0c27..=0x0cff)
 }
 
 // DICT delta-encoded arrays are accumulated by their consumers, after blending.

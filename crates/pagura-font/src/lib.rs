@@ -139,7 +139,7 @@ impl FontProgram {
             FontFormat::Cff => {
                 Program::Cff(cff::Cff::parse(&data, 0..data.len(), limits, diagnostics)?)
             }
-            FontFormat::Type1 => Program::Type1(type1::Type1::parse(&data, limits)?),
+            FontFormat::Type1 => Program::Type1(type1::Type1::parse(&data, limits, diagnostics)?),
         };
         let retained_bytes = memory::estimate(&data, &parsed);
         Ok(Self {

@@ -112,6 +112,12 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   `outline.count` and `outline.type` rebuild a consistent outline tree;
   `destination.page-number`, `navigation.text`, `navigation.target-conflict`,
   `link.quad-points` and `action.cycle` cover the remaining navigation faults.
+- `font.cff-dict-operands`, `font.cff-dict-operator` (CFF section 4 and
+  Appendix H): unused hint arrays with no operands are dropped, and reserved
+  DICT operators are ignored with their operands; `font.cff-encoding-supplement`
+  (CFF section 12): a supplement for a glyph absent from the main encoding is
+  dropped; `font.type1-duplicate-glyph` (Type 1 chapters 6 and 10.3): the first
+  definition of a repeated glyph name is kept.
 - `font.cff-blue-order` (CFF section 15, Table 23; Type 1 5.3–5.5): unused
   hint zones whose pairs do not ascend are ignored; outlines and widths are
   unchanged.

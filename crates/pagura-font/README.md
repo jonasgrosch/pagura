@@ -221,3 +221,32 @@ estimate. Temporary parsers, aliases, dictionaries, diagnostics and outlines
 are excluded, as are this value's inline size and any caller's surrounding
 Arc. Callers charge those last two separately and charge a shared program
 once, preserving the separate treatment of provider-owned substitutes.
+
+
+Malformed CFF DICT metadata uses two reported policies (TN 5176 section 4,
+Table 6; section 15, Table 23; Appendix H). `font.cff-dict-operands` drops
+Private hint entries with invalid operand counts; these hints never affect
+this unhinted API. `font.cff-dict-operator` discards a reserved operator slot
+and its preceding operands. Recognized operators in the wrong dictionary,
+consumed widths/offsets/matrices/random seeds, duplicate known operators and
+invalid numbers remain errors. Reserved number markers 31 and 255 have no
+defined payload size and are not salvaged. CFF2 operator semantics are not
+extended by this policy. DICT diagnostics identify the actual operator byte.
+
+`font.type1-duplicate-glyph` retains the first static CharStrings binding for
+a repeated name, including `.notdef` and the empty name. Type 1 chapters 6
+and 10 describe dictionary bindings and static organization; they do not
+prescribe this first-definition policy. It deliberately avoids interpreting
+PostScript replacement assignments. Later binary records are consumed and
+their terminators checked, but their glyphs are not retained or decrypted.
+The existing `.notdef` normalization and unique glyph indices are preserved.
+Token, binary length, work and glyph budgets still apply.
+
+`font.cff-encoding-supplement` drops unusable supplemental encoding records
+(TN 5176 section 12, Tables 14/15). A supplement must reference a main-encoded
+glyph and an unmapped code. Main mappings and the first accepted supplement
+for each code remain intact; subsequent valid records survive an invalid one.
+An incomplete supplemental tail is dropped within the available CFF buffer;
+no codes or SIDs are guessed. Invalid main encoding data remains an error.
+Each policy rejects with its tag in strict mode and reports through the
+public parse diagnostics in repair mode, without modifying original bytes.

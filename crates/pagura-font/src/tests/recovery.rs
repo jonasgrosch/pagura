@@ -170,6 +170,10 @@ fn repair_mode_mutations_keep_work_and_diagnostics_bounded() {
     };
     for (name, format) in [
         ("repair-cff-subr-escape", FontFormat::Cff),
+        ("repair-cff-empty-other-blues", FontFormat::Cff),
+        ("repair-cff-reserved-private", FontFormat::Cff),
+        ("repair-cff-supplement-truncated", FontFormat::Cff),
+        ("repair-type1-duplicate-name", FontFormat::Type1),
         ("repair-type1-subr-escape", FontFormat::Type1),
         ("repair-component-matrix", FontFormat::TrueType),
         ("repair-cmap-groups", FontFormat::TrueType),
@@ -215,4 +219,98 @@ fn unused_cff_blue_hint_order_is_reported_in_all_containers() {
     ] {
         repair_vector(&format!("repair-cff-blue-{name}"), format);
     }
+}
+
+#[test]
+fn malformed_font_metadata_has_exact_repaired_geometry_and_mappings() {
+    for suffix in [
+        "empty-blue-values",
+        "empty-other-blues",
+        "empty-family-blues",
+        "empty-family-other-blues",
+        "empty-snap-h",
+        "empty-snap-v",
+        "scalar-hint-arity",
+        "reserved-private",
+        "reserved-top",
+        "reserved-repeated",
+        "supplement-unencoded",
+        "supplement-missing-sid",
+        "supplement-conflict",
+        "supplement-truncated",
+        "supplement-missing-count",
+    ] {
+        repair_vector(&format!("repair-cff-{suffix}"), FontFormat::Cff);
+    }
+    for suffix in ["name", "notdef", "empty"] {
+        repair_vector(
+            &format!("repair-type1-duplicate-{suffix}"),
+            FontFormat::Type1,
+        );
+    }
+}
+
+#[test]
+fn relevant_dict_operands_and_reserved_number_bytes_still_reject() {
+    for suffix in [
+        "width-arity",
+        "subrs-arity",
+        "seed-arity",
+        "matrix-arity",
+        "reserved-number-31",
+        "reserved-number-255",
+    ] {
+        let mut diagnostics = Diagnostics::new(Recovery::Repair);
+        assert!(
+            FontProgram::parse_with_diagnostics(
+                pagura_testkit::fixture("font", &format!("cff-dict-{suffix}.font")),
+                FontFormat::Cff,
+                &Limits::default(),
+                &mut diagnostics
+            )
+            .is_err(),
+            "{suffix}"
+        );
+        assert!(diagnostics.is_empty());
+    }
+}
+
+#[test]
+fn duplicate_empty_name_keeps_the_first_charstring() {
+    let mut diagnostics = Diagnostics::new(Recovery::Repair);
+    let font = FontProgram::parse_with_diagnostics(
+        pagura_testkit::fixture("font", "repair-type1-duplicate-empty.font"),
+        FontFormat::Type1,
+        &Limits::default(),
+        &mut diagnostics,
+    )
+    .unwrap();
+    assert_eq!(font.glyph_for_name(b""), Some(GlyphId(2)));
+    assert_eq!(font.advance(GlyphId(2)), Some(600.0));
+    assert_eq!(diagnostics.as_slice().len(), 1);
+}
+
+#[test]
+fn metadata_repairs_coalesce_and_identify_the_operator_or_record() {
+    let data = pagura_testkit::fixture("font", "repair-cff-reserved-repeated.font");
+    let op_at = data.windows(2).position(|p| p == [12, 255]).unwrap();
+    let mut diagnostics = Diagnostics::new(Recovery::Strict);
+    let error = FontProgram::parse_with_diagnostics(
+        data.clone(),
+        FontFormat::Cff,
+        &Limits::default(),
+        &mut diagnostics,
+    )
+    .unwrap_err();
+    assert_eq!(error.position, Position::Buffer(op_at));
+    let mut diagnostics = Diagnostics::new(Recovery::Repair);
+    FontProgram::parse_with_diagnostics(
+        data,
+        FontFormat::Cff,
+        &Limits::default(),
+        &mut diagnostics,
+    )
+    .unwrap();
+    assert_eq!(diagnostics.as_slice().len(), 1);
+    assert_eq!(diagnostics.as_slice()[0].position, Position::Buffer(op_at));
 }

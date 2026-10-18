@@ -97,14 +97,14 @@ impl Cff {
         diagnostics: &mut Diagnostics,
     ) -> Result<Self> {
         let Header {
-            top,
+            mut top,
             strings: string_ranges,
             global,
             cff2,
-        } = header(data, range.clone(), limits)?;
+        } = header(data, range.clone(), limits, diagnostics)?;
         let table = Read::new(&data[range.clone()], range.start);
         if !cff2 {
-            top.check(false, string_ranges.len())?;
+            top.check(false, string_ranges.len(), diagnostics)?;
         }
         if top.has(0x0c14) {
             return Err(format_error(
@@ -167,6 +167,7 @@ impl Cff {
                 &string_ranges,
                 data,
                 limits,
+                diagnostics,
             )?)
         };
         let context = Context {
@@ -263,13 +264,13 @@ fn private_dict(
     let mut r = table.tail(offset)?;
     let at = r.at();
     let bytes = Read::new(r.take(size)?, at);
-    let private = if context.cff2 {
+    let mut private = if context.cff2 {
         dict::parse_private(bytes, limits, context.variations)?
     } else {
-        dict::parse(bytes, limits)?
+        dict::parse(bytes, limits, diagnostics)?
     };
     if !context.cff2 {
-        private.check(true, 0)?;
+        private.check(true, 0, diagnostics)?;
     }
     private.check_blues(diagnostics)?;
     let subrs = if private.has(19) {
@@ -347,7 +348,12 @@ struct Header {
     global: Vec<Range<usize>>,
     cff2: bool,
 }
-fn header(data: &[u8], range: Range<usize>, limits: &Limits) -> Result<Header> {
+fn header(
+    data: &[u8],
+    range: Range<usize>,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<Header> {
     let mut r = Read::new(
         data.get(range.clone())
             .ok_or_else(|| bad(range.start, "invalid CFF table"))?,
@@ -383,7 +389,11 @@ fn header(data: &[u8], range: Range<usize>, limits: &Limits) -> Result<Header> {
             .first()
             .filter(|_| tops.len() == 1)
             .ok_or_else(|| bad(r.at(), "CFF Top DICT count mismatch"))?;
-        let top = dict::parse(Read::new(&data[top.clone()], top.start), limits)?;
+        let top = dict::parse(
+            Read::new(&data[top.clone()], top.start),
+            limits,
+            diagnostics,
+        )?;
         let strings = index(&mut r, limits, false)?;
         let global = index(&mut r, limits, false)?;
         (top, strings, global)
@@ -417,12 +427,14 @@ fn dictionaries(
         for font in fonts {
             cap(font.len(), remaining.operations, font.start)?;
             remaining.operations = remaining.operations.saturating_sub(font.len());
-            let dict = if cff2 { dict::parse_cff2 } else { dict::parse }(
-                Read::new(&data[font.clone()], font.start),
-                limits,
-            )?;
+            let bytes = Read::new(&data[font.clone()], font.start);
+            let mut dict = if cff2 {
+                dict::parse_cff2(bytes, limits)?
+            } else {
+                dict::parse(bytes, limits, diagnostics)?
+            };
             if !cff2 {
-                dict.check(false, context.strings)?;
+                dict.check(false, context.strings, diagnostics)?;
             }
             if cff2 && dict.has(0x0c07) {
                 // Secondary outline readers disagree for this unreviewed

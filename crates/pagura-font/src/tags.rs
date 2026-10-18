@@ -24,3 +24,16 @@ pub const GLYPH_DATA: Repair = Repair::new("font.glyph-data");
 /// Type 1 5.3-5.5). Operator prerequisites and ascending pairs still apply in
 /// strict mode. Original bytes are retained; no hint zones are sorted.
 pub const CFF_BLUE_ORDER: Repair = Repair::new("font.cff-blue-order");
+
+/// Ignore reserved CFF DICT operator slots and their operands (TN 5176 section 4,
+/// Appendix H). Known operators in the wrong dictionary remain errors.
+pub const CFF_DICT_OPERATOR: Repair = Repair::new("font.cff-dict-operator");
+/// Omit unused Private DICT hint values with invalid arity (TN 5176 section 15,
+/// Table 23). Widths, subroutine offsets and random seeds remain errors.
+pub const CFF_DICT_OPERANDS: Repair = Repair::new("font.cff-dict-operands");
+/// Retain the first Type 1 charstring for a repeated name (Type 1 chapter 6).
+/// This is reported policy, not PostScript dictionary replacement semantics.
+pub const TYPE1_DUPLICATE_GLYPH: Repair = Repair::new("font.type1-duplicate-glyph");
+/// Drop unusable supplemental mappings, preserving the main encoding
+/// (TN 5176 section 12, Tables 14/15).
+pub const CFF_ENCODING_SUPPLEMENT: Repair = Repair::new("font.cff-encoding-supplement");

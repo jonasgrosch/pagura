@@ -10,6 +10,8 @@ use std::collections::BTreeMap;
 
 mod aliases;
 mod charstring;
+mod charstrings;
+use charstrings::CharStrings;
 mod memory;
 mod tokens;
 use tokens::Tokens;
@@ -43,7 +45,7 @@ pub(super) fn decrypt(data: &[u8], seed: u16, discard: usize, at: usize) -> Resu
 }
 
 impl Type1 {
-    pub fn parse(data: &[u8], limits: &Limits) -> Result<Self> {
+    pub fn parse(data: &[u8], limits: &Limits, diagnostics: &mut Diagnostics) -> Result<Self> {
         let (flat, binary) = flatten(data, limits)?;
         let Clear {
             matrix,
@@ -69,8 +71,7 @@ impl Type1 {
         let mut len_iv = Some(4);
         let mut subrs = Vec::new();
         let mut have_subrs = false;
-        let mut names = BTreeMap::new();
-        let mut glyphs = Vec::new();
+        let mut chars = CharStrings::default();
         let mut closed = false;
         let mut have_chars = false;
         while let Some(token) = r.next()? {
@@ -101,15 +102,7 @@ impl Type1 {
                         return Err(bad(r.pos, "invalid Type 1 dictionary organization"));
                     }
                     have_chars = true;
-                    charstrings(
-                        &mut r,
-                        len_iv,
-                        limits,
-                        subrs.len(),
-                        &mut glyphs,
-                        &mut names,
-                        &aliases,
-                    )?;
+                    chars.read(&mut r, len_iv, limits, subrs.len(), &aliases, diagnostics)?;
                 }
                 b"closefile" => {
                     closed = true;
@@ -121,6 +114,10 @@ impl Type1 {
         if !closed {
             return Err(bad(r.pos, "missing Type 1 closefile"));
         }
+        let CharStrings {
+            mut glyphs,
+            mut names,
+        } = chars;
         if glyphs.is_empty() || !names.contains_key(b".notdef".as_slice()) {
             return Err(bad(start, "Type 1 font has no .notdef charstring"));
         }
@@ -398,42 +395,4 @@ fn subroutines(
         return Err(bad(r.pos, "incomplete Type 1 Subrs array"));
     }
     Ok(subrs)
-}
-
-fn charstrings(
-    r: &mut Tokens<'_>,
-    len_iv: Option<usize>,
-    limits: &Limits,
-    subr_count: usize,
-    glyphs: &mut Vec<Vec<u8>>,
-    names: &mut BTreeMap<Name, GlyphId>,
-    aliases: &aliases::Aliases,
-) -> Result<()> {
-    let count = r.integer()?;
-    cap(count, limits.objects.min(limits.value_nodes), r.pos)?;
-    while let Some(token) = r.next()? {
-        if token == b"end" {
-            break;
-        }
-        if let Some(name) = token.strip_prefix(b"/") {
-            cap(
-                glyphs.len().saturating_add(subr_count).saturating_add(1),
-                limits.objects.min(limits.value_nodes),
-                r.pos,
-            )?;
-            cap(name.len(), limits.string_bytes, r.pos)?;
-            let program = r.binary(aliases)?;
-            let glyph = GlyphId(
-                u32::try_from(glyphs.len())
-                    .map_err(|_| crate::read::limit(r.pos, "Type 1 glyph count overflow"))?,
-            );
-            if names.insert(Name::new(name), glyph).is_some() {
-                return Err(bad(r.pos, "duplicate Type 1 glyph name"));
-            }
-            cap(glyphs.len() + 1, count, r.pos)?;
-            glyphs.push(char_bytes(program, len_iv, r.pos)?);
-            aliases.finish(r, aliases::Assignment::Define)?;
-        }
-    }
-    Ok(())
 }
