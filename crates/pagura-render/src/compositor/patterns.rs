@@ -94,48 +94,28 @@ impl Context {
         self.soft_source = soft_source;
         self.clip = None;
         result?;
-        let width =
-            usize::try_from(tile.width).map_err(|_| Error::limit("pattern width exceeds usize"))?;
-        remove_backdrop(&mut surface, backdrop)?;
+        surface.remove_backdrop(backdrop);
         let soft = command
             .composite
             .mask
             .as_ref()
             .map(|m| self.soft_mask(m, target.tile, frame.model, frame.depth + 1))
             .transpose()?;
+        let soft = soft.as_deref().map(Vec::as_slice);
         self.charge(surface.pixels().len())?;
-        for (row, pixels) in surface.pixels().chunks_exact(width).enumerate() {
-            let y =
-                tile.y + u32::try_from(row).map_err(|_| Error::limit("pattern row overflow"))?;
-            for (col, pixel) in pixels.iter().enumerate().filter(|(_, p)| p.shape > 0.0) {
-                let x = tile.x
-                    + u32::try_from(col).map_err(|_| Error::limit("pattern column overflow"))?;
-                let coverage = mask.coverage()[row * width + col];
-                if coverage == 0 {
-                    continue;
-                }
-                let index = target
-                    .index(x, y)
-                    .ok_or(Error::invalid_argument("pattern outside target"))?;
-                let factor = f64::from(coverage) / 255.0;
-                let source = Source {
-                    spot: self.spot_batch.is_some(),
-                    ..Source::new(pixel.color, pixel.group * factor, pixel.shape * factor)
-                }
-                .apply(
-                    &command.composite,
-                    soft.as_ref()
-                        .and_then(|m| m.get(index))
-                        .copied()
-                        .unwrap_or(1.0),
-                );
-                // All reads of the initial parent pixel precede this pixel's write.
-                let pixel = target
-                    .pixels_mut()
-                    .get_mut(index)
-                    .ok_or(Error::invalid_argument("pattern index outside target"))?;
-                frame.paint(pixel, source, &command.composite, (x, y));
+        // The cell surface spans the mask, so both share pixel indices.
+        for (index, point, pixel) in surface.painted() {
+            let coverage = mask.coverage().get(index).copied().unwrap_or(0);
+            if coverage == 0 {
+                continue;
             }
+            let factor = f64::from(coverage) / 255.0;
+            let source = Source {
+                spot: self.spot_batch.is_some(),
+                ..Source::new(pixel.color, pixel.group * factor, pixel.shape * factor)
+            };
+            // All reads of the initial parent pixel precede this pixel's write.
+            target.composite(point, source, &command.composite, soft, frame)?;
         }
         self.allocated -= surface.bytes();
         Ok(())
@@ -222,29 +202,6 @@ fn fit(t: Transform, pattern: &Tiling) -> Result<Transform> {
         }
     }
     Ok(fitted)
-}
-
-fn remove_backdrop(surface: &mut Surface, backdrop: Backdrop<'_>) -> Result<()> {
-    let tile = surface.tile;
-    let width =
-        usize::try_from(tile.width).map_err(|_| Error::limit("pattern width exceeds usize"))?;
-    for (row, pixels) in surface.pixels_mut().chunks_exact_mut(width).enumerate() {
-        let y = tile.y + u32::try_from(row).map_err(|_| Error::limit("pattern row overflow"))?;
-        for (col, pixel) in pixels.iter_mut().enumerate().filter(|(_, p)| p.shape > 0.0) {
-            let x =
-                tile.x + u32::try_from(col).map_err(|_| Error::limit("pattern column overflow"))?;
-            let base = backdrop.pixel(x, y);
-            pixel.color = if pixel.group > 0.0 {
-                [0, 1, 2, 3].map(|i| {
-                    ((pixel.color[i] - (1.0 - pixel.group) * base.color[i]) / pixel.group)
-                        .clamp(0.0, 1.0)
-                })
-            } else {
-                [0.0; 4]
-            };
-        }
-    }
-    Ok(())
 }
 
 fn instance_count((x0, x1): (i64, i64), (y0, y1): (i64, i64), maximum: usize) -> Result<usize> {

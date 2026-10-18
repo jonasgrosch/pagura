@@ -9,6 +9,7 @@ use super::{Model, narrow};
 use crate::Tile;
 use crate::transparency::Composite;
 use pagura_core::{Error, Result};
+use pagura_raster::Mask;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub(super) struct Pixel {
@@ -255,6 +256,108 @@ impl Surface {
         self.pixels.len() * size_of::<Pixel>()
             + self.narrow.as_ref().map_or(0, narrow::Buffer::bytes)
     }
+    /// Composites `source` into the pixel at device `(x, y)` of `frame`'s
+    /// group, after the soft mask over this surface and the state's constant
+    /// alpha (11.3.7, 11.4).
+    pub(super) fn composite(
+        &mut self,
+        (x, y): (u32, u32),
+        source: Source,
+        state: &Composite,
+        soft: Option<&[f64]>,
+        frame: Frame<'_>,
+    ) -> Result<()> {
+        let index = self
+            .index(x, y)
+            .ok_or(Error::invalid_argument("mark outside its group"))?;
+        let mask = soft.and_then(|m| m.get(index)).copied().unwrap_or(1.0);
+        // Admission keeps every mark that reaches bounded storage Normal
+        // source-over in RGB (ADR 0004).
+        if let Some(buffer) = self.narrow_mut() {
+            return buffer.paint(index, source.apply(state, mask));
+        }
+        let pixel = self
+            .pixels_mut()
+            .get_mut(index)
+            .ok_or(Error::invalid_argument("mark outside its group"))?;
+        frame.paint(pixel, source.apply(state, mask), state, (x, y));
+        Ok(())
+    }
+    /// Every painted pixel, with its index and device position.
+    pub(super) fn painted(&self) -> impl Iterator<Item = (usize, (u32, u32), Pixel)> + '_ {
+        points(self.tile)
+            .zip(self.pixels.iter().copied())
+            .enumerate()
+            .filter(|(_, (_, pixel))| pixel.shape > 0.0)
+            .map(|(index, (point, pixel))| (index, point, pixel))
+    }
+    /// Removes the initial backdrop from a non-isolated group's colours, so
+    /// they composite into the parent once (11.4.4).
+    pub(super) fn remove_backdrop(&mut self, backdrop: Backdrop<'_>) {
+        let painted = points(self.tile)
+            .zip(self.pixels_mut())
+            .filter(|(_, pixel)| pixel.shape > 0.0);
+        for ((x, y), pixel) in painted {
+            let base = backdrop.pixel(x, y);
+            pixel.color = if pixel.group > 0.0 {
+                [0, 1, 2, 3].map(|i| {
+                    ((pixel.color[i] - (1.0 - pixel.group) * base.color[i]) / pixel.group)
+                        .clamp(0.0, 1.0)
+                })
+            } else {
+                [0.0; 4]
+            };
+        }
+    }
+}
+
+/// The device positions of a tile, row by row.
+fn points(tile: Tile) -> impl Iterator<Item = (u32, u32)> {
+    let Tile {
+        x,
+        y,
+        width,
+        height,
+    } = tile;
+    (y..y + height).flat_map(move |y| (x..x + width).map(move |x| (x, y)))
+}
+
+/// A row of nonzero mask coverage from device `(x, y)`: all full or all
+/// fractional samples.
+pub(super) struct Run<'a> {
+    pub(super) x: u32,
+    pub(super) y: u32,
+    end: u32,
+    /// The run's row and first column within its mask.
+    pub(super) row: usize,
+    pub(super) column: usize,
+    pub(super) coverage: &'a [u8],
+}
+impl<'a> Run<'a> {
+    /// Each pixel's device column with its coverage.
+    pub(super) fn pixels(&self) -> impl Iterator<Item = (u32, u8)> + 'a {
+        (self.x..self.end).zip(self.coverage.iter().copied())
+    }
+}
+
+/// The covered runs of `mask` in device coordinates, row by row.
+pub(super) fn runs(mask: &Mask) -> impl Iterator<Item = Result<Run<'_>>> {
+    let (ox, oy) = mask.origin();
+    mask.spans().map(move |(row, column, coverage)| {
+        let offset = |origin: u32, n: usize| u32::try_from(n).ok()?.checked_add(origin);
+        let run = offset(oy, row).zip(offset(ox, column)).and_then(|(y, x)| {
+            let end = offset(x, coverage.len())?;
+            Some(Run {
+                x,
+                y,
+                end,
+                row,
+                column,
+                coverage,
+            })
+        });
+        run.ok_or(Error::limit("mask run exceeds device coordinates"))
+    })
 }
 #[derive(Clone, Copy)]
 pub(super) enum Backdrop<'a> {

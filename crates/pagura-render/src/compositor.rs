@@ -27,7 +27,7 @@ pub(crate) use regions::content_bounds;
 use regions::group_region;
 use shading::pattern_source;
 use soft_mask::CachedMask;
-use surface::{Backdrop, Frame, Pixel, Source, Surface};
+use surface::{Backdrop, Frame, Pixel, Source, Surface, runs};
 
 use crate::Tile;
 use crate::display::{Clip, Command, Mark, PathCommand};
@@ -349,32 +349,22 @@ impl Context {
             .as_ref()
             .map(|m| self.soft_mask(m, target.tile, frame.model, frame.depth + 1))
             .transpose()?;
-        let (ox, oy) = mask.origin();
-        for (row, col, coverage) in mask.spans() {
-            let y = oy + u32::try_from(row).map_err(|_| Error::limit("mask row exceeds u32"))?;
-            let x = ox + u32::try_from(col).map_err(|_| Error::limit("mask column exceeds u32"))?;
-            let start = target
-                .span(x, y, coverage.len())
-                .ok_or(Error::invalid_argument("mask outside group"))?;
-            if coverage[0] == 255
+        let soft = soft.as_deref().map(Vec::as_slice);
+        for run in runs(mask) {
+            let run = run?;
+            let (x, y, count) = (run.x, run.y, run.coverage.len());
+            if run.coverage.first() == Some(&255)
                 && p.composite.simple()
                 && !frame.knockout
                 && let Some(color) = color
                 && color.preserve == [false; 4]
-                && target.fill_solid(start, coverage.len(), color.color)?
+                && let Some(start) = target.span(x, y, count)
+                && target.fill_solid(start, count, color.color)?
             {
-                self.transfer_run(p.transfer.as_ref(), &p.composite, (x, y), coverage.len())?;
+                self.transfer_run(p.transfer.as_ref(), &p.composite, (x, y), count)?;
                 continue;
             }
-            for (column, &coverage) in coverage.iter().enumerate() {
-                let x = x + u32::try_from(column)
-                    .map_err(|_| Error::limit("mask column exceeds u32"))?;
-                let index = start + column;
-                let mask_value = soft
-                    .as_ref()
-                    .and_then(|m| m.get(index))
-                    .copied()
-                    .unwrap_or(1.0);
+            for (offset, (x, coverage)) in run.pixels().enumerate() {
                 let source = if let Some(color) = color {
                     color.covered(coverage)
                 } else if let (Some(pattern), Some(inverse)) = (&pattern, inverse) {
@@ -386,8 +376,12 @@ impl Context {
                         (x, y),
                         frame.model,
                         rate,
+                        // The boundary mask spans the coverage mask.
                         boundary.as_ref().map(|mask| {
-                            f64::from(mask.coverage()[row * boundary_width + col + column]) / 255.0
+                            let index = run.row * boundary_width + run.column + offset;
+                            mask.coverage()
+                                .get(index)
+                                .map_or(0.0, |&v| f64::from(v) / 255.0)
                         }),
                     )?
                     else {
@@ -398,12 +392,7 @@ impl Context {
                     return Err(Error::invalid_argument("missing pattern source"));
                 };
                 self.transfer_mark(p.transfer.as_ref(), &p.composite, (x, y), source, true)?;
-                let source = source.apply(&p.composite, mask_value);
-                let pixel = target
-                    .pixels_mut()
-                    .get_mut(index)
-                    .ok_or(Error::invalid_argument("invalid group index"))?;
-                frame.paint(pixel, source, &p.composite, (x, y));
+                target.composite((x, y), source, &p.composite, soft, frame)?;
             }
         }
         Ok(())
@@ -568,63 +557,25 @@ impl Context {
             .map(|m| self.soft_mask(m, parent.tile, frame.model, frame.depth + 1))
             .transpose()?;
         self.charge(surface.pixels().len())?;
-        let width =
-            usize::try_from(tile.width).map_err(|_| Error::limit("group width exceeds usize"))?;
         // Remove the initial backdrop before mutating the parent surface. This
         // also prevents a prior result from becoming a later pixel's backdrop.
-        for (row, pixels) in surface.pixels_mut().chunks_exact_mut(width).enumerate() {
-            let y =
-                tile.y + u32::try_from(row).map_err(|_| Error::limit("group row exceeds u32"))?;
-            for (column, pixel) in pixels.iter_mut().enumerate().filter(|(_, p)| p.shape > 0.0) {
-                let x = tile.x
-                    + u32::try_from(column)
-                        .map_err(|_| Error::limit("group column exceeds u32"))?;
-                let base = initial.pixel(x, y);
-                let color = if pixel.group > 0.0 {
-                    [0, 1, 2, 3].map(|i| {
-                        ((pixel.color[i] - (1.0 - pixel.group) * base.color[i]) / pixel.group)
-                            .clamp(0.0, 1.0)
-                    })
-                } else {
-                    [0.0; 4]
-                };
-                pixel.color = if model == frame.model || self.spot_batch.is_some() {
-                    color
-                } else {
-                    frame.model.encode_rgb(
-                        model.rgb(color),
-                        &group.composite.conversion,
-                        &mut self.function_work,
-                    )?
-                };
+        surface.remove_backdrop(initial);
+        if model != frame.model && self.spot_batch.is_none() {
+            for pixel in surface.pixels_mut().iter_mut().filter(|p| p.shape > 0.0) {
+                pixel.color = frame.model.encode_rgb(
+                    model.rgb(pixel.color),
+                    &group.composite.conversion,
+                    &mut self.function_work,
+                )?;
             }
         }
-        for (row, pixels) in surface.pixels().chunks_exact(width).enumerate() {
-            let y =
-                tile.y + u32::try_from(row).map_err(|_| Error::limit("group row exceeds u32"))?;
-            for (column, pixel) in pixels.iter().enumerate().filter(|(_, p)| p.shape > 0.0) {
-                let x = tile.x
-                    + u32::try_from(column)
-                        .map_err(|_| Error::limit("group column exceeds u32"))?;
-                let index = parent
-                    .index(x, y)
-                    .ok_or(Error::invalid_argument("group outside parent"))?;
-                let mask = soft
-                    .as_ref()
-                    .and_then(|m| m.get(index))
-                    .copied()
-                    .unwrap_or(1.0);
-                let source = Source {
-                    spot: self.spot_batch.is_some(),
-                    ..Source::new(pixel.color, pixel.group, pixel.shape)
-                }
-                .apply(&group.composite, mask);
-                let target = parent
-                    .pixels_mut()
-                    .get_mut(index)
-                    .ok_or(Error::invalid_argument("invalid parent index"))?;
-                frame.paint(target, source, &group.composite, (x, y));
-            }
+        let soft = soft.as_deref().map(Vec::as_slice);
+        for (_, point, pixel) in surface.painted() {
+            let source = Source {
+                spot: self.spot_batch.is_some(),
+                ..Source::new(pixel.color, pixel.group, pixel.shape)
+            };
+            parent.composite(point, source, &group.composite, soft, frame)?;
         }
         self.allocated -= surface.bytes();
         Ok(())
