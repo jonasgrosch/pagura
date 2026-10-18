@@ -2,7 +2,7 @@
 use super::{optional, optional_dictionary};
 use pagura_core::{Dictionary, Error, Result};
 use pagura_document::Document;
-use pagura_text::{FontKind, PdfFont, Provider, WritingMode};
+use pagura_text::{FontKind, Provider, WritingMode};
 use std::collections::BTreeMap;
 
 pub(super) struct Font {
@@ -16,6 +16,7 @@ impl Font {
         resources: &Dictionary,
         name: &[u8],
         provider: Option<&dyn Provider>,
+        cache: Option<&std::sync::Mutex<crate::interpreter::text::cache::FontCache>>,
     ) -> Result<Self> {
         let fonts = resources
             .get(b"Font")
@@ -24,11 +25,9 @@ impl Font {
         let dictionary = fonts
             .get(name)
             .ok_or(Error::syntax("DA font is absent from form resources"))?;
+        let font =
+            crate::interpreter::text::cache::pdf_font(document, dictionary, provider, cache)?;
         let dictionary = document.resolve_dictionary(dictionary)?;
-        let font = match provider {
-            Some(p) => PdfFont::load_with(document, dictionary, p)?,
-            None => PdfFont::load(document, dictionary)?,
-        };
         if font.kind() == FontKind::Type0 || font.writing_mode() != WritingMode::Horizontal {
             return Err(Error::unsupported(
                 crate::form_appearance::features::FONT_ENCODING,

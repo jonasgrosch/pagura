@@ -5,6 +5,33 @@ use super::{
     Transform, Value, features, matrix, resource, unsupported,
 };
 
+/// A source program or caller-owned appearance data, with document-relative resources.
+#[derive(Clone, Copy)]
+pub(super) enum FormBody<'a> {
+    Stored(&'a pagura_document::IndirectObject),
+    Generated {
+        dictionary: &'a Dictionary,
+        bytes: &'a [u8],
+    },
+}
+impl<'a> FormBody<'a> {
+    pub(super) fn id(self) -> Option<ObjectId> {
+        match self {
+            Self::Stored(object) => Some(object.id()),
+            Self::Generated { .. } => None,
+        }
+    }
+    pub(super) fn dictionary(self) -> Result<&'a Dictionary> {
+        match self {
+            Self::Stored(object) => object
+                .dictionary()
+                .filter(|_| object.is_stream())
+                .ok_or(Error::syntax("XObject is not a stream")),
+            Self::Generated { dictionary, .. } => Ok(dictionary),
+        }
+    }
+}
+
 impl Compiler<'_> {
     pub(super) fn form(&mut self, v: &[Value], resources: &Dictionary) -> Result<()> {
         let name = v
@@ -19,19 +46,18 @@ impl Compiler<'_> {
     }
 
     pub(super) fn form_object(&mut self, id: ObjectId, resources: &Dictionary) -> Result<()> {
-        if self.forms.contains(&id) {
+        let object = self.document.object(id)?;
+        self.form_body(FormBody::Stored(object), resources)
+    }
+
+    pub(super) fn form_body(&mut self, body: FormBody<'_>, resources: &Dictionary) -> Result<()> {
+        if body.id().is_some_and(|id| self.forms.contains(&id)) {
             return Err(Error::cycle("recursive form XObject"));
         }
         if self.forms.len() >= self.document.limits().depth {
             return Err(Error::limit("form nesting budget exceeded"));
         }
-        let object = self.document.object(id)?;
-        if !object.is_stream() {
-            return Err(Error::syntax("XObject is not a stream"));
-        }
-        let dictionary = object
-            .dictionary()
-            .ok_or(Error::syntax("XObject has no dictionary"))?;
+        let dictionary = body.dictionary()?;
         match dictionary
             .get_name(b"Subtype")
             .map(pagura_core::Name::as_bytes)
@@ -50,26 +76,8 @@ impl Compiler<'_> {
         {
             return Err(Error::syntax("invalid FormType"));
         }
-        let bbox = dictionary
-            .get(b"BBox")
-            .map(|v| self.document.resolve(v))
-            .transpose()?
-            .and_then(Value::as_array)
-            .and_then(Rect::from_array)
-            .ok_or(Error::syntax("form has invalid BBox"))?;
-        let matrix = dictionary
-            .get(b"Matrix")
-            .map(|v| {
-                let values = self
-                    .document
-                    .resolve(v)?
-                    .as_array()
-                    .ok_or(Error::syntax("form Matrix must be an array"))?;
-                matrix(values)
-            })
-            .transpose()?
-            .unwrap_or(Transform::IDENTITY);
-        let mut child = self.form_context(id, matrix, bbox)?;
+        let (bbox, matrix) = self.form_geometry(dictionary)?;
+        let mut child = self.form_context(body.id(), matrix, bbox)?;
         self.inherit_extraction(&mut child, hidden);
         let bounds = child.state.clip.as_ref().map(|c| Arc::clone(&c.path));
         let resources = dictionary
@@ -88,7 +96,13 @@ impl Compiler<'_> {
             };
             child.state.stroke_alpha = 1.0;
         }
-        child.extract_form_sequence(object, resources)?;
+        match body {
+            FormBody::Stored(object) => child.extract_form_sequence(object, resources)?,
+            FormBody::Generated { bytes, .. } => {
+                child.position = pagura_core::Position::Unknown;
+                child.sequence_bytes(bytes, &[], resources)?;
+            }
+        }
         self.operations = child.operations;
         self.marks = child.marks;
         if self
@@ -120,16 +134,45 @@ impl Compiler<'_> {
         }
         Ok(())
     }
-    fn form_hidden(&self, dictionary: &Dictionary) -> Result<bool> {
+    pub(super) fn form_geometry(&self, dictionary: &Dictionary) -> Result<(Rect, Transform)> {
+        let bbox = dictionary
+            .get(b"BBox")
+            .map(|v| self.document.resolve(v))
+            .transpose()?
+            .and_then(Value::as_array)
+            .and_then(Rect::from_array)
+            .ok_or(Error::syntax("form has invalid BBox"))?;
+        let matrix = dictionary
+            .get(b"Matrix")
+            .map(|v| {
+                let values = self
+                    .document
+                    .resolve(v)?
+                    .as_array()
+                    .ok_or(Error::syntax("form Matrix must be an array"))?;
+                matrix(values)
+            })
+            .transpose()?
+            .unwrap_or(Transform::IDENTITY);
+        Ok((bbox, matrix))
+    }
+    pub(super) fn form_hidden(&self, dictionary: &Dictionary) -> Result<bool> {
         Ok(dictionary
             .get(b"OC")
             .map(|oc| self.visibility.visible(self.document, oc))
             .transpose()?
             .is_some_and(|visible| !visible))
     }
-    pub(super) fn form_context(&self, id: ObjectId, matrix: Transform, bbox: Rect) -> Result<Self> {
+    pub(super) fn form_context(
+        &self,
+        id: Option<ObjectId>,
+        matrix: Transform,
+        bbox: Rect,
+    ) -> Result<Self> {
         let mut child = self.detached();
-        child.forms.push(id);
+        if let Some(id) = id {
+            child.forms.push(id);
+        }
         child.state.ctm = matrix.then(child.state.ctm);
         if !child.state.ctm.is_finite() {
             return Err(Error::syntax("form matrix arithmetic overflow"));
@@ -175,3 +218,6 @@ impl Compiler<'_> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

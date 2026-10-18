@@ -1,7 +1,10 @@
-//! Content compilation. The only inputs are immutable document objects.
+//! Content compilation from immutable objects and optional in-memory form values.
 
 mod annotation_shapes;
 mod annotations;
+mod annotations_filled;
+#[cfg(test)]
+mod annotations_filled_tests;
 mod forms;
 pub(crate) mod images;
 mod masks;
@@ -21,10 +24,13 @@ use pagura_document::{Document, IndirectObject, Page};
 use pagura_raster::{FillRule, LineCap, LineJoin, PathBuilder, Point, Stroke, Transform};
 use std::sync::Arc;
 
-/// Stable reported content repairs (ADR 0003).
+/// Stable reported content repair and information tags (ADR 0003).
 pub(crate) mod tags {
     use pagura_core::Repair;
 
+    /// Information, not a repair: an untouched field keeps its valid stored AP
+    /// because generating a replacement is unsupported.
+    pub const APPEARANCE_KEPT: &str = "form.appearance-kept";
     /// Table 73: numeric SC/sc operands are interpreted as SCN/scn only
     /// when their count and types fit the selected non-pattern space.
     pub const COLOUR_OPERATOR: Repair = Repair::new("content.colour-operator");
@@ -58,11 +64,15 @@ pub(crate) fn repair(document: &Document, diagnostic: pagura_core::Diagnostic) -
     Ok(())
 }
 
+pub(crate) use annotations_filled::compile_filled_cached;
+pub use annotations_filled::compile_filled_page;
 pub(crate) use text::extract::compile_with_text;
 pub use text::extract::{compile_page_with_text, text_page};
 
 /// Compiles a page into the vector display list (7.8.2; 8.4–8.6; ADR 0004).
 /// All content streams are one token sequence, including compound operands.
+/// This uses stored appearances and ignores NeedAppearances. Use
+/// [`compile_filled_page`] with an empty filler to honor NeedAppearances.
 ///
 /// # Errors
 /// Returns positioned syntax errors, resource-limit errors and stable
@@ -97,6 +107,7 @@ pub(crate) fn compile_cached(
         colors: crate::icc::Cache::default(),
         provider,
         fonts: Some(fonts),
+        filler: None,
     });
     compiler.page(page).map_err(|e| e.in_object(page.id()))?;
     Ok(compiler.list)
@@ -104,6 +115,7 @@ pub(crate) fn compile_cached(
 
 // Resources shared by detached forms and masks within one compilation.
 struct Compilation<'a> {
+    filler: Option<&'a pagura_document::forms::FormFiller<'a>>,
     colors: crate::icc::Cache,
     provider: Option<&'a dyn pagura_text::Provider>,
     fonts: Option<&'a std::sync::Mutex<text::cache::FontCache>>,
@@ -179,6 +191,7 @@ impl<'a> Compiler<'a> {
                 colors: crate::icc::Cache::default(),
                 provider: None,
                 fonts: None,
+                filler: None,
             }),
             list: DisplayList::new(page, document.limits()),
             state: Graphics::default(),
@@ -217,10 +230,6 @@ impl<'a> Compiler<'a> {
     }
 
     fn sequence(&mut self, streams: &[&IndirectObject], resources: &Dictionary) -> Result<()> {
-        // Pattern execution restores the parent's initial graphics state (8.7.3.1).
-        // Retain its rendering intent when initializing opaque composition.
-        self.state.composite.conversion.intent = crate::icc::Intent::from_name(&self.state.intent);
-        self.initial_state = self.state.clone();
         let mut bytes = Vec::new();
         let mut origins = Vec::new();
         for stream in streams {
@@ -238,7 +247,19 @@ impl<'a> Compiler<'a> {
             bytes.extend_from_slice(&data);
             bytes.push(b'\n');
         }
-        let mut parser = Parser::new(&bytes, Origin::Buffer, self.document.limits());
+        self.sequence_bytes(&bytes, &origins, resources)
+    }
+
+    fn sequence_bytes(
+        &mut self,
+        bytes: &[u8],
+        origins: &[(usize, ObjectId)],
+        resources: &Dictionary,
+    ) -> Result<()> {
+        // Pattern execution restores the parent's initial graphics state (8.7.3.1).
+        self.state.composite.conversion.intent = crate::icc::Intent::from_name(&self.state.intent);
+        self.initial_state = self.state.clone();
+        let mut parser = Parser::new(bytes, Origin::Buffer, self.document.limits());
         let mut stream_index = 0;
         while let Some(byte) = parser.peek() {
             self.operations = self
@@ -246,7 +267,7 @@ impl<'a> Compiler<'a> {
                 .checked_add(1)
                 .filter(|&n| n <= self.document.limits().operations)
                 .ok_or(Error::limit("content token budget exceeded"))
-                .map_err(|e| stream_error(e, parser.offset(), &origins))?;
+                .map_err(|e| stream_error(e, parser.offset(), origins))?;
             let offset = parser.offset();
             while origins
                 .get(stream_index + 1)
@@ -259,6 +280,8 @@ impl<'a> Compiler<'a> {
                     object,
                     offset: offset - start,
                 };
+            } else {
+                self.position = Position::Buffer(offset);
             }
             let result = if matches!(
                 byte,
@@ -274,7 +297,7 @@ impl<'a> Compiler<'a> {
                     _ => self.operator(word, resources),
                 })
             };
-            result.map_err(|e| stream_error(e, offset, &origins))?;
+            result.map_err(|e| stream_error(e, offset, origins))?;
         }
         if !self.operands.is_empty()
             || !self.saved.is_empty()
@@ -287,7 +310,7 @@ impl<'a> Compiler<'a> {
             return Err(stream_error(
                 Error::syntax("content sequence ends with unfinished state"),
                 bytes.len().saturating_sub(1),
-                &origins,
+                origins,
             ));
         }
         Ok(())
@@ -560,6 +583,8 @@ fn stream_error(mut error: Error, fallback: usize, origins: &[(usize, ObjectId)]
             offset: offset - start,
         };
         error = error.in_object(object);
+    } else if error.position == Position::Unknown {
+        error.position = Position::Buffer(offset);
     }
     error
 }

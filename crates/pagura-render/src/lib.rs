@@ -23,7 +23,9 @@ mod transparency;
 
 pub use context::RenderContext;
 pub use display::DisplayList;
-pub use interpreter::{compile_page, compile_page_with, compile_page_with_text, text_page};
+pub use interpreter::{
+    compile_filled_page, compile_page, compile_page_with, compile_page_with_text, text_page,
+};
 
 use pagura_core::{Error, Rect, Result};
 use pagura_document::{Document, Page, Rotation};

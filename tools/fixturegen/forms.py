@@ -247,3 +247,6 @@ def cases():
     yield vector('text-beside-signature',o,content=b'q\nQ\n'+tx(),appearance='generated',requirement='forms-appearance-update')
     o=base();o[11]['Rect']=[0,0,100,0]
     yield vector('text-zero-area',o,appearance='hidden',requirement='forms-appearance-update')
+
+    from .forms_render import cases as render_cases
+    yield from render_cases(base)

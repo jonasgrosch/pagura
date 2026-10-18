@@ -1,8 +1,10 @@
 //! Normal annotation appearances and screen visibility (12.5.2–12.5.5).
 
 use super::{
-    Compiler, Dictionary, Error, Graphics, Page, Point, Rect, Result, Transform, Value, matrix,
+    Compiler, Dictionary, Error, Graphics, Page, Point, Rect, Result, Transform, Value,
+    forms::FormBody,
 };
+use crate::form_appearance::Appearance;
 
 impl Compiler<'_> {
     pub(super) fn annotations(&mut self, page: &Page) -> Result<()> {
@@ -17,21 +19,32 @@ impl Compiler<'_> {
         if values.len() > self.document.limits().value_nodes {
             return Err(Error::limit("annotation count exceeded"));
         }
+        let compilation = std::rc::Rc::clone(&self.compilation);
+        let filled = compilation
+            .filler
+            .map(super::annotations_filled::FilledAnnotations::new)
+            .transpose()?;
         for value in values {
-            self.annotation(value, page.resources()).map_err(|error| {
-                if let Some(id) = value.as_reference()
-                    && error.object.is_none()
-                {
-                    error.in_object(id)
-                } else {
-                    error
-                }
-            })?;
+            self.annotation(value, page.resources(), filled.as_ref())
+                .map_err(|error| {
+                    if let Some(id) = value.as_reference()
+                        && error.object.is_none()
+                    {
+                        error.in_object(id)
+                    } else {
+                        error
+                    }
+                })?;
         }
         Ok(())
     }
 
-    fn annotation(&mut self, value: &Value, resources: &Dictionary) -> Result<()> {
+    fn annotation(
+        &mut self,
+        value: &Value,
+        resources: &Dictionary,
+        filled: Option<&super::annotations_filled::FilledAnnotations<'_, '_>>,
+    ) -> Result<()> {
         let d = self.document.resolve_dictionary(value)?;
         let flags = d
             .get(b"F")
@@ -68,6 +81,17 @@ impl Compiler<'_> {
         }
         self.extract_annotation(value, false)?;
         let rect = rectangle(self.document, d, b"Rect")?;
+        if subtype == b"Widget"
+            && let Some(appearance) = filled
+                .map(|f| f.prepare(d, self, rect))
+                .transpose()?
+                .flatten()
+        {
+            let start = self.list.commands.len();
+            self.paint_filled_appearance(&appearance, rect, resources)?;
+            self.annotation_view(start, rect, flags);
+            return Ok(());
+        }
         let Some(ap) = d.get(b"AP") else {
             if rect.width() == 0.0 && rect.height() == 0.0 {
                 return Ok(());
@@ -83,8 +107,7 @@ impl Compiler<'_> {
             return Ok(());
         };
         let start = self.list.commands.len();
-        self.paint_appearance(id, rect, resources)
-            .map_err(|error| error.in_object(id))?;
+        self.paint_filled_appearance(&Appearance::Existing(id), rect, resources)?;
         let flags = if subtype == b"Text" {
             flags | 8 | 16
         } else {
@@ -119,43 +142,48 @@ impl Compiler<'_> {
             }));
     }
 
-    fn paint_appearance(
+    fn paint_filled_appearance(
         &mut self,
-        id: pagura_core::ObjectId,
+        appearance: &Appearance,
         rect: Rect,
         resources: &Dictionary,
     ) -> Result<()> {
-        let object = self.document.object(id)?;
-        let form = object
-            .dictionary()
-            .filter(|_| object.is_stream())
-            .ok_or(Error::syntax("appearance must be a stream"))?;
-        let bbox = rectangle(self.document, form, b"BBox")?;
-        let transform = form
-            .get(b"Matrix")
-            .map(|v| {
-                let v = self
-                    .document
-                    .resolve(v)?
-                    .as_array()
-                    .ok_or(Error::syntax("appearance Matrix must be an array"))?;
-                matrix(v)
+        let body = match appearance {
+            Appearance::Existing(id) => FormBody::Stored(self.document.object(*id)?),
+            Appearance::Generated(stream) => FormBody::Generated {
+                dictionary: stream.dictionary(),
+                bytes: stream.content(),
+            },
+            Appearance::Hidden => return Ok(()),
+        };
+        self.paint_appearance(body, rect, resources)
+            .map_err(|e| match body.id() {
+                Some(id) => e.in_object(id),
+                None => e,
             })
-            .transpose()?
-            .unwrap_or(Transform::IDENTITY);
+    }
+
+    fn paint_appearance(
+        &mut self,
+        body: FormBody<'_>,
+        rect: Rect,
+        resources: &Dictionary,
+    ) -> Result<()> {
+        let form = body.dictionary()?;
+        let (bbox, transform) = self.form_geometry(form)?;
         let Some(placement) = placement(bbox, transform, rect)? else {
-            return super::repair(
-                self.document,
-                pagura_core::Diagnostic::new(
-                    super::tags::APPEARANCE_EMPTY,
-                    "zero-sized appearance or annotation rectangle; appearance skipped",
-                )
-                .in_object(id)
-                .at(pagura_core::Position::Stream {
+            let mut diagnostic = pagura_core::Diagnostic::new(
+                super::tags::APPEARANCE_EMPTY,
+                "zero-sized appearance or annotation rectangle; appearance skipped",
+            )
+            .at(self.position);
+            if let Some(id) = body.id() {
+                diagnostic = diagnostic.in_object(id).at(pagura_core::Position::Stream {
                     object: id,
                     offset: 0,
-                }),
-            );
+                });
+            }
+            return super::repair(self.document, diagnostic);
         };
         // Annotation appearances start independently of the page's final state.
         // Table 166 requires ignoring annotation styling keys for an explicit AP.
@@ -168,7 +196,7 @@ impl Compiler<'_> {
         );
         let start = self.list.commands.len();
         let extraction = self.extraction.take();
-        let result = self.form_object(id, resources);
+        let result = self.form_body(body, resources);
         self.extraction = extraction;
         if result.is_ok() && !form.contains_key(b"Group") {
             let mut bounds = pagura_raster::PathBuilder::new();
@@ -177,7 +205,7 @@ impl Compiler<'_> {
             self.list
                 .commands
                 .push(crate::display::Command::Group(crate::transparency::Group {
-                    position: pagura_core::Position::Unknown,
+                    position: self.position,
                     commands,
                     bounds: Some(std::sync::Arc::new(bounds.finish())),
                     attributes: crate::transparency::Attributes::default(),
@@ -259,7 +287,11 @@ fn no_border(document: &pagura_document::Document, d: &Dictionary) -> Result<boo
     Ok(false)
 }
 
-fn rectangle(document: &pagura_document::Document, d: &Dictionary, key: &[u8]) -> Result<Rect> {
+pub(super) fn rectangle(
+    document: &pagura_document::Document,
+    d: &Dictionary,
+    key: &[u8],
+) -> Result<Rect> {
     d.get(key)
         .map(|v| document.resolve(v))
         .transpose()?
@@ -269,7 +301,7 @@ fn rectangle(document: &pagura_document::Document, d: &Dictionary, key: &[u8]) -
 }
 
 /// Fit the upright envelope of all four transformed corners (12.5.5).
-fn placement(b: Rect, m: Transform, r: Rect) -> Result<Option<Transform>> {
+pub(super) fn placement(b: Rect, m: Transform, r: Rect) -> Result<Option<Transform>> {
     let points = [
         Point::new(b.x0, b.y0),
         Point::new(b.x1, b.y0),

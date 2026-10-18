@@ -63,6 +63,8 @@ pub fn render_context(document: Arc<Document>) -> RenderContext {
 /// Compiles one page. For many pages, keep a [`render_context`]. The default
 /// `bundled-data` feature provides standard-font substitutes and predefined CMaps;
 /// `cjk-fonts` adds horizontal CID substitutes and is off by default.
+/// This uses stored appearances and ignores NeedAppearances. Use
+/// [`compile_filled_page`] with an empty filler to honor NeedAppearances.
 ///
 /// # Errors
 /// As [`pagura_render::compile_page`] and the feature-selected provider.
@@ -75,6 +77,23 @@ pub fn compile_page(document: &Document, page: &Page) -> Result<DisplayList> {
     );
     #[cfg(not(feature = "bundled-data"))]
     pagura_render::compile_page(document, page)
+}
+
+/// Compiles a page using in-memory filled values (12.7.4.3).
+/// Uses the feature-selected font provider, as [`compile_page`]. Keep a
+/// [`render_context`] to share resources when re-rendering after edits.
+///
+/// # Errors
+/// As [`pagura_render::compile_filled_page`].
+pub fn compile_filled_page(filler: &forms::FormFiller<'_>, page: &Page) -> Result<DisplayList> {
+    #[cfg(feature = "bundled-data")]
+    return pagura_render::compile_filled_page(
+        filler,
+        page,
+        Some(&pagura_data::Bundled::new(filler.document().limits())),
+    );
+    #[cfg(not(feature = "bundled-data"))]
+    pagura_render::compile_filled_page(filler, page, None)
 }
 
 /// Extracts one page's positioned text, with the feature-selected font data.
