@@ -14,8 +14,10 @@ mod limits;
 mod meter;
 mod name;
 mod rect;
+pub mod repairs;
 mod retained;
 pub mod syntax;
+pub mod text_string;
 mod value;
 
 pub use diagnostic::{Diagnostic, DiagnosticKind, Diagnostics, Recovery, Repair};

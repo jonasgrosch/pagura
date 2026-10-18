@@ -97,7 +97,8 @@ impl<'a, 'b, 'h> Context<'a, 'b, 'h> {
 #[cfg(test)]
 mod tests {
     use super::PathComponent;
-    use crate::syntax::{DIRECT_STREAM, Origin, Parser};
+    use crate::repairs::DIRECT_STREAM;
+    use crate::syntax::{Origin, Parser};
     use crate::{Limits, Name, Recovery};
 
     #[test]

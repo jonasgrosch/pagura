@@ -11,33 +11,14 @@ use direct::Context;
 type Streams<'a, 'b, 'h> = Option<Context<'a, 'b, 'h>>;
 pub use direct::{DirectStream, DirectStreamHandler, PathComponent};
 
-use crate::{
-    Diagnostic, Diagnostics, Dictionary, Error, Limits, Name, ObjectId, Position, Recovery, Repair,
-    Result, Value,
+use crate::repairs::{
+    DICTIONARY_CLOSER, DICTIONARY_OPENER, DIRECT_STREAM, DUPLICATE_KEY, KEY_SOLIDUS,
+    LEADING_ZERO_REFERENCE, NAME_ESCAPE, ZERO_REFERENCE,
 };
-
-/// Repair applied when a dictionary repeats a key (clause 7.3.7 forbids it):
-/// the last value wins. Readers disagree here, so the repair is always reported.
-pub const DUPLICATE_KEY: Repair = Repair::new("syntax.duplicate-key");
-
-/// A dictionary key with a missing solidus (7.3.7), accepted only when the
-/// entire regular token begins with an ASCII letter. Reserved values are excluded.
-pub const KEY_SOLIDUS: Repair = Repair::new("syntax.key-solidus");
-/// A hash not followed by two hex digits is retained literally (7.3.5).
-pub const NAME_ESCAPE: Repair = Repair::new("syntax.name-escape");
-/// An undefined object-zero reference is read as null (7.3.10).
-pub const ZERO_REFERENCE: Repair = Repair::new("syntax.reference-zero");
-/// A lone closing parenthesis immediately before a dictionary closer (7.3.7).
-pub const DICTIONARY_CLOSER: Repair = Repair::new("syntax.dictionary-closer");
-
-/// A duplicated opening dictionary delimiter before its first key (7.3.7).
-pub const DICTIONARY_OPENER: Repair = Repair::new("syntax.dictionary-opener");
-
-/// A stream illegally used as a direct dictionary/array value (7.3.8.1).
-pub const DIRECT_STREAM: Repair = Repair::new("syntax.direct-stream");
-
-/// Leading zeros in reference identifiers (7.3.10, EC3 issue 379).
-pub const LEADING_ZERO_REFERENCE: Repair = Repair::new("syntax.reference-leading-zero");
+use crate::{
+    Diagnostic, Diagnostics, Dictionary, Error, Limits, Name, ObjectId, Position, Recovery, Result,
+    Value,
+};
 
 /// PDF white-space characters (clause 7.2.3, Table 1).
 pub const fn is_whitespace(byte: u8) -> bool {
