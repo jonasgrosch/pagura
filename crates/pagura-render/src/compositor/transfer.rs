@@ -314,20 +314,11 @@ impl Context {
 /// and overprinting marks when overprint is simulated. Under an ignoring
 /// policy an overprint flag has no effect, so it cannot matter (8.6.7).
 pub(super) fn validate(command: &Command, overprint: crate::overprint::Policy) -> Result<()> {
-    let (composite, pattern) = match command {
-        Command::Path(p) => (
-            &p.composite,
-            matches!(p.color, crate::color::Color::Pattern { .. }),
-        ),
-        Command::Glyphs(run) => (
-            &run.paint.composite,
-            matches!(run.paint.color, crate::color::Color::Pattern { .. }),
-        ),
-        Command::Image(i) => (&i.composite, false),
-        Command::Shading(s) => (&s.composite, false),
-        Command::Group(_) => return Ok(()),
+    let Some(marking) = command.marking() else {
+        return Ok(());
     };
-    let overprints = composite.overprint && overprint == crate::overprint::Policy::Simulate;
+    let pattern = matches!(marking.color, Some(crate::color::Color::Pattern { .. }));
+    let overprints = marking.composite.overprint && overprint == crate::overprint::Policy::Simulate;
     if overprints || pattern {
         return Err(Error::unsupported(
             crate::features::TRANSPARENCY_TRANSFER,

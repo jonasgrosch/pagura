@@ -58,6 +58,7 @@ fn list(run: GlyphRun, knockout: bool) -> DisplayList {
         group: crate::transparency::Attributes::default(),
         print_intent: false,
         separations: OnceLock::new(),
+        scene: OnceLock::new(),
     }
 }
 #[test]
@@ -319,4 +320,62 @@ fn geometry_keys_distinguish_linear_maps_and_keep_outline_identities_alive() {
     cache.clear();
     assert!(outline.upgrade().is_none());
     assert_eq!(first.contours()[0].points()[1], Point::new(0.4, 0.0));
+}
+
+#[test]
+fn one_scene_classification_serves_the_opaque_renderer_and_the_compositor() {
+    use crate::transparency::{Attributes, Composite, Group, Model};
+    use scene::Scene;
+    let group = |commands, isolated, knockout, model| {
+        Command::Group(Group {
+            position: Position::Unknown,
+            commands,
+            bounds: None,
+            attributes: Attributes {
+                model,
+                isolated,
+                knockout,
+                ..Default::default()
+            },
+            composite: Composite::default(),
+        })
+    };
+    let fill = || Command::Path(paint(1.0));
+    let page = Attributes::default();
+    let scene = |commands: &[Command]| {
+        let scene = Scene::of(commands, &page);
+        (scene.opaque, scene.normal)
+    };
+    // Opaque knockout reduces to source-over but stays off the 8-bit path.
+    assert_eq!(
+        scene(&[group(vec![fill(), fill()], false, true, None)]),
+        (false, true)
+    );
+    let translucent = group(vec![Command::Path(paint(0.5))], false, true, None);
+    assert_eq!(scene(&[translucent]), (false, false));
+    // A non-isolated group composites in its parent's space, whatever its own.
+    let inherited = group(vec![fill()], false, false, Some(Model::Cmyk));
+    assert_eq!(scene(&[inherited]), (true, true));
+    let converted = group(vec![fill()], true, false, Some(Model::Cmyk));
+    assert_eq!(scene(&[converted]), (false, false));
+    // Translucent Normal marks are not opaque; nesting does not hide a mark.
+    let nested = group(
+        vec![group(vec![Command::Path(paint(0.5))], false, false, None)],
+        false,
+        false,
+        None,
+    );
+    assert_eq!(scene(&[fill(), nested]), (false, true));
+    // A knockout page group needs group surfaces for everything.
+    let knockout = Attributes {
+        knockout: true,
+        ..Default::default()
+    };
+    assert_eq!(
+        Scene::of(&[fill()], &knockout),
+        Scene {
+            opaque: false,
+            normal: false
+        }
+    );
 }

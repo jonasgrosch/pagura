@@ -19,11 +19,8 @@ impl Context {
     ) -> Result<(Self, Model)> {
         let transfers = transfer::Regions::new(&list.commands, list.limits)?;
         let allocated = transfers.as_ref().map_or(0, transfer::Regions::bytes);
-        let elide_opaque_groups = plan.format == plan::Format::F64
-            && !separations.enabled
-            && !list.group.knockout
-            && list.group.model.is_none_or(|m| m == Model::Rgb)
-            && crate::display::scene::normal_scene(&list.commands);
+        let elide_opaque_groups =
+            plan.format == plan::Format::F64 && !separations.enabled && list.scene().normal;
         let model = list.group.model.unwrap_or(if separations.enabled {
             Model::Cmyk
         } else {

@@ -235,17 +235,10 @@ impl Context {
             if self.transfers.as_ref().is_some_and(|r| !r.suspended) {
                 transfer::validate(command, self.overprint)?;
             }
+            if !command.paints() {
+                continue;
+            }
             let result = match command {
-                Command::Path(path) if !path.color.paints() => Ok(()),
-                Command::Shading(s) if !s.shading.space.paints() => Ok(()),
-                Command::Image(i)
-                    if i.image
-                        .space
-                        .as_ref()
-                        .map_or_else(|| !i.stencil.paints(), |s| !s.paints()) =>
-                {
-                    Ok(())
-                }
                 Command::Glyphs(run) => self.glyphs(run, self.viewport.unwrap_or(target.tile), target, frame),
                 Command::Path(path) => self.path_in(path, self.viewport.unwrap_or(target.tile), target, frame),
                 Command::Image(image) => self.image(
@@ -533,7 +526,7 @@ impl Context {
                     "opaque knockout has a non-fill member",
                 ));
             };
-            if p.color.paints() {
+            if command.paints() {
                 self.path_in(p, tile, parent, members)
                     .map_err(|e| crate::display::contextual(e, p.position))?;
             }

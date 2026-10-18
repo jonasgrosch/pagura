@@ -1,7 +1,6 @@
 use super::*;
 use crate::RenderOptions;
 use crate::display::DisplayList;
-use crate::display::scene::normal_scene;
 use crate::transparency::{Composite, MaskMethod, SoftMask};
 use pagura_raster::{Pixmap, Point};
 
@@ -91,7 +90,7 @@ fn icc_rgb_fallback_keeps_opaque_groups_eligible() {
         })
         .unwrap();
     assert_eq!(group.attributes.model, Some(Model::Rgb));
-    assert!(normal_scene(&list.commands));
+    assert!(list.scene().normal);
     assert!(group.composite.simple());
 }
 

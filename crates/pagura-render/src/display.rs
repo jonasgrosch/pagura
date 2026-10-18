@@ -11,7 +11,6 @@ mod glyphs;
 mod opaque;
 pub(crate) mod scene;
 pub(crate) use glyphs::{GlyphCache, GlyphRun};
-use scene::opaque_commands;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Clip {
@@ -90,6 +89,7 @@ pub struct DisplayList {
     pub(crate) group: crate::transparency::Attributes,
     pub(crate) print_intent: bool,
     pub(crate) separations: OnceLock<Result<Arc<crate::compositor::Separations>>>,
+    pub(crate) scene: OnceLock<scene::Scene>,
 }
 
 impl DisplayList {
@@ -103,7 +103,15 @@ impl DisplayList {
             group: crate::transparency::Attributes::default(),
             print_intent: false,
             separations: OnceLock::new(),
+            scene: OnceLock::new(),
         }
+    }
+
+    /// What the page asks of composition, classified once.
+    pub(crate) fn scene(&self) -> scene::Scene {
+        *self
+            .scene
+            .get_or_init(|| scene::Scene::of(&self.commands, &self.group))
     }
 
     pub(crate) fn separations(&self) -> Result<Arc<crate::compositor::Separations>> {
@@ -190,14 +198,9 @@ impl DisplayList {
         {
             return Err(Error::invalid_argument("tile lies outside the page"));
         }
-        if self.preview_separations(options)?.enabled
-            || self.group.knockout
-            || self
-                .group
-                .model
-                .is_some_and(|m| m != crate::transparency::Model::Rgb)
-            || !opaque_commands(&self.commands)
-        {
+        // Knockout groups stay off the 8-bit path, though opaque ones reduce
+        // to source-over: nearly every page has one (ADR 0004, known defect).
+        if self.preview_separations(options)?.enabled || !self.scene().opaque {
             return crate::compositor::render(self, options, tile);
         }
         self.render_opaque(options, tile)

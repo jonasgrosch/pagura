@@ -237,6 +237,7 @@ mod tests {
             group: Attributes::default(),
             print_intent: false,
             separations: std::sync::OnceLock::new(),
+            scene: std::sync::OnceLock::new(),
         }
     }
     #[test]
