@@ -1,12 +1,11 @@
-//! Scanline sweep with signed cell areas and cover differences.
+//! Exact-area scanlines with signed cell areas and cover differences.
 //!
-//! Vertices are sorted once; only active edges visit a row. Non-crossing edges
-//! contribute signed partial-cell area and a prefix cover difference, then one
-//! scan over the row resolves coverage. Endpoint-order inversions identify
-//! crossing blocks: exact integration is restricted to those blocks, preserving
-//! winding selection before area integration. No all-pairs active-edge scan.
-//! Horizontal clipping projects outside geometry onto viewport boundaries,
-//! retaining its winding without visiting off-surface cells.
+//! Certified single spans accumulate directly. Other active edges select winding
+//! boundaries before integration; endpoint-order inversions isolate crossing
+//! blocks without an all-pairs scan. Partial-cell areas and prefix cover
+//! differences resolve in one scan over the row. Horizontal clipping projects
+//! outside geometry onto viewport boundaries, preserving winding and bounding
+//! work by the surface.
 
 use crate::flatten::{bounded, flatten};
 use crate::{FillRule, Path, Point, Segment, Transform};
@@ -204,10 +203,8 @@ pub(crate) fn coverage(
     let mut active: Vec<Edge> = Vec::new();
     let mut next = 0;
     let mut vertices = Vec::new();
-    let mut sweep = Sweep {
-        top: Vec::new(),
-        winding: Windings::new(shapes.len()),
-    };
+    let mut selected: Vec<Edge> = Vec::new();
+    let mut winding = Windings::new(shapes.len());
     out.fill(0);
     for (y, output) in out.chunks_exact_mut(stride).enumerate() {
         let lo = f64::from(u32::try_from(y).map_err(|_| Error::limit("row exceeds u32"))?)
@@ -226,28 +223,42 @@ pub(crate) fn coverage(
         row.charge(active.len())?;
         row.areas.fill(0.0);
         row.covers.fill(0.0);
-        vertices.clear();
-        vertices.extend([lo, hi]);
-        for edge in &active {
-            if edge.a.y > lo {
-                vertices.push(edge.a.y);
+        if shapes.len() != 1 || !unit_span(&active, lo, hi, &mut row)? {
+            vertices.clear();
+            vertices.extend([lo, hi]);
+            vertices.extend(
+                active
+                    .iter()
+                    .flat_map(|e| [e.a.y, e.b.y])
+                    .filter(|&y| y > lo && y < hi),
+            );
+            row.sorted(vertices.len())?;
+            vertices.sort_unstable_by(f64::total_cmp);
+            vertices.dedup();
+            selected.clear();
+            let mut admitted = 0;
+            for interval in vertices.windows(2) {
+                let mid = interval[0].midpoint(interval[1]);
+                selected.retain(|e| e.b.y > mid);
+                // Row edges retain their starting-y order. Admit each just once,
+                // rather than searching the entire row at every vertex interval.
+                while let Some(&edge) = active.get(admitted)
+                    && edge.a.y < mid
+                {
+                    if edge.b.y > mid {
+                        selected.push(edge);
+                    }
+                    admitted += 1;
+                }
+                strip(
+                    &mut selected,
+                    interval[0],
+                    interval[1],
+                    &mut winding,
+                    &mut row,
+                    limits,
+                )?;
             }
-            if edge.b.y < hi {
-                vertices.push(edge.b.y);
-            }
-        }
-        row.sorted(vertices.len())?;
-        vertices.sort_unstable_by(f64::total_cmp);
-        vertices.dedup();
-        for interval in vertices.windows(2) {
-            strip(
-                &active,
-                interval[0],
-                interval[1],
-                &mut sweep,
-                &mut row,
-                limits,
-            )?;
         }
         row.charge(stride)?;
         row.finish(output);
@@ -255,29 +266,40 @@ pub(crate) fn coverage(
     Ok(())
 }
 
-// Scratch belongs to the sweep, not to an individual vertex interval.
-struct Sweep {
-    top: Vec<Edge>,
-    winding: Windings,
+// Opposite unit windings with a shared vertical extent and no crossing enclose
+// one span. Both fill rules agree: signed area equals covered area in every
+// cell. Global coordinates preserve tile coverage even if clipping changes
+// which rows qualify.
+fn unit_span(active: &[Edge], lo: f64, hi: f64, row: &mut Row) -> Result<bool> {
+    let [a, b] = active else { return Ok(false) };
+    if !matches!(a.winding, -1 | 1) || b.winding != -a.winding {
+        return Ok(false);
+    }
+    if lo.max(a.a.y) != lo.max(b.a.y) || hi.min(a.b.y) != hi.min(b.b.y) {
+        return Ok(false);
+    }
+    let (lo, hi) = (lo.max(a.a.y), hi.min(a.b.y));
+    let (a, b) = if endpoint(*a, *b, lo, false).is_le() {
+        (*a, *b)
+    } else {
+        (*b, *a)
+    };
+    if a.x(hi) > b.x(hi) {
+        return Ok(false);
+    }
+    row.edge(a, lo, hi, -1)?;
+    row.edge(b, lo, hi, 1)?;
+    Ok(true)
 }
 
 fn strip(
-    active: &[Edge],
+    top: &mut [Edge],
     lo: f64,
     hi: f64,
-    sweep: &mut Sweep,
+    winding: &mut Windings,
     row: &mut Row,
     limits: &Limits,
 ) -> Result<()> {
-    let mid = lo.midpoint(hi);
-    let Sweep { top, winding } = sweep;
-    top.clear();
-    top.extend(
-        active
-            .iter()
-            .copied()
-            .filter(|e| e.a.y < mid && e.b.y > mid),
-    );
     winding.reset();
     row.sorted(top.len())?;
     top.sort_unstable_by(|a, b| endpoint(*a, *b, lo, false));
@@ -339,58 +361,6 @@ fn endpoint(a: Edge, b: Edge, y: f64, bottom: bool) -> std::cmp::Ordering {
         .then(a.id.cmp(&b.id))
 }
 
-// Only endpoint-order inversions can cross in a strip. Merge reporting costs
-// O(n log n + crossings), rather than comparing every active pair.
-fn crossings(
-    sorted: &mut [Edge],
-    lo: f64,
-    hi: f64,
-    events: &mut Vec<f64>,
-    row: &mut Row,
-    limits: &Limits,
-) -> Result<()> {
-    if sorted.len() < 2 {
-        return Ok(());
-    }
-    let middle = sorted.len() / 2;
-    let (left, right) = sorted.split_at_mut(middle);
-    crossings(left, lo, hi, events, row, limits)?;
-    crossings(right, lo, hi, events, row, limits)?;
-    let mut merged = Vec::with_capacity(left.len() + right.len());
-    let (mut i, mut j) = (0, 0);
-    while i < left.len() && j < right.len() {
-        row.charge(1)?;
-        let a = *left
-            .get(i)
-            .ok_or(Error::invalid_argument("invalid merge index"))?;
-        let b = *right
-            .get(j)
-            .ok_or(Error::invalid_argument("invalid merge index"))?;
-        if endpoint(a, b, hi, true).is_le() {
-            merged.push(a);
-            i += 1;
-        } else {
-            for a in left.iter().skip(i) {
-                row.charge(1)?;
-                let d0 = a.x(lo) - b.x(lo);
-                let d1 = a.x(hi) - b.x(hi);
-                if (d0 < 0.0 && d1 > 0.0) || (d0 > 0.0 && d1 < 0.0) {
-                    if events.len() >= limits.path_segments {
-                        return Err(Error::limit("crossing event budget exceeded"));
-                    }
-                    events.push(lo + (hi - lo) * (d0 / (d0 - d1)));
-                }
-            }
-            merged.push(b);
-            j += 1;
-        }
-    }
-    merged.extend(left.iter().skip(i).copied());
-    merged.extend(right.iter().skip(j).copied());
-    sorted.copy_from_slice(&merged);
-    Ok(())
-}
-
 fn crossing(
     block: &[Edge],
     lo: f64,
@@ -400,12 +370,36 @@ fn crossing(
     limits: &Limits,
 ) -> Result<()> {
     let mut events = vec![lo, hi];
-    let mut sorted = block.to_vec();
-    crossings(&mut sorted, lo, hi, &mut events, row, limits)?;
+    let mut ordered: Vec<_> = block.iter().map(|&edge| (edge, edge.x(hi))).collect();
+    // Insertion sorting top order by bottom x visits each strict inversion
+    // once: O(edges + crossings), without merge buffers. Equal bottom positions
+    // meet at the boundary and need no interior crossing event.
+    for i in 1..ordered.len() {
+        let mut j = i;
+        while j > 0 {
+            row.charge(1)?;
+            let (&(a, ax), &(b, bx)) = ordered
+                .get(j - 1)
+                .zip(ordered.get(j))
+                .ok_or(Error::invalid_argument("invalid crossing pair"))?;
+            let d1 = ax - bx;
+            if d1 <= 0.0 {
+                break;
+            }
+            let d0 = a.x(lo) - b.x(lo);
+            if d0 < 0.0 {
+                if events.len() >= limits.path_segments {
+                    return Err(Error::limit("crossing event budget exceeded"));
+                }
+                events.push(lo + (hi - lo) * (d0 / (d0 - d1)));
+            }
+            ordered.swap(j - 1, j);
+            j -= 1;
+        }
+    }
     row.sorted(events.len())?;
     events.sort_unstable_by(f64::total_cmp);
     events.dedup();
-    let mut ordered: Vec<_> = sorted.into_iter().map(|edge| (edge, 0.0)).collect();
     for interval in events.windows(2) {
         let (lo, hi) = (interval[0], interval[1]);
         row.sorted(ordered.len())?;
