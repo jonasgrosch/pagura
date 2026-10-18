@@ -6,6 +6,7 @@ use crate::{
     font::{Mapping, Source, to_unicode},
     metrics::Metrics,
     objects::{number, optional, required},
+    report::Report,
 };
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Result, Value};
 use pagura_document::Document;
@@ -96,14 +97,13 @@ pub(crate) fn load(
     if data.program.is_some() {
         // Substitution is permitted PDF behavior, not a repair of malformed input.
         // Report it in strict mode too; no recovery permission is consumed.
-        let mut diagnostic = Diagnostic::information(
-            crate::information::SUBSTITUTED,
-            substitution_message(selected),
-        );
-        if let Some(id) = font.get(b"FontDescriptor").and_then(Value::as_reference) {
-            diagnostic = diagnostic.in_object(id);
-        }
-        document.report([diagnostic]);
+        Report::new(document).diagnostic(
+            Diagnostic::information(
+                crate::information::SUBSTITUTED,
+                substitution_message(selected),
+            )
+            .in_object_opt(font.get(b"FontDescriptor").and_then(Value::as_reference)),
+        )?;
     }
     Ok(PdfFont {
         kind,
@@ -159,12 +159,13 @@ fn weight(document: &Document, descriptor: &Dictionary, id: Option<ObjectId>) ->
     {
         return Ok(weight);
     }
-    let mut diagnostic = Diagnostic::new(
-        crate::repairs::DESCRIPTOR_WEIGHT,
-        "invalid optional FontWeight ignored; using normal weight (9.8.1, Table 120)",
-    );
-    diagnostic.object = id;
-    crate::report::Report::new(document).diagnostic(diagnostic)?;
+    Report::new(document).diagnostic(
+        Diagnostic::new(
+            crate::repairs::DESCRIPTOR_WEIGHT,
+            "invalid optional FontWeight ignored; using normal weight (9.8.1, Table 120)",
+        )
+        .in_object_opt(id),
+    )?;
     Ok(400.0)
 }
 
