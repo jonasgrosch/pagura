@@ -720,12 +720,8 @@ mod recovery_tests {
             assert_eq!(pages.len(), count, "{name}");
             assert_eq!(document.original_bytes(), bytes);
             let letter = matches!(name, "pages-media-missing" | "pages-media-empty");
-            let expected = Rect {
-                x0: 0.0,
-                y0: 0.0,
-                x1: if letter { 612.0 } else { 64.0 },
-                y1: if letter { 792.0 } else { 64.0 },
-            };
+            let size = if letter { [612.0, 792.0] } else { [64.0, 64.0] };
+            let expected = Rect::from_corners(0.0, 0.0, size[0], size[1]).unwrap();
             assert_eq!(pages[0].media_box(), expected, "{name}");
             assert_eq!(pages[0].crop_box(), expected, "{name}");
             assert!(

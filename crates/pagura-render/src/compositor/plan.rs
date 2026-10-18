@@ -229,12 +229,7 @@ mod tests {
     fn list(commands: Vec<Command>) -> crate::display::DisplayList {
         crate::display::DisplayList {
             commands,
-            crop: Rect {
-                x0: 0.0,
-                y0: 0.0,
-                x1: 1.0,
-                y1: 1.0,
-            },
+            crop: Rect::from_corners(0.0, 0.0, 1.0, 1.0).unwrap(),
             rotation: pagura_document::Rotation::None,
             user_unit: 1.0,
             limits: Limits::default(),

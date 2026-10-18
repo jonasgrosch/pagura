@@ -224,8 +224,8 @@ impl Context {
     ) -> Result<Self> {
         let mut crop = PathBuilder::new();
         crop.rect(
-            list.crop.x0,
-            list.crop.y0,
+            list.crop.x0(),
+            list.crop.y0(),
             list.crop.width(),
             list.crop.height(),
         );
@@ -1125,7 +1125,10 @@ impl Context {
                 ) * inverse;
                 let inside = certified
                     || command.shading.bbox.is_none_or(|b| {
-                        point.x >= b.x0 && point.x <= b.x1 && point.y >= b.y0 && point.y <= b.y1
+                        point.x >= b.x0()
+                            && point.x <= b.x1()
+                            && point.y >= b.y0()
+                            && point.y <= b.y1()
                     });
                 let hit = (!command.background || inside)
                     && command.shading.sample(

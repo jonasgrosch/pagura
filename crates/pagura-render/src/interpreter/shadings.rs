@@ -30,7 +30,7 @@ impl Compiler<'_> {
         let mut clip = self.state.clip.clone();
         if let Some(b) = shading.bbox {
             let mut path = PathBuilder::new();
-            path.rect(b.x0, b.y0, b.width(), b.height());
+            path.rect(b.x0(), b.y0(), b.width(), b.height());
             let mut path = path.finish().transformed(self.state.ctm);
             self.prepare_fill(&mut path, FillRule::NonZero)?;
             clip = Some(Arc::new(Clip {

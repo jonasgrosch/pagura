@@ -455,7 +455,7 @@ fn assert_link(document: &Document, link: &Link<'_>) {
     for quad in &link.quad_points {
         for xy in quad.as_chunks::<2>().0 {
             assert!(
-                (r.x0..=r.x1).contains(&xy[0]) && (r.y0..=r.y1).contains(&xy[1]),
+                (r.x0()..=r.x1()).contains(&xy[0]) && (r.y0()..=r.y1()).contains(&xy[1]),
                 "quad point {xy:?} outside {r:?}"
             );
         }
@@ -487,9 +487,9 @@ fn assert_link(document: &Document, link: &Link<'_>) {
 }
 
 fn normalized(rect: Rect) -> bool {
-    [rect.x0, rect.y0, rect.x1, rect.y1]
+    [rect.x0(), rect.y0(), rect.x1(), rect.y1()]
         .iter()
         .all(|v| v.is_finite())
-        && rect.x0 <= rect.x1
-        && rect.y0 <= rect.y1
+        && rect.x0() <= rect.x1()
+        && rect.y0() <= rect.y1()
 }
