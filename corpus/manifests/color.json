@@ -1,0 +1,42 @@
+{
+  "schema": 2,
+  "area": "color",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "color/sampled-rgb",
+      "kind": "vector",
+      "description": "Version 2 RGB matrix/TRC profile with 17-sample curves (as content/icc-3-sampled)",
+      "requirements": [
+        "content-icc-matrix"
+      ],
+      "files": {
+        ".icc": {
+          "path": "corpus/generated/color/sampled-rgb.icc",
+          "sha256": "192dc3dec12fd5ea236780ec6cc55b1ae14e8c49dbb8c1eeadbe856b96397c46"
+        }
+      },
+      "components": 3,
+      "tags": 9,
+      "table_values": 51
+    },
+    {
+      "id": "color/lut16-cmyk-xyz",
+      "kind": "vector",
+      "description": "Version 4 CMYK lut16 profile (as content/icc-mft2-4-XYZ-v4)",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "files": {
+        ".icc": {
+          "path": "corpus/generated/color/lut16-cmyk-xyz.icc",
+          "sha256": "65e090465aae7d89831407edcb9fdb4908f31d3781efb10091b341a8b14b5904"
+        }
+      },
+      "components": 4,
+      "tags": 4,
+      "table_values": 62
+    }
+  ]
+}

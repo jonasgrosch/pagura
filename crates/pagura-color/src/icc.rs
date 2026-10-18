@@ -10,12 +10,12 @@ mod format;
 mod lut;
 mod mab;
 
-use crate::{cie, features};
+use crate::cie::{self, D50};
+use crate::features;
 use curves::Curve;
-use pagura_core::{Error, Limits, Result};
+use pagura_core::bytes::Cursor;
+use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
-
-const D50: [f64; 3] = [0.9642, 1.0, 0.8249];
 
 /// A rendering intent (8.6.5.8, Table 69). The standard closes the set; an
 /// unknown name selects relative colorimetric.
@@ -50,18 +50,22 @@ impl Intent {
     }
 }
 
+/// Storage and work admitted while parsing one profile (ADR 0016): decoded
+/// table values cost one `decode_work` unit and one `f64` of `decode_bytes`.
 struct Budget {
-    values: usize,
-    limits: Limits,
+    work: Meter,
+    bytes: Meter,
 }
 impl Budget {
-    fn charge(&mut self, values: usize) -> Result<()> {
-        self.values = self
-            .values
-            .checked_add(values)
-            .filter(|&n| n <= self.limits.value_nodes && n <= self.limits.decoded_bytes / 8)
-            .ok_or(Error::limit("ICC transform storage budget exceeded"))?;
-        Ok(())
+    fn new(limits: &Limits) -> Self {
+        Self {
+            work: Meter::new(limits.decode_work, "ICC profile work budget exceeded"),
+            bytes: Meter::new(limits.decode_bytes, "ICC transform storage budget exceeded"),
+        }
+    }
+    fn values(&mut self, count: usize) -> Result<()> {
+        self.work.charge(count)?;
+        self.bytes.charge_items::<f64>(count)
     }
 }
 /// A parsed ICC profile's forward (device to PCS) transforms.
@@ -71,15 +75,26 @@ pub struct Profile {
     model: Option<Forward>,
     lab_input: bool,
     white: [f64; 3],
-    adaptation: [[f64; 3]; 3],
 }
 #[derive(Debug, Clone)]
 enum Forward {
-    Gray(Curve, bool),
-    Matrix([[f64; 3]; 3], [Curve; 3]),
+    Gray {
+        curve: Curve,
+        pcs: Pcs,
+    },
+    Matrix {
+        matrix: cie::Matrix,
+        curves: [Curve; 3],
+    },
     Lut(lut::Lut, Encoding),
     Mab(mab::Mab, Encoding),
     Unsupported(Error),
+}
+/// The profile connection space of a TRC-only model.
+#[derive(Debug, Clone, Copy)]
+enum Pcs {
+    Xyz,
+    Lab,
 }
 #[derive(Debug, Clone, Copy)]
 enum Encoding {
@@ -107,39 +122,39 @@ impl Profile {
     }
     /// Parses a profile for a source space of `components` channels.
     /// `Ok(None)` means a later profile version that callers replace with
-    /// the alternate space.
+    /// the alternate space. Error positions are offsets in `data`.
     ///
     /// # Errors
-    /// Returns `Syntax` for malformed profiles, `Limit` for budget violations
-    /// and `Unsupported` for profile classes or versions outside the subset.
-    pub fn parse(data: &[u8], components: usize, limits: Limits) -> Result<Option<Self>> {
-        let tags = format::header(data, components, limits)?;
-        let major = data[8];
-        let minor = data[9] >> 4;
+    /// Returns `Syntax` for malformed profiles, `Limit` when parsing exceeds
+    /// `decode_work` or `decode_bytes`, and `Unsupported` for profile
+    /// versions outside the supported subset.
+    pub fn parse(data: &[u8], components: usize, limits: &Limits) -> Result<Option<Self>> {
+        let profile = Cursor::new(data).with_message("truncated ICC profile");
+        let mut budget = Budget::new(limits);
+        let tags = format::header(&profile, components, &mut budget)?;
+        let version = profile.bytes(8, 2)?;
+        let (major, minor) = (version[0], version[1] >> 4);
         if major > 4 || (major == 4 && minor > 3) {
             return Ok(None);
         }
         if !((major == 2 && minor <= 4) || (major == 4 && minor <= 3)) {
             return Err(unsupported("unsupported ICC profile version"));
         }
-        let mut budget = Budget { values: 0, limits };
-        let white = format::model_tags(data, &tags, &mut budget)?;
-        let lab = slice(data, 20, 4)? == b"Lab ";
-        let model = matrix_model(data, &tags, &mut budget)?;
+        let white = format::model_tags(&profile, &tags, &mut budget)?;
+        let lab = profile.bytes(20, 4)? == b"Lab ";
+        let model = matrix_model(&profile, &tags, &mut budget)?;
         let mut transforms: [Option<Arc<Forward>>; 3] = [None, None, None];
         let names = [b"A2B0", b"A2B1", b"A2B2"];
         for (i, name) in names.iter().enumerate() {
-            if let Some(bytes) = tags.get(*name) {
-                if let Some(j) = (0..i).find(|&j| tags.get(names[j]) == Some(bytes)) {
+            if let Some(tag) = tags.get(*name) {
+                if let Some(j) =
+                    (0..i).find(|&j| tags.get(names[j]).map(Cursor::data) == Some(tag.data()))
+                {
                     let (previous, next) = transforms.split_at_mut(i);
                     next[0].clone_from(&previous[j]);
                 } else {
-                    transforms[i] = Some(Arc::new(Forward::parse(
-                        bytes,
-                        components,
-                        lab,
-                        &mut budget,
-                    )?));
+                    transforms[i] =
+                        Some(Arc::new(Forward::parse(tag, components, lab, &mut budget)?));
                 }
             }
         }
@@ -149,9 +164,8 @@ impl Profile {
         Ok(Some(Self {
             transforms,
             model,
-            lab_input: slice(data, 16, 4)? == b"Lab ",
+            lab_input: profile.bytes(16, 4)? == b"Lab ",
             white,
-            adaptation: cie::adaptation(D50)?,
         }))
     }
     /// Whether the profile's data colour space is CIELAB.
@@ -193,12 +207,12 @@ impl Profile {
                 *value *= self.white[i] / D50[i];
             }
         }
-        Ok(cie::xyz_to_srgb(cie::map(self.adaptation, xyz)))
+        Ok(cie::xyz_to_srgb(cie::map(cie::D50_TO_D65, xyz)))
     }
 }
 impl Forward {
-    fn parse(data: &[u8], inputs: usize, lab: bool, budget: &mut Budget) -> Result<Self> {
-        let signature = slice(data, 0, 4)?;
+    fn parse(tag: &Cursor<'_>, inputs: usize, lab: bool, budget: &mut Budget) -> Result<Self> {
+        let signature = tag.bytes(0, 4)?;
         let encoding = if lab {
             if signature == b"mft2" {
                 Encoding::LegacyLab
@@ -212,23 +226,22 @@ impl Forward {
             b"mft1" if !lab => {
                 Self::Unsupported(unsupported("ICC lut8 XYZ PCS encoding is unspecified"))
             }
-            b"mft1" | b"mft2" => Self::Lut(lut::Lut::parse(data, inputs, budget)?, encoding),
-            b"mAB " => Self::Mab(mab::Mab::parse(data, inputs, budget)?, encoding),
+            b"mft1" | b"mft2" => Self::Lut(lut::Lut::parse(tag, inputs, budget)?, encoding),
+            b"mAB " => Self::Mab(mab::Mab::parse(tag, inputs, budget)?, encoding),
             b"mBA " => Self::Unsupported(unsupported("ICC inverse mBA is not a forward transform")),
             _ => Self::Unsupported(unsupported("unsupported ICC forward transform type")),
         })
     }
     fn evaluate(&self, values: [f64; 4]) -> Result<[f64; 3]> {
         match self {
-            Self::Gray(curve, lab) => {
+            Self::Gray { curve, pcs } => {
                 let value = curve.evaluate(values[0])?;
-                Ok(if *lab {
-                    lab_xyz([value * 100.0, 0.0, 0.0])
-                } else {
-                    D50.map(|w| w * value)
+                Ok(match pcs {
+                    Pcs::Lab => cie::lab_to_xyz([value * 100.0, 0.0, 0.0], D50),
+                    Pcs::Xyz => D50.map(|w| w * value),
                 })
             }
-            Self::Matrix(matrix, curves) => {
+            Self::Matrix { matrix, curves } => {
                 let mut linear = [0.0; 3];
                 for (i, curve) in curves.iter().enumerate() {
                     linear[i] = curve.evaluate(values[i])?;
@@ -242,8 +255,8 @@ impl Forward {
     }
     fn retained_bytes(&self) -> usize {
         match self {
-            Self::Gray(curve, _) => curve.retained_bytes(),
-            Self::Matrix(_, curves) => curves.iter().map(Curve::retained_bytes).sum(),
+            Self::Gray { curve, .. } => curve.retained_bytes(),
+            Self::Matrix { curves, .. } => curves.iter().map(Curve::retained_bytes).sum(),
             Self::Lut(lut, _) => lut.retained_bytes(),
             Self::Mab(mab, _) => mab.retained_bytes(),
             Self::Unsupported(_) => 0,
@@ -254,50 +267,42 @@ impl Encoding {
     fn decode(self, values: [f64; 3]) -> [f64; 3] {
         match self {
             Self::Xyz => values.map(|v| v * (65535.0 / 32768.0)), // 6.3.4.2, Table 11.
-            Self::Lab => lab_xyz([
-                values[0] * 100.0,
-                values[1] * 255.0 - 128.0,
-                values[2] * 255.0 - 128.0,
-            ]),
+            Self::Lab => cie::lab_to_xyz(
+                [
+                    values[0] * 100.0,
+                    values[1] * 255.0 - 128.0,
+                    values[2] * 255.0 - 128.0,
+                ],
+                D50,
+            ),
             Self::LegacyLab => {
                 // 10.8, Tables 39–40: mft2 keeps FF00 white in v2 AND v4.
                 let v = values.map(|v| (v * (65535.0 / 65280.0)).clamp(0.0, 1.0));
-                lab_xyz([v[0] * 100.0, v[1] * 255.0 - 128.0, v[2] * 255.0 - 128.0])
+                cie::lab_to_xyz(
+                    [v[0] * 100.0, v[1] * 255.0 - 128.0, v[2] * 255.0 - 128.0],
+                    D50,
+                )
             }
         }
     }
 }
-fn lab_xyz([l, a, b]: [f64; 3]) -> [f64; 3] {
-    let y = (l + 16.0) / 116.0;
-    let inverse = |v: f64| {
-        if v > 6.0 / 29.0 {
-            v * v * v
-        } else {
-            (v - 4.0 / 29.0) * (108.0 / 841.0)
-        }
-    };
-    [
-        D50[0] * inverse(y + a / 500.0),
-        inverse(y),
-        D50[2] * inverse(y - b / 200.0),
-    ]
-}
 fn matrix_model(
-    data: &[u8],
+    profile: &Cursor<'_>,
     tags: &format::Tags<'_>,
     budget: &mut Budget,
 ) -> Result<Option<Forward>> {
-    if slice(data, 16, 4)? == b"GRAY" {
+    if profile.bytes(16, 4)? == b"GRAY" {
+        let pcs = if profile.bytes(20, 4)? == b"Lab " {
+            Pcs::Lab
+        } else {
+            Pcs::Xyz
+        };
         return tags
             .get(b"kTRC")
-            .map(|v| {
-                Curve::parse(v, budget).map(|curve| {
-                    Forward::Gray(curve, slice(data, 20, 4).is_ok_and(|v| v == b"Lab "))
-                })
-            })
+            .map(|tag| Curve::parse(tag, budget).map(|curve| Forward::Gray { curve, pcs }))
             .transpose();
     }
-    if slice(data, 16, 4)? != b"RGB " || slice(data, 20, 4)? != b"XYZ " {
+    if profile.bytes(16, 4)? != b"RGB " || profile.bytes(20, 4)? != b"XYZ " {
         return Ok(None);
     }
     if ![b"rXYZ", b"gXYZ", b"bXYZ", b"rTRC", b"gTRC", b"bTRC"]
@@ -316,58 +321,61 @@ fn matrix_model(
         Curve::parse(format::required(tags, b"gTRC")?, budget)?,
         Curve::parse(format::required(tags, b"bTRC")?, budget)?,
     ];
-    Ok(Some(Forward::Matrix(
-        [[r[0], g[0], b[0]], [r[1], g[1], b[1]], [r[2], g[2], b[2]]],
+    Ok(Some(Forward::Matrix {
+        matrix: [[r[0], g[0], b[0]], [r[1], g[1], b[1]], [r[2], g[2], b[2]]],
         curves,
-    )))
+    }))
 }
-fn xyz(data: &[u8]) -> Result<[f64; 3]> {
-    if slice(data, 0, 4)? != b"XYZ " || data.len() < 20 || !(data.len() - 8).is_multiple_of(12) {
-        return Err(Error::syntax("invalid ICC XYZ tag type or extent"));
+fn xyz(tag: &Cursor<'_>) -> Result<[f64; 3]> {
+    let length = tag.data().len();
+    if tag.bytes(0, 4)? != b"XYZ " || length < 20 || !(length - 8).is_multiple_of(12) {
+        return Err(tag.error("invalid ICC XYZ tag type or extent"));
     }
-    format::zeros(slice(data, 4, 4)?)?;
-    for at in (8..data.len()).step_by(4) {
-        if fixed(data, at)? < 0.0 {
-            return Err(Error::syntax("negative ICC XYZ tag value"));
+    format::zeros(tag, 4, 4)?;
+    let mut values = tag.cursor_at(8)?;
+    let first = [values.fixed()?, values.fixed()?, values.fixed()?];
+    let mut rest = tag.cursor_at(8)?;
+    while !rest.at_end() {
+        if rest.fixed()? < 0.0 {
+            return Err(Error::syntax("negative ICC XYZ tag value").at(rest.position()));
         }
     }
-    Ok([fixed(data, 8)?, fixed(data, 12)?, fixed(data, 16)?])
+    Ok(first)
 }
-fn slice(data: &[u8], offset: usize, length: usize) -> Result<&[u8]> {
-    let end = offset
-        .checked_add(length)
-        .ok_or(Error::limit("ICC extent overflow"))?;
-    data.get(offset..end)
-        .ok_or(Error::syntax("truncated ICC profile"))
+
+/// Random access into a profile or one of its tags. Offsets are relative
+/// to the cursor's data; error positions stay offsets in the profile.
+/// Truncation is a `Syntax` error and offset overflow a `Limit` error.
+trait At<'a> {
+    fn bytes(&self, offset: usize, length: usize) -> Result<&'a [u8]>;
+    fn sub(&self, offset: usize, length: usize) -> Result<Cursor<'a>>;
+    fn u8_at(&self, offset: usize) -> Result<u8>;
+    fn u16_at(&self, offset: usize) -> Result<u16>;
+    fn u32_at(&self, offset: usize) -> Result<u32>;
 }
-fn u32_at(data: &[u8], offset: usize) -> Result<u32> {
-    Ok(u32::from_be_bytes(
-        slice(data, offset, 4)?
-            .try_into()
-            .map_err(|_| Error::syntax("invalid ICC integer"))?,
-    ))
-}
-fn u16_at(data: &[u8], offset: usize) -> Result<u16> {
-    Ok(u16::from_be_bytes(
-        slice(data, offset, 2)?
-            .try_into()
-            .map_err(|_| Error::syntax("invalid ICC integer"))?,
-    ))
-}
-fn fixed(data: &[u8], offset: usize) -> Result<f64> {
-    let raw = i32::from_be_bytes(
-        slice(data, offset, 4)?
-            .try_into()
-            .map_err(|_| Error::syntax("invalid ICC fixed value"))?,
-    );
-    Ok(f64::from(raw) / 65536.0)
+impl<'a> At<'a> for Cursor<'a> {
+    fn bytes(&self, offset: usize, length: usize) -> Result<&'a [u8]> {
+        self.cursor_at(offset)?.take(length)
+    }
+    fn sub(&self, offset: usize, length: usize) -> Result<Cursor<'a>> {
+        self.cursor_at(offset)?.take_cursor(length)
+    }
+    fn u8_at(&self, offset: usize) -> Result<u8> {
+        self.cursor_at(offset)?.u8()
+    }
+    fn u16_at(&self, offset: usize) -> Result<u16> {
+        self.cursor_at(offset)?.u16()
+    }
+    fn u32_at(&self, offset: usize) -> Result<u32> {
+        self.cursor_at(offset)?.u32()
+    }
 }
 fn unsupported(message: &'static str) -> Error {
     Error::unsupported(features::ICC_BASED, message)
 }
 #[expect(
     clippy::cast_precision_loss,
-    reason = "sample count bounded by decoded bytes and value_nodes"
+    reason = "sample count bounded by the decode_bytes budget"
 )]
 fn usize_f64(value: usize) -> f64 {
     value as f64
@@ -379,4 +387,100 @@ fn usize_f64(value: usize) -> f64 {
 )]
 fn sample_index(value: f64) -> usize {
     value as usize
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pagura_core::ErrorKind;
+    use pagura_testkit::{Manifest, fixture};
+
+    struct Expected {
+        data: Vec<u8>,
+        components: usize,
+        work: usize,
+        bytes: usize,
+    }
+
+    /// A color fixture and the work and storage its parse must admit: one
+    /// work unit per tag entry and table value, `TAG_BYTES` per tag entry
+    /// and one `f64` per table value.
+    fn expected(name: &str) -> Expected {
+        let manifest = Manifest::load("color");
+        let case = manifest.case(name).unwrap();
+        let number = |key| usize::try_from(case.get(key).unwrap().as_u64().unwrap()).unwrap();
+        let (tags, values) = (number("tags"), number("table_values"));
+        Expected {
+            data: fixture("color", &format!("{name}.icc")),
+            components: number("components"),
+            work: tags + values,
+            bytes: tags * format::TAG_BYTES + values * size_of::<f64>(),
+        }
+    }
+
+    #[test]
+    fn table_storage_and_work_are_admitted_before_evaluation() {
+        for name in ["lut16-cmyk-xyz", "sampled-rgb"] {
+            let case = expected(name);
+            for (limits, succeeds) in [
+                (
+                    Limits {
+                        decode_work: case.work - 1,
+                        ..Limits::default()
+                    },
+                    false,
+                ),
+                (
+                    Limits {
+                        decode_bytes: case.bytes - 1,
+                        ..Limits::default()
+                    },
+                    false,
+                ),
+                (
+                    Limits {
+                        decode_work: case.work,
+                        decode_bytes: case.bytes,
+                        ..Limits::default()
+                    },
+                    true,
+                ),
+            ] {
+                let result = Profile::parse(&case.data, case.components, &limits);
+                if succeeds {
+                    let profile = result.unwrap().unwrap();
+                    assert!(
+                        profile.convert(&[0.5; 4], Intent::Relative).is_ok(),
+                        "{name}"
+                    );
+                } else {
+                    assert_eq!(result.unwrap_err().kind, ErrorKind::Limit, "{name}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn truncated_and_mismatched_profiles_are_syntax_errors_at_their_offset() {
+        let case = expected("sampled-rgb");
+        let limits = Limits::default();
+        assert!(Profile::parse(&case.data, 3, &limits).unwrap().is_some());
+        for end in 0..case.data.len() {
+            let error = Profile::parse(&case.data[..end], 3, &limits).unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Syntax, "{end}");
+        }
+        assert_eq!(
+            Profile::parse(&case.data, 1, &limits).unwrap_err().kind,
+            ErrorKind::Syntax
+        );
+        // A profile that declares more bytes than it has is truncated where
+        // the first tag lies beyond the data.
+        let mut short = case.data.clone();
+        let length = u32::try_from(short.len() - 4).unwrap();
+        short.truncate(short.len() - 4);
+        short[..4].copy_from_slice(&length.to_be_bytes());
+        let error = Profile::parse(&short, 3, &limits).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        assert!(matches!(error.position, pagura_core::Position::Buffer(n) if n <= short.len()));
+    }
 }
