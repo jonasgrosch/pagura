@@ -934,7 +934,7 @@ def font_metadata_cases():
             b'<< /Type /FontDescriptor /FontName /Fixture /Flags 32 /FontBBox '+bbox+b' /ItalicAngle 0 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 /FontFile2 7 0 R >>',
             stream(program,b'/Length1 %d ' % len(program)),*extra])
     yield Case('text-font-bbox-loop',pdf(b'8 0 R',[b'9 0 R',b'8 0 R']),OPEN,('content-reported-recovery',),'A FontBBox reference loop exhausts the reference budget during extraction',extra={'extraction_error':'Limit'})
-    yield Case('text-font-bbox-malformed',pdf(b'8 0 R',[b'<< /Broken']),OPEN,('content-reported-recovery',),'An unparsable FontBBox object is reported and extraction uses the default glyph box',strict_valid=False,repairs=('content.text-font-metadata',))
+    yield Case('text-font-bbox-malformed',pdf(b'8 0 R',[b'<< /Broken']),OPEN,('content-reported-recovery',),'An unparsable FontBBox object is reported during extraction, which then uses the default glyph box; rendering never reads it',extra={'extraction_repair':'content.text-font-metadata'})
 
 
 def tiling_cases():

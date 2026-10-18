@@ -2270,7 +2270,7 @@
     {
       "id": "content/text-font-bbox-malformed",
       "kind": "pdf",
-      "description": "An unparsable FontBBox object is reported and extraction uses the default glyph box",
+      "description": "An unparsable FontBBox object is reported during extraction, which then uses the default glyph box; rendering never reads it",
       "expected": "open",
       "requirements": [
         "content-reported-recovery"
@@ -2278,10 +2278,9 @@
       "path": "corpus/generated/content/text-font-bbox-malformed.pdf",
       "sha256": "d28c2d296cca058602b1e254a4f55bb3f0302c8645f7ce56d44b3220d7336d31",
       "pages": 1,
-      "strict_valid": false,
-      "repairs": [
-        "content.text-font-metadata"
-      ]
+      "strict_valid": true,
+      "repairs": [],
+      "extraction_repair": "content.text-font-metadata"
     },
     {
       "id": "content/annotation-link-border",
