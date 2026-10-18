@@ -76,7 +76,11 @@ fn source(source: &Source) -> usize {
                     .saturating_add(size_of_val(program.as_ref()))
                     .saturating_add(2 * size_of::<usize>())
             };
-            program_bytes.saturating_add(cid_map.as_ref().map_or(0, Vec::capacity))
+            program_bytes.saturating_add(
+                cid_map
+                    .as_ref()
+                    .map_or(0, crate::cid::CidToGidMap::heap_bytes),
+            )
         }
     }
 }

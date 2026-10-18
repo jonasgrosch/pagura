@@ -1,6 +1,8 @@
 //! Collection-to-Unicode substitution policy (9.7.4.2–9.7.5; ADR 0009).
 use crate::{
-    CidToUnicode, FontKind, PdfFont, Provider, WritingMode, features,
+    CidToUnicode, FontKind, PdfFont, Provider, WritingMode,
+    cid::Cid,
+    features,
     font::{Mapping, Source, cid_collection, to_unicode},
     metrics::Metrics,
     report::Report,
@@ -89,9 +91,9 @@ pub(crate) fn load(
 pub(crate) fn glyph(
     program: &FontProgram,
     unicode: Option<&CidToUnicode>,
-    cid: u32,
+    cid: Cid,
 ) -> Option<GlyphId> {
-    let mut chars = unicode?.get(cid)?.chars();
+    let mut chars = unicode?.get(u32::from(cid))?.chars();
     let scalar = chars.next()?;
     // Collection aliases have already been projected by the provider. A custom
     // provider's multi-scalar sequence cannot identify one glyph without shaping.

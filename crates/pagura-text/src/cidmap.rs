@@ -1,24 +1,55 @@
 //! Disjoint CID intervals: logarithmic lookup without expanding 32-bit codes.
-use crate::cmap::{Code, charge};
+use crate::{
+    cid::Cid,
+    cmap::{Code, charge},
+};
 use pagura_core::{Error, Limits, Result};
 use std::collections::BTreeMap;
 
+/// How the codes of a range map to CIDs (9.7.5.4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Step {
+    /// `cidrange`: consecutive codes map to consecutive CIDs.
+    Increment,
+    /// `notdefrange`: every code maps to the same CID.
+    Constant,
+}
+
+/// Codes `first..=last` of one length, mapped from `cid` on. Construction
+/// guarantees that every code maps to a CID, so lookups cannot overflow.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct CidRange {
-    pub(crate) first: Code,
-    pub(crate) last: Code,
-    pub(crate) cid: u32,
-    pub(crate) increment: bool,
+    first: Code,
+    last: Code,
+    cid: Cid,
+    step: Step,
 }
 
 impl CidRange {
-    fn at(self, code: Code) -> u32 {
-        self.cid
-            + if self.increment {
-                code.value - self.first.value
-            } else {
-                0
-            }
+    pub(crate) fn new(first: Code, last: Code, cid: Cid, step: Step) -> Result<Self> {
+        if first.len != last.len || first.value > last.value {
+            return Err(Error::syntax("invalid CMap range"));
+        }
+        if step == Step::Increment && cid.checked_add(last.value - first.value).is_none() {
+            return Err(Error::syntax("CMap CID range overflows"));
+        }
+        Ok(Self {
+            first,
+            last,
+            cid,
+            step,
+        })
+    }
+
+    fn at(self, code: Code) -> Option<Cid> {
+        match self.step {
+            Step::Increment => self.cid.checked_add(code.value - self.first.value),
+            Step::Constant => Some(self.cid),
+        }
+    }
+
+    fn last_cid(self) -> Cid {
+        self.at(self.last).unwrap_or(self.cid)
     }
 }
 
@@ -30,26 +61,24 @@ impl CidMap {
         crate::memory::tree::<Code, CidRange>(self.0.len())
     }
 
-    pub(crate) fn cids(&self) -> impl Iterator<Item = u32> + '_ {
-        self.0.values().flat_map(|range| {
-            let end = if range.increment {
-                range.cid + (range.last.value - range.first.value)
-            } else {
-                range.cid
-            };
-            range.cid..=end
-        })
+    pub(crate) fn cids(&self) -> impl Iterator<Item = Cid> + '_ {
+        self.0
+            .values()
+            .flat_map(|range| (range.cid.get()..=range.last_cid().get()).map(Cid::new))
     }
 
     pub(crate) fn len(&self) -> usize {
         self.0.len()
     }
 
-    pub(crate) fn get(&self, code: Code, work: &mut usize, limits: Limits) -> Result<Option<u32>> {
+    pub(crate) fn get(&self, code: Code, work: &mut usize, limits: Limits) -> Result<Option<Cid>> {
         charge(work, 1, limits.operations)?;
-        Ok(self.0.range(..=code).next_back().and_then(|(_, range)| {
-            (range.first.len == code.len && code.value <= range.last.value).then(|| range.at(code))
-        }))
+        Ok(self
+            .0
+            .range(..=code)
+            .next_back()
+            .filter(|(_, range)| range.first.len == code.len && code.value <= range.last.value)
+            .and_then(|(_, range)| range.at(code)))
     }
 
     /// New definitions override older definitions; retained fragments keep
@@ -74,6 +103,7 @@ impl CidMap {
         for key in overlap {
             charge(work, 1, limits.operations)?;
             if let Some(old) = self.0.remove(&key) {
+                // Both fragments are sub-ranges of a valid range, so they stay valid.
                 if old.first.value < range.first.value {
                     let last = Code {
                         value: range.first.value - 1,
@@ -86,14 +116,8 @@ impl CidMap {
                         value: range.last.value + 1,
                         len: old.first.len,
                     };
-                    self.0.insert(
-                        first,
-                        CidRange {
-                            first,
-                            cid: old.at(first),
-                            ..old
-                        },
-                    );
+                    let cid = old.at(first).unwrap_or(old.cid);
+                    self.0.insert(first, CidRange { first, cid, ..old });
                 }
             }
         }
@@ -116,23 +140,24 @@ impl CidMap {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn range(first: u32, last: u32, cid: u32, len: u8, increment: bool) -> CidRange {
-        CidRange {
-            first: Code { value: first, len },
-            last: Code { value: last, len },
-            cid,
-            increment,
-        }
+    fn range(first: u32, last: u32, cid: u16, len: u8, step: Step) -> CidRange {
+        CidRange::new(
+            Code { value: first, len },
+            Code { value: last, len },
+            Cid::new(cid),
+            step,
+        )
+        .unwrap()
     }
     #[test]
     fn overwrites_split_preserving_offsets_and_code_lengths() -> Result<()> {
         let limits = Limits::default();
         let mut map = CidMap::default();
         let mut work = 0;
-        map.insert(range(10, 20, 100, 2, true), &mut work, limits)?;
-        map.insert(range(12, 14, 500, 2, true), &mut work, limits)?;
-        map.insert(range(13, 13, 900, 2, false), &mut work, limits)?;
-        map.insert(range(0, 255, 40, 1, false), &mut work, limits)?;
+        map.insert(range(10, 20, 100, 2, Step::Increment), &mut work, limits)?;
+        map.insert(range(12, 14, 500, 2, Step::Increment), &mut work, limits)?;
+        map.insert(range(13, 13, 900, 2, Step::Constant), &mut work, limits)?;
+        map.insert(range(0, 255, 40, 1, Step::Constant), &mut work, limits)?;
         for (code, cid) in [
             (9, None),
             (10, Some(100)),
@@ -153,19 +178,27 @@ mod tests {
                     &mut work,
                     limits
                 )?,
-                cid
+                cid.map(Cid::new)
             );
         }
         assert_eq!(
             map.get(Code { value: 13, len: 1 }, &mut work, limits)?,
-            Some(40)
+            Some(Cid::new(40))
         );
-        map.insert(range(0, 255, 0, 2, true), &mut work, limits)?;
+        map.insert(range(0, 255, 0, 2, Step::Increment), &mut work, limits)?;
         assert_eq!(
             map.get(Code { value: 13, len: 2 }, &mut work, limits)?,
-            Some(13)
+            Some(Cid::new(13))
         );
         assert_eq!(map.len(), 2);
         Ok(())
+    }
+
+    #[test]
+    fn ranges_that_would_leave_sixteen_bits_are_rejected() {
+        let code = |value| Code { value, len: 2 };
+        assert!(CidRange::new(code(0), code(1), Cid::new(65_535), Step::Increment).is_err());
+        assert!(CidRange::new(code(0), code(9), Cid::new(65_535), Step::Constant).is_ok());
+        assert!(CidRange::new(code(5), code(4), Cid::new(0), Step::Increment).is_err());
     }
 }

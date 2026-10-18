@@ -25,6 +25,7 @@ use pagura_font::{FontProgram, GlyphId};
 use pagura_raster::Transform;
 use std::sync::Arc;
 
+mod cid;
 mod cid_substitute;
 mod cidmap;
 mod cmap;
@@ -366,14 +367,16 @@ impl PdfFont {
                 } else {
                     None
                 };
-                let unicode = cid.and_then(|cid| self.cid_unicode.as_ref()?.get(cid));
+                let unicode = cid.and_then(|cid| self.cid_unicode.as_ref()?.get(u32::from(cid)));
                 if cid.is_some_and(|cid| self.lacks_gid_entry(cid)) {
-                    cid = Some(0);
+                    cid = Some(cid::Cid::NOTDEF);
                 } else if cid.is_none_or(|cid| !self.has_cid(cid)) {
                     cid = Some(map.notdef(code, work, self.limits)?);
                 }
-                let cid = cid.filter(|cid| self.has_cid(*cid)).unwrap_or(0);
-                (code, cid, None, unicode)
+                let cid = cid
+                    .filter(|cid| self.has_cid(*cid))
+                    .unwrap_or(cid::Cid::NOTDEF);
+                (code, u32::from(cid), None, unicode)
             }
         };
         let text = self

@@ -1,7 +1,8 @@
 //! Bounded declarative CMaps, ISO 32000-2 9.7.5–9.7.6 and 9.10.3.
 use crate::{
     WritingMode,
-    cidmap::{CidMap, CidRange},
+    cid::Cid,
+    cidmap::{CidMap, CidRange, Step},
     features, repairs,
     report::Report,
 };
@@ -96,11 +97,11 @@ pub(crate) struct CMap {
 
 impl CMap {
     // Include explicit notdef mappings and the implicit CID 0 fallback.
-    pub(crate) fn cids(&self) -> impl Iterator<Item = u32> + '_ {
+    pub(crate) fn cids(&self) -> impl Iterator<Item = Cid> + '_ {
         self.mappings
             .cids()
             .chain(self.notdef.cids())
-            .chain(std::iter::once(0))
+            .chain(std::iter::once(Cid::NOTDEF))
     }
 
     pub(crate) fn heap_bytes(&self) -> usize {
@@ -139,18 +140,13 @@ impl CMap {
         let range = Range::new(
             Code { value: 0, len: 2 },
             Code {
-                value: 65535,
+                value: u32::from(u16::MAX),
                 len: 2,
             },
         )?;
         let mut mappings = CidMap::default();
         mappings.insert(
-            CidRange {
-                first: range.first,
-                last: range.last,
-                cid: 0,
-                increment: true,
-            },
+            CidRange::new(range.first, range.last, Cid::NOTDEF, Step::Increment)?,
             &mut 0,
             Limits::default(),
         )?;
@@ -327,27 +323,18 @@ impl CMap {
             }
             let cid = value
                 .as_integer()
-                .and_then(|v| u16::try_from(v).ok())
+                .and_then(Cid::from_integer)
                 .ok_or_else(|| Error::syntax("CMap CID outside 16-bit range"))?;
-            let notdef = op.starts_with(b"beginnotdef");
-            if !notdef && last.value - first.value > 65535 - u32::from(cid) {
-                return Err(Error::syntax("CMap CID range overflows"));
-            }
-            let target = if notdef {
-                &mut self.notdef
+            let (target, step) = if op.starts_with(b"beginnotdef") {
+                (&mut self.notdef, Step::Constant)
             } else {
-                &mut self.mappings
+                (&mut self.mappings, Step::Increment)
             };
             if target.len() >= limits.value_nodes {
                 return Err(Error::limit("CMap mapping limit exceeded"));
             }
             target.insert(
-                CidRange {
-                    first,
-                    last,
-                    cid: u32::from(cid),
-                    increment: !notdef,
-                },
+                CidRange::new(first, last, cid, step)?,
                 &mut context.work,
                 limits,
             )
@@ -504,11 +491,11 @@ impl CMap {
         ))
     }
 
-    pub(crate) fn cid(&self, code: Code, work: &mut usize, limits: Limits) -> Result<Option<u32>> {
+    pub(crate) fn cid(&self, code: Code, work: &mut usize, limits: Limits) -> Result<Option<Cid>> {
         self.mappings.get(code, work, limits)
     }
-    pub(crate) fn notdef(&self, code: Code, work: &mut usize, limits: Limits) -> Result<u32> {
-        Ok(self.notdef.get(code, work, limits)?.unwrap_or(0))
+    pub(crate) fn notdef(&self, code: Code, work: &mut usize, limits: Limits) -> Result<Cid> {
+        Ok(self.notdef.get(code, work, limits)?.unwrap_or(Cid::NOTDEF))
     }
     pub(crate) fn text(&self, code: Code) -> Option<&str> {
         self.unicode.get(&code).and_then(|text| text.as_deref())
