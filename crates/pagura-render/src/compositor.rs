@@ -147,6 +147,7 @@ impl Backdrop<'_> {
 }
 
 struct Context {
+    bounds: regions::Prepared,
     limits: Limits,
     device: Transform,
     page_device: Transform,
@@ -173,6 +174,7 @@ impl Context {
             self.device,
             &mut self.work,
             self.limits.raster_work,
+            &mut self.bounds,
         )
     }
     fn charge(&mut self, work: usize) -> Result<()> {
@@ -424,6 +426,7 @@ impl Context {
             self.device,
             &mut self.work,
             self.limits.raster_work,
+            &mut self.bounds,
         )? {
             return Ok(None);
         }
@@ -833,6 +836,7 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
         list.crop.height(),
     );
     let mut context = Context {
+        bounds: regions::Prepared::new(list.device_transform(options), list.limits.decoded_bytes),
         limits: list.limits,
         device: list.device_transform(options),
         page_device: list.device_transform(options),

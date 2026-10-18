@@ -405,12 +405,22 @@ fn crossing(
     row.sorted(events.len())?;
     events.sort_unstable_by(f64::total_cmp);
     events.dedup();
+    let mut ordered: Vec<_> = sorted.into_iter().map(|edge| (edge, 0.0)).collect();
     for interval in events.windows(2) {
         let (lo, hi) = (interval[0], interval[1]);
-        row.sorted(sorted.len())?;
-        sorted.sort_unstable_by(|a, b| endpoint(*a, *b, lo.midpoint(hi), false));
+        row.sorted(ordered.len())?;
+        // Evaluate each edge once per interval, rather than at every comparison.
+        let mid = lo.midpoint(hi);
+        for (edge, x) in &mut ordered {
+            *x = edge.x(mid);
+        }
+        ordered.sort_unstable_by(|(a, x), (b, y)| {
+            x.total_cmp(y)
+                .then_with(|| a.slope().total_cmp(&b.slope()))
+                .then(a.id.cmp(&b.id))
+        });
         let mut winding = initial.clone();
-        for &edge in &sorted {
+        for &(edge, _) in &ordered {
             row.edge(edge, lo, hi, winding.step(edge)?)?;
         }
     }
