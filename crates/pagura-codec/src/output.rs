@@ -1,6 +1,6 @@
 //! Bounded decoder output and incremental predictor reversal (7.4.4.4).
 //! PNG arithmetic: PNG Second Edition 9.2, Table 9.1, 9.3 and 9.4. TIFF sample
-//! arithmetic: TIFF 6.0 section 14, pp.64-65; PDF supplies high-bit-first packing.
+//! arithmetic: TIFF 6.0 14, pp.64-65; PDF supplies high-bit-first packing.
 use crate::bounded::{BoundedBytes, DECODE_BUDGET, decode_limit};
 use crate::flate::WINDOW;
 use crate::predictor::PngFilter;

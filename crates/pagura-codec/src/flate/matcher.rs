@@ -1,4 +1,4 @@
-//! Bounded hash-chain LZ77 matching (RFC 1951 3.2.3/3.2.5 and section 4).
+//! Bounded hash-chain LZ77 matching (RFC 1951 3.2.3, 3.2.5 and 4).
 use super::Level;
 use super::tables::{MAX_MATCH, MIN_MATCH, WINDOW};
 use crate::bounded::filled;
