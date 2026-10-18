@@ -3,7 +3,7 @@
 //! Binary package-merge selects the cheapest 2*n-2 items at the last level.
 //! Each selected occurrence of a leaf contributes one bit to its code length.
 //! Stable weight/creation-order ties make the construction deterministic.
-use crate::bounded::{filled, limit};
+use crate::bounded::{filled, with_capacity};
 use pagura_core::Result;
 
 #[derive(Clone, Copy)]
@@ -42,17 +42,12 @@ impl<const N: usize> Book<N> {
     }
 
     pub(super) fn build(frequencies: &[u32; N], max_bits: u8) -> Result<Self> {
-        if N < 2 || !(1..=15).contains(&max_bits) {
-            return Err(limit(0));
-        }
+        // Callers pass the RFC 1951 alphabets (at most 286 symbols) with
+        // their maximum code lengths (15 or 7), which always fit.
+        debug_assert!(N >= 2 && (1..=15).contains(&max_bits));
         let count = frequencies.iter().filter(|&&f| f != 0).count().max(2);
-        if count > (1 << max_bits) {
-            return Err(limit(0));
-        }
-        let mut nodes = Vec::new();
-        nodes
-            .try_reserve_exact(count * usize::from(max_bits))
-            .map_err(|_| limit(0))?;
+        debug_assert!(count <= 1 << max_bits);
+        let mut nodes = with_capacity(count * usize::from(max_bits))?;
         for (symbol, &weight) in frequencies.iter().enumerate() {
             if weight != 0 {
                 nodes.push(Node {
@@ -81,8 +76,7 @@ impl<const N: usize> Book<N> {
             *leaf = id;
         }
         leaves.sort_unstable_by_key(|&id| (nodes[id].weight, id));
-        let mut current = filled(2 * count, 0)?;
-        current.clear();
+        let mut current = with_capacity(2 * count)?;
         current.extend_from_slice(&leaves);
         let mut next = filled(2 * count, 0)?;
         let mut packages = filled(count, 0)?;
@@ -114,11 +108,12 @@ impl<const N: usize> Book<N> {
             }
             std::mem::swap(&mut current, &mut next);
         }
-        let selected = current.get(..2 * count - 2).ok_or_else(|| limit(0))?;
+        // Each level keeps every leaf, so at least 2*count-2 items remain.
+        let selected = &current[..2 * count - 2];
         let mut lengths = [0; N];
         // The stack has at most max_bits pending siblings plus selected roots.
         next.try_reserve_exact(2 * count + usize::from(max_bits) - next.len())
-            .map_err(|_| limit(0))?;
+            .map_err(|_| crate::bounded::encode_limit())?;
         next.clear();
         next.extend_from_slice(selected);
         while let Some(id) = next.pop() {

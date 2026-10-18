@@ -20,7 +20,10 @@ fn chains_pair_filters_with_parameters_and_borrow_plain_data() {
     let Filter::Flate { predictor } = chain.filters()[1] else {
         panic!("expected Flate");
     };
-    assert_eq!((predictor.kind, predictor.columns), (PredictorKind::Png, 5));
+    assert_eq!(
+        (predictor.kind(), predictor.columns()),
+        (PredictorKind::Png, 5)
+    );
     let plain = FilterChain::default();
     let mut diagnostics = pagura_core::Diagnostics::default();
     let decoded = plain.decode(b"abc", 3, &mut diagnostics).unwrap();
@@ -65,7 +68,7 @@ fn validates_parameters_and_preserves_image_and_security_boundaries() {
             .into_iter()
             .collect();
         assert_eq!(
-            Predictor::from_params(Some(&params)).unwrap().kind,
+            Predictor::from_params(Some(&params)).unwrap().kind(),
             PredictorKind::Png
         );
     }
