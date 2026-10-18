@@ -126,6 +126,30 @@ impl Surface {
         }
         usize::try_from(u64::from(y) * u64::from(self.tile.width) + u64::from(x)).ok()
     }
+    /// Index of the first of `len` pixels from (x, y), when all lie in one tile row.
+    fn span(&self, x: u32, y: u32, len: usize) -> Option<usize> {
+        let last = x.checked_add(u32::try_from(len.checked_sub(1)?).ok()?)?;
+        self.index(last, y)?;
+        self.index(x, y)
+    }
+    fn fill_solid(&mut self, start: usize, count: usize, color: [f64; 4]) -> Result<bool> {
+        let pixels = self
+            .pixels
+            .get_mut(start..start + count)
+            .ok_or(Error::invalid_argument("mask outside group"))?;
+        // The Normal formula returns the source exactly at zero or unit backdrop
+        // alpha (11.3.3). Other alphas take the general f64 evaluation.
+        if !pixels.iter().all(|p| p.alpha == 0.0 || p.alpha == 1.0) {
+            return Ok(false);
+        }
+        pixels.fill(Pixel {
+            color,
+            alpha: 1.0,
+            group: 1.0,
+            shape: 1.0,
+        });
+        Ok(true)
+    }
     fn bytes(&self) -> usize {
         self.pixels.len() * size_of::<Pixel>()
     }
@@ -412,16 +436,24 @@ impl Context {
             .map(|m| self.soft_mask(m, target.tile, model, depth + 1))
             .transpose()?;
         let (ox, oy) = mask.origin();
-        let width =
-            usize::try_from(mask.width()).map_err(|_| Error::limit("mask width exceeds usize"))?;
-        for (row, coverage) in mask.coverage().chunks_exact(width).enumerate() {
+        for (row, col, coverage) in mask.spans() {
             let y = oy + u32::try_from(row).map_err(|_| Error::limit("mask row exceeds u32"))?;
-            for (col, &coverage) in coverage.iter().enumerate().filter(|(_, v)| **v != 0) {
-                let x =
-                    ox + u32::try_from(col).map_err(|_| Error::limit("mask column exceeds u32"))?;
-                let index = target
-                    .index(x, y)
-                    .ok_or(Error::invalid_argument("mask outside group"))?;
+            let x = ox + u32::try_from(col).map_err(|_| Error::limit("mask column exceeds u32"))?;
+            let start = target
+                .span(x, y, coverage.len())
+                .ok_or(Error::invalid_argument("mask outside group"))?;
+            if coverage[0] == 255
+                && p.composite.simple()
+                && !knockout
+                && let Some(color) = color
+                && target.fill_solid(start, coverage.len(), color)?
+            {
+                continue;
+            }
+            for (column, &coverage) in coverage.iter().enumerate() {
+                let x = x + u32::try_from(column)
+                    .map_err(|_| Error::limit("mask column exceeds u32"))?;
+                let index = start + column;
                 let mask_value = soft
                     .as_ref()
                     .and_then(|m| m.get(index))
@@ -725,13 +757,12 @@ impl Context {
             .as_ref()
             .map(|mask| self.soft_mask(mask, target.tile, model, depth + 1))
             .transpose()?;
-        let width = usize::try_from(clip.width())
-            .map_err(|_| Error::limit("shading width exceeds usize"))?;
         let origin = clip.origin();
-        for (row, coverage) in clip.coverage().chunks_exact(width).enumerate() {
+        for (row, column, coverage) in clip.spans() {
             let y = origin.1
                 + u32::try_from(row).map_err(|_| Error::limit("shading row exceeds u32"))?;
-            for (column, &coverage) in coverage.iter().enumerate().filter(|(_, v)| **v != 0) {
+            for (offset, &coverage) in coverage.iter().enumerate() {
+                let column = column + offset;
                 let x = origin.0
                     + u32::try_from(column)
                         .map_err(|_| Error::limit("shading column exceeds u32"))?;
@@ -1144,6 +1175,52 @@ fn path_active(p: &PathCommand, model: Model) -> Result<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn solid_runs_preserve_unit_and_fractional_backdrop_alpha_evaluation() {
+        let tile = Tile {
+            x: 0,
+            y: 0,
+            width: 2,
+            height: 1,
+        };
+        let color = [79.0 / 255.0, 0.125, 0.5, 0.0];
+        let backdrops = [Pixel::default(), Pixel::source([0.25; 4], 1.0)];
+        let mut surface = Surface {
+            tile,
+            pixels: backdrops.to_vec(),
+        };
+        assert!(surface.fill_solid(0, 2, color).unwrap());
+        let bits = |p: Pixel| {
+            (
+                p.color.map(f64::to_bits),
+                [p.alpha, p.group, p.shape].map(f64::to_bits),
+            )
+        };
+        let source = Source {
+            color,
+            alpha: 1.0,
+            shape: 1.0,
+        };
+        for (pixel, mut expected) in surface.pixels.iter().zip(backdrops) {
+            expected.paint(
+                source,
+                &Composite::opaque(),
+                Pixel::default(),
+                false,
+                Model::Rgb,
+            );
+            assert_eq!(bits(*pixel), bits(expected));
+        }
+        surface.pixels[1].alpha = 0.5;
+        let before = surface.pixels[0].color;
+        // Fractional backdrops take the general f64 compositing expression.
+        assert!(!surface.fill_solid(0, 2, [0.75; 4]).unwrap());
+        assert_eq!(
+            surface.pixels[0].color.map(f64::to_bits),
+            before.map(f64::to_bits)
+        );
+    }
 
     #[test]
     fn soft_mask_values_share_the_live_raster_memory_allowance() {
