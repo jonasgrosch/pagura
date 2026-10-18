@@ -2,7 +2,7 @@
 
 use crate::NewObject;
 use crate::writer::Writer;
-use pagura_core::{Error, Limits, Name, ObjectId, Result, Value};
+use pagura_core::{Error, Limits, Name, ObjectId, Result, ResultExt, Value};
 use std::collections::BTreeMap;
 
 /// Collects objects and writes them as one new document.
@@ -104,18 +104,16 @@ impl Builder {
         {
             return Err(Error::limit("writer cross-reference budget exceeded"));
         }
-        let mut writer = Writer {
-            output: b"%PDF-1.7\n%\xE2\xE3\xCF\xD3\n".to_vec(),
-            limit: self.limits.file_bytes,
-        };
+        let mut writer = Writer::new(self.limits.file_bytes);
+        writer.header()?;
         let mut offsets = BTreeMap::new();
         for (&number, (generation, object)) in &self.objects {
             let id = ObjectId::new(number, *generation);
-            offsets.insert(number, (writer.output.len(), *generation));
-            writer.object(id, object)?;
+            offsets.insert(number, (writer.offset(), *generation));
+            writer.object(id, object).in_object(id)?;
         }
         writer.xref_and_trailer(&offsets, root)?;
-        Ok(writer.output)
+        Ok(writer.into_bytes())
     }
 
     fn validate(&self, value: &Value, depth: usize, nodes: &mut usize) -> Result<()> {

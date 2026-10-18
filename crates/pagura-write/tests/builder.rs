@@ -11,7 +11,8 @@ fn catalog() -> NewObject {
 }
 fn builder(limits: Limits) -> Builder {
     let mut builder = Builder::new(limits);
-    builder.insert(ObjectId::new(1, 0), catalog()).unwrap();
+    let inserted = builder.insert(ObjectId::new(1, 0), catalog());
+    assert_eq!(inserted, Ok(()));
     builder
 }
 #[test]
@@ -101,4 +102,19 @@ fn streams_beyond_the_stream_budget_fail() {
         output.finish(ObjectId::new(1, 0)).unwrap_err().kind,
         ErrorKind::Limit
     );
+}
+#[test]
+fn the_file_budget_admits_exactly_the_written_size() {
+    let finish = |file_bytes| {
+        let mut output = builder(Limits {
+            file_bytes,
+            ..Limits::default()
+        });
+        let stream = NewObject::stream(Dictionary::new(), vec![7; 4096]);
+        output.insert(ObjectId::new(2, 0), stream).unwrap();
+        output.finish(ObjectId::new(1, 0))
+    };
+    let size = finish(Limits::default().file_bytes).unwrap().len();
+    assert_eq!(finish(size).unwrap().len(), size);
+    assert_eq!(finish(size - 1).unwrap_err().kind, ErrorKind::Limit);
 }
