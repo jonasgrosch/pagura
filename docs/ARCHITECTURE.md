@@ -70,8 +70,9 @@ intersecting the crop box with the media box, and validating `/Rotate` and
 
 See ADR 0004. Interpretation produces a display list in PDF terms with colours
 in their source spaces; rasterization is PDF-agnostic exact-area coverage;
-composition targets premultiplied RGBA8 tiles. A deterministic CPU renderer is
-the diagnostic reference, not an infallible oracle.
+composition targets premultiplied RGBA8 tiles. Glyphs are rasterized at their
+exact device positions without a coverage cache (ADR 0013). A deterministic CPU
+renderer is the diagnostic reference, not an infallible oracle.
 
 ## Editing (M7)
 
