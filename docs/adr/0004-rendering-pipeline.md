@@ -50,9 +50,22 @@ exact result.
 - **Image sampling:** the exact-area average of the source samples under the
   image transform, or the nearest sample where 8.9.5.3 asks for no
   interpolation.
-- **Composition:** the imaging model of clause 11 applied in exact
-  arithmetic to the same coverage bytes, for any number of overlapping
-  marks. Per-mark 8-bit accumulation does not hold this bound.
+- **Composition through non-amplifying operations:** the imaging model of
+  clause 11 applied in exact arithmetic to the same coverage bytes, for any
+  number of overlapping marks. The non-amplifying operations are Normal
+  compositing, alpha, shape and soft-mask application, and the separable
+  blend modes Multiply, Screen, Darken, Lighten, Difference and Exclusion.
+  Their results never change faster than their inputs, so rounding errors
+  only add up. Per-mark 8-bit accumulation does not hold this bound.
+- **Composition through amplifying operations** (amended 2026-10-18): some
+  operations can change faster than their inputs, so no finite precision
+  bounds them against exact arithmetic for every input. These are
+  ColorDodge, ColorBurn, Overlay, HardLight, SoftLight, the non-separable
+  blend modes (11.3.5), steep transfer functions, and knockout's division by
+  shape. Every buffer that feeds one is evaluated in f64 from its first
+  store, and the contract is one level of that documented f64 evaluation.
+  The renderer's classification of each operation, with its amplification
+  bound, is the reference for which side an operation is on.
 
 Pixel-aligned opaque cases stay exact, and exact rounding ties are not part
 of the contract. Fixture oracles compute the exact result independently in
