@@ -1,7 +1,7 @@
 //! Reusable working storage for a sequence of independent path fills.
 
 use super::{FillRule, Mask};
-use crate::coverage::{Scratch, Shape};
+use crate::coverage::{Geometry, Scratch, Shape};
 use crate::{Paint, Path, Pixmap, Transform};
 use pagura_core::{Error, Limits, Result};
 use std::sync::Arc;
@@ -99,6 +99,81 @@ impl Rasterizer {
         )
     }
 
+    /// Rasterizes canonical glyph contours at their exact device origin.
+    /// Point classification survives flattening; no coverage is cached.
+    /// Returned masks retain shared geometry for later geometric intersection.
+    ///
+    /// # Errors
+    /// Returns geometry, work, source-count and allocation limit errors.
+    pub fn clipped_glyph(
+        &mut self,
+        clip: &Mask,
+        glyph: Arc<crate::GlyphGeometry>,
+        origin: crate::Point,
+        limits: Limits,
+    ) -> Result<Option<Mask>> {
+        self.maximum = limits.decoded_bytes;
+        self.trim();
+        let result = (|| {
+            crate::flatten::bounded(origin)?;
+            let Some(bounds) = glyph.bounds() else {
+                return Ok(None);
+            };
+            let transform = Transform::translate(origin.x, origin.y);
+            let Some(region) = crate::bounds::hull_region(
+                bounds.map(|p| p * transform),
+                (clip.width, clip.height),
+                clip.origin,
+            )?
+            else {
+                return Ok(None);
+            };
+            self.fill_shape(
+                Shape {
+                    geometry: Geometry::Glyph(glyph),
+                    transform,
+                    rule: FillRule::NonZero,
+                },
+                region,
+                limits,
+                Some(clip),
+            )
+        })();
+        self.complete(result)
+    }
+
+    fn complete(&mut self, result: Result<Option<Mask>>) -> Result<Option<Mask>> {
+        self.shapes.clear();
+        if result.is_err() {
+            self.clear();
+        } else {
+            self.trim();
+        }
+        result
+    }
+
+    /// Fills one canonical glyph and recycles its mask storage.
+    ///
+    /// # Errors
+    /// As [`Self::clipped_glyph`]; rejects incompatible target and clip sizes.
+    pub fn fill_glyph(
+        &mut self,
+        target: &mut Pixmap,
+        glyph: Arc<crate::GlyphGeometry>,
+        origin: crate::Point,
+        paint: &Paint,
+        clip: &Mask,
+    ) -> Result<()> {
+        super::check_clip(target, Some(clip))?;
+        if let Some(mask) = self.clipped_glyph(clip, glyph, origin, *target.limits())? {
+            let offset = (mask.origin.0 - clip.origin.0, mask.origin.1 - clip.origin.1);
+            let result = super::composite(target, &mask, *paint, offset);
+            self.recycle(mask);
+            result?;
+        }
+        Ok(())
+    }
+
     pub(super) fn path_mask(
         &mut self,
         path: PathSource<'_>,
@@ -110,13 +185,7 @@ impl Rasterizer {
         self.maximum = limits.decoded_bytes;
         self.trim();
         let result = self.fill(path, transform, rule, limits, viewport);
-        self.shapes.clear();
-        if result.is_err() {
-            self.clear();
-        } else {
-            self.trim();
-        }
-        result
+        self.complete(result)
     }
 
     fn fill(
@@ -132,15 +201,30 @@ impl Rasterizer {
         else {
             return Ok(None);
         };
+        self.fill_shape(
+            Shape {
+                geometry: Geometry::Path(path.into_shared()),
+                transform,
+                rule,
+            },
+            (x, y, width, height),
+            limits,
+            clip,
+        )
+    }
+
+    fn fill_shape(
+        &mut self,
+        shape: Shape,
+        (x, y, width, height): (u32, u32, u32, u32),
+        limits: Limits,
+        clip: Option<&Mask>,
+    ) -> Result<Option<Mask>> {
         self.shapes.clear();
         if limits.mask_sources == 0 {
             return Err(Error::limit("mask source budget exceeded"));
         }
-        self.shapes.push(Shape {
-            path: path.into_shared(),
-            transform,
-            rule,
-        });
+        self.shapes.push(shape);
         for shape in clip.into_iter().flat_map(|clip| &clip.shapes) {
             if !shape.covers((x, y), (width, height)) {
                 if self.shapes.len() >= limits.mask_sources {

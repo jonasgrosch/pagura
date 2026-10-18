@@ -1,6 +1,6 @@
 //! Filling, stroking and clipping with exact polygon area coverage.
 
-use crate::coverage::Shape;
+use crate::coverage::{Geometry, Shape};
 
 mod reuse;
 mod spans;
@@ -189,7 +189,7 @@ impl Mask {
             return Err(Error::limit("path segment budget exceeded"));
         }
         let shapes = vec![Shape {
-            path: Arc::new(path.clone()),
+            geometry: Geometry::Path(Arc::new(path.clone())),
             transform,
             rule,
         }];

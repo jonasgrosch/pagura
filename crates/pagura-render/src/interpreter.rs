@@ -303,6 +303,25 @@ impl<'a> Compiler<'a> {
     }
 
     fn operator(&mut self, word: &[u8], resources: &Dictionary) -> Result<()> {
+        if !matches!(
+            word,
+            b"Tj"
+                | b"TJ"
+                | b"'"
+                | b"\""
+                | b"Tc"
+                | b"Tw"
+                | b"Tz"
+                | b"TL"
+                | b"Ts"
+                | b"Tf"
+                | b"Tm"
+                | b"Td"
+                | b"TD"
+                | b"T*"
+        ) {
+            self.state.text.run = None;
+        }
         let tag = crate::operators::validate(word, &self.operands)?;
         let Some(_) = tag else {
             if self.compatibility > 0 {

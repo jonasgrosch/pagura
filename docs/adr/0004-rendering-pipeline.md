@@ -94,3 +94,42 @@ The 8-bit surface is not the final imaging model: transparency groups, soft
 masks and blend modes need group surfaces with higher precision. That change
 is local to composition and does not affect the display list or rasterizer
 interfaces. GPU backends are out of scope until the CPU reference is complete.
+
+## Amendment: canonical glyph polygons (2026-10-18)
+
+Filled outline text in modes 0 and 4 retains its font outline, linear
+glyph-to-device map L and exact device origin t. Construct its relative
+polygon with the shared flattener at the unchanged 1/256-device-pixel
+tolerance, using L for the device-space error bound. Map emitted outline
+vertices by L, then add t. Instance translation never participates in
+subdivision, and neither geometry nor placement is snapped to a grid. This
+decision does not prescribe the subdivision algorithm. Allocation and culling
+bounds combine relative geometry with device-mapped origins; they must not
+erase glyph extents by adding user origins before scaling.
+
+Preserve closure and geometric-point classification from the L-mapped source
+endpoints and controls before approximation or translation. Coincident
+approximating vertices do not turn a nonpoint curve into a point. A singular L
+can produce a genuine point, which encloses its translated floor cell under
+8.5.3.3.1. Retain the existing omission rule for a final open one-point
+contour. Raster entry points and retained masks consume this metadata
+directly.
+
+Each glyph remains a separate nonzero fill, geometrically clipped and
+composited in content order, including overlap and knockout (9.3.6, 9.3.8,
+11.4.6). Runs share preparation without unioning coverage. Eligible glyph
+rectangles use the closed-form rectangle mechanism; other contours use the
+shared exact-area sweep and span interfaces. Strokes and accumulated text
+clipping retain their existing path rules.
+
+A bounded per-render cache may retain canonical geometry by retained outline
+identity and actual device linear-map bits. It is separate from
+path-flattening retention and never stores glyph coverage. Charge capacity and
+index estimates, release optional retention before rejecting required
+transient storage, and preserve semantic work charges and error positions
+across hits, misses and eviction (ADR 0012, ADR 0013).
+
+The raster oracle is the placed canonical polygon with its preserved point
+rule. ADR 0004's composition contract remains unchanged. No fixture tolerance
+is raised by this amendment. The translated-tiny-outline correction from RGB 0
+to the oracle's 255 is an explicit correctness correction.

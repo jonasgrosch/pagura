@@ -1,6 +1,6 @@
 //! Closed-form rectangle coverage and fractional clipping bounds (8.5.3–8.5.4).
 
-use super::{Row, Shape, index, quantize};
+use super::{Geometry, Row, Shape, index, quantize};
 use crate::Segment;
 use crate::flatten::bounded;
 use pagura_core::{Error, Limits, Result};
@@ -16,20 +16,39 @@ pub(super) struct Rectangle {
 impl Shape {
     pub(super) fn rectangle(&self) -> Option<Rectangle> {
         use Segment::{Close, LineTo, MoveTo};
-        let [MoveTo(a), LineTo(b), LineTo(c), LineTo(d), tail @ ..] = self.path.segments() else {
-            return None;
+        let points = match &self.geometry {
+            Geometry::Path(path) => {
+                let [MoveTo(a), LineTo(b), LineTo(c), LineTo(d), tail @ ..] = path.segments()
+                else {
+                    return None;
+                };
+                // Filled open paths close implicitly (8.5.3.3.1).
+                if !matches!(tail, [] | [Close])
+                    && !matches!(tail, [LineTo(end)] | [LineTo(end), Close] if end == a)
+                {
+                    return None;
+                }
+                [*a, *b, *c, *d]
+            }
+            Geometry::Glyph(glyph) => {
+                let [contour] = glyph.contours() else {
+                    return None;
+                };
+                if contour.is_degenerate() {
+                    return None;
+                }
+                let [a, b, c, d, tail @ ..] = contour.points() else {
+                    return None;
+                };
+                if !matches!(tail, [] | [_]) || tail.first().is_some_and(|end| end != a) {
+                    return None;
+                }
+                [*a, *b, *c, *d]
+            }
         };
-        // Open subpaths close implicitly when filled (8.5.3.3.1). An explicit
-        // fourth line may repeat the first point, with or without h.
-        if !matches!(tail, [] | [Close])
-            && !matches!(tail, [LineTo(end)] | [LineTo(end), Close] if end == a)
-        {
-            return None;
-        }
         if !self.transform.is_finite() {
             return None;
         }
-        let points = [*a, *b, *c, *d];
         let [a, b, c, d] = points.map(|p| p * self.transform);
         // Ineligible geometry goes through the regular validator, including
         // degenerate paths, whose device-pixel policy differs from empty area.
@@ -64,12 +83,12 @@ impl Rectangle {
         let mut bounds = Self::viewport(origin, size);
         let mut groups = 0;
         for shape in shapes {
-            if shape.path.segments().len() > limits.path_segments {
+            if shape.segments() > limits.path_segments {
                 return Err(Error::limit("path segment budget exceeded"));
             }
             row.charge(1)?;
             if let Some(rectangle) = shape.rectangle() {
-                row.charge(shape.path.segments().len())?;
+                row.charge(shape.segments())?;
                 bounds.intersect(rectangle);
             } else {
                 groups += 1;
