@@ -202,18 +202,7 @@ fn scalar(document: &pagura_document::Document, d: &Dictionary, key: &[u8]) -> R
         .transpose()
 }
 fn numbers(document: &pagura_document::Document, value: &Value) -> Result<Vec<f64>> {
-    document
-        .resolve(value)?
-        .as_array()
-        .ok_or(Error::syntax("annotation numeric array expected"))?
-        .iter()
-        .map(|v| {
-            document
-                .resolve(v)?
-                .as_number()
-                .ok_or(Error::syntax("annotation parameter must be numeric"))
-        })
-        .collect()
+    crate::numbers::list(document, value, f64::MAX)
 }
 pub(super) fn annotation_color(
     document: &pagura_document::Document,
