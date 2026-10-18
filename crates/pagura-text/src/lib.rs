@@ -29,44 +29,25 @@ mod cid_substitute;
 mod cidmap;
 mod cmap;
 mod encoding;
+pub mod features;
 mod font;
+pub mod information;
 mod memory;
 mod metrics;
 mod objects;
 mod program;
 mod provider;
 pub mod repairs;
+mod report;
 mod strings;
 mod substitute;
 pub use strings::decode_text_string;
-
-pub use cid_substitute::CID_GLYPH_MISSING;
-/// Stable diagnostic tag for a host-provided outline substitution.
-pub use program::STREAM_LENGTHS;
-pub use substitute::SUBSTITUTED;
 
 pub use provider::{
     CidToUnicode, PredefinedCMap, Provider, StandardDescriptor, StandardFont, StandardMetrics,
 };
 mod selection;
 mod tables;
-
-/// Stable tags for text capabilities not implemented yet.
-pub mod features {
-    use pagura_core::Feature;
-
-    /// A font whose program is not embedded and has no substitute yet.
-    pub const NON_EMBEDDED: Feature = Feature::new("font.non-embedded");
-    /// Vertical substitute glyph forms are unavailable; embedded vertical fonts
-    /// keep their existing support.
-    pub const CID_SUBSTITUTE_VERTICAL: Feature = Feature::new("font.cid-substitute-vertical");
-    /// A CMap requires PostScript evaluation beyond declarative mappings.
-    pub const CMAP_PROGRAM: Feature = Feature::new("font.cmap-program");
-    /// Historical ambiguity tag; supported TrueType selection no longer emits it.
-    pub const TRUETYPE_CMAP: Feature = Feature::new("font.truetype-cmap");
-    /// A predefined CMap other than Identity-H/V, whose data is not bundled.
-    pub const PREDEFINED_CMAP: Feature = Feature::new("font.predefined-cmap");
-}
 
 /// Converts an Adobe glyph name to Unicode using the same AGL name rules
 /// as PDF encoding lookup (ISO 32000-2 9.10.2). Unknown names return `None`.

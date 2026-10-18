@@ -65,16 +65,13 @@ fn check_font(provider: &Bundled, name: &str) -> Result<()> {
                 program.outline(*glyph)?;
             }
         }
-        assert!(
-            document
-                .diagnostics()
-                .iter()
-                .any(|d| d.kind
-                    == pagura_core::DiagnosticKind::Information(pagura_text::SUBSTITUTED))
-        );
+        assert!(document.diagnostics().iter().any(|d| d.kind
+            == pagura_core::DiagnosticKind::Information(pagura_text::information::SUBSTITUTED)));
         if name.contains("missing") {
             assert!(document.diagnostics().iter().any(|d| d.kind
-                == pagura_core::DiagnosticKind::Information(pagura_text::CID_GLYPH_MISSING)));
+                == pagura_core::DiagnosticKind::Information(
+                    pagura_text::information::CID_GLYPH_MISSING
+                )));
         }
         assert!(font.retained_bytes() < program.data().len());
         let before = font.retained_bytes();

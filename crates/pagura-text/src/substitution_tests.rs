@@ -129,11 +129,13 @@ fn invalid_optional_weights_have_exact_repaired_glyphs_and_strict_tags() -> Resu
             assert_eq!(
                 kinds,
                 if tag.is_empty() {
-                    vec![pagura_core::DiagnosticKind::Information(SUBSTITUTED)]
+                    vec![pagura_core::DiagnosticKind::Information(
+                        information::SUBSTITUTED,
+                    )]
                 } else {
                     vec![
                         pagura_core::DiagnosticKind::Repair(repairs::DESCRIPTOR_WEIGHT),
-                        pagura_core::DiagnosticKind::Information(SUBSTITUTED),
+                        pagura_core::DiagnosticKind::Information(information::SUBSTITUTED),
                     ]
                 }
             );
@@ -227,7 +229,7 @@ fn descriptor_styles_and_symbol_aliases_preserve_pdf_positions_in_both_modes() -
             let diagnostic = &document.diagnostics()[0];
             assert_eq!(
                 diagnostic.kind,
-                pagura_core::DiagnosticKind::Information(SUBSTITUTED)
+                pagura_core::DiagnosticKind::Information(information::SUBSTITUTED)
             );
             let base = fixture("text", &format!("{name}.base"));
             assert_eq!(
@@ -316,7 +318,7 @@ fn substituted_fonts_reject_malformed_unicode_in_strict_mode() -> Result<()> {
                 diagnostics.iter().map(|item| item.kind).collect::<Vec<_>>(),
                 [
                     pagura_core::DiagnosticKind::Repair(repairs::TOUNICODE_UTF16),
-                    pagura_core::DiagnosticKind::Information(SUBSTITUTED)
+                    pagura_core::DiagnosticKind::Information(information::SUBSTITUTED)
                 ]
             );
         }

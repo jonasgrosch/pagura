@@ -139,7 +139,7 @@ fn filled_widgets_match_independent_exact_area_pixels() {
         let kinds: Vec<_> = document.diagnostics().iter().map(|d| d.kind).collect();
         let mut expected = Vec::new();
         if provider.is_some() {
-            expected.push(DiagnosticKind::Information(pagura_text::SUBSTITUTED));
+            expected.push(DiagnosticKind::Information(pagura_text::information::SUBSTITUTED));
         }
         if let Some(tag) = params.lines().find_map(|l| l.strip_prefix("diagnostic=")) {
             assert_eq!(tag, "form.appearance-kept");

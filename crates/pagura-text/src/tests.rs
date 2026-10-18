@@ -208,11 +208,15 @@ fn font_stream_length_faults_are_reported_repairs() -> Result<()> {
         let error = PdfFont::load(&strict, dictionary(&strict)?)
             .err()
             .ok_or_else(|| Error::syntax("expected a strict rejection"))?;
-        assert_eq!(error.repair, Some(STREAM_LENGTHS), "{name}: {error}");
+        assert_eq!(
+            error.repair,
+            Some(repairs::STREAM_LENGTHS),
+            "{name}: {error}"
+        );
         let tag = fixture("text", &format!("{name}.repair"));
         assert_eq!(
             std::str::from_utf8(&tag).map(str::trim),
-            Ok(STREAM_LENGTHS.as_str())
+            Ok(repairs::STREAM_LENGTHS.as_str())
         );
         let repaired = Document::open(bytes, &OpenOptions::default())?;
         PdfFont::load(&repaired, dictionary(&repaired)?)?;
@@ -220,7 +224,7 @@ fn font_stream_length_faults_are_reported_repairs() -> Result<()> {
             repaired
                 .diagnostics()
                 .iter()
-                .any(|item| item.repair() == Some(STREAM_LENGTHS)),
+                .any(|item| item.repair() == Some(repairs::STREAM_LENGTHS)),
             "{name}"
         );
     }

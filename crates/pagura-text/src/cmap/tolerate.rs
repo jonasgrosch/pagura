@@ -200,7 +200,7 @@ impl CMap {
                 "unsupported simple-font ToUnicode code length",
             ));
         }
-        repairs::Report::new(document).repair(
+        crate::report::Report::new(document).repair(
             repairs::TOUNICODE_SIMPLE_CODES,
             "simple-font ToUnicode uses two-byte source codes (9.10.3)",
             position,

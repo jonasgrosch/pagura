@@ -96,7 +96,7 @@ fn standard_fonts_aliases_afm_metrics_and_outlines() -> Result<()> {
             assert_eq!(document.diagnostics().len(), 1);
             assert_eq!(
                 document.diagnostics()[0].kind,
-                pagura_core::DiagnosticKind::Information(pagura_text::SUBSTITUTED)
+                pagura_core::DiagnosticKind::Information(pagura_text::information::SUBSTITUTED)
             );
             let glyphs = font.decode(&input)?;
             for (glyph, value) in glyphs.iter().zip(expected(&name, "out")?) {

@@ -152,8 +152,8 @@ mod diagnostic_tests {
     #[test]
     fn strict_accepts_information_and_rejects_repairs_independently_of_tags() {
         let information = [
-            pagura_text::SUBSTITUTED,
-            pagura_text::CID_GLYPH_MISSING,
+            pagura_text::information::SUBSTITUTED,
+            pagura_text::information::CID_GLYPH_MISSING,
             "test.information",
         ]
         .map(|tag| Diagnostic::information(tag, "provider information"));

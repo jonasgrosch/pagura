@@ -49,7 +49,7 @@ fn foxit_charsets_and_pdf_width_precedence() -> Result<()> {
         assert_eq!(document.diagnostics().len(), 1);
         assert_eq!(
             document.diagnostics()[0].kind,
-            pagura_core::DiagnosticKind::Information(pagura_text::SUBSTITUTED)
+            pagura_core::DiagnosticKind::Information(pagura_text::information::SUBSTITUTED)
         );
         assert_eq!(
             document.diagnostics()[0].message,
