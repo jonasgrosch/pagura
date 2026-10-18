@@ -43,9 +43,6 @@ pub const TRANSPARENCY_GROUP_COLORSPACE: Feature = Feature::new("transparency.gr
 /// Transfer-function region selection for transparent artwork.
 pub const TRANSPARENCY_TRANSFER: Feature = Feature::new("transparency.transfer");
 
-/// Process-colour overprint inside a subtractive blending space.
-pub const TRANSPARENCY_OVERPRINT: Feature = Feature::new("transparency.overprint");
-
 /// Patch mesh points whose inverse cannot be resolved numerically.
 pub const SHADING_MESH: Feature = Feature::new("shading.mesh");
 
@@ -99,7 +96,6 @@ pub const ALL: &[Feature] = &[
     TRANSPARENCY_GROUP,
     TRANSPARENCY_GROUP_COLORSPACE,
     TRANSPARENCY_TRANSFER,
-    TRANSPARENCY_OVERPRINT,
     SHADING_MESH,
     SHADING_TRANSFORM,
     PATTERN_TILING,

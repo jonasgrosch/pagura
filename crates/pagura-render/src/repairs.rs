@@ -34,7 +34,7 @@ pub const APPEARANCE_EMPTY: Repair = Repair::new("annotation.appearance-empty");
 /// content sequence, after all painting and text objects have finished.
 pub const GRAPHICS_UNCLOSED: Repair = Repair::new("content.graphics-unclosed");
 /// 9.6.4, Table 111: retain the horizontal Widths advance when d0/d1 disagrees.
-pub const TYPE3_WIDTH: Repair = Repair::new("font.type3-width");
+pub const TYPE3_WIDTH: Repair = Repair::new("content.type3-width");
 /// 8.7.3.2, Table 73: coloured patterns require only a name; discard extra
 /// numeric operands supplied with an underlying pattern colour space.
 pub const PATTERN_UNDERLYING: Repair = Repair::new("content.pattern-underlying");
@@ -59,7 +59,7 @@ pub const ALL: &[Repair] = &[
 
 /// Information, not a repair: an untouched field keeps its valid stored
 /// appearance because generating a replacement is unsupported.
-pub const APPEARANCE_KEPT: &str = "form.appearance-kept";
+pub const APPEARANCE_KEPT: &str = "appearance.kept";
 
 /// Every information tag above.
 pub const INFORMATION: &[&str] = &[APPEARANCE_KEPT];

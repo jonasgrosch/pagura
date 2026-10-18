@@ -38,8 +38,8 @@ fn coloured_patterns_and_soft_mask_artwork_are_strictly_valid() {
 fn reported_repairs_reject_strictly_and_keep_stream_context() {
     for (name, tag, object) in [
         ("unclosed-graphics", "content.graphics-unclosed", 4),
-        ("type3-width-advance", "font.type3-width", 6),
-        ("type3-vertical-metric", "font.type3-width", 6),
+        ("type3-width-advance", "content.type3-width", 6),
+        ("type3-vertical-metric", "content.type3-width", 6),
         (
             "pattern-coloured-underlying",
             "content.pattern-underlying",

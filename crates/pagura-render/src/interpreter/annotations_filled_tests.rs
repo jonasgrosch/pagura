@@ -142,7 +142,7 @@ fn filled_widgets_match_independent_exact_area_pixels() {
             expected.push(DiagnosticKind::Information(pagura_text::SUBSTITUTED));
         }
         if let Some(tag) = params.lines().find_map(|l| l.strip_prefix("diagnostic=")) {
-            assert_eq!(tag, "form.appearance-kept");
+            assert_eq!(tag, crate::repairs::APPEARANCE_KEPT);
             let kept = DiagnosticKind::Information(crate::repairs::APPEARANCE_KEPT);
             expected.push(kept);
             let diagnostic = document

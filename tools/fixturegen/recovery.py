@@ -260,7 +260,7 @@ def codec_cases():
 def type3_case():
     font=b'<< /Type /Font /Subtype /Type3 /FontBBox [0 0 400 600] /FontMatrix [.001 0 0 .001 0 0] /FirstChar 65 /LastChar 65 /Widths [400] /Encoding << /Differences [65 /A] >> /CharProcs << /A 6 0 R >> /Resources << >> >>'
     procedure=stream(b'401 0 d0 0 0 400 600 re f')
-    return render('type3-width-advance',b'BT /F 10 Tf 2 2 Td (AA) Tj ET',[font,procedure],b'<< /Font << /F 5 0 R >> >>',[((2,2,8,6),BLACK)],repairs=('font.type3-width',),requirement='recovery-type3')
+    return render('type3-width-advance',b'BT /F 10 Tf 2 2 Td (AA) Tj ET',[font,procedure],b'<< /Font << /F 5 0 R >> >>',[((2,2,8,6),BLACK)],repairs=('content.type3-width',),requirement='recovery-type3')
 
 
 def pattern_cases():
@@ -276,7 +276,7 @@ def pattern_cases():
         yield render(name,content,[colored,uncolored],resources,rectangles,requirement='recovery-patterns',repairs=('content.pattern-underlying',))
     yield Case('pattern-wrong-unused-count',page(b'/C cs 0 1 /P scn',[colored,uncolored],resources),OPEN,('recovery-patterns',),'Unused pattern operands must still match the selected base',extra={'render_error':'syntax'})
     font=b'<< /Type /Font /Subtype /Type3 /FontBBox [0 0 400 600] /FontMatrix [.001 0 0 .001 0 0] /FirstChar 65 /LastChar 65 /Widths [400] /Encoding << /Differences [65 /A] >> /CharProcs << /A 6 0 R >> /Resources << >> >>'
-    yield render('type3-vertical-metric',b'BT /F 10 Tf 2 2 Td (AA) Tj ET',[font,stream(b'400 17 d0 0 0 400 600 re f')],b'<< /Font << /F 5 0 R >> >>',[((2,2,8,6),BLACK)],requirement='recovery-type3',repairs=('font.type3-width',))
+    yield render('type3-vertical-metric',b'BT /F 10 Tf 2 2 Td (AA) Tj ET',[font,stream(b'400 17 d0 0 0 400 600 re f')],b'<< /Font << /F 5 0 R >> >>',[((2,2,8,6),BLACK)],requirement='recovery-type3',repairs=('content.type3-width',))
 
 
 def cases():

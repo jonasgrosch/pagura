@@ -208,7 +208,7 @@ def cases(base):
             o[90]=stream(b'<xdp:xdp xmlns:xdp="http://ns.adobe.com/xdp/"><template xmlns="http://www.xfa.org/schema/xfa-template/3.3/"/></xdp:xdp>')
         else:
             o[10]['DA']=b'/F1 10 Tf 0 1 -1 0 400 500 Tm'
-        yield vector('fallback-'+kind,o,old,edits=[],diagnostic='form.appearance-kept',requirement='forms-render-fallback')
+        yield vector('fallback-'+kind,o,old,edits=[],diagnostic='appearance.kept',requirement='forms-render-fallback')
 
     o=base();o[3]['Annots'].append(ref(12));o[10]['Fields'].append(ref(12))
     o[12]={'T':'signature','FT':name('Sig'),'Subtype':name('Widget'),'Rect':[0,20,100,40]}

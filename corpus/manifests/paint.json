@@ -1805,7 +1805,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "font.type3-width"
+        "content.type3-width"
       ]
     },
     {

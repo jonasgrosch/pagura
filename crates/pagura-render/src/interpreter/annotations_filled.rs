@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 /// Visibility, placement, clipping and optional content follow normal annotation
 /// rendering. Source objects are immutable; appearance data is temporary.
 /// An untouched field with a stored AP keeps it when generation is unsupported,
-/// reporting `form.appearance-kept` information in both Strict and Repair modes.
+/// reporting `appearance.kept` information in both Strict and Repair modes.
 /// Edited fields and non-capability errors still fail explicitly.
 ///
 /// # Errors
