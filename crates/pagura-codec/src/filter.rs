@@ -1,5 +1,5 @@
 //! Filter names, parameters and chains (clause 7.4.1, Tables 5 and 6).
-use crate::{Predictor, ascii, features, flate, lzw};
+use crate::{Predictor, ascii, features, flate, lzw, run_length};
 use pagura_core::{Diagnostics, Dictionary, Error, Feature, Name, Result, Value};
 use std::borrow::Cow;
 
@@ -251,7 +251,7 @@ impl Filter {
             )),
             Self::AsciiHex => ascii::hex(input, max_output, diagnostics),
             Self::Ascii85 => ascii::ascii85(input, max_output, diagnostics),
-            Self::RunLength => ascii::run_length(input, max_output, diagnostics),
+            Self::RunLength => run_length::decode(input, max_output, diagnostics),
             Self::Flate { predictor } => flate::decode(input, max_output, *predictor, diagnostics),
             Self::Lzw {
                 predictor,

@@ -3,7 +3,7 @@
 //! Rows are tightly packed, top to bottom, without premultiplication. Output
 //! contains only IHDR, contiguous IDAT chunks and IEND, with no colour profile.
 use crate::{
-    encoding::{Bytes, filled, limit},
+    bounded::{Bytes, filled, limit},
     flate,
 };
 use pagura_core::{Error, Limits, Position, Result};
