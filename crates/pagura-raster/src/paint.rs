@@ -34,6 +34,7 @@ impl Rgba8 {
 
 /// What a fill or stroke paints with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Paint {
     /// A uniform colour.
     Solid(Rgba8),

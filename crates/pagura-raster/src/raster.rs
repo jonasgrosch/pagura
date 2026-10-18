@@ -11,7 +11,8 @@ pub use region::ClipRegion;
 pub use reuse::Rasterizer;
 pub use runs::{Coverage, Rectangle};
 
-/// Which points a fill covers (ISO 32000-2 clause 8.5.3.3).
+/// Which points a fill covers (8.5.3.3). Exhaustive: PDF defines exactly
+/// these two rules.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum FillRule {
     /// Nonzero winding number rule.
@@ -21,7 +22,7 @@ pub enum FillRule {
     EvenOdd,
 }
 
-/// Line cap style (clause 8.4.3.3).
+/// Line cap style (8.4.3.3). Exhaustive: Table 53 closes the set.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum LineCap {
     /// 0: square end at the endpoint.
@@ -33,7 +34,7 @@ pub enum LineCap {
     ProjectingSquare,
 }
 
-/// Line join style (clause 8.4.3.4).
+/// Line join style (8.4.3.4). Exhaustive: Table 54 closes the set.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum LineJoin {
     /// 0: mitered, subject to the miter limit.
@@ -47,6 +48,10 @@ pub enum LineJoin {
 
 /// Stroke parameters in the path's own (user) space; the stroker applies
 /// the transform, so non-uniform scaling distorts the pen as PDF requires.
+///
+/// A plain record built with functional record update from
+/// [`Stroke::default`], so it is not `#[non_exhaustive]`. Its fields are
+/// checked when a stroke is outlined, not when it is built.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Stroke {
     /// Line width; 0 means the thinnest line the device can render.

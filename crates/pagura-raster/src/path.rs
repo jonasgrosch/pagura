@@ -4,7 +4,8 @@ use crate::{FillRule, Point, Transform};
 use pagura_core::{Limits, Rect, Result};
 use std::{fmt, sync::Arc};
 
-/// One path construction step (ISO 32000-2 clause 8.5.2 semantics).
+/// One path construction step (8.5.2). Exhaustive: every PDF path
+/// construction operator reduces to these four (`v`, `y` and `re` included).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Segment {
     /// Begins a new subpath.
@@ -26,6 +27,7 @@ pub enum Segment {
 
 /// Geometric filling-region certificate retained before scan conversion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FillRegion {
     /// Ordinary filling, including geometry whose emptiness cannot be proved.
     Ordinary,
