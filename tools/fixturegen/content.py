@@ -938,6 +938,10 @@ def tiling_cases():
         ('tiling-underlying-reuse',{'paint':2,'space':b'[/Pattern /DeviceRGB]','body':b'/C cs 1 0 0 /P scn 0 0 4 8 re f 0 0 1 /P scn 4 0 4 8 re f','cell':b'0 0 1 1 re f'},[((x,y,1,1),RED if x<4 else BLUE) for y in range(0,8,2) for x in range(0,8,2)]),
     ]:
         yield Case(name,pdf(**options),RENDER,('content-tiling',),'8.6.6.2, 8.7.2–8.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite',oracle=opaque_rectangles(8,8,geometry))
+    # 8.6.8: an uncoloured cell frames and ignores an inline colour image,
+    # here in a named ICCBased space whose channel count gives its length.
+    icc=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/Pattern /DeviceRGB] >> /Pattern << /P 5 0 R >> >> /Contents 4 0 R >>',stream(b'/C cs 1 0 0 /P scn 0 0 8 8 re f'),stream(b'BI /W 1 /H 1 /CS /I /BPC 8 ID \0\0\xff EI 0 0 1 1 re f',b'/Type /Pattern /PatternType 1 /PaintType 2 /TilingType 1 /BBox [0 0 2 2] /XStep 2 /YStep 2 /Resources << /ColorSpace << /I [/ICCBased 6 0 R] >> >>'),stream(icc_profile(3),b'/N 3')])
+    yield Case('tiling-ignored-inline-icc',icc,RENDER,('content-tiling',),'8.6.8: an ignored inline image in a named ICCBased space is framed by its channel count',oracle=opaque_rectangles(8,8,motif))
     for name,options in [('tiling-zero-step',{'step':b'0 2'}),('tiling-missing-underlying',{'paint':2}),('tiling-coloured-underlying',{'space':b'[/Pattern /DeviceRGB]','body':b'/C cs 1 0 0 /P scn'})]:
         if name == 'tiling-coloured-underlying':
             yield Case(name,pdf(**options),OPEN,('content-tiling',),'Coloured pattern ignores unused underlying colour with a repair',strict_valid=False,repairs=('content.pattern-underlying',))

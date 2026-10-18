@@ -37,7 +37,9 @@ impl Compiler<'_> {
                 .transpose()?
                 .and_then(Value::as_bool)
                 .unwrap_or(false);
-            if self.uncolored_glyph() && !stencil {
+            // An uncoloured Type 3 glyph (9.6.4) and an uncoloured tiling cell
+            // (8.6.8) paint only image masks; other images are framed, not decoded.
+            if (self.uncolored_glyph() || self.stencil_pattern) && !stencil {
                 return Ok(());
             }
 
@@ -378,7 +380,9 @@ impl Compiler<'_> {
             .or_else(|| dictionary.get(b"IM"))
             .and_then(Value::as_bool)
             .unwrap_or(false);
-        if self.uncolored_glyph() && !stencil {
+        // An uncoloured Type 3 glyph (9.6.4) and an uncoloured tiling cell
+        // (8.6.8) paint only image masks; other images are framed, not decoded.
+        if (self.uncolored_glyph() || self.stencil_pattern) && !stencil {
             return Ok(());
         }
         let image = pagura_image::decode_inline(

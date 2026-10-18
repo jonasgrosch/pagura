@@ -2188,6 +2188,25 @@
       "height": 8
     },
     {
+      "id": "content/tiling-ignored-inline-icc",
+      "kind": "pdf",
+      "description": "8.6.8: an ignored inline image in a named ICCBased space is framed by its channel count",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-ignored-inline-icc.pdf",
+      "sha256": "fb9592a0e9f5db85e04b2a6fbeacdd8f4f06f13d83b566c5b4f625fc2b3d1c89",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-ignored-inline-icc.ppm",
+      "oracle_sha256": "25bd4603c2bcab7a64d435485a63b5aa2a3c121618bedde18b56365195d028ec",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
       "id": "content/tiling-zero-step",
       "kind": "pdf",
       "description": "Table 74 and 8.7.3.3: malformed lattice or colour operands",

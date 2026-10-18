@@ -9,7 +9,6 @@ pub(crate) mod images;
 mod masks;
 mod path;
 mod pattern;
-mod pattern_inline;
 mod session;
 mod shading;
 mod state;
@@ -206,7 +205,7 @@ impl Compiler<'_> {
                     b"true" => self.operand(Value::Boolean(true)),
                     b"false" => self.operand(Value::Boolean(false)),
                     b"null" => self.operand(Value::Null),
-                    b"BI" => self.pattern_inline(&mut parser, resources),
+                    b"BI" => self.inline_image(&mut parser, resources),
                     _ => self.operator(word, resources),
                 })
             };

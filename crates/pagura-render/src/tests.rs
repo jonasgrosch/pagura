@@ -738,6 +738,7 @@ fn mesh_pattern_and_adjusted_geometry_match_independent_oracles() {
         "tiling-underlying",
         "tiling-ignored-colour",
         "tiling-ignored-inline",
+        "tiling-ignored-inline-icc",
         "tiling-alpha-once",
         "tiling-blend",
         "mesh-triangle",
