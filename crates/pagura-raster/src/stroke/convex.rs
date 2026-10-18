@@ -110,15 +110,10 @@ pub(super) fn append(
         if contour.is_empty() {
             continue;
         }
-        for (i, p) in contour.into_iter().enumerate() {
+        for &p in &contour {
             bounded(p)?;
-            if i == 0 {
-                out.move_to(p);
-            } else {
-                out.line_to(p);
-            }
         }
-        out.close();
+        out.polygon(contour);
     }
     Ok(())
 }

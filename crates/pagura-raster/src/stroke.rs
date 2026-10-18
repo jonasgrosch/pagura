@@ -522,24 +522,20 @@ fn polygon(out: &mut PathBuilder, points: &[Point], limits: &Limits) -> Result<(
     let Some(&first) = points.first() else {
         return Ok(());
     };
+    for &point in points {
+        bounded(point)?;
+    }
     let area: f64 = points
         .iter()
         .zip(points.iter().skip(1).chain(std::iter::once(&first)))
-        .map(|(a, b)| (a.x - first.x) * (b.y - first.y) - (a.y - first.y) * (b.x - first.x))
+        .map(|(&a, &b)| (a - first).cross(b - first))
         .sum();
-    let mut ordered: Vec<_> = points.to_vec();
+    // Every component polygon is positively oriented (module comment).
     if area < 0.0 {
-        ordered.reverse();
+        out.polygon(points.iter().rev().copied());
+    } else {
+        out.polygon(points.iter().copied());
     }
-    for (i, point) in ordered.into_iter().enumerate() {
-        bounded(point)?;
-        if i == 0 {
-            out.move_to(point);
-        } else {
-            out.line_to(point);
-        }
-    }
-    out.close();
     Ok(())
 }
 

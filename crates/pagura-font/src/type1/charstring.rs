@@ -121,12 +121,12 @@ fn load(
                     Segment::LineTo(p) => {
                         s.path
                             .line_to(transform.apply(p))
-                            .ok_or_else(|| bad(0, "invalid seac path"))?;
+                            .map_err(|_| bad(0, "invalid seac path"))?;
                     }
                     Segment::CubicTo(a, b, c) => {
                         s.path
                             .cubic_to(transform.apply(a), transform.apply(b), transform.apply(c))
-                            .ok_or_else(|| bad(0, "invalid seac path"))?;
+                            .map_err(|_| bad(0, "invalid seac path"))?;
                     }
                     Segment::Close => {
                         s.path.close();
@@ -212,7 +212,7 @@ impl State {
         w.segment(at)?;
         self.path
             .line_to(p)
-            .ok_or_else(|| bad(at, "Type 1 line before moveto"))?;
+            .map_err(|_| bad(at, "Type 1 line before moveto"))?;
         Ok(())
     }
     fn curve(&mut self, d: &[f64], w: &mut Work<'_>, at: usize) -> Result<()> {
@@ -223,7 +223,7 @@ impl State {
         w.segment(at)?;
         self.path
             .cubic_to(a, b, c)
-            .ok_or_else(|| bad(at, "Type 1 curve before moveto"))?;
+            .map_err(|_| bad(at, "Type 1 curve before moveto"))?;
         Ok(())
     }
 }
@@ -442,11 +442,11 @@ fn othersubr(s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
             w.segment(at)?;
             s.path
                 .cubic_to(*a, *b, *c)
-                .ok_or_else(|| bad(at, "Type 1 flex before moveto"))?;
+                .map_err(|_| bad(at, "Type 1 flex before moveto"))?;
             w.segment(at)?;
             s.path
                 .cubic_to(*d, *e, *f)
-                .ok_or_else(|| bad(at, "Type 1 flex before moveto"))?;
+                .map_err(|_| bad(at, "Type 1 flex before moveto"))?;
             s.results.extend([*y, *x]);
         }
         (3, [_]) => {

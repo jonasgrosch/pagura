@@ -163,12 +163,12 @@ fn append(
             Segment::LineTo(p) => {
                 builder
                     .line_to(transform.apply(p))
-                    .ok_or_else(|| bad(at, "invalid seac path"))?;
+                    .map_err(|_| bad(at, "invalid seac path"))?;
             }
             Segment::CubicTo(a, b, c) => {
                 builder
                     .cubic_to(transform.apply(a), transform.apply(b), transform.apply(c))
-                    .ok_or_else(|| bad(at, "invalid seac path"))?;
+                    .map_err(|_| bad(at, "invalid seac path"))?;
             }
             Segment::Close => {
                 builder.close();
@@ -235,7 +235,7 @@ impl State {
         work.segment(at)?;
         self.path
             .line_to(p)
-            .ok_or_else(|| bad(at, "charstring line without current point"))?;
+            .map_err(|_| bad(at, "charstring line without current point"))?;
         Ok(())
     }
     fn curve(&mut self, deltas: &[f64], work: &mut Work<'_>, at: usize) -> Result<()> {
@@ -248,7 +248,7 @@ impl State {
         work.segment(at)?;
         self.path
             .cubic_to(a, b, c)
-            .ok_or_else(|| bad(at, "charstring curve without current point"))?;
+            .map_err(|_| bad(at, "charstring curve without current point"))?;
         Ok(())
     }
 }

@@ -22,7 +22,7 @@ impl Compiler<'_> {
                 finite(point)?;
                 self.path
                     .line_to(point)
-                    .ok_or(Error::syntax("line has no current point"))?;
+                    .map_err(|_| Error::syntax("line has no current point"))?;
             }
             b"c" | b"v" | b"y" => {
                 let current = self
@@ -39,7 +39,7 @@ impl Compiler<'_> {
                 }
                 self.path
                     .cubic_to(a, b, end)
-                    .ok_or(Error::syntax("curve has no current point"))?;
+                    .map_err(|_| Error::syntax("curve has no current point"))?;
             }
             b"h" => {
                 if self.path.current_point().is_none() {
@@ -59,15 +59,10 @@ impl Compiler<'_> {
                     Point::new(x, y + h),
                 ]
                 .map(|p| p * self.state.ctm);
-                for (i, point) in points.into_iter().enumerate() {
+                for point in points {
                     finite(point)?;
-                    if i == 0 {
-                        self.path.move_to(point);
-                    } else {
-                        self.path.line_to(point);
-                    }
                 }
-                self.path.close();
+                self.path.polygon(points);
             }
             _ => return Err(Error::syntax("invalid path operator")),
         }

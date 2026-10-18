@@ -514,22 +514,7 @@ fn append(builder: &mut PathBuilder, path: &Path, limit: usize) -> Result<()> {
     {
         return Err(Error::limit("text path segment budget exceeded"));
     }
-    for segment in path.segments() {
-        match *segment {
-            Segment::MoveTo(p) => {
-                builder.move_to(p);
-            }
-            Segment::LineTo(p) => {
-                builder.line_to(p);
-            }
-            Segment::CubicTo(a, b, c) => {
-                builder.cubic_to(a, b, c);
-            }
-            Segment::Close => {
-                builder.close();
-            }
-        }
-    }
+    builder.append(path, Transform::IDENTITY);
     Ok(())
 }
 
