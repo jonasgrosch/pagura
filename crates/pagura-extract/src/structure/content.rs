@@ -52,7 +52,7 @@ pub(super) fn resolve(
         if matches!(item.reference, Reference::Marked(..)) && item.ranges.is_empty() {
             if matches!(item.reference, Reference::Marked(owner, _) if owner != page.id()) {
                 return Err(Error::unsupported(
-                    super::CONTENT,
+                    crate::features::STRUCTURE_CONTENT,
                     "text.structure-content: structure references an uncaptured content stream",
                 ));
             }

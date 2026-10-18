@@ -337,7 +337,6 @@ fn reversed(glyph: &PositionedGlyph) -> bool {
 
 fn validate_glyph(glyph: &PositionedGlyph, fonts: usize) -> Result<()> {
     if glyph.font >= fonts
-        || glyph.render_mode > 7
         || glyph.em < 0.0
         || ![glyph.size, glyph.em].into_iter().all(f64::is_finite)
         || !glyph
