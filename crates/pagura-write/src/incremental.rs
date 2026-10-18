@@ -2,7 +2,7 @@
 
 use crate::{NewObject, validation, writer::Writer};
 use pagura_core::{Dictionary, Error, Limits, Name, ObjectId, Result, ResultExt, Value};
-use pagura_crypto::sha256;
+use pagura_crypto::{Digest, Sha256};
 use std::collections::BTreeMap;
 
 /// Cross-reference representation for the appended revision (7.5.4, 7.5.8).
@@ -56,7 +56,7 @@ pub fn write_incremental(
     }
     // Bind the changing identifier to the original plus canonical new objects;
     // the trailer is deliberately outside its own hash (14.4).
-    let version = sha256(writer.bytes()).to_vec();
+    let version = Sha256::digest(writer.bytes()).to_vec();
     trailer.insert(
         Name::new(b"ID"),
         Value::Array(vec![Value::String(permanent), Value::String(version)]),
@@ -245,7 +245,7 @@ fn validate_objects(
 
 fn permanent_id(trailer: &Dictionary, original: &[u8]) -> Result<Vec<u8>> {
     match trailer.get(b"ID") {
-        None | Some(Value::Null) => Ok(sha256(original).to_vec()),
+        None | Some(Value::Null) => Ok(Sha256::digest(original).to_vec()),
         Some(Value::Array(ids)) => match ids.as_slice() {
             [Value::String(first), Value::String(_)] if !first.is_empty() => Ok(first.clone()),
             _ => Err(Error::invalid_argument(

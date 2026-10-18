@@ -3,7 +3,7 @@ use pagura_core::{Error, ObjectId, Result};
 
 use super::{Authority, CryptMethod, FileKey, SecurityParams, equal, file_key};
 use crate::rc4::Rc4;
-use crate::{Md5, md5};
+use crate::{Digest, Md5};
 
 // The parent validates parameter lengths before calling this module.
 pub(super) fn authenticate(params: &SecurityParams, password: &[u8]) -> Result<FileKey> {
@@ -53,16 +53,16 @@ fn legacy_file_key(params: &SecurityParams, password: &[u8]) -> Vec<u8> {
     let mut digest = hash.finalize();
     if params.revision >= 3 {
         for _ in 0..50 {
-            digest = md5(&digest[..params.key_length]);
+            digest = Md5::digest(&digest[..params.key_length]);
         }
     }
     digest[..params.key_length].to_vec()
 }
 fn legacy_owner_key(params: &SecurityParams, password: &[u8]) -> Vec<u8> {
-    let mut digest = md5(&pad_password(password));
+    let mut digest = Md5::digest(&pad_password(password));
     if params.revision >= 3 {
         for _ in 0..50 {
-            digest = md5(&digest);
+            digest = Md5::digest(&digest);
         }
     }
     digest[..params.key_length].to_vec()
