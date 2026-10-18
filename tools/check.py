@@ -34,6 +34,12 @@ COMMANDS = [
     (CARGO + ["fmt", "--all", "--", "--check"], {}),
     (CARGO + ["clippy", *OFFLINE, "--workspace", "--all-targets", "--", "-D", "warnings"], {}),
     (CARGO + ["test", *OFFLINE, "--workspace", "--all-targets"], {}),
+    # The host as shipped (no bundled data, ADR 0005) and with every opt-in
+    # feature, each on its own: a workspace build unifies bundled-data on.
+    (CARGO + ["clippy", *OFFLINE, "-p", "pagura-host", "--all-targets", "--no-default-features", "--", "-D", "warnings"], {}),
+    (CARGO + ["clippy", *OFFLINE, "-p", "pagura-host", "--all-targets", "--all-features", "--", "-D", "warnings"], {}),
+    (CARGO + ["test", *OFFLINE, "-p", "pagura-host", "--all-targets", "--no-default-features"], {}),
+    (CARGO + ["test", *OFFLINE, "-p", "pagura-host", "--all-targets", "--all-features"], {}),
     (CARGO + ["test", *OFFLINE, "--workspace", "--doc"], {}),
     (CARGO + ["doc", *OFFLINE, "--workspace", "--no-deps"], {"RUSTDOCFLAGS": "-D warnings"}),
     *FEATURE_MATRIX,
