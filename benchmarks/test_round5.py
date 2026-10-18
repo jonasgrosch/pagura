@@ -2,16 +2,74 @@
 import importlib.util
 import json
 import random
+import runpy
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from round5 import CONTENT, cpu_summary, failure_sink, parity, remaining_time, subset_300, verify_runtime_parity
-from machine_record import probe
+from round5 import CONTENT, cpu_summary, failure_sink, idle_record, native_simd, parity, remaining_time, subset_300, verify_runtime_parity
+from machine_record import probe, snapshot
+from benchkit.engines import identify
 
 
 class MatrixContracts(unittest.TestCase):
+    def test_coregraphics_is_only_selected_on_macos(self):
+        for system in ("darwin", "linux"):
+            with self.subTest(platform=system), patch.object(sys, "platform", system):
+                names = runpy.run_path(str(Path(__file__).with_name("round5.py")))["NATIVE"]
+            expected = ("pagura", "pdfium", "mupdf", "quartz", "hayro", "pdfjs", "poppler")
+            self.assertEqual(names, expected if system == "darwin" else tuple(name for name in expected if name != "quartz"))
+
+    def test_native_simd_uses_compiler_features(self):
+        baseline = native_simd("x86_64-unknown-linux-gnu", ["sse", "sse2"])
+        self.assertIn("SSE2 enabled", baseline)
+        self.assertIn("AVX2 disabled", baseline)
+        self.assertIn("AVX-512 disabled", baseline)
+        tuned = native_simd("x86_64-unknown-linux-gnu", ["sse2", "avx2", "avx512f"])
+        self.assertIn("AVX2 enabled", tuned)
+        self.assertIn("AVX-512 enabled", tuned)
+        for host in ("aarch64-apple-darwin", "aarch64-unknown-linux-gnu"):
+            self.assertIn("NEON enabled", native_simd(host, ["neon"]))
+        self.assertIn("NEON disabled", native_simd("aarch64-unknown-linux-gnu", []))
+
+    def test_poppler_identity_records_runner_version_from_stderr(self):
+        with tempfile.TemporaryDirectory() as directory:
+            executable = Path(directory) / "pdftoppm"
+            executable.write_bytes(b"version probe control")
+            for version in ("24.02.0", "26.09.0"):
+                with self.subTest(version=version), patch("benchkit.engines.subprocess.run",
+                        return_value=subprocess.CompletedProcess([], 0, "", f"pdftoppm version {version}\n")) as run:
+                    identity = identify("poppler", [str(executable)])
+                self.assertEqual(identity["status"], "available")
+                self.assertEqual(identity["version"], f"pdftoppm version {version}")
+                self.assertIn(str(executable), identity["artifacts"])
+                self.assertEqual(run.call_args.args[0], [str(executable), "-v"])
+
+    def test_idle_check_excludes_harness_and_probe_tree(self):
+        processes = "103 102 100.0 ps\n100 99 100.0 python\n102 100 100.0 sh\n101 99 24.9 other\n"
+        def stub(command):
+            return {"status": "available", "stdout": processes} if command[0] == "ps" else {"status": "unavailable"}
+        with patch("machine_record.probe", side_effect=stub), patch("machine_record.os.getpid", return_value=100):
+            record = snapshot()
+        self.assertEqual(record["heavy_processes"], [])
+        with tempfile.TemporaryDirectory() as directory, patch("round5.snapshot", return_value=record), \
+             patch("round5.time.sleep") as sleep:
+            machine = {"observations": [], "pauses": []}
+            idle_record(machine, Path(directory) / "machine.json", "node", smoke=False)
+        sleep.assert_not_called()
+        self.assertEqual(machine["pauses"], [])
+
+    def test_process_tree_exclusion_keeps_unrelated_heavy_processes(self):
+        processes = "100 99 100.0 python\n101 99 25.0 render\n102 100 100.0 ps\n"
+        def stub(command):
+            return {"status": "available", "stdout": processes} if command[0] == "ps" else {"status": "unavailable"}
+        with patch("machine_record.probe", side_effect=stub), patch("machine_record.os.getpid", return_value=100):
+            record = snapshot()
+        self.assertEqual(record["heavy_processes"], [{"pid": 101, "parent": 99, "cpu_percent": 25.0, "command": "render"}])
+
     def candidates(self):
         cases, metadata, geometry = [], {}, {}
         for content in CONTENT:

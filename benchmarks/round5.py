@@ -24,9 +24,10 @@ import benchkit.documents as documents
 
 from agreement import pixel_difference
 from machine_record import snapshot
-from process_measurement import run_process
+from process_measurement import measurement_options, run_process
 
-NATIVE = ("pagura", "pdfium", "mupdf", "quartz", "hayro", "pdfjs", "poppler")
+NATIVE = tuple(name for name in ("pagura", "pdfium", "mupdf", "quartz", "hayro", "pdfjs", "poppler")
+               if name != "quartz" or sys.platform == "darwin")
 WASM = ("v8-wasi", "wasmtime")
 CONTENT = ("text-heavy", "image-heavy", "vector-heavy", "mixed")
 
@@ -77,6 +78,9 @@ def build(output, wasmtime):
     for name in ("RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS"):
         env.pop(name, None)
     env["CARGO_ENCODED_RUSTFLAGS"] = ""  # override per-target/global Cargo config too
+    cfg = subprocess.check_output(toolchain + ["rustc", "--print", "cfg", "--target", host],
+                                  cwd=ROOT, text=True, env=env)
+    features = sorted(line.split('"')[1] for line in cfg.splitlines() if line.startswith('target_feature="'))
     log = output / "build.log"
     checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "--target", host,
              "-p", "pagura", "-p", "pagura-host", "--features", "pagura-host/bundled-data"], log, env=env)
@@ -98,9 +102,23 @@ def build(output, wasmtime):
              artifacts / "convert.wasm", "-o", artifacts / "convert.cwasm"], log)
     atomic_json(output / "compiler.json", {"rustc": info, "host": host,
         "features": ["bundled-data"], "native_rustflags": "target baseline; inherited RUSTFLAGS cleared",
+        "native_target_features": features,
         "wasm_rustflags": "-C target-feature=+simd128", "wasmtime": "Cranelift AOT opt-level=2; parallel-compilation=n",
         "product_host_wasm_sha256": sha((target / "wasm32-wasip1/release/pagura-host.wasm").read_bytes())})
     return target / host / "release/pagura", artifacts
+
+
+def native_simd(host, features):
+    """Describe compiler-enabled SIMD, rather than the hardware's capabilities."""
+    if host.startswith("x86_64-"):
+        enabled = ("sse2" in features, "avx2" in features, any(item.startswith("avx512") for item in features))
+        detail = ", ".join(f"{name} {'enabled' if present else 'disabled'}"
+                           for name, present in zip(("SSE2", "AVX2", "AVX-512"), enabled))
+    elif host.startswith("aarch64-"):
+        detail = "NEON enabled" if "neon" in features else "NEON disabled"
+    else:
+        detail = "target features: " + (", ".join(features) or "none")
+    return f"compiler autovectorization at {host} target baseline: {detail}"
 
 
 def page_metadata(manifest):
@@ -403,14 +421,15 @@ def main(argv=None):
         identities = {name: identify(name, command) for name, command in bases.items()}
         if any(value["status"] != "available" for value in identities.values()):
             atomic_json(output / "engines.json", identities)
-            raise ValueError("all six competitors must be installed and available; see engines.json")
+            raise ValueError("all applicable competitors must be installed and available; see engines.json")
         for name, runtime in (("v8-wasi", node), ("wasmtime", wasmtime)):
             paths = [Path(shutil.which(runtime) or runtime), artifacts / "convert.wasm", artifacts / "convert.cwasm",
                      ROOT / "benchmarks/adapters/wasm_convert.rs", ROOT / "benchmarks/adapters/wasi.mjs"]
             identities[name] = {"status": "available", "version": subprocess.check_output([runtime, "--version"], text=True).strip(),
                                 "artifacts": {str(path): sha(path.read_bytes()) for path in paths}}
         atomic_json(output / "engines.json", identities)
-        checked([sys.executable, ROOT / "benchmarks/adapters/quartz_geometry_test.py", bases["quartz"][0]], output / "preflight.log")
+        if "quartz" in bases:
+            checked([sys.executable, ROOT / "benchmarks/adapters/quartz_geometry_test.py", bases["quartz"][0]], output / "preflight.log")
         checked([sys.executable, ROOT / "benchmarks/adapters/wasm_convert_test.py", artifacts / "native-control",
                  artifacts / "convert.wasm", wasmtime], output / "preflight.log")
         geometry = {}
@@ -435,7 +454,8 @@ def main(argv=None):
         report["source_sha256"] = pinned
         report["suite"] = "round5-smoke" if args.smoke else "round5-real-documents"
         report.update(runtime_parity=[], completed_jobs=0, planned_jobs=len(jobs),
-                      measurement_options={"cpu_enabled": True, "rss_enabled": True, "accounting": "POSIX wait4 per child"})
+                      measurement_options=measurement_options())
+        compiler = read_json(output / "compiler.json")
         report["round5"] = {"smoke": args.smoke, "manifest_external_path": str(manifest), "corpus_external_path": str(corpus),
             "validated_full_plan": {"page_dpi_cases": len(full_plan), "document_dpi_jobs": len(document_jobs(full_plan, bases)),
                                     "pages_at_300_dpi": len(high_resolution)},
@@ -443,8 +463,8 @@ def main(argv=None):
             "stage_boundaries": "open=load/parse/enumerate; render=load page+compile+paint; emit=convert/encode/write",
             "wasm_features": ["bundled-data", "simd128"], "v8_flags": ["--single-threaded", "--no-liftoff", "--wasm-num-compilation-tasks=1"],
             "wasmtime_flags": ["Cranelift AOT opt-level=2", "parallel-compilation=n"], "agreement_backend": f"Pillow {PIL.__version__}",
-            "simd": {"pagura": "compiler autovectorization at aarch64 NEON baseline", "wasm": "SIMD128",
-                     "hayro": "runtime-detected NEON", "other_engines": "ISA dispatch not independently audited"},
+            "simd": {"pagura": native_simd(compiler["host"], compiler["native_target_features"]), "wasm": "SIMD128",
+                     "hayro": "runtime-detected SIMD; ISA dispatch not independently audited", "other_engines": "ISA dispatch not independently audited"},
             "threading": {"hayro": "0.8.0 forces num_threads=0; isolated vello_cpu multithreading feature disabled",
                           "pdfium_mupdf": "synchronous calling-thread render APIs",
                           "pdfjs": "Node main-thread path, synchronous raster Canvas; V8 background tasks disabled; native background work not independently ruled out",
