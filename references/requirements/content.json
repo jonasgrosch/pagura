@@ -742,6 +742,57 @@
           "reason": "Primary precedence order and colorimetric media-white scaling reviewed locally; PDF source processing overrides header hints."
         }
       ]
+    },
+    {
+      "id": "content-reported-recovery",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.5.3.1",
+        "8.5.4",
+        "8.6.6.3",
+        "8.6.8 Table 73",
+        "8.11.3.2",
+        "8.11.4.2 Table 98",
+        "8.11.4.3 Table 99"
+      ],
+      "status": "implemented with reported repairs",
+      "tests": [
+        "content/repair-empty-stroke",
+        "content/repair-empty-closed-stroke",
+        "content/repair-empty-fill",
+        "content/repair-empty-alias",
+        "content/repair-empty-parity",
+        "content/repair-empty-both",
+        "content/repair-empty-both-parity",
+        "content/repair-empty-closed-both",
+        "content/repair-empty-closed-both-parity",
+        "content/repair-empty-end",
+        "content/repair-empty-clip",
+        "content/repair-clip-construction",
+        "content/repair-colour-Separation-fill",
+        "content/repair-colour-Separation-stroke",
+        "content/repair-colour-reject-Separation-count",
+        "content/repair-colour-reject-Separation-type",
+        "content/repair-colour-DeviceN-fill",
+        "content/repair-colour-DeviceN-stroke",
+        "content/repair-colour-reject-DeviceN-count",
+        "content/repair-colour-reject-DeviceN-type",
+        "content/repair-icc-colour",
+        "content/repair-indexed-string",
+        "content/repair-indexed-stream",
+        "content/indexed-short-missing",
+        "content/indexed-short-partial",
+        "content/repair-optional-absent-AnyOn",
+        "content/repair-optional-absent-AnyOff",
+        "content/repair-optional-config-AnyOn",
+        "content/repair-optional-config-AnyOff",
+        "content/repair-optional-groups-AnyOn",
+        "content/repair-optional-groups-AnyOff",
+        "content/repair-optional-unregistered-AnyOn",
+        "content/repair-optional-unregistered-AnyOff"
+      ],
+      "gaps": "Short Indexed palettes remain errors. For unregistered groups the initial ON state applies even under membership negation; readers disagree. Missing required optional-content entries disable optional-content evaluation.",
+      "rule": "Strict mode rejects each repair with its stable content tag; repair mode reports it before continuing. Numeric SC/sc may select a matching non-pattern special or ICC colour, undefined paths paint nothing and discard pending clips, clipping is deferred past further construction, and excess palette bytes are ignored. Missing required OCProperties is reported when optional content is used and disables evaluation as 8.11.4.2 requires; missing required registry or configuration is repaired by disabling it, and valid unregistered OCGs retain initial ON state."
     }
   ]
 }

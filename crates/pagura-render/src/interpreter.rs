@@ -21,6 +21,37 @@ use pagura_document::{Document, IndirectObject, Page};
 use pagura_raster::{FillRule, LineCap, LineJoin, PathBuilder, Point, Stroke, Transform};
 use std::sync::Arc;
 
+/// Stable reported content repairs (ADR 0003).
+pub(crate) mod tags {
+    use pagura_core::Repair;
+
+    /// Table 73: numeric SC/sc operands are interpreted as SCN/scn only
+    /// when their count and types fit the selected non-pattern space.
+    pub const COLOUR_OPERATOR: Repair = Repair::new("content.colour-operator");
+    /// 8.5.3: an undefined path paints nothing; any pending clip is discarded.
+    pub const EMPTY_PATH: Repair = Repair::new("content.empty-path");
+    /// 8.5.4: defer clipping until painting, including subsequent construction.
+    pub const CLIP_ORDER: Repair = Repair::new("content.clip-order");
+    /// 8.6.6.3: ignore bytes beyond the complete, declared palette.
+    pub const INDEXED_EXCESS: Repair = Repair::new("content.indexed-excess");
+    /// Table 98: ignore optional-content structures without a default config.
+    pub const OPTIONAL_CONFIG: Repair = Repair::new("content.optional-config");
+    /// Table 98: ignore optional-content structures without a group registry.
+    pub const OPTIONAL_GROUPS: Repair = Repair::new("content.optional-groups");
+    /// 8.11.4.2: ignore optional structures when required OCProperties is absent.
+    pub const OPTIONAL_PROPERTIES: Repair = Repair::new("content.optional-properties");
+    /// 8.11.4.3: use the initial ON state for an unregistered, valid OCG.
+    /// This also applies under OCMD negation; readers differ on this policy.
+    pub const OPTIONAL_GROUP: Repair = Repair::new("content.optional-group");
+}
+
+pub(crate) fn repair(document: &Document, diagnostic: pagura_core::Diagnostic) -> Result<()> {
+    let mut diagnostics = pagura_core::Diagnostics::new(document.recovery());
+    diagnostics.repair(diagnostic)?;
+    document.report(diagnostics.take());
+    Ok(())
+}
+
 /// Compiles a page into the vector display list (7.8.2; 8.4–8.6; ADR 0004).
 /// All content streams are one token sequence, including compound operands.
 ///
@@ -286,6 +317,14 @@ impl<'a> Compiler<'a> {
         self.paint_charge(0, 0)
     }
 
+    fn repair(&self, tag: pagura_core::Repair, message: &'static str) -> Result<()> {
+        let mut diagnostic = pagura_core::Diagnostic::new(tag, message).at(self.position);
+        if let Position::Stream { object, .. } = self.position {
+            diagnostic = diagnostic.in_object(object);
+        }
+        repair(self.document, diagnostic)
+    }
+
     fn execute(&mut self, word: &[u8], v: &[Value], resources: &Dictionary) -> Result<()> {
         match word {
             b"q" => self.save_graphics()?,
@@ -298,9 +337,22 @@ impl<'a> Compiler<'a> {
                 self.state.ctm = matrix;
             }
             b"w" | b"J" | b"j" | b"M" | b"d" | b"i" | b"ri" => self.parameter(word, v)?,
-            b"m" | b"l" | b"c" | b"v" | b"y" | b"h" | b"re" => self.construct(word, v)?,
+            b"m" | b"l" | b"c" | b"v" | b"y" | b"h" | b"re" => {
+                if self.pending_clip.is_some() {
+                    self.repair(tags::CLIP_ORDER, "construction follows clipping operator")?;
+                }
+                let pending = self.pending_clip.take();
+                let result = self.construct(word, v);
+                self.pending_clip = pending;
+                result?;
+            }
             b"S" | b"s" | b"f" | b"F" | b"f*" | b"B" | b"B*" | b"b" | b"b*" | b"n" => {
-                self.paint(word)?;
+                if self.path.is_empty() {
+                    self.repair(tags::EMPTY_PATH, "painting requires a current path")?;
+                    self.pending_clip = None;
+                } else {
+                    self.paint(word)?;
+                }
             }
             b"W" | b"W*" => {
                 if self.pending_clip.is_some() {
@@ -487,4 +539,52 @@ fn stream_error(mut error: Error, fallback: usize, origins: &[(usize, ObjectId)]
         error = error.in_object(object);
     }
     error
+}
+
+#[cfg(test)]
+mod recovery_tests {
+    use super::{compile_page, tags};
+    use pagura_core::Recovery;
+    use pagura_document::{Document, OpenOptions};
+
+    #[test]
+    fn content_repairs_are_reported_and_strictly_rejected() {
+        for (name, tag) in [
+            ("repair-empty-stroke", tags::EMPTY_PATH),
+            ("repair-empty-clip", tags::EMPTY_PATH),
+            ("repair-clip-construction", tags::CLIP_ORDER),
+            ("repair-colour-Separation-fill", tags::COLOUR_OPERATOR),
+            ("repair-colour-DeviceN-stroke", tags::COLOUR_OPERATOR),
+            ("repair-icc-colour", tags::COLOUR_OPERATOR),
+            ("repair-indexed-string", tags::INDEXED_EXCESS),
+            ("repair-indexed-stream", tags::INDEXED_EXCESS),
+            ("repair-optional-config-AnyOff", tags::OPTIONAL_CONFIG),
+            ("repair-optional-groups-AnyOn", tags::OPTIONAL_GROUPS),
+            ("repair-optional-absent-AnyOff", tags::OPTIONAL_PROPERTIES),
+            ("repair-optional-unregistered-AnyOff", tags::OPTIONAL_GROUP),
+        ] {
+            let bytes = pagura_testkit::fixture("content", &format!("{name}.pdf"));
+            let original = bytes.clone();
+            let repaired = Document::open(bytes.clone(), &OpenOptions::default()).unwrap();
+            compile_page(&repaired, repaired.page(0).unwrap()).unwrap();
+            let diagnostics = repaired.diagnostics();
+            assert_eq!(diagnostics.len(), 1, "{name}: {diagnostics:?}");
+            assert_eq!(diagnostics[0].repair, tag, "{name}");
+            compile_page(&repaired, repaired.page(0).unwrap()).unwrap();
+            assert_eq!(repaired.diagnostics(), diagnostics, "{name}");
+            assert_eq!(repaired.original_bytes(), original);
+            let strict = Document::open(
+                bytes,
+                &OpenOptions {
+                    recovery: Recovery::Strict,
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap();
+            let error = compile_page(&strict, strict.page(0).unwrap()).unwrap_err();
+            assert_eq!(error.repair, Some(tag), "{name}: {error}");
+            assert!(error.object.is_some(), "{name}: {error}");
+            assert!(strict.diagnostics().is_empty(), "{name}");
+        }
+    }
 }

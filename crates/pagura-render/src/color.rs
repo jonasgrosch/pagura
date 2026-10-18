@@ -71,16 +71,31 @@ impl Color {
         };
         Self::Solid { space, components }
     }
-    pub(crate) fn validate_simple_operator(&self) -> Result<()> {
+    pub(crate) fn validate_simple_operator(
+        &self,
+        document: &pagura_document::Document,
+        values: &[Value],
+        position: pagura_core::Position,
+    ) -> Result<()> {
         // Table 73: SC/sc do not select special tint or ICCBased colours.
-        if matches!(
-            self,
-            Self::Solid {
-                space: Space::Tint { .. } | Space::Special { .. } | Space::Icc { .. },
-                ..
+        if let Self::Solid {
+            space: space @ (Space::Tint { .. } | Space::Special { .. } | Space::Icc { .. }),
+            ..
+        } = self
+        {
+            if values.len() != space.components() || values.iter().any(|v| v.as_number().is_none())
+            {
+                return Err(Error::syntax("colour space requires SCN or scn"));
             }
-        ) {
-            return Err(Error::syntax("colour space requires SCN or scn"));
+            let mut diagnostic = pagura_core::Diagnostic::new(
+                crate::interpreter::tags::COLOUR_OPERATOR,
+                "colour space requires SCN or scn",
+            )
+            .at(position);
+            if let pagura_core::Position::Stream { object, .. } = position {
+                diagnostic = diagnostic.in_object(object);
+            }
+            crate::interpreter::repair(document, diagnostic)?;
         }
         Ok(())
     }
@@ -751,7 +766,8 @@ fn indexed_space(
         .as_integer()
         .and_then(|n| u8::try_from(n).ok())
         .ok_or(Error::syntax("invalid Indexed high value"))?;
-    let lookup = if let Some(id) = lookup.as_reference() {
+    let lookup_id = lookup.as_reference();
+    let mut lookup = if let Some(id) = lookup_id {
         let object = document.object(id)?;
         if object.is_stream() {
             document.stream_data(object)?.into_owned()
@@ -769,8 +785,19 @@ fn indexed_space(
             .to_vec()
     };
     let required = (usize::from(high) + 1) * base.components();
-    if lookup.len() != required {
+    if lookup.len() < required {
         return Err(Error::syntax("Indexed lookup has wrong length"));
+    }
+    if lookup.len() > required {
+        let mut diagnostic = pagura_core::Diagnostic::new(
+            crate::interpreter::tags::INDEXED_EXCESS,
+            "Indexed lookup has wrong length",
+        );
+        if let Some(id) = lookup_id {
+            diagnostic = diagnostic.in_object(id);
+        }
+        crate::interpreter::repair(document, diagnostic)?;
+        lookup.truncate(required);
     }
     Ok(Space::Indexed {
         base: Arc::new(base),

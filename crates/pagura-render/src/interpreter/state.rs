@@ -91,7 +91,7 @@ impl Compiler<'_> {
                 color.select_pattern(&context, resources, v, self.initial_ctm)?;
             }
             _ => {
-                color.validate_simple_operator()?;
+                color.validate_simple_operator(self.document, v, self.position)?;
                 color.set(v)?;
             }
         }

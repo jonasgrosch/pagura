@@ -68,6 +68,70 @@ def optional_pdf(content, ocmd=b"<< /Type /OCMD /OCGs [5 0 R 6 0 R] /P /AnyOn >>
     ])
 
 
+def repaired(name, pdf, tag, geometry=(), requirements=()):
+    return Case(name, pdf, RENDER, ("content-reported-recovery",) + requirements,
+                "Reported recovery: " + tag, repairs=("content." + tag,), strict_valid=False,
+                oracle=opaque_rectangles(8, 8, geometry), extra={"api": "compile_page"})
+
+
+def recovery_cases():
+    red = b'1 0 0 rg 0 0 8 8 re f'
+    full = [((0, 0, 8, 8), RED)]
+    def page(command, resources=b'<< >>'):
+        return single_page([command], media_box=b'[0 0 8 8]', resources=resources)
+    for operator, label in [('S', 'stroke'), ('s', 'closed-stroke'), ('f', 'fill'), ('F', 'alias'),
+                            ('f*', 'parity'), ('B', 'both'), ('B*', 'both-parity'),
+                            ('b', 'closed-both'), ('b*', 'closed-both-parity'), ('n', 'end')]:
+        yield repaired('repair-empty-' + label,
+                       page(operator.encode() + b' ' + red), 'empty-path', full)
+    yield repaired('repair-empty-clip', page(b'W n ' + red), 'empty-path', full)
+    yield repaired('repair-clip-construction', page(b'0 0 4 4 re W 4 4 4 4 re n ' + red),
+                   'clip-order', [((0, 0, 4, 4), RED), ((4, 4, 4, 4), RED)])
+    for family in (b'Separation /Spot', b'DeviceN [/Spot]'):
+        resources = b'<< /ColorSpace << /C [/' + family + b' /DeviceRGB << /FunctionType 2 /Domain [0 1] /C0 [1 1 1] /C1 [1 0 0] /N 1 >>] >> >>'
+        for stroke in (False, True):
+            command = b'/C CS 1 SC 8 w 0 4 m 8 4 l S' if stroke else b'/C cs 1 sc 0 0 8 8 re f'
+            yield repaired('repair-colour-' + family.split()[0].decode() + ('-stroke' if stroke else '-fill'),
+                           page(command, resources), 'colour-operator', full)
+        for label, operands in [('count', b'1 1'), ('type', b'/Name')]:
+            yield Case('repair-colour-reject-' + family.split()[0].decode() + '-' + label,
+                       page(b'/C cs ' + operands + b' sc', resources), OPEN,
+                       ('content-reported-recovery',), 'Incompatible operands cannot be repaired',
+                       extra={'render_error': 'Syntax'})
+    yield repaired('repair-icc-colour', icc_pdf(icc_profile(4, version=5), 4,
+                   b'/C cs 0 1 1 0 sc 0 0 8 8 re f'), 'colour-operator', full)
+    for indirect in (False, True):
+        palette = b'ff0000aabbcc'
+        if indirect:
+            pdf = document([b'<< /Type /Catalog /Pages 2 0 R >>',
+                b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+                b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/Indexed /DeviceRGB 0 5 0 R] >> >> /Contents 4 0 R >>',
+                stream(b'/C cs 0 scn 0 0 8 8 re f'), stream(bytes.fromhex(palette.decode()))])
+        else:
+            pdf = page(b'/C cs 0 scn 0 0 8 8 re f', b'<< /ColorSpace << /C [/Indexed /DeviceRGB 0 <' + palette + b'>] >> >>')
+        yield repaired('repair-indexed-' + ('stream' if indirect else 'string'), pdf, 'indexed-excess', full)
+    for label, palette in [('missing', b'ff0000'), ('partial', b'ff000000ff')]:
+        yield Case('indexed-short-' + label, page(b'/C cs 1 scn 0 0 8 8 re f',
+                   b'<< /ColorSpace << /C [/Indexed /DeviceRGB 1 <' + palette + b'>] >> >>'),
+                   OPEN, ('content-reported-recovery',), 'Missing palette components have no defined replacement',
+                   extra={'render_error': 'Syntax'})
+    for label, properties, tag in [
+        ('absent', b'', 'optional-properties'),
+        ('config', b'/OCProperties << /OCGs [6 0 R] >>', 'optional-config'),
+        ('groups', b'/OCProperties << /D << /OFF [6 0 R] >> >>', 'optional-groups'),
+        ('unregistered', b'/OCProperties << /OCGs [] /D << >> >>', 'optional-group'),
+    ]:
+        for policy in (b'AnyOn', b'AnyOff'):
+            pdf = document([b'<< /Type /Catalog /Pages 2 0 R ' + properties + b' >>',
+                b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+                b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /XObject << /F 5 0 R >> >> /Contents 4 0 R >>',
+                stream(b'/F Do'), stream(red, b'/Type /XObject /Subtype /Form /BBox [0 0 8 8] /Resources << >> /OC 7 0 R'),
+                b'<< /Type /OCG /Name (layer) >>', b'<< /Type /OCMD /OCGs [6 0 R] /P /' + policy + b' >>'])
+            name = 'repair-optional-' + label + '-' + policy.decode()
+            geometry = [] if label == 'unregistered' and policy == b'AnyOff' else full
+            yield repaired(name, pdf, tag, geometry, requirements=('content-optional',))
+
+
 def cases():
     yield render("compound-path", b"0 0 m 8 0 l 8 8 l 0 8 l h 2 2 4 4 re f*", [((0,0,8,8),BLACK), ((2,2,4,4),(255,255,255))])
     yield render("nonzero", b"0 0 8 8 re 2 2 4 4 re f", [((0,0,8,8),BLACK)])
@@ -136,6 +200,7 @@ def cases():
     yield from mask_geometry_cases()
     yield from dash_space_cases()
     yield from standard_semantics_cases()
+    yield from recovery_cases()
     yield from icc_cases()
     yield from invalid_compositing_cases()
     for name, command in [("syntax-unknown", b"future"), ("syntax-arity", b"1 q"), ("syntax-type", b"(bad) w"), ("syntax-Q", b"Q"), ("syntax-q-unclosed", b"q"), ("syntax-l", b"1 1 l"), ("syntax-TJ", b"[/Bad] TJ"), ("syntax-pending-clip", b"W"), ("syntax-reference", b"4 0 R"), ("syntax-zero-dash", b"[0 0] 0 d"), ("transfer", b"/GS gs")]:
@@ -687,7 +752,7 @@ def icc_cases():
     colours=[cie_rgb('CalRGB',tuple(x**(int(g*256+.5)/256) for x,g in zip(v,gammas)),white=ICC_D50,matrix=tuple(icc_fixed(v)/65536 for v in ICC_RGB_MATRIX)) for v in rgb_values]
     yield Case('icc-rgb-columns',pdf(profile,command=command),RENDER,('content-icc-matrix',),'Independent unequal per-channel TRCs and PCS matrix columns',oracle=opaque_rectangles(8,8,[((i,0,1,8),c) for i,c in enumerate(colours)]),extra={'tolerance':1})
     yield Case('icc-initial-zero',pdf(icc_profile(4,version=5),4,b'/C cs 0 0 8 8 re f',b'/DeviceCMYK'),RENDER,('content-icc-matrix',),'Later-version fallback retains ICCBased all-zero initialization, rather than DeviceCMYK black',oracle=opaque_rectangles(8,8,[]))
-    yield Case('icc-simple-operator',pdf(icc_profile(),command=b'/C cs .5 .5 .5 sc'),OPEN,('content-icc-matrix',),'ICCBased retains the SCN/scn applicability rule of Table 73',extra={'render_error':'Syntax'})
+    yield repaired('icc-simple-operator',pdf(icc_profile(),command=b'/C cs .5 .5 .5 sc'),'colour-operator',requirements=('content-icc-matrix',))
     yield Case('icc-invalid-data',pdf(b'not a profile'),OPEN,('content-icc-matrix',),'Non-profile data cannot establish ICC fallback',extra={'render_error':'Syntax'})
     yield from icc_validation_cases()
     yield from icc_lut_cases()
@@ -697,8 +762,8 @@ def standard_semantics_cases():
     def invalid(name,command,resources=b'<< >>',page_extra=b'',requirement='content-vector-pipeline'):
         return Case(name,single_page([command],media_box=b'[0 0 8 8]',resources=resources,page_extra=page_extra),OPEN,(requirement,),'Required syntax and source-family constraints',extra={'render_error':'Syntax'})
     for op in ('S','s','f','F','f*','B','B*','b','b*','n'):
-        yield invalid('path-undefined-'+{'S':'stroke','s':'close-stroke','f':'fill','F':'fill-alias','f*':'parity-fill','B':'fill-stroke','B*':'parity-fill-stroke','b':'close-fill-stroke','b*':'close-parity-fill-stroke','n':'end'}[op],op.encode())
-    yield invalid('path-construction-after-clip',b'0 0 4 4 re W 5 5 l n')
+        yield repaired('path-undefined-'+{'S':'stroke','s':'close-stroke','f':'fill','F':'fill-alias','f*':'parity-fill','B':'fill-stroke','B*':'parity-fill-stroke','b':'close-fill-stroke','b*':'close-parity-fill-stroke','n':'end'}[op],single_page([op.encode()],media_box=b'[0 0 8 8]'),'empty-path')
+    yield repaired('path-construction-after-clip',single_page([b'0 0 4 4 re W 5 5 l n'],media_box=b'[0 0 8 8]'),'clip-order')
     for name,command in [('parameter-width-clipped',b'-1 w 1 4.5 m 7 4.5 l S'),('parameter-miter-clipped',b'.5 M 0 0 8 8 re f'),('parameter-flatness-high',b'101 i 0 0 8 8 re f'),('parameter-flatness-negative',b'-1 i 0 0 8 8 re f'),('intent-unknown',b'/CustomIntent ri 0 0 8 8 re f')]:
         geometry=[((1,4,6,1),BLACK)] if name=='parameter-width-clipped' else [((0,0,8,8),BLACK)]
         yield render(name,command,geometry)
@@ -731,7 +796,11 @@ def standard_semantics_cases():
         ('indexed-excess',b'/C cs',b'<< /ColorSpace << /C [/Indexed /DeviceRGB 0 <ff000000>] >> >>'),
         ('tint-simple-operator',b'/C cs .5 sc',b'<< /ColorSpace << /C '+tint+b' >> >>'),
         ('DeviceN-forbidden-All',b'/C cs',b'<< /ColorSpace << /C [/DeviceN [/All] /DeviceGray << /FunctionType 2 /Domain [0 1] /N 1 >>] >> >>'),
-    ]:yield invalid(name,command,resources,requirement='content-colour')
+    ]:
+        if name in ('indexed-excess','tint-simple-operator'):
+            yield repaired(name,single_page([command],media_box=b'[0 0 8 8]',resources=resources),'indexed-excess' if name=='indexed-excess' else 'colour-operator',requirements=('content-colour',))
+        else:
+            yield invalid(name,command,resources,requirement='content-colour')
     for exponent,domain,label in [(-1,b'[0 1]','negative'),(.5,b'[-1 1]','fractional')]:
         space=b'[/Separation /Spot /DeviceGray << /FunctionType 2 /Domain '+domain+b' /N '+str(exponent).encode()+b' >>]'
         yield invalid('function-domain-'+label,b'/C cs .5 scn',b'<< /ColorSpace << /C '+space+b' >> >>',requirement='content-functions')

@@ -7,8 +7,17 @@ use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Default)]
 pub(crate) struct Visibility {
+    configuration: Configuration,
     groups: BTreeMap<ObjectId, bool>,
     applicable: BTreeSet<ObjectId>,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+enum Configuration {
+    #[default]
+    Absent,
+    Ignored,
+    Active,
 }
 
 impl Visibility {
@@ -26,16 +35,33 @@ impl Visibility {
             return Ok(Self::default());
         };
         let properties = document.resolve_dictionary(properties)?;
-        let configuration = properties
-            .get(b"D")
-            .ok_or(Error::syntax("OCProperties has no default configuration"))?;
+        let Some(configuration) = properties.get(b"D") else {
+            configuration_repair(
+                document,
+                crate::interpreter::tags::OPTIONAL_CONFIG,
+                "OCProperties has no default configuration",
+            )?;
+            return Ok(Self {
+                configuration: Configuration::Ignored,
+                ..Self::default()
+            });
+        };
         let configuration = document.resolve_dictionary(configuration)?;
         validate_default(document, configuration)?;
-        let values = properties
-            .get(b"OCGs")
-            .map(|v| document.resolve(v))
-            .transpose()?
-            .and_then(Value::as_array)
+        let Some(values) = properties.get(b"OCGs") else {
+            configuration_repair(
+                document,
+                crate::interpreter::tags::OPTIONAL_GROUPS,
+                "OCProperties has no OCGs array",
+            )?;
+            return Ok(Self {
+                configuration: Configuration::Ignored,
+                ..Self::default()
+            });
+        };
+        let values = document
+            .resolve(values)?
+            .as_array()
             .ok_or(Error::syntax("OCProperties has no OCGs array"))?;
         if values.len() > document.limits().value_nodes {
             return Err(Error::limit("optional group count budget exceeded"));
@@ -72,7 +98,11 @@ impl Visibility {
             }
             *group = state;
         }
-        let mut visibility = Self { groups, applicable };
+        let mut visibility = Self {
+            configuration: Configuration::Active,
+            groups,
+            applicable,
+        };
         visibility.apply_usage(document, configuration)?;
         Ok(visibility)
     }
@@ -160,6 +190,9 @@ impl Visibility {
     /// Other applications may use the OC tag without optional-content meaning
     /// (8.11.3.2). XObject/annotation OC entries still use the strict entry point.
     pub(crate) fn marked(&self, document: &Document, value: &Value) -> Result<bool> {
+        if self.configuration == Configuration::Ignored {
+            return Ok(true);
+        }
         let d = document.resolve_dictionary(value)?;
         if d.is_name(b"Type", b"OCMD")
             || (d.is_name(b"Type", b"OCG")
@@ -173,6 +206,22 @@ impl Visibility {
         }
     }
     pub(crate) fn visible(&self, document: &Document, value: &Value) -> Result<bool> {
+        // 8.11.4.2 explicitly requires ignoring these structures when
+        // OCProperties is absent, including negated membership expressions.
+        if self.configuration == Configuration::Absent {
+            let mut diagnostic = pagura_core::Diagnostic::new(
+                crate::interpreter::tags::OPTIONAL_PROPERTIES,
+                "optional content requires OCProperties",
+            );
+            if let Some(id) = value.as_reference() {
+                diagnostic = diagnostic.in_object(id);
+            }
+            crate::interpreter::repair(document, diagnostic)?;
+            return Ok(true);
+        }
+        if self.configuration == Configuration::Ignored {
+            return Ok(true);
+        }
         let dictionary = document.resolve_dictionary(value)?;
         match dictionary
             .get_name(b"Type")
@@ -285,16 +334,39 @@ impl Visibility {
         let id = value.as_reference().ok_or(Error::syntax(
             "visibility expression requires an OCG reference",
         ))?;
-        if !document.resolve_dictionary(value)?.is_name(b"Type", b"OCG") {
+        let dictionary = document.resolve_dictionary(value)?;
+        if !dictionary.is_name(b"Type", b"OCG") {
             return Err(Error::syntax("visibility expression member is not OCG"));
         }
-        let state = self
-            .groups
-            .get(&id)
-            .copied()
-            .ok_or(Error::syntax("undefined optional content group"))?;
-        Ok(self.applicable.contains(&id).then_some(state))
+        if let Some(&state) = self.groups.get(&id) {
+            return Ok(self.applicable.contains(&id).then_some(state));
+        }
+        crate::interpreter::repair(
+            document,
+            pagura_core::Diagnostic::new(
+                crate::interpreter::tags::OPTIONAL_GROUP,
+                "undefined optional content group",
+            )
+            .in_object(id),
+        )?;
+        Ok(view_intent(document, dictionary)?.then_some(true))
     }
+}
+
+fn configuration_repair(
+    document: &Document,
+    tag: pagura_core::Repair,
+    message: &'static str,
+) -> Result<()> {
+    let mut diagnostic = pagura_core::Diagnostic::new(tag, message);
+    if let Some(id) = document
+        .trailer()
+        .get(b"Root")
+        .and_then(Value::as_reference)
+    {
+        diagnostic = diagnostic.in_object(id);
+    }
+    crate::interpreter::repair(document, diagnostic)
 }
 
 fn list(document: &Document, dictionary: &Dictionary, key: &[u8]) -> Result<BTreeSet<ObjectId>> {

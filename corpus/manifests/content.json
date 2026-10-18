@@ -4787,167 +4787,244 @@
     {
       "id": "content/path-undefined-stroke",
       "kind": "pdf",
-      "description": "Required syntax and source-family constraints",
-      "expected": "open",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
       "requirements": [
-        "content-vector-pipeline"
+        "content-reported-recovery"
       ],
       "path": "corpus/generated/content/path-undefined-stroke.pdf",
       "sha256": "6a93a4a4fcc442a4859feff1712b1e79f9629713babe735f78bcee73a181e2e1",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/path-undefined-stroke.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
     },
     {
       "id": "content/path-undefined-close-stroke",
       "kind": "pdf",
-      "description": "Required syntax and source-family constraints",
-      "expected": "open",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
       "requirements": [
-        "content-vector-pipeline"
+        "content-reported-recovery"
       ],
       "path": "corpus/generated/content/path-undefined-close-stroke.pdf",
       "sha256": "6d974af26fb6c3f18a0314305d6c0c51dd7f9af08423b6b0803b02ff5d211f18",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/path-undefined-close-stroke.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
     },
     {
       "id": "content/path-undefined-fill",
       "kind": "pdf",
-      "description": "Required syntax and source-family constraints",
-      "expected": "open",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
       "requirements": [
-        "content-vector-pipeline"
+        "content-reported-recovery"
       ],
       "path": "corpus/generated/content/path-undefined-fill.pdf",
       "sha256": "00deda47d4beea931155677257a95687a8cf7378198db68e01c849f9cbe50fd8",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/path-undefined-fill.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
     },
     {
       "id": "content/path-undefined-fill-alias",
       "kind": "pdf",
-      "description": "Required syntax and source-family constraints",
-      "expected": "open",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
       "requirements": [
-        "content-vector-pipeline"
+        "content-reported-recovery"
       ],
       "path": "corpus/generated/content/path-undefined-fill-alias.pdf",
       "sha256": "2332536a6795192924868138623e2d56b6a121508effe74da7063310ea1af120",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/path-undefined-fill-alias.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
     },
     {
       "id": "content/path-undefined-parity-fill",
       "kind": "pdf",
-      "description": "Required syntax and source-family constraints",
-      "expected": "open",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
       "requirements": [
-        "content-vector-pipeline"
+        "content-reported-recovery"
       ],
       "path": "corpus/generated/content/path-undefined-parity-fill.pdf",
       "sha256": "423dd196ff5b784164c6d5d4120c84509f6f3506e298b1401ec9b7c38b322722",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/path-undefined-parity-fill.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
     },
     {
       "id": "content/path-undefined-fill-stroke",
       "kind": "pdf",
-      "description": "Required syntax and source-family constraints",
-      "expected": "open",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
       "requirements": [
-        "content-vector-pipeline"
+        "content-reported-recovery"
       ],
       "path": "corpus/generated/content/path-undefined-fill-stroke.pdf",
       "sha256": "515f4ffc6614363c60c1f913fb166161ff73598d55fee9b060db1b3c9ff7fecd",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/path-undefined-fill-stroke.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
     },
     {
       "id": "content/path-undefined-parity-fill-stroke",
       "kind": "pdf",
-      "description": "Required syntax and source-family constraints",
-      "expected": "open",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
       "requirements": [
-        "content-vector-pipeline"
+        "content-reported-recovery"
       ],
       "path": "corpus/generated/content/path-undefined-parity-fill-stroke.pdf",
       "sha256": "bfc754646a5448293daa461c56e527f73ab14c4bff7171a81053690acdb4c5c1",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/path-undefined-parity-fill-stroke.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
     },
     {
       "id": "content/path-undefined-close-fill-stroke",
       "kind": "pdf",
-      "description": "Required syntax and source-family constraints",
-      "expected": "open",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
       "requirements": [
-        "content-vector-pipeline"
+        "content-reported-recovery"
       ],
       "path": "corpus/generated/content/path-undefined-close-fill-stroke.pdf",
       "sha256": "f10873c939bdbfe0ae8e3dcca385b00acaa17aaeb7ae62e5397db6a477c49028",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/path-undefined-close-fill-stroke.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
     },
     {
       "id": "content/path-undefined-close-parity-fill-stroke",
       "kind": "pdf",
-      "description": "Required syntax and source-family constraints",
-      "expected": "open",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
       "requirements": [
-        "content-vector-pipeline"
+        "content-reported-recovery"
       ],
       "path": "corpus/generated/content/path-undefined-close-parity-fill-stroke.pdf",
       "sha256": "e6f8dcf9363c61dfb268c6df134a3fe58c977f24377f66d97e3c150bba750fb3",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/path-undefined-close-parity-fill-stroke.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
     },
     {
       "id": "content/path-undefined-end",
       "kind": "pdf",
-      "description": "Required syntax and source-family constraints",
-      "expected": "open",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
       "requirements": [
-        "content-vector-pipeline"
+        "content-reported-recovery"
       ],
       "path": "corpus/generated/content/path-undefined-end.pdf",
       "sha256": "588a4e24fc1b662a6e25d959441343b534b7eb506969339e4ab809bcf151dbd1",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/path-undefined-end.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
     },
     {
       "id": "content/path-construction-after-clip",
       "kind": "pdf",
-      "description": "Required syntax and source-family constraints",
-      "expected": "open",
+      "description": "Reported recovery: clip-order",
+      "expected": "render",
       "requirements": [
-        "content-vector-pipeline"
+        "content-reported-recovery"
       ],
       "path": "corpus/generated/content/path-construction-after-clip.pdf",
       "sha256": "0c107786eeead646a5ac2ecd588c4c39c922f3d15911113d2d05a4e2f8c4996c",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.clip-order"
+      ],
+      "oracle": "corpus/generated/content/path-construction-after-clip.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
     },
     {
       "id": "content/parameter-width-clipped",
@@ -5425,32 +5502,48 @@
     {
       "id": "content/indexed-excess",
       "kind": "pdf",
-      "description": "Required syntax and source-family constraints",
-      "expected": "open",
+      "description": "Reported recovery: indexed-excess",
+      "expected": "render",
       "requirements": [
+        "content-reported-recovery",
         "content-colour"
       ],
       "path": "corpus/generated/content/indexed-excess.pdf",
       "sha256": "08cff7db2a58c74355002e16aef3a670031cca6eb187a1cb8cd4d78b6c622ed1",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.indexed-excess"
+      ],
+      "oracle": "corpus/generated/content/indexed-excess.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
     },
     {
       "id": "content/tint-simple-operator",
       "kind": "pdf",
-      "description": "Required syntax and source-family constraints",
-      "expected": "open",
+      "description": "Reported recovery: colour-operator",
+      "expected": "render",
       "requirements": [
+        "content-reported-recovery",
         "content-colour"
       ],
       "path": "corpus/generated/content/tint-simple-operator.pdf",
       "sha256": "7c1ad3e6129e81e9d15f35459503a05397352507b1c21ae770ca5200544d1851",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.colour-operator"
+      ],
+      "oracle": "corpus/generated/content/tint-simple-operator.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
     },
     {
       "id": "content/DeviceN-forbidden-All",
@@ -5861,6 +5954,698 @@
       "height": 8
     },
     {
+      "id": "content/repair-empty-stroke",
+      "kind": "pdf",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-empty-stroke.pdf",
+      "sha256": "a9af032203864337cf2e46ced74d818b3f6d03e65755a134324e070de719221a",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/repair-empty-stroke.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-empty-closed-stroke",
+      "kind": "pdf",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-empty-closed-stroke.pdf",
+      "sha256": "05daaa1b5d89dacd83aa9d26cb483e2215137fc49a1f976f4ef0267583bdd611",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/repair-empty-closed-stroke.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-empty-fill",
+      "kind": "pdf",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-empty-fill.pdf",
+      "sha256": "c83287d821e9a11ffdcabbd6513bec51d8ab8ff06c1e55b217f1afb40e68d31f",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/repair-empty-fill.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-empty-alias",
+      "kind": "pdf",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-empty-alias.pdf",
+      "sha256": "efd36b6670cc54d9ae8b79006f2b09d366d114d1ca7ffdd5bec3d3418ce5d903",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/repair-empty-alias.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-empty-parity",
+      "kind": "pdf",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-empty-parity.pdf",
+      "sha256": "5b29cdedb467e35db73b3ddf99bec860db496453e83d15158c4b670151c404bd",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/repair-empty-parity.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-empty-both",
+      "kind": "pdf",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-empty-both.pdf",
+      "sha256": "ff7523ca50e82a43a0a873eb0d295de579dd49d328b7a1bb8ebd2434fbdcb3aa",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/repair-empty-both.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-empty-both-parity",
+      "kind": "pdf",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-empty-both-parity.pdf",
+      "sha256": "31b536c3690e6886f56fba13eed84902152faf658fe230d68116509ad9a935bd",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/repair-empty-both-parity.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-empty-closed-both",
+      "kind": "pdf",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-empty-closed-both.pdf",
+      "sha256": "d3a5caf2c8f11307152515925738b3c6db7d2e53ba67bd7d8a5ae874906db65e",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/repair-empty-closed-both.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-empty-closed-both-parity",
+      "kind": "pdf",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-empty-closed-both-parity.pdf",
+      "sha256": "9194bdb4db34cc6ea470cfeebc6719477f2469c05ba45e442afc5ba3f7d8a21c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/repair-empty-closed-both-parity.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-empty-end",
+      "kind": "pdf",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-empty-end.pdf",
+      "sha256": "5fbe1f5a8b0adb85794e8e703339431312a6c8c4d0660b09aa5901618e1f7dd6",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/repair-empty-end.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-empty-clip",
+      "kind": "pdf",
+      "description": "Reported recovery: empty-path",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-empty-clip.pdf",
+      "sha256": "bb6287c6aed0d7a8337d088b83f30de788ea9ca44eb3e8725c4fa9b6a6a51fe1",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.empty-path"
+      ],
+      "oracle": "corpus/generated/content/repair-empty-clip.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-clip-construction",
+      "kind": "pdf",
+      "description": "Reported recovery: clip-order",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-clip-construction.pdf",
+      "sha256": "e8015c93e003a59f7d7199fafd6c894654c8b8cf096da74ae852f84a7c143ffc",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.clip-order"
+      ],
+      "oracle": "corpus/generated/content/repair-clip-construction.ppm",
+      "oracle_sha256": "98e23e04b770454142ddd3ceb73b56604a7831a3a2c77e12c8a3a51ede9b1d51",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-colour-Separation-fill",
+      "kind": "pdf",
+      "description": "Reported recovery: colour-operator",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-colour-Separation-fill.pdf",
+      "sha256": "72308dbc2f3f4ec41c70c890a149eb7c2c3cff37272ca4f4a553424fa6079e46",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.colour-operator"
+      ],
+      "oracle": "corpus/generated/content/repair-colour-Separation-fill.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-colour-Separation-stroke",
+      "kind": "pdf",
+      "description": "Reported recovery: colour-operator",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-colour-Separation-stroke.pdf",
+      "sha256": "2fa4225b9c5ade1524f754e2b4e009726dd9e6ed738327fd4009c862e803fe33",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.colour-operator"
+      ],
+      "oracle": "corpus/generated/content/repair-colour-Separation-stroke.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-colour-reject-Separation-count",
+      "kind": "pdf",
+      "description": "Incompatible operands cannot be repaired",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-colour-reject-Separation-count.pdf",
+      "sha256": "c989c53e975a8235df425766713e76616ddd259882aa0d9a3864357a84deaa7c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/repair-colour-reject-Separation-type",
+      "kind": "pdf",
+      "description": "Incompatible operands cannot be repaired",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-colour-reject-Separation-type.pdf",
+      "sha256": "4c497cabb5ea5c212105d038b19fae2f83404624d7891f8331c9c1f28abb65b3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/repair-colour-DeviceN-fill",
+      "kind": "pdf",
+      "description": "Reported recovery: colour-operator",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-colour-DeviceN-fill.pdf",
+      "sha256": "bc7275145c6cae1b9276aabddd5a7092b22e249cfb2a9a3c6794c49e3de51f52",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.colour-operator"
+      ],
+      "oracle": "corpus/generated/content/repair-colour-DeviceN-fill.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-colour-DeviceN-stroke",
+      "kind": "pdf",
+      "description": "Reported recovery: colour-operator",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-colour-DeviceN-stroke.pdf",
+      "sha256": "bf2811c5d699561ac58da033240ae0d43a89fd8e9e3a24d3e872589d912f356b",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.colour-operator"
+      ],
+      "oracle": "corpus/generated/content/repair-colour-DeviceN-stroke.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-colour-reject-DeviceN-count",
+      "kind": "pdf",
+      "description": "Incompatible operands cannot be repaired",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-colour-reject-DeviceN-count.pdf",
+      "sha256": "f196ea7956d2f206b0e3a3aa2009cdeee80d64c37a8ff9d55257ffc4a9c685f2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/repair-colour-reject-DeviceN-type",
+      "kind": "pdf",
+      "description": "Incompatible operands cannot be repaired",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-colour-reject-DeviceN-type.pdf",
+      "sha256": "0bf2c64057876f45f12c69e266a7552d6641f10ae346be064de6f3cfc460c0e6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/repair-icc-colour",
+      "kind": "pdf",
+      "description": "Reported recovery: colour-operator",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-icc-colour.pdf",
+      "sha256": "3f3c0d76ada1cdce5b7a383be5dfe610ff1346aee9078750cf2220eb4fd155a6",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.colour-operator"
+      ],
+      "oracle": "corpus/generated/content/repair-icc-colour.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-indexed-string",
+      "kind": "pdf",
+      "description": "Reported recovery: indexed-excess",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-indexed-string.pdf",
+      "sha256": "c03c83cec8981bb01270ce9e0b1893ac8ac867a53bff9a49227e50a7fea2aae0",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.indexed-excess"
+      ],
+      "oracle": "corpus/generated/content/repair-indexed-string.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-indexed-stream",
+      "kind": "pdf",
+      "description": "Reported recovery: indexed-excess",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/repair-indexed-stream.pdf",
+      "sha256": "021ac92ddda180510fe6f66d3833b510b691c70cd7a9fa9108b48e6210498a02",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.indexed-excess"
+      ],
+      "oracle": "corpus/generated/content/repair-indexed-stream.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/indexed-short-missing",
+      "kind": "pdf",
+      "description": "Missing palette components have no defined replacement",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/indexed-short-missing.pdf",
+      "sha256": "c72636db6229e10d0fff6a33ceb4c7aa30bc23781b4834a7ac672e19ed7c06ef",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/indexed-short-partial",
+      "kind": "pdf",
+      "description": "Missing palette components have no defined replacement",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/indexed-short-partial.pdf",
+      "sha256": "62a13b7812228079ce4d47d047829407efc9c48b915f3bab702f009ab592f257",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/repair-optional-absent-AnyOn",
+      "kind": "pdf",
+      "description": "Reported recovery: optional-properties",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery",
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/repair-optional-absent-AnyOn.pdf",
+      "sha256": "1fd25c899a093a56c459dd2674eaf80b2c0dbe9e90327eacb7311a7ce9bdb953",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.optional-properties"
+      ],
+      "oracle": "corpus/generated/content/repair-optional-absent-AnyOn.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-optional-absent-AnyOff",
+      "kind": "pdf",
+      "description": "Reported recovery: optional-properties",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery",
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/repair-optional-absent-AnyOff.pdf",
+      "sha256": "51950ae84e719900bfdbb616aba6e7536cbc7e4690a51fdf3d311e42316e9e80",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.optional-properties"
+      ],
+      "oracle": "corpus/generated/content/repair-optional-absent-AnyOff.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-optional-config-AnyOn",
+      "kind": "pdf",
+      "description": "Reported recovery: optional-config",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery",
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/repair-optional-config-AnyOn.pdf",
+      "sha256": "6d3cbb3d1c52dc0f0f664806e8df3bc416fe9d1acb6561e86fc302df19d9e1de",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.optional-config"
+      ],
+      "oracle": "corpus/generated/content/repair-optional-config-AnyOn.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-optional-config-AnyOff",
+      "kind": "pdf",
+      "description": "Reported recovery: optional-config",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery",
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/repair-optional-config-AnyOff.pdf",
+      "sha256": "92d5ed0576adeb38b7c80f96071eeea510614d77e8c662ab421d3da1936e9475",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.optional-config"
+      ],
+      "oracle": "corpus/generated/content/repair-optional-config-AnyOff.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-optional-groups-AnyOn",
+      "kind": "pdf",
+      "description": "Reported recovery: optional-groups",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery",
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/repair-optional-groups-AnyOn.pdf",
+      "sha256": "77afa921877a7039bcfda3b77b0b919203ce888dd3890a2941956fbc2a288795",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.optional-groups"
+      ],
+      "oracle": "corpus/generated/content/repair-optional-groups-AnyOn.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-optional-groups-AnyOff",
+      "kind": "pdf",
+      "description": "Reported recovery: optional-groups",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery",
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/repair-optional-groups-AnyOff.pdf",
+      "sha256": "736ddabfd094d8fb6fb87af172cb2c685b4535946af1caa0ac2c313e4efdc7fa",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.optional-groups"
+      ],
+      "oracle": "corpus/generated/content/repair-optional-groups-AnyOff.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-optional-unregistered-AnyOn",
+      "kind": "pdf",
+      "description": "Reported recovery: optional-group",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery",
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/repair-optional-unregistered-AnyOn.pdf",
+      "sha256": "fbe0ebabf979c2284dd35098c6538d58b70b7c0724ca82d60be8fb6671364830",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.optional-group"
+      ],
+      "oracle": "corpus/generated/content/repair-optional-unregistered-AnyOn.ppm",
+      "oracle_sha256": "50d9620314d2c6ce3b617a6343254fdc174c8cc8ecb13d81f87b6a94f8437f0c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
+      "id": "content/repair-optional-unregistered-AnyOff",
+      "kind": "pdf",
+      "description": "Reported recovery: optional-group",
+      "expected": "render",
+      "requirements": [
+        "content-reported-recovery",
+        "content-optional"
+      ],
+      "path": "corpus/generated/content/repair-optional-unregistered-AnyOff.pdf",
+      "sha256": "b770391093ddc515690d8804948dc902f5fd42f91d5b348cb0dc7bb4b9a1031e",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.optional-group"
+      ],
+      "oracle": "corpus/generated/content/repair-optional-unregistered-AnyOff.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
+    },
+    {
       "id": "content/icc-1-identity",
       "kind": "pdf",
       "description": "Tag-defined matrix/TRC PCS conversion; independent ICC formula oracle verified against ICC.1:2010 F.2\u2013F.3 and 10.5/10.16",
@@ -6222,17 +7007,25 @@
     {
       "id": "content/icc-simple-operator",
       "kind": "pdf",
-      "description": "ICCBased retains the SCN/scn applicability rule of Table 73",
-      "expected": "open",
+      "description": "Reported recovery: colour-operator",
+      "expected": "render",
       "requirements": [
+        "content-reported-recovery",
         "content-icc-matrix"
       ],
       "path": "corpus/generated/content/icc-simple-operator.pdf",
       "sha256": "dbec2e1f3e1d8b2f090af0b9bb3ba411bc76d2ffcd65fa447a0e632521c1312a",
       "pages": 1,
-      "strict_valid": true,
-      "repairs": [],
-      "render_error": "Syntax"
+      "strict_valid": false,
+      "repairs": [
+        "content.colour-operator"
+      ],
+      "oracle": "corpus/generated/content/icc-simple-operator.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page"
     },
     {
       "id": "content/icc-invalid-data",
