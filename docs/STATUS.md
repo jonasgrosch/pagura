@@ -28,17 +28,16 @@ primary standards.
 
 ## Evidence (scoreboards in `docs/scoreboard/`)
 
-Last recorded at commit 8909e1c. Later rounds made at least 2,000 more
-real-world pages render, by their own before-and-after runs, and are
-re-recorded after the composition redesign.
+The realworld and adversarial rows were re-recorded at commit c18ae90; the
+other rows date from commit 8909e1c.
 Each file gets 60 seconds of CPU time, so machine load does not turn into
 timeouts. Real-world files that exceed it now render all their pages too slowly;
 painting dominates their time and is being optimized.
 
 | Corpus | PDFs | Open, pages enumerated | Strictly | Pages rendered | Crashes / timeouts |
 |---|---:|---:|---:|---:|---:|
-| realworld (SafeDocs Common Crawl zip 0000) | 998 | 98.8% | 705 | 53.1% (6476/12204) | 0 / 10 |
-| adversarial (SafeDocs UNSAFE, mutated) | 1,416 | 99.9% | 963 | 49.8% (1989/3997) | 0 / 0 |
+| realworld (SafeDocs Common Crawl zip 0000) | 998 | 99.5% | 614 | 94.0% (13163/14008) | 0 / 3 |
+| adversarial (SafeDocs UNSAFE, mutated) | 1,416 | 99.9% | 886 | 88.7% (3544/3997) | 0 / 0 |
 | veraPDF | 2,906 | 100.0% | 2,633 | 97.9% (12681/12948) | 0 / 0 |
 | pdf.js test PDFs | 996 | 98.0% | 635 | 60.7% (1115/1838) | 0 / 0 |
 | qpdf test PDFs | 701 | 95.7% | 578 | 4.2% (159/3817) | 0 / 0 |
@@ -110,6 +109,13 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 - `text.structure-fallback` (14.7–14.8): an unusable or unsupported
   structure tree leaves the page without a logical view; its page text,
   search and selection are unaffected.
+- `font.descriptor-flags` (9.8.2, Table 121; 9.6.5): contradictory Symbolic
+  and Nonsymbolic flags are resolved from the font program's built-in
+  encoding, cmap or post routes and Encoding; ambiguous evidence keeps the
+  existing route.
+- `image.ccitt-columns` (7.4.6, 8.9.5.1): CCITT data whose `Columns` differs
+  from the image `Width` decodes with `Columns`, then each row is cropped or
+  extended with fax white to `Width`.
 - `annotation.appearance-empty` (7.9.5, 12.5.5): an appearance with zero extent
   is skipped without running its content.
 - Navigation (7.9.6–7.9.7, 12.3.2–12.3.3, 12.5.6.5, 12.6.2): `tree.limits`,
