@@ -1096,10 +1096,10 @@ def metadata_recovery_cases():
 
 
 def descriptor_flag_cases():
-    """PDF 9.8.2/Table 121, 9.6.5.2/4: explicit evidence and exact rectangles."""
+    """PDF 9.8.2/Table 121, 9.6.5.2/4: flag validity and explicit selection routes."""
     from .pdf import document, stream
     def vector_case(name, program, flags, *, encoding=b"/Encoding /WinAnsiEncoding",
-                    subtype=b"TrueType", code=65, text="A", repaired=True, symbolic=False, objects=()):
+                    subtype=b"TrueType", code=65, text="A", repaired=True, symbolic=False, glyph=1, objects=()):
         font = (b"<< /Type /Font /Subtype /"+subtype+b" /BaseFont /Rect /FontDescriptor 6 0 R "
                 b"/FirstChar "+str(code).encode()+b" /LastChar "+str(code).encode()+b" /Widths [600] "+encoding+b" >>")
         descriptor = (b"<< /Type /FontDescriptor /FontName /Rect /Flags "+str(flags).encode()+
@@ -1118,19 +1118,32 @@ def descriptor_flag_cases():
                         font,descriptor,stream(program,extra),*objects])
         # The writer's 100x200 glyph at 20 points is [4,6] x [4,8].
         pixels = bytes(v for y in range(16) for x in range(16)
-                       for v in ([0,0,0] if 4<=x<6 and 8<=y<12 else [255,255,255]))
-        expect = f"glyph 1\ntext {text}\nadvance 0.6\nsymbolic {int(symbolic)}\n".encode()
+                       for v in ([0,0,0] if glyph and 4<=x<6 and 8<=y<12 else [255,255,255]))
+        expect = f"glyph {glyph}\ntext {text}\nadvance 0.6\nsymbolic {int(symbolic)}\n".encode()
         files={".pdf":pdf,".ppm":b"P6\n16 16\n255\n"+pixels,".expect":expect,
                ".strict":b"font.descriptor-flags\n" if repaired else b"valid\n"}
         return Vector("descriptor-"+name,files,("font-descriptor-flags",),
                       "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
                       extra={"repairs":["font.descriptor-flags"] if repaired else []})
-    # Strip post metadata so only the writer's cmap supplies selection evidence.
+    # Without post names, these programs exercise only the cmap selection routes.
     unicode = truetype(omit_tables=(b"post",))
     symbol = truetype(fmt=6,omit_tables=(b"post",))
-    for name,flags in [("both",36),("neither",0),("symbolic-latin",4)]:
-        yield vector_case(name,unicode,flags)
-    yield vector_case("nonsymbolic-symbol",symbol,32,encoding=b"",text="",symbolic=True)
+    # 9.8.2 uses Symbolic as primary: both stays raw, neither stays named.
+    yield vector_case("both",unicode,36,text="",symbolic=True)
+    yield vector_case("neither",unicode,0)
+    # A valid pair is metadata, not evidence for overriding the 9.6.5 route.
+    yield vector_case("symbolic-latin",unicode,4,text="",symbolic=True,repaired=False)
+    yield vector_case("nonsymbolic-symbol",symbol,32,encoding=b"",text="",repaired=False)
+    # The named route may use the symbol fallback only after its required
+    # cmap/post mappings fail (9.6.5.4 final paragraph). This needs no repair.
+    yield vector_case("nonsymbolic-symbol-encoding",symbol,32,repaired=False)
+    differences = b"/Encoding << /BaseEncoding /WinAnsiEncoding /Differences [65 /B] >>"
+    # The same Differences selects no B on the named route, but is ignored
+    # on the raw Symbolic route, where byte 65 still selects rectangle A.
+    yield vector_case("symbolic-latin-differences",unicode,4,encoding=differences,
+                      text="",symbolic=True,repaired=False)
+    yield vector_case("nonsymbolic-latin-differences",unicode,32,encoding=differences,
+                      text="B",glyph=0,repaired=False)
     yield vector_case("symbol-post-named",truetype(fmt=6),32,repaired=False)
     yield vector_case("valid-latin",unicode,32,repaired=False)
     yield vector_case("valid-symbol",symbol,4,encoding=b"",text="",symbolic=True,repaired=False)
@@ -1148,8 +1161,12 @@ def descriptor_flag_cases():
                       text="",symbolic=True,repaired=False)
     # Literal bytes stay the route without Encoding, even with Unicode cmaps.
     yield vector_case("unicode-no-encoding",unicode,4,encoding=b"",text="",symbolic=True,repaired=False)
-    for name,glyph,flags,sym,text in [("type1-symbolic-latin",b"A",4,False,"A"),
-                                      ("type1-nonsymbolic-symbol",b"alpha",32,True,"α")]:
+    for name,glyph,flags,sym,text in [("type1-symbolic-latin",b"A",4,True,"A"),
+                                      ("type1-nonsymbolic-symbol",b"alpha",32,False,"α")]:
         program=static_type1(glyph_name=glyph)
         program=program.replace(b"/Encoding StandardEncoding def",b"/Encoding 256 array 0 1 255 {1 index exch /.notdef put} for dup 65 /"+glyph+b" put readonly def")
-        yield vector_case(name,program,flags,encoding=b"",subtype=b"Type1",symbolic=sym,text=text)
+        yield vector_case(name,program,flags,encoding=b"",subtype=b"Type1",symbolic=sym,text=text,repaired=False)
+    # Type 1 Encoding overrides the built-in encoding regardless of flags.
+    yield vector_case("type1-nonsymbolic-override",static_type1(glyph_name=b"alpha"),32,
+                      encoding=b"/Encoding << /Differences [65 /alpha] >>",
+                      subtype=b"Type1",text="α",repaired=False)

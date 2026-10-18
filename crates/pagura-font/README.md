@@ -252,28 +252,27 @@ Each policy rejects with its tag in strict mode and reports through the
 public parse diagnostics in repair mode, without modifying original bytes.
 
 
-The renderer's font-loader view reports `font.descriptor-flags` for descriptor
-flag resolution (ISO 32000-2 9.8.2/Table 121, 9.6.5.1/Table 112 and 9.6.5.2/4).
-The two flags are character-set declarations; cmap platforms alone do not
-classify an entire character repertoire. For both/neither, retain Symbolic as
-the primary bit and make Nonsymbolic its inverse. Concrete routing evidence
-can refine that choice: a symbol-only TrueType cmap without standard Latin post names chooses the raw route,
-while an explicit Latin Encoding plus Unicode cmap without a symbol cmap
-chooses the named route. Complete Type 1 repertoires exposed by the built-in
-encoding can be checked against the standard glyph names in Annex D.2.
-Mixed cmaps, a usable Latin post name route, incomplete built-in coverage and a Unicode cmap without Encoding
-remain ambiguous and preserve the existing Symbolic route. BaseFont spelling
-and ToUnicode never supply painting evidence. An ignored Symbolic Encoding
-can supply literal metadata, but its references are never traversed.
+The renderer reports `font.descriptor-flags` only for an invalid descriptor
+flag pair: both Symbolic and Nonsymbolic set, or both clear (ISO 32000-2
+9.8.2/Table 121). It preserves Symbolic as the primary reader bit and makes
+Nonsymbolic its inverse. A valid pair remains unchanged even if its character-set
+metadata disagrees with the program's repertoire or cmap platforms. Such a
+disagreement alone does not require deviating from the selection algorithm.
 
-Strict rejects the repair tag. Repair creates a temporary dictionary view,
-changes only those two bits, and reports the descriptor identity and content
-position through Document::report. Original dictionaries and font programs
-remain immutable; PDF widths, ToUnicode and explicit Type 1 Encoding rules
-are preserved. The same view feeds painting and positioned text extraction.
-CID flag-pair normalization leaves CID/CMap selection unchanged. Direct
-pagura-text PdfFont::load calls retain their existing validation; that API's
-owner can move this policy into the text layer once a shared loader hook is
-available. Valid loads reuse their already parsed FontProgram through the
-public GlyphShape API. Only a reported repair reloads a corrected descriptor;
-clones are bounded by the document decoded-byte limit.
+Type 1 selection uses the built-in encoding with any PDF Encoding override
+(9.6.5.2). TrueType uses the given flags and Encoding to select the named or raw
+routes (9.6.5.4): Symbolic ignores Encoding; absent Encoding also selects raw
+bytes. Named selection tries the required cmap and post mappings before the
+reader fallbacks permitted by that subclause's final paragraph. These fallbacks
+are part of the algorithm, not descriptor repairs. No repertoire heuristic
+reclassifies a valid flag or changes a prescribed selection route. ToUnicode
+never controls painting.
+
+Strict rejects an invalid pair with the repair tag. Repair creates a bounded
+temporary dictionary view, changes only those two bits, and reports the original
+descriptor identity and content position through Document::report. Original
+objects remain immutable; PDF widths and ToUnicode are preserved. The same view
+feeds painting and positioned extraction. CID flag-pair normalization leaves
+CID/CMap selection unchanged. Programs are parsed once, without a speculative
+glyph decode or repertoire scan. Direct pagura-text PdfFont::load calls retain
+strict flag-pair validation.

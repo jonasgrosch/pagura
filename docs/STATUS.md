@@ -119,10 +119,10 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 - `text.structure-fallback` (14.7–14.8): an unusable or unsupported
   structure tree leaves the page without a logical view; its page text,
   search and selection are unaffected.
-- `font.descriptor-flags` (9.8.2, Table 121; 9.6.5): contradictory Symbolic
-  and Nonsymbolic flags are resolved from the font program's built-in
-  encoding, cmap or post routes and Encoding; ambiguous evidence keeps the
-  existing route.
+- `font.descriptor-flags` (9.8.2, Table 121; 9.6.5): Symbolic and
+  Nonsymbolic both set or both clear; Symbolic is kept and Nonsymbolic is
+  treated as its inverse. Valid pairs are not repairs and keep their 9.6.5
+  selection routes, even when the font's character set disagrees.
 - `image.ccitt-columns` (7.4.6, 8.9.5.1): CCITT data whose `Columns` differs
   from the image `Width` decodes with `Columns`, then each row is cropped or
   extended with fax white to `Width`.
