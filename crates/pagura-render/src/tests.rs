@@ -384,11 +384,8 @@ fn annex_a_validation_precedes_unsupported_and_unknown_is_syntax() {
         );
     }
     assert_eq!(
-        crate::operators::validate(b"Tj", &[Value::String(vec![])])
-            .unwrap()
-            .unwrap()
-            .as_str(),
-        "operator.Tj"
+        crate::operators::validate(b"Tj", &[Value::String(vec![])]).unwrap(),
+        Some(crate::operators::Implemented)
     );
     assert!(
         crate::operators::validate(b"future", &[])

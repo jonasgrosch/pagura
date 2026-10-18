@@ -10,6 +10,7 @@ mod blend;
 mod cie;
 mod color;
 mod compositor;
+mod context;
 mod display;
 mod functions;
 mod icc;
@@ -20,14 +21,16 @@ mod pattern;
 mod shading;
 mod transparency;
 
+pub use context::RenderContext;
 pub use display::DisplayList;
-pub use interpreter::compile_page;
+pub use interpreter::{compile_page, compile_page_with};
 
 use pagura_core::{Error, Rect, Result};
 use pagura_document::{Document, Page, Rotation};
 use pagura_raster::Rgba8;
 
 pub use pagura_raster::Pixmap;
+pub use pagura_text::Provider;
 
 /// Stable tags for rendering capabilities not implemented yet.
 pub mod features;
@@ -131,6 +134,19 @@ pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) ->
     compile_page(document, page)?.render(options)
 }
 
+/// Renders a whole page using explicitly supplied external font resources.
+///
+/// # Errors
+/// As [`render_page`], including errors from the provider.
+pub fn render_page_with(
+    document: &Document,
+    page: &Page,
+    options: &RenderOptions,
+    provider: &dyn Provider,
+) -> Result<Pixmap> {
+    compile_page_with(document, page, provider)?.render(options)
+}
+
 /// Renders one tile of a page. Tiles of one page with the same options
 /// assemble byte for byte into the [`render_page`] result. To render many
 /// tiles of a page, compile it once with [`compile_page`] and call
@@ -146,6 +162,20 @@ pub fn render_tile(
     tile: Tile,
 ) -> Result<Pixmap> {
     compile_page(document, page)?.render_tile(options, tile)
+}
+
+/// Renders a tile using explicitly supplied external font resources.
+///
+/// # Errors
+/// As [`render_tile`], including errors from the provider.
+pub fn render_tile_with(
+    document: &Document,
+    page: &Page,
+    options: &RenderOptions,
+    tile: Tile,
+    provider: &dyn Provider,
+) -> Result<Pixmap> {
+    compile_page_with(document, page, provider)?.render_tile(options, tile)
 }
 
 #[cfg(test)]

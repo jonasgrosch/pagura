@@ -14,5 +14,9 @@ workspace = true
 [dependencies]
 pagura.workspace = true
 
+[features]
+default = []
+bundled-data = ["pagura/bundled-data"]
+
 [dev-dependencies]
 pagura-testkit.workspace = true

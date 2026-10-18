@@ -1,7 +1,7 @@
 //! Text state, positioning and outline painting (ISO 32000-2, 9.3–9.4).
 
 mod bounds;
-mod cache;
+pub(crate) mod cache;
 mod type3;
 
 use super::{
@@ -331,7 +331,16 @@ impl Compiler<'_> {
                     matrix,
                 } if mode != 3 => {
                     let key = (Arc::as_ptr(&program) as usize, glyph.0);
-                    let cached = self.state.text.cache.borrow().outlines.get(&key).cloned();
+                    let shared = self.profiles.fonts.and_then(|fonts| {
+                        fonts
+                            .lock()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner)
+                            .outlines
+                            .get(&key)
+                            .cloned()
+                    });
+                    let cached = shared
+                        .or_else(|| self.state.text.cache.borrow().outlines.get(&key).cloned());
                     let path = if let Some(path) = cached {
                         path
                     } else {
@@ -343,6 +352,12 @@ impl Compiler<'_> {
                         })?;
                         self.paint_charge(path_bytes(&path), 1)?;
                         let path = Arc::new(path);
+                        if let Some(fonts) = self.profiles.fonts {
+                            fonts
+                                .lock()
+                                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                                .outline(font, key, Arc::clone(&path));
+                        }
                         self.state
                             .text
                             .cache

@@ -12,11 +12,16 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+pagura-data = { workspace = true, optional = true }
 pagura-core.workspace = true
 pagura-document.workspace = true
 pagura-raster.workspace = true
 pagura-render.workspace = true
 pagura-write.workspace = true
+
+[features]
+default = ["bundled-data"]
+bundled-data = ["dep:pagura-data"]
 
 [dev-dependencies]
 # The fuzz regression replay (tests/fuzz_regressions.rs) drives these

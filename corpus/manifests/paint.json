@@ -345,6 +345,26 @@
       "tolerance": 1
     },
     {
+      "id": "paint/text-knockout-opaque-overlap",
+      "kind": "pdf",
+      "description": "text knockout opaque overlap",
+      "expected": "render",
+      "requirements": [
+        "paint-text-knockout"
+      ],
+      "path": "corpus/generated/paint/text-knockout-opaque-overlap.pdf",
+      "sha256": "5c63465290009db9f423ac105809f7799f9e82808812aebd40ee568b701e5797",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-knockout-opaque-overlap.ppm",
+      "oracle_sha256": "1abd811a124dac9d3ce3201b45cda2b26d812453dd22c4a524b0554d25aa1968",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
       "id": "paint/text-tj-adjustments",
       "kind": "pdf",
       "description": "text tj adjustments",
@@ -863,6 +883,26 @@
       "strict_valid": true,
       "repairs": [],
       "render_error": "syntax"
+    },
+    {
+      "id": "paint/image-rgb-colour-key",
+      "kind": "pdf",
+      "description": "image rgb colour key",
+      "expected": "render",
+      "requirements": [
+        "paint-image-masks"
+      ],
+      "path": "corpus/generated/paint/image-rgb-colour-key.pdf",
+      "sha256": "993e1d223512b765711085d39b7b2a5fc1eae1887fb28f3e656b95294035d344",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-rgb-colour-key.ppm",
+      "oracle_sha256": "a421e9193233390446c31ea5880c52d34f9fa23c98bc47ec7ed44d5ba8133721",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
     },
     {
       "id": "paint/image-quarter-turn-0",
@@ -1858,6 +1898,314 @@
       "width": 32,
       "height": 32,
       "tolerance": 0
+    },
+    {
+      "id": "paint/bundled-helvetica",
+      "kind": "pdf",
+      "description": "Non-embedded Helvetica uses AFM widths and bundled outlines",
+      "requirements": [
+        "paint-bundled-fonts"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/bundled-helvetica.pdf",
+          "sha256": "97ec7cfc1cb04a5f6982cee8548a2c5d8bf5523663abb4b55244ac59fc4ca720"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/bundled-helvetica.rgb",
+          "sha256": "c2c7cecd8f5cf4bede25427b69ecf3b4c53c4924e739d97acf129350440b34fa"
+        }
+      },
+      "path": "corpus/generated/paint/bundled-helvetica.pdf",
+      "sha256": "97ec7cfc1cb04a5f6982cee8548a2c5d8bf5523663abb4b55244ac59fc4ca720",
+      "expected": "render",
+      "pages": 1,
+      "repairs": [
+        "font.substituted"
+      ],
+      "strict_valid": true,
+      "oracle": "corpus/generated/paint/bundled-helvetica.rgb",
+      "oracle_sha256": "c2c7cecd8f5cf4bede25427b69ecf3b4c53c4924e739d97acf129350440b34fa",
+      "tolerance": 1,
+      "width": 64,
+      "height": 64,
+      "dpi": 72
+    },
+    {
+      "id": "paint/bundled-times-bold",
+      "kind": "pdf",
+      "description": "Non-embedded Times-Bold uses AFM widths and bundled outlines",
+      "requirements": [
+        "paint-bundled-fonts"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/bundled-times-bold.pdf",
+          "sha256": "8e7cadca42212aedb9e9831f41ca9cec2743056f4b3364e58da37910547ddfa8"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/bundled-times-bold.rgb",
+          "sha256": "31cffebdddeb1a14ca61495f11298729d5146d51dc284b518014340bb547a805"
+        }
+      },
+      "path": "corpus/generated/paint/bundled-times-bold.pdf",
+      "sha256": "8e7cadca42212aedb9e9831f41ca9cec2743056f4b3364e58da37910547ddfa8",
+      "expected": "render",
+      "pages": 1,
+      "repairs": [
+        "font.substituted"
+      ],
+      "strict_valid": true,
+      "oracle": "corpus/generated/paint/bundled-times-bold.rgb",
+      "oracle_sha256": "31cffebdddeb1a14ca61495f11298729d5146d51dc284b518014340bb547a805",
+      "tolerance": 1,
+      "width": 64,
+      "height": 64,
+      "dpi": 72
+    },
+    {
+      "id": "paint/bundled-courier-oblique",
+      "kind": "pdf",
+      "description": "Non-embedded Courier-Oblique uses AFM widths and bundled outlines",
+      "requirements": [
+        "paint-bundled-fonts"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/bundled-courier-oblique.pdf",
+          "sha256": "31cfd58640cb444e2a2812b7dd418477e347572ba5879fb4f4d7bfef0132b680"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/bundled-courier-oblique.rgb",
+          "sha256": "4bb7bccbffed3f9f3c3f4216a3f8d4e2091847bfe296147cd6158245e8861cf6"
+        }
+      },
+      "path": "corpus/generated/paint/bundled-courier-oblique.pdf",
+      "sha256": "31cfd58640cb444e2a2812b7dd418477e347572ba5879fb4f4d7bfef0132b680",
+      "expected": "render",
+      "pages": 1,
+      "repairs": [
+        "font.substituted"
+      ],
+      "strict_valid": true,
+      "oracle": "corpus/generated/paint/bundled-courier-oblique.rgb",
+      "oracle_sha256": "4bb7bccbffed3f9f3c3f4216a3f8d4e2091847bfe296147cd6158245e8861cf6",
+      "tolerance": 1,
+      "width": 64,
+      "height": 64,
+      "dpi": 72
+    },
+    {
+      "id": "paint/bundled-descriptor-flags",
+      "kind": "pdf",
+      "description": "FontDescriptor flags select fixed-pitch italic substitute; PDF widths take precedence",
+      "requirements": [
+        "paint-bundled-fonts"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/bundled-descriptor-flags.pdf",
+          "sha256": "1a66ad04a17334e34057614bce4754b207f2390d6cca74859706f4d1a75fede0"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/bundled-descriptor-flags.rgb",
+          "sha256": "488a89f8f6c2791556e9676dcaa3360dbdfac1256247ae8fc040aadd8234f8f3"
+        }
+      },
+      "path": "corpus/generated/paint/bundled-descriptor-flags.pdf",
+      "sha256": "1a66ad04a17334e34057614bce4754b207f2390d6cca74859706f4d1a75fede0",
+      "expected": "render",
+      "pages": 1,
+      "repairs": [
+        "font.substituted"
+      ],
+      "strict_valid": true,
+      "oracle": "corpus/generated/paint/bundled-descriptor-flags.rgb",
+      "oracle_sha256": "488a89f8f6c2791556e9676dcaa3360dbdfac1256247ae8fc040aadd8234f8f3",
+      "tolerance": 1,
+      "width": 64,
+      "height": 64,
+      "dpi": 72
+    },
+    {
+      "id": "paint/bundled-symbol",
+      "kind": "pdf",
+      "description": "No licensed substitute outlines are available",
+      "expected": "unsupported",
+      "requirements": [
+        "paint-bundled-fonts"
+      ],
+      "path": "corpus/generated/paint/bundled-symbol.pdf",
+      "sha256": "29596a4dc2208c8b254b05551576b38129653c322fc0c626bf6ef2801a367142",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "font.non-embedded"
+    },
+    {
+      "id": "paint/bundled-zapfdingbats",
+      "kind": "pdf",
+      "description": "No licensed substitute outlines are available",
+      "expected": "unsupported",
+      "requirements": [
+        "paint-bundled-fonts"
+      ],
+      "path": "corpus/generated/paint/bundled-zapfdingbats.pdf",
+      "sha256": "73109dbe28311f496c372276fe3e213ac2bce00fa576f807e61a046efabfc34c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "font.non-embedded"
+    },
+    {
+      "id": "paint/bundled-cjk-cmap",
+      "kind": "pdf",
+      "description": "Predefined CJK CMap selects an embedded CID font through a nonidentity CIDToGIDMap",
+      "requirements": [
+        "paint-bundled-cmaps"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/bundled-cjk-cmap.pdf",
+          "sha256": "21205d1a78436c335d1c855de784235ff169de469ff7f0af07fc5bee8c5ad953"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/bundled-cjk-cmap.rgb",
+          "sha256": "d6aa0587839e13a43520bbe54075679368ff964c580dd70b1fd16b817932616e"
+        }
+      },
+      "path": "corpus/generated/paint/bundled-cjk-cmap.pdf",
+      "sha256": "21205d1a78436c335d1c855de784235ff169de469ff7f0af07fc5bee8c5ad953",
+      "expected": "render",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/bundled-cjk-cmap.rgb",
+      "oracle_sha256": "d6aa0587839e13a43520bbe54075679368ff964c580dd70b1fd16b817932616e",
+      "tolerance": 1,
+      "width": 64,
+      "height": 64,
+      "dpi": 72
+    },
+    {
+      "id": "paint/image-area-fractional",
+      "kind": "pdf",
+      "description": "image area fractional",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-area-fractional.pdf",
+      "sha256": "9e44f63c0c59c57cd4f2141ff5b42a8fda8a76a859f64b3fda76d8b5c967e532",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-area-fractional.ppm",
+      "oracle_sha256": "ba220904835963a4a786aae794d7ca174efe85e9bb3e83507738e6916ff77409",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/image-area-reflected",
+      "kind": "pdf",
+      "description": "image area reflected",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-area-reflected.pdf",
+      "sha256": "6870ab5fe7639412f50e6fe7d3988c71ded7d6f537b2126aa9c772255b2d7239",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-area-reflected.ppm",
+      "oracle_sha256": "90787671a3b9b93f776a355bc1b0a0903220d7496b359a9b8968d3bcf59f74c6",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/image-area-quarter",
+      "kind": "pdf",
+      "description": "image area quarter",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-area-quarter.pdf",
+      "sha256": "a0dc7502ead44821b08292bd41d1ce569872a6ffc14f32a3e021ec2582c1e3b1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-area-quarter.ppm",
+      "oracle_sha256": "66a3eac02d4b88f127d08df23708dc74ea57a7a98465b5775523c4a3e56c9c01",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/image-area-sheared",
+      "kind": "pdf",
+      "description": "image area sheared",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-area-sheared.pdf",
+      "sha256": "fdd4788af0fdb19cbcfc7f53dd9f3f4d2fe19d267615acc707a2b8c5e8d28d3e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-area-sheared.ppm",
+      "oracle_sha256": "69c8c9b538ac6e04962ae5ab23147d252fff58b39429e5e750913b37f8f33c4c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/text-font-shared-pages",
+      "kind": "pdf",
+      "description": "One immutable font dictionary and outline are shared across pages with different resource names",
+      "expected": "render",
+      "requirements": [
+        "paint-font-cache"
+      ],
+      "path": "corpus/generated/paint/text-font-shared-pages.pdf",
+      "sha256": "250a19abc1dff67f01f5d21615f6c7d6ea5e3c06a3347e83ee982c16d6798cb6",
+      "pages": 2,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-font-shared-pages.ppm",
+      "oracle_sha256": "3fd9d7e3a370a94a9f9662749f48cc53bf49c5dd1adb1c1bbec007316ceb9b8c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint/text-late-font-repair",
+      "kind": "pdf",
+      "description": "A repair on page two preserves both rendered pages and strict audit status",
+      "expected": "render",
+      "requirements": [
+        "paint-font-cache"
+      ],
+      "path": "corpus/generated/paint/text-late-font-repair.pdf",
+      "sha256": "183b91a8fa62f97bfc67e352413b33ecb66a676b60b76457dc4a3c46a02cdecc",
+      "pages": 2,
+      "strict_valid": false,
+      "repairs": [
+        "font.stream-lengths"
+      ],
+      "oracle": "corpus/generated/paint/text-late-font-repair.ppm",
+      "oracle_sha256": "3fd9d7e3a370a94a9f9662749f48cc53bf49c5dd1adb1c1bbec007316ceb9b8c",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
     }
   ]
 }

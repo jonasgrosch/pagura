@@ -10,7 +10,7 @@ mod pattern_inline;
 mod patterns;
 mod shadings;
 mod state;
-mod text;
+pub(crate) mod text;
 
 use crate::color::{self, Color};
 use crate::display::{Clip, Command, DisplayList, Mark, PathCommand};
@@ -28,9 +28,52 @@ use std::sync::Arc;
 /// Returns positioned syntax errors, resource-limit errors and stable
 /// `Unsupported` tags. No partial list is returned on failure.
 pub fn compile_page(document: &Document, page: &Page) -> Result<DisplayList> {
+    let fonts = std::sync::Mutex::new(text::cache::FontCache::new(document.limits()));
+    compile_cached(document, page, None, &fonts)
+}
+
+/// Compiles a page using external font resources supplied explicitly (ADR 0009).
+/// Use [`crate::RenderContext`] to share fonts across multiple pages.
+///
+/// # Errors
+/// As [`compile_page`], including errors from the provider.
+pub fn compile_page_with(
+    document: &Document,
+    page: &Page,
+    provider: &dyn pagura_text::Provider,
+) -> Result<DisplayList> {
+    let fonts = std::sync::Mutex::new(text::cache::FontCache::new(document.limits()));
+    compile_cached(document, page, Some(provider), &fonts)
+}
+
+pub(crate) fn compile_cached(
+    document: &Document,
+    page: &Page,
+    provider: Option<&dyn pagura_text::Provider>,
+    fonts: &std::sync::Mutex<text::cache::FontCache>,
+) -> Result<DisplayList> {
     let mut compiler = Compiler::new(document, page)?;
+    compiler.profiles = std::rc::Rc::new(Compilation {
+        colors: crate::icc::Cache::default(),
+        provider,
+        fonts: Some(fonts),
+    });
     compiler.page(page).map_err(|e| e.in_object(page.id()))?;
     Ok(compiler.list)
+}
+
+// The shared compilation resources travel through the existing colour-context
+// field, so detached forms and masks inherit them with their existing Rc clone.
+struct Compilation<'a> {
+    colors: crate::icc::Cache,
+    provider: Option<&'a dyn pagura_text::Provider>,
+    fonts: Option<&'a std::sync::Mutex<text::cache::FontCache>>,
+}
+impl std::ops::Deref for Compilation<'_> {
+    type Target = crate::icc::Cache;
+    fn deref(&self) -> &Self::Target {
+        &self.colors
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -74,7 +117,7 @@ impl Default for Graphics {
 
 struct Compiler<'a> {
     document: &'a Document,
-    profiles: std::rc::Rc<crate::icc::Cache>,
+    profiles: std::rc::Rc<Compilation<'a>>,
     list: DisplayList,
     state: Graphics,
     saved: Vec<Graphics>,
@@ -98,7 +141,11 @@ impl<'a> Compiler<'a> {
     fn new(document: &'a Document, page: &Page) -> Result<Self> {
         Ok(Self {
             document,
-            profiles: std::rc::Rc::default(),
+            profiles: std::rc::Rc::new(Compilation {
+                colors: crate::icc::Cache::default(),
+                provider: None,
+                fonts: None,
+            }),
             list: DisplayList::new(page, document.limits()),
             state: Graphics::default(),
             saved: Vec::new(),
@@ -222,7 +269,7 @@ impl<'a> Compiler<'a> {
 
     fn operator(&mut self, word: &[u8], resources: &Dictionary) -> Result<()> {
         let tag = crate::operators::validate(word, &self.operands)?;
-        let Some(tag) = tag else {
+        let Some(_) = tag else {
             if self.compatibility > 0 {
                 self.operands.clear();
                 return Ok(());
@@ -234,7 +281,7 @@ impl<'a> Compiler<'a> {
             if ignore || self.pattern_ignores(word, &operands, resources)? {
                 Ok(())
             } else {
-                self.execute(word, &operands, resources, tag)
+                self.execute(word, &operands, resources)
             }
         });
         self.operands = operands;
@@ -246,13 +293,7 @@ impl<'a> Compiler<'a> {
         self.paint_charge(0, 0)
     }
 
-    fn execute(
-        &mut self,
-        word: &[u8],
-        v: &[Value],
-        resources: &Dictionary,
-        tag: Feature,
-    ) -> Result<()> {
+    fn execute(&mut self, word: &[u8], v: &[Value], resources: &Dictionary) -> Result<()> {
         match word {
             b"q" => self.save_graphics()?,
             b"Q" => self.restore_graphics()?,
@@ -332,7 +373,7 @@ impl<'a> Compiler<'a> {
             b"sh" => self.shading(v, resources)?,
             _ => {
                 return Err(Error::unsupported(
-                    tag,
+                    features::operator_tag(word),
                     "content operator is not implemented",
                 ));
             }

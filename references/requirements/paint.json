@@ -22,7 +22,8 @@
         "paint/text-negative-size",
         "paint/text-zero-size",
         "paint/text-vertical",
-        "paint/text-extgstate-font"
+        "paint/text-extgstate-font",
+        "pagura-render operators::tests::every_text_and_image_operator_validates_as_implemented"
       ],
       "gaps": "Resource-selected embedded and Type3 fonts; font provider integration remains outside painting.",
       "review": [
@@ -99,7 +100,8 @@
       "tests": [
         "paint/text-knockout-true",
         "paint/text-knockout-false",
-        "paint/text-soft-mask-inside-object"
+        "paint/text-soft-mask-inside-object",
+        "paint/text-knockout-opaque-overlap"
       ],
       "gaps": "Transfer functions across transparent artwork retain the existing explicit unsupported tag.",
       "review": [
@@ -168,7 +170,7 @@
         "paint/type3-metrics-repeated",
         "paint/type3-metrics-outside",
         "paint/type3-inconsistent-width",
-        "pagura-render interpreter::text::tests::font_buffer_errors_report_the_content_call_site"
+        "pagura-render interpreter::text::tests::malformed_font_programs_report_their_own_stream"
       ],
       "gaps": "",
       "review": [
@@ -248,7 +250,8 @@
         "paint/image-stencil-1",
         "paint/image-colour-key",
         "paint/image-explicit-mask",
-        "paint/image-mask-resolution"
+        "paint/image-mask-resolution",
+        "paint/image-rgb-colour-key"
       ],
       "gaps": "Pattern-coloured stencils fail with image.stencil-pattern.",
       "review": [
@@ -351,7 +354,12 @@
       "status": "implemented subset",
       "tests": [
         "paint/image-minification",
-        "paint/image-interpolate"
+        "paint/image-interpolate",
+        "paint/image-area-fractional",
+        "paint/image-area-reflected",
+        "paint/image-area-quarter",
+        "paint/image-area-sheared",
+        "pagura-render compositor::images::tests::scalar_cache_uses_component_precision_for_mixed_samples"
       ],
       "gaps": "Interpolation is device policy rather than an ISO-prescribed filter. Strongly anisotropic transforms use area integration whenever an inverse pixel edge exceeds one source pixel.",
       "review": [
@@ -381,6 +389,80 @@
           "locator": "Annex C.1",
           "rule": "Implementation policy: shared caches and retained image/outline storage are bounded by decoded_bytes and display_commands; glyphs, image framing and sample integration charge work. Recursive glyph and mask graphs fail.",
           "verdict": "verified against local primary text; device policy identified explicitly"
+        }
+      ]
+    },
+    {
+      "id": "paint-bundled-fonts",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.6.2.2",
+        "9.8.2",
+        "Table 121"
+      ],
+      "status": "implemented",
+      "tests": [
+        "paint/bundled-helvetica",
+        "paint/bundled-times-bold",
+        "paint/bundled-courier-oblique",
+        "paint/bundled-descriptor-flags",
+        "paint/bundled-symbol",
+        "paint/bundled-zapfdingbats"
+      ],
+      "gaps": "",
+      "review": [
+        {
+          "locator": "9.6.2.2; 9.8.2; Table 121",
+          "rule": "Explicit substitutes use bundled outlines and AFM widths, or PDF widths when supplied. FontDescriptor flags select a substitute when no program is embedded; Symbol and ZapfDingbats remain explicit Unsupported.",
+          "verdict": "verified against local primary text; cache accounting is implementation policy"
+        }
+      ]
+    },
+    {
+      "id": "paint-bundled-cmaps",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.7.5.2",
+        "9.7.4.3",
+        "Table 116"
+      ],
+      "status": "implemented",
+      "tests": [
+        "paint/bundled-cjk-cmap"
+      ],
+      "gaps": "",
+      "review": [
+        {
+          "locator": "9.7.5.2; 9.7.4.3; Table 116",
+          "rule": "A provider resolves a predefined CJK CMap; code, CID and embedded glyph index stay distinct through CIDToGIDMap.",
+          "verdict": "verified against local primary text; cache accounting is implementation policy"
+        }
+      ]
+    },
+    {
+      "id": "paint-font-cache",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "Annex C.1"
+      ],
+      "status": "implemented subset",
+      "tests": [
+        "pagura provider::facade_feature_selects_provider_and_reuses_document_resources",
+        "pagura provider::provider_and_explicit_entry_points_agree_and_load_once",
+        "pagura provider::context_rejects_foreign_pages",
+        "paint/text-font-shared-pages",
+        "pagura provider::fonts_and_outlines_are_shared_across_document_pages",
+        "pagura-render interpreter::text::cache::tests::retained_cache_admission_eviction_and_duplicate_publication_are_bounded",
+        "paint/text-late-font-repair",
+        "pagura cli::scan_retries_a_late_repair_without_losing_earlier_pages",
+        "pagura-render interpreter::text::cache::tests::embedded_cid_font_inputs_are_charged_through_descendants"
+      ],
+      "gaps": "PdfFont exposes no complete retained-memory estimator. The shared cache charges font input and dictionary estimates, path-segment estimates and bookkeeping; opaque parsed internals retain their own per-font bounds, with at most 256 fonts. Provider caches have independent bounds.",
+      "review": [
+        {
+          "locator": "Annex C.1",
+          "rule": "Document-bound font and outline caches use immutable font dictionaries and resource identities. Retained input, dictionary and path-segment estimates are bounded by document_bytes, eviction never changes pixels, and foreign pages are rejected.",
+          "verdict": "verified against local primary text; cache accounting is implementation policy"
         }
       ]
     }

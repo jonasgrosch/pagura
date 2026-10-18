@@ -1,6 +1,10 @@
-//! Annex A recognition and operand validation, independent of implementation.
+//! Annex A recognition and operand validation for implemented content operators.
 
-use pagura_core::{Error, Feature, Result, Value};
+use pagura_core::{Error, Result, Value};
+
+/// Recognition of an implemented Annex A operator, after operand validation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Implemented;
 
 #[derive(Clone, Copy)]
 enum Kind {
@@ -25,7 +29,7 @@ impl Kind {
     }
 }
 
-pub(crate) fn validate(operator: &[u8], values: &[Value]) -> Result<Option<Feature>> {
+pub(crate) fn validate(operator: &[u8], values: &[Value]) -> Result<Option<Implemented>> {
     use Kind::{Array as A, Integer as I, Name as M, Number as N, Properties as P, String as S};
     macro_rules! table {
         ($($name:literal => [$($kind:expr),*]),* $(,)?) => {
@@ -63,7 +67,7 @@ pub(crate) fn validate(operator: &[u8], values: &[Value]) -> Result<Option<Featu
         {
             return Err(Error::syntax("TJ array requires numbers or strings"));
         }
-        return Ok(Some(crate::features::operator_tag(operator)));
+        return Ok(Some(Implemented));
     }
     if matches!(operator, b"SC" | b"sc" | b"SCN" | b"scn") {
         let allow_name = matches!(operator, b"SCN" | b"scn");
@@ -73,7 +77,7 @@ pub(crate) fn validate(operator: &[u8], values: &[Value]) -> Result<Option<Featu
         }) {
             return Err(Error::syntax("wrong colour operand type"));
         }
-        return Ok(Some(crate::features::operator_tag(operator)));
+        return Ok(Some(Implemented));
     }
     Ok(None)
 }
@@ -90,4 +94,47 @@ fn check(values: &[Value], kinds: &[Kind]) -> Result<()> {
         return Err(Error::syntax("wrong operand type"));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn every_text_and_image_operator_validates_as_implemented() {
+        let number = Value::Integer(0);
+        for (operator, operands) in [
+            (b"BT".as_slice(), vec![]),
+            (b"ET", vec![]),
+            (b"Tc", vec![number.clone()]),
+            (b"Tw", vec![number.clone()]),
+            (b"Tz", vec![number.clone()]),
+            (b"TL", vec![number.clone()]),
+            (b"Ts", vec![number.clone()]),
+            (b"Tr", vec![number.clone()]),
+            (b"Tf", vec![Value::name(b"F"), number.clone()]),
+            (b"Tm", vec![number.clone(); 6]),
+            (b"Td", vec![number.clone(); 2]),
+            (b"TD", vec![number.clone(); 2]),
+            (b"T*", vec![]),
+            (b"Tj", vec![Value::String(vec![])]),
+            (b"TJ", vec![Value::Array(vec![])]),
+            (b"'", vec![Value::String(vec![])]),
+            (
+                b"\"",
+                vec![number.clone(), number.clone(), Value::String(vec![])],
+            ),
+            (b"d0", vec![number.clone(); 2]),
+            (b"d1", vec![number; 6]),
+            (b"Do", vec![Value::name(b"I")]),
+            (b"BI", vec![]),
+            (b"ID", vec![]),
+            (b"EI", vec![]),
+        ] {
+            assert_eq!(
+                validate(operator, &operands).unwrap(),
+                Some(Implemented),
+                "{operator:?}"
+            );
+        }
+    }
 }

@@ -14,7 +14,7 @@ primary standards.
 | Filters | ASCIIHex, ASCII85, RunLength, LZW, Flate (zlib and reported raw DEFLATE), PNG/TIFF predictors at 1–16 bits; caps enforced while decoding | — |
 | Security | MD5, SHA-2, RC4, AES; standard handler R2–R4, R5 (Adobe extension), R6; crypt filters; `/Perms` checks reported | SASLprep for non-ASCII R6 passwords; public-key handlers |
 | Fonts | `pagura-font`: TrueType and OpenType (glyf and CFF/CFF2 default instance), bare and CID-keyed CFF, Type 1 (PFA, PFB, eexec); outlines, advances, matrices, names, built-in encodings, cmap formats 0, 4, 6, 12 | Expert CFF charsets, FDSelect 4, CFF2 Private DICT blends and variations, other cmap formats, hinting |
-| Text | `pagura-text`: simple, Type 3 and composite fonts; standard encodings and Differences; widths, CID metrics, embedded CMaps with usecmap, CIDToGIDMap, ToUnicode | Painting (M3); TrueType cmap fallbacks; non-embedded fonts and predefined CJK CMaps need bundled data (ADR 0009) |
+| Text | `pagura-text`: simple, Type 3 and composite fonts; standard encodings and Differences; widths, CID metrics, embedded CMaps with usecmap, CIDToGIDMap, ToUnicode; non-embedded standard fonts through metric-compatible substitutes and the predefined CJK CMaps, both from `pagura-data` through a `Provider` (ADR 0009, on by default in the `pagura` facade, `pagura licenses` lists the notices); fonts and outlines shared across a document's pages by `RenderContext` | TrueType cmap fallbacks; Symbol and ZapfDingbats substitutes; non-embedded CID fonts |
 | Images | `pagura-image`: samples at 1–16 bits, decode arrays, mask metadata, inline images; JPEG (baseline and progressive Huffman, CMYK/YCCK); CCITT G3/G4; JBIG2 generic, symbol and text regions; JPEG 2000 Part 1 with default precincts | Painting (M4); JBIG2/JPX wiring into XObjects; JBIG2 refinement, Huffman, halftones; JPX precinct and code-block modes; JPEG arithmetic and 12-bit |
 | Rendering | Display list; sweep rasterizer with exact-area antialiasing; strokes with caps, joins, dashes and stroke adjustment; geometric clipping; Device, Default, Indexed, ICC-via-alternate, CalGray, Lab, Separation and DeviceN colour; PDF functions (Types 0, 2, 3, 4) and transfer functions; form XObjects; opaque transparency groups including RGB blending spaces; optional content with View usage; crop, rotation, UserUnit; tiles | Dashes under scaling and negative dash phases (8.4.3.6); CalRGB; painting text (M3) and images (M4); non-opaque transparency, shadings, patterns (M5) |
 | Writing | Deterministic new documents, insertion-ordered dictionaries, budgets | Incremental saves, signatures, redaction (M7) |
@@ -41,7 +41,7 @@ painting dominates their time and is being optimized.
 | PDF Differences | 37 | 75.7% | 24 | 23.3% (10/43) | 0 / 0 |
 | PDF 2.0 examples | 7 | 100.0% | 6 | 12.5% (1/8) | 0 / 0 |
 
-Generated fixtures: 851 PDF cases with independent expectations pass
+Generated fixtures: 866 PDF cases with independent expectations pass
 (`tools/conformance.py`), plus 337 codec, 97 crypto and 19 raster vectors in
 crate tests.
 

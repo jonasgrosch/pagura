@@ -51,6 +51,7 @@ impl Context {
             .transpose()?;
         let stencil = self.stencil_color(command, model)?;
         let image = &command.image;
+        let mut texels = Texels::new(image);
         let sampler = sampler(image, inverse);
         let mask_sampler = image.mask.as_ref().map(|m| sampler_for(m, inverse));
         let width = usize::try_from(clip.width())
@@ -67,7 +68,7 @@ impl Context {
                 let mut work = 0;
                 let maximum = self.limits.raster_work.saturating_sub(self.work);
                 let mut value = sampler.sample(x, y, &mut work, maximum, |pixel| {
-                    self.image_texel(command, pixel, model, stencil)
+                    texels.sample(self, command, pixel, model, stencil)
                 })?;
                 if let (Some(mask), Some(mask_sampler)) = (&image.mask, &mask_sampler) {
                     let sample = mask_sampler
@@ -282,5 +283,130 @@ fn expand_indexed<'a>(
         Ok((base, n))
     } else {
         Ok((space, usize::from(image.decoded.components)))
+    }
+}
+
+// Cache by raw sample tuple, never by destination pixel. The blending model and
+// stencil colour are fixed within this image invocation.
+struct Texels {
+    values: [Option<(u32, Texel)>; 256],
+    cached: bool,
+}
+impl Texels {
+    fn new(image: &Image) -> Self {
+        Self {
+            values: [None; 256],
+            cached: (1..=4).contains(&image.decoded.components)
+                && (0..usize::from(image.decoded.components)).all(|i| {
+                    image
+                        .decoded
+                        .component_bits(i)
+                        .is_some_and(|bits| (1..=8).contains(&bits))
+                })
+                && image.matte.is_none()
+                && !matches!(image.decoded.mask, MaskKind::Embedded(_)),
+        }
+    }
+    fn sample(
+        &mut self,
+        context: &mut Context,
+        command: &ImageCommand,
+        pixel: usize,
+        model: Model,
+        stencil: Option<[f64; 4]>,
+    ) -> Result<Texel> {
+        if !self.cached {
+            return context.image_texel(command, pixel, model, stencil);
+        }
+        let count = usize::from(command.image.decoded.components);
+        let offset = pixel
+            .checked_mul(count)
+            .ok_or(Error::limit("image sample offset overflow"))?;
+        let mut key = 0_u32;
+        for component in 0..count {
+            let sample = command
+                .image
+                .decoded
+                .samples
+                .get(offset + component)
+                .filter(|&v| v <= 255)
+                .ok_or(Error::syntax("missing or out-of-range image sample"))?;
+            key = (key << 8) | u32::from(sample);
+        }
+        let index = usize::from(key.wrapping_mul(0x9e37_79b1).to_be_bytes()[0]);
+        let cached = &mut self.values[index];
+        if let Some((previous, value)) = *cached
+            && previous == key
+        {
+            return Ok(value);
+        }
+        let value = context.image_texel(command, pixel, model, stencil)?;
+        *cached = Some((key, value));
+        Ok(value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pagura_image::{DecodedImage, Samples};
+    use std::sync::Arc;
+    #[test]
+    fn scalar_cache_uses_component_precision_for_mixed_samples() {
+        let image = Arc::new(Image {
+            decoded: DecodedImage {
+                width: 1,
+                height: 1,
+                bits_per_component: 0,
+                components: 1,
+                samples: Samples::Mixed {
+                    values: vec![32768],
+                    bits: vec![16],
+                },
+                kind: ImageKind::Color {
+                    color_space: Some(pagura_core::Value::name(b"DeviceGray")),
+                },
+                decode: None,
+                mask: MaskKind::None,
+                interpolate: false,
+            },
+            space: Some(crate::color::Space::Gray),
+            mask: None,
+            matte: None,
+            decode: vec![(0.0, 1.0)],
+        });
+        let mut texels = Texels::new(&image);
+        let command = ImageCommand {
+            image,
+            transform: Transform::IDENTITY,
+            clip: None,
+            stencil: crate::color::Color::default(),
+            composite: crate::transparency::Composite::opaque(),
+            transfer: None,
+            position: pagura_core::Position::Unknown,
+        };
+        let limits = pagura_core::Limits::default();
+        let mut context = Context {
+            bounds: super::super::regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
+            limits,
+            device: Transform::IDENTITY,
+            page_device: Transform::IDENTITY,
+            view_unit: 1.0,
+            crop: PathBuilder::new().finish(),
+            allocated: 0,
+            work: 0,
+            clip: None,
+            mask: None,
+            function_work: 0,
+            soft_source: false,
+        };
+        let sample = texels
+            .sample(&mut context, &command, 0, Model::Rgb, None)
+            .unwrap();
+        assert_eq!(
+            sample.color,
+            [32768.0 / 65535.0, 32768.0 / 65535.0, 32768.0 / 65535.0, 0.0]
+        );
+        assert_eq!(sample.alpha, 1.0);
     }
 }

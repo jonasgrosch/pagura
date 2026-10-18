@@ -1,7 +1,109 @@
 //! Per-compilation shared font, outline and image storage admission.
 use super::{Arc, Compiler, Dictionary, Error, PdfFont, Result, Value};
 use pagura_raster::Path;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
+
+/// Retained document resources. Input/dictionary estimates and path-segment
+/// estimates are charged separately from transient page/display-list storage.
+#[derive(Debug)]
+pub(crate) struct FontCache {
+    fonts: BTreeMap<pagura_core::ObjectId, Arc<PdfFont>>,
+    direct: Vec<(Dictionary, Arc<PdfFont>)>,
+    owners: BTreeSet<usize>,
+    pub(super) outlines: BTreeMap<(usize, u32), Arc<Path>>,
+    pub(crate) bytes: usize,
+    font_bytes: usize,
+    maximum: usize,
+    entries: usize,
+}
+impl FontCache {
+    pub(crate) fn new(limits: pagura_core::Limits) -> Self {
+        Self {
+            fonts: BTreeMap::new(),
+            direct: Vec::new(),
+            owners: BTreeSet::new(),
+            outlines: BTreeMap::new(),
+            bytes: 0,
+            font_bytes: 0,
+            maximum: limits.document_bytes,
+            entries: limits.display_commands,
+        }
+    }
+    fn get(
+        &self,
+        key: Option<pagura_core::ObjectId>,
+        dictionary: &Dictionary,
+    ) -> Option<Arc<PdfFont>> {
+        key.map_or_else(
+            || {
+                self.direct
+                    .iter()
+                    .find(|(d, _)| d == dictionary)
+                    .map(|(_, f)| Arc::clone(f))
+            },
+            |id| self.fonts.get(&id).cloned(),
+        )
+    }
+    fn remember(
+        &mut self,
+        key: Option<pagura_core::ObjectId>,
+        dictionary: &Dictionary,
+        font: Arc<PdfFont>,
+        bytes: usize,
+    ) -> Arc<PdfFont> {
+        // A simultaneous compilation may have published this font while the
+        // current load ran outside the cache lock. Keep one immutable identity.
+        if let Some(existing) = self.get(key, dictionary) {
+            return existing;
+        }
+        let bytes = bytes.saturating_add(128);
+        if bytes > self.maximum || self.entries == 0 {
+            return font;
+        }
+        if !self.fits(bytes) || self.owners.len() >= 256 {
+            self.fonts.clear();
+            self.direct.clear();
+            self.owners.clear();
+            self.outlines.clear();
+            self.bytes = 0;
+            self.font_bytes = 0;
+        }
+        self.bytes += bytes;
+        self.font_bytes += bytes;
+        self.owners.insert(Arc::as_ptr(&font) as usize);
+        if let Some(id) = key {
+            self.fonts.insert(id, Arc::clone(&font));
+        } else {
+            self.direct.push((dictionary.clone(), Arc::clone(&font)));
+        }
+        font
+    }
+    pub(super) fn outline(&mut self, font: &PdfFont, key: (usize, u32), path: Arc<Path>) {
+        if !self.owners.contains(&(std::ptr::from_ref(font) as usize))
+            || self.outlines.contains_key(&key)
+        {
+            return;
+        }
+        let bytes = super::path_bytes(&path).saturating_add(96);
+        if !self.fits(bytes) {
+            self.outlines.clear();
+            self.bytes = self.font_bytes;
+        }
+        if self.fits(bytes) {
+            self.bytes += bytes;
+            self.outlines.insert(key, path);
+        }
+    }
+    fn fits(&self, bytes: usize) -> bool {
+        self.bytes
+            .checked_add(bytes)
+            .is_some_and(|n| n <= self.maximum)
+            && self.entry_count() < self.entries
+    }
+    fn entry_count(&self) -> usize {
+        self.owners.len().saturating_add(self.outlines.len())
+    }
+}
 
 #[derive(Debug, Default)]
 pub(in crate::interpreter) struct Cache {
@@ -63,52 +165,85 @@ impl Compiler<'_> {
     pub(super) fn select_font(&mut self, value: &Value, size: f64) -> Result<()> {
         let dictionary = self.document.resolve_dictionary(value)?;
         let key = value.as_reference();
-        let cached = {
+        let local = {
             let cache = self.state.text.cache.borrow();
-            if let Some(key) = key {
-                cache.fonts.get(&key).cloned()
-            } else {
-                cache
-                    .direct_fonts
-                    .iter()
-                    .find(|(d, _)| d == dictionary)
-                    .map(|(_, font)| Arc::clone(font))
-            }
+            key.map_or_else(
+                || {
+                    cache
+                        .direct_fonts
+                        .iter()
+                        .find(|(d, _)| d == dictionary)
+                        .map(|(_, font)| Arc::clone(font))
+                },
+                |id| cache.fonts.get(&id).cloned(),
+            )
         };
+        let in_page = local.is_some();
+        let shared = if in_page {
+            None
+        } else {
+            self.profiles.fonts.and_then(|fonts| {
+                fonts
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .get(key, dictionary)
+            })
+        };
+        let shared_hit = shared.is_some();
+        let cached = local.or(shared);
         let font = if let Some(font) = cached {
             font
         } else {
-            self.paint_charge(
-                dictionary
-                    .retained_bytes()
-                    .saturating_add(font_input_bytes(self.document, dictionary, 0)?)
-                    .saturating_add(size_of::<PdfFont>()),
-                1,
-            )?;
-            let font = Arc::new(PdfFont::load(self.document, dictionary).map_err(
-                |mut error| {
-                    if matches!(
-                        error.position,
-                        pagura_core::Position::Unknown | pagura_core::Position::Buffer(_)
-                    ) {
-                        error.position = self.position;
-                    }
-                    key.map_or(error.clone(), |id| error.in_object(id))
-                },
-            )?);
+            let bytes = dictionary
+                .retained_bytes()
+                .saturating_add(font_input_bytes(self.document, dictionary, 0)?)
+                .saturating_add(size_of::<PdfFont>());
+            self.paint_charge(bytes, 1)?;
+            let loaded = self.profiles.provider.map_or_else(
+                || PdfFont::load(self.document, dictionary),
+                |provider| PdfFont::load_with(self.document, dictionary, provider),
+            );
+            let font = Arc::new(loaded.map_err(|mut error| {
+                if matches!(
+                    error.position,
+                    pagura_core::Position::Unknown | pagura_core::Position::Buffer(_)
+                ) {
+                    error.position = self.position;
+                }
+                key.map_or(error.clone(), |id| error.in_object(id))
+            })?);
+            if let Some(fonts) = self.profiles.fonts {
+                fonts
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .remember(key, dictionary, font, bytes)
+            } else {
+                font
+            }
+        };
+        // Every compilation owns its selected fonts, even after a document
+        // cache eviction. Account local entries on shared-cache hits too.
+        if !in_page {
+            if shared_hit {
+                let bytes = 64_usize.saturating_add(if key.is_none() {
+                    dictionary.retained_bytes()
+                } else {
+                    0
+                });
+                self.paint_charge(bytes, 1)?;
+            }
             let mut cache = self.state.text.cache.borrow_mut();
             if cache.fonts.len() + cache.direct_fonts.len() >= 256 {
                 return Err(Error::limit("font cache budget exceeded"));
             }
-            if let Some(key) = key {
-                cache.fonts.insert(key, Arc::clone(&font));
+            if let Some(id) = key {
+                cache.fonts.insert(id, Arc::clone(&font));
             } else {
                 cache
                     .direct_fonts
                     .push((dictionary.clone(), Arc::clone(&font)));
             }
-            font
-        };
+        }
         self.state.text.font = Some(font);
         self.state.text.size = size;
         Ok(())
@@ -239,6 +374,80 @@ fn font_input_bytes(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn retained_cache_admission_eviction_and_duplicate_publication_are_bounded() {
+        let document = pagura_document::Document::open(
+            pagura_testkit::fixture("paint", "text-mode-0.pdf"),
+            &pagura_document::OpenOptions::default(),
+        )
+        .unwrap();
+        let id = pagura_core::ObjectId::new(5, 0);
+        let dictionary = document.object(id).unwrap().dictionary().unwrap();
+        let font = Arc::new(PdfFont::load(&document, dictionary).unwrap());
+        let duplicate = Arc::new(PdfFont::load(&document, dictionary).unwrap());
+        let mut disabled = FontCache::new(pagura_core::Limits {
+            document_bytes: 0,
+            ..Default::default()
+        });
+        assert!(Arc::ptr_eq(
+            &disabled.remember(Some(id), dictionary, Arc::clone(&font), 100),
+            &font
+        ));
+        assert_eq!(disabled.bytes, 0);
+        assert!(disabled.fonts.is_empty());
+        let mut fonts = FontCache::new(pagura_core::Limits {
+            document_bytes: 1024,
+            ..Default::default()
+        });
+        fonts.remember(Some(id), dictionary, Arc::clone(&font), 100);
+        let bytes = fonts.bytes;
+        assert!(Arc::ptr_eq(
+            &fonts.remember(Some(id), dictionary, duplicate, 100),
+            &font
+        ));
+        assert_eq!(fonts.bytes, bytes);
+        let mut path = pagura_raster::PathBuilder::new();
+        path.rect(0.0, 0.0, 2.0, 2.0);
+        let path = Arc::new(path.finish());
+        for glyph in 0..20 {
+            fonts.outline(&font, (123, glyph), Arc::clone(&path));
+            assert!(fonts.bytes <= 1024);
+        }
+        assert!(fonts.outlines.len() < 20);
+        let bytes = fonts.bytes;
+        fonts.outline(&font, (123, 19), Arc::clone(&path));
+        assert_eq!(fonts.bytes, bytes);
+        // A new font that needs the whole cache evicts the old font and every
+        // pointer-keyed outline together. Active compilations own separate Arcs.
+        fonts.remember(
+            Some(pagura_core::ObjectId::new(6, 0)),
+            dictionary,
+            Arc::clone(&font),
+            850,
+        );
+        assert!(fonts.get(Some(id), dictionary).is_none());
+        assert!(fonts.outlines.is_empty());
+        assert!(fonts.bytes <= 1024);
+    }
+    #[test]
+    fn embedded_cid_font_inputs_are_charged_through_descendants() {
+        let document = pagura_document::Document::open(
+            pagura_testkit::fixture("paint", "bundled-cjk-cmap.pdf"),
+            &pagura_document::OpenOptions::default(),
+        )
+        .unwrap();
+        let fonts = document
+            .resolve_dictionary(document.page(0).unwrap().resources().get(b"Font").unwrap())
+            .unwrap();
+        let font = document
+            .resolve_dictionary(fonts.get(b"F").unwrap())
+            .unwrap();
+        let program = document
+            .stream_data(document.object(pagura_core::ObjectId::new(8, 0)).unwrap())
+            .unwrap();
+        assert_eq!(font_input_bytes(&document, font, 0).unwrap(), program.len());
+        assert!(!program.is_empty());
+    }
     #[test]
     fn malformed_font_fanout_is_rejected_before_loading_descendants() {
         let document = pagura_document::Document::open(

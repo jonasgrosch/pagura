@@ -161,3 +161,42 @@ fn convert_page_ranges_are_validated_before_writing() {
     assert!(!status.success());
     assert_eq!(std::fs::read_dir(&empty.0).unwrap().count(), 0);
 }
+
+#[test]
+fn licenses_reproduces_every_linked_data_notice() {
+    let output = pagura().arg("licenses").output().unwrap();
+    assert!(output.status.success());
+    let text = String::from_utf8(output.stdout).unwrap();
+    let mut count = 0;
+    for (subject, notice) in pagura::data_notices() {
+        assert!(text.contains(subject));
+        assert!(text.contains(notice));
+        count += 1;
+    }
+    assert_eq!(text.contains("No bundled data is linked."), count == 0);
+}
+
+#[test]
+fn scan_retries_a_late_repair_without_losing_earlier_pages() {
+    let input = fixture_path("paint", "text-late-font-repair.pdf");
+    let all = pagura().arg("scan").arg(&input).output().unwrap();
+    assert!(all.status.success());
+    let text = String::from_utf8(all.stdout).unwrap();
+    assert!(text.contains("\"strict\":false"), "{text}");
+    assert!(text.contains("\"rendered\":2"), "{text}");
+    assert!(
+        text.contains("\"repairs\":[\"font.stream-lengths\"]"),
+        "{text}"
+    );
+    assert!(text.contains("\"failures\":[]"), "{text}");
+    let first = pagura()
+        .args(["scan", "--max-pages", "1"])
+        .arg(input)
+        .output()
+        .unwrap();
+    assert!(first.status.success());
+    let text = String::from_utf8(first.stdout).unwrap();
+    assert!(text.contains("\"strict\":true"), "{text}");
+    assert!(text.contains("\"rendered\":1"), "{text}");
+    assert!(text.contains("\"repairs\":[]"), "{text}");
+}

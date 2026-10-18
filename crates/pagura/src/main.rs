@@ -17,6 +17,7 @@ use std::time::{Duration, Instant};
 type CliResult<T = ()> = Result<T, Box<dyn Error>>;
 
 const USAGE: &str = "usage: pagura inspect [--strict] INPUT
+       pagura licenses
        pagura render [--timings] INPUT OUTPUT.ppm [DPI=72] [PAGE=0]
        pagura convert [--timings] INPUT OUTPUT_DIR [DPI=72] [FIRST LAST]
        pagura scan [--max-pages N] INPUT [DPI=72]
@@ -47,6 +48,8 @@ fn main() -> ExitCode {
 /// Options that may appear anywhere on the command line.
 #[derive(Debug, Clone, Default)]
 struct Flags {
+    #[cfg(feature = "bundled-data")]
+    provider: std::sync::Arc<pagura_data::Bundled>,
     strict: bool,
     timings: bool,
     password: Vec<u8>,
@@ -103,6 +106,17 @@ fn dpi(value: Option<&&str>) -> CliResult<f64> {
 fn run(args: &[String]) -> CliResult {
     let (flags, args) = parse(args)?;
     match args.as_slice() {
+        ["licenses"] => {
+            let mut found = false;
+            for (subject, notice) in pagura::data_notices() {
+                println!("{subject}\n\n{notice}");
+                found = true;
+            }
+            if !found {
+                println!("No bundled data is linked.");
+            }
+            Ok(())
+        }
         ["--version"] => {
             println!("pagura {} (safe Rust)", env!("CARGO_PKG_VERSION"));
             Ok(())
@@ -152,11 +166,16 @@ fn load(path: &str, limits: Limits) -> CliResult<Vec<u8>> {
 }
 
 fn open(path: &str, flags: &Flags) -> CliResult<Document> {
+    open_bytes(load(path, flags.open_options().limits)?.into(), flags)
+}
+
+fn open_bytes(bytes: std::sync::Arc<[u8]>, flags: &Flags) -> CliResult<Document> {
     let options = flags.open_options();
-    Ok(password::open(
-        load(path, options.limits)?.into(),
-        &options,
-    )?)
+    let document = password::open(bytes, &options)?;
+    #[cfg(feature = "bundled-data")]
+    return Ok(Document::with_provider(document, flags.provider.clone()));
+    #[cfg(not(feature = "bundled-data"))]
+    Ok(Document::from(document))
 }
 
 /// Creates `path` and writes `bytes`; never truncates an existing file.
@@ -300,34 +319,28 @@ fn json_error(error: &(dyn Error + 'static)) -> String {
     }
 }
 
-/// Whether strict mode processes the document without needing any repair:
-/// it opens and every scanned page compiles. Repairs can be discovered
-/// lazily (e.g. a wrong stream `/Length`), so opening alone is not enough.
-/// Errors without a repair tag (such as `Unsupported`) do not count.
-fn strict_clean(input: &str, flags: &Flags) -> bool {
-    let Ok(document) = open(input, &flags.with_strict(true)) else {
-        return false;
-    };
-    let Ok(pages) = document.pages() else {
-        return false;
-    };
-    let limit = flags.max_pages.unwrap_or(usize::MAX);
-    pages.iter().take(limit).all(|page| {
-        pagura::compile_page(&document, page).map_or_else(|error| error.repair.is_none(), |_| true)
-    })
-}
-
-/// Opens (strictly, then with repairs) and renders every page in memory,
-/// reporting the outcome as one JSON line. Never fails as a command.
+/// Opens and renders every page, preserving the strict audit without a
+/// second compilation pass. A refused repair reopens the same immutable bytes
+/// in Repair mode and retries the current page. Earlier strict compilations
+/// needed no repair; non-repair errors do not make the strict audit fail.
 fn scan(input: &str, dpi: f64, flags: &Flags) -> String {
-    let strict = strict_clean(input, flags);
-    let document = match open(input, &flags.with_strict(false)) {
-        Ok(document) => document,
-        Err(error) => {
-            return format!(
-                "{{\"schema\":1,\"strict\":false,\"open\":{},\"pages\":null}}",
-                json_error(&*error)
-            );
+    let bytes: std::sync::Arc<[u8]> = match load(input, flags.open_options().limits) {
+        Ok(bytes) => bytes.into(),
+        Err(error) => return scan_open_error(&*error),
+    };
+    let repair_flags = flags.with_strict(false);
+    let mut strict = true;
+    let clean = open_bytes(bytes.clone(), &flags.with_strict(true)).and_then(|document| {
+        document.pages()?;
+        Ok(document)
+    });
+    let mut document = if let Ok(document) = clean {
+        document
+    } else {
+        strict = false;
+        match open_bytes(bytes.clone(), &repair_flags) {
+            Ok(document) => document,
+            Err(error) => return scan_open_error(&*error),
         }
     };
     let options = RenderOptions::from_dpi(dpi);
@@ -343,9 +356,22 @@ fn scan(input: &str, dpi: f64, flags: &Flags) -> String {
         .min(flags.max_pages.unwrap_or(usize::MAX));
     let mut rendered = 0_usize;
     for index in 0..limit {
-        let result = document
+        let mut list = document
             .page(index)
-            .and_then(|page| pagura::render_page(&document, page, &options));
+            .and_then(|page| pagura::compile_page(&document, page));
+        if strict && list.as_ref().is_err_and(|error| error.repair.is_some()) {
+            let diagnostics = document.diagnostics();
+            document = match open_bytes(bytes.clone(), &repair_flags) {
+                Ok(document) => document,
+                Err(error) => return scan_open_error(&*error),
+            };
+            document.report(diagnostics);
+            strict = false;
+            list = document
+                .page(index)
+                .and_then(|page| pagura::compile_page(&document, page));
+        }
+        let result = list.and_then(|list| list.render(&options));
         match result {
             Ok(pixmap) => {
                 black_box(pixmap);
@@ -363,6 +389,13 @@ fn scan(input: &str, dpi: f64, flags: &Flags) -> String {
         pages.map_or_else(|| "null".into(), |count| count.to_string()),
         repair_tags(&document),
         failures.join(",")
+    )
+}
+
+fn scan_open_error(error: &(dyn Error + 'static)) -> String {
+    format!(
+        "{{\"schema\":1,\"strict\":false,\"open\":{},\"pages\":null}}",
+        json_error(error)
     )
 }
 

@@ -82,6 +82,16 @@ def mode_cases():
 
 def text_cases():
     yield from mode_cases()
+    points=[(F(17,4),F(31,4)),(F(49,4),F(31,4)),(F(17,4),F(79,4))]
+    pixels=[]
+    for y in range(32):
+        for x in range(32):
+            shape=F(int(clipped_area(points,x,31-y)*255+F(1,2)),255)
+            remainder=int(255*(1-shape)**2+F(1,2))
+            pixels.extend([255,remainder,remainder])
+    yield case("text-knockout-opaque-overlap",b"1 0 0 rg BT /F 20 Tf 4.25 7.75 Td [(A) 400 (A)] TJ ET",ttf(True),FONT,
+               oracle=b"P6\n32 32\n255\n"+bytes(pixels),tolerance=1,requirement="paint-text-knockout")
+
     yield case("text-tj-adjustments",b"BT /F 10 Tf 1 0 0 1 4 4 Tm [(A) -200 (A) 100 (A)] TJ ET",ttf(),FONT,
                [((4,4,4,6),BLACK),((10,4,4,6),BLACK),((13,4,4,6),BLACK)])
     yield case("text-spacing-rise",b"BT /F 10 Tf 200 Tz 1 Tc 3 Tw 2 Ts 1 0 0 1 2 2 Tm (A A) Tj ET",type3(),FONT,
@@ -157,6 +167,7 @@ def image_case(name, data, dictionary, samples, width, height, *, matrix=None, m
 
 
 def image_cases():
+    yield image_case("image-rgb-colour-key",bytes(RED+GREEN+RED+BLUE),b"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Mask [255 255 0 0 0 0]",[],4,1,colors=[RED,GREEN,RED,BLUE],alpha=[0,1,0,1],requirement="paint-image-masks")
     pixels=[0,85,170,255,255,170,85,0]
     for turns,matrix in enumerate([(8,0,0,4,2,2),(0,8,-4,0,6,2),(-8,0,0,-4,10,6),(0,-8,4,0,2,10)]):
         yield image_case(f"image-quarter-turn-{turns}",bytes(pixels),b"/ColorSpace /DeviceGray /BitsPerComponent 8",pixels,4,2,matrix=matrix)
@@ -216,6 +227,10 @@ def cases():
     yield from text_cases()
     yield from image_cases()
     yield from extra_cases()
+    yield from bundled_cases()
+    yield from affine_area_cases()
+    yield shared_font_case()
+    yield late_font_repair_case()
 
 
 def type1_lengths(program):
@@ -291,3 +306,222 @@ def extra_cases():
     objects=type3()
     objects[0]=objects[0].replace(b"[.001 0 0 .001 0 0]",b"[0 .001 -.001 0 0 0]")
     yield case("type3-rotated-horizontal-width",b"1 0 0 rg BT /F 20 Tf 16 4 Td (A) Tj 0 0 1 rg (A) Tj ET",objects,FONT,[((4,4,12,8),BLUE)],requirement="paint-type3")
+
+
+def bundled_contours(path, character):
+    """Read simple TrueType contours independently, per the sfnt/glyf format.
+    The selected fixture letters have only on-curve points, so their covered
+    area has an exact rational polygon oracle, with no curve approximation.
+    """
+    data = path.read_bytes()
+    u16 = lambda at: struct.unpack_from('>H', data, at)[0]
+    i16 = lambda at: struct.unpack_from('>h', data, at)[0]
+    u32 = lambda at: struct.unpack_from('>I', data, at)[0]
+    tables = {data[at:at+4]: u32(at+8) for at in range(12, 12+16*u16(4), 16)}
+    cmap = tables[b'cmap']
+    sub = next(cmap+u32(at+4) for at in range(cmap+4, cmap+4+8*u16(cmap+2), 8)
+               if (u16(at), u16(at+2)) == (3, 1))
+    assert u16(sub) == 4
+    n = u16(sub+6)//2
+    ends, starts = sub+14, sub+16+2*n
+    deltas, offsets = starts+2*n, starts+4*n
+    code = ord(character)
+    i = next(i for i in range(n) if u16(starts+2*i) <= code <= u16(ends+2*i))
+    delta, offset = i16(deltas+2*i), u16(offsets+2*i)
+    glyph = u16(offsets+2*i+offset+2*(code-u16(starts+2*i))) if offset else code
+    glyph = (glyph+delta) & 65535 if glyph else 0
+    long_loca = i16(tables[b'head']+50) == 1
+    loc = tables[b'loca']+(4 if long_loca else 2)*glyph
+    at = tables[b'glyf']+(u32(loc) if long_loca else 2*u16(loc))
+    count = i16(at)
+    assert count > 0, 'fixture glyph must have simple contours'
+    ends = [u16(at+10+2*i) for i in range(count)]
+    pos = at+10+2*count
+    pos += 2+u16(pos)
+    flags = []
+    while len(flags) <= ends[-1]:
+        flag = data[pos]; pos += 1
+        repeat = data[pos] if flag & 8 else 0
+        pos += bool(flag & 8)
+        flags.extend([flag]*(repeat+1))
+    coordinates = []
+    for short, same in ((2,16),(4,32)):
+        value = 0; axis = []
+        for flag in flags:
+            if flag & short:
+                change = data[pos]; pos += 1
+                value += change if flag & same else -change
+            elif not flag & same:
+                value += i16(pos); pos += 2
+            axis.append(value)
+        coordinates.append(axis)
+    assert all(flag & 1 for flag in flags), 'select straight-sided glyphs for an exact oracle'
+    contours = []; start = 0
+    for end in ends:
+        contours.append(list(zip(coordinates[0][start:end+1], coordinates[1][start:end+1])))
+        start = end+1
+    return contours, u16(tables[b'head']+18)
+
+
+def bundled_oracle(font_path, afm_path, text, *, advance=None, size=64):
+    """AFM widths control placement, while bundled TrueType contours control ink."""
+    widths = {}
+    for line in afm_path.read_text().splitlines():
+        if line.startswith('C '):
+            fields = dict(part.strip().split(' ',1) for part in line.split(';') if part.strip())
+            widths[fields['N']] = F(fields['WX'])
+    polygons = []; x = F(3)
+    font_size = 24
+    for character in text:
+        contours, upem = bundled_contours(font_path, character)
+        for contour in contours:
+            polygons.append([(x+F(px*font_size,upem),F(8)+F(py*font_size,upem)) for px,py in contour])
+        x += F(font_size,1000)*(widths[character] if advance is None else advance)
+    # Contours carry winding, so holes subtract ink independently.
+    signed = []
+    for polygon in polygons:
+        area = sum(a[0]*b[1]-a[1]*b[0] for a,b in zip(polygon,polygon[1:]+polygon[:1]))
+        signed.append((1 if area > 0 else -1, polygon))
+    pixels = []
+    for y in range(size):
+        for x in range(size):
+            coverage = abs(sum(sign*clipped_area(polygon,x,size-1-y) for sign,polygon in signed))
+            level = 255-int(min(F(1),coverage)*255+F(1,2))
+            pixels.extend([level]*3)
+    return b'P6\n%d %d\n255\n' % (size,size)+bytes(pixels)
+
+
+def bundled_cases():
+    """Provider-dependent PDF vectors; facade tests exercise these with and
+    without data. RGB oracle files keep their dedicated provider test driver
+    separate from the renderer's embedded-resource oracle suite.
+    """
+    from pathlib import Path
+    import hashlib
+    from .model import Vector
+    root = Path(__file__).resolve().parents[2]
+    entries = [('helvetica','Helvetica','Arimo-Regular'),
+               ('times-bold','Times-Bold','Tinos-Bold'),
+               ('courier-oblique','Courier-Oblique','Cousine-Italic')]
+    for name,base,outline in entries:
+        text = 'HH'
+        oracle = bundled_oracle(root/'data/fonts'/f'{outline}.ttf',root/'data/afm'/f'{base}.afm',text)
+        font = b'<< /Type /Font /Subtype /Type1 /BaseFont /'+base.encode()+b' >>'
+        identifier = 'bundled-'+name
+        yield Vector(identifier,{'.pdf':page(b'BT /F 24 Tf 3 8 Td (HH) Tj ET',[font],FONT,64),'.rgb':oracle},
+                     ('paint-bundled-fonts',), 'Non-embedded '+base+' uses AFM widths and bundled outlines',
+                     extra={'path':f'corpus/generated/paint/{identifier}.pdf','sha256':hashlib.sha256(page(b'BT /F 24 Tf 3 8 Td (HH) Tj ET',[font],FONT,64)).hexdigest(),'kind':'pdf','expected':RENDER,'pages':1,'repairs':['font.substituted'],'strict_valid':True,
+                            'oracle':f'corpus/generated/paint/{identifier}.rgb','oracle_sha256':hashlib.sha256(oracle).hexdigest(),'tolerance':1,'width':64,'height':64,'dpi':72})
+    base, outline = 'Courier-Oblique','Cousine-Italic'
+    oracle = bundled_oracle(root/'data/fonts'/f'{outline}.ttf',root/'data/afm'/f'{base}.afm','HH',advance=650)
+    font = b'<< /Type /Font /Subtype /Type1 /BaseFont /UnknownFamily /Encoding /WinAnsiEncoding /FirstChar 72 /LastChar 72 /Widths [650] /FontDescriptor 6 0 R >>'
+    descriptor = b'<< /Type /FontDescriptor /FontName /UnknownFamily /Flags 97 /FontBBox [-100 -300 1200 1000] /ItalicAngle -12 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 >>'
+    identifier = 'bundled-descriptor-flags'
+    yield Vector(identifier,{'.pdf':page(b'BT /F 24 Tf 3 8 Td (HH) Tj ET',[font,descriptor],FONT,64),'.rgb':oracle},
+                 ('paint-bundled-fonts',),'FontDescriptor flags select fixed-pitch italic substitute; PDF widths take precedence',
+                 extra={'path':f'corpus/generated/paint/{identifier}.pdf','sha256':hashlib.sha256(page(b'BT /F 24 Tf 3 8 Td (HH) Tj ET',[font,descriptor],FONT,64)).hexdigest(),'kind':'pdf','expected':RENDER,'pages':1,'repairs':['font.substituted'],'strict_valid':True,'oracle':f'corpus/generated/paint/{identifier}.rgb','oracle_sha256':hashlib.sha256(oracle).hexdigest(),'tolerance':1,'width':64,'height':64,'dpi':72})
+    for name in ('Symbol','ZapfDingbats'):
+        font=b'<< /Type /Font /Subtype /Type1 /BaseFont /'+name.encode()+b' >>'
+        yield Case('bundled-'+name.lower(),page(b'BT /F 24 Tf (A) Tj ET',[font],FONT),UNSUPPORTED,
+                   ('paint-bundled-fonts',),'No licensed substitute outlines are available',feature='font.non-embedded')
+    # H is Adobe-Japan1's predefined two-byte JIS map. Code 0x2422 maps
+    # to CID 843 (hiragana A). A licensed bundled H outline is deliberately
+    # assigned to that CID in the embedded subset, separating code/CID/glyph
+    # identities while keeping an exact polygon oracle.
+    contours, upem = bundled_contours(root/'data/fonts/Arimo-Regular.ttf','H')
+    points = [(x,y,True) for contour in contours for x,y in contour]
+    ends = []; n = 0
+    for contour in contours:
+        n += len(contour); ends.append(n-1)
+    glyph = simple(points,ends)
+    xs, ys = [p[0] for p in points],[p[1] for p in points]
+    glyph = glyph[:2]+struct.pack('>hhhh',min(xs),min(ys),max(xs),max(ys))+glyph[10:]
+    head = bytearray(54); struct.pack_into('>I',head,0,0x10000)
+    struct.pack_into('>I',head,12,0x5f0f3cf5); struct.pack_into('>H',head,18,upem); struct.pack_into('>h',head,50,1)
+    import re
+    cmap = (root/'data/cmaps/Adobe-Japan1-7/H').read_text()
+    code = 0x2422
+    cid = next(int(cid)+code-int(lo,16) for lo,hi,cid in re.findall(r'<([0-9a-f]+)>\s*<([0-9a-f]+)>\s*(\d+)',cmap)
+               if int(lo,16)<=code<=int(hi,16))
+    cid_map = bytearray((cid+1)*2); struct.pack_into('>H',cid_map,cid*2,1)
+    # Read the advance from AFM, then quantize it to the TrueType unit grid.
+    # The embedded hmtx and PDF DW agree exactly (9.2.4).
+    afm = root/'data/afm/Helvetica.afm'
+    width = next(int(re.search(r'WX\s+(\d+)',line).group(1)) for line in afm.read_text().splitlines() if '; N H ;' in line)
+    advance = round(F(width*upem,1000))
+    pdf_width = F(advance*1000,upem)
+    metrics = struct.pack('>HhHh',advance,0,advance,0)+bytes(6)
+    program = truetype(glyph_override=glyph,table_overrides={b'head':bytes(head),b'hmtx':metrics})
+    objects = [b'<< /Type /Font /Subtype /Type0 /BaseFont /Subset /Encoding /H /DescendantFonts [6 0 R] >>',
+               b'<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Subset /CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 1 >> /FontDescriptor 7 0 R /CIDToGIDMap 9 0 R /DW '+str(float(pdf_width)).encode()+b' >>',
+               b'<< /Type /FontDescriptor /FontName /Subset /Flags 4 /FontBBox [0 -300 1200 1000] /ItalicAngle 0 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 /FontFile2 8 0 R >>',
+               stream(program,b'/Length1 %d' % len(program)),stream(bytes(cid_map))]
+    identifier = 'bundled-cjk-cmap'
+    pdf = page(b'BT /F 24 Tf 3 8 Td <24222422> Tj ET',objects,FONT,64)
+    oracle = bundled_oracle(root/'data/fonts/Arimo-Regular.ttf',afm,'HH',advance=pdf_width)
+    yield Vector(identifier,{'.pdf':pdf,'.rgb':oracle},('paint-bundled-cmaps',),
+                 'Predefined CJK CMap selects an embedded CID font through a nonidentity CIDToGIDMap',
+                 extra={'kind':'pdf','path':f'corpus/generated/paint/{identifier}.pdf','sha256':hashlib.sha256(pdf).hexdigest(),
+                        'expected':RENDER,'pages':1,'strict_valid':True,'repairs':[], 'oracle':f'corpus/generated/paint/{identifier}.rgb',
+                        'oracle_sha256':hashlib.sha256(oracle).hexdigest(),'tolerance':1,'width':64,'height':64,'dpi':72})
+
+
+def affine_area_cases():
+    """Independent source-cell polygon clipping, including partial image edges.
+    The sampling mean is premultiplied by the rasterizer's quantized image-shape
+    coverage, matching the documented composition boundary rather than assuming
+    the background participates in the resampling filter.
+    """
+    for name,matrix in [('fractional',(F(3,2),0,0,F(3,2),F(9,4),F(9,4))),
+                        ('reflected',(-F(3,2),0,0,-F(3,2),F(17,4),F(17,4))),
+                        ('quarter',(0,F(3,2),-F(3,2),0,F(17,4),F(9,4))),
+                        ('sheared',(F(3,2),F(1,4),F(1,2),F(3,2),F(9,4),F(9,4)))]:
+        a,b,c,d,e,f=matrix
+        polygons=[]; values=[0,85,170,255]
+        for row in range(2):
+            for col in range(2):
+                polygons.append([(e+a*u+c*v,f+b*u+d*v) for u,v in [(F(col,2),1-F(row,2)),(F(col+1,2),1-F(row,2)),(F(col+1,2),1-F(row+1,2)),(F(col,2),1-F(row+1,2))]])
+        pixels=[]
+        for y in range(32):
+            for x in range(32):
+                areas=[clipped_area(p,x,31-y) for p in polygons]
+                covered=sum(areas)
+                shape=F(int(covered*255+F(1,2)),255)
+                mean=sum(area*value for area,value in zip(areas,values))/covered if covered else 0
+                pixels.extend([int(mean*shape+255*(1-shape)+F(1,2))]*3)
+        oracle=b'P6\n32 32\n255\n'+bytes(pixels)
+        content=b'q '+b' '.join(str(float(v)).encode() for v in matrix)+b' cm /I Do Q'
+        image=stream(bytes(values),b'/Subtype /Image /Width 2 /Height 2 /BitsPerComponent 8 /ColorSpace /DeviceGray')
+        yield case('image-area-'+name,content,[image],b'<< /XObject << /I 5 0 R >> >>',oracle=oracle,tolerance=1,requirement='paint-image-resampling')
+
+
+def shared_font_case():
+    objects=[b'<< /Type /Catalog /Pages 2 0 R >>',
+             b'<< /Type /Pages /Kids [3 0 R 8 0 R] /Count 2 >>',
+             b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 32 32] /Resources << /Font << /F 5 0 R >> >> /Contents 4 0 R >>',
+             stream(b'BT /F 10 Tf 2 2 Td (A) Tj ET'),*ttf(),
+             b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 32 32] /Resources << /Font << /Other 5 0 R >> >> /Contents 9 0 R >>',
+             stream(b'BT /Other 10 Tf 2 10 Td (AA) Tj ET')]
+    return Case('text-font-shared-pages',document(objects),RENDER,('paint-font-cache',),
+                'One immutable font dictionary and outline are shared across pages with different resource names',
+                oracle=rects([((2,2,4,6),BLACK)]),pages=2)
+
+
+def late_font_repair_case():
+    """The second page alone discovers a wrong FontFile2 Length1, so a
+    streaming strict audit must retry it without losing the first page.
+    """
+    import re
+    first=ttf(); second=ttf()
+    second[0]=second[0].replace(b'6 0 R',b'11 0 R')
+    second[1]=second[1].replace(b'7 0 R',b'12 0 R')
+    second[2]=re.sub(rb'/Length1 (\d+)',lambda m:b'/Length1 '+str(int(m[1])+1).encode(),second[2],count=1)
+    objects=[b'<< /Type /Catalog /Pages 2 0 R >>',
+             b'<< /Type /Pages /Kids [3 0 R 8 0 R] /Count 2 >>',
+             b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 32 32] /Resources << /Font << /F 5 0 R >> >> /Contents 4 0 R >>',
+             stream(b'BT /F 10 Tf 2 2 Td (A) Tj ET'),*first,
+             b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 32 32] /Resources << /Font << /F 10 0 R >> >> /Contents 9 0 R >>',
+             stream(b'BT /F 10 Tf 2 10 Td (AA) Tj ET'),*second]
+    return Case('text-late-font-repair',document(objects),RENDER,('paint-font-cache',),
+                'A repair on page two preserves both rendered pages and strict audit status',
+                oracle=rects([((2,2,4,6),BLACK)]),pages=2,repairs=('font.stream-lengths',),strict_valid=False)

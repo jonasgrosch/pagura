@@ -3,7 +3,8 @@
 //! ISO 32000-2 7.6.4.3.2 Algorithm 2(a), 7.6.4.3.3, and Annex D.3.
 //! The byte-oriented Document API and host protocol remain unchanged.
 
-use pagura::{Document, OpenOptions};
+use pagura::OpenOptions;
+use pagura_document::Document;
 use std::sync::Arc;
 
 fn legacy(document: &Document) -> bool {

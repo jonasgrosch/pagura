@@ -32,7 +32,12 @@ fn independent_paint_oracles_and_device_tiles() {
         let header = format!("P6\n{width} {height}\n255\n");
         let data = oracle.strip_prefix(header.as_bytes()).unwrap();
         let image = list.render(&RenderOptions::default()).unwrap();
-        let tolerance = u8::from(matches!(name, "text-triangle-area" | "image-dct"));
+        let tolerance = u8::from(
+            matches!(
+                name,
+                "text-triangle-area" | "image-dct" | "text-knockout-opaque-overlap"
+            ) || name.starts_with("image-area-"),
+        );
         for (actual, expected) in image
             .data()
             .as_chunks::<4>()

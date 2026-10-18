@@ -127,9 +127,27 @@ impl Sampler {
         charge(work, count, maximum)?;
         let mut out = Texel::default();
         let mut weight = 0.0;
+        let rectangle = (self.inverse.b == 0.0 && self.inverse.c == 0.0)
+            || (self.inverse.a == 0.0 && self.inverse.d == 0.0);
+        let low = Point::new(
+            polygon[0].x.min(polygon[2].x),
+            polygon[0].y.min(polygon[2].y),
+        );
+        let high = Point::new(
+            polygon[0].x.max(polygon[2].x),
+            polygon[0].y.max(polygon[2].y),
+        );
         for row in y0..y1 {
             for col in x0..x1 {
-                let area = intersection(&polygon, f64::from(col), f64::from(row));
+                // Axis-aligned scans need interval overlap, rather than four
+                // polygon clipping passes for every source cell. The general
+                // affine path keeps polygon integration for shear and rotation.
+                let area = if rectangle {
+                    (high.x.min(f64::from(col) + 1.0) - low.x.max(f64::from(col))).max(0.0)
+                        * (high.y.min(f64::from(row) + 1.0) - low.y.max(f64::from(row))).max(0.0)
+                } else {
+                    intersection(&polygon, f64::from(col), f64::from(row))
+                };
                 if area > 0.0 {
                     out.add(texel(self.index(f64::from(col), f64::from(row))?)?, area);
                     weight += area;
@@ -206,4 +224,61 @@ fn intersection(polygon: &[Point; 4], x: f64, y: f64) -> f64 {
         .sum::<f64>()
         .abs()
         * 0.5
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn rectangle_overlap_matches_polygon_integration() {
+        for inverse in [
+            Transform::new(2.4, 0.0, 0.0, 3.2, -1.25, -2.75),
+            Transform::new(-2.4, 0.0, 0.0, -3.2, 31.1, 29.7),
+            Transform::new(0.0, -3.2, 2.4, 0.0, -1.25, 29.7),
+        ] {
+            let sampler = Sampler {
+                width: 32,
+                height: 32,
+                interpolate: false,
+                inverse,
+            };
+            for y in 0..10 {
+                for x in 0..10 {
+                    let points = [
+                        Point::new(f64::from(x), f64::from(y)),
+                        Point::new(f64::from(x + 1), f64::from(y)),
+                        Point::new(f64::from(x + 1), f64::from(y + 1)),
+                        Point::new(f64::from(x), f64::from(y + 1)),
+                    ]
+                    .map(|p| p * inverse);
+                    let mut sum = 0.0;
+                    let mut weight = 0.0;
+                    for row in 0..32 {
+                        for col in 0..32 {
+                            let area = intersection(&points, f64::from(col), f64::from(row));
+                            sum += area * f64::from((row + col) % 2);
+                            weight += area;
+                        }
+                    }
+                    let mut work = 0;
+                    let sample = sampler
+                        .sample(x, y, &mut work, usize::MAX, |index| {
+                            let value = ((index / 32 + index % 32) % 2) as f64;
+                            Ok(Texel {
+                                color: [value; 4],
+                                alpha: 1.0,
+                                shape: 1.0,
+                            })
+                        })
+                        .unwrap();
+                    let expected = if weight > 0.0 { sum / weight } else { 0.0 };
+                    assert!(
+                        (sample.color[0] - expected).abs() < 1e-12,
+                        "{inverse:?} ({x},{y}) {} {expected}",
+                        sample.color[0]
+                    );
+                }
+            }
+        }
+    }
 }
