@@ -1,0 +1,17 @@
+count 5
+name A 1
+glyph-name 0 .notdef
+glyph-name 1 A
+glyph-name 2 A
+glyph-name-none 5
+glyph-name-none 4294967295
+outline 1
+m 0 0
+l 100 0
+l 100 200
+l 0 200
+h
+outline 2
+m 0 0
+c 0 200 100 200 300 0
+h

@@ -309,7 +309,7 @@ fn base_encoding_vectors() -> Result<()> {
                 usize::try_from(integer(&row[0])?).map_err(|_| Error::syntax("invalid code"))?;
             let unicode = encoding[code]
                 .as_ref()
-                .and_then(|name| encoding::unicode(name.as_bytes()));
+                .and_then(|name| encoding::unicode_for_font(name.as_bytes(), &base));
             assert_eq!(unicode.as_deref(), text(&row[4]), "{name}: {code}");
         }
     }

@@ -25,6 +25,18 @@ fn generated_flags_have_strict_tags_exact_pixels_and_text() {
         "symbolic-latin-differences",
         "nonsymbolic-latin-differences",
         "type1-nonsymbolic-override",
+        "both-post",
+        "symbolic-latin-post",
+        "post-agl-components",
+        "post-tounicode-priority",
+        "post-encoding-priority",
+        "post-unknown-name",
+        "post-nondingbats-a12",
+        "post-nondingbats-a19",
+        "post-zapfdingbats-a12",
+        "post-zapfdingbats-a19",
+        "post-dingbats-a19",
+        "post-nondingbats-a12-encoding",
     ] {
         let bytes = fixture("font", &format!("descriptor-{name}.pdf"));
         let expected =
@@ -49,7 +61,11 @@ fn generated_flags_have_strict_tags_exact_pixels_and_text() {
         let font = load(&document, dictionary, None, Position::Buffer(0)).unwrap();
         let glyph = font.decode(&[65]).unwrap().remove(0);
         assert_eq!(glyph.advance, 0.6, "{name}");
-        assert_eq!(glyph.unicode.as_deref().unwrap_or(""), text, "{name}");
+        let decoded = expected
+            .lines()
+            .find_map(|line| line.strip_prefix("decoded-text "))
+            .unwrap_or(text);
+        assert_eq!(glyph.unicode.as_deref().unwrap_or(""), decoded, "{name}");
         let GlyphShape::Outline { glyph, .. } = glyph.shape else {
             panic!("{name}")
         };

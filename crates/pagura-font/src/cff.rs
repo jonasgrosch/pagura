@@ -32,6 +32,7 @@ pub(crate) struct Cff {
     private: Vec<Private>,
     select: Vec<usize>,
     names: BTreeMap<Name, GlyphId>,
+    glyph_names: Vec<Option<Name>>,
     cids: Option<BTreeMap<u32, GlyphId>>,
     encoding: Option<Box<[Option<Name>; 256]>>,
     matrix: Transform,
@@ -89,6 +90,38 @@ pub(super) fn index(r: &mut Read<'_>, limits: &Limits, cff2: bool) -> Result<Vec
         .collect())
 }
 
+type CharsetMaps = (BTreeMap<Name, GlyphId>, Option<BTreeMap<u32, GlyphId>>);
+
+fn charset_maps(
+    charset: &[u16],
+    top: &dict::Dict,
+    string_ranges: &[Range<usize>],
+    data: &[u8],
+    limits: &Limits,
+    at: usize,
+) -> Result<CharsetMaps> {
+    let mut names = BTreeMap::new();
+    let mut cids = top.has(0x0c1e).then(BTreeMap::new);
+    for (i, sid) in charset.iter().copied().enumerate() {
+        let glyph =
+            GlyphId(u32::try_from(i).map_err(|_| crate::read::limit(at, "glyph count overflow"))?);
+        if let Some(cids) = &mut cids {
+            if f64::from(sid) >= top.number(0x0c22, 8720.0)? {
+                return Err(bad(at, "CID outside CFF CIDCount"));
+            }
+            if cids.insert(u32::from(sid), glyph).is_some() {
+                return Err(bad(at, "duplicate CFF CID"));
+            }
+        } else {
+            let name = strings::sid(sid, string_ranges, data, limits)?;
+            if names.insert(name, glyph).is_some() {
+                return Err(bad(at, "duplicate CFF glyph name"));
+            }
+        }
+    }
+    Ok((names, cids))
+}
+
 impl Cff {
     pub fn parse(
         data: &[u8],
@@ -136,27 +169,8 @@ impl Cff {
         } else {
             charset(table, top.offset(15, Some(0))?, glyphs.len(), limits)?
         };
-        let mut names = BTreeMap::new();
-        let mut cids = cid.then(BTreeMap::new);
-        for (i, sid) in charset.iter().copied().enumerate() {
-            let glyph = GlyphId(
-                u32::try_from(i)
-                    .map_err(|_| crate::read::limit(range.start, "glyph count overflow"))?,
-            );
-            if let Some(cids) = &mut cids {
-                if f64::from(sid) >= top.number(0x0c22, 8720.0)? {
-                    return Err(bad(range.start, "CID outside CFF CIDCount"));
-                }
-                if cids.insert(u32::from(sid), glyph).is_some() {
-                    return Err(bad(range.start, "duplicate CFF CID"));
-                }
-            } else {
-                let name = strings::sid(sid, &string_ranges, data, limits)?;
-                if names.insert(name, glyph).is_some() {
-                    return Err(bad(range.start, "duplicate CFF glyph name"));
-                }
-            }
-        }
+        let (names, cids) =
+            charset_maps(&charset, &top, &string_ranges, data, limits, range.start)?;
         let encoding = if cid || cff2 {
             None
         } else {
@@ -184,12 +198,19 @@ impl Cff {
             limits,
             diagnostics,
         )?;
+        let glyph_names = crate::names::indexed(
+            glyphs.len(),
+            names.iter().map(|(name, glyph)| Ok((*glyph, name))),
+            limits,
+            range.start,
+        )?;
         Ok(Self {
             glyphs,
             global,
             private,
             select,
             names,
+            glyph_names,
             cids,
             encoding,
             matrix,
@@ -208,6 +229,11 @@ impl Cff {
     }
     pub fn cid(&self, cid: u32) -> Option<GlyphId> {
         self.cids.as_ref()?.get(&cid).copied()
+    }
+    pub fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
+        self.glyph_names
+            .get(usize::try_from(glyph.0).ok()?)?
+            .as_ref()
     }
     pub fn name(&self, name: &[u8]) -> Option<GlyphId> {
         self.names.get(name).copied()

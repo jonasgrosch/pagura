@@ -74,6 +74,25 @@ pub mod features {
     pub const PREDEFINED_CMAP: Feature = Feature::new("font.predefined-cmap");
 }
 
+/// Converts an Adobe glyph name to Unicode using the same AGL name rules
+/// as PDF encoding lookup (ISO 32000-2 9.10.2). Unknown names return `None`.
+/// Suffixes, underscore components and `uni`/`u` names follow the existing
+/// encoding conversion. ZapfDingbats-only names are excluded. Work and output
+/// grow linearly with the name length;
+/// callers account for their input and output budgets.
+/// This function neither selects a glyph nor consults ToUnicode.
+pub fn glyph_name_unicode(name: &[u8]) -> Option<String> {
+    encoding::unicode(name)
+}
+
+/// Converts a glyph name using AGL, with the separate ZapfDingbats list only
+/// for a recognized ZapfDingbats/Dingbats base font (9.10.2, Annex D.6).
+/// Recognized subset and style names use the same family rules as substitution.
+/// Mapping priority, glyph selection and budgets remain the caller's responsibility.
+pub fn glyph_name_unicode_for_font(name: &[u8], base_font: &[u8]) -> Option<String> {
+    encoding::unicode_for_font(name, base_font)
+}
+
 /// The font dictionary's `/Subtype`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FontKind {

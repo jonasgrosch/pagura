@@ -7,6 +7,7 @@ impl Type1 {
         nested(&self.glyphs)
             .saturating_add(nested(&self.subrs))
             .saturating_add(names(&self.names))
+            .saturating_add(crate::names::heap_bytes(&self.glyph_names))
             .saturating_add(encoding(&self.encoding))
     }
 }
