@@ -1,6 +1,7 @@
 //! Generated link/square borders and note icons (12.5.4, 12.5.6.4–12.5.6.8).
 //! Note icon outlines are device policy; no document font is required.
 use super::AnnotationFlags;
+use crate::border::{Border, BorderStyle};
 use crate::color::{Color, Space};
 use crate::display::{Clip, Command, Mark, PathCommand};
 use crate::interpreter::Compiler;
@@ -40,7 +41,7 @@ impl Compiler<'_> {
                 "square border effects and rectangle differences are not implemented",
             ));
         }
-        let Border {
+        let Stroked {
             width,
             dash,
             underline,
@@ -295,65 +296,39 @@ fn icon(name: &[u8]) -> (Path, Path) {
     (bg.finish(), p.finish())
 }
 
-pub(super) struct Border {
+/// A border as annotation appearances draw it: solid, dashed or underlined.
+pub(super) struct Stroked {
     pub(super) width: f64,
     pub(super) dash: Vec<f64>,
     pub(super) underline: bool,
 }
-pub(super) fn border(document: &pagura_document::Document, d: &Dictionary) -> Result<Border> {
-    let (mut width, mut dash, mut style) = (1.0, Vec::new(), b"S".as_slice());
-    if let Some(bs) = d.get(b"BS") {
-        let bs = document.resolve_dictionary(bs)?;
-        width = scalar(document, bs, b"W")?.unwrap_or(1.0);
-        style = bs
-            .get(b"S")
-            .map(|v| document.resolve(v))
-            .transpose()?
-            .and_then(Value::as_name)
-            .map_or(b"S", pagura_core::Name::as_bytes);
-        if style == b"D" {
-            dash = bs
-                .get(b"D")
-                .map(|v| numbers(document, v))
-                .transpose()?
-                .unwrap_or_else(|| vec![3.0]);
-        }
-    } else if let Some(border) = d.get(b"Border") {
-        let border = document
-            .resolve(border)?
-            .as_array()
-            .filter(|a| matches!(a.len(), 3 | 4))
-            .ok_or(Error::syntax("invalid annotation Border"))?;
-        let radii = [
-            document.resolve(&border[0])?.as_number(),
-            document.resolve(&border[1])?.as_number(),
-        ];
-        if radii != [Some(0.0), Some(0.0)] {
-            return Err(Error::unsupported(
-                crate::features::ANNOTATION_APPEARANCE,
-                "rounded annotation borders are not implemented",
-            ));
-        }
-        width = document
-            .resolve(&border[2])?
-            .as_number()
-            .ok_or(Error::syntax("invalid annotation border width"))?;
-        if let Some(array) = border.get(3) {
-            dash = numbers(document, array)?;
-        }
-    }
-    if width < 0.0 {
-        return Err(Error::syntax("negative annotation border width"));
-    }
-    if matches!(style, b"B" | b"I") {
+/// The annotation's border (12.5.4); rounded and relief borders are unsupported.
+pub(super) fn border(document: &pagura_document::Document, d: &Dictionary) -> Result<Stroked> {
+    let Border {
+        width,
+        style,
+        rounded,
+    } = Border::read(document, d)?;
+    if rounded {
         return Err(Error::unsupported(
             crate::features::ANNOTATION_APPEARANCE,
-            "relief annotation borders are not implemented",
+            "rounded annotation borders are not implemented",
         ));
     }
-    Ok(Border {
+    let (dash, underline) = match style {
+        BorderStyle::Solid | BorderStyle::Other => (Vec::new(), false),
+        BorderStyle::Dashed(dash) => (dash, false),
+        BorderStyle::Underline => (Vec::new(), true),
+        BorderStyle::Beveled | BorderStyle::Inset => {
+            return Err(Error::unsupported(
+                crate::features::ANNOTATION_APPEARANCE,
+                "relief annotation borders are not implemented",
+            ));
+        }
+    };
+    Ok(Stroked {
         width,
         dash,
-        underline: style == b"U",
+        underline,
     })
 }

@@ -9,6 +9,7 @@
 //! [`RenderContext`] shares fonts and document configuration across pages.
 
 mod blend;
+mod border;
 mod cie;
 mod color;
 mod compositor;
