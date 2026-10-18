@@ -368,3 +368,39 @@ impl PdfFont {
         Ok((glyph, length))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_support::{dictionary, document};
+    use pagura_core::ErrorKind;
+
+    #[test]
+    fn decode_limits_and_positions() -> Result<()> {
+        let document = document("type3-differences")?;
+        let mut font = PdfFont::load(&document, dictionary(&document)?)?;
+        font.limits.string_bytes = 1;
+        assert_eq!(
+            font.decode(b"AA").err().map(|e| e.kind),
+            Some(ErrorKind::Limit)
+        );
+        font.limits.string_bytes = 100;
+        font.limits.value_nodes = 1;
+        assert_eq!(
+            font.decode(b"AA").err().map(|e| e.position),
+            Some(Position::Buffer(1))
+        );
+        font.limits.value_nodes = 100;
+        font.limits.decoded_bytes = 1;
+        assert_eq!(
+            font.decode(b"C").err().map(|e| e.kind),
+            Some(ErrorKind::Limit)
+        );
+        font.limits.operations = 0;
+        assert_eq!(
+            font.decode(b"A").err().map(|e| e.kind),
+            Some(ErrorKind::Limit)
+        );
+        Ok(())
+    }
+}

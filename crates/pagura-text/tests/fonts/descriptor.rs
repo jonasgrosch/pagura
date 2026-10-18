@@ -1,14 +1,9 @@
-#![forbid(unsafe_code)]
 //! Descriptor flag normalization (9.8.2, Table 121) on the generated
 //! `font/descriptor-*` vectors: strict tags, glyphs, advances and text.
-use pagura_core::{Limits, ObjectId, Recovery, Result};
+use pagura_core::{ObjectId, Recovery, Result};
 use pagura_document::{Document, OpenOptions};
-use pagura_font::{FontFormat, FontProgram};
 use pagura_testkit::{Manifest, fixture};
-use pagura_text::{
-    CidToUnicode, FontKind, GlyphShape, PdfFont, PredefinedCMap, Provider, StandardFont, repairs,
-};
-use std::{collections::BTreeMap, sync::Arc};
+use pagura_text::{GlyphShape, PdfFont, repairs};
 
 /// One `font/descriptor-*` vector: its PDF and the `.expect` oracle lines.
 struct Vector {
@@ -97,70 +92,5 @@ fn contradictory_or_missing_flags_are_repaired_and_valid_pairs_kept() -> Result<
             "{name}"
         );
     }
-    Ok(())
-}
-
-/// A provider whose CID substitute is a fixture program without collection
-/// Unicode data: enough to take the substitution path.
-struct Collection(Arc<FontProgram>);
-
-impl Provider for Collection {
-    fn cid_font(&self, _: &[u8], _: &[u8]) -> Result<Option<Arc<FontProgram>>> {
-        Ok(Some(Arc::clone(&self.0)))
-    }
-    fn standard_font(&self, _: &[u8]) -> Result<Option<Arc<StandardFont>>> {
-        Ok(None)
-    }
-    fn predefined_cmap(&self, _: &[u8]) -> Result<Option<PredefinedCMap>> {
-        Ok(None)
-    }
-    fn cid_to_unicode(&self, _: &[u8], _: &[u8]) -> Result<Option<Arc<CidToUnicode>>> {
-        Ok(Some(Arc::new(CidToUnicode::new(
-            BTreeMap::new(),
-            &Limits::default(),
-        )?)))
-    }
-}
-
-#[test]
-fn substituted_cid_fonts_still_repair_contradictory_descriptor_flags() -> Result<()> {
-    // The CID substitute never reads the flags, but Symbolic and Nonsymbolic
-    // both set is still the descriptor's repair (9.8.2, Table 121).
-    let provider = Collection(Arc::new(FontProgram::parse(
-        fixture("font", "truetype-cmap4.font"),
-        FontFormat::TrueType,
-        &Limits::default(),
-    )?));
-    let name = "repair-cid-substitute-flags";
-    let open = |recovery| {
-        Document::open(
-            fixture("text", &format!("{name}.pdf")),
-            &OpenOptions {
-                recovery,
-                ..OpenOptions::default()
-            },
-        )
-    };
-    let font = |document: &Document| -> Result<PdfFont> {
-        let dictionary = document.object(ObjectId::new(4, 0))?.dictionary().unwrap();
-        PdfFont::load_with_provider(document, dictionary, Some(&provider))
-    };
-    let strict = open(Recovery::Strict)?;
-    let error = font(&strict).unwrap_err();
-    assert_eq!(error.repair, Some(repairs::DESCRIPTOR_FLAGS), "{error}");
-    assert_eq!(error.object, Some(ObjectId::new(6, 0)));
-    let repaired = open(Recovery::Repair)?;
-    assert_eq!(font(&repaired)?.kind(), FontKind::Type0);
-    assert_eq!(
-        fixture("text", &format!("{name}.repair")),
-        format!("{}\n", repairs::DESCRIPTOR_FLAGS.as_str()).into_bytes()
-    );
-    let flags: Vec<_> = repaired
-        .diagnostics()
-        .into_iter()
-        .filter(|item| item.repair() == Some(repairs::DESCRIPTOR_FLAGS))
-        .map(|item| item.object)
-        .collect();
-    assert_eq!(flags, [Some(ObjectId::new(6, 0))]);
     Ok(())
 }

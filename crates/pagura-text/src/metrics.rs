@@ -265,3 +265,63 @@ fn scaled(document: &Document, value: &Value, scale: f64) -> Result<f64> {
     }
     Ok(width)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_support::{dictionary, document, expected, float, integer, near, rows};
+    use pagura_core::ErrorKind;
+
+    #[test]
+    fn cid_metric_vectors() -> Result<()> {
+        for name in ["cid-metrics", "cid-default-metrics"] {
+            let document = document(name)?;
+            let metrics = Metrics::composite(&document, dictionary(&document)?)?;
+            for value in expected(name)? {
+                let row = rows(&value)?;
+                let code = integer(&row[0])?;
+                near(metrics.width(code), float(&row[1])?);
+                let vertical = metrics.vertical(code);
+                near(vertical.advance, float(&row[2])?);
+                near(vertical.origin.0, float(&row[3])?);
+                near(vertical.origin.1, float(&row[4])?);
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_metric_vectors() -> Result<()> {
+        for name in [
+            "cid-width-reversed",
+            "cid-width-overflow",
+            "cid-w2-truncated",
+            "cid-range-truncated",
+            "cid-dw2-length",
+        ] {
+            let document = document(name)?;
+            let result = Metrics::composite(&document, dictionary(&document)?);
+            assert_eq!(
+                result.err().map(|e| e.kind),
+                Some(ErrorKind::Syntax),
+                "{name}"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn missing_width_vector() -> Result<()> {
+        let document = document("simple-missing-width")?;
+        let dictionary = dictionary(&document)?;
+        let descriptor = dictionary
+            .get(b"FontDescriptor")
+            .and_then(Value::as_dictionary);
+        let metrics = Metrics::simple(&document, dictionary, descriptor, 0.001)?;
+        for value in expected("simple-missing-width")? {
+            let row = rows(&value)?;
+            near(metrics.width(integer(&row[0])?), float(&row[1])?);
+        }
+        Ok(())
+    }
+}
