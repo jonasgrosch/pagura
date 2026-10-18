@@ -1,5 +1,5 @@
 //! Borrowed PDF signature data and separate validation aspects (ADR 0015).
-use super::{ByteRange, ByteRangeError};
+use super::{ByteRange, ByteRangeError, PermittedModifications};
 use crate::Revision;
 use pagura_core::{Diagnostic, Dictionary, Error, Name, ObjectId, Position, Value};
 
@@ -43,7 +43,7 @@ pub enum FieldSelection<'a> {
     /// All fields except the named fields.
     Exclude(Vec<&'a [u8]>),
 }
-/// Signature field lock dictionary, read as data without enforcing it (Table 236).
+/// Signature field lock dictionary (Table 236); analysis freezes signed locks.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldLock<'a> {
     /// Unmodified source dictionary.
@@ -126,13 +126,6 @@ pub enum RevisionCoverage<'a> {
     Indeterminate,
     /// Repaired structure is unsuitable for establishing revision coverage.
     RepairedDocument,
-}
-/// Modification analysis is a separate stage, even without later revisions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum PermittedModifications {
-    /// DocMDP, FieldMDP and usage rights have not been evaluated.
-    NotAnalysedYet,
 }
 /// Trust must eventually be established from host-supplied anchors only.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -280,4 +273,22 @@ pub struct Signatures<'a> {
     pub usage_rights_error: Option<Error>,
     /// UR3 signature, which is referenced from Perms rather than a form field.
     pub usage_rights: Option<Signature<'a>>,
+    /// Signatures found in earlier revisions but absent or replaced in the
+    /// current field/UR3 views. Entries are flat and deduplicated by source.
+    pub historical: Vec<HistoricalSignature<'a>>,
+    /// False if any earlier revision could not be inspected without repair or
+    /// unsupported source handling. An empty history then does not establish absence.
+    pub history_complete: bool,
+}
+/// A signature hidden by a later field removal or replacement.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HistoricalSignature<'a> {
+    /// Revision in which this historical source view was found, newest first.
+    pub revision: usize,
+    /// Qualified name in that revision; None for catalog usage rights.
+    pub field_name: Option<String>,
+    /// Field identity in that revision, when applicable.
+    pub field_object: Option<ObjectId>,
+    /// Original signature with coverage indexes rebased to the full document.
+    pub signature: Signature<'a>,
 }

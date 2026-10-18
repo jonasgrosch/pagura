@@ -12,6 +12,7 @@ mod catalog;
 mod contents;
 mod diagnostics;
 pub mod forms;
+mod history;
 mod load;
 mod memory;
 pub mod navigation;
@@ -20,6 +21,7 @@ mod object_stream;
 mod page_geometry;
 mod pages;
 mod rebuild;
+mod revision_bounds;
 mod security;
 mod security_dictionary;
 mod security_padding;
@@ -68,7 +70,7 @@ impl std::fmt::Debug for OpenOptions {
 /// An opened, immutable PDF document.
 #[derive(Debug)]
 pub struct Document {
-    bytes: Arc<[u8]>,
+    bytes: history::Bytes,
     options: OpenOptions,
     trailer: Dictionary,
     slots: BTreeMap<ObjectId, Slot>,
@@ -77,7 +79,8 @@ pub struct Document {
     object_streams: BTreeMap<u32, OnceLock<Result<object_stream::Contents>>>,
     security: Option<security::Security>,
     diagnostics: Mutex<diagnostics::Log>,
-    retained: memory::Budget,
+    retained: Arc<memory::Budget>,
+    historical: history::Cache,
 }
 
 /// One cross-reference entry and its lazily parsed object.

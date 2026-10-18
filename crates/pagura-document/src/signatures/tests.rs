@@ -150,10 +150,27 @@ fn independent_structures() {
             .filter_map(|f| f.signature.as_ref())
             .chain(result.usage_rights.iter())
         {
-            assert_eq!(
-                signature.results.permitted_modifications,
-                PermittedModifications::NotAnalysedYet
-            );
+            match &signature.results.revision_coverage {
+                RevisionCoverage::Covered { index: 0, .. } => assert!(matches!(
+                    &signature.results.permitted_modifications,
+                    PermittedModifications::Analysed(ModificationAnalysis {
+                        outcome: ModificationOutcome::NoChanges,
+                        ..
+                    })
+                )),
+                RevisionCoverage::Covered { .. } => assert!(matches!(
+                    &signature.results.permitted_modifications,
+                    PermittedModifications::Analysed(_)
+                )),
+                RevisionCoverage::RepairedDocument | RevisionCoverage::Indeterminate => assert_eq!(
+                    signature.results.permitted_modifications,
+                    PermittedModifications::Inconclusive
+                ),
+                _ => assert_eq!(
+                    signature.results.permitted_modifications,
+                    PermittedModifications::NotAnalysedYet
+                ),
+            }
             assert_eq!(signature.results.signer_trust, SignerTrust::NotCheckedYet);
             assert_eq!(
                 signature.results.validation_time,

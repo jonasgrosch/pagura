@@ -36,9 +36,11 @@ fn independent_signed_pdfs() {
                     signature.results.revocation,
                     RevocationStatus::NotCheckedYet
                 );
-                assert_eq!(
+                // Permitted-change analysis now runs; its cases live in the signature-changes suite.
+                assert_ne!(
                     signature.results.permitted_modifications,
-                    PermittedModifications::NotAnalysedYet
+                    PermittedModifications::NotAnalysedYet,
+                    "{name}"
                 );
                 assert_eq!(
                     signature.results.validation_time,

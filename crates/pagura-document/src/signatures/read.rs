@@ -13,14 +13,12 @@ use pagura_core::{Dictionary, Error, Result};
 
 struct Reader<'a> {
     ctx: Context<'a>,
-    scanned: usize,
     boundaries: Option<Vec<Option<revisions::Boundary>>>,
 }
-pub(super) fn read(doc: &Document) -> Result<Signatures<'_>> {
+pub(super) fn read<'a>(doc: &'a Document, ctx: &Context<'_>) -> Result<Signatures<'a>> {
     let form = doc.acro_form()?;
     let mut reader = Reader {
-        ctx: Context::new(doc),
-        scanned: 0,
+        ctx: ctx.for_document(doc),
         boundaries: None,
     };
     let mut fields = Vec::new();
@@ -101,6 +99,8 @@ pub(super) fn read(doc: &Document) -> Result<Signatures<'_>> {
         certification_error,
         usage_rights_error,
         usage_rights,
+        historical: Vec::new(),
+        history_complete: true,
     };
     // Later lazy loads can discover repairs. Make every coverage result
     // conservative after all source dictionaries have been inspected.
@@ -186,11 +186,11 @@ impl<'a> Reader<'a> {
             },
             None => SubFilter::Unspecified,
         };
-        let checked = byte_range::check(&mut self.ctx, d, source, &mut self.scanned)?;
+        let checked = byte_range::check(&mut self.ctx, d, source)?;
         let (byte_range, integrity, revision_coverage) = match checked {
             Ok(range) => {
                 if self.boundaries.is_none() {
-                    self.boundaries = Some(revisions::read(&mut self.ctx, &mut self.scanned)?);
+                    self.boundaries = Some(revisions::read(&mut self.ctx)?);
                 }
                 let coverage = revisions::coverage(
                     &self.ctx,

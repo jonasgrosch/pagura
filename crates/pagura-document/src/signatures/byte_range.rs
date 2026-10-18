@@ -1,9 +1,9 @@
 //! Source-bound byte ranges (12.8.1, Table 255; 12.8.3.3.1).
 use crate::{
-    Document, ObjectSource,
+    ObjectSource,
     navigation::context::{Context, Source},
 };
-use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_core::{Dictionary, Result, Value};
 use std::ops::Range;
 
 /// A failed byte-range structure check; cryptography has not run.
@@ -59,7 +59,6 @@ pub(super) fn check<'a>(
     ctx: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
-    scanned: &mut usize,
 ) -> Result<std::result::Result<ByteRange<'a>, ByteRangeError>> {
     if dictionary
         .iter()
@@ -98,7 +97,7 @@ pub(super) fn check<'a>(
     if extent.end > end {
         return Ok(Err(ByteRangeError::SignatureOutsideSignedBytes));
     }
-    charge_scan(ctx.doc, scanned, extent.len(), source)?;
+    ctx.scan(extent.len(), source)?;
     let span =
         super::source::contents_span(ctx, dictionary, object.value(), extent.clone(), source);
     let span = match span {
@@ -119,17 +118,4 @@ pub(super) fn check<'a>(
         bytes,
         ranges: [0..length, next..end],
     }))
-}
-
-pub(super) fn charge_scan(
-    doc: &Document,
-    scanned: &mut usize,
-    count: usize,
-    source: Source,
-) -> Result<()> {
-    *scanned = scanned
-        .checked_add(count)
-        .filter(|&n| n <= doc.limits().file_bytes)
-        .ok_or_else(|| source.error(Error::limit("signature source scan budget exceeded")))?;
-    Ok(())
 }

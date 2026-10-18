@@ -1,0 +1,2182 @@
+{
+  "schema": 2,
+  "area": "signature-changes",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "signature-changes/form-fill-p1",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: form-fill-p1",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/form-fill-p1.mdp",
+          "sha256": "62139bf64310a3c192a68a88697fa794b2b2b048d5ef8d667233984900f90cb1"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/form-fill-p1.net",
+          "sha256": "62139bf64310a3c192a68a88697fa794b2b2b048d5ef8d667233984900f90cb1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/form-fill-p1.pdf",
+          "sha256": "3fcb35e6fa98fc06ef619280fbd5770f17766bd2d3b7e44f819d16e88415ac7c"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/form-fill-p2",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: form-fill-p2",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/form-fill-p2.mdp",
+          "sha256": "34eaab8e6c5c2b4ea658fbf81bd27b6ecf5e208a856f1614a546e11806d0b745"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/form-fill-p2.net",
+          "sha256": "34eaab8e6c5c2b4ea658fbf81bd27b6ecf5e208a856f1614a546e11806d0b745"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/form-fill-p2.pdf",
+          "sha256": "2300dd8e3ab013e56842980cc06e96f55622f7012b64037d5e301f7a002f2102"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/form-fill-p3",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: form-fill-p3",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/form-fill-p3.mdp",
+          "sha256": "34eaab8e6c5c2b4ea658fbf81bd27b6ecf5e208a856f1614a546e11806d0b745"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/form-fill-p3.net",
+          "sha256": "34eaab8e6c5c2b4ea658fbf81bd27b6ecf5e208a856f1614a546e11806d0b745"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/form-fill-p3.pdf",
+          "sha256": "e1685b2e7dbc258650251f4c09ff767d9c35145f3f246a148d349b90242e0008"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/annotation-added-p2",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: annotation-added-p2",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/annotation-added-p2.mdp",
+          "sha256": "4ffed26df22ae848fc5f17fc92787fb8d9ae9334072c3d9166ce01f0256a7241"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/annotation-added-p2.net",
+          "sha256": "4ffed26df22ae848fc5f17fc92787fb8d9ae9334072c3d9166ce01f0256a7241"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/annotation-added-p2.pdf",
+          "sha256": "ac19cbe3f9a0dd57d65c6f78ba696b86d95b9fe0c596c48ce786337916c861e6"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/annotation-added-p3",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: annotation-added-p3",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/annotation-added-p3.mdp",
+          "sha256": "e8830c0d0cf2d22ba42b872a2f62242e1a18705ebf0e126414f30a7669365844"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/annotation-added-p3.net",
+          "sha256": "e8830c0d0cf2d22ba42b872a2f62242e1a18705ebf0e126414f30a7669365844"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/annotation-added-p3.pdf",
+          "sha256": "dc36b399c4b2cff8a90becb3e4a2722bbcaebba733bc84236dbf5e040d9b4795"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/page-content-p1",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: page-content-p1",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/page-content-p1.mdp",
+          "sha256": "99e1386ab6325176e85992dbe0303f9a4c254d00847ac9f362c5065958793654"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/page-content-p1.net",
+          "sha256": "99e1386ab6325176e85992dbe0303f9a4c254d00847ac9f362c5065958793654"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/page-content-p1.pdf",
+          "sha256": "9099a9b99a0a3ba27d87b8db6c52c1e35e586ed313e9dbc44c160228b4aa44f1"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/page-content-p2",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: page-content-p2",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/page-content-p2.mdp",
+          "sha256": "ac18c8fb8ea35571f0efc3b00187427a05adf052879185f631e6ad9e8ef0f2d5"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/page-content-p2.net",
+          "sha256": "ac18c8fb8ea35571f0efc3b00187427a05adf052879185f631e6ad9e8ef0f2d5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/page-content-p2.pdf",
+          "sha256": "48c259b229990d1d6fc10461d34db5ceda677423159a3fc57c3a5254c02f2909"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/page-content-p3",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: page-content-p3",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/page-content-p3.mdp",
+          "sha256": "ac18c8fb8ea35571f0efc3b00187427a05adf052879185f631e6ad9e8ef0f2d5"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/page-content-p3.net",
+          "sha256": "ac18c8fb8ea35571f0efc3b00187427a05adf052879185f631e6ad9e8ef0f2d5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/page-content-p3.pdf",
+          "sha256": "71c926092e456fdda73c9a05d4a43e18c6d591f9b137b175e05f726dffe1959c"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/include-locked",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: include-locked",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/include-locked.mdp",
+          "sha256": "7b121d6dcfabb2a51a5a322c58feb7517613f9b7f8a8673505c3ffd9c6205b60"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/include-locked.net",
+          "sha256": "7b121d6dcfabb2a51a5a322c58feb7517613f9b7f8a8673505c3ffd9c6205b60"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/include-locked.pdf",
+          "sha256": "1457451595aa31393dec464d77f1d11fc6472bfd620298622f687484d6664242"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/include-unlocked",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: include-unlocked",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/include-unlocked.mdp",
+          "sha256": "f05878ceb3be74dde3fe40977f7440842979db1427332d1e7f419619c5d7fe65"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/include-unlocked.net",
+          "sha256": "f05878ceb3be74dde3fe40977f7440842979db1427332d1e7f419619c5d7fe65"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/include-unlocked.pdf",
+          "sha256": "b20ed1fc429c9bbf216c58d9fdbaa38cd3f961bf038e34b44bd446f3297a0dae"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/exclude-unlocked",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: exclude-unlocked",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/exclude-unlocked.mdp",
+          "sha256": "80912cbf814f8d7c8bd5a488930f507dc9c8b198dfbebe2ef7f8656c185b1c92"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/exclude-unlocked.net",
+          "sha256": "80912cbf814f8d7c8bd5a488930f507dc9c8b198dfbebe2ef7f8656c185b1c92"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/exclude-unlocked.pdf",
+          "sha256": "4fb8c7259eff64a27e7a55e6056bf45e51771b10bd6d0b83880a7e70bd6fbf8c"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/exclude-locked",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: exclude-locked",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/exclude-locked.mdp",
+          "sha256": "bd7c7213188b8dac7903515c08d6c78b6fbdb55c9afc13654caa6e02a1cad56b"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/exclude-locked.net",
+          "sha256": "bd7c7213188b8dac7903515c08d6c78b6fbdb55c9afc13654caa6e02a1cad56b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/exclude-locked.pdf",
+          "sha256": "c22728151303d415b7221a8e6038c9c4a4550efb85fe79ce715a5c9e075754db"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/all-locked",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: all-locked",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/all-locked.mdp",
+          "sha256": "7b121d6dcfabb2a51a5a322c58feb7517613f9b7f8a8673505c3ffd9c6205b60"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/all-locked.net",
+          "sha256": "7b121d6dcfabb2a51a5a322c58feb7517613f9b7f8a8673505c3ffd9c6205b60"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/all-locked.pdf",
+          "sha256": "3428781ef75a940621daafa5fb179358db990c0acec398b7209fcd456b6d26cc"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/signature-added",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: signature-added",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/signature-added.mdp",
+          "sha256": "83143bee592c4aa6d44c173d1fb167f17512196a35e3148a8b25c38644cfd29c"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/signature-added.net",
+          "sha256": "83143bee592c4aa6d44c173d1fb167f17512196a35e3148a8b25c38644cfd29c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/signature-added.pdf",
+          "sha256": "3e5d4ef3fe67c7595f72afbf01e4358ce891456c46b0eae5f5ff3c608ac2f687"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/fill-with-appearance",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: fill-with-appearance",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/fill-with-appearance.mdp",
+          "sha256": "7225c502ff0d32fcc6abfcc3b228aece75275c3ce179a0f5f7d2f20d5f45ffdb"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/fill-with-appearance.net",
+          "sha256": "7225c502ff0d32fcc6abfcc3b228aece75275c3ce179a0f5f7d2f20d5f45ffdb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/fill-with-appearance.pdf",
+          "sha256": "a61862156b550f20404108cb0e257381a5ae4cde4a5ffdd07aba30f4ec8c2709"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/appearance-without-fill",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: appearance-without-fill",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/appearance-without-fill.mdp",
+          "sha256": "96b922503084bcdf0bdf88136f0f8463a7517bf5b18b4e905158cdce823dddf9"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/appearance-without-fill.net",
+          "sha256": "96b922503084bcdf0bdf88136f0f8463a7517bf5b18b4e905158cdce823dddf9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/appearance-without-fill.pdf",
+          "sha256": "f9d27ca4a6a564ffd6192e3c8991defb68d0d7ecf7bd1f89c7a4ca249144974e"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/shared-appearance-content",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: shared-appearance-content",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/shared-appearance-content.mdp",
+          "sha256": "2f3c8e0a308e9ee96a65aff513bd816c036f916a96f124ab7c76c90f1e28bb4b"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/shared-appearance-content.net",
+          "sha256": "570c6631c4fbe27c28f21e3c0f8a9beac8083149637e6ce6f84c5230e9731797"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/shared-appearance-content.pdf",
+          "sha256": "1e088f15b796605f07a30af63fc5ea232c5b14a3f247fcb18367a68eb53f0845"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/fill-then-revert",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: fill-then-revert",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/fill-then-revert.mdp",
+          "sha256": "8b8d6db9144c2ab727b752bfa1c35dc71083a728ec0c1e2f0d8fb33b60a0bcd6"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/fill-then-revert.net",
+          "sha256": "11b2f7cd8d199f370e1fb120075a9ac18d7d357a7af3d1dd9a5ae17856ac5ad8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/fill-then-revert.pdf",
+          "sha256": "b1b45c29d4a6ade10dfcf1b980d6856c6e6f0fc8b6f67828b1d2c59f91097868"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/content-then-revert",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: content-then-revert",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/content-then-revert.mdp",
+          "sha256": "47acb86546a0ce4dc8f24dd0ba83ae4cbfeaba2d77460273b444c31b4ac23f23"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/content-then-revert.net",
+          "sha256": "1124e085467942fe3991c74bf72c8150915ccee9dfcf3d828433b0ab7661a0a8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/content-then-revert.pdf",
+          "sha256": "ac7a43701f72ea5e97ca554acc60367985f610a49102f8c22d4e37b01a9741b9"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/orphan-disguised-annotation",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: orphan-disguised-annotation",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/orphan-disguised-annotation.mdp",
+          "sha256": "13427b7d95d20636e1f90736c1a59cec45cea15dec989703b522efdffca9e002"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/orphan-disguised-annotation.net",
+          "sha256": "13427b7d95d20636e1f90736c1a59cec45cea15dec989703b522efdffca9e002"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/orphan-disguised-annotation.pdf",
+          "sha256": "85bd62c8a7dfa865dea36d6cc4ca9f652311aa0e6d06a623406ffcf958dc9fef"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/fill-xref-stream",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: fill-xref-stream",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/fill-xref-stream.mdp",
+          "sha256": "0a7dc160643824056e4240ba90226eb80c37b924a6cd5b0c44eb30655cc5cc37"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/fill-xref-stream.net",
+          "sha256": "0a7dc160643824056e4240ba90226eb80c37b924a6cd5b0c44eb30655cc5cc37"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/fill-xref-stream.pdf",
+          "sha256": "77b92ce761bb8ecde7a2b0a69e8eb1be6f035cd75ddb1eab257539a648847b7b"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/rename-locked-field",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: rename-locked-field",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/rename-locked-field.mdp",
+          "sha256": "13f22df448fd5583055e01d904a730160f356cd42e59771a062fb0f370fef1b1"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/rename-locked-field.net",
+          "sha256": "13f22df448fd5583055e01d904a730160f356cd42e59771a062fb0f370fef1b1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/rename-locked-field.pdf",
+          "sha256": "df58f84d96e5f81038992bac3ab44d06efb2289e0ecfb6041c494c880f966342"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/indirect-fill",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: indirect-fill",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/indirect-fill.mdp",
+          "sha256": "7877373284d68eff0b66ffc24e3e1edcfa29833ec4bf3752cf2fe10ab5072669"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/indirect-fill.net",
+          "sha256": "7877373284d68eff0b66ffc24e3e1edcfa29833ec4bf3752cf2fe10ab5072669"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/indirect-fill.pdf",
+          "sha256": "e454bc90d02c785ce59662da33b2973dea74829c404dd8acb0dbed21de6468e3"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/indirect-fill-locked",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: indirect-fill-locked",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/indirect-fill-locked.mdp",
+          "sha256": "2cf9ebdacebd92172e01773cc3b6eb084daa1fc1fc67cfea95cafbb1dd1bcbb9"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/indirect-fill-locked.net",
+          "sha256": "2cf9ebdacebd92172e01773cc3b6eb084daa1fc1fc67cfea95cafbb1dd1bcbb9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/indirect-fill-locked.pdf",
+          "sha256": "917704151be9f90a3f7fcb03518cd2f8ecf21247b205d33f87169b2abfc6f858"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/annotation-modified-p2",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: annotation-modified-p2",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/annotation-modified-p2.mdp",
+          "sha256": "4edb5b63e03252a70e8cff8048ec4888091a15c808fe116f48b15e3cda655f91"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/annotation-modified-p2.net",
+          "sha256": "4edb5b63e03252a70e8cff8048ec4888091a15c808fe116f48b15e3cda655f91"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/annotation-modified-p2.pdf",
+          "sha256": "95f4a321a335e78caa323c953672dcfd8aca5a74b9d140898375158cb69cb8be"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/annotation-modified-p3",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: annotation-modified-p3",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/annotation-modified-p3.mdp",
+          "sha256": "6e27ae218994991dbf37d7e21109e5d4c993c12bc056723e3a2aba6368180c4f"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/annotation-modified-p3.net",
+          "sha256": "6e27ae218994991dbf37d7e21109e5d4c993c12bc056723e3a2aba6368180c4f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/annotation-modified-p3.pdf",
+          "sha256": "8c553f669272fde34d1806fa009854cb96f36340b791119229b7412c86799069"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/annotation-removed-p3",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: annotation-removed-p3",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/annotation-removed-p3.mdp",
+          "sha256": "62faaf48f12d04b0b9f1417182c507cc733d5cf3916cef977e72d8dcdaf2ac99"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/annotation-removed-p3.net",
+          "sha256": "62faaf48f12d04b0b9f1417182c507cc733d5cf3916cef977e72d8dcdaf2ac99"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/annotation-removed-p3.pdf",
+          "sha256": "83165dbb7193a50473fd655e820316d686578c8d03eae4f489eb68fab3e245db"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/locked-widget-removed",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: locked-widget-removed",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/locked-widget-removed.mdp",
+          "sha256": "1f56c6d399194e1f821474f48a17cc5ab504d12d516431a3f90eb8d84f853d72"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/locked-widget-removed.net",
+          "sha256": "1f56c6d399194e1f821474f48a17cc5ab504d12d516431a3f90eb8d84f853d72"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/locked-widget-removed.pdf",
+          "sha256": "cb9ce67baf60f2491569474345fa4854c747ec83b2ea28060fd391bf5b4b1b02"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/unknown-transform",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: unknown-transform",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/unknown-transform.mdp",
+          "sha256": "a1a016a3ad8fe04a4b436d7e53f53032be405c6c8c9e56e1c66b53df723cd17f"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/unknown-transform.net",
+          "sha256": "a1a016a3ad8fe04a4b436d7e53f53032be405c6c8c9e56e1c66b53df723cd17f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/unknown-transform.pdf",
+          "sha256": "c8f0cf14d57888093950351dd4d98ea0376f111afb757d88ae51c5e4eab2dd46"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/usage-rights-unclassified",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: usage-rights-unclassified",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/usage-rights-unclassified.mdp",
+          "sha256": "a1a016a3ad8fe04a4b436d7e53f53032be405c6c8c9e56e1c66b53df723cd17f"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/usage-rights-unclassified.net",
+          "sha256": "a1a016a3ad8fe04a4b436d7e53f53032be405c6c8c9e56e1c66b53df723cd17f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/usage-rights-unclassified.pdf",
+          "sha256": "aba0530d0d0d2144956957fabb99093cc3184bf612ab63f4b0da52cf3a80fbc6"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/template-p1",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: template-p1",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/template-p1.mdp",
+          "sha256": "46f389c3166f87eb2ba417fe43ce63b642c3b4457dcef520238935f96a95b599"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/template-p1.net",
+          "sha256": "46f389c3166f87eb2ba417fe43ce63b642c3b4457dcef520238935f96a95b599"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/template-p1.pdf",
+          "sha256": "faf824f09e3a682912a76e939171279daf5ab4c29fea98441f3de89427713c0b"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/template-p2",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: template-p2",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/template-p2.mdp",
+          "sha256": "46f389c3166f87eb2ba417fe43ce63b642c3b4457dcef520238935f96a95b599"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/template-p2.net",
+          "sha256": "46f389c3166f87eb2ba417fe43ce63b642c3b4457dcef520238935f96a95b599"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/template-p2.pdf",
+          "sha256": "ec98cdf2b39a38cd6ceb26833c104cf66231d56d50b5227916b14dbf2743ea5d"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/locked-descendant",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: locked-descendant",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/locked-descendant.mdp",
+          "sha256": "7b121d6dcfabb2a51a5a322c58feb7517613f9b7f8a8673505c3ffd9c6205b60"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/locked-descendant.net",
+          "sha256": "7b121d6dcfabb2a51a5a322c58feb7517613f9b7f8a8673505c3ffd9c6205b60"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/locked-descendant.pdf",
+          "sha256": "82c599cb42e53c1f93fb9b6884b4300640e0e6d856fb21853ad118fc7ce0c6da"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/later-lock-cannot-unlock",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: later-lock-cannot-unlock",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/later-lock-cannot-unlock.mdp",
+          "sha256": "a8d12559d79e8cdbf65ef8afefb95c145bf7e40bc8cadc0c84621725074c0911"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/later-lock-cannot-unlock.net",
+          "sha256": "a8d12559d79e8cdbf65ef8afefb95c145bf7e40bc8cadc0c84621725074c0911"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/later-lock-cannot-unlock.pdf",
+          "sha256": "3587f74f05ac9c58e6f67d283367527ce0ad6db48e00306d4f0ebef379896aca"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/removed-signature",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: removed-signature",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/removed-signature.mdp",
+          "sha256": "8a63338b6eba4d5f24ccfa665ba9dffd84e97ed058dc9067359e6c0ed8aa2a6b"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/removed-signature.net",
+          "sha256": "8a63338b6eba4d5f24ccfa665ba9dffd84e97ed058dc9067359e6c0ed8aa2a6b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/removed-signature.pdf",
+          "sha256": "35c3f01fcba515bdf5d71ed2743d3512757bcec6d10d8da2d260f764a1883728"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/replaced-signature",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: replaced-signature",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/replaced-signature.mdp",
+          "sha256": "98105250025be07032cede2e3f380e9e9a2cd77d21e45039f71b3cbf425e7624"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/replaced-signature.net",
+          "sha256": "98105250025be07032cede2e3f380e9e9a2cd77d21e45039f71b3cbf425e7624"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/replaced-signature.pdf",
+          "sha256": "918456787eaeffc331567c548743e2a2085677c1c2c7bae3f7f2b2d10269b161"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/historical-stream-length",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: historical-stream-length",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/historical-stream-length.mdp",
+          "sha256": "eff245a2c2af13a0c39ca6f98ad09bfe28e8f8ff3609e121a385b9357dc1475f"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/historical-stream-length.net",
+          "sha256": "eff245a2c2af13a0c39ca6f98ad09bfe28e8f8ff3609e121a385b9357dc1475f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/historical-stream-length.pdf",
+          "sha256": "99cb279fb3012eb1c6a24392f88f2e8f58a24e3f90b8f2a5c6fc8c7e03525450"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/page-resource-change",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: page-resource-change",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/page-resource-change.mdp",
+          "sha256": "2fcdf441807bef86c5d3c10828b953f5ffe3bdb583f4e0eafb0cb1eb6a63e8b9"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/page-resource-change.net",
+          "sha256": "2fcdf441807bef86c5d3c10828b953f5ffe3bdb583f4e0eafb0cb1eb6a63e8b9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/page-resource-change.pdf",
+          "sha256": "5aaa5a40a5bc3802f3919ed1d361bb0235e734a0dad20a85f5349d0e7ca10e20"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/historical-forward-reference",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: historical-forward-reference",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/historical-forward-reference.mdp",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/historical-forward-reference.net",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/historical-forward-reference.pdf",
+          "sha256": "cd8d69653131daa24619b804dfa28074e0d9b813f28c027729071a388236a150"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/annotation-deleted-p3",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: annotation-deleted-p3",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/annotation-deleted-p3.mdp",
+          "sha256": "6bfa6dc0b0f1ad163bf691575f2a2121fd7b4a23d785a1c7187e2d174946b492"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/annotation-deleted-p3.net",
+          "sha256": "6bfa6dc0b0f1ad163bf691575f2a2121fd7b4a23d785a1c7187e2d174946b492"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/annotation-deleted-p3.pdf",
+          "sha256": "7c502fa027fe17860bbee22df80042a478d93b3c8e24df3e6373aa2a13266a2e"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/field-generation-replaced",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: field-generation-replaced",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/field-generation-replaced.mdp",
+          "sha256": "f115909a681766046fcafcde8d08ed12a3f3276ffca6f00574f57fbe83120006"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/field-generation-replaced.net",
+          "sha256": "f115909a681766046fcafcde8d08ed12a3f3276ffca6f00574f57fbe83120006"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/field-generation-replaced.pdf",
+          "sha256": "9263ebe599e1f2738ded5e961829850df5a1f265e0c0c2fa1456b891518f8370"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/indirect-locked-widget-removal",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: indirect-locked-widget-removal",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/indirect-locked-widget-removal.mdp",
+          "sha256": "083254f137a5319fc0bfb2ced5a2768e6e412dd8a8ef52d26c86d90c1e797240"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/indirect-locked-widget-removal.net",
+          "sha256": "083254f137a5319fc0bfb2ced5a2768e6e412dd8a8ef52d26c86d90c1e797240"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/indirect-locked-widget-removal.pdf",
+          "sha256": "025c17c4f055662c7a9805499dfecebc65cb09a662e202234a96cdbfe7fc207c"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/signature-widget-added",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: signature-widget-added",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/signature-widget-added.mdp",
+          "sha256": "f1d38aafc538a1935184e8bd37d3238d91c418147289cc7d46dac1c85e1386e3"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/signature-widget-added.net",
+          "sha256": "f1d38aafc538a1935184e8bd37d3238d91c418147289cc7d46dac1c85e1386e3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/signature-widget-added.pdf",
+          "sha256": "bca6a6f378619591d29f9c67be1879a8ef5803a997140942797556be8f40d9b4"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/timestamp-exception-unclassified",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: timestamp-exception-unclassified",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/timestamp-exception-unclassified.mdp",
+          "sha256": "233c094ca7868a2cbe9e1d7fbfe8f9d1bddf4944eaaa61f8544e16d38f7a4fed"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/timestamp-exception-unclassified.net",
+          "sha256": "233c094ca7868a2cbe9e1d7fbfe8f9d1bddf4944eaaa61f8544e16d38f7a4fed"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/timestamp-exception-unclassified.pdf",
+          "sha256": "46a8ea8a8821684b748ae42e632460f1c987192088597a2586ceb2852d21f53f"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/dss-exception-unclassified",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: dss-exception-unclassified",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/dss-exception-unclassified.mdp",
+          "sha256": "6fdeba1ac10ecc71b80c39be964f080e8e35822c31fc4ec3c15883c1d7859251"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/dss-exception-unclassified.net",
+          "sha256": "6fdeba1ac10ecc71b80c39be964f080e8e35822c31fc4ec3c15883c1d7859251"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/dss-exception-unclassified.pdf",
+          "sha256": "98d569a48f994ef9c786c8ab60f9dec9f9e6c4dcb75db468aa0e3927288425bd"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/signed-field-lock",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: signed-field-lock",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/signed-field-lock.mdp",
+          "sha256": "7b121d6dcfabb2a51a5a322c58feb7517613f9b7f8a8673505c3ffd9c6205b60"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/signed-field-lock.net",
+          "sha256": "7b121d6dcfabb2a51a5a322c58feb7517613f9b7f8a8673505c3ffd9c6205b60"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/signed-field-lock.pdf",
+          "sha256": "42c464e5114b19c759902ee4dd63d08bb6e5e1e1c0446adba734326d178d047a"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/trailer-changing-id",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: trailer-changing-id",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/trailer-changing-id.mdp",
+          "sha256": "4c1a17201af9b3099b13ff042bde41d443c88c53cd6b51f673ef9cca1333d3ee"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/trailer-changing-id.net",
+          "sha256": "4c1a17201af9b3099b13ff042bde41d443c88c53cd6b51f673ef9cca1333d3ee"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/trailer-changing-id.pdf",
+          "sha256": "725c2812223503fda65d90f404c3c9ddecf1b7fd6fc9aa99939defbcc021e1e0"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/trailer-permanent-id-changed",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: trailer-permanent-id-changed",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/trailer-permanent-id-changed.mdp",
+          "sha256": "4fe164c10fa91f89eb23108be5865cedb53f3a2171a6a953851ac12cf82743b4"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/trailer-permanent-id-changed.net",
+          "sha256": "4fe164c10fa91f89eb23108be5865cedb53f3a2171a6a953851ac12cf82743b4"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/trailer-permanent-id-changed.pdf",
+          "sha256": "c972e690acb3534325f79291ac39e47cdac86cdbbde1b85f5ebd325fd219e064"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/unknown-trailer-entry",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: unknown-trailer-entry",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/unknown-trailer-entry.mdp",
+          "sha256": "d8fe472a0cc54917a1622f211e08014f2dc4caab30533c82fb431af383cbf4eb"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/unknown-trailer-entry.net",
+          "sha256": "d8fe472a0cc54917a1622f211e08014f2dc4caab30533c82fb431af383cbf4eb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/unknown-trailer-entry.pdf",
+          "sha256": "a90bd9922a0a2b0716aa9c3cda4c00004e4d4049550c29d605e87243da868a8f"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/locked-descendant-renamed",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: locked-descendant-renamed",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/locked-descendant-renamed.mdp",
+          "sha256": "e56aef88c522d58f567ebf2ceffd695218d3ebe9eeeda7f7dbb579406dd4440a"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/locked-descendant-renamed.net",
+          "sha256": "e56aef88c522d58f567ebf2ceffd695218d3ebe9eeeda7f7dbb579406dd4440a"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/locked-descendant-renamed.pdf",
+          "sha256": "19cc0fb57660c9811fc056eb26320305980c84aae8f2da0beea786efaf32d94f"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/inherited-field-configuration",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: inherited-field-configuration",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/inherited-field-configuration.mdp",
+          "sha256": "e56aef88c522d58f567ebf2ceffd695218d3ebe9eeeda7f7dbb579406dd4440a"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/inherited-field-configuration.net",
+          "sha256": "e56aef88c522d58f567ebf2ceffd695218d3ebe9eeeda7f7dbb579406dd4440a"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/inherited-field-configuration.pdf",
+          "sha256": "8880fc1814c0f5ca72a1b0c1b69be3def23d63ccbef3ffb750be1b8d8b68b074"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/fieldmdp-data-unclassified",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: fieldmdp-data-unclassified",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/fieldmdp-data-unclassified.mdp",
+          "sha256": "128907d10bc88b090bcaca707b9f43485351420f7738d0a4f0a0ca179b61c2b0"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/fieldmdp-data-unclassified.net",
+          "sha256": "128907d10bc88b090bcaca707b9f43485351420f7738d0a4f0a0ca179b61c2b0"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/fieldmdp-data-unclassified.pdf",
+          "sha256": "b454a36a19f251156525a3f3996719f4b6fff664f02189669d1a883015982d24"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/replaced-malformed-signatures",
+      "kind": "vector",
+      "description": "Distinct malformed signature sources remain visible",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".history": {
+          "path": "corpus/generated/signature-changes/replaced-malformed-signatures.history",
+          "sha256": "6bc118829ca23f80c1910f156abe386ed57a45f4828d9d3a4f10ff3a68f6cfc0"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/replaced-malformed-signatures.pdf",
+          "sha256": "470b9afbafd865b7edd546594f1762354d7d153bef4754287088c436cd2d36c6"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/usage-rights-trailer-unclassified",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: usage-rights-trailer-unclassified",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/usage-rights-trailer-unclassified.mdp",
+          "sha256": "ac17ef886b7fc92cc74cef97469c32eaaee5628cbc833e7e204f1b570aae6600"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/usage-rights-trailer-unclassified.net",
+          "sha256": "ac17ef886b7fc92cc74cef97469c32eaaee5628cbc833e7e204f1b570aae6600"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/usage-rights-trailer-unclassified.pdf",
+          "sha256": "fe9582e2e764bfc7f7f3a530e8132c34088dce705e9d544eecb4fd916c05b362"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/fieldmdp-trailer-unclassified",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: fieldmdp-trailer-unclassified",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/fieldmdp-trailer-unclassified.mdp",
+          "sha256": "ca6b0ccbdaad4bde4746a1b88634cf0df15cca6312856abbe632d5bbb9733ba1"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/fieldmdp-trailer-unclassified.net",
+          "sha256": "ca6b0ccbdaad4bde4746a1b88634cf0df15cca6312856abbe632d5bbb9733ba1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/fieldmdp-trailer-unclassified.pdf",
+          "sha256": "b7a9ecb1d58e01b9808af704ecae2af530147b70cc991dc2adbd7c6cdc7f7df2"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/signature-flags-cleared",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: signature-flags-cleared",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/signature-flags-cleared.mdp",
+          "sha256": "c88f08173ad0dc9a9432655cfe01acb2afa3f44ee264f2904ade6e097ff7f3d8"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/signature-flags-cleared.net",
+          "sha256": "c88f08173ad0dc9a9432655cfe01acb2afa3f44ee264f2904ade6e097ff7f3d8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/signature-flags-cleared.pdf",
+          "sha256": "d937ed47cf86532051f668001a7f793c8bccd62c84ad037fd5901d72e17e2f00"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/signature-flags-set",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: signature-flags-set",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/signature-flags-set.mdp",
+          "sha256": "83143bee592c4aa6d44c173d1fb167f17512196a35e3148a8b25c38644cfd29c"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/signature-flags-set.net",
+          "sha256": "83143bee592c4aa6d44c173d1fb167f17512196a35e3148a8b25c38644cfd29c"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/signature-flags-set.pdf",
+          "sha256": "fc8dbf49f9c44453f7dd61e98ca62c5c0c77ef3712fa70a9396f462165d02034"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/appearance-shares-document-info",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: appearance-shares-document-info",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/appearance-shares-document-info.mdp",
+          "sha256": "8471f3451bc9e6f0225815dea8c2b2f54afca8d80db59887f5dc13c4c0750cd9"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/appearance-shares-document-info.net",
+          "sha256": "8471f3451bc9e6f0225815dea8c2b2f54afca8d80db59887f5dc13c4c0750cd9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/appearance-shares-document-info.pdf",
+          "sha256": "ce937ca383dae518577cc5f148be244d504a247fc13c8f374667c71589d463aa"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/widget-rectangle-p2",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: widget-rectangle-p2",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/widget-rectangle-p2.mdp",
+          "sha256": "6b402c60d9812f00e88dfc211670e0296d2257b72a545e06bb7ab5c724e6ff20"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/widget-rectangle-p2.net",
+          "sha256": "6b402c60d9812f00e88dfc211670e0296d2257b72a545e06bb7ab5c724e6ff20"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/widget-rectangle-p2.pdf",
+          "sha256": "6681226db84fdeb5bb6b533271c7f122082f8b0ca84435c72ea55033eee8e68b"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/widget-rectangle-p3",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: widget-rectangle-p3",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/widget-rectangle-p3.mdp",
+          "sha256": "1c3dbba83da79a4dd5da2d9c270203fa6365883ccebf972fcef0c3a940cc7496"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/widget-rectangle-p3.net",
+          "sha256": "1c3dbba83da79a4dd5da2d9c270203fa6365883ccebf972fcef0c3a940cc7496"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/widget-rectangle-p3.pdf",
+          "sha256": "a031dc9a354a1f252182a7eef66c5aaadbc29c8d0ba22a4a2a870c7f3465907d"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/locked-widget-rectangle",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: locked-widget-rectangle",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/locked-widget-rectangle.mdp",
+          "sha256": "f25c5fddab1a96d7d3165b71e11cad2d7924bc6cb50f127afa8b5180082b3583"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/locked-widget-rectangle.net",
+          "sha256": "f25c5fddab1a96d7d3165b71e11cad2d7924bc6cb50f127afa8b5180082b3583"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/locked-widget-rectangle.pdf",
+          "sha256": "fc12bee5e85200836cc29b219fde466b7cf240e59420a0ad2ab3e21d37efb446"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/widget-appearance-p3",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: widget-appearance-p3",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/widget-appearance-p3.mdp",
+          "sha256": "0ea2aca11d749790332fe16b135379f046433086076c453d999603128c50d26f"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/widget-appearance-p3.net",
+          "sha256": "0ea2aca11d749790332fe16b135379f046433086076c453d999603128c50d26f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/widget-appearance-p3.pdf",
+          "sha256": "93a3c991b159c07f421c89ac78b56dffdb93500dfff657aa52b86f1f1b4fc300"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/non-widget-appearance-unclassified",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: non-widget-appearance-unclassified",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/non-widget-appearance-unclassified.mdp",
+          "sha256": "0fec509e639019dda5ccc323f0f988c4cb4219e7b62f63a5e98462b0331c5dac"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/non-widget-appearance-unclassified.net",
+          "sha256": "0fec509e639019dda5ccc323f0f988c4cb4219e7b62f63a5e98462b0331c5dac"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/non-widget-appearance-unclassified.pdf",
+          "sha256": "0d0d54514e9749f4ee59f5c89ab2812dedc9406a2825d2dee36b788d3beb2e6c"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/template-fields-unclassified",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: template-fields-unclassified",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/template-fields-unclassified.mdp",
+          "sha256": "3398ce7b68f31376877f7776df367a5058f45cacbd2717df54aae88219a5fb6e"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/template-fields-unclassified.net",
+          "sha256": "3398ce7b68f31376877f7776df367a5058f45cacbd2717df54aae88219a5fb6e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/template-fields-unclassified.pdf",
+          "sha256": "1e924f26b7c04b3d77025241af7cff08ca05e23ed3b8b50e141b650961e23b4b"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/shared-font-p2",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: shared-font-p2",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/shared-font-p2.mdp",
+          "sha256": "14a5ee9338004dbd3b7a5fa3fb4bc4c2c6cfcb06da2bf0a77e39339e5e92a945"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/shared-font-p2.net",
+          "sha256": "14a5ee9338004dbd3b7a5fa3fb4bc4c2c6cfcb06da2bf0a77e39339e5e92a945"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/shared-font-p2.pdf",
+          "sha256": "15fb80c27f700e2b05f7481f8dd9d6983539a55b2a5d94eed1c89b3aed2eff90"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/shared-font-both-filled",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: shared-font-both-filled",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/shared-font-both-filled.mdp",
+          "sha256": "153c2d4df07a5ffa39546cfbfeec93c88e1f2a674dd35e0c799c340a07f6d41d"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/shared-font-both-filled.net",
+          "sha256": "153c2d4df07a5ffa39546cfbfeec93c88e1f2a674dd35e0c799c340a07f6d41d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/shared-font-both-filled.pdf",
+          "sha256": "8c1d72253dbbb2320d875a8567424d6a14b94b0bc2569af8ceba18ea521b48c2"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/shared-xobject-p2",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: shared-xobject-p2",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/shared-xobject-p2.mdp",
+          "sha256": "14a5ee9338004dbd3b7a5fa3fb4bc4c2c6cfcb06da2bf0a77e39339e5e92a945"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/shared-xobject-p2.net",
+          "sha256": "14a5ee9338004dbd3b7a5fa3fb4bc4c2c6cfcb06da2bf0a77e39339e5e92a945"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/shared-xobject-p2.pdf",
+          "sha256": "94f62cfb56122dd0c944a06c7ddd9426960da614f8b7544c1187e8357f818c9b"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/shared-xobject-both-filled",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: shared-xobject-both-filled",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/shared-xobject-both-filled.mdp",
+          "sha256": "153c2d4df07a5ffa39546cfbfeec93c88e1f2a674dd35e0c799c340a07f6d41d"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/shared-xobject-both-filled.net",
+          "sha256": "153c2d4df07a5ffa39546cfbfeec93c88e1f2a674dd35e0c799c340a07f6d41d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/shared-xobject-both-filled.pdf",
+          "sha256": "d44c7357af7974003bcdfa420fe946edc084a7dc47784832d5cbef35d825d1bb"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/info-moddate-signing",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: info-moddate-signing",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/info-moddate-signing.mdp",
+          "sha256": "87fce5de34fd2f4a7dbac6f5fa5780129b2beed82bd64b64b2ab9c7b2e8814a4"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/info-moddate-signing.net",
+          "sha256": "87fce5de34fd2f4a7dbac6f5fa5780129b2beed82bd64b64b2ab9c7b2e8814a4"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/info-moddate-signing.pdf",
+          "sha256": "302065ee0d7c497502b45b773e640c2eb97b59838e66ad0be9c3f98d4b0aeb27"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/indirect-names",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: indirect-names",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/indirect-names.mdp",
+          "sha256": "0453f38466f1c1cd6a4b06883497535221b5807bad0532b463518ada20623ba8"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/indirect-names.net",
+          "sha256": "0453f38466f1c1cd6a4b06883497535221b5807bad0532b463518ada20623ba8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/indirect-names.pdf",
+          "sha256": "c22eb67df1f74f1a020968fece22c913b772fca7e7189ba5895fc28adb7e0d2b"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/indirect-ocproperties",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: indirect-ocproperties",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/indirect-ocproperties.mdp",
+          "sha256": "3c1dcdf85c68f85a3749ad3c6e47b61250743d11689dbc503d5a661a3a084005"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/indirect-ocproperties.net",
+          "sha256": "3c1dcdf85c68f85a3749ad3c6e47b61250743d11689dbc503d5a661a3a084005"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/indirect-ocproperties.pdf",
+          "sha256": "97c7f23d28fcb6f95ecbc972dd4093e8fb831d524579465af64b6e30a0d43405"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/indirect-dr",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: indirect-dr",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/indirect-dr.mdp",
+          "sha256": "0453f38466f1c1cd6a4b06883497535221b5807bad0532b463518ada20623ba8"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/indirect-dr.net",
+          "sha256": "0453f38466f1c1cd6a4b06883497535221b5807bad0532b463518ada20623ba8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/indirect-dr.pdf",
+          "sha256": "55f0d4f7f91c213a6323a9ddff7625767aab5f5e9c996727d9f0b94d40084ea7"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/changed-openaction",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: changed-openaction",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/changed-openaction.mdp",
+          "sha256": "0c457661f8f9b8e34301d6a128f43fecdd245ca8f1cd5dc73c82e15e106ab2ca"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/changed-openaction.net",
+          "sha256": "0c457661f8f9b8e34301d6a128f43fecdd245ca8f1cd5dc73c82e15e106ab2ca"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/changed-openaction.pdf",
+          "sha256": "e60a24e129860e1c2a081c674e8943025306252e106ce949a78de6bda2070cab"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/changed-needappearances",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: changed-needappearances",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/changed-needappearances.mdp",
+          "sha256": "8a63338b6eba4d5f24ccfa665ba9dffd84e97ed058dc9067359e6c0ed8aa2a6b"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/changed-needappearances.net",
+          "sha256": "8a63338b6eba4d5f24ccfa665ba9dffd84e97ed058dc9067359e6c0ed8aa2a6b"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/changed-needappearances.pdf",
+          "sha256": "7de7af7ab41343b96e0ef227640fdc536768db1cb56762da33cc7443fc22f2f1"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/added-unsigned-field",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: added-unsigned-field",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/added-unsigned-field.mdp",
+          "sha256": "735f1f6f53e8daa2063c3cfec5bd239f1c2be5ff4dbac8d19023f19077e1b7c1"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/added-unsigned-field.net",
+          "sha256": "735f1f6f53e8daa2063c3cfec5bd239f1c2be5ff4dbac8d19023f19077e1b7c1"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/added-unsigned-field.pdf",
+          "sha256": "3a2b908c43d266d372d3d9fa93282d79369b26f9c8829656046600a31654d50e"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/object-stream-fill",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: object-stream-fill",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/object-stream-fill.mdp",
+          "sha256": "5980bd7e4c2bcbf0083358f4f2a08209c1821051a661278300f99bdc6453500f"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/object-stream-fill.net",
+          "sha256": "5980bd7e4c2bcbf0083358f4f2a08209c1821051a661278300f99bdc6453500f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/object-stream-fill.pdf",
+          "sha256": "3d10d59f68f3d72ad9b27d9f7f9d856268890b77361a9b1b8f208a21d616b937"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/object-stream-redefined",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: object-stream-redefined",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/object-stream-redefined.mdp",
+          "sha256": "6824939b690d2f90adcad32f7807b700590a2df93d52435d8603715e838bc533"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/object-stream-redefined.net",
+          "sha256": "932dcf0fe4b42852df8ca1d0e9814457b95a2fc282d0c39de63817a14a5bee2f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/object-stream-redefined.pdf",
+          "sha256": "5a44e226208ac6cf7fcbfb5bc1d2e5838e5a3c4c985112e57260a052dbff01f8"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/indirect-length-only",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: indirect-length-only",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/indirect-length-only.mdp",
+          "sha256": "7fe98bde6772993997ebbdac49b574f3409893adf959257264599a86c695b00d"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/indirect-length-only.net",
+          "sha256": "7fe98bde6772993997ebbdac49b574f3409893adf959257264599a86c695b00d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/indirect-length-only.pdf",
+          "sha256": "b5b6f6cfd8e25b5fcbb2fecbab1cf48343fa2336884c788bc60b7dc7f6c11fe2"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/visible-overlay-p2",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: visible-overlay-p2",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/visible-overlay-p2.mdp",
+          "sha256": "9d9fa560b9409cba6886a467e66ac3ad7b0e06a32972c01039b7610d24177600"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/visible-overlay-p2.net",
+          "sha256": "9d9fa560b9409cba6886a467e66ac3ad7b0e06a32972c01039b7610d24177600"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/visible-overlay-p2.pdf",
+          "sha256": "bde3535732848c43c2f7a8cac9753a611779c3071a5e3bcfd50d3588bbbbcb4a"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/visible-overlay-p3",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: visible-overlay-p3",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/visible-overlay-p3.mdp",
+          "sha256": "3a4b05477b96e57a12c0b87e26dc452092181f1409f0012e4f4b36b5532e0f00"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/visible-overlay-p3.net",
+          "sha256": "3a4b05477b96e57a12c0b87e26dc452092181f1409f0012e4f4b36b5532e0f00"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/visible-overlay-p3.pdf",
+          "sha256": "ed1003c2e91c5c230683c23b72cf493a2c60387d6315c25427e9551ccc74461c"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/signature-widget-overlay-p2",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: signature-widget-overlay-p2",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/signature-widget-overlay-p2.mdp",
+          "sha256": "9863e1f30ab7a962e5e76c2402c71e84741b778db460753f36607ad146a5f471"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/signature-widget-overlay-p2.net",
+          "sha256": "9863e1f30ab7a962e5e76c2402c71e84741b778db460753f36607ad146a5f471"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/signature-widget-overlay-p2.pdf",
+          "sha256": "d144b37853d92750b5d94ad418109faf882ddc0c0833417b654339437c1d6b78"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/widget-overlay-p3",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: widget-overlay-p3",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/widget-overlay-p3.mdp",
+          "sha256": "aa8eef25788f16e202e68327fae7531f20c8257e8b5b0aee3168779511a9921e"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/widget-overlay-p3.net",
+          "sha256": "aa8eef25788f16e202e68327fae7531f20c8257e8b5b0aee3168779511a9921e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/widget-overlay-p3.pdf",
+          "sha256": "949cc026dfb5b78923b4c83db6f87421cd7c7dd6ea035c9f26afc88b0f3ec86c"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/separate-widget-overlay-p3",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: separate-widget-overlay-p3",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/separate-widget-overlay-p3.mdp",
+          "sha256": "17f3080a2227b1c47074f36f47f089804143c76e6fc1a6e65dced9e7fbba7427"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/separate-widget-overlay-p3.net",
+          "sha256": "17f3080a2227b1c47074f36f47f089804143c76e6fc1a6e65dced9e7fbba7427"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/separate-widget-overlay-p3.pdf",
+          "sha256": "d9bf9f5d127e224ab84e513533520af435ceff95a9a34cb6c045fa9bc3f69875"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/field-appearance-added",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: field-appearance-added",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/field-appearance-added.mdp",
+          "sha256": "1d4684495906f3a108cf27c4460930b97755537e70590ed17fdaf7ad4e46ace7"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/field-appearance-added.net",
+          "sha256": "1d4684495906f3a108cf27c4460930b97755537e70590ed17fdaf7ad4e46ace7"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/field-appearance-added.pdf",
+          "sha256": "17b637bab35cd11f220db755b6e6ffc480be80b0bacc6173627a9518875dbc1b"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/field-null-appearance-added",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: field-null-appearance-added",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/field-null-appearance-added.mdp",
+          "sha256": "1d4684495906f3a108cf27c4460930b97755537e70590ed17fdaf7ad4e46ace7"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/field-null-appearance-added.net",
+          "sha256": "1d4684495906f3a108cf27c4460930b97755537e70590ed17fdaf7ad4e46ace7"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/field-null-appearance-added.pdf",
+          "sha256": "29912d539140321f5ea6ffd0ca006e6effb3706b7ace7aa7aad8e1652f54a4dd"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/field-undefined-appearance-added",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: field-undefined-appearance-added",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/field-undefined-appearance-added.mdp",
+          "sha256": "12cbac747609f83238ff7950e365be4feb63bd309510669f04604b2288e3f002"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/field-undefined-appearance-added.net",
+          "sha256": "12cbac747609f83238ff7950e365be4feb63bd309510669f04604b2288e3f002"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/field-undefined-appearance-added.pdf",
+          "sha256": "8f7ea49e762bca14b3e283b93315cd10236afffcffcf12f10de09f272d33fb33"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/field-indirect-null-appearance-added",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: field-indirect-null-appearance-added",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/field-indirect-null-appearance-added.mdp",
+          "sha256": "0cb0dc4492ed1e61da3fd35e861a2b002c96d994be30b660efabb94fd9d5a5ea"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/field-indirect-null-appearance-added.net",
+          "sha256": "0cb0dc4492ed1e61da3fd35e861a2b002c96d994be30b660efabb94fd9d5a5ea"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/field-indirect-null-appearance-added.pdf",
+          "sha256": "3e5e3f62925fe9aa752d06d3e7b7221d91ab0306e073437041793690d765aa8c"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/inconsistent-unsigned-base",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: inconsistent-unsigned-base",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/inconsistent-unsigned-base.mdp",
+          "sha256": "34eaab8e6c5c2b4ea658fbf81bd27b6ecf5e208a856f1614a546e11806d0b745"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/inconsistent-unsigned-base.net",
+          "sha256": "34eaab8e6c5c2b4ea658fbf81bd27b6ecf5e208a856f1614a546e11806d0b745"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/inconsistent-unsigned-base.pdf",
+          "sha256": "38192350a7ee87fd011ae0264d60a9d25dc6ae2231bb391e1d2a046523c729c4"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/unused-invalid-slot",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: unused-invalid-slot",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/unused-invalid-slot.mdp",
+          "sha256": "34eaab8e6c5c2b4ea658fbf81bd27b6ecf5e208a856f1614a546e11806d0b745"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/unused-invalid-slot.net",
+          "sha256": "34eaab8e6c5c2b4ea658fbf81bd27b6ecf5e208a856f1614a546e11806d0b745"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/unused-invalid-slot.pdf",
+          "sha256": "3322a13906c719933fe4b70ce30aabe52ae7b30ef351973f70937dc9ea1e0c98"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/undefined-names-reference",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: undefined-names-reference",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/undefined-names-reference.mdp",
+          "sha256": "34eaab8e6c5c2b4ea658fbf81bd27b6ecf5e208a856f1614a546e11806d0b745"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/undefined-names-reference.net",
+          "sha256": "34eaab8e6c5c2b4ea658fbf81bd27b6ecf5e208a856f1614a546e11806d0b745"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/undefined-names-reference.pdf",
+          "sha256": "ba214813218e928393ace302a17870d91d93dc0aa61203b2e7e878d93a154e7f"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/undefined-annots-reference",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: undefined-annots-reference",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/undefined-annots-reference.mdp",
+          "sha256": "34eaab8e6c5c2b4ea658fbf81bd27b6ecf5e208a856f1614a546e11806d0b745"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/undefined-annots-reference.net",
+          "sha256": "34eaab8e6c5c2b4ea658fbf81bd27b6ecf5e208a856f1614a546e11806d0b745"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/undefined-annots-reference.pdf",
+          "sha256": "0a22aaf2a550d70ed7c8487e214750d2592b7f52ac8586642e52fc127724f34f"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/undefined-resource-reference",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: undefined-resource-reference",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/undefined-resource-reference.mdp",
+          "sha256": "34eaab8e6c5c2b4ea658fbf81bd27b6ecf5e208a856f1614a546e11806d0b745"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/undefined-resource-reference.net",
+          "sha256": "34eaab8e6c5c2b4ea658fbf81bd27b6ecf5e208a856f1614a546e11806d0b745"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/undefined-resource-reference.pdf",
+          "sha256": "9b868b07ebf5831d2728f78b628ddc8f05b1a02716ce7c9e12590a0979add266"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/linearized-base",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: linearized-base",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/linearized-base.mdp",
+          "sha256": "dc000f3cb47c4c3302aed3bcc1e5989cd0b5547ba0d2147bc447e2830ebe55ef"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/linearized-base.net",
+          "sha256": "dc000f3cb47c4c3302aed3bcc1e5989cd0b5547ba0d2147bc447e2830ebe55ef"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/linearized-base.pdf",
+          "sha256": "72b0f7fba388fe9f4cacece1b66d673b83cfa91b05c952f3374fbb2d0a657f15"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/linearized-base-early-eof",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: linearized-base-early-eof",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/linearized-base-early-eof.mdp",
+          "sha256": "dc000f3cb47c4c3302aed3bcc1e5989cd0b5547ba0d2147bc447e2830ebe55ef"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/linearized-base-early-eof.net",
+          "sha256": "dc000f3cb47c4c3302aed3bcc1e5989cd0b5547ba0d2147bc447e2830ebe55ef"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/linearized-base-early-eof.pdf",
+          "sha256": "878716c1eaff1f91c9bf9b9923db432d15766d1261e4df91efa2c1022264ce35"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/linearized-base-main-id",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: linearized-base-main-id",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/linearized-base-main-id.mdp",
+          "sha256": "dc000f3cb47c4c3302aed3bcc1e5989cd0b5547ba0d2147bc447e2830ebe55ef"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/linearized-base-main-id.net",
+          "sha256": "dc000f3cb47c4c3302aed3bcc1e5989cd0b5547ba0d2147bc447e2830ebe55ef"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/linearized-base-main-id.pdf",
+          "sha256": "2482fbf4f1676701a51686c7a4491471bf4f80f75d965356b698a3fb85b30714"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/xref-repointed-content",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: xref-repointed-content",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/xref-repointed-content.mdp",
+          "sha256": "2fcdf441807bef86c5d3c10828b953f5ffe3bdb583f4e0eafb0cb1eb6a63e8b9"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/xref-repointed-content.net",
+          "sha256": "2fcdf441807bef86c5d3c10828b953f5ffe3bdb583f4e0eafb0cb1eb6a63e8b9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/xref-repointed-content.pdf",
+          "sha256": "c3560efb384ff2a81977cf8fa47e4c01cb458940e406d40a0cc508401904981b"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/repaired-xref-history",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: repaired-xref-history",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/repaired-xref-history.mdp",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/repaired-xref-history.net",
+          "sha256": "7e12b3fa6792ca56cd046c68f06ac8baaa2d2dba2af0e0488985a280115a7e59"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/repaired-xref-history.pdf",
+          "sha256": "2fbab4551d99b4fd6cbbe07123485c45bd6f600fae101ac2dbc8464538fa94ad"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/template-with-content-change",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: template-with-content-change",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/template-with-content-change.mdp",
+          "sha256": "ebde57469cbd4ce881361ea146c969f39f5817d961cc401c66049ee5648c243f"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/template-with-content-change.net",
+          "sha256": "ebde57469cbd4ce881361ea146c969f39f5817d961cc401c66049ee5648c243f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/template-with-content-change.pdf",
+          "sha256": "eecad060e44b78eb5a76a0a1110f4b6a43e7d2dec386b73b2c4e8d668ebf07ed"
+        }
+      }
+    },
+    {
+      "id": "signature-changes/reattached-old-signature",
+      "kind": "vector",
+      "description": "ISO 32000-2 authored mutation ledger: reattached-old-signature",
+      "requirements": [
+        "signature-permitted-changes"
+      ],
+      "files": {
+        ".mdp": {
+          "path": "corpus/generated/signature-changes/reattached-old-signature.mdp",
+          "sha256": "f74d2e81986660bc2b0861bf2d17121726de35249868bfd11736638c0fa6d824"
+        },
+        ".net": {
+          "path": "corpus/generated/signature-changes/reattached-old-signature.net",
+          "sha256": "f74d2e81986660bc2b0861bf2d17121726de35249868bfd11736638c0fa6d824"
+        },
+        ".pdf": {
+          "path": "corpus/generated/signature-changes/reattached-old-signature.pdf",
+          "sha256": "147dbc89eaa2866481bff8f2925b739ebe6dc888b56761a8adeed039109cf202"
+        }
+      }
+    }
+  ]
+}
