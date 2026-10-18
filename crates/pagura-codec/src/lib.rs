@@ -26,7 +26,7 @@ pub mod repairs;
 mod report;
 mod run_length;
 
-pub use filter::{Filter, FilterChain, ImageCodec};
+pub use filter::{EarlyChange, Filter, FilterChain, ImageCodec};
 pub use predictor::{Predictor, PredictorKind};
 
 use pagura_core::{Diagnostics, Result};

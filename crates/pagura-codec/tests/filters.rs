@@ -147,11 +147,11 @@ fn malformed_small_inputs_never_panic_or_exceed_cap() {
         },
         Filter::Lzw {
             predictor: pagura_codec::Predictor::default(),
-            early_change: false,
+            early_change: pagura_codec::EarlyChange::Postponed,
         },
         Filter::Lzw {
             predictor: pagura_codec::Predictor::default(),
-            early_change: true,
+            early_change: pagura_codec::EarlyChange::Early,
         },
     ];
     // Exhaustive two-byte input exercises invalid characters, headers, codes,
