@@ -315,24 +315,19 @@ impl GlyphRun {
             limits,
         )?))
     }
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "the opaque renderer's tile state"
-    )]
-    fn rasterize(
-        &self,
-        target: &mut Pixmap,
-        device: Transform,
-        mask: &Mask,
-        raster: &mut Rasterizer,
-        cache: &mut GlyphCache,
-        paint: &Paint,
-        limits: Limits,
-        glyphs: &mut Meter,
-    ) -> Result<()> {
+    fn rasterize(&self, out: &mut Opaque<'_>, cache: &mut GlyphCache, paint: Paint) -> Result<()> {
+        let Opaque {
+            target,
+            device,
+            mask,
+            raster,
+            limits,
+            glyphs,
+        } = out;
+        let (device, limits) = (*device, *limits);
         for (index, &placement) in self.glyphs.iter().enumerate() {
             let geometry = cache
-                .geometry(self, placement, device, &limits, raster)
+                .geometry(self, placement, device, limits, raster)
                 .and_then(|geometry| glyphs.charge(geometry.vertices()).map(|()| geometry))
                 .map_err(|error| contextual(error, self.position(index)))?;
             if cache
@@ -345,7 +340,7 @@ impl GlyphRun {
                 raster.clear();
             }
             raster
-                .fill_glyph(target, geometry, placement.origin * device, paint, mask)
+                .fill_glyph(target, geometry, placement.origin * device, &paint, mask)
                 .map_err(|e| contextual(e, self.position(index)))?;
             if cache
                 .retained_bytes()
@@ -726,19 +721,18 @@ impl DisplayList {
                 )
                 .map(Paint::Solid)
                 .map_err(|e| contextual(e, command.position))?;
+            let mut out = Opaque {
+                target: &mut target,
+                device,
+                mask: &mask,
+                raster: &mut raster,
+                limits: &self.limits,
+                glyphs: &mut glyphs,
+            };
             let result = if let Command::Glyphs(run) = original {
-                run.rasterize(
-                    &mut target,
-                    device,
-                    &mask,
-                    &mut raster,
-                    &mut glyph_cache,
-                    &paint,
-                    self.limits,
-                    &mut glyphs,
-                )
+                run.rasterize(&mut out, &mut glyph_cache, paint)
             } else {
-                command.rasterize(&mut target, device, &mask, &mut raster, &paint, self.limits)
+                command.rasterize(&mut out, paint)
             };
             result.map_err(|e| contextual(e, command.position))?;
         }
@@ -771,19 +765,32 @@ fn count_marks(commands: &[Command]) -> usize {
         .sum()
 }
 
+/// Where the opaque renderer paints one command: the tile, its device
+/// transform and clip mask, the shared rasterizer and the page's limits.
+struct Opaque<'a> {
+    target: &'a mut Pixmap,
+    device: Transform,
+    mask: &'a Mask,
+    raster: &'a mut Rasterizer,
+    limits: &'a Limits,
+    /// Outline vertices scanned by glyph placements across the render.
+    glyphs: &'a mut Meter,
+}
+
 impl PathCommand {
-    fn rasterize(
-        &self,
-        target: &mut Pixmap,
-        device: Transform,
-        mask: &Mask,
-        raster: &mut Rasterizer,
-        paint: &Paint,
-        limits: Limits,
-    ) -> Result<()> {
+    fn rasterize(&self, out: &mut Opaque<'_>, paint: Paint) -> Result<()> {
+        let Opaque {
+            target,
+            device,
+            mask,
+            raster,
+            limits,
+            ..
+        } = out;
+        let device = *device;
         match &self.mark {
             Mark::Fill(rule) => {
-                raster.fill_path(target, Arc::clone(&self.path), device, *rule, paint, mask)?;
+                raster.fill_path(target, Arc::clone(&self.path), device, *rule, &paint, mask)?;
             }
             Mark::Stroke {
                 pen: stroke,
@@ -800,13 +807,13 @@ impl PathCommand {
                 } else {
                     stroke_outline
                 };
-                let (path, transform) = outline(&path, ctm.then(device), stroke, &limits)?;
+                let (path, transform) = outline(&path, ctm.then(device), stroke, limits)?;
                 raster.fill_path(
                     target,
                     Arc::new(path),
                     transform,
                     FillRule::NonZero,
-                    paint,
+                    &paint,
                     mask,
                 )?;
             }
@@ -928,10 +935,7 @@ mod tests {
             )
             .unwrap();
             let error = list(run, false)
-                .render(&RenderOptions {
-                    scale: 4.0,
-                    ..RenderOptions::default()
-                })
+                .render(&RenderOptions::default().with_scale(4.0))
                 .unwrap_err();
             assert_eq!(
                 error.kind,
