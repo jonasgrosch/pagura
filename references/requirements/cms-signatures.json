@@ -1,0 +1,70 @@
+{
+  "schema": 2,
+  "area": "cms-signatures",
+  "scope": "Verification-only integrity checked against ISO 32000-2:2020 12.8.3 and locally registered RFC 5652, 5035, 3161, 4055, 5480, 5758 and 8017. Independent standard-library RSA/ECDSA signing supplies expectations. No trust, full PAdES conformance or timestamp clock validation is claimed.",
+  "requirements": [
+    {
+      "id": "cms-integrity",
+      "reference": "ref-ee1fdabfe968",
+      "clauses": [
+        "5.1",
+        "5.3",
+        "5.4",
+        "5.6",
+        "11.1",
+        "11.2"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura signature_integrity",
+        "corpus/manifests/cms-signatures.json"
+      ],
+      "description": "Stream original signed ranges; select the signer certificate by issuer/serial or SKI; verify the content digest and DER attribute signature with RSA v1.5, PSS or ECDSA. Isolate signature errors and malformed certificate schemas. Report BER set ordering and weak SHA-1 separately.",
+      "gaps": "Issuer matching currently requires identical DER names. Certificate paths, algorithm strength acceptance beyond reporting SHA-1, revocation and modification analysis remain unchecked. Globally invalid ASN.1 cannot isolate an embedded certificate whose element boundaries cannot be parsed."
+    },
+    {
+      "id": "cms-detached",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.8.3.3.1",
+        "12.8.3.4.3",
+        "12.8.3.4.5"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura signature_integrity",
+        "corpus/manifests/cms-signatures.json"
+      ],
+      "description": "Detached id-data and ESS signing-certificate v1/v2 signer binding (RFC 5035 sections 3-5); frame the CMS prefix and accept only zero PDF Contents padding. Link catalog Perms/DocMDP to its certification signature.",
+      "gaps": "Complete PAdES attribute semantics, profiles, policies and historical signature discovery remain outside this integrity stage."
+    },
+    {
+      "id": "cms-timestamp",
+      "reference": "ref-259e141cb609",
+      "clauses": [
+        "2.4.2"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura signature_integrity",
+        "corpus/manifests/cms-signatures.json"
+      ],
+      "description": "ETSI.RFC3161 document timestamp verifies both the TSTInfo messageImprint over signed PDF ranges and the token CMS digest and signature. The token requires an ESS v1 or v2 signer-certificate binding (RFC 5816 section 2.2.1).",
+      "gaps": "TSA authorization, certificate path, timestamp clock trust, policy, accuracy, nonce and revocation remain unchecked."
+    },
+    {
+      "id": "cms-algorithm-protection",
+      "reference": "signature-rfc8933",
+      "clauses": [
+        "4"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura signature_integrity",
+        "corpus/manifests/cms-signatures.json"
+      ],
+      "description": "When CMSAlgorithmProtection is signed, bind its digest and signature identifiers and parameters to SignerInfo. A mismatch is SignatureInvalid; malformed, repeated and MAC-only attributes are rejected. Accept permitted absent/NULL algorithm parameters as equivalent.",
+      "gaps": ""
+    }
+  ]
+}

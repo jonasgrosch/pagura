@@ -7,6 +7,7 @@
 
 pub mod cms;
 pub mod der;
+pub mod oids;
 pub mod timestamp;
 pub mod types;
 pub mod x509;
@@ -34,6 +35,8 @@ pub mod tags {
     pub const BER_INDEFINITE: Repair = Repair::new("asn1.ber-indefinite");
     /// BER length has redundant octets or uses long form below 128 (§10.1).
     pub const BER_LENGTH: Repair = Repair::new("asn1.ber-length");
+    /// BER SET OF members are retained in their noncanonical source order (§11.6).
+    pub const BER_SET_ORDER: Repair = Repair::new("asn1.ber-set-order");
     /// A BER OCTET STRING is constructed rather than primitive (§10.2).
     pub const BER_OCTETS: Repair = Repair::new("asn1.ber-octets");
 }

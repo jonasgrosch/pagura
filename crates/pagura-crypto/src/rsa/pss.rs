@@ -124,7 +124,7 @@ impl PssParameters {
         }
         let expected = self
             .hash
-            .digest_parts(&[&[0; 8], digest, &db[padding + 1..]]);
+            .digest_parts([&[0; 8], digest, &db[padding + 1..]]);
         Ok(if expected == h {
             Verification::Valid
         } else {
@@ -136,7 +136,7 @@ impl PssParameters {
 fn mgf1_xor(hash: HashAlgorithm, seed: &[u8], output: &mut [u8]) {
     // RSA bounds output to <= 2048 bytes, hence the counter always fits u32.
     for (counter, block) in (0u32..).zip(output.chunks_mut(hash.digest_bytes())) {
-        let digest = hash.digest_parts(&[seed, &counter.to_be_bytes()]);
+        let digest = hash.digest_parts([seed, &counter.to_be_bytes()]);
         for (byte, mask) in block.iter_mut().zip(digest) {
             *byte ^= mask;
         }

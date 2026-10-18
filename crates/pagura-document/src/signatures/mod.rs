@@ -27,10 +27,13 @@ impl Document {
     /// Inspects signature fields and the catalog's UR3 usage-rights signature.
     /// Empty fields are retained. Malformed byte ranges are per-signature results;
     /// no signature is reported as cryptographically verified (ADR 0015).
+    /// Malformed typed signatures and locks have per-field errors. Catalog
+    /// certification and usage-rights signatures have separate error slots.
     ///
     /// # Errors
-    /// Returns positioned syntax/reference errors for malformed typed dictionaries
-    /// and resource-limit errors. Form repairs follow the form reader's policy;
+    /// Returns discovery errors (including unreadable form values) and resource
+    /// limits; errors within discovered signature dictionaries are retained.
+    /// Form repairs follow the form reader's policy;
     /// signature source syntax is checked strictly and never repaired.
     pub fn signatures(&self) -> Result<Signatures<'_>> {
         read::read(self)

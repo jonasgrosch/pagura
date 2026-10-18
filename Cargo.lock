@@ -14,6 +14,7 @@ dependencies = [
  "pagura-font",
  "pagura-host",
  "pagura-image",
+ "pagura-pki",
  "pagura-raster",
  "pagura-render",
  "pagura-testkit",

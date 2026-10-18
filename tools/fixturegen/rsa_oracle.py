@@ -197,6 +197,22 @@ def timing():
                         digest("SHA256", test["msg"]), test["sig"]]))
 
 
+def test_key():
+    """Public deterministic test material from known Mersenne primes."""
+    p, q, e = (1 << 521) - 1, (1 << 607) - 1, 65537
+    return p * q, e, pow(e, -1, (p - 1) * (q - 1))
+
+
+def sign_representative(encoded, key):
+    """Independent RSA arithmetic; private operations exist only in tooling."""
+    n, e, d = key
+    representative = int.from_bytes(encoded, "big")
+    assert representative < n
+    signature = pow(representative, d, n)
+    assert pow(signature, e, n) == representative
+    return signature.to_bytes((n.bit_length() + 7) // 8, "big")
+
+
 def encodings():
     """RFC 8017 9.1/9.2: independent encodings with targeted mutations.
 
