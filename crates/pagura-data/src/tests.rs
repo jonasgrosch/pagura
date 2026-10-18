@@ -80,7 +80,7 @@ fn standard_fonts_aliases_afm_metrics_and_outlines() -> Result<()> {
         assert!(Arc::ptr_eq(&resource, &again));
         let document = open(&name)?;
         assert!(PdfFont::load(&document, dictionary(&document)?).is_err());
-        let font = PdfFont::load_with(&document, dictionary(&document)?, &provider)?;
+        let font = PdfFont::load_with_provider(&document, dictionary(&document)?, Some(&provider))?;
         for value in expected(&name, "out")? {
             let values = row(&value)?;
             near(font.width(integer(&values[0])?), number(&values[1])?);
@@ -130,7 +130,7 @@ fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> R
     let provider = Bundled::default();
     for name in names("bundled-substitute-inventory")? {
         let document = open(&name)?;
-        let font = PdfFont::load_with(&document, dictionary(&document)?, &provider)?;
+        let font = PdfFont::load_with_provider(&document, dictionary(&document)?, Some(&provider))?;
         let glyphs = font.decode(b"A")?;
         let values = expected(&name, "out")?;
         let values = row(&values[0])?;
@@ -160,7 +160,7 @@ fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> R
     ] {
         let document = open(name)?;
         assert_eq!(
-            PdfFont::load_with(&document, dictionary(&document)?, &provider)
+            PdfFont::load_with_provider(&document, dictionary(&document)?, Some(&provider))
                 .unwrap_err()
                 .kind,
             pagura_core::ErrorKind::Unsupported(pagura_text::features::NON_EMBEDDED)
@@ -197,7 +197,7 @@ fn every_predefined_cmap_and_pdf_binding_matches_file_oracles() -> Result<()> {
         let again = provider
             .predefined_cmap(&cmap_name)?
             .ok_or_else(|| Error::syntax("missing cached CMap"))?;
-        assert!(Arc::ptr_eq(&cmap, &again));
+        assert!(PredefinedCMap::ptr_eq(&cmap, &again));
         let mode = fixture("text", &format!("{name}.mode"));
         assert_eq!(
             cmap.writing_mode(),
@@ -216,7 +216,8 @@ fn every_predefined_cmap_and_pdf_binding_matches_file_oracles() -> Result<()> {
         let mut bytes = input.as_slice();
         for value in expected(&name, "out")? {
             let values = row(&value)?;
-            let (code, len, cid) = cmap.decode_code(bytes, &Limits::default())?;
+            let decoded = cmap.decode_code(bytes, &Limits::default())?;
+            let (code, len, cid) = (decoded.code, decoded.byte_len, u32::from(decoded.cid));
             assert_eq!(
                 (code, u32::from(len), cid),
                 (
@@ -230,7 +231,7 @@ fn every_predefined_cmap_and_pdf_binding_matches_file_oracles() -> Result<()> {
         }
         assert_eq!(bytes, []);
         let document = open(&name)?;
-        let font = PdfFont::load_with(&document, dictionary(&document)?, &provider)?;
+        let font = PdfFont::load_with_provider(&document, dictionary(&document)?, Some(&provider))?;
         assert_eq!(font.writing_mode(), cmap.writing_mode());
         let glyphs = font.decode(&input)?;
         let expected = expected(&name, "glyphs")?;
@@ -385,7 +386,7 @@ fn collection_rows_reject_invalid_scalars_cids_and_duplicate_definitions() {
 fn embedded_programs_take_precedence_and_do_not_report_substitution() -> Result<()> {
     let provider = Bundled::default();
     let document = open("tt-unicode-priority")?;
-    let font = PdfFont::load_with(&document, dictionary(&document)?, &provider)?;
+    let font = PdfFont::load_with_provider(&document, dictionary(&document)?, Some(&provider))?;
     let glyphs = font.decode(b"A")?;
     let GlyphShape::Outline { program, glyph, .. } = &glyphs[0].shape else {
         return Err(Error::syntax("missing embedded program"));
@@ -396,7 +397,7 @@ fn embedded_programs_take_precedence_and_do_not_report_substitution() -> Result<
     // An embedded but invalid binding is an error, never a substitution.
     let document = open("binding-wrong-fontfile")?;
     assert_eq!(
-        PdfFont::load_with(&document, dictionary(&document)?, &provider)
+        PdfFont::load_with_provider(&document, dictionary(&document)?, Some(&provider))
             .unwrap_err()
             .kind,
         pagura_core::ErrorKind::Syntax
@@ -523,7 +524,7 @@ fn cjk_programs_are_opt_in_and_missing_programs_fail_explicitly() -> Result<()> 
     for ordering in ["Japan1", "GB1", "CNS1", "Korea1"] {
         let document = open(&format!("substitute-cid-{ordering}-CIDFontType2"))?;
         assert_eq!(
-            PdfFont::load_with(&document, dictionary(&document)?, &provider)
+            PdfFont::load_with_provider(&document, dictionary(&document)?, Some(&provider))
                 .unwrap_err()
                 .kind,
             pagura_core::ErrorKind::Unsupported(pagura_text::features::NON_EMBEDDED)

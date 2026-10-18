@@ -40,7 +40,7 @@ impl Fonts {
         let program = outline
             .map(|data| FontProgram::parse(data, format, &self.limits).map(Arc::new))
             .transpose()?;
-        let value = Arc::new(StandardFont { metrics, program });
+        let value = Arc::new(StandardFont::new(metrics, program));
         let mut cache = self.cache.lock().unwrap_or_else(PoisonError::into_inner);
         Ok(Some(Arc::clone(cache.entry(name).or_insert(value))))
     }

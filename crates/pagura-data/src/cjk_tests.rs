@@ -29,7 +29,7 @@ fn check_font(provider: &Bundled, name: &str) -> Result<()> {
                 ..OpenOptions::default()
             },
         )?;
-        let font = PdfFont::load_with(&document, dictionary(&document)?, provider)?;
+        let font = PdfFont::load_with_provider(&document, dictionary(&document)?, Some(provider))?;
         let collection = fixture("text", &format!("{name}.collection"));
         let program = provider
             .cid_font(b"Adobe", &collection)?
@@ -92,7 +92,8 @@ fn vertical_substitutes_remain_explicit() -> Result<()> {
         "substitute-cid-wmode",
     ] {
         let document = open(name)?;
-        let error = PdfFont::load_with(&document, dictionary(&document)?, &provider).unwrap_err();
+        let error = PdfFont::load_with_provider(&document, dictionary(&document)?, Some(&provider))
+            .unwrap_err();
         assert_eq!(
             error.kind,
             ErrorKind::Unsupported(features::CID_SUBSTITUTE_VERTICAL)
@@ -113,7 +114,8 @@ fn collection_mismatches_and_unknown_identity_fonts_are_not_guessed() -> Result<
         ),
     ] {
         let document = open(name)?;
-        let error = PdfFont::load_with(&document, dictionary(&document)?, &provider).unwrap_err();
+        let error = PdfFont::load_with_provider(&document, dictionary(&document)?, Some(&provider))
+            .unwrap_err();
         assert_eq!(error.kind, kind);
         assert_eq!(document.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
     }

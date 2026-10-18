@@ -9,7 +9,7 @@ use std::{
 #[derive(Debug)]
 pub(crate) struct CMaps {
     limits: Limits,
-    maps: Mutex<BTreeMap<&'static [u8], Arc<PredefinedCMap>>>,
+    maps: Mutex<BTreeMap<&'static [u8], PredefinedCMap>>,
     unicode: Mutex<BTreeMap<&'static [u8], Arc<CidToUnicode>>>,
 }
 impl CMaps {
@@ -20,14 +20,10 @@ impl CMaps {
             unicode: Mutex::new(BTreeMap::new()),
         }
     }
-    pub(crate) fn get(&self, name: &[u8]) -> Result<Option<Arc<PredefinedCMap>>> {
+    pub(crate) fn get(&self, name: &[u8]) -> Result<Option<PredefinedCMap>> {
         self.load(name, &mut Vec::new())
     }
-    fn load(
-        &self,
-        name: &[u8],
-        path: &mut Vec<&'static [u8]>,
-    ) -> Result<Option<Arc<PredefinedCMap>>> {
+    fn load(&self, name: &[u8], path: &mut Vec<&'static [u8]>) -> Result<Option<PredefinedCMap>> {
         let Some((name, data)) = map_entry(name) else {
             return Ok(None);
         };
@@ -43,18 +39,18 @@ impl CMaps {
             .unwrap_or_else(PoisonError::into_inner)
             .get(name)
         {
-            return Ok(Some(Arc::clone(value)));
+            return Ok(Some(value.clone()));
         }
         path.push(name);
         // Parse outside locks: parents recurse and concurrent readers can race
         // harmlessly. Only one immutable result is retained for each known key.
-        let value = Arc::new(PredefinedCMap::parse(data, &self.limits, |parent| {
+        let value = PredefinedCMap::parse(data, &self.limits, |parent| {
             self.load(parent, path)?
                 .ok_or_else(|| Error::syntax("missing predefined usecmap parent"))
-        })?);
+        })?;
         path.pop();
         let mut cache = self.maps.lock().unwrap_or_else(PoisonError::into_inner);
-        Ok(Some(Arc::clone(cache.entry(name).or_insert(value))))
+        Ok(Some(cache.entry(name).or_insert(value).clone()))
     }
     pub(crate) fn unicode(
         &self,

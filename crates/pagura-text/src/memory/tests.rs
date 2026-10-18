@@ -71,7 +71,7 @@ fn owned_unicode_and_type3_resources_increase_the_estimate() -> Result<()> {
 
 struct Data {
     standard: Arc<StandardFont>,
-    cmap: Arc<PredefinedCMap>,
+    cmap: PredefinedCMap,
     unicode: Arc<CidToUnicode>,
 }
 
@@ -79,8 +79,11 @@ impl Provider for Data {
     fn standard_font(&self, _: &[u8]) -> Result<Option<Arc<StandardFont>>> {
         Ok(Some(Arc::clone(&self.standard)))
     }
-    fn predefined_cmap(&self, _: &[u8]) -> Result<Option<Arc<PredefinedCMap>>> {
-        Ok(Some(Arc::clone(&self.cmap)))
+    fn cid_font(&self, _: &[u8], _: &[u8]) -> Result<Option<Arc<FontProgram>>> {
+        Ok(None)
+    }
+    fn predefined_cmap(&self, _: &[u8]) -> Result<Option<PredefinedCMap>> {
+        Ok(Some(self.cmap.clone()))
     }
     fn cid_to_unicode(&self, _: &[u8], _: &[u8]) -> Result<Option<Arc<CidToUnicode>>> {
         Ok(Some(Arc::clone(&self.unicode)))
@@ -89,17 +92,17 @@ impl Provider for Data {
 
 fn provider(program: Arc<FontProgram>) -> Result<Data> {
     let limits = Limits::default();
-    let mut encoding = std::array::from_fn(|_| None);
-    encoding[65] = Some(Name::new(b"A"));
+    let mut metrics = StandardMetrics::new(Name::new(b"Helvetica"));
+    metrics.encoding[65] = Some(Name::new(b"A"));
+    metrics.widths.insert(Name::new(b"A"), 600.0);
+    let cmap = b"/CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) >> def \
+        1 begincodespacerange <0000> <ffff> endcodespacerange \
+        1 begincidrange <0000> <ffff> 0 endcidrange";
+    let unicode = [(1, "A".to_owned())].into_iter().collect();
     Ok(Data {
-        standard: Arc::new(StandardFont {
-            metrics: Arc::new(StandardMetrics { name: Name::new(b"Helvetica"), encoding,
-                widths: [(Name::new(b"A"), 600.0)].into_iter().collect(), descriptor: StandardDescriptor::default() }),
-            program: Some(program),
-        }),
-        cmap: Arc::new(PredefinedCMap::parse(b"/CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) >> def 1 begincodespacerange <0000> <ffff> endcodespacerange 1 begincidrange <0000> <ffff> 0 endcidrange", &limits,
-            |_| Err(Error::syntax("unexpected parent")))?),
-        unicode: Arc::new(CidToUnicode::new([(1, "A".to_owned())].into_iter().collect(), &limits)?),
+        standard: Arc::new(StandardFont::new(Arc::new(metrics), Some(program))),
+        cmap: PredefinedCMap::parse(cmap, &limits, |_| Err(Error::syntax("unexpected parent")))?,
+        unicode: Arc::new(CidToUnicode::new(unicode, &limits)?),
     })
 }
 
@@ -117,21 +120,21 @@ fn substituted_programs_and_predefined_maps_belong_to_the_provider() -> Result<(
     ]
     .into_iter()
     .collect();
-    let first = PdfFont::load_with(&document, &dict, &data)?;
-    let second = PdfFont::load_with(&document, &dict, &data)?;
+    let first = PdfFont::load_with_provider(&document, &dict, Some(&data))?;
+    let second = PdfFont::load_with_provider(&document, &dict, Some(&data))?;
     assert_eq!(first.retained_bytes(), second.retained_bytes());
     assert!(first.retained_bytes() < embedded.retained_bytes());
     let (document, mut dict) = load("embedded-cid-variable-codes")?;
     let owned = PdfFont::load(&document, &dict)?.retained_bytes();
     dict.insert(Name::new(b"Encoding"), Value::name(b"Cached"));
-    let first = PdfFont::load_with(&document, &dict, &data)?;
+    let first = PdfFont::load_with_provider(&document, &dict, Some(&data))?;
     assert!(owned > first.retained_bytes());
     let mut entries = BTreeMap::new();
     for cid in 0..1000 {
         entries.insert(cid, "long collection text".repeat(10));
     }
     data.unicode = Arc::new(CidToUnicode::new(entries, &Limits::default())?);
-    let second = PdfFont::load_with(&document, &dict, &data)?;
+    let second = PdfFont::load_with_provider(&document, &dict, Some(&data))?;
     assert_eq!(first.retained_bytes(), second.retained_bytes());
     let font::Mapping::Composite {
         map: first,

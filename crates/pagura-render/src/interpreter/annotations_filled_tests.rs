@@ -315,17 +315,16 @@ impl RectangleProvider {
         .unwrap();
         let mut encoding = std::array::from_fn(|_| None);
         encoding[52] = Some(pagura_core::Name::new(b"A"));
-        Self(Arc::new(pagura_text::StandardFont {
-            metrics: Arc::new(pagura_text::StandardMetrics {
-                name: pagura_core::Name::new(b"ZapfDingbats"),
-                encoding,
-                widths: [(pagura_core::Name::new(b"A"), 600.0)]
-                    .into_iter()
-                    .collect(),
-                descriptor: pagura_text::StandardDescriptor::default(),
-            }),
-            program: Some(Arc::new(program)),
-        }))
+        let mut metrics =
+            pagura_text::StandardMetrics::new(pagura_core::Name::new(b"ZapfDingbats"));
+        metrics.encoding = encoding;
+        metrics.widths = [(pagura_core::Name::new(b"A"), 600.0)]
+            .into_iter()
+            .collect();
+        Self(Arc::new(pagura_text::StandardFont::new(
+            Arc::new(metrics),
+            Some(Arc::new(program)),
+        )))
     }
 }
 impl pagura_text::Provider for RectangleProvider {
@@ -338,7 +337,14 @@ impl pagura_text::Provider for RectangleProvider {
     fn predefined_cmap(
         &self,
         _: &[u8],
-    ) -> pagura_core::Result<Option<Arc<pagura_text::PredefinedCMap>>> {
+    ) -> pagura_core::Result<Option<pagura_text::PredefinedCMap>> {
+        Ok(None)
+    }
+    fn cid_font(
+        &self,
+        _: &[u8],
+        _: &[u8],
+    ) -> pagura_core::Result<Option<Arc<pagura_font::FontProgram>>> {
         Ok(None)
     }
     fn cid_to_unicode(

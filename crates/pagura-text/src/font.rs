@@ -121,26 +121,26 @@ impl PdfFont {
         load::load(document, font)
     }
 
-    /// Loads a font with host-supplied substitutes, metrics and predefined CMaps.
-    /// Embedded programs take precedence (9.6.2.2, 9.7.5.2; ADR 0009).
+    /// Loads a font with host-supplied substitutes, metrics and predefined
+    /// CMaps, when a provider is given. Embedded programs take precedence
+    /// (9.6.2.2, 9.7.5.2; ADR 0009). Without a provider this is [`Self::load`].
     ///
     /// # Errors
     /// As [`Self::load`], plus errors from the provider. Unavailable or unsafe
     /// substitutions remain explicit unsupported capabilities.
-    pub fn load_with(
+    pub fn load_with_provider(
         document: &Document,
         font: &Dictionary,
-        provider: &dyn Provider,
+        provider: Option<&dyn Provider>,
     ) -> Result<Self> {
-        load::load_with(document, font, Some(provider), Position::Unknown, false)
+        load::load_with(document, font, provider, Position::Unknown, false)
     }
 
-    /// Loads a font with an optional provider, locating the descriptor-flags
-    /// repair at `position`, typically the `Tf` operator that selected the
-    /// font.
+    /// As [`Self::load_with_provider`], locating the descriptor-flags repair
+    /// at `position`, typically the `Tf` operator that selected the font.
     ///
     /// # Errors
-    /// As [`Self::load_with`].
+    /// As [`Self::load_with_provider`].
     pub fn load_at(
         document: &Document,
         font: &Dictionary,
@@ -161,7 +161,7 @@ impl PdfFont {
     /// that point are not examined, and are not reported.
     ///
     /// # Errors
-    /// As [`Self::load_with`].
+    /// As [`Self::load_with_provider`].
     pub fn load_for_rendering(
         document: &Document,
         font: &Dictionary,

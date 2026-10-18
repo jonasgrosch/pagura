@@ -135,7 +135,7 @@ impl Provider for Bundled {
         #[cfg(not(feature = "standard-fonts"))]
         Ok(None)
     }
-    fn predefined_cmap(&self, name: &[u8]) -> Result<Option<Arc<PredefinedCMap>>> {
+    fn predefined_cmap(&self, name: &[u8]) -> Result<Option<PredefinedCMap>> {
         let _ = name;
         #[cfg(feature = "cmaps")]
         return self.cmaps.get(name);

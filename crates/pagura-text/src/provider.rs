@@ -14,15 +14,10 @@ pub trait Provider: Send + Sync {
     /// A horizontal substitute with a Unicode cmap for a CID collection.
     /// Selection translates collection CIDs through [`Self::cid_to_unicode`],
     /// never through the substitute's internal CIDs (9.7.4.2; ADR 0009).
-    /// The default supplies no substitute, preserving existing providers.
     ///
     /// # Errors
     /// Returns parsing or resource-budget errors; `None` means unavailable.
-    fn cid_font(&self, registry: &[u8], ordering: &[u8]) -> Result<Option<Arc<FontProgram>>> {
-        let _ = (registry, ordering);
-        Ok(None)
-    }
-
+    fn cid_font(&self, registry: &[u8], ordering: &[u8]) -> Result<Option<Arc<FontProgram>>>;
     /// Standard-14 metrics and optional substitute, by canonical base name.
     ///
     /// # Errors
@@ -32,7 +27,7 @@ pub trait Provider: Send + Sync {
     ///
     /// # Errors
     /// Returns parsing or resource-budget errors; `None` means unavailable.
-    fn predefined_cmap(&self, name: &[u8]) -> Result<Option<Arc<PredefinedCMap>>>;
+    fn predefined_cmap(&self, name: &[u8]) -> Result<Option<PredefinedCMap>>;
     /// CID to Unicode data for a registry and ordering (9.10.2).
     ///
     /// # Errors
@@ -41,8 +36,10 @@ pub trait Provider: Send + Sync {
     -> Result<Option<Arc<CidToUnicode>>>;
 }
 
-/// AFM font-wide descriptor values, in thousandths of text space.
+/// AFM font-wide descriptor values, in thousandths of text space. Start
+/// from [`Default`] and set the values a metrics file records.
 #[derive(Debug, Clone, Default, PartialEq)]
+#[non_exhaustive]
 pub struct StandardDescriptor {
     /// Font bounding box: left, bottom, right, top.
     pub bbox: [f64; 4],
@@ -63,11 +60,12 @@ pub struct StandardDescriptor {
     /// Dominant horizontal stem width, when recorded.
     pub stem_h: Option<f64>,
     /// AFM weight name.
-    pub weight: String,
+    pub weight: Box<str>,
 }
 
 /// Standard-font metrics and its built-in code-to-name encoding (9.6.2.2).
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct StandardMetrics {
     /// Canonical PostScript font name.
     pub name: Name,
@@ -80,6 +78,16 @@ pub struct StandardMetrics {
 }
 
 impl StandardMetrics {
+    /// Empty metrics for the font `name`: no encoded codes and no widths.
+    pub fn new(name: Name) -> Self {
+        Self {
+            name,
+            encoding: std::array::from_fn(|_| None),
+            widths: BTreeMap::new(),
+            descriptor: StandardDescriptor::default(),
+        }
+    }
+
     /// Width of a code in the built-in encoding, in AFM units.
     pub fn width(&self, code: u8) -> Option<f64> {
         self.encoding[usize::from(code)]
@@ -92,6 +100,7 @@ impl StandardMetrics {
 /// Shared metrics and a substitute outline program. Missing outlines do not
 /// prevent metric lookup.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct StandardFont {
     /// Original metrics and encoding; these determine layout.
     pub metrics: Arc<StandardMetrics>,
@@ -99,21 +108,42 @@ pub struct StandardFont {
     pub program: Option<Arc<FontProgram>>,
 }
 
-/// A parsed, immutable predefined CMap, including resolved `usecmap` parents.
+impl StandardFont {
+    /// Metrics with optional replacement outlines.
+    pub fn new(metrics: Arc<StandardMetrics>, program: Option<Arc<FontProgram>>) -> Self {
+        Self { metrics, program }
+    }
+}
+
+/// A parsed, immutable predefined CMap, including resolved `usecmap`
+/// parents. Cloning shares the parsed map.
 #[derive(Debug, Clone)]
 pub struct PredefinedCMap(pub(crate) Arc<CMap>);
+
+/// One code decoded by a predefined CMap (9.7.6.2–9.7.6.3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct CMapCode {
+    /// The character code.
+    pub code: u32,
+    /// Bytes the code occupies.
+    pub byte_len: u8,
+    /// Its CID, or the notdef CID when the code maps to none.
+    pub cid: u16,
+}
 
 impl PredefinedCMap {
     /// Parses the declarative CMap subset of TN5014 sections 5.1–5.4.
     /// `parent` resolves a `usecmap` name; its implementation must bound graph
-    /// depth and reject cycles. Child mappings override inherited mappings.
+    /// depth and reject cycles. Child mappings override inherited mappings,
+    /// which are shared rather than copied.
     ///
     /// # Errors
     /// Returns syntax, unsupported-operator, parent-resolution or limit errors.
     pub fn parse(
         bytes: &[u8],
         limits: &Limits,
-        mut parent: impl FnMut(&[u8]) -> Result<Arc<Self>>,
+        mut parent: impl FnMut(&[u8]) -> Result<Self>,
     ) -> Result<Self> {
         if bytes.len() > limits.decoded_bytes {
             return Err(Error::limit("CMap resource byte budget exceeded"));
@@ -126,6 +156,11 @@ impl PredefinedCMap {
         }
         map.validate(*limits, &mut work)?;
         Ok(Self(Arc::new(map)))
+    }
+
+    /// Whether two handles share one parsed map.
+    pub fn ptr_eq(a: &Self, b: &Self) -> bool {
+        Arc::ptr_eq(&a.0, &b.0)
     }
 
     /// Writing mode of this CMap.
@@ -141,26 +176,32 @@ impl PredefinedCMap {
         ))
     }
 
-    /// Decodes one code, returning `(code, byte_length, CID)` including notdef.
+    /// Decodes the first code of `bytes`, with the CMap's notdef mapping for
+    /// a code without a CID. Unlike [`crate::PdfFont::decode`], it does not
+    /// check whether a font program has a glyph for the CID.
     ///
     /// # Errors
     /// Returns syntax errors for empty input and errors for exceeded budgets.
-    pub fn decode_code(&self, bytes: &[u8], limits: &Limits) -> Result<(u32, u8, u32)> {
+    pub fn decode_code(&self, bytes: &[u8], limits: &Limits) -> Result<CMapCode> {
         if bytes.is_empty() {
             return Err(Error::syntax("empty CMap input"));
         }
         let mut work = 0;
-        let (code, valid) = self.0.next(bytes, &mut work, *limits)?;
-        let cid = if valid {
+        let (code, in_codespace) = self.0.next(bytes, &mut work, *limits)?;
+        let mapped = if in_codespace {
             self.0.cid(code, &mut work, *limits)?
         } else {
             None
         };
-        Ok((
-            code.value,
-            code.len,
-            u32::from(cid.unwrap_or(self.0.notdef(code, &mut work, *limits)?)),
-        ))
+        let cid = match mapped {
+            Some(cid) => cid,
+            None => self.0.notdef(code, &mut work, *limits)?,
+        };
+        Ok(CMapCode {
+            code: code.value,
+            byte_len: code.len,
+            cid: cid.get(),
+        })
     }
 }
 

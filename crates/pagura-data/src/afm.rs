@@ -1,7 +1,6 @@
 //! Bounded parser for the pinned Core14 AFM files, not a PostScript interpreter.
 use pagura_core::{Error, Limits, Name, Result};
-use pagura_text::{StandardDescriptor, StandardMetrics};
-use std::collections::BTreeMap;
+use pagura_text::StandardMetrics;
 
 pub(crate) fn parse(data: &[u8], limits: Limits) -> Result<StandardMetrics> {
     if data.len() > limits.decoded_bytes {
@@ -11,12 +10,7 @@ pub(crate) fn parse(data: &[u8], limits: Limits) -> Result<StandardMetrics> {
     if !text.starts_with("StartFontMetrics ") || !text.trim_end().ends_with("EndFontMetrics") {
         return Err(Error::syntax("invalid AFM framing"));
     }
-    let mut metrics = StandardMetrics {
-        name: Name::new(b""),
-        encoding: std::array::from_fn(|_| None),
-        widths: BTreeMap::new(),
-        descriptor: StandardDescriptor::default(),
-    };
+    let mut metrics = StandardMetrics::new(Name::new(b""));
     let mut count = None;
     let mut remaining = 0;
     for (index, line) in text.lines().enumerate() {
@@ -86,7 +80,7 @@ fn descriptor(key: &str, value: &str, metrics: &mut StandardMetrics, limits: Lim
         }
         "Weight" => {
             bounded_name(value, limits)?;
-            value.clone_into(&mut d.weight);
+            d.weight = value.into();
         }
         "Ascender" => d.ascent = Some(number(value)?),
         "Descender" => d.descent = Some(number(value)?),

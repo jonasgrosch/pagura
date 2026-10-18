@@ -17,7 +17,7 @@ fn foxit_charsets_and_pdf_width_precedence() -> Result<()> {
         "substitute-Symbol-truetype-nonsymbolic",
     ] {
         let document = open(name)?;
-        let font = PdfFont::load_with(&document, dictionary(&document)?, &provider)?;
+        let font = PdfFont::load_with_provider(&document, dictionary(&document)?, Some(&provider))?;
         let input = pagura_testkit::fixture("text", &format!("{name}.input"));
         let glyphs = font.decode(&input)?;
         let rows = expected(name, "out")?;
