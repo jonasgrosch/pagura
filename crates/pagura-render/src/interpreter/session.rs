@@ -11,7 +11,7 @@ use super::{Compiler, FillRule, Graphics, PathBuilder, Result};
 use crate::color::Color;
 use crate::optional::Visibility;
 use crate::pattern::{PaintType, TilingDefinition};
-use pagura_core::{Error, ObjectId, Rect};
+use pagura_core::{Error, Meter, ObjectId, Rect};
 use pagura_document::{Document, Page};
 use pagura_raster::Transform;
 use std::cell::{Cell, RefCell};
@@ -26,14 +26,19 @@ pub(super) struct Session<'a> {
     pub(super) fonts: &'a Mutex<FontCache>,
     /// In-memory form values whose widgets get generated appearances.
     pub(super) filler: Option<&'a pagura_document::forms::FormFiller<'a>>,
-    pub(super) colors: crate::icc::Cache,
+    profiles: crate::icc::Cache,
     pub(super) visibility: Visibility,
-    /// Fonts, outlines and images this compilation retains, and their budget.
+    /// Fonts, outlines and images this compilation retains.
     pub(super) paint: RefCell<text::cache::Cache>,
     /// Positioned text, when the compilation also extracts text.
     pub(super) text: Option<RefCell<extract::Output>>,
-    operations: Cell<usize>,
-    marks: Cell<usize>,
+    /// Content tokens, inline-image header entries and shown glyphs.
+    operations: RefCell<Meter>,
+    /// Painted marks and groups in the display list.
+    marks: RefCell<Meter>,
+    /// Bytes this compilation holds (ADR 0016 `render_bytes`): the paint and
+    /// colour caches, mesh data and content buffers while they are parsed.
+    retained: RefCell<Meter>,
     /// Raster work certifying the regions of filled paths and clips
     /// (10.7.4), charged once per path for the whole compilation.
     pub(super) fill_work: Cell<usize>,
@@ -48,54 +53,96 @@ impl<'a> Session<'a> {
         filler: Option<&'a pagura_document::forms::FormFiller<'a>>,
         text: Option<extract::Output>,
     ) -> Result<Self> {
+        let limits = document.limits();
         Ok(Self {
             document,
             page,
             provider,
             fonts,
             filler,
-            colors: crate::icc::Cache::default(),
+            profiles: crate::icc::Cache::default(),
             visibility: Visibility::new(document)?,
             paint: RefCell::default(),
             text: text.map(RefCell::new),
-            operations: Cell::new(0),
-            marks: Cell::new(0),
+            operations: RefCell::new(Meter::new(
+                limits.operations,
+                "content operation budget exceeded",
+            )),
+            marks: RefCell::new(Meter::new(
+                limits.display_commands,
+                "display list budget exceeded",
+            )),
+            retained: RefCell::new(Meter::new(
+                limits.render_bytes,
+                "page compilation byte budget exceeded",
+            )),
             fill_work: Cell::new(0),
         })
     }
 
-    /// Charges interpretation work: content tokens, inline-image header
-    /// entries and shown glyphs share the page's `operations` budget.
-    pub(super) fn charge_operations(&self, count: usize, message: &'static str) -> Result<()> {
-        let total = self
-            .operations
-            .get()
-            .checked_add(count)
-            .filter(|&n| n <= self.document.limits().operations)
-            .ok_or(Error::limit(message))?;
-        self.operations.set(total);
-        Ok(())
+    /// Charges interpretation work against the page's `operations` budget.
+    pub(super) fn charge_operations(&self, count: usize) -> Result<()> {
+        self.operations.borrow_mut().charge(count)
     }
 
     /// Charges painted marks against the page's `display_commands` budget.
     pub(super) fn charge_marks(&self, count: usize) -> Result<()> {
-        let total = self
-            .marks
-            .get()
-            .checked_add(count)
-            .filter(|&n| n <= self.document.limits().display_commands)
-            .ok_or(Error::limit("display list budget exceeded"))?;
-        self.marks.set(total);
-        Ok(())
+        self.marks.borrow_mut().charge(count)
     }
 
+    /// Charges bytes the compilation keeps until it ends.
+    pub(super) fn retain(&self, bytes: usize) -> Result<()> {
+        self.retained.borrow_mut().charge(bytes)
+    }
+
+    /// Charges bytes held until the returned guard is dropped.
+    pub(super) fn hold(&self, bytes: usize) -> Result<Held<'_>> {
+        self.retain(bytes)?;
+        Ok(Held {
+            meter: &self.retained,
+            bytes,
+        })
+    }
+
+    /// Colour-space context whose profile cache charges this session.
+    pub(super) fn colors(&self) -> crate::icc::ColorContext<'_> {
+        crate::icc::ColorContext::new(self.document, &self.profiles, &self.retained)
+    }
+
+    #[cfg(test)]
+    pub(super) fn retained(&self) -> usize {
+        self.retained.borrow().used()
+    }
+
+    #[cfg(test)]
     pub(super) fn marks(&self) -> usize {
-        self.marks.get()
+        self.marks.borrow().used()
     }
 
     #[cfg(test)]
     pub(super) fn operations(&self) -> usize {
-        self.operations.get()
+        self.operations.borrow().used()
+    }
+}
+
+/// Bytes charged to a session for as long as the guard lives.
+pub(super) struct Held<'m> {
+    meter: &'m RefCell<Meter>,
+    bytes: usize,
+}
+
+impl Held<'_> {
+    /// Charges `bytes` more, released with the rest.
+    pub(super) fn add(&mut self, bytes: usize) -> Result<()> {
+        self.meter.borrow_mut().charge(bytes)?;
+        self.bytes += bytes;
+        Ok(())
+    }
+}
+
+impl Drop for Held<'_> {
+    fn drop(&mut self) {
+        self.meter.borrow_mut().refund(self.bytes);
     }
 }
 

@@ -49,7 +49,7 @@ impl Function {
         ancestors: &mut Vec<ObjectId>,
         work: &mut usize,
     ) -> Result<Self> {
-        if *work >= document.limits().value_nodes {
+        if *work >= document.limits().traversal_work {
             return Err(Error::limit("function graph budget exceeded"));
         }
         *work += 1;
@@ -122,9 +122,6 @@ impl Function {
                     .and_then(Value::as_array)
                     .filter(|v| !v.is_empty())
                     .ok_or(Error::syntax("stitching function requires Functions"))?;
-                if values.len() > document.limits().value_nodes {
-                    return Err(Error::limit("stitching function count exceeded"));
-                }
                 let bounds = numbers(document, dictionary, b"Bounds", None)?;
                 let encode = pairs_unordered(document, dictionary, b"Encode", None)?;
                 if bounds.len() + 1 != values.len() || encode.len() != values.len() {

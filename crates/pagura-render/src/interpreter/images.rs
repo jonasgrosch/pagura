@@ -183,7 +183,7 @@ impl Compiler<'_> {
             }
             bytes = bytes.saturating_add(sample_bytes(&alpha.samples));
         }
-        self.paint_charge(bytes, 1)?;
+        self.session.retain(bytes)?;
         Ok(Arc::new(Image {
             decoded,
             space,
@@ -218,7 +218,7 @@ impl Compiler<'_> {
     }
 
     fn image_space(&self, decoded: &DecodedImage, resources: &Dictionary) -> Result<Option<Space>> {
-        let context = crate::icc::ColorContext::new(self.document, &self.session.colors);
+        let context = self.session.colors();
         let space = match &decoded.kind {
             ImageKind::Color {
                 color_space: Some(value),
@@ -266,7 +266,7 @@ impl Compiler<'_> {
             transfer: self.state.transfer.clone(),
             position: self.position,
         }));
-        self.paint_charge(0, 0)
+        Ok(())
     }
 
     fn inline_framing(
@@ -296,7 +296,7 @@ impl Compiler<'_> {
                     .and_then(Value::as_name)
                     .is_some_and(|n| n == b"ICCBased")
             }) {
-                let context = crate::icc::ColorContext::new(self.document, &self.session.colors);
+                let context = self.session.colors();
                 let count = color::blending(&context, resources, space)?.components();
                 Value::name(match count {
                     1 => b"DeviceGray",
@@ -324,8 +324,7 @@ impl Compiler<'_> {
         self.glyph_ignores(crate::operators::Operator::BeginImage)?;
         let mut dictionary = Dictionary::new();
         loop {
-            self.session
-                .charge_operations(1, "inline image dictionary budget exceeded")?;
+            self.session.charge_operations(1)?;
             if parser.peek() == Some(b'I') {
                 if parser.word()? != b"ID" {
                     return Err(Error::syntax("inline image requires ID"));

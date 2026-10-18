@@ -169,7 +169,7 @@ impl Compiler<'_> {
         if let ColorOperation::ComponentsOrPattern(v) = operation {
             return self.select_pattern(target, v, resources);
         }
-        let context = crate::icc::ColorContext::new(self.document, &self.session.colors);
+        let context = self.session.colors();
         let color = match target {
             Target::Stroke => &mut self.state.stroke.color,
             Target::Fill => &mut self.state.fill.color,

@@ -10,13 +10,13 @@ impl Compiler<'_> {
         resources: &Dictionary,
     ) -> Result<()> {
         let value = resource(self.document, resources, b"Shading", name.as_bytes())?;
-        let context = crate::icc::ColorContext::new(self.document, &self.session.colors);
+        let context = self.session.colors();
         let mut shading = crate::shading::Shading::parse(&context, resources, value)?;
         if let Some(path) = &mut shading.bbox_path {
             self.prepare_fill(path, FillRule::NonZero)?;
         }
         let shading = Arc::new(shading);
-        self.paint_charge(shading.mesh_bytes(), 0)?;
+        self.session.retain(shading.mesh_bytes())?;
         if !self.visible {
             return Ok(());
         }

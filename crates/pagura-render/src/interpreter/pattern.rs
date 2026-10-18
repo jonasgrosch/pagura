@@ -28,7 +28,7 @@ impl Compiler<'_> {
         let name = name
             .as_name()
             .ok_or(Error::syntax("pattern name expected"))?;
-        let context = crate::icc::ColorContext::new(self.document, &self.session.colors);
+        let context = self.session.colors();
         let definition = Definition::parse(&context, resources, name.as_bytes(), self.initial_ctm)?;
         let color = match &definition.kind {
             DefinitionKind::Tiling(tiling) if tiling.paint == PaintType::Uncolored => {
@@ -85,7 +85,7 @@ impl Compiler<'_> {
         }
         let kind = match definition.kind {
             DefinitionKind::Shading(mut shading) => {
-                self.paint_charge(shading.mesh_bytes(), 0)?;
+                self.session.retain(shading.mesh_bytes())?;
                 // A definition is parsed for this selection, so nothing shares it yet.
                 let unique = Arc::get_mut(&mut shading);
                 debug_assert!(unique.is_some(), "a fresh shading definition is unshared");

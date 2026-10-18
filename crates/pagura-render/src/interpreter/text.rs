@@ -190,7 +190,7 @@ impl Compiler<'_> {
             return Err(Error::syntax("ET crosses graphics state boundary"));
         }
         if object.knockout && self.commands.len() > object.start {
-            self.paint_charge(0, 1)?;
+            self.session.charge_marks(1)?;
             let commands = self.commands.split_off(object.start);
             self.commands
                 .push(super::Command::Group(crate::transparency::Group {
@@ -252,8 +252,7 @@ impl Compiler<'_> {
             .clone()
             .ok_or(Error::syntax("text showing requires a font"))?;
         let glyphs = font.font.decode(bytes).at(self.position)?;
-        self.session
-            .charge_operations(glyphs.len(), "text glyph work exceeded")?;
+        self.session.charge_operations(glyphs.len())?;
         self.extract_show()?;
         for glyph in glyphs {
             self.show_glyph(&font, glyph)?;
@@ -334,7 +333,7 @@ impl Compiler<'_> {
         // Fill and fill-and-clip glyphs join the context's glyph run (9.3.8).
         if matches!(mode, RenderMode::Fill | RenderMode::FillClip) {
             if mode == RenderMode::FillClip {
-                self.paint_charge(path_bytes(&outline), 0)?;
+                self.session.retain(path_bytes(&outline))?;
                 let path = outline.transformed(transform);
                 validate_path(&path)?;
                 let limit = self.document.limits().path_segments;
@@ -353,7 +352,8 @@ impl Compiler<'_> {
         } else {
             1
         };
-        self.paint_charge(path_bytes(&outline).saturating_mul(copies), 0)?;
+        self.session
+            .retain(path_bytes(&outline).saturating_mul(copies))?;
         let path = outline.transformed(transform);
         validate_path(&path)?;
         if mode.clips() {
@@ -374,14 +374,15 @@ impl Compiler<'_> {
     fn append_glyph(&mut self, outline: Arc<Path>, transform: Transform) -> Result<()> {
         self.session.charge_marks(1)?;
         // Bound placement/source/index capacities before growing the run.
-        self.paint_charge(crate::display::GlyphRun::placement_bytes(), 0)?;
+        self.session
+            .retain(crate::display::GlyphRun::placement_bytes())?;
         let open = self.text_run.filter(|&i| i + 1 == self.commands.len());
         if let Some(super::Command::Glyphs(run)) = open.and_then(|i| self.commands.get_mut(i))
             && run.glyphs.len() < MAX_GLYPHS_PER_RUN
         {
             return run.push(outline, transform, self.position);
         }
-        self.paint_charge(size_of::<crate::display::GlyphRun>(), 0)?;
+        self.session.retain(size_of::<crate::display::GlyphRun>())?;
         let mut run = Box::new(crate::display::GlyphRun::new(super::PathCommand {
             path: Arc::default(),
             mark: super::Mark::Fill(FillRule::NonZero),

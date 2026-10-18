@@ -132,7 +132,7 @@ impl Compiler<'_> {
     /// group's attributes (11.4.7).
     fn page(&mut self) -> Result<crate::transparency::Attributes> {
         let page = self.session.page;
-        let context = crate::icc::ColorContext::new(self.document, &self.session.colors);
+        let context = self.session.colors();
         let group =
             crate::transparency::Attributes::parse(&context, page.dictionary(), page.resources())?
                 .unwrap_or_default();
@@ -148,16 +148,13 @@ impl Compiler<'_> {
     fn sequence(&mut self, streams: &[&IndirectObject], resources: &Dictionary) -> Result<()> {
         let mut bytes = Vec::new();
         let mut origins = Vec::new();
+        let mut held = self.session.hold(0)?;
         for stream in streams {
             let data = self.document.stream_data(stream)?;
-            let end = bytes
-                .len()
-                .checked_add(data.len())
-                .and_then(|n| n.checked_add(1))
-                .filter(|&n| n <= self.document.limits().decoded_bytes)
-                .ok_or(Error::limit("content sequence byte budget exceeded"))?;
+            let length = data.len().saturating_add(1);
+            held.add(length)?;
             bytes
-                .try_reserve(end - bytes.len())
+                .try_reserve(length)
                 .map_err(|_| Error::limit("content sequence allocation failed"))?;
             origins.push((bytes.len(), stream.id()));
             bytes.extend_from_slice(&data);
@@ -178,7 +175,7 @@ impl Compiler<'_> {
         let mut stream_index = 0;
         while let Some(byte) = parser.peek() {
             self.session
-                .charge_operations(1, "content token budget exceeded")
+                .charge_operations(1)
                 .map_err(|e| stream_error(e, parser.offset(), origins))?;
             let offset = parser.offset();
             while origins
@@ -285,8 +282,7 @@ impl Compiler<'_> {
         if self.path.len() > self.document.limits().path_segments {
             return Err(Error::limit("path segment budget exceeded"));
         }
-        result?;
-        self.paint_charge(0, 0)
+        result
     }
 
     fn repair(&self, tag: pagura_core::Repair, message: &'static str) -> Result<()> {

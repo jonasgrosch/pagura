@@ -123,7 +123,7 @@ impl Compiler<'_> {
         if child.commands.is_empty() {
             return Ok(());
         }
-        self.paint_charge(0, 1)?;
+        self.session.charge_marks(1)?;
         self.commands
             .push(super::super::Command::Group(crate::transparency::Group {
                 position: self.position,

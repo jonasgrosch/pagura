@@ -103,7 +103,6 @@ pub(crate) struct FontCache {
     pub(crate) bytes: usize,
     font_bytes: usize,
     maximum: usize,
-    entries: usize,
     outlines: usize,
 }
 
@@ -114,7 +113,6 @@ impl FontCache {
             bytes: 0,
             font_bytes: 0,
             maximum: limits.document_bytes,
-            entries: limits.display_commands,
             outlines: 0,
         }
     }
@@ -138,7 +136,7 @@ impl FontCache {
             return existing;
         }
         let bytes = font_bytes(&font, key, dictionary);
-        if bytes > self.maximum || self.entries == 0 {
+        if bytes > self.maximum {
             return Arc::new(CachedFont::new(font, key, false));
         }
         if !self.fits(bytes) || self.fonts.len() >= 256 {
@@ -190,7 +188,6 @@ impl FontCache {
         self.bytes
             .checked_add(bytes)
             .is_some_and(|n| n <= self.maximum)
-            && self.fonts.len().saturating_add(self.outlines) < self.entries
     }
 }
 
@@ -200,8 +197,6 @@ pub(in crate::interpreter) struct Cache {
     resources: Vec<Dictionary>,
     pub(in crate::interpreter) images:
         BTreeMap<(pagura_core::ObjectId, usize), Arc<super::super::images::Image>>,
-    pub(super) bytes: usize,
-    pub(super) entries: usize,
 }
 
 #[cfg(test)]
@@ -218,27 +213,6 @@ impl Cache {
 }
 
 impl Compiler<'_> {
-    pub(in crate::interpreter) fn paint_charge(&self, bytes: usize, entries: usize) -> Result<()> {
-        let limits = self.document.limits();
-        let mut cache = self.session.paint.borrow_mut();
-        let bytes = cache
-            .bytes
-            .checked_add(bytes)
-            .filter(|&n| n <= limits.render_bytes)
-            .ok_or(Error::limit("text and image retained byte budget exceeded"))?;
-        let entries = cache
-            .entries
-            .checked_add(entries)
-            .filter(|&n| {
-                n.checked_add(self.session.marks())
-                    .is_some_and(|total| total <= limits.display_commands)
-            })
-            .ok_or(Error::limit("text and image cache entry budget exceeded"))?;
-        cache.bytes = bytes;
-        cache.entries = entries;
-        Ok(())
-    }
-
     pub(in crate::interpreter) fn resource_identity(
         &self,
         resources: &Dictionary,
@@ -253,7 +227,7 @@ impl Compiler<'_> {
         {
             return Ok(key);
         }
-        self.paint_charge(resources.retained_bytes(), 1)?;
+        self.session.retain(resources.retained_bytes())?;
         let mut cache = self.session.paint.borrow_mut();
         if cache.resources.len() >= 256 {
             return Err(Error::limit("image resource cache budget exceeded"));
@@ -293,7 +267,7 @@ impl Compiler<'_> {
                 } else {
                     0
                 });
-                self.paint_charge(bytes, 1)?;
+                self.session.retain(bytes)?;
             }
             let mut cache = self.session.paint.borrow_mut();
             if cache.fonts.len() >= 256 {
@@ -320,7 +294,8 @@ impl Compiler<'_> {
             Some(self.session.fonts),
             self.position,
         )?;
-        self.paint_charge(font_bytes(&font.font, key, dictionary), 1)?;
+        self.session
+            .retain(font_bytes(&font.font, key, dictionary))?;
         Ok(font)
     }
 
@@ -344,7 +319,7 @@ impl Compiler<'_> {
             );
             Arc::new(result.at(self.position)?)
         };
-        self.paint_charge(super::path_bytes(&path), 1)?;
+        self.session.retain(super::path_bytes(&path))?;
         self.session
             .fonts
             .lock()

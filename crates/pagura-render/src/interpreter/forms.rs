@@ -76,7 +76,7 @@ impl Compiler<'_> {
             .map(|v| self.document.resolve_dictionary(v))
             .transpose()?
             .unwrap_or(resources);
-        let context = crate::icc::ColorContext::new(self.document, &self.session.colors);
+        let context = self.session.colors();
         let attributes = crate::transparency::Attributes::parse(&context, dictionary, resources)?;
         let mut child = self.child(Child::Form {
             id: body.id(),

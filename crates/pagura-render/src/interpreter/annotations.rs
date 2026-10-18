@@ -20,7 +20,7 @@ impl Compiler<'_> {
             .resolve(values)?
             .as_array()
             .ok_or(Error::syntax("Annots must be an array"))?;
-        if values.len() > self.document.limits().value_nodes {
+        if values.len() > self.document.limits().traversal_work {
             return Err(Error::limit("annotation count exceeded"));
         }
         let filled = self

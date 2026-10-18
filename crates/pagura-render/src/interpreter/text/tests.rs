@@ -123,15 +123,19 @@ fn paint_cache_admission_is_atomic_and_shared_across_saved_states() {
     )
     .unwrap();
     let mut compiler = super::super::Compiler::new(&session);
-    compiler.paint_charge(10, 1).unwrap();
+    compiler.session.retain(10).unwrap();
     compiler.save_graphics().unwrap();
-    compiler.paint_charge(20, 1).unwrap();
+    compiler.session.retain(20).unwrap();
     compiler.restore_graphics().unwrap();
-    assert_eq!(session.paint.borrow().bytes, 30);
-    let error = compiler.paint_charge(usize::MAX, 0).unwrap_err();
+    assert_eq!(session.retained(), 30);
+    let error = compiler.session.retain(usize::MAX).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
-    assert_eq!(session.paint.borrow().bytes, 30);
-    assert_eq!(session.paint.borrow().entries, 2);
+    assert_eq!(session.retained(), 30);
+    {
+        let _held = session.hold(5).unwrap();
+        assert_eq!(session.retained(), 35);
+    }
+    assert_eq!(session.retained(), 30);
 }
 #[test]
 fn fonts_and_outlines_are_reused() {

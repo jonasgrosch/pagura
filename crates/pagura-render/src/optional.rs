@@ -64,7 +64,7 @@ impl Visibility {
             .resolve(values)?
             .as_array()
             .ok_or(Error::syntax("OCProperties has no OCGs array"))?;
-        if values.len() > document.limits().value_nodes {
+        if values.len() > document.limits().traversal_work {
             return Err(Error::limit("optional group count budget exceeded"));
         }
         let mut groups = BTreeMap::new();
@@ -157,7 +157,7 @@ impl Visibility {
                 for category in categories {
                     work = work
                         .checked_add(1)
-                        .filter(|&v| v <= document.limits().operations)
+                        .filter(|&v| v <= document.limits().traversal_work)
                         .ok_or(Error::limit("optional usage work exceeded"))?;
                     let category = document
                         .resolve(category)?
@@ -286,7 +286,7 @@ impl Visibility {
         depth: usize,
         work: &mut usize,
     ) -> Result<Option<bool>> {
-        if depth >= document.limits().depth || *work >= document.limits().value_nodes {
+        if depth >= document.limits().depth || *work >= document.limits().traversal_work {
             return Err(Error::limit("optional expression budget exceeded"));
         }
         *work += 1;
