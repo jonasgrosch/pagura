@@ -62,12 +62,7 @@ impl Builder<'_> {
             b,
             self.group,
             self.rule,
-            [
-                self.bounds.left,
-                self.bounds.top,
-                self.bounds.right,
-                self.bounds.bottom,
-            ],
+            self.bounds,
             self.limits,
         )
     }
