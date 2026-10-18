@@ -8,6 +8,7 @@ use crate::coverage::RASTER_WORK;
 use crate::flatten::{TOLERANCE, bounded, flatten};
 use crate::{LineCap, LineJoin, Path, PathBuilder, Point, Stroke, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
+use std::f64::consts::TAU;
 
 /// A dash retains its tangent even when its length is zero (8.5.3.2).
 pub(crate) struct Run {
@@ -67,6 +68,7 @@ pub(crate) fn outline(
     } else {
         TOLERANCE / stretch
     };
+    let mut pen = Pen::new(&mut builder, radius, tolerance, stroke, limits);
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
             continue;
@@ -78,7 +80,7 @@ pub(crate) fn outline(
             } else {
                 run
             };
-            draw(&mut builder, &run, radius, tolerance, stroke, limits)?;
+            pen.draw(&run)?;
         }
     }
     Ok((builder.finish(), pen_transform))
@@ -226,207 +228,188 @@ fn dash_length(stroke: &Stroke, index: usize) -> f64 {
         .unwrap_or(0.0)
 }
 
-pub(crate) fn draw(
-    out: &mut PathBuilder,
-    run: &Run,
+/// A circular pen of `radius` that traces each run's component polygons
+/// (segment bodies, joins and caps) into an outline.
+pub(crate) struct Pen<'a> {
+    out: &'a mut PathBuilder,
     radius: f64,
+    /// Flattening tolerance for arcs, in pen space.
     tolerance: f64,
-    stroke: &Stroke,
-    limits: &Limits,
-) -> Result<()> {
-    let closed = run.closed;
-    let mut points = Vec::new();
-    for &point in &run.points {
-        if points.last() != Some(&point) {
-            points.push(point);
+    stroke: &'a Stroke,
+    limits: &'a Limits,
+    /// Vertex buffer reused by round joins and round caps.
+    arc: Vec<Point>,
+}
+
+impl<'a> Pen<'a> {
+    pub(crate) fn new(
+        out: &'a mut PathBuilder,
+        radius: f64,
+        tolerance: f64,
+        stroke: &'a Stroke,
+        limits: &'a Limits,
+    ) -> Self {
+        Self {
+            out,
+            radius,
+            tolerance,
+            stroke,
+            limits,
+            arc: Vec::new(),
         }
     }
-    if closed && points.len() > 1 && points.first() == points.last() {
-        points.pop();
-    }
-    if points.len() < 2 {
-        if let Some(&point) = points.first() {
-            cap(
-                out,
-                point,
-                run.tangent,
-                radius,
-                tolerance,
-                stroke.cap,
-                limits,
-            )?;
-            cap(
-                out,
-                point,
-                -run.tangent,
-                radius,
-                tolerance,
-                stroke.cap,
-                limits,
-            )?;
+
+    pub(crate) fn draw(&mut self, run: &Run) -> Result<()> {
+        let closed = run.closed;
+        let mut points = Vec::new();
+        for &point in &run.points {
+            if points.last() != Some(&point) {
+                points.push(point);
+            }
         }
-        return Ok(());
-    }
-    let first = points
-        .first()
-        .copied()
-        .ok_or(Error::invalid_argument("empty stroke"))?;
-    let last = points
-        .last()
-        .copied()
-        .ok_or(Error::invalid_argument("empty stroke"))?;
-    let mut directions = Vec::new();
-    for (&a, &b) in points
-        .iter()
-        .zip(points.iter().skip(1).chain(closed.then_some(&first)))
-    {
-        let d = (b - a) / (b - a).length();
-        let n = d.perp() * radius;
-        polygon(out, &[a + n, b + n, b - n, a - n], limits)?;
-        directions.push(d);
-    }
-    for (i, &point) in points.iter().enumerate() {
-        let before = if i == 0 {
-            if closed { directions.last() } else { None }
-        } else {
-            directions.get(i - 1)
+        if closed && points.len() > 1 && points.first() == points.last() {
+            points.pop();
+        }
+        let (first, last) = match points[..] {
+            [] => return Ok(()),
+            // A zero-length run is a dot that keeps its tangent (8.5.3.2).
+            [point] => {
+                self.cap(point, run.tangent)?;
+                return self.cap(point, -run.tangent);
+            }
+            [first, .., last] => (first, last),
         };
-        let after = directions.get(i);
-        match (before, after) {
-            (Some(&a), Some(&b)) => join(out, point, [a, b], radius, tolerance, stroke, limits)?,
-            (None, Some(&d)) => cap(out, first, -d, radius, tolerance, stroke.cap, limits)?,
-            (Some(&d), None) => cap(out, last, d, radius, tolerance, stroke.cap, limits)?,
-            _ => {}
+        let mut directions = Vec::new();
+        for (&a, &b) in points
+            .iter()
+            .zip(points.iter().skip(1).chain(closed.then_some(&first)))
+        {
+            let d = (b - a) / (b - a).length();
+            let n = d.perp() * self.radius;
+            polygon(self.out, &[a + n, b + n, b - n, a - n], self.limits)?;
+            directions.push(d);
+        }
+        for (i, &point) in points.iter().enumerate() {
+            let before = if i == 0 {
+                if closed { directions.last() } else { None }
+            } else {
+                directions.get(i - 1)
+            };
+            match (before, directions.get(i)) {
+                (Some(&a), Some(&b)) => self.join(point, [a, b])?,
+                (None, Some(&d)) => self.cap(first, -d)?,
+                (Some(&d), None) => self.cap(last, d)?,
+                (None, None) => {}
+            }
+        }
+        Ok(())
+    }
+
+    fn join(&mut self, point: Point, tangents: [Point; 2]) -> Result<()> {
+        let [a, b] = tangents;
+        let cross = a.cross(b);
+        let join = self.stroke.join;
+        if cross == 0.0 && (join != LineJoin::Round || a.dot(b) >= 0.0) {
+            return Ok(());
+        }
+        let side = if cross > 0.0 {
+            -self.radius
+        } else {
+            self.radius
+        };
+        let n1 = a.perp() * side;
+        let n2 = b.perp() * side;
+        if join == LineJoin::Round {
+            return self.round_join(point, [n1, n2], cross);
+        }
+        let p1 = point + n1;
+        let p2 = point + n2;
+        let denominator = 1.0 + a.dot(b);
+        if join == LineJoin::Miter && denominator > 0.0 {
+            let m = (n1 + n2) / denominator;
+            if m.length() <= self.radius * self.stroke.miter_limit {
+                return polygon(self.out, &[point, p1, point + m, p2], self.limits);
+            }
+        }
+        polygon(self.out, &[point, p1, p2], self.limits)
+    }
+
+    fn round_join(&mut self, point: Point, normals: [Point; 2], cross: f64) -> Result<()> {
+        let [a, b] = normals;
+        let start = a.y.atan2(a.x);
+        let end = b.y.atan2(b.x);
+        let angle = if cross > 0.0 {
+            (end - start).rem_euclid(TAU)
+        } else {
+            -(start - end).rem_euclid(TAU)
+        };
+        let count = self.arc_segments(angle, 1.0)?;
+        self.arc.clear();
+        self.arc.extend([point, point + a]);
+        for i in 1..count {
+            let angle = start + angle * f64::from(i) / f64::from(count);
+            self.arc.push(Point::new(
+                point.x + self.radius * angle.cos(),
+                point.y + self.radius * angle.sin(),
+            ));
+        }
+        self.arc.push(point + b);
+        polygon(self.out, &self.arc, self.limits)
+    }
+
+    fn cap(&mut self, point: Point, direction: Point) -> Result<()> {
+        match self.stroke.cap {
+            LineCap::Butt => Ok(()),
+            LineCap::Round => self.circle(point),
+            LineCap::ProjectingSquare => {
+                let n = direction.perp() * self.radius;
+                let end = point + direction * self.radius;
+                polygon(
+                    self.out,
+                    &[point + n, end + n, end - n, point - n],
+                    self.limits,
+                )
+            }
         }
     }
-    Ok(())
-}
 
-fn join(
-    out: &mut PathBuilder,
-    point: Point,
-    tangents: [Point; 2],
-    radius: f64,
-    tolerance: f64,
-    stroke: &Stroke,
-    limits: &Limits,
-) -> Result<()> {
-    let [a, b] = tangents;
-    let cross = a.cross(b);
-    if cross == 0.0 && (stroke.join != LineJoin::Round || a.dot(b) >= 0.0) {
-        return Ok(());
-    }
-    let side = if cross > 0.0 { -radius } else { radius };
-    let n1 = a.perp() * side;
-    let n2 = b.perp() * side;
-    if stroke.join == LineJoin::Round {
-        return round_join(out, point, [n1, n2], radius, tolerance, cross, limits);
-    }
-    let p1 = point + n1;
-    let p2 = point + n2;
-    let denominator = 1.0 + a.dot(b);
-    if stroke.join == LineJoin::Miter && denominator > 0.0 {
-        let m = (n1 + n2) / denominator;
-        if m.length() <= radius * stroke.miter_limit {
-            return polygon(out, &[point, p1, point + m, p2], limits);
+    fn circle(&mut self, center: Point) -> Result<()> {
+        if self.radius == 0.0 {
+            return Ok(());
         }
-    }
-    polygon(out, &[point, p1, p2], limits)
-}
-
-fn round_join(
-    out: &mut PathBuilder,
-    point: Point,
-    normals: [Point; 2],
-    radius: f64,
-    tolerance: f64,
-    cross: f64,
-    limits: &Limits,
-) -> Result<()> {
-    let [a, b] = normals;
-    let start = a.y.atan2(a.x);
-    let end = b.y.atan2(b.x);
-    let angle = if cross > 0.0 {
-        (end - start).rem_euclid(std::f64::consts::TAU)
-    } else {
-        -(start - end).rem_euclid(std::f64::consts::TAU)
-    };
-    let step = 2.0 * (1.0 - (tolerance / radius).min(1.0)).acos();
-    let count = (angle.abs() / step).ceil().max(1.0);
-    if !count.is_finite() || count > limits.path_segments as f64 || count > f64::from(u32::MAX) {
-        return Err(Error::limit("round join subdivision budget exceeded"));
-    }
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "integer count bounded by the u32-compatible path budget below"
-    )]
-    let count = count as u32;
-    let mut points = vec![point, point + a];
-    for i in 1..count {
-        let angle = start + angle * f64::from(i) / f64::from(count);
-        points.push(Point::new(
-            point.x + radius * angle.cos(),
-            point.y + radius * angle.sin(),
-        ));
-    }
-    points.push(point + b);
-    polygon(out, &points, limits)
-}
-
-fn cap(
-    out: &mut PathBuilder,
-    point: Point,
-    direction: Point,
-    radius: f64,
-    tolerance: f64,
-    cap: LineCap,
-    limits: &Limits,
-) -> Result<()> {
-    match cap {
-        LineCap::Butt => Ok(()),
-        LineCap::Round => circle(out, point, radius, tolerance, limits),
-        LineCap::ProjectingSquare => {
-            let n = direction.perp() * radius;
-            let end = point + direction * radius;
-            polygon(out, &[point + n, end + n, end - n, point - n], limits)
-        }
-    }
-}
-
-fn circle(
-    out: &mut PathBuilder,
-    center: Point,
-    radius: f64,
-    tolerance: f64,
-    limits: &Limits,
-) -> Result<()> {
-    if radius == 0.0 {
-        return Ok(());
-    }
-    let angle = 2.0 * (1.0 - (tolerance / radius).min(1.0)).acos();
-    let count = (std::f64::consts::TAU / angle).ceil().max(8.0);
-    if !count.is_finite() || count > limits.path_segments as f64 || count > f64::from(u32::MAX) {
-        return Err(Error::limit("round stroke subdivision budget exceeded"));
-    }
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "integer count is bounded by the u32-compatible path budget below"
-    )]
-    let count = count as u32;
-    let points: Vec<_> = (0..count)
-        .map(|i| {
-            let angle = std::f64::consts::TAU * f64::from(i) / f64::from(count);
+        let count = self.arc_segments(TAU, 8.0)?;
+        self.arc.clear();
+        self.arc.extend((0..count).map(|i| {
+            let angle = TAU * f64::from(i) / f64::from(count);
             Point::new(
-                center.x + radius * angle.cos(),
-                center.y + radius * angle.sin(),
+                center.x + self.radius * angle.cos(),
+                center.y + self.radius * angle.sin(),
             )
-        })
-        .collect();
-    polygon(out, &points, limits)
+        }));
+        polygon(self.out, &self.arc, self.limits)
+    }
+
+    /// The number of chords, at least `minimum`, that approximate an arc of
+    /// `sweep` radians within the tolerance.
+    fn arc_segments(&self, sweep: f64, minimum: f64) -> Result<u32> {
+        let step = 2.0 * (1.0 - (self.tolerance / self.radius).min(1.0)).acos();
+        let count = (sweep.abs() / step).ceil().max(minimum);
+        if !count.is_finite()
+            || count > self.limits.path_segments as f64
+            || count > f64::from(u32::MAX)
+        {
+            return Err(Error::limit("round stroke subdivision budget exceeded"));
+        }
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "a positive integer count bounded by u32::MAX above"
+        )]
+        Ok(count as u32)
+    }
 }
 
+/// Appends a positively oriented polygon (module comment).
 fn polygon(out: &mut PathBuilder, points: &[Point], limits: &Limits) -> Result<()> {
     if out
         .len()
@@ -446,7 +429,6 @@ fn polygon(out: &mut PathBuilder, points: &[Point], limits: &Limits) -> Result<(
         .zip(points.iter().skip(1).chain(std::iter::once(&first)))
         .map(|(&a, &b)| (a - first).cross(b - first))
         .sum();
-    // Every component polygon is positively oriented (module comment).
     if area < 0.0 {
         out.polygon(points.iter().rev().copied());
     } else {

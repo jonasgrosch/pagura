@@ -10,6 +10,7 @@
 //! minimum one-pixel pen), without introducing corners into flattened curves.
 
 use crate::flatten::{MAX_COORDINATE, TOLERANCE, flatten};
+use crate::stroke::Pen;
 use crate::{LineCap, Path, PathBuilder, Point, Stroke, Transform};
 use pagura_core::{Error, Limits, Result};
 
@@ -53,6 +54,7 @@ pub(crate) fn outline(
     }
     let pen = Transform::scale(wx, wy);
     let mut out = PathBuilder::new();
+    let mut drawing = Pen::new(&mut out, 0.5, TOLERANCE / (wx + wy), stroke, limits);
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
             continue;
@@ -68,8 +70,7 @@ pub(crate) fn outline(
                 butt_endpoints(device, &mut fitted);
             }
             run.points = fitted;
-            let run = run.transformed(Transform::scale(1.0 / wx, 1.0 / wy));
-            crate::stroke::draw(&mut out, &run, 0.5, TOLERANCE / (wx + wy), stroke, limits)?;
+            drawing.draw(&run.transformed(Transform::scale(1.0 / wx, 1.0 / wy)))?;
         }
     }
     Ok((out.finish(), pen))
@@ -119,19 +120,13 @@ fn general(
     let normalize = transform.then(inverse);
     let scale = pen.a.hypot(pen.b).max(pen.c.hypot(pen.d));
     let mut out = PathBuilder::new();
+    let mut drawing = Pen::new(&mut out, 0.5, TOLERANCE / (2.0 * scale), stroke, limits);
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
             continue;
         }
         for run in crate::stroke::dash(contour.points, contour.closed, stroke, limits)? {
-            crate::stroke::draw(
-                &mut out,
-                &run.transformed(normalize),
-                0.5,
-                TOLERANCE / (2.0 * scale),
-                stroke,
-                limits,
-            )?;
+            drawing.draw(&run.transformed(normalize))?;
         }
     }
     Ok((out.finish(), pen))
