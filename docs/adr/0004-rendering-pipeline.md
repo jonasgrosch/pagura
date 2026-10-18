@@ -68,7 +68,23 @@ exact result.
   bound, is the reference for which side an operation is on.
 
 Pixel-aligned opaque cases stay exact, and exact rounding ties are not part
-of the contract. Fixture oracles compute the exact result independently in
+of the contract.
+
+**Known defect** (recorded 2026-10-18). Pages whose content is all opaque
+Normal fills take an 8-bit path that stores every mark immediately. A fully
+covering opaque mark makes a pixel exact again. Each partially covering mark
+then rounds once and adds at most half a level. After `n` partially covering
+stores since a pixel's last full coverage, its output is within `n/2 + 1/2`
+levels of the exact rounded result:
+
+- two such stores keep the contract;
+- from the third onward, a pixel can drift by up to half a level per store.
+
+Real pages rarely put more than two partially covering marks on one pixel.
+A crafted page with a thousand slivers on one pixel gives 127 where the exact
+result is 5. The fix under study counts partial stores per pixel and promotes
+before the third, so that the 8-bit path is retired only once its replacement
+is cheap. Fixture oracles compute the exact result independently in
 Python, and a fixture may carry a tolerance of 1 against it.
 
 ## Consequences
