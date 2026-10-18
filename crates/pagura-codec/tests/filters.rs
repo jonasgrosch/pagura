@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Filter names, parameters and chains through the public API (7.4).
 
 use pagura_codec::{Filter, FilterChain, PredictorKind};
