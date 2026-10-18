@@ -14,10 +14,13 @@ workspace = true
 [dependencies]
 pagura.workspace = true
 
+# The WASI module ships without bundled font and CMap data, keeping its
+# download small; a host with data opts in. `cargo test --workspace`
+# unifies `pagura`'s `bundled-data` on, so tools/check.py also lints and tests
+# `-p pagura-host` alone and with all features.
 [features]
 default = []
 bundled-data = ["pagura/bundled-data"]
-
 cjk-fonts = ["pagura/cjk-fonts"]
 
 [dev-dependencies]
