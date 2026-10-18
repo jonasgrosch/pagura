@@ -78,6 +78,7 @@ pub(crate) fn compile_with_text(
         colors: crate::icc::Cache::default(),
         provider,
         fonts: Some(fonts),
+        filler: None,
     });
     compiler.extraction = Some(Extraction {
         output: Rc::clone(&output),
