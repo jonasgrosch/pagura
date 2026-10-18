@@ -4643,6 +4643,64 @@
       "driver": "bundled-standard"
     },
     {
+      "id": "text/standard14-short-helveticai",
+      "kind": "vector",
+      "description": "AFM-derived standard font widths, encoding, descriptors and substitute glyphs",
+      "requirements": [
+        "text-standard-fonts",
+        "text-provider",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/standard14-short-helveticai.base",
+          "sha256": "7bb6a80e2f2596ac9be1e99b281a1c352cb88a646cef37a50b13a04eb5187e70"
+        },
+        ".input": {
+          "path": "corpus/generated/text/standard14-short-helveticai.input",
+          "sha256": "579232c22ecc8cea6d6c29d0429fbfe9cf8cd97798147987e02aadeb6f2dc7fd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/standard14-short-helveticai.out",
+          "sha256": "db9341a0ae421064441886470dc959ab624e1973d1f251eebceaf85f14419617"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/standard14-short-helveticai.pdf",
+          "sha256": "028b2a579dca6cf360e3b26d49fd3d619fb28740be1525d8cd7b6f45f8335704"
+        }
+      },
+      "driver": "bundled-standard"
+    },
+    {
+      "id": "text/standard14-short-helveticai-subset",
+      "kind": "vector",
+      "description": "AFM-derived standard font widths, encoding, descriptors and substitute glyphs",
+      "requirements": [
+        "text-standard-fonts",
+        "text-provider",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/standard14-short-helveticai-subset.base",
+          "sha256": "7bb6a80e2f2596ac9be1e99b281a1c352cb88a646cef37a50b13a04eb5187e70"
+        },
+        ".input": {
+          "path": "corpus/generated/text/standard14-short-helveticai-subset.input",
+          "sha256": "579232c22ecc8cea6d6c29d0429fbfe9cf8cd97798147987e02aadeb6f2dc7fd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/standard14-short-helveticai-subset.out",
+          "sha256": "db9341a0ae421064441886470dc959ab624e1973d1f251eebceaf85f14419617"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/standard14-short-helveticai-subset.pdf",
+          "sha256": "2c72468828ff681da024ca32d9397e8b27e5738b2deb715208716d81d3a36658"
+        }
+      },
+      "driver": "bundled-standard"
+    },
+    {
       "id": "text/standard14-Helvetica-BoldOblique",
       "kind": "vector",
       "description": "AFM-derived standard font widths, encoding, descriptors and substitute glyphs",
@@ -4758,6 +4816,64 @@
         ".pdf": {
           "path": "corpus/generated/text/standard14-Helvetica-BoldOblique-alias-1.pdf",
           "sha256": "cda43e63d351f97a3753ccb630630d3203c1c532e133da6667796de0f76deda3"
+        }
+      },
+      "driver": "bundled-standard"
+    },
+    {
+      "id": "text/standard14-short-helveticaiB",
+      "kind": "vector",
+      "description": "AFM-derived standard font widths, encoding, descriptors and substitute glyphs",
+      "requirements": [
+        "text-standard-fonts",
+        "text-provider",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/standard14-short-helveticaiB.base",
+          "sha256": "2f9ab5f145bcf0b15572a951308b47284bebaecf58ae6cb29c71c8d33733f2c7"
+        },
+        ".input": {
+          "path": "corpus/generated/text/standard14-short-helveticaiB.input",
+          "sha256": "579232c22ecc8cea6d6c29d0429fbfe9cf8cd97798147987e02aadeb6f2dc7fd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/standard14-short-helveticaiB.out",
+          "sha256": "2bdb2b53fc19b66deb57f4693b6ac7d978d2f8ce044a6f33840e7f74a7a8061d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/standard14-short-helveticaiB.pdf",
+          "sha256": "33d86d302a9c7fdfbb3118da97b15819d1bb96a912cd8c494b5354beff7c8b14"
+        }
+      },
+      "driver": "bundled-standard"
+    },
+    {
+      "id": "text/standard14-short-helveticaiB-subset",
+      "kind": "vector",
+      "description": "AFM-derived standard font widths, encoding, descriptors and substitute glyphs",
+      "requirements": [
+        "text-standard-fonts",
+        "text-provider",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/standard14-short-helveticaiB-subset.base",
+          "sha256": "2f9ab5f145bcf0b15572a951308b47284bebaecf58ae6cb29c71c8d33733f2c7"
+        },
+        ".input": {
+          "path": "corpus/generated/text/standard14-short-helveticaiB-subset.input",
+          "sha256": "579232c22ecc8cea6d6c29d0429fbfe9cf8cd97798147987e02aadeb6f2dc7fd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/standard14-short-helveticaiB-subset.out",
+          "sha256": "2bdb2b53fc19b66deb57f4693b6ac7d978d2f8ce044a6f33840e7f74a7a8061d"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/standard14-short-helveticaiB-subset.pdf",
+          "sha256": "eff5890d32f43468ec0ef8fab23c7cf25c1a581ca39b4e95739f38b91c67902d"
         }
       },
       "driver": "bundled-standard"
@@ -4998,6 +5114,122 @@
         ".pdf": {
           "path": "corpus/generated/text/standard14-Times-Bold-alias-1.pdf",
           "sha256": "6a11a34a6a2cba1c72d617f0dcd55ed3bae03ca9ae44999302b8449c17cac039"
+        }
+      },
+      "driver": "bundled-standard"
+    },
+    {
+      "id": "text/standard14-short-timesb",
+      "kind": "vector",
+      "description": "AFM-derived standard font widths, encoding, descriptors and substitute glyphs",
+      "requirements": [
+        "text-standard-fonts",
+        "text-provider",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/standard14-short-timesb.base",
+          "sha256": "bfd7f0d9ab321859c96b0edad086277a233782e313cfe42101af166132b6c1d5"
+        },
+        ".input": {
+          "path": "corpus/generated/text/standard14-short-timesb.input",
+          "sha256": "579232c22ecc8cea6d6c29d0429fbfe9cf8cd97798147987e02aadeb6f2dc7fd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/standard14-short-timesb.out",
+          "sha256": "483420a13cab504c1f202b66d5dec1b509de623b6942819b15a76738aeb883de"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/standard14-short-timesb.pdf",
+          "sha256": "1938bccf80f9688a193f56edc87ba3f08bd3f3717433cec5d2ef95875ef0ac1a"
+        }
+      },
+      "driver": "bundled-standard"
+    },
+    {
+      "id": "text/standard14-short-timesb-subset",
+      "kind": "vector",
+      "description": "AFM-derived standard font widths, encoding, descriptors and substitute glyphs",
+      "requirements": [
+        "text-standard-fonts",
+        "text-provider",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/standard14-short-timesb-subset.base",
+          "sha256": "bfd7f0d9ab321859c96b0edad086277a233782e313cfe42101af166132b6c1d5"
+        },
+        ".input": {
+          "path": "corpus/generated/text/standard14-short-timesb-subset.input",
+          "sha256": "579232c22ecc8cea6d6c29d0429fbfe9cf8cd97798147987e02aadeb6f2dc7fd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/standard14-short-timesb-subset.out",
+          "sha256": "483420a13cab504c1f202b66d5dec1b509de623b6942819b15a76738aeb883de"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/standard14-short-timesb-subset.pdf",
+          "sha256": "640a3e77bf4621c750bdcc4f9835f838f4cf72ca8edd2fbe3fa2c8c2879ab982"
+        }
+      },
+      "driver": "bundled-standard"
+    },
+    {
+      "id": "text/standard14-short-timesbB",
+      "kind": "vector",
+      "description": "AFM-derived standard font widths, encoding, descriptors and substitute glyphs",
+      "requirements": [
+        "text-standard-fonts",
+        "text-provider",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/standard14-short-timesbB.base",
+          "sha256": "bfd7f0d9ab321859c96b0edad086277a233782e313cfe42101af166132b6c1d5"
+        },
+        ".input": {
+          "path": "corpus/generated/text/standard14-short-timesbB.input",
+          "sha256": "579232c22ecc8cea6d6c29d0429fbfe9cf8cd97798147987e02aadeb6f2dc7fd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/standard14-short-timesbB.out",
+          "sha256": "483420a13cab504c1f202b66d5dec1b509de623b6942819b15a76738aeb883de"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/standard14-short-timesbB.pdf",
+          "sha256": "748ebf069497ccd26fc5f932c8ec488d7f777b9ed3483cf5df99e252741b5156"
+        }
+      },
+      "driver": "bundled-standard"
+    },
+    {
+      "id": "text/standard14-short-timesbB-subset",
+      "kind": "vector",
+      "description": "AFM-derived standard font widths, encoding, descriptors and substitute glyphs",
+      "requirements": [
+        "text-standard-fonts",
+        "text-provider",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/standard14-short-timesbB-subset.base",
+          "sha256": "bfd7f0d9ab321859c96b0edad086277a233782e313cfe42101af166132b6c1d5"
+        },
+        ".input": {
+          "path": "corpus/generated/text/standard14-short-timesbB-subset.input",
+          "sha256": "579232c22ecc8cea6d6c29d0429fbfe9cf8cd97798147987e02aadeb6f2dc7fd"
+        },
+        ".out": {
+          "path": "corpus/generated/text/standard14-short-timesbB-subset.out",
+          "sha256": "483420a13cab504c1f202b66d5dec1b509de623b6942819b15a76738aeb883de"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/standard14-short-timesbB-subset.pdf",
+          "sha256": "04d303f2893c74dae80a51a51d0cf9a8ffe54483b87bd7e71a347219fa2512a3"
         }
       },
       "driver": "bundled-standard"
@@ -5436,7 +5668,7 @@
       "files": {
         ".out": {
           "path": "corpus/generated/text/bundled-standard-inventory.out",
-          "sha256": "4199d1cce457ee12d1a8fd90cea542172e84fba867ea54ebe51761cc3071c4f0"
+          "sha256": "78cceb0fd5e49f89eaced97083a8cce0a9e927756f53338b5ebf06fe92024e9d"
         }
       },
       "driver": "inventory"
@@ -8776,6 +9008,397 @@
         }
       },
       "driver": "provider-error"
+    },
+    {
+      "id": "text/substitute-weight-zero",
+      "kind": "vector",
+      "description": "Table 120 weight checks and reported normal-weight fallback; locked substitute cmap supplies glyph IDs",
+      "requirements": [
+        "text-descriptor-weight",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-weight-zero.base",
+          "sha256": "44768824fe10901e89c17b4621a05942b5fc3b6469b9e9e780e366472a2903bf"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-weight-zero.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-weight-zero.matrix",
+          "sha256": "c3c3644eece4c942c8c81ebca8fb1de7f8df9032e852631290376bbb87fa9c2a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-weight-zero.out",
+          "sha256": "b2173b7c5f192c0985c38268d0634173825c37e9c1c9a0965bcbb89a25e0cc16"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-weight-zero.pdf",
+          "sha256": "bebbb94bfa0dc16a3693ebd5b6fbcc5c67e8a82994061590a6db62dfd597c42e"
+        },
+        ".tag": {
+          "path": "corpus/generated/text/substitute-weight-zero.tag",
+          "sha256": "d6678dd4d1547c1479c3df561440ae44b5e35a3b28f429b5a62642978304ff08"
+        }
+      },
+      "driver": "substitution-recovery"
+    },
+    {
+      "id": "text/substitute-weight-serif",
+      "kind": "vector",
+      "description": "Table 120 weight checks and reported normal-weight fallback; locked substitute cmap supplies glyph IDs",
+      "requirements": [
+        "text-descriptor-weight",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-weight-serif.base",
+          "sha256": "e21247fc58a4e22b8a38bb8847888e7c5e362e903eb42741412ac53a7f0de921"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-weight-serif.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-weight-serif.matrix",
+          "sha256": "c3c3644eece4c942c8c81ebca8fb1de7f8df9032e852631290376bbb87fa9c2a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-weight-serif.out",
+          "sha256": "b2173b7c5f192c0985c38268d0634173825c37e9c1c9a0965bcbb89a25e0cc16"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-weight-serif.pdf",
+          "sha256": "21b496503a6551dc3fe96e2ad176e22e99923df162205d23c37f1789f6b79a78"
+        },
+        ".tag": {
+          "path": "corpus/generated/text/substitute-weight-serif.tag",
+          "sha256": "d6678dd4d1547c1479c3df561440ae44b5e35a3b28f429b5a62642978304ff08"
+        }
+      },
+      "driver": "substitution-recovery"
+    },
+    {
+      "id": "text/substitute-weight-italic",
+      "kind": "vector",
+      "description": "Table 120 weight checks and reported normal-weight fallback; locked substitute cmap supplies glyph IDs",
+      "requirements": [
+        "text-descriptor-weight",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-weight-italic.base",
+          "sha256": "d8c5c2e87766fbf39b683cb4d7a9d2a78766a3bdba0b76fe8e3f4b05f79e506f"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-weight-italic.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-weight-italic.matrix",
+          "sha256": "c3c3644eece4c942c8c81ebca8fb1de7f8df9032e852631290376bbb87fa9c2a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-weight-italic.out",
+          "sha256": "b2173b7c5f192c0985c38268d0634173825c37e9c1c9a0965bcbb89a25e0cc16"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-weight-italic.pdf",
+          "sha256": "97c5d39e401538fc3c50809afa98ab31a62774ffd87fe789392f33656b6d781c"
+        },
+        ".tag": {
+          "path": "corpus/generated/text/substitute-weight-italic.tag",
+          "sha256": "d6678dd4d1547c1479c3df561440ae44b5e35a3b28f429b5a62642978304ff08"
+        }
+      },
+      "driver": "substitution-recovery"
+    },
+    {
+      "id": "text/substitute-weight-fraction",
+      "kind": "vector",
+      "description": "Table 120 weight checks and reported normal-weight fallback; locked substitute cmap supplies glyph IDs",
+      "requirements": [
+        "text-descriptor-weight",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-weight-fraction.base",
+          "sha256": "44768824fe10901e89c17b4621a05942b5fc3b6469b9e9e780e366472a2903bf"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-weight-fraction.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-weight-fraction.matrix",
+          "sha256": "c3c3644eece4c942c8c81ebca8fb1de7f8df9032e852631290376bbb87fa9c2a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-weight-fraction.out",
+          "sha256": "b2173b7c5f192c0985c38268d0634173825c37e9c1c9a0965bcbb89a25e0cc16"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-weight-fraction.pdf",
+          "sha256": "461b234f134147b07f7127de6fe057523538ea915d8c99ec700ec7c21e75c94e"
+        },
+        ".tag": {
+          "path": "corpus/generated/text/substitute-weight-fraction.tag",
+          "sha256": "d6678dd4d1547c1479c3df561440ae44b5e35a3b28f429b5a62642978304ff08"
+        }
+      },
+      "driver": "substitution-recovery"
+    },
+    {
+      "id": "text/substitute-weight-negative",
+      "kind": "vector",
+      "description": "Table 120 weight checks and reported normal-weight fallback; locked substitute cmap supplies glyph IDs",
+      "requirements": [
+        "text-descriptor-weight",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-weight-negative.base",
+          "sha256": "44768824fe10901e89c17b4621a05942b5fc3b6469b9e9e780e366472a2903bf"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-weight-negative.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-weight-negative.matrix",
+          "sha256": "c3c3644eece4c942c8c81ebca8fb1de7f8df9032e852631290376bbb87fa9c2a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-weight-negative.out",
+          "sha256": "b2173b7c5f192c0985c38268d0634173825c37e9c1c9a0965bcbb89a25e0cc16"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-weight-negative.pdf",
+          "sha256": "139b14d865e7297414e2820ee9fa9b2ceb455b0d612a88fafcb56f89e6aed66a"
+        },
+        ".tag": {
+          "path": "corpus/generated/text/substitute-weight-negative.tag",
+          "sha256": "d6678dd4d1547c1479c3df561440ae44b5e35a3b28f429b5a62642978304ff08"
+        }
+      },
+      "driver": "substitution-recovery"
+    },
+    {
+      "id": "text/substitute-weight-large",
+      "kind": "vector",
+      "description": "Table 120 weight checks and reported normal-weight fallback; locked substitute cmap supplies glyph IDs",
+      "requirements": [
+        "text-descriptor-weight",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-weight-large.base",
+          "sha256": "44768824fe10901e89c17b4621a05942b5fc3b6469b9e9e780e366472a2903bf"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-weight-large.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-weight-large.matrix",
+          "sha256": "c3c3644eece4c942c8c81ebca8fb1de7f8df9032e852631290376bbb87fa9c2a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-weight-large.out",
+          "sha256": "b2173b7c5f192c0985c38268d0634173825c37e9c1c9a0965bcbb89a25e0cc16"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-weight-large.pdf",
+          "sha256": "19a4da8bbc81e48330b43bb00781eeac1af1c6847db7af79be6fa7fa97e1a581"
+        },
+        ".tag": {
+          "path": "corpus/generated/text/substitute-weight-large.tag",
+          "sha256": "d6678dd4d1547c1479c3df561440ae44b5e35a3b28f429b5a62642978304ff08"
+        }
+      },
+      "driver": "substitution-recovery"
+    },
+    {
+      "id": "text/substitute-weight-string",
+      "kind": "vector",
+      "description": "Table 120 weight checks and reported normal-weight fallback; locked substitute cmap supplies glyph IDs",
+      "requirements": [
+        "text-descriptor-weight",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-weight-string.base",
+          "sha256": "44768824fe10901e89c17b4621a05942b5fc3b6469b9e9e780e366472a2903bf"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-weight-string.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-weight-string.matrix",
+          "sha256": "c3c3644eece4c942c8c81ebca8fb1de7f8df9032e852631290376bbb87fa9c2a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-weight-string.out",
+          "sha256": "b2173b7c5f192c0985c38268d0634173825c37e9c1c9a0965bcbb89a25e0cc16"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-weight-string.pdf",
+          "sha256": "9735d94569f14a4eb297e9238e4911dfcd5dd94f29693bf04d4795c5837b9bb3"
+        },
+        ".tag": {
+          "path": "corpus/generated/text/substitute-weight-string.tag",
+          "sha256": "d6678dd4d1547c1479c3df561440ae44b5e35a3b28f429b5a62642978304ff08"
+        }
+      },
+      "driver": "substitution-recovery"
+    },
+    {
+      "id": "text/substitute-weight-force-bold",
+      "kind": "vector",
+      "description": "Table 120 weight checks and reported normal-weight fallback; locked substitute cmap supplies glyph IDs",
+      "requirements": [
+        "text-descriptor-weight",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-weight-force-bold.base",
+          "sha256": "416de5f0b24afda53975b3dc61b1dd59bf682e350a77ecefb022c5c5f9f59223"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-weight-force-bold.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-weight-force-bold.matrix",
+          "sha256": "c3c3644eece4c942c8c81ebca8fb1de7f8df9032e852631290376bbb87fa9c2a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-weight-force-bold.out",
+          "sha256": "b2173b7c5f192c0985c38268d0634173825c37e9c1c9a0965bcbb89a25e0cc16"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-weight-force-bold.pdf",
+          "sha256": "538c2ce8a8d683a6b80ec1d06a72632f1b5f13d0886dab149ad647e486666163"
+        },
+        ".tag": {
+          "path": "corpus/generated/text/substitute-weight-force-bold.tag",
+          "sha256": "d6678dd4d1547c1479c3df561440ae44b5e35a3b28f429b5a62642978304ff08"
+        }
+      },
+      "driver": "substitution-recovery"
+    },
+    {
+      "id": "text/substitute-weight-valid",
+      "kind": "vector",
+      "description": "Table 120 weight checks and reported normal-weight fallback; locked substitute cmap supplies glyph IDs",
+      "requirements": [
+        "text-descriptor-weight",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-weight-valid.base",
+          "sha256": "44768824fe10901e89c17b4621a05942b5fc3b6469b9e9e780e366472a2903bf"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-weight-valid.input",
+          "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-weight-valid.matrix",
+          "sha256": "c3c3644eece4c942c8c81ebca8fb1de7f8df9032e852631290376bbb87fa9c2a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-weight-valid.out",
+          "sha256": "b2173b7c5f192c0985c38268d0634173825c37e9c1c9a0965bcbb89a25e0cc16"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-weight-valid.pdf",
+          "sha256": "f6e8bafbc26ddb0d7bceabafd645b3d4532f03a12c77bee7f0cd1ff56317d8a6"
+        },
+        ".tag": {
+          "path": "corpus/generated/text/substitute-weight-valid.tag",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "driver": "substitution-recovery"
+    },
+    {
+      "id": "text/substitute-weight-cyrillic",
+      "kind": "vector",
+      "description": "Table 120 weight checks and reported normal-weight fallback; locked substitute cmap supplies glyph IDs",
+      "requirements": [
+        "text-descriptor-weight",
+        "text-latin-substitution"
+      ],
+      "files": {
+        ".base": {
+          "path": "corpus/generated/text/substitute-weight-cyrillic.base",
+          "sha256": "e21247fc58a4e22b8a38bb8847888e7c5e362e903eb42741412ac53a7f0de921"
+        },
+        ".input": {
+          "path": "corpus/generated/text/substitute-weight-cyrillic.input",
+          "sha256": "89963ef047eb0b4122cf7f0abf5276fd83b75c4fa0bb24788f7e6353f0e05457"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/substitute-weight-cyrillic.matrix",
+          "sha256": "c3c3644eece4c942c8c81ebca8fb1de7f8df9032e852631290376bbb87fa9c2a"
+        },
+        ".out": {
+          "path": "corpus/generated/text/substitute-weight-cyrillic.out",
+          "sha256": "3c497aa2f065ae378933d2510ddb52a9a34c1b928249592fa3bbd1dba603a586"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/substitute-weight-cyrillic.pdf",
+          "sha256": "f30eb4a1c0c8097b8b897a6d50b28944935befc0e1fc34bcc1c82a3c5ca4d24e"
+        },
+        ".tag": {
+          "path": "corpus/generated/text/substitute-weight-cyrillic.tag",
+          "sha256": "d6678dd4d1547c1479c3df561440ae44b5e35a3b28f429b5a62642978304ff08"
+        }
+      },
+      "driver": "substitution-recovery"
+    },
+    {
+      "id": "text/substitution-recovery-inventory",
+      "kind": "vector",
+      "description": "Optional weight recovery cases",
+      "requirements": [
+        "text-descriptor-weight"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/text/substitution-recovery-inventory.out",
+          "sha256": "f5aa89c45bea0364b58d58ee19975eb682afeab749e8b0d27b7312c53cefcdb5"
+        }
+      },
+      "driver": "inventory"
+    },
+    {
+      "id": "text/glyph-name-cyrillic",
+      "kind": "vector",
+      "description": "Russian AFII names checked against the local AGL data records",
+      "requirements": [
+        "text-latin-substitution",
+        "text-glyph-names"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/text/glyph-name-cyrillic.out",
+          "sha256": "69db8c9691351f6f56beaba77e7d1821406060ee2702651de73af85f45e4ada5"
+        }
+      },
+      "driver": "glyph-name"
     },
     {
       "id": "text/unicode-ignored-stream-metadata",

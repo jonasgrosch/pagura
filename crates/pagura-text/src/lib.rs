@@ -332,6 +332,8 @@ impl PdfFont {
 }
 
 #[cfg(test)]
+mod substitution_tests;
+#[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tolerance_tests;

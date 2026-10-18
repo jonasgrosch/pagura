@@ -7,7 +7,7 @@ use crate::{
     metrics::Metrics,
     objects::{number, optional, required},
 };
-use pagura_core::{Diagnostic, Dictionary, Error, Repair, Result, Value};
+use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Repair, Result, Value};
 use pagura_document::Document;
 use std::sync::Arc;
 
@@ -39,7 +39,11 @@ pub(crate) fn load(
 
     let selected = match standard {
         Some(name) => name,
-        None => closest(document, descriptor.ok_or_else(unavailable)?)?,
+        None => closest(
+            document,
+            descriptor.ok_or_else(unavailable)?,
+            font.get(b"FontDescriptor").and_then(Value::as_reference),
+        )?,
     };
     let data = provider.standard_font(selected)?.ok_or_else(unavailable)?;
     let names = encoding::load(
@@ -93,7 +97,11 @@ fn unavailable() -> Error {
     )
 }
 
-fn closest(document: &Document, descriptor: &Dictionary) -> Result<&'static [u8]> {
+fn closest(
+    document: &Document,
+    descriptor: &Dictionary,
+    id: Option<ObjectId>,
+) -> Result<&'static [u8]> {
     let flags = required(document, descriptor, b"Flags")?
         .as_integer()
         .and_then(|flags| u32::try_from(flags).ok())
@@ -105,14 +113,7 @@ fn closest(document: &Document, descriptor: &Dictionary) -> Result<&'static [u8]
         return Err(Error::syntax("font must declare Symbolic or Nonsymbolic"));
     }
     let italic = flags & 64 != 0 || number(document, descriptor, b"ItalicAngle", 0.0)? != 0.0;
-    let weight = number(document, descriptor, b"FontWeight", 400.0)?;
-    if ![
-        100.0, 200.0, 300.0, 400.0, 500.0, 600.0, 700.0, 800.0, 900.0,
-    ]
-    .contains(&weight)
-    {
-        return Err(Error::syntax("invalid font descriptor FontWeight"));
-    }
+    let weight = weight(document, descriptor, id)?;
     let bold = flags & 262_144 != 0 || weight >= 600.0;
     let family = if flags & 1 != 0 {
         0
@@ -122,6 +123,27 @@ fn closest(document: &Document, descriptor: &Dictionary) -> Result<&'static [u8]
         2
     };
     Ok(canonical(family, bold, italic))
+}
+
+fn weight(document: &Document, descriptor: &Dictionary, id: Option<ObjectId>) -> Result<f64> {
+    let Some(value) = optional(document, descriptor, b"FontWeight")? else {
+        return Ok(400.0);
+    };
+    if let Some(weight) = value.as_number()
+        && [
+            100.0, 200.0, 300.0, 400.0, 500.0, 600.0, 700.0, 800.0, 900.0,
+        ]
+        .contains(&weight)
+    {
+        return Ok(weight);
+    }
+    let mut diagnostic = Diagnostic::new(
+        crate::repairs::DESCRIPTOR_WEIGHT,
+        "invalid optional FontWeight ignored; using normal weight (9.8.1, Table 120)",
+    );
+    diagnostic.object = id;
+    crate::repairs::Report::new(document).diagnostic(diagnostic)?;
+    Ok(400.0)
 }
 
 /// Recognizes only known family/style spellings. A subset tag is exactly six
@@ -161,9 +183,11 @@ pub(crate) fn standard_name(name: &[u8]) -> Option<&'static [u8]> {
         if let Some(style) = normalized.strip_prefix(prefix) {
             let (bold, italic) = match style {
                 b"" | b"roman" | b"regular" => (false, false),
-                b"bold" => (true, false),
-                b"italic" | b"oblique" => (false, true),
-                b"bolditalic" | b"boldoblique" => (true, true),
+                // Short style names are a host alias policy (9.6.2.1).
+                // Repeated b represents an already-bold face selected as bold.
+                b"bold" | b"b" | b"bb" => (true, false),
+                b"italic" | b"oblique" | b"i" => (false, true),
+                b"bolditalic" | b"boldoblique" | b"bi" | b"ib" => (true, true),
                 _ => continue,
             };
             return Some(canonical(family, bold, italic));

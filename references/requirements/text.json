@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "text",
-  "scope": "The rule paraphrases and exact ISO locators below were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text (ISO_32000-2_sponsored_EC3.txt): PDF string-decoding/spacing interfaces, supported font dictionaries and embedding bindings, character selection, widths/CID metrics, PDF-specific CMap rules and ToUnicode. Every code-to-name slot of Standard, MacRoman, WinAnsi, PDFDoc, Symbol and ZapfDingbats was compared with Annex D; MacExpert was also checked. This is not verification of Adobe Glyph List rules, TN5014 grammar or external font-program binary formats. Provider additions were checked against ISO 9.6.2.2/Table 109 and 9.9.2, 9.8.1-9.8.2/Tables 120-121, 9.7.5.2/Table 116 and 9.10.2, and TN5014 sections 5.1-5.4 for pinned resource inheritance. AFM values and Unicode projection choices are checked against the pinned data files, not claimed as verification of external AFM or sfnt format standards. Recovery additions were checked against ISO 9.7.4.1 Table 115, 9.7.4.2, 9.7.5.4, 9.7.6.2, 9.10.3 and TN5014 7.4. Tolerant interpretations depart from those rules as individually reported below; corpus acceptance is evidence of tolerance, not standards conformance. Round 5 rechecks the PDF TrueType routes against 9.6.5.4 and Table 113 in the same local ISO text; final-paragraph alternatives are reader policy. Retained byte accounting is ADR 0012 policy, not a numerical requirement of Annex C.1.",
+  "scope": "The rule paraphrases and exact ISO locators below were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text (ISO_32000-2_sponsored_EC3.txt): PDF string-decoding/spacing interfaces, supported font dictionaries and embedding bindings, character selection, widths/CID metrics, PDF-specific CMap rules and ToUnicode. Every code-to-name slot of Standard, MacRoman, WinAnsi, PDFDoc, Symbol and ZapfDingbats was compared with Annex D; MacExpert was also checked. This is not verification of Adobe Glyph List rules, TN5014 grammar or external font-program binary formats. Provider additions were checked against ISO 9.6.2.2/Table 109 and 9.9.2, 9.8.1-9.8.2/Tables 120-121, 9.7.5.2/Table 116 and 9.10.2, and TN5014 sections 5.1-5.4 for pinned resource inheritance. AFM values and Unicode projection choices are checked against the pinned data files, not claimed as verification of external AFM or sfnt format standards. Recovery additions were checked against ISO 9.7.4.1 Table 115, 9.7.4.2, 9.7.5.4, 9.7.6.2, 9.10.3 and TN5014 7.4. Tolerant interpretations depart from those rules as individually reported below; corpus acceptance is evidence of tolerance, not standards conformance. Round 5 rechecks the PDF TrueType routes against 9.6.5.4 and Table 113 in the same local ISO text; final-paragraph alternatives are reader policy. Retained byte accounting is ADR 0012 policy, not a numerical requirement of Annex C.1. Substitution and optional-weight handling were checked against ISO 9.6.2.1-9.6.2.2, 9.6.5.2, 9.6.5.4, 9.8.1-9.8.2/Tables 120-121 and 9.9.2 in the same local text. Sixty-six Russian AFII name-to-scalar records were compared with local adobe-glyph-list data. Short aliases and invalid-weight discard are documented policies; full external AGL/AGLFN algorithm verification is not claimed.",
   "requirements": [
     {
       "id": "text-type3",
@@ -476,7 +476,8 @@
       "tables": [],
       "status": "Simple-font glyph names may supply Unicode through the external AGL algorithms.",
       "tests": [
-        "text/glyph-name-forms"
+        "text/glyph-name-forms",
+        "text/glyph-name-cyrillic"
       ],
       "gaps": "pending primary-text review: Adobe Glyph List and Adobe Glyph List for New Fonts; only the implemented name repertoire and known-answer forms are covered.",
       "verification": {
@@ -487,7 +488,8 @@
         "choices": [
           "Drop the suffix starting at the first period before interpreting names.",
           "Unknown underscore components contribute no Unicode; recognized components are concatenated, with each numeric component validated atomically.",
-          "An entirely unknown glyph name returns None; an explicitly empty ToUnicode sequence remains Some(empty string)."
+          "An entirely unknown glyph name returns None; an explicitly empty ToUnicode sequence remains Some(empty string).",
+          "The sixty-six Russian AFII records are now checked against local AGL data; this does not verify the external naming algorithm or AGLFN."
         ]
       }
     },
@@ -1122,24 +1124,6 @@
           "For direct codes, try symbol high-byte variants, then Mac Roman. Only after failure try (3,1), (3,10), then platform 0; within each Unicode table try the literal byte before F000/F100/F200 offsets. Missing all routes selects glyph 0. Multi-scalar names never select a scalar cmap entry.",
           "A successful post lookup is binding even for glyph 0; reader fallback applies only when lookup fails."
         ]
-      },
-      "corpus_evidence": {
-        "corpus": "SafeDocs realworld zip 0000, read-only local files",
-        "method": "Enumerate indirect TrueType font dictionaries once per document; load without a provider, probe all 256 codes, compare previous and current glyph IDs. Separately inspect page/Form text-showing operands for changed codes. These are compatibility observations, not independent standards verification.",
-        "members": 1000,
-        "opened": 997,
-        "truetype_dictionaries": 6096,
-        "loaded_embedded_fonts": 4859,
-        "unloaded_fonts": 1237,
-        "named_mac_without_windows_bmp": 218,
-        "direct_mac_without_symbol": 288,
-        "direct_symbol_available": 197,
-        "changed_font_code_pairs": 7716,
-        "changed_fonts": 1954,
-        "changed_files": 51,
-        "nonzero_glyph_choices_changed": 0,
-        "changed_codes_observed_in_text_showing_operands": 0,
-        "usage_scan_limitations": "Usage scan covers pages and Form XObjects in the 51 changed files; six content streams stopped at inline images or parse errors. Does not prove no changed code is used in annotations or unparsed content."
       }
     },
     {
@@ -1167,6 +1151,105 @@
           "Include the PdfFont struct itself, but exclude Document-owned source dictionaries/streams and renderer-owned outlines. Replace the renderer input-size estimate with retained_bytes; do not add the two.",
           "Embedded private FontProgram storage uses two input byte lengths plus 192 bytes per glyph, 16 KiB fixed overhead, the public program struct and Arc headers. This models parsed offsets, charstrings, encodings and indexes without reparsing a program or walking glyphs.",
           "Provider substitute programs, predefined CMaps and CID-to-Unicode tables are charged by their provider, never per font. Copied encodings/metrics, embedded maps and inherited map copies remain owned allocations."
+        ]
+      }
+    },
+    {
+      "id": "text-latin-substitution",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.6.2.1",
+        "9.6.2.2",
+        "9.6.5.2",
+        "9.6.5.4",
+        "9.8.1",
+        "9.8.2",
+        "9.9.2"
+      ],
+      "tables": [
+        "109",
+        "112",
+        "120",
+        "121"
+      ],
+      "status": "Short Latin family/style aliases use bundled metric-compatible outlines; Russian AFII names select the corresponding glyphs rather than .notdef.",
+      "tests": [
+        "text/standard14-short-helveticai",
+        "text/standard14-short-helveticai-subset",
+        "text/standard14-short-helveticaiB",
+        "text/standard14-short-helveticaiB-subset",
+        "text/standard14-short-timesb",
+        "text/standard14-short-timesb-subset",
+        "text/standard14-short-timesbB",
+        "text/standard14-short-timesbB-subset",
+        "text/substitute-weight-zero",
+        "text/substitute-weight-serif",
+        "text/substitute-weight-italic",
+        "text/substitute-weight-fraction",
+        "text/substitute-weight-negative",
+        "text/substitute-weight-large",
+        "text/substitute-weight-string",
+        "text/substitute-weight-force-bold",
+        "text/substitute-weight-valid",
+        "text/substitute-weight-cyrillic",
+        "text/glyph-name-cyrillic",
+        "text/substitute-unsafe-symbolic",
+        "text/substitute-unsafe-symbolic-both",
+        "text/substitute-unsafe-symbolic-known-base"
+      ],
+      "gaps": "Unknown symbolic encodings, non-embedded CID fonts and metrics-only Symbol/Dingbats remain Unsupported. AGL/AGLFN naming algorithms beyond the existing subset remain pending primary-text review.",
+      "verification": {
+        "rule": "Font names and descriptor attributes can select external substitutes; explicit encodings determine names, glyph-name Unicode selects TrueType glyphs, and PDF widths preserve advances. Subset tags contain six uppercase letters and a plus.",
+        "implementation": "Known family suffixes b, i, bi/ib and repeated b resolve canonical styles within the existing bounded alias matcher. Existing symbolic guards and embedded-program precedence remain unchanged. Sixty-six Russian AFII records were checked directly against local AGL data.",
+        "expectations": "Python independently parses AFM widths and substitute sfnt cmaps from locked files. Explicit Cyrillic alphabets give the sixty-six AFII data expectations; every tested substitute glyph ID is nonzero.",
+        "verdict": "PDF selection rules and the reviewed AGL data subset agree; family aliases are host policy.",
+        "choices": [
+          "Short style aliases are a bounded host naming policy, not spellings mandated by ISO. Repeated b preserves bold styling; ib and bi select bold italic.",
+          "Unrecognized AFII names and unknown symbolic encodings are not guessed. Only the sixty-six reviewed Russian names are added."
+        ]
+      },
+      "additional_references": [
+        {
+          "reference": "adobe-glyph-list",
+          "sections": [
+            "glyphlist.txt records afii10017-afii10049 and afii10065-afii10097"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text-descriptor-weight",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.8.1",
+        "9.8.2"
+      ],
+      "tables": [
+        "120",
+        "121"
+      ],
+      "status": "Invalid optional FontWeight used for substitution is a strict tagged rejection or reported repair; Repair ignores the hint and uses normal weight.",
+      "tests": [
+        "text/substitute-weight-zero",
+        "text/substitute-weight-serif",
+        "text/substitute-weight-italic",
+        "text/substitute-weight-fraction",
+        "text/substitute-weight-negative",
+        "text/substitute-weight-large",
+        "text/substitute-weight-string",
+        "text/substitute-weight-force-bold",
+        "text/substitute-weight-valid",
+        "text/substitute-weight-cyrillic",
+        "text/substitution-recovery-inventory"
+      ],
+      "gaps": "This repair does not validate every descriptor field or change an embedded program or a known canonical face.",
+      "verification": {
+        "rule": "FontWeight is optional; when present its permitted values are 100 through 900 in steps of 100, with 400 normal and 700 bold. ForceBold is a separate descriptor flag.",
+        "implementation": "Invalid numeric or nonnumeric weights are rejected with font.descriptor-weight in Strict; Repair reports the ignored hint, keeps the normal substitution default and preserves independent style flags.",
+        "expectations": "Minimized strict/repaired fixtures give independent glyph IDs, text, matrices, selected font data and unchanged PDF widths. The corpus uses invalid value 0, including Cyrillic Differences.",
+        "verdict": "Table 120 domain check agrees; discarding an invalid optional hint is explicit compatibility policy.",
+        "choices": [
+          "Do not round or clamp invalid weights into another style. Ignore the invalid optional value and use normal weight 400, retaining Italic, Serif, FixedPitch and ForceBold selection."
         ]
       }
     }
@@ -1219,7 +1302,7 @@
       "standard": "Adobe Glyph List and Adobe Glyph List for New Fonts",
       "behaviour": "Glyph-name scalars, legacy ligatures, suffix/underscore decomposition, uniXXXX and uXXXX[XX] names.",
       "status": "pending primary-text review",
-      "evidence": "glyphlist.txt is now available locally as adobe-glyph-list; its data is distinct from the AGL naming algorithm and AGLFN, which are not supplied. Existing name-form vectors remain known-answer evidence."
+      "evidence": "glyphlist.txt is now available locally as adobe-glyph-list; its data is distinct from the AGL naming algorithm and AGLFN, which are not supplied. Existing name-form vectors remain known-answer evidence. Round 6 separately reviewed sixty-six Russian AFII scalar records against the local AGL data; algorithm and AGLFN review remain pending."
     },
     {
       "standard": "Adobe Technical Note #5014, Adobe CMap and CIDFont Files Specification",
@@ -1295,6 +1378,16 @@
         "115"
       ],
       "behaviour": "Assume Identity when the required embedded Type2 CIDFont map is missing, after permission to repair."
+    },
+    {
+      "tag": "font.descriptor-weight",
+      "clauses": [
+        "9.8.1"
+      ],
+      "tables": [
+        "120"
+      ],
+      "behaviour": "While choosing an unknown non-embedded Latin face, report and ignore an invalid optional weight, preserving normal default 400 and independent descriptor flags. Strict rejects with the tag."
     }
   ]
 }

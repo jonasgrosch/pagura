@@ -17,6 +17,9 @@ pub const TOUNICODE_RANGE: Repair = Repair::new("font.tounicode-range");
 pub const CMAP_BLOCK_COUNT: Repair = Repair::new("font.cmap-block-count");
 /// Malformed byte rectangles use disjoint integer-interval pieces (9.7.6.2).
 pub const CMAP_CODESPACE: Repair = Repair::new("font.cmap-codespace");
+/// Invalid optional FontWeight is ignored when selecting a substitute
+/// (9.8.1, Table 120); normal weight and the independent ForceBold flag apply.
+pub const DESCRIPTOR_WEIGHT: Repair = Repair::new("font.descriptor-weight");
 
 /// Reports one item at a time so malformed maps cannot grow a temporary
 /// diagnostic vector beyond Document's bounded/deduplicating sink.

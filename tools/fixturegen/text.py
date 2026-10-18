@@ -733,6 +733,11 @@ def bundled_cases():
         "Courier-Oblique": ["CourierNewPS-ItalicMT", "CourierNew,Italic"],
         "Courier-BoldOblique": ["CourierNewPS-BoldItalicMT", "CourierNew,BoldItalic"],
     }
+    short_aliases = {
+        "Helvetica-Oblique": ["helveticai"],
+        "Helvetica-BoldOblique": ["helveticaiB"],
+        "Times-Bold": ["timesb", "timesbB"],
+    }
     for base, item in lock["standard_14"].items():
         props,glyphs = bundled_afm(data/item["metrics"])
         widths = {name:width for _,name,width in glyphs}
@@ -749,6 +754,8 @@ def bundled_cases():
                 for code in samples]
         variants = [(base,base),(base+"-subset","ABCDEF+"+base)]
         variants += [(base+"-alias-%d" % i,name) for i,name in enumerate(aliases.get(base,[]))]
+        for alias in short_aliases.get(base, []):
+            variants += [("short-"+alias,alias), ("short-"+alias+"-subset","ABCDEF+"+alias)]
         for fixture,name in variants:
             fixture = "standard14-"+fixture
             names.append(fixture)
@@ -759,7 +766,10 @@ def bundled_cases():
                 fields = [*map(float,props["FontBBox"].split()), float(props["ItalicAngle"]),props["IsFixedPitch"]=="true"]
                 fields += [float(props[key]) if key in props else None for key in ("Ascender","Descender","CapHeight","XHeight","StdVW","StdHW")]
                 files[".descriptor"] = expected([fields])
-            yield Vector(fixture,files,("text-standard-fonts","text-provider"),"AFM-derived standard font widths, encoding, descriptors and substitute glyphs",{"driver":"bundled-standard"})
+            requirements = ("text-standard-fonts","text-provider")
+            if fixture.startswith("standard14-short-"):
+                requirements += ("text-latin-substitution",)
+            yield Vector(fixture,files,requirements,"AFM-derived standard font widths, encoding, descriptors and substitute glyphs",{"driver":"bundled-standard"})
     for fixture, encoding, code, glyph_name, unicode_value, width in [
         ("standard14-pdf-widths",b"/WinAnsiEncoding",65,"A","A",731),
         ("standard14-differences",b"<< /Differences [65 /fi] >>",65,"fi","ﬁ",None),
@@ -835,6 +845,7 @@ def bundled_cases():
                     break
         yield Vector("collection-"+collection,{".collection":collection.encode(),".out":expected([(cid,values[cid]) for cid in dict.fromkeys(chosen)])},("text-collection-unicode",),"Independent collection Unicode rows, ambiguity choices and vertical aliases",{"driver":"collection"})
     yield from substitution_cases(data,lock)
+    yield from substitution_recovery_cases(data,lock)
 
 
 def substitution_cases(data, lock):
@@ -854,6 +865,56 @@ def substitution_cases(data, lock):
     for name,base,flags in [("unsafe-symbolic","UnknownSymbol",4),("unsafe-symbolic-both","UnknownSymbol",36),("unsafe-symbolic-known-base","Arial",4)]:
         font = b"<< /Type /Font /Subtype /TrueType /BaseFont /"+base.encode()+b" /FontDescriptor 5 0 R /Encoding /WinAnsiEncoding /FirstChar 65 /LastChar 65 /Widths [731] >>"
         yield Vector("substitute-"+name,{".pdf":pdf(font,[b"<< /Flags %d >>" % flags]),".error":b"font.non-embedded\n"},("text-font-substitution",),"Unsafe symbolic substitution fails explicitly",{"driver":"provider-error"})
+
+
+def cyrillic_names():
+    # AGL data records, independently expressed as ordered alphabets rather
+    # than the numeric ranges used by the implementation. Includes Yo/yo.
+    for start, alphabet in [(10017,"АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"),
+                            (10065,"абвгдеёжзийклмнопрстуфхцчшщъыьэюя")]:
+        for index, scalar in enumerate(alphabet):
+            yield "afii"+str(start+index), scalar
+
+
+def substitution_recovery_cases(data, lock):
+    inventory = []
+    # Table 120 permits only the nine hundreds. Invalid optional weights are
+    # ignored, retaining the normal default and independent ForceBold hint.
+    choices = [("zero",32,b"0","Helvetica"),
+               ("serif",34,b"0","Times-Roman"),
+               ("italic",98,b"0","Times-Italic"),
+               ("fraction",32,b"650.5","Helvetica"),
+               ("negative",32,b"-100","Helvetica"),
+               ("large",32,b"1000","Helvetica"),
+               ("string",32,b"(bold)","Helvetica"),
+               ("force-bold",262176,b"0","Helvetica-Bold"),
+               ("valid",32,b"400","Helvetica"),
+               ("cyrillic",34,b"0","Times-Roman")]
+    for suffix, flags, weight, base in choices:
+        name = "substitute-weight-"+suffix
+        inventory.append(name)
+        letters = list(cyrillic_names()) if suffix == "cyrillic" else [("A","A")]
+        first = 128 if suffix == "cyrillic" else 65
+        encoding = b"<< /BaseEncoding /WinAnsiEncoding /Differences [%d " % first
+        encoding += b" ".join(b"/"+glyph.encode() for glyph,_ in letters)+b"] >>"
+        font = b"<< /Type /Font /Subtype /TrueType /BaseFont /UnbundledLatin /FontDescriptor 5 0 R /Encoding "+encoding
+        font += b" /FirstChar %d /LastChar %d /Widths [" % (first,first+len(letters)-1)+b" ".join([b"731"]*len(letters))+b"] >>"
+        descriptor = b"<< /Type /FontDescriptor /FontName /UnbundledLatin /Flags %d /FontWeight " % flags + weight+b" >>"
+        program = data/lock["standard_14"][base]["outline"]
+        binary = program.read_bytes()
+        head = next(offset for tag,_,offset,_ in (struct.unpack_from(">4sIII",binary,12+16*i) for i in range(struct.unpack_from(">H",binary,4)[0])) if tag == b"head")
+        unit = 1/struct.unpack_from(">H",binary,head+18)[0]
+        rows = [(first+i,.731,scalar,bundled_tt_glyph(program,ord(scalar))) for i,(_,scalar) in enumerate(letters)]
+        assert all(row[3] for row in rows), "substitutes must cover the specified Cyrillic glyphs"
+        yield Vector(name,{".pdf":pdf(font,[descriptor]),".input":bytes(range(first,first+len(letters))),
+                           ".out":expected(rows),".base":base.encode(),".tag":b"" if suffix=="valid" else b"font.descriptor-weight",
+                           ".matrix":expected([(unit,0,0,unit,0,0)])},
+                     ("text-descriptor-weight","text-latin-substitution"),
+                     "Table 120 weight checks and reported normal-weight fallback; locked substitute cmap supplies glyph IDs",{"driver":"substitution-recovery"})
+    yield Vector("substitution-recovery-inventory",{".out":expected([(name,) for name in inventory])},
+                 ("text-descriptor-weight",),"Optional weight recovery cases",{"driver":"inventory"})
+    yield Vector("glyph-name-cyrillic",{".out":expected(list(cyrillic_names()))},
+                 ("text-latin-substitution","text-glyph-names"),"Russian AFII names checked against the local AGL data records",{"driver":"glyph-name"})
 
 
 def tolerance_cases():

@@ -127,6 +127,9 @@ fn component_unicode(component: &[u8]) -> Option<String> {
     if let Ok(index) = tables::UNICODE.binary_search_by_key(&component, |(name, _)| *name) {
         return Some(char::from_u32(tables::UNICODE[index].1)?.to_string());
     }
+    if let Some(scalar) = cyrillic(component) {
+        return Some(scalar.to_string());
+    }
     if let Some(hex) = component.strip_prefix("uni") {
         if hex.is_empty() || !hex.len().is_multiple_of(4) || !upper_hex(hex) {
             return None;
@@ -145,6 +148,25 @@ fn component_unicode(component: &[u8]) -> Option<String> {
         return None;
     }
     Some(char::from_u32(u32::from_str_radix(hex, 16).ok()?)?.to_string())
+}
+
+// Russian AFII names from the AGL data: Yo/yo interrupt the two alphabetical
+// runs. Other AFII scripts and unregistered numeric spellings remain unknown.
+fn cyrillic(name: &str) -> Option<char> {
+    let digits = name.strip_prefix("afii")?;
+    if digits.len() != 5 {
+        return None;
+    }
+    let number = digits.parse::<u32>().ok()?;
+    char::from_u32(match number {
+        10017..=10022 => 0x410 + number - 10017,
+        10023 => 0x401,
+        10024..=10049 => 0x416 + number - 10024,
+        10065..=10070 => 0x430 + number - 10065,
+        10071 => 0x451,
+        10072..=10097 => 0x436 + number - 10072,
+        _ => return None,
+    })
 }
 
 fn upper_hex(value: &str) -> bool {
