@@ -35,7 +35,7 @@ pub(super) struct Sampler {
     pub(super) inverse: Transform,
 }
 impl Sampler {
-    pub(super) fn sample(
+    pub(super) fn magnify(
         &self,
         x: u32,
         y: u32,
@@ -43,15 +43,7 @@ impl Sampler {
         maximum: usize,
         mut texel: impl FnMut(usize) -> Result<Texel>,
     ) -> Result<Texel> {
-        if !self.inverse.is_finite() {
-            return Err(Error::limit("image sampling transform overflow"));
-        }
         let center = Point::new(f64::from(x) + 0.5, f64::from(y) + 0.5) * self.inverse;
-        let dx = self.inverse.a.hypot(self.inverse.b);
-        let dy = self.inverse.c.hypot(self.inverse.d);
-        if dx > 1.0 + 1e-9 || dy > 1.0 + 1e-9 {
-            return self.area(x, y, work, maximum, texel);
-        }
         if !self.interpolate {
             charge(work, 1, maximum)?;
             return texel(self.index(center.x.floor(), center.y.floor())?);
@@ -71,7 +63,7 @@ impl Sampler {
         }
         Ok(out)
     }
-    fn area(
+    pub(super) fn area(
         &self,
         x: u32,
         y: u32,

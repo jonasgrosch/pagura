@@ -10,6 +10,7 @@ struct Span {
     end: u32,
     low: f64,
     high: f64,
+    normalization: f64,
 }
 
 impl Span {
@@ -26,6 +27,7 @@ impl Span {
             end: coordinate(if high > low { high.ceil() } else { low.floor() }, maximum),
             low,
             high,
+            normalization: if high > low { 1.0 / (high - low) } else { 0.0 },
         })
     }
 
@@ -34,8 +36,7 @@ impl Span {
     }
 
     fn normalize(self, value: Texel) -> Texel {
-        let width = self.high - self.low;
-        value.scale(if width > 0.0 { 1.0 / width } else { 0.0 })
+        value.scale(self.normalization)
     }
 }
 
@@ -51,6 +52,7 @@ pub(super) struct Prepared {
     origin: u32,
     swapped: bool,
     vertical: Option<(u32, Span)>,
+    minifying: bool,
 }
 
 impl Sampler {
@@ -65,10 +67,9 @@ impl Sampler {
             columns: Vec::new(),
             origin,
             vertical: None,
+            minifying: t.a.hypot(t.b) > 1.0 + 1e-9 || t.c.hypot(t.d) > 1.0 + 1e-9,
         };
-        if (t.a.hypot(t.b) > 1.0 + 1e-9 || t.c.hypot(t.d) > 1.0 + 1e-9)
-            && ((t.b == 0.0 && t.c == 0.0) || out.swapped)
-        {
+        if out.minifying && ((t.b == 0.0 && t.c == 0.0) || out.swapped) {
             let count = usize::try_from(width)
                 .ok()
                 .filter(|&n| {
@@ -111,10 +112,13 @@ impl Prepared {
         maximum: usize,
         texel: impl FnMut(usize) -> Result<Texel>,
     ) -> Result<Texel> {
-        if self.columns.is_empty() {
-            return self.sampler.sample(x, y, work, maximum, texel);
+        if !self.columns.is_empty() {
+            self.reduce(x, y, work, maximum, texel)
+        } else if self.minifying {
+            self.sampler.area(x, y, work, maximum, texel)
+        } else {
+            self.sampler.magnify(x, y, work, maximum, texel)
         }
-        self.reduce(x, y, work, maximum, texel)
     }
 
     fn reduce(
