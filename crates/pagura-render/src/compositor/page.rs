@@ -1,6 +1,6 @@
 //! The page: chunked rendering, spot passes and conversion to output pixels.
 
-use super::{Backdrop, Context, Frame, Separations, Surface, colorants, plan, regions, transfer};
+use super::{Backdrop, Context, Frame, Separations, Surface, plan, transfer};
 use crate::display::DisplayList;
 use crate::transparency::Model;
 use crate::{RenderOptions, Tile};
@@ -29,29 +29,16 @@ impl Context {
         let context = Self {
             overprint: options.overprint.resolve(list.print_intent),
             separations,
-            preview: colorants::Preview::default(),
-            spot_batch: None,
-            mask_colors: false,
             elide_opaque_groups,
-            raster: pagura_raster::Rasterizer::default(),
-            bounds: regions::Prepared::new(
-                list.device_transform(options),
-                list.limits.decoded_bytes,
-            ),
-            glyphs: crate::display::GlyphCache::new(list.limits.decoded_bytes),
-            limits: list.limits,
-            device: list.device_transform(options),
-            page_device: list.device_transform(options),
             view_unit: list.user_unit,
-            crop: crate::device::rectangle(list.crop),
             allocated,
             work: plan.work,
-            clip: None,
-            mask: None,
-            function_work: 0,
-            soft_source: false,
             transfers,
-            viewport: None,
+            ..Self::new(
+                list.limits,
+                list.device_transform(options),
+                crate::device::rectangle(list.crop),
+            )
         };
         Ok((context, model))
     }

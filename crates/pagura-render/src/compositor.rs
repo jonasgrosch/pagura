@@ -63,6 +63,34 @@ struct Context {
     viewport: Option<Tile>,
 }
 impl Context {
+    /// A context that paints through `device` inside `crop`, without
+    /// separations, transfers or opaque-group elision.
+    fn new(limits: Limits, device: Transform, crop: Path) -> Self {
+        Self {
+            overprint: crate::overprint::Policy::Ignore,
+            elide_opaque_groups: false,
+            separations: Arc::default(),
+            preview: colorants::Preview::default(),
+            spot_batch: None,
+            mask_colors: false,
+            bounds: regions::Prepared::new(device, limits.decoded_bytes),
+            glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
+            raster: pagura_raster::Rasterizer::default(),
+            limits,
+            device,
+            page_device: device,
+            view_unit: 1.0,
+            crop,
+            allocated: 0,
+            work: 0,
+            clip: None,
+            mask: None,
+            function_work: 0,
+            soft_source: false,
+            transfers: None,
+            viewport: None,
+        }
+    }
     fn region(&mut self, group: &Group, tile: Tile) -> Result<Option<Tile>> {
         group_region(
             group,

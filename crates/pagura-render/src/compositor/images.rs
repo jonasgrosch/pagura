@@ -479,30 +479,7 @@ mod tests {
     use std::sync::Arc;
     fn context() -> Context {
         let limits = pagura_core::Limits::default();
-        Context {
-            overprint: crate::overprint::Policy::Ignore,
-            elide_opaque_groups: false,
-            separations: Arc::new(super::super::Separations::default()),
-            preview: super::super::colorants::Preview::default(),
-            spot_batch: None,
-            mask_colors: false,
-            raster: pagura_raster::Rasterizer::default(),
-            bounds: super::super::regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
-            glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
-            limits,
-            device: Transform::IDENTITY,
-            page_device: Transform::IDENTITY,
-            view_unit: 1.0,
-            crop: PathBuilder::new().finish(),
-            allocated: 0,
-            work: 0,
-            clip: None,
-            mask: None,
-            function_work: 0,
-            soft_source: false,
-            transfers: None,
-            viewport: None,
-        }
+        Context::new(limits, Transform::IDENTITY, PathBuilder::new().finish())
     }
 
     fn command(image: Image) -> ImageCommand {

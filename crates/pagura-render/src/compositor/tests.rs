@@ -315,30 +315,7 @@ fn soft_mask_values_share_the_live_raster_memory_allowance() {
     path.rect(0.0, 0.0, 2.0, 2.0);
     let path = Arc::new(path.finish());
     let clip = Mask::from_path(2, 2, &path, Transform::IDENTITY, FillRule::NonZero, 4).unwrap();
-    let mut context = Context {
-        overprint: crate::overprint::Policy::Ignore,
-        elide_opaque_groups: false,
-        separations: Arc::new(Separations::default()),
-        preview: colorants::Preview::default(),
-        spot_batch: None,
-        mask_colors: false,
-        raster: pagura_raster::Rasterizer::default(),
-        bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
-        glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
-        limits,
-        device: Transform::IDENTITY,
-        page_device: Transform::IDENTITY,
-        view_unit: 1.0,
-        crop: (*path).clone(),
-        allocated: 0,
-        work: 0,
-        clip: None,
-        mask: None,
-        function_work: 0,
-        soft_source: false,
-        transfers: None,
-        viewport: None,
-    };
+    let mut context = Context::new(limits, Transform::IDENTITY, (*path).clone());
     // Rectangles take a closed form without sweep scratch; warm it with a triangle.
     let mut warm = PathBuilder::new();
     warm.move_to(Point::new(0.0, 0.0));
@@ -388,30 +365,7 @@ fn soft_mask_values_share_the_live_raster_memory_allowance() {
 fn glyph_context(limits: Limits) -> Context {
     let mut crop = PathBuilder::new();
     crop.rect(0.0, 0.0, 4.0, 4.0);
-    Context {
-        overprint: crate::overprint::Policy::Ignore,
-        elide_opaque_groups: false,
-        separations: Arc::new(Separations::default()),
-        preview: colorants::Preview::default(),
-        spot_batch: None,
-        mask_colors: false,
-        bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
-        glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
-        raster: pagura_raster::Rasterizer::default(),
-        limits,
-        device: Transform::IDENTITY,
-        page_device: Transform::IDENTITY,
-        view_unit: 1.0,
-        crop: crop.finish(),
-        allocated: 0,
-        work: 0,
-        clip: None,
-        mask: None,
-        function_work: 0,
-        soft_source: false,
-        transfers: None,
-        viewport: None,
-    }
+    Context::new(limits, Transform::IDENTITY, crop.finish())
 }
 fn glyph_run() -> crate::display::GlyphRun {
     let paint = PathCommand {
