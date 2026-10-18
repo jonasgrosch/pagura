@@ -14,7 +14,7 @@ workspace = true
 [dependencies]
 pagura-font.workspace = true
 pagura-core.workspace = true
-pagura-crypto.workspace = true
+pagura-color.workspace = true
 pagura-document.workspace = true
 pagura-extract.workspace = true
 pagura-raster.workspace = true
