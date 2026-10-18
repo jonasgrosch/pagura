@@ -5,8 +5,9 @@
 ```
 pagura-cli       ──► pagura (the `pagura` command-line tool; the facade only)
 pagura-host      ──► pagura
-pagura           ──► pagura-render, pagura-write, pagura-document, pagura-text and pagura-font (text model, provider types), pagura-raster, pagura-pki (CMS signature verification), pagura-data (optional bundled fonts and CMaps), pagura-crypto (Unicode data notice)
-pagura-render    ──► pagura-text, pagura-font (glyph outline diagnostics), pagura-image, pagura-document, pagura-raster, pagura-crypto (MD5 for ICC profile IDs)
+pagura           ──► pagura-render, pagura-write, pagura-document, pagura-extract (page text), pagura-text and pagura-font (font kinds, provider types), pagura-raster, pagura-pki (CMS signature verification), pagura-data (optional bundled fonts and CMaps), pagura-crypto (Unicode data notice)
+pagura-render    ──► pagura-extract, pagura-text, pagura-font (glyph outline diagnostics), pagura-image, pagura-document, pagura-raster, pagura-crypto (MD5 for ICC profile IDs)
+pagura-extract   ──► pagura-text (font kinds, writing modes, glyph text), pagura-document, pagura-raster
 pagura-data      ──► pagura-text (its Provider), pagura-font (ADR 0026)
 pagura-text      ──► pagura-font, pagura-document, pagura-raster
 pagura-image     ──► pagura-document, pagura-codec
@@ -27,7 +28,8 @@ Dependencies point downward only and are fixed in the crate manifests.
 | `pagura-raster` | geometry, paths, flattening, exact-area fill, stroking, masks, `Pixmap`; the one float-to-byte quantizer (ADR 0022) | PDF |
 | `pagura-font` | font programs (TrueType/OpenType, CFF/CFF2, Type 1) as outlines, advances, encodings and cmaps | PDF dictionaries |
 | `pagura-data` | optional bundled data for fonts a PDF does not embed: standard-14 metrics and substitute outlines, predefined CMaps, CID-to-Unicode data and CJK substitutes, behind one cargo feature each, as a `Provider` with lazy caches (ADR 0009, 0026) | documents, content streams |
-| `pagura-text` | PDF font dictionaries, encodings, widths, CMaps and ToUnicode; shown strings to positioned glyphs | content streams, pixels |
+| `pagura-text` | PDF font dictionaries, encodings, widths, CMaps and ToUnicode, descriptor flag normalization; shown strings to glyphs (ADR 0009, ADR 0025) | content streams, pixels, page layout |
+| `pagura-extract` | page text: layout policy, reading order, search and the logical structure view over the interpreter's positioned glyphs (ADR 0014, ADR 0025) | content streams, font programs, pixels |
 | `pagura-image` | image XObjects and inline images; JPEG, CCITT, JBIG2 and JPEG 2000 decoding to samples | painting, colour conversion |
 | `pagura-render` | content interpretation into a display list in PDF terms; page-to-device transform; tiles; painting through `pagura-raster` | file structure |
 | `pagura-write` | deterministic serialization | parsing |
@@ -89,7 +91,7 @@ approximation per primitive held to the competitive accuracy gate of ADR 0004.
 
 See ADR 0014.
 - **Text:** the content interpreter optionally records positioned glyphs as
-  output separate from the display list. `pagura-text` lays them out into
+  output separate from the display list. `pagura-extract` lays them out into
   words, lines and a reading order and searches them; replacement text
   follows 14.9.4, and the rest is documented policy. Tagged pages also get
   a separate logical view in structure order (14.7–14.8) for assistive
