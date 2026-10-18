@@ -1,6 +1,5 @@
 //! Per-compilation shared font, outline and image storage admission.
 use super::{Arc, Compiler, Dictionary, Error, PdfFont, Result, Value};
-use pagura_core::ResultExt;
 use pagura_raster::Path;
 use std::collections::BTreeMap;
 
@@ -311,13 +310,15 @@ impl Compiler<'_> {
         let path = {
             let mut diagnostics = pagura_core::Diagnostics::new(self.document.recovery());
             let result = program.outline_with_diagnostics(glyph, &mut diagnostics);
-            self.document.report(
-                diagnostics
-                    .take()
-                    .into_iter()
-                    .map(|diagnostic| diagnostic.at(self.position).in_object_opt(font.object)),
-            );
-            Arc::new(result.at(self.position)?)
+            self.document
+                .report(diagnostics.take().into_iter().map(|mut diagnostic| {
+                    diagnostic.position = operator_position(diagnostic.position, self.position);
+                    diagnostic.in_object_opt(font.object)
+                }));
+            Arc::new(result.map_err(|mut error| {
+                error.position = operator_position(error.position, self.position);
+                error
+            })?)
         };
         self.session.retain(super::path_bytes(&path))?;
         self.session
@@ -326,6 +327,19 @@ impl Compiler<'_> {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .outline(font, glyph.0, Arc::clone(&path));
         Ok(path)
+    }
+}
+
+/// Font programs report offsets in their own decoded bytes, which no document
+/// position names; such faults point at the operator that used the font.
+/// This replaces a buffer offset, which `Error::at` would keep.
+pub(super) fn operator_position(
+    position: pagura_core::Position,
+    operator: pagura_core::Position,
+) -> pagura_core::Position {
+    match position {
+        pagura_core::Position::Unknown | pagura_core::Position::Buffer(_) => operator,
+        known => known,
     }
 }
 
@@ -367,18 +381,12 @@ fn cached_font(
     // Parsing and provider calls happen outside the shared cache lock.
     let loaded = flags::load(document, dictionary, provider, position);
     let font = Arc::new(loaded.map_err(|mut error| {
-        if matches!(
-            error.position,
-            pagura_core::Position::Unknown | pagura_core::Position::Buffer(_)
-        ) {
-            error.position = position;
-        }
+        error.position = operator_position(error.position, position);
+        // A descriptor-flags fault names the descriptor, not the font.
         if error.repair == Some(pagura_font::tags::DESCRIPTOR_FLAGS) {
             error
-        } else if let Some(id) = key {
-            error.in_object(id)
         } else {
-            error
+            error.in_object_opt(key)
         }
     })?);
     Ok(match fonts {
