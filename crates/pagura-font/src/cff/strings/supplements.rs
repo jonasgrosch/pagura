@@ -1,7 +1,7 @@
 //! Supplemental mappings are additional codes for main-encoded glyphs
 //! (TN 5176 section 12, Tables 14/15). Invalid records never replace mappings.
 use crate::read::Read;
-use crate::{recovery::repair, tags};
+use crate::{recovery::repair, repairs};
 use pagura_core::{Diagnostics, Limits, Name, Position, Result};
 use std::ops::Range;
 
@@ -37,7 +37,7 @@ pub(super) fn read(
 fn report(diagnostics: &mut Diagnostics, at: usize) -> Result<()> {
     repair(
         diagnostics,
-        tags::CFF_ENCODING_SUPPLEMENT,
+        repairs::CFF_ENCODING_SUPPLEMENT,
         "invalid CFF encoding supplement dropped",
         Position::Buffer(at),
     )

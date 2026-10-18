@@ -17,8 +17,8 @@ mod memory;
 mod names;
 mod read;
 mod recovery;
+pub mod repairs;
 mod sfnt;
-pub mod tags;
 mod type1;
 
 #[cfg(test)]
@@ -222,7 +222,7 @@ impl FontProgram {
     /// Outlines one glyph with explicit recovery and diagnostics.
     ///
     /// In repair mode an unusable glyph returns an empty path with
-    /// [`tags::GLYPH_DATA`]; an unknown charstring operator ends only that glyph.
+    /// [`repairs::GLYPH_DATA`]; an unknown charstring operator ends only that glyph.
     /// Other glyphs and PDF advances are unaffected. Forward diagnostics to
     /// `Document::report` even on error; this crate has no document dependency.
     ///
@@ -239,10 +239,13 @@ impl FontProgram {
         let mut local = Diagnostics::new(diagnostics.mode());
         let result = self.outline_inner(glyph, &mut local);
         let result = match result {
-            Err(error) if recovery::glyph_error(&error) => {
-                recovery::repair(&mut local, tags::GLYPH_DATA, error.message, error.position)
-                    .map(|()| Path::default())
-            }
+            Err(error) if recovery::glyph_error(&error) => recovery::repair(
+                &mut local,
+                repairs::GLYPH_DATA,
+                error.message,
+                error.position,
+            )
+            .map(|()| Path::default()),
             other => other,
         };
         diagnostics.absorb(local.take())?;

@@ -2,7 +2,7 @@
 use super::{Cff, Private, dict, strings};
 use crate::GlyphId;
 use crate::read::{Read, bad, cap};
-use crate::{recovery::repair, tags};
+use crate::{recovery::repair, repairs};
 use pagura_core::{Diagnostics, Limits, Position, Result};
 use pagura_raster::{Path, PathBuilder, Point, Segment, Transform};
 
@@ -571,7 +571,7 @@ fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<bool> {
         _ => {
             repair(
                 w.diagnostics,
-                tags::CHARSTRING_OPERATOR,
+                repairs::CHARSTRING_OPERATOR,
                 "unknown escaped Type 2 operator ends glyph",
                 Position::Buffer(at),
             )?;

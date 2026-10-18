@@ -1,6 +1,6 @@
 //! Unhinted blue-zone recovery: TN 5176 section 15/Table 23; Type 1 5.3-5.5.
 use super::Dict;
-use crate::{recovery::repair, tags};
+use crate::{recovery::repair, repairs};
 use pagura_core::{Diagnostics, Position, Result};
 
 impl Dict {
@@ -20,7 +20,7 @@ impl Dict {
         if let Some(at) = fault {
             repair(
                 diagnostics,
-                tags::CFF_BLUE_ORDER,
+                repairs::CFF_BLUE_ORDER,
                 "CFF blue hint ordering ignored for unhinted outlines",
                 Position::Buffer(at),
             )?;
