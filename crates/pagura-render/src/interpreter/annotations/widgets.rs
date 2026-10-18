@@ -2,8 +2,8 @@
 //! Values and field types inherit through Parent; appearance characteristics do
 //! not. Nonempty values require text layout or a supplied appearance stream.
 
-use super::annotation_shapes::{annotation_color, border, rect_path};
-use super::{Compiler, Dictionary, Error, Mark, Rect, Result, Transform, Value};
+use super::shapes::{annotation_color, border, rect_path};
+use crate::interpreter::{Compiler, Dictionary, Error, Mark, Rect, Result, Transform, Value};
 use pagura_raster::{FillRule, PathBuilder, Point, Stroke};
 
 impl Compiler<'_> {
