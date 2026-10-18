@@ -7,6 +7,8 @@ use pagura_core::{Error, Limits, Result};
 /// The convex-hull property bounds the whole curve by this tolerance.
 pub(crate) const TOLERANCE: f64 = 1.0 / 256.0;
 
+pub(crate) type CurveStack = Vec<([Point; 4], usize)>;
+
 #[derive(Debug)]
 pub(crate) struct Polyline {
     pub(crate) points: Vec<Point>,
@@ -41,7 +43,7 @@ pub(crate) fn bounded(point: Point) -> Result<()> {
 
 pub(crate) fn flatten(path: &Path, transform: Transform, limits: &Limits) -> Result<Vec<Polyline>> {
     let mut result = Vec::new();
-    let count = flatten_into(path, transform, limits, &mut result)?;
+    let count = flatten_into(path, transform, limits, &mut result, &mut CurveStack::new())?;
     result.truncate(count);
     Ok(result)
 }
@@ -51,7 +53,9 @@ pub(crate) fn flatten_into(
     transform: Transform,
     limits: &Limits,
     result: &mut Vec<Polyline>,
+    pending: &mut CurveStack,
 ) -> Result<usize> {
+    pending.clear();
     if !transform.is_finite() {
         return Err(Error::invalid_argument("path transform is not finite"));
     }
@@ -102,7 +106,7 @@ pub(crate) fn flatten_into(
                 curve(
                     [start, first, second, end],
                     transform,
-                    0,
+                    pending,
                     &mut current.points,
                     &mut count,
                     limits,
@@ -141,48 +145,280 @@ fn append(points: &mut Vec<Point>, point: Point, count: &mut usize, limits: &Lim
 fn curve(
     points: [Point; 4],
     transform: Transform,
-    depth: usize,
+    pending: &mut CurveStack,
     out: &mut Vec<Point>,
     count: &mut usize,
     limits: &Limits,
 ) -> Result<()> {
-    let [a, b, c, d] = points.map(|p| p * transform);
-    if distance(b, a, d).max(distance(c, a, d)) <= TOLERANCE {
-        return append(out, points[3], count, limits);
+    let mut points = points;
+    let mut depth = 0;
+    loop {
+        let [a, b, c, d] = points.map(|p| p * transform);
+        // A Bézier lies in its control hull (ISO 32000-2, 8.5.2.2).
+        // The tolerance neighbourhood of a segment is convex, so admitting
+        // both inner controls certifies the whole curve, including cusps.
+        if close(b, a, d) && close(c, a, d) {
+            append(out, points[3], count, limits)?;
+            let Some(next) = pending.pop() else {
+                return Ok(());
+            };
+            (points, depth) = next;
+        } else {
+            if depth >= limits.depth {
+                return Err(Error::limit("curve subdivision depth exceeded"));
+            }
+            let [a, b, c, d] = points;
+            let ab = midpoint(a, b);
+            let bc = midpoint(b, c);
+            let cd = midpoint(c, d);
+            let abc = midpoint(ab, bc);
+            let bcd = midpoint(bc, cd);
+            let mid = midpoint(abc, bcd);
+            pending
+                .try_reserve(1)
+                .map_err(|_| Error::limit("curve subdivision allocation failed"))?;
+            depth += 1;
+            pending.push(([mid, bcd, cd, d], depth));
+            points = [a, ab, abc, mid];
+        }
     }
-    if depth >= limits.depth {
-        return Err(Error::limit("curve subdivision depth exceeded"));
-    }
-    let [a, b, c, d] = points;
-    let ab = midpoint(a, b);
-    let bc = midpoint(b, c);
-    let cd = midpoint(c, d);
-    let abc = midpoint(ab, bc);
-    let bcd = midpoint(bc, cd);
-    let mid = midpoint(abc, bcd);
-    curve([a, ab, abc, mid], transform, depth + 1, out, count, limits)?;
-    curve([mid, bcd, cd, d], transform, depth + 1, out, count, limits)
 }
 
+#[expect(
+    clippy::manual_midpoint,
+    reason = "source controls and their convex combinations are bounded to 1e12"
+)]
 fn midpoint(a: Point, b: Point) -> Point {
-    Point::new(a.x.midpoint(b.x), a.y.midpoint(b.y))
+    // Source controls are bounded to 1e12 before subdivision, and convex
+    // combinations stay bounded. Their sum cannot overflow, so the general
+    // midpoint's overflow handling is unnecessary here.
+    Point::new((a.x + b.x) * 0.5, (a.y + b.y) * 0.5)
 }
 
-fn distance(p: Point, a: Point, b: Point) -> f64 {
+fn close(p: Point, a: Point, b: Point) -> bool {
     let dx = b.x - a.x;
     let dy = b.y - a.y;
     let square = dx * dx + dy * dy;
-    if square == 0.0 {
-        return (p.x - a.x).hypot(p.y - a.y);
+    let t = if square == 0.0 {
+        0.0
+    } else {
+        (((p.x - a.x) * dx + (p.y - a.y) * dy) / square).clamp(0.0, 1.0)
+    };
+    let x = p.x - a.x - t * dx;
+    let y = p.y - a.y - t * dy;
+    let distance = x * x + y * y;
+    let tolerance = TOLERANCE * TOLERANCE;
+    // Preserve hypot's rounding decision at the boundary. Away from this
+    // guard, rounding the two products and their sum cannot cross it; the
+    // guard assumes hypot is accurate to within a few ulps.
+    if (distance - tolerance).abs() <= 16.0 * f64::EPSILON * tolerance {
+        x.hypot(y) <= TOLERANCE
+    } else {
+        distance <= tolerance
     }
-    let t = (((p.x - a.x) * dx + (p.y - a.y) * dy) / square).clamp(0.0, 1.0);
-    (p.x - a.x - t * dx).hypot(p.y - a.y - t * dy)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::PathBuilder;
+
+    fn distance(p: Point, a: Point, b: Point) -> f64 {
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let square = dx * dx + dy * dy;
+        if square == 0.0 {
+            return (p.x - a.x).hypot(p.y - a.y);
+        }
+        let t = (((p.x - a.x) * dx + (p.y - a.y) * dy) / square).clamp(0.0, 1.0);
+        (p.x - a.x - t * dx).hypot(p.y - a.y - t * dy)
+    }
+
+    fn reference(points: [Point; 4], transform: Transform, out: &mut Vec<Point>) {
+        let midpoint = |a: Point, b: Point| Point::new(a.x.midpoint(b.x), a.y.midpoint(b.y));
+        let [a, b, c, d] = points.map(|p| p * transform);
+        if distance(b, a, d).max(distance(c, a, d)) <= TOLERANCE {
+            out.push(points[3]);
+        } else {
+            let [a, b, c, d] = points;
+            let ab = midpoint(a, b);
+            let bc = midpoint(b, c);
+            let cd = midpoint(c, d);
+            let abc = midpoint(ab, bc);
+            let bcd = midpoint(bc, cd);
+            let mid = midpoint(abc, bcd);
+            reference([a, ab, abc, mid], transform, out);
+            reference([mid, bcd, cd, d], transform, out);
+        }
+    }
+
+    fn random(state: &mut u32) -> f64 {
+        *state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+        f64::from(*state) / f64::from(u32::MAX) * 128.0 - 64.0
+    }
+
+    #[test]
+    fn bounded_midpoints_match_general_midpoints_including_subnormals() {
+        let values = [
+            -1e12,
+            -1.0,
+            -f64::MIN_POSITIVE,
+            -f64::from_bits(1),
+            -0.0,
+            0.0,
+            f64::from_bits(1),
+            f64::MIN_POSITIVE,
+            1.0,
+            1e12,
+        ];
+        for a in values {
+            for b in values {
+                let point = midpoint(Point::new(a, -a), Point::new(b, -b));
+                assert_eq!(point.x.to_bits(), a.midpoint(b).to_bits());
+                assert_eq!(point.y.to_bits(), (-a).midpoint(-b).to_bits());
+            }
+        }
+    }
+
+    #[test]
+    fn subdivision_points_match_the_recursive_reference() {
+        let mut state = 0x7942_a1b3;
+        let mut pending = Vec::new();
+        for _ in 0..2048 {
+            let points =
+                std::array::from_fn(|_| Point::new(random(&mut state), random(&mut state)));
+            let transform = Transform::new(
+                random(&mut state),
+                random(&mut state),
+                random(&mut state),
+                random(&mut state),
+                random(&mut state),
+                random(&mut state),
+            );
+            let mut expected = Vec::new();
+            reference(points, transform, &mut expected);
+            let mut actual = Vec::new();
+            curve(
+                points,
+                transform,
+                &mut pending,
+                &mut actual,
+                &mut 0,
+                &Limits::default(),
+            )
+            .unwrap();
+            assert_eq!(actual, expected);
+            assert_eq!(pending.len(), 0);
+        }
+        // Exercise the hypot guard on both sides of the exact threshold,
+        // with vertical, horizontal and degenerate chords.
+        for i in -64..=64 {
+            let y = TOLERANCE * (1.0 + f64::from(i) * f64::EPSILON);
+            for (a, b, p) in [
+                (
+                    Point::new(0.0, 0.0),
+                    Point::new(1.0, 0.0),
+                    Point::new(0.5, y),
+                ),
+                (
+                    Point::new(0.0, 0.0),
+                    Point::new(0.0, 1.0),
+                    Point::new(y, 0.5),
+                ),
+                (
+                    Point::new(0.0, 0.0),
+                    Point::new(0.0, 0.0),
+                    Point::new(0.0, y),
+                ),
+            ] {
+                assert_eq!(close(p, a, b), distance(p, a, b) <= TOLERANCE);
+            }
+        }
+    }
+
+    fn certify(points: [Point; 4], transform: Transform) {
+        let mut out = vec![points[0]];
+        curve(
+            points,
+            transform,
+            &mut Vec::new(),
+            &mut out,
+            &mut 1,
+            &Limits::default(),
+        )
+        .unwrap();
+        // Evaluate Bernstein polynomials independently of the subdivision.
+        // Work relative to the first control to retain precision at 1e12.
+        let origin = points[0];
+        let [a, b, c, d] = points.map(|p| Point::new(p.x - origin.x, p.y - origin.y));
+        let linear = Transform {
+            e: 0.0,
+            f: 0.0,
+            ..transform
+        };
+        let out: Vec<_> = out
+            .iter()
+            .map(|p| Point::new(p.x - origin.x, p.y - origin.y) * linear)
+            .collect();
+        for i in 0..=2048 {
+            let t = f64::from(i) / 2048.0;
+            let s = 1.0 - t;
+            let weights = [s * s * s, 3.0 * s * s * t, 3.0 * s * t * t, t * t * t];
+            let point = Point::new(
+                [a, b, c, d].iter().zip(weights).map(|(p, w)| p.x * w).sum(),
+                [a, b, c, d].iter().zip(weights).map(|(p, w)| p.y * w).sum(),
+            ) * linear;
+            let error = out
+                .windows(2)
+                .map(|p| distance(point, p[0], p[1]))
+                .fold(f64::INFINITY, f64::min);
+            assert!(error <= TOLERANCE, "error {error}, controls {points:?}");
+        }
+    }
+
+    #[test]
+    fn dense_cubic_oracle_covers_loops_cusps_and_numeric_extremes() {
+        for controls in [
+            [(0.0, 0.0), (64.0, 64.0), (-64.0, 64.0), (0.0, 0.0)],
+            [(0.0, 0.0), (64.0, 0.0), (-64.0, 0.0), (0.0, 0.0)],
+            [(0.0, 0.0), (64.0, 1e-12), (-64.0, -1e-12), (1e-12, 0.0)],
+            [(0.0, 0.0), (1e-100, 1e-100), (-1e-100, 1e-100), (0.0, 0.0)],
+            [
+                (1e12 - 128.0, 1e12 - 128.0),
+                (1e12, 1e12),
+                (1e12 - 256.0, 1e12),
+                (1e12 - 128.0, 1e12 - 128.0),
+            ],
+        ] {
+            certify(controls.map(|(x, y)| Point::new(x, y)), Transform::IDENTITY);
+        }
+        // Large and tiny user-space controls with compensating device scales.
+        certify(
+            [
+                Point::new(0.0, 0.0),
+                Point::new(1e12, 1e12),
+                Point::new(-1e12, 1e12),
+                Point::new(0.0, 0.0),
+            ],
+            Transform::scale(1e-10, 1e-10),
+        );
+        certify(
+            [
+                Point::new(0.0, 0.0),
+                Point::new(1e-100, 1e-100),
+                Point::new(-1e-100, 1e-100),
+                Point::new(0.0, 0.0),
+            ],
+            Transform::scale(1e102, 1e102),
+        );
+        let mut state = 0xf37a_2219;
+        for _ in 0..128 {
+            certify(
+                std::array::from_fn(|_| Point::new(random(&mut state), random(&mut state))),
+                Transform::new(1.0, 0.125, -0.25, 1.0, 7.0, 3.0),
+            );
+        }
+    }
 
     #[test]
     fn geometric_point_classification_precedes_curve_approximation() {

@@ -7,7 +7,7 @@
 //! Horizontal clipping projects outside geometry onto viewport boundaries,
 //! preserving winding and bounding work by the surface.
 
-use crate::flatten::{Polyline, bounded, flatten_into};
+use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
 use crate::{FillRule, Path, Point, Transform};
 use pagura_core::{Error, Limits, Result};
 use std::sync::Arc;
@@ -218,6 +218,7 @@ type BoundaryEvent = (usize, f64, f64, i64, FillRule);
 pub(crate) struct Scratch {
     row: Row,
     contours: Vec<Polyline>,
+    curves: CurveStack,
     edges: Vec<Edge>,
     raw: Vec<Edge>,
     boundary: Vec<BoundaryEvent>,
@@ -242,6 +243,7 @@ impl Scratch {
             bytes(&self.sweep.events),
             bytes(&self.sweep.ordered),
             bytes(&self.contours),
+            bytes(&self.curves),
         ];
         buffers
             .into_iter()
@@ -266,6 +268,7 @@ pub(crate) fn coverage(
     let Scratch {
         row,
         contours,
+        curves,
         edges,
         raw,
         boundary,
@@ -288,7 +291,7 @@ pub(crate) fn coverage(
     edges.clear();
     raw.clear();
     boundary.clear();
-    build_edges(shapes, bounds, limits, row, raw, contours)?;
+    build_edges(shapes, bounds, limits, row, raw, contours, curves)?;
     normalize_boundaries(raw, edges, boundary, bounds.left, bounds.right, limits, row)?;
     // A shared vertical extent has just two vertex events, already ordered.
     // Keep them inline instead of allocating and sorting duplicate endpoints.
@@ -526,13 +529,14 @@ fn build_edges(
     row: &mut Row,
     edges: &mut Vec<Edge>,
     contours: &mut Vec<Polyline>,
+    curves: &mut CurveStack,
 ) -> Result<()> {
     for (group, shape) in shapes
         .iter()
         .filter(|s| s.rectangle().is_none())
         .enumerate()
     {
-        let count = flatten_into(&shape.path, shape.transform, limits, contours)?;
+        let count = flatten_into(&shape.path, shape.transform, limits, contours, curves)?;
         contours.truncate(count);
         for (i, contour) in contours.iter_mut().take(count).enumerate() {
             if i + 1 == count && !contour.closed && contour.points.len() == 1 {
