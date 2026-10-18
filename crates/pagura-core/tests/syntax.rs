@@ -1,10 +1,10 @@
 #![forbid(unsafe_code)]
-//! Object syntax (ISO 32000-2 clauses 7.2–7.3) through the public parser.
+//! Object syntax (ISO 32000-2 clauses 7.2–7.3) through the public parser API.
 
-use pagura::{ErrorKind, Limits, Name, ObjectId, Recovery, Value};
 use pagura_core::syntax::{Origin, Parser};
+use pagura_core::{ErrorKind, Limits, Name, ObjectId, Recovery, Value};
 
-fn parse(data: &[u8]) -> pagura::Result<Value> {
+fn parse(data: &[u8]) -> pagura_core::Result<Value> {
     Parser::new(data, Origin::Buffer, Limits::default()).parse()
 }
 

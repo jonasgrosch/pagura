@@ -115,8 +115,9 @@ pub(crate) fn parse(
         .data
         .get(..end)
         .ok_or(Error::syntax("object stream extent outside data"))?;
-    let mut parser = Parser::at(bytes, start, Origin::Stream(stream_id), document.limits())?
-        .with_recovery(document.recovery());
+    let mut parser =
+        Parser::with_offset(bytes, start, Origin::Stream(stream_id), document.limits())?
+            .with_recovery(document.recovery());
     let value = parser.parse().map_err(|error| error.in_object(id))?;
     if !parser.at_end() {
         return Err(
