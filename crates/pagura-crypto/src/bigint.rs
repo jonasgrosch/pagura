@@ -6,7 +6,8 @@
 //! stay below the modulus; reduction needs at most one final subtraction.
 //! This module is variable-time and must never process private keys.
 
-use pagura_core::{Error, Position, Result};
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Error, Meter, Position, Result};
 
 /// Hard allocation ceiling for verification arithmetic, in bits.
 /// A caller's limit may lower this ceiling, but cannot raise it.
@@ -16,7 +17,7 @@ pub const MAX_MODULUS_BITS: usize = 16_384;
 #[derive(Clone, Debug)]
 pub(crate) struct Modulus {
     limbs: Vec<u64>,
-    inverse: u64,
+    factor: u64,
     r_squared: Vec<u64>,
     bits: usize,
 }
@@ -35,11 +36,7 @@ impl Modulus {
                 .at(Position::Buffer(bytes.len().saturating_sub(1))));
         }
         let limbs = from_bytes(bytes, bits.div_ceil(64));
-        // Newton iteration doubles the number of correct inverse bits each step.
-        let mut inverse = 1u64;
-        for _ in 0..6 {
-            inverse = inverse.wrapping_mul(2u64.wrapping_sub(limbs[0].wrapping_mul(inverse)));
-        }
+        let factor = montgomery_factor(limbs[0]);
         let mut r_squared = vec![0; limbs.len()];
         r_squared[0] = 1;
         // Compute R^2 mod n with bounded shifts; no division or reciprocal is needed.
@@ -48,7 +45,7 @@ impl Modulus {
         }
         Ok(Self {
             limbs,
-            inverse: inverse.wrapping_neg(),
+            factor,
             r_squared,
             bits,
         })
@@ -87,25 +84,21 @@ impl Modulus {
         } else {
             bit_length(exponent, max_exponent_bits.min(MAX_MODULUS_BITS))?
         };
-        let ones: usize = exponent.iter().map(|byte| byte.count_ones() as usize).sum();
+        let ones: usize = exponent
+            .iter()
+            .map(|byte| u32_to_usize(byte.count_ones()))
+            .sum();
         let products = if exponent_bits == 0 {
             0
         } else {
             exponent_bits - 1 + ones - 1 + 2
         };
-        let cost = self
-            .limbs
-            .len()
-            .checked_mul(self.limbs.len())
-            .and_then(|size| size.checked_mul(2))
-            // Each reduction row also multiplies its low limb by the inverse
-            // to select the cancellation factor.
-            .and_then(|size| size.checked_add(self.limbs.len()))
-            .and_then(|size| size.checked_mul(products))
-            .ok_or_else(|| Error::limit("modular exponentiation work overflow"))?;
-        if cost > max_work {
-            return Err(Error::limit("modular exponentiation work exceeds limit"));
-        }
+        // A product is limbs² multiply-adds plus limbs² for reduction, and each
+        // reduction row also multiplies its low limb by the factor. At most
+        // 256 limbs keep this far from overflow.
+        let limbs = self.limbs.len();
+        Meter::new(max_work, "modular exponentiation work exceeds limit")
+            .charge_product(products, limbs * (2 * limbs + 1))?;
         let base = self.residue(base)?;
         if exponent_bits == 0 {
             let mut one = vec![0; self.bytes()];
@@ -166,7 +159,7 @@ impl Modulus {
             scratch[i + count] = carry as u64;
         }
         for i in 0..count {
-            let factor = scratch[i].wrapping_mul(self.inverse);
+            let factor = scratch[i].wrapping_mul(self.factor);
             let mut carry = 0u128;
             for (j, &modulus) in self.limbs.iter().enumerate() {
                 let product =
@@ -191,6 +184,18 @@ impl Modulus {
     }
 }
 
+/// `-n⁻¹ mod 2^64` for an odd low limb `n`, the REDC factor. Newton
+/// iteration doubles the number of correct bits each step: six reach 64.
+pub(crate) const fn montgomery_factor(low: u64) -> u64 {
+    let mut inverse = 1u64;
+    let mut step = 0;
+    while step < 6 {
+        inverse = inverse.wrapping_mul(2u64.wrapping_sub(low.wrapping_mul(inverse)));
+        step += 1;
+    }
+    inverse.wrapping_neg()
+}
+
 pub(crate) fn bit_length(bytes: &[u8], max_bits: usize) -> Result<usize> {
     // Check byte width first so a huge input never needs scanning or allocation.
     if bytes.len() > max_bits.div_ceil(8) {
@@ -205,7 +210,7 @@ pub(crate) fn bit_length(bytes: &[u8], max_bits: usize) -> Result<usize> {
     };
     let bits = (bytes.len() - 1)
         .checked_mul(8)
-        .and_then(|bits| bits.checked_add(8 - first.leading_zeros() as usize))
+        .and_then(|bits| bits.checked_add(8 - u32_to_usize(first.leading_zeros())))
         .ok_or_else(|| Error::limit("integer bit length overflow"))?;
     if bits > max_bits {
         return Err(Error::limit("integer bit length exceeds limit").at(Position::Buffer(0)));
