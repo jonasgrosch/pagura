@@ -1,8 +1,18 @@
+// @ts-check
 import { pageQuad, quadBounds } from './page_geometry.mjs';
+/**
+ * @import { PageTransform } from './page_geometry.mjs'
+ * @import { PageText } from './reading_protocol.mjs'
+ */
 const encoder = new TextEncoder(),
   decoder = new TextDecoder('utf-8', { fatal: true });
 export const MAX_TEXT_CHARACTERS = 50000;
-/** Transparent DOM text in extracted reading order. No PDF string becomes HTML. */
+/**
+ * Transparent DOM text in extracted reading order. No PDF string becomes HTML.
+ * @param {PageText} data
+ * @param {PageTransform} info
+ * @param {number} zoom
+ */
 export function textLayer(data, info, zoom, doc = document) {
   if (data.characters.reduce((n, c) => n + c.quadCount, 0) > 100000)
     throw new Error('Page text exceeds the 100000-quad DOM budget');
@@ -13,8 +23,10 @@ export function textLayer(data, info, zoom, doc = document) {
   layer.setAttribute('aria-label', 'Selectable page text');
   const bytes = encoder.encode(data.text);
   let previous = [0, 0];
-  const context = doc.createElement('canvas').getContext('2d');
+  // A new canvas always has a 2D context available.
+  const context = /** @type {CanvasRenderingContext2D} */ (doc.createElement('canvas').getContext('2d'));
   context.font = '1px monospace';
+  /** @type {Map<string, number>} */
   const widths = new Map();
   for (const character of data.characters) {
     const span = doc.createElement('span');
@@ -60,11 +72,15 @@ export function textLayer(data, info, zoom, doc = document) {
   return layer;
 }
 /** Extract only text nodes from a native range: CSS line wrapping never inserts
- * guessed line breaks into copy text. Separators already come from extraction. */
+ * guessed line breaks into copy text. Separators already come from extraction.
+ * @param {Selection | null} selection
+ */
 export function selectedText(selection) {
   if (!selection || selection.isCollapsed || !selection.rangeCount) return null;
   const range = selection.getRangeAt(0);
-  const layer = (node) => (node.nodeType === 3 ? node.parentElement : node)?.closest?.('.text-layer');
+  /** @param {Node} node */
+  const layer = (node) =>
+    /** @type {Element | null} */ (node.nodeType === 3 ? node.parentElement : node)?.closest?.('.text-layer');
   const first = layer(range.startContainer),
     last = layer(range.endContainer);
   if (!first || !last) return null;

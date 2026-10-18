@@ -1,7 +1,12 @@
+// @ts-check
 /** Opt-in development fixture loading. PDF bytes never supply these URLs. */
 import { MAX_FILE } from './protocol.mjs';
 
-/** Resolve only same-origin fixture URLs, without traversal or redirects. */
+/**
+ * Resolve only same-origin fixture URLs, without traversal or redirects.
+ * @param {string} value The `file` query parameter.
+ * @param {string} base The viewer URL.
+ */
 export function fixtureUrl(value, base) {
   const invalid = () =>
     new Error('Startup file must be a same-origin /fixtures/ URL without traversal, credentials, query or fragment');
@@ -29,7 +34,11 @@ export function fixtureUrl(value, base) {
   return url;
 }
 
-/** Fetch bounded fixture bytes with no redirect or cross-origin capability. */
+/**
+ * Fetch bounded fixture bytes with no redirect or cross-origin capability.
+ * @param {string} value
+ * @param {string} base
+ */
 export async function loadFixture(value, base) {
   const url = fixtureUrl(value, base);
   const response = await fetch(url.href, { mode: 'same-origin', credentials: 'omit', redirect: 'error' });
@@ -59,5 +68,6 @@ export async function loadFixture(value, base) {
     reader.releaseLock();
   }
   const name = decodeURIComponent(url.pathname).split('/').at(-1);
-  return new File(chunks, name, { type: 'application/pdf' });
+  // fixtureUrl requires a path below /fixtures/, so the last segment exists.
+  return new File(chunks, /** @type {string} */ (name), { type: 'application/pdf' });
 }

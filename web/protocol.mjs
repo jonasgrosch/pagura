@@ -1,4 +1,6 @@
+// @ts-check
 import { decodeReading, encodeReading } from './reading_protocol.mjs';
+/** @import { ReadingValue } from './reading_protocol.mjs' */
 /** Project-owned protocol v1 codec. See crates/pagura-host/PROTOCOL.md. */
 export const MAX_FRAME = 512 * 1024 * 1024 + 32 * 1024 * 1024 + 14;
 export const MAX_FILE = 512 * 1024 * 1024;
@@ -8,12 +10,55 @@ export const VERSION_1_3 = 0x00010003;
 export const VERSION_1_4 = 0x00010004;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
+/**
+ * @typedef {{ number: number, generation: number }} ObjectRef An indirect object number and generation.
+ * @typedef {{ kind: number, offset?: number, object?: ObjectRef }} Position Kind 0 none, 1 file, 2 stream, 3 buffer.
+ * @typedef {{ object: ObjectRef | null, position: Position }} SourceContext
+ * @typedef {{ crop: number[], rotation: number, userUnit: number, width: number, height: number }} PageInfo
+ * @typedef {{ width: number, height: number, rgba: Uint8Array }} Tile RGBA pixels, four bytes per pixel.
+ * @typedef {{ x: number, y: number, width: number, height: number }} TileRect A device-pixel rectangle of a page.
+ * @typedef {{ cancelled: true, generation: number } | (Tile & { generation: number, cancelled: false })} GenerationTile
+ * @typedef {{ kind: 'repair' | 'information', tag: string, message: string } & SourceContext} Diagnostic
+ *   Response 133 reports repairs only; the protocol 1.4 snapshot (145) also carries information.
+ * @typedef {{ sourceBytes: number, cacheBytes: number, documents: number, lists: number }} RetentionStats
+ * @typedef {{ version: number } | { document: number, pages: number } | PageInfo | Tile | Diagnostic[] | null
+ *   | { generation: number } | GenerationTile | RetentionStats | ReadingValue | HostError} ResponseValue
+ * @typedef {{ kind: number, id: number, value: ResponseValue }} Frame One decoded response.
+ */
+
+/**
+ * Request arguments; each request kind reads only its own fields.
+ * @typedef {object} RequestValues
+ * @property {number} [version]
+ * @property {Uint8Array} [bytes]
+ * @property {Uint8Array} [password]
+ * @property {number} [recovery]
+ * @property {number} [document]
+ * @property {number} [page]
+ * @property {number} [scale]
+ * @property {number} [x]
+ * @property {number} [y]
+ * @property {number} [width]
+ * @property {number} [height]
+ * @property {number} [generation]
+ * @property {string} [query]
+ * @property {number} [start]
+ * @property {number} [end]
+ * @property {number} [offset]
+ * @property {number} [limit]
+ * @property {number} [flags]
+ * @property {number} [token] Client-side search epoch; never encoded.
+ */
+
+/** Bounds-checked little-endian reads over one response body. */
 class Reader {
+  /** @param {Uint8Array} bytes */
   constructor(bytes) {
     this.bytes = bytes;
     this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     this.offset = 0;
   }
+  /** @param {number} size */
   take(size) {
     if (!Number.isSafeInteger(size) || size < 0 || size > this.bytes.length - this.offset)
       throw new Error('Truncated protocol response');
@@ -21,10 +66,16 @@ class Reader {
     this.offset += size;
     return part;
   }
+  /**
+   * @template {'getUint8' | 'getUint16' | 'getUint32' | 'getFloat64' | 'getBigUint64'} M
+   * @param {number} size
+   * @param {M} method
+   * @returns {ReturnType<DataView[M]>}
+   */
   number(size, method) {
     const offset = this.offset;
     this.take(size);
-    return this.view[method](offset, true);
+    return /** @type {ReturnType<DataView[M]>} */ (this.view[method](offset, true));
   }
   u8() {
     return this.number(1, 'getUint8');
@@ -46,24 +97,35 @@ class Reader {
   text() {
     return utf8.decode(this.take(this.u32()));
   }
+  /** @returns {ObjectRef} */
   object() {
     return { number: this.u32(), generation: this.u16() };
   }
+  /** @returns {SourceContext} */
   context() {
     const present = this.u8();
     if (present > 1) throw new Error('Invalid object context flag');
     const object = present ? this.object() : null;
     const kind = this.u8();
     if (kind > 3) throw new Error('Unknown position kind');
+    /** @type {Position} */
     const position = { kind };
     if (kind) position.offset = this.offset64();
     if (kind === 2) position.object = this.object();
     return { object, position };
   }
 }
+/** @typedef {Reader} ProtocolReader The response reader that reading_protocol.mjs decodes from. */
 
 /** A structured host failure, including feature, refused repair and source location. */
 export class HostError extends Error {
+  /**
+   * @param {number} category 1 Syntax, 2 Limit, 3 Unsupported, 4 MissingObject, 5 Cycle, 6 Password, 7 InvalidArgument.
+   * @param {string} tag Unsupported feature tag, otherwise empty.
+   * @param {string} repair Repair tag that recovery would apply, otherwise empty.
+   * @param {string} message
+   * @param {Partial<SourceContext>} context Copied onto the error as `object` and `position`.
+   */
   constructor(category, tag, repair, message, context) {
     super(message);
     this.name = 'HostError';
@@ -72,23 +134,30 @@ export class HostError extends Error {
     this.repair = repair;
     Object.assign(this, context);
   }
+  /** @override */
   toString() {
+    const source = /** @type {Partial<SourceContext>} */ (this);
     const categories = ['', 'Syntax', 'Limit', 'Unsupported', 'MissingObject', 'Cycle', 'Password', 'InvalidArgument'];
-    const object = this.object ? ` (object ${this.object.number} ${this.object.generation})` : '';
-    const position = this.position?.kind
-      ? ` at ${['', 'file', 'stream', 'buffer'][this.position.kind]} byte ${this.position.offset}`
+    const object = source.object ? ` (object ${source.object.number} ${source.object.generation})` : '';
+    const position = source.position?.kind
+      ? ` at ${['', 'file', 'stream', 'buffer'][source.position.kind]} byte ${source.position.offset}`
       : '';
     const refused = this.repair ? `; recovery would repair it [${this.repair}]` : '';
     return `${categories[this.category]}${this.tag ? ` [${this.tag}]` : ''}: ${this.message}${object}${position}${refused}`;
   }
 }
 
-/** Decode exactly one bounded response body, preserving typed errors. */
+/**
+ * Decode exactly one bounded response body, preserving typed errors.
+ * @param {Uint8Array} body
+ * @returns {Frame}
+ */
 export function decodeResponse(body) {
   if (body.length < 5 || body.length > MAX_FRAME) throw new Error('Invalid response frame length');
   const r = new Reader(body);
   const kind = r.u8(),
     id = r.u32();
+  /** @type {ResponseValue} */
   let value;
   switch (kind) {
     case 129:
@@ -130,16 +199,19 @@ export function decodeResponse(body) {
       // Two lengths, context flags, and a kind byte in typed snapshots.
       if (count > Math.floor((body.length - r.offset) / (kind === 145 ? 11 : 10)))
         throw new Error('Invalid diagnostic count');
-      value = Array.from({ length: count }, () => {
-        const diagnosticKind = kind === 145 ? r.u8() : 0;
-        if (diagnosticKind > 1) throw new Error('Unknown diagnostic kind');
-        return {
-          kind: diagnosticKind === 0 ? 'repair' : 'information',
-          tag: r.text(),
-          message: r.text(),
-          ...r.context(),
-        };
-      });
+      value = Array.from(
+        { length: count },
+        /** @returns {Diagnostic} */ () => {
+          const diagnosticKind = kind === 145 ? r.u8() : 0;
+          if (diagnosticKind > 1) throw new Error('Unknown diagnostic kind');
+          return {
+            kind: diagnosticKind === 0 ? 'repair' : 'information',
+            tag: r.text(),
+            message: r.text(),
+            ...r.context(),
+          };
+        },
+      );
       break;
     }
     case 134:
@@ -192,12 +264,15 @@ export function decodeResponse(body) {
 
 /** Incremental framing; each response is allocated once, even across many writes. */
 export class FrameDecoder {
+  /** @param {(frame: Frame) => void} onFrame */
   constructor(onFrame) {
     this.onFrame = onFrame;
     this.header = new Uint8Array(4);
     this.used = 0;
+    /** @type {Uint8Array | null} */
     this.body = null;
   }
+  /** @param {Uint8Array} bytes */
   feed(bytes) {
     let offset = 0;
     while (offset < bytes.length) {
@@ -224,11 +299,21 @@ export class FrameDecoder {
   }
 }
 
-/** Encode canonical v1 and additive requests. All numeric arguments are checked. */
+/**
+ * Encode canonical v1 and additive requests. All numeric arguments are checked.
+ * @param {number} kind
+ * @param {number} id
+ * @param {RequestValues} [values]
+ */
 export function encodeRequest(kind, id, values = {}) {
+  /**
+   * @param {unknown} value
+   * @returns {number}
+   */
   const u32 = (value) => {
-    if (!Number.isInteger(value) || value < 0 || value > 0xffffffff) throw new Error('Expected a u32 argument');
-    return value;
+    if (!Number.isInteger(value) || /** @type {number} */ (value) < 0 || /** @type {number} */ (value) > 0xffffffff)
+      throw new Error('Expected a u32 argument');
+    return /** @type {number} */ (value);
   };
   if (!u32(id)) throw new Error('Request identifier must be nonzero');
   if (kind >= 10 && kind <= 16) {
@@ -254,7 +339,7 @@ export function encodeRequest(kind, id, values = {}) {
         throw new Error('Open requires byte arrays');
       if (values.bytes.length > MAX_FILE || values.password.length > 32 * 1024 * 1024)
         throw new Error('Open byte budget exceeded');
-      if (![0, 1].includes(values.recovery)) throw new Error('Invalid recovery mode');
+      if (![0, 1].includes(/** @type {number} */ (values.recovery))) throw new Error('Invalid recovery mode');
       size = 14 + values.password.length + values.bytes.length;
       break;
     case 3:
@@ -263,7 +348,8 @@ export function encodeRequest(kind, id, values = {}) {
       break;
     case 4:
     case 8:
-      if (!Number.isFinite(values.scale) || values.scale <= 0) throw new Error('Scale must be positive and finite');
+      if (!Number.isFinite(values.scale) || /** @type {number} */ (values.scale) <= 0)
+        throw new Error('Scale must be positive and finite');
       size = kind === 8 ? 41 : 37;
       break;
     case 5:
@@ -281,10 +367,12 @@ export function encodeRequest(kind, id, values = {}) {
   bytes[4] = kind;
   view.setUint32(5, id, true);
   let offset = 9;
+  /** @param {unknown} value */
   const integer = (value) => {
     view.setUint32(offset, u32(value), true);
     offset += 4;
   };
+  /** @param {Uint8Array} data */
   const blob = (data) => {
     integer(data.length);
     bytes.set(data, offset);
@@ -292,18 +380,19 @@ export function encodeRequest(kind, id, values = {}) {
   };
   if (kind === 1) integer(values.version ?? 1);
   if (kind === 2) {
-    bytes[offset++] = values.recovery;
-    blob(values.password);
-    blob(values.bytes);
+    // Kind 2 validated both byte arrays and the recovery mode above.
+    bytes[offset++] = /** @type {number} */ (values.recovery);
+    blob(/** @type {Uint8Array} */ (values.password));
+    blob(/** @type {Uint8Array} */ (values.bytes));
   }
   if (kind === 8) integer(values.generation);
   if ((kind >= 3 && kind <= 8) || kind === 17) integer(values.document);
   if (kind === 7) integer(values.generation);
   if (kind === 3 || kind === 4 || kind === 8) integer(values.page);
   if (kind === 4 || kind === 8) {
-    view.setFloat64(offset, values.scale, true);
+    view.setFloat64(offset, /** @type {number} */ (values.scale), true);
     offset += 8;
-    for (const key of ['x', 'y', 'width', 'height']) integer(values[key]);
+    for (const key of /** @type {const} */ (['x', 'y', 'width', 'height'])) integer(values[key]);
   }
   return bytes;
 }

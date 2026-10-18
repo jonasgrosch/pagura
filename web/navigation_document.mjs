@@ -1,3 +1,4 @@
+// @ts-check
 /** Independent PDF geometry for host, DOM and real-browser navigation checks.
  * ISO 32000-2 7.5.4, 12.3.2.2, 12.3.3 and 12.5.6.5. */
 export function navigationDocument() {
@@ -7,6 +8,7 @@ export function navigationDocument() {
       page = i < 3 ? 4 : 5;
     return `[${page} 0 R /${fit}${fit === 'FitBH' ? ' 300' : fit === 'FitBV' ? ' 60' : ''}]`;
   });
+  /** @param {string} text */
   const stream = (text) => `<< /Length ${text.length} >>\nstream\n${text}endstream`;
   const objects = [
     null,

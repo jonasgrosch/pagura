@@ -1,11 +1,27 @@
+// @ts-check
 import { failureReason } from './failure.mjs';
 import { createWasi, WasiExit } from './wasi.mjs';
 import { inputReader } from './transport.mjs';
 
-/** Runs the same worker/shim under browser and Node's worker_threads tests. */
+/**
+ * Messages from the execution thread to the session client.
+ * @typedef {{ type: 'ready', wasmBytes?: number } | { type: 'memory', wasmBytes: number } | { type: 'drain' }
+ *   | { type: 'stdout' | 'stderr', bytes: Uint8Array } | { type: 'exit', code: number }
+ *   | { type: 'fatal', reason?: string, message: string }} HostMessage
+ * @typedef {(message: HostMessage, transfer?: Transferable[]) => void} SendMessage
+ * @typedef {{ memory: WebAssembly.Memory, _start(): void }} HostExports The WASI command's exports.
+ */
+
+/**
+ * Runs the same worker/shim under browser and Node's worker_threads tests.
+ * @param {WebAssembly.Module} module The compiled pagura-host WASI command.
+ * @param {SharedArrayBuffer} shared The stdin mailbox from createInput.
+ * @param {SendMessage} send
+ */
 export async function runHost(module, shared, send) {
-  let instance,
-    lastMemoryBytes = 0,
+  /** @type {WebAssembly.Instance & { exports: HostExports }} */
+  let instance;
+  let lastMemoryBytes = 0,
     stderr = '';
   const text = new TextDecoder();
   const input = inputReader(shared, () => send({ type: 'drain' }));
@@ -17,6 +33,7 @@ export async function runHost(module, shared, send) {
       send({ type: 'memory', wasmBytes });
     }
   };
+  /** @param {Uint8Array} bytes */
   const read = (bytes) => {
     memory();
     return input(bytes);
@@ -36,7 +53,9 @@ export async function runHost(module, shared, send) {
     if (item.module !== 'wasi_snapshot_preview1' || item.kind !== 'function')
       throw new Error(`Unsupported module import: ${item.module}.${item.name}`);
   }
-  instance = await WebAssembly.instantiate(module, { wasi_snapshot_preview1: wasi });
+  instance = /** @type {WebAssembly.Instance & { exports: HostExports }} */ (
+    await WebAssembly.instantiate(module, { wasi_snapshot_preview1: wasi })
+  );
   send({ type: 'ready', wasmBytes: instance.exports.memory.buffer.byteLength });
   let code = 0;
   try {
@@ -59,7 +78,11 @@ if (typeof globalThis.addEventListener === 'function') {
         if (!response.ok)
           throw new Error(`Cannot load pagura-host.wasm: HTTP ${response.status}. Run cargo wasm first.`);
         const module = await WebAssembly.compile(await response.arrayBuffer());
-        await runHost(module, data.shared, (message, transfer = []) => globalThis.postMessage(message, transfer));
+        // A dedicated worker's postMessage takes a transfer list, unlike Window's.
+        const scope = /** @type {{ postMessage(message: unknown, transfer: Transferable[]): void }} */ (
+          /** @type {unknown} */ (globalThis)
+        );
+        await runHost(module, data.shared, (message, transfer = []) => scope.postMessage(message, transfer));
       } catch (error) {
         globalThis.postMessage({ type: 'fatal', reason: failureReason(error), message: String(error) });
       }

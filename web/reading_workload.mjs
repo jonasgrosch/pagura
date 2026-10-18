@@ -1,3 +1,4 @@
+// @ts-check
 /** Independent synthetic PDF for reading measurements. No Pagura writer is used.
  * Type 3 cells have fixed advances; ToUnicode maps printable ASCII identically.
  */
@@ -9,6 +10,7 @@ export function readingWorkload(pages = 100, lines = 50) {
     space = pages + 5,
     stream = pages + 6,
     cmap = pages + 7;
+  /** @param {string} data */
   const streamObject = (data) => `<< /Length ${new TextEncoder().encode(data).length} >>\nstream\n${data}\nendstream`;
   const objects = [
     null,

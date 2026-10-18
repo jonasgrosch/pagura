@@ -1,4 +1,18 @@
-/** Default user space to CSS pixels, including crop, Rotate and UserUnit (8.3.2). */
+// @ts-check
+/** @import { PageInfo } from './protocol.mjs' */
+/**
+ * @typedef {Pick<PageInfo, 'crop' | 'rotation' | 'userUnit'>} PageTransform
+ * @typedef {{ left: number, top: number, width: number, height: number }} Bounds CSS-pixel rectangle.
+ */
+
+/**
+ * Default user space to CSS pixels, including crop, Rotate and UserUnit (8.3.2).
+ * @param {PageTransform} info
+ * @param {number} zoom
+ * @param {number} x
+ * @param {number} y
+ * @returns {number[]} The CSS-pixel point [x, y] from the page's top-left corner.
+ */
 export function pagePoint(info, zoom, x, y) {
   const [x0, y0, x1, y1] = info.crop,
     scale = info.userUnit * zoom;
@@ -12,9 +26,19 @@ export function pagePoint(info, zoom, x, y) {
           : [x - x0, y1 - y];
   return coordinates.map((n) => n * scale);
 }
+/**
+ * @param {PageTransform} info
+ * @param {number} zoom
+ * @param {number[]} quad Eight user-space coordinates.
+ * @returns {number[][]} Four CSS-pixel points.
+ */
 export function pageQuad(info, zoom, quad) {
   return Array.from({ length: 4 }, (_, i) => pagePoint(info, zoom, quad[i * 2], quad[i * 2 + 1]));
 }
+/**
+ * @param {number[][]} points
+ * @returns {Bounds}
+ */
 export function quadBounds(points) {
   let left = Infinity,
     top = Infinity,
@@ -28,7 +52,11 @@ export function quadBounds(points) {
   }
   return { left, top, width: right - left, height: bottom - top };
 }
-/** Convex hit region also accepts source QuadPoints in Z order. */
+/**
+ * Convex hit region also accepts source QuadPoints in Z order.
+ * @param {HTMLElement} element
+ * @param {number[][]} points CSS-pixel points from pageQuad.
+ */
 export function placeQuad(element, points) {
   const bounds = quadBounds(points);
   const center = points.reduce(([x, y], p) => [x + p[0] / 4, y + p[1] / 4], [0, 0]);
@@ -44,7 +72,14 @@ export function placeQuad(element, points) {
   });
   return bounds;
 }
-/** Inverse page transform, used to retain nullable destination coordinates. */
+/**
+ * Inverse page transform, used to retain nullable destination coordinates.
+ * @param {PageTransform} info
+ * @param {number} zoom
+ * @param {number} x
+ * @param {number} y
+ * @returns {number[]} The user-space point [x, y].
+ */
 export function pageUserPoint(info, zoom, x, y) {
   const [x0, y0, x1, y1] = info.crop,
     scale = info.userUnit * zoom;

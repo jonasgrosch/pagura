@@ -1,5 +1,7 @@
+// @ts-check
 /** Page heights in user units, independent of device pixels and DOM state. */
 export class PageLayout {
+  /** @param {number} count */
   constructor(count) {
     if (!Number.isInteger(count) || count < 0 || count > 200000) throw new Error('Page layout budget exceeded');
     this.count = count;
@@ -8,6 +10,10 @@ export class PageLayout {
     this.tree = new Float64Array(count + 1);
     for (let i = 1; i <= count; i++) this.tree[i] = (i & -i) * 792;
   }
+  /**
+   * @param {number} page
+   * @param {number} height In user units, after UserUnit and rotation.
+   */
   setHeight(page, height) {
     if (!Number.isInteger(page) || page < 0 || page >= this.count || !Number.isFinite(height) || height <= 0)
       throw new Error('Invalid page geometry');
@@ -15,17 +21,27 @@ export class PageLayout {
     this.heights[page] = height;
     for (let i = page + 1; i <= this.count; i += i & -i) this.tree[i] += delta;
   }
+  /**
+   * CSS-pixel offset of a page's top edge.
+   * @param {number} page
+   * @param {number} zoom
+   */
   top(page, zoom) {
     let height = 0;
     for (let i = page; i > 0; i -= i & -i) height += this.tree[i];
     return height * zoom + page * this.gap;
   }
+  /** @param {number} zoom */
   height(zoom) {
     return Math.max(0, this.top(this.count, zoom) - this.gap);
   }
   /** Page with the greatest visible height; equal coverage retains the current
    * page. The surface has 24px padding above the first page. Binary search skips
-   * offscreen pages; the loop is bounded by the viewport's visible page count. */
+   * offscreen pages; the loop is bounded by the viewport's visible page count.
+   * @param {number} scrollTop
+   * @param {number} viewportHeight
+   * @param {number} zoom
+   */
   dominantPage(scrollTop, viewportHeight, zoom, current = 0) {
     const top = scrollTop - this.gap,
       bottom = top + viewportHeight;
@@ -44,6 +60,11 @@ export class PageLayout {
     }
     return best;
   }
+  /**
+   * Page containing a CSS-pixel offset, clamped to the last page.
+   * @param {number} offset
+   * @param {number} zoom
+   */
   pageAt(offset, zoom) {
     let low = 0,
       high = this.count;

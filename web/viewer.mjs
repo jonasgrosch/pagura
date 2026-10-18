@@ -1,3 +1,4 @@
+// @ts-check
 import { pageUserPoint } from './page_geometry.mjs';
 import { ReadingView } from './reading_view.mjs';
 import { destinationView } from './destinations.mjs';
@@ -6,8 +7,25 @@ import { MAX_FILE, HostError } from './protocol.mjs';
 import { loadFixture } from './fixtures.mjs';
 import { PageLayout } from './layout.mjs';
 import { requestPassword, cancelPassword } from './password.mjs';
+/**
+ * @import { PageInfo, TileRect } from './protocol.mjs'
+ * @import { GoToAction } from './reading_protocol.mjs'
+ * @import { ViewerElements } from './reading_view.mjs'
+ */
+/**
+ * @typedef {{ element: HTMLElement, message: HTMLElement, tiles: Map<string, HTMLCanvasElement>, failed: boolean }} PageView
+ *   A mounted page element and its tile canvases, keyed by "x,y".
+ * @typedef {PageInfo & { promise?: undefined }} LoadedInfo Geometry with user-space width and height.
+ * @typedef {{ promise: Promise<PageInfo | null>, width?: undefined }} PendingInfo
+ * @typedef {{ index: number, fraction: number, point: number }} Anchor A scroll position relative to one page.
+ */
 
-const $ = (id) => document.getElementById(id);
+/**
+ * @template {keyof ViewerElements} K
+ * @param {K} id
+ * @returns {ViewerElements[K]}
+ */
+const $ = (id) => /** @type {ViewerElements[K]} */ (document.getElementById(id));
 const viewport = $('viewport'),
   surface = $('page-surface'),
   status = $('status'),
@@ -18,9 +36,11 @@ const TILE = 256,
   MAX_TILES = 128,
   MAX_PAGES = 32,
   MAX_EXTENT = 10000000;
-let client,
-  handle = null,
-  layout = new PageLayout(0),
+/** @type {SessionClient} Created at startup and replaced for every opened file or recovery. */
+let client;
+/** @type {number | null} The open document, or null. */
+let handle = null;
+let layout = new PageLayout(0),
   page = 0,
   zoom = 1;
 let documentEpoch = 0,
@@ -28,13 +48,16 @@ let documentEpoch = 0,
   drawing = false,
   scheduled = false,
   dirty = false;
-const infos = new Map(),
-  views = new Map();
+/** @type {Map<number, LoadedInfo | PendingInfo>} */
+const infos = new Map();
+/** @type {Map<number, PageView>} */
+const views = new Map();
 const debug =
   new URL(window.location.href).searchParams.get('debug') === '1' &&
   ['localhost', '127.0.0.1', '[::1]'].includes(new URL(window.location.href).hostname);
-let source = null,
-  recoveryAttempts = 0,
+/** @type {{ bytes: Uint8Array, password: Uint8Array, recovery: number } | null} Retained for automatic recovery. */
+let source = null;
+let recoveryAttempts = 0,
   recovering = false;
 
 const reader = new ReadingView({
@@ -58,9 +81,11 @@ const reader = new ReadingView({
   controls,
   notice: readingNotice,
 });
+/** @param {string | null} message */
 function readingNotice(message) {
   $('reading-status').textContent = message;
 }
+/** @param {unknown} error */
 function report(error) {
   errorBox.textContent = String(error);
   errorBox.hidden = false;
@@ -91,6 +116,7 @@ function createClient() {
   });
   return current;
 }
+/** @param {unknown} error */
 async function recover(error) {
   if (recovering) return;
   if (!source || recoveryAttempts >= 1) {
@@ -159,6 +185,7 @@ function schedule() {
     void draw();
   });
 }
+/** @returns {Anchor} */
 function anchor(point = 0) {
   const index = layout.pageAt(viewport.scrollTop + point, zoom);
   return {
@@ -167,6 +194,7 @@ function anchor(point = 0) {
     point,
   };
 }
+/** @param {Anchor} position */
 function restore(position) {
   viewport.scrollTop = Math.max(
     0,
@@ -192,17 +220,28 @@ function updateLayout() {
     });
   }
 }
+/**
+ * Page size in user units, after UserUnit and rotation.
+ * @param {PageInfo} info
+ * @returns {PageInfo}
+ */
 function geometry(info) {
   let width = (info.crop[2] - info.crop[0]) * info.userUnit;
   let height = (info.crop[3] - info.crop[1]) * info.userUnit;
   if (info.rotation === 90 || info.rotation === 270) [width, height] = [height, width];
   return { ...info, width, height };
 }
+/**
+ * Load and cache one page's geometry; null if another document replaced this one.
+ * @param {number} index
+ * @param {number} epoch
+ * @returns {Promise<PageInfo | null>}
+ */
 async function pageInfo(index, epoch) {
   const existing = infos.get(index);
   if (existing) return existing.promise ?? existing;
   const promise = client
-    .pageInfo(handle, index)
+    .pageInfo(/** @type {number} */ (handle), index)
     .then((raw) => {
       if (epoch !== documentEpoch) return null;
       const position = anchor(),
@@ -234,8 +273,12 @@ async function pageInfo(index, epoch) {
   infos.set(index, { promise });
   return promise;
 }
+/**
+ * @param {number} index
+ * @returns {PageView}
+ */
 function pageView(index) {
-  if (views.has(index)) return views.get(index);
+  if (views.has(index)) return /** @type {PageView} */ (views.get(index));
   const element = document.createElement('section');
   element.className = 'pdf-page';
   element.setAttribute('data-page', String(index));
@@ -266,12 +309,18 @@ function visiblePages() {
   if (last - first + 1 > MAX_PAGES) throw new Error('Too many visible pages; increase zoom');
   return Array.from({ length: last - first + 1 }, (_, offset) => first + offset);
 }
+/**
+ * Visible tiles of a mounted page, in device pixels.
+ * @param {number} index
+ * @param {PageInfo} info
+ * @returns {TileRect[]}
+ */
 function tileRequests(index, info) {
   const ratio = window.devicePixelRatio,
     scale = zoom * ratio;
   const width = Math.max(1, Math.ceil(info.width * scale - 1e-9)),
     height = Math.max(1, Math.ceil(info.height * scale - 1e-9));
-  const bounds = views.get(index).element.getBoundingClientRect(),
+  const bounds = /** @type {PageView} */ (views.get(index)).element.getBoundingClientRect(),
     visible = viewport.getBoundingClientRect();
   const left = Math.max(0, Math.floor(((visible.left - bounds.left) * ratio) / TILE) * TILE);
   const top = Math.max(0, Math.floor(((visible.top - bounds.top) * ratio) / TILE) * TILE);
@@ -285,6 +334,10 @@ function tileRequests(index, info) {
     }
   return requests;
 }
+/**
+ * @param {number} index
+ * @param {unknown} error
+ */
 function failPage(index, error) {
   const view = views.get(index);
   if (!view) return;
@@ -297,8 +350,9 @@ function failPage(index, error) {
   view.element.setAttribute('aria-busy', 'false');
   report(`Page ${index + 1}: ${error}`);
 }
+/** @param {number} epoch */
 async function diagnostics(epoch) {
-  const items = await client.diagnostics(handle);
+  const items = await client.diagnostics(/** @type {number} */ (handle));
   if (epoch !== documentEpoch) return;
   const repairs = items.filter((item) => item.kind === 'repair').length;
   $('diagnostic-count').textContent = `Repairs: ${repairs} · Information: ${items.length - repairs}`;
@@ -380,7 +434,12 @@ async function draw() {
           if (!context) throw new Error('Canvas 2D rendering is unavailable');
           context.putImageData(
             new ImageData(
-              new Uint8ClampedArray(image.rgba.buffer, image.rgba.byteOffset, image.rgba.byteLength),
+              // FrameDecoder allocates every frame in a fresh ArrayBuffer, never shared memory.
+              new Uint8ClampedArray(
+                /** @type {ArrayBuffer} */ (image.rgba.buffer),
+                image.rgba.byteOffset,
+                image.rgba.byteLength,
+              ),
               image.width,
               image.height,
             ),
@@ -414,10 +473,18 @@ async function draw() {
     if (dirty) schedule();
   }
 }
+/**
+ * @param {string} mode `fit-page` or `fit-width`.
+ * @param {PageInfo} info
+ */
 function fit(mode, info) {
   const width = (viewport.clientWidth - 48) / info.width;
   return mode === 'fit-page' ? Math.min(width, (viewport.clientHeight - 48) / info.height) : width;
 }
+/**
+ * @param {number} value
+ * @param {number} [point] Viewport offset that keeps its document position.
+ */
 function changeZoom(value, point = viewport.clientHeight / 2) {
   if (!Number.isFinite(value) || handle === null) return;
   const position = anchor(point),
@@ -437,6 +504,7 @@ function changeZoom(value, point = viewport.clientHeight / 2) {
   restore(position);
   invalidate();
 }
+/** @param {number} index */
 async function navigate(index) {
   if (!Number.isInteger(index) || index < 0 || index >= layout.count || handle === null) {
     pageInput.value = String(page + 1);
@@ -457,6 +525,7 @@ async function navigate(index) {
     if (epoch === documentEpoch) report(error);
   }
 }
+/** @param {GoToAction} action */
 async function followDestination(action) {
   const epoch = documentEpoch,
     previous = infos.get(page);
@@ -470,7 +539,8 @@ async function followDestination(action) {
     : null;
   const info = await pageInfo(action.page, epoch);
   if (!info || epoch !== documentEpoch) return;
-  const bounds = action.fit >= 5 ? (await client.contentBounds(handle, action.page)).bounds : null;
+  const bounds =
+    action.fit >= 5 ? (await client.contentBounds(/** @type {number} */ (handle), action.page)).bounds : null;
   if (epoch !== documentEpoch) return;
   const plan = destinationView(
     action,
@@ -491,6 +561,7 @@ async function followDestination(action) {
   invalidate();
   if (plan.notice) readingNotice(plan.notice);
 }
+/** @param {File | undefined} file */
 async function openFile(file) {
   if (!file) return;
   cancelPassword();
@@ -522,9 +593,11 @@ async function openFile(file) {
     client = createClient();
     const current = client;
     await current.hello();
-    let password = new Uint8Array(),
-      retried = false,
-      opened;
+    /** @type {Uint8Array | null} */
+    let password = new Uint8Array();
+    let retried = false;
+    /** @type {{ document: number, pages: number }} */
+    let opened;
     for (;;) {
       const attemptedPassword = password;
       try {
@@ -562,7 +635,7 @@ async function openFile(file) {
     await pageInfo(0, epoch);
     if (epoch !== documentEpoch) return;
     zoom = zoomInput.value.startsWith('fit-')
-      ? fit(zoomInput.value, infos.get(0))
+      ? fit(zoomInput.value, /** @type {LoadedInfo} */ (infos.get(0)))
       : zoomInput.value === 'custom'
         ? zoom
         : Number(zoomInput.value);
@@ -593,8 +666,9 @@ zoomInput.addEventListener('change', () => {
   changeZoom(zoomInput.value.startsWith('fit-') ? fit(zoomInput.value, info) : Number(zoomInput.value));
 });
 $('file').addEventListener('change', (event) => {
-  void openFile(event.target.files[0]);
-  event.target.value = '';
+  const picker = /** @type {HTMLInputElement} */ (event.target);
+  void openFile(/** @type {FileList} */ (picker.files)[0]);
+  picker.value = '';
 });
 window.addEventListener('dragover', (event) => {
   event.preventDefault();
@@ -606,7 +680,7 @@ window.addEventListener('dragleave', (event) => {
 window.addEventListener('drop', (event) => {
   event.preventDefault();
   document.body.classList.remove('dragging');
-  void openFile(event.dataTransfer.files[0]);
+  void openFile(/** @type {DataTransfer} */ (event.dataTransfer).files[0]);
 });
 viewport.addEventListener(
   'scroll',
@@ -633,6 +707,7 @@ viewport.addEventListener(
   },
   { passive: false },
 );
+/** @type {{ distance: number, zoom: number } | null} */
 let pinch = null;
 viewport.addEventListener(
   'touchstart',
@@ -664,9 +739,10 @@ for (const type of ['touchend', 'touchcancel'])
     pinch = null;
   });
 window.addEventListener('keydown', (event) => {
+  const target = /** @type {HTMLElement | null} */ (event.target);
   if (
-    ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(event.target?.tagName) ||
-    event.target?.closest?.('[role=tree]') ||
+    /** @type {(string | undefined)[]} */ (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON']).includes(target?.tagName) ||
+    target?.closest?.('[role=tree]') ||
     event.altKey
   )
     return;
@@ -709,17 +785,19 @@ window.addEventListener('pagehide', () => {
   client?.destroy();
 });
 if (debug)
-  window.paguraDebug = Object.freeze({
+  /** @type {Window & { paguraDebug?: object }} */ (window).paguraDebug = Object.freeze({
+    /** @param {string} reason */
     fail: (reason) => client.injectFailure(reason),
     readingProfile: async () => {
       const { profileTextLayer } = await import('./reading_profile.mjs');
       const epoch = documentEpoch,
-        text = await client.pageText(handle, page),
+        text = await client.pageText(/** @type {number} */ (handle), page),
         info = await pageInfo(page, epoch);
       if (epoch !== documentEpoch) throw new Error('Document changed during profiling');
       return {
         characters: text.characters.length,
-        samplesMs: profileTextLayer(text, info),
+        // pageInfo yields null only after another document replaced this one, which threw above.
+        samplesMs: profileTextLayer(text, /** @type {PageInfo} */ (info)),
         accounting: await client.readingStats(),
       };
     },

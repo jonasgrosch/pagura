@@ -1,0 +1,25 @@
+{
+  // Dev-only type checking (ADR 0017); nothing is emitted or shipped.
+  // This project covers the Node-only scripts, which Node runs by stripping
+  // types, and through their imports the viewer modules they exercise.
+  // web/tsconfig.json checks the shipped viewer against browser globals only.
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    // Only syntax that Node's type stripping can erase, with explicit type imports.
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["tools/**/*.ts", "web/**/*.ts"]
+}

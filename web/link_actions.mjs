@@ -1,4 +1,9 @@
-/** URI data never becomes an executable DOM attribute before confirmation. */
+// @ts-check
+/** @import { Action, GoToAction, Target, UriAction } from './reading_protocol.mjs' */
+/**
+ * URI data never becomes an executable DOM attribute before confirmation.
+ * @param {Pick<UriAction, 'uri' | 'isMap'> & { base?: string | null }} action
+ */
 export function externalUrl(action) {
   if (action.isMap) throw new Error('Coordinate-appending URI actions are inert in this viewer');
   let url;
@@ -18,6 +23,11 @@ const namedPages = {
   FirstPage: 'Go to first page',
   LastPage: 'Go to last page',
 };
+/**
+ * The accessible name of a link or outline target.
+ * @param {Target} target
+ * @param {(page: number) => string} [pageLabel]
+ */
 export function targetLabel(target, pageLabel = (page) => String(page + 1)) {
   if (!target.length) return 'Link without a target';
   if (target.length > 1) return 'Multiple actions (not run)';
@@ -28,13 +38,29 @@ export function targetLabel(target, pageLabel = (page) => String(page + 1)) {
     try {
       return `Open ${externalUrl(action)} (external; asks before opening)`;
     } catch (error) {
-      return error.message;
+      return /** @type {Error} */ (error).message;
     }
   }
   if (action.kind === 3)
-    return Object.hasOwn(namedPages, action.name) ? namedPages[action.name] : `${action.name} named action (not run)`;
-  return `${({ 4: 'GoToR', 5: 'Launch', 6: 'JavaScript' })[action.kind] ?? action.name} action (not run)`;
+    return Object.hasOwn(namedPages, action.name)
+      ? namedPages[/** @type {keyof typeof namedPages} */ (action.name)]
+      : `${action.name} named action (not run)`;
+  return `${/** @type {Record<number, string | undefined>} */ ({ 4: 'GoToR', 5: 'Launch', 6: 'JavaScript' })[action.kind] ?? /** @type {Partial<Action> & { name?: string }} */ (action).name} action (not run)`;
 }
+/**
+ * @typedef {object} ActivateOptions
+ * @property {(action: GoToAction) => unknown} destination Follows an internal destination.
+ * @property {(name: string) => unknown} named Runs NextPage, PrevPage, FirstPage or LastPage.
+ * @property {(error: unknown) => void} report
+ * @property {(message: string) => void} notice Explains an inert target.
+ * @property {(message: string) => boolean} [confirm]
+ * @property {(url: string) => unknown} [open]
+ */
+/**
+ * Run a target's single supported action; everything else stays inert with a notice.
+ * @param {Target} target
+ * @param {ActivateOptions} options
+ */
 export async function activateTarget(
   target,
   {

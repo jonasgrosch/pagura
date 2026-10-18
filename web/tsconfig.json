@@ -1,0 +1,9 @@
+{
+  // The shipped viewer: browser globals only, no Node types (ADR 0017).
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "types": []
+  },
+  "include": ["*.mjs"]
+}

@@ -1,16 +1,84 @@
+// @ts-check
 import { textLayer, selectedText } from './text_layer.mjs';
 import { pageQuad, placeQuad } from './page_geometry.mjs';
 import { targetLabel, activateTarget } from './link_actions.mjs';
 import { OutlineTree } from './outline_tree.mjs';
+/**
+ * @import { SessionClient } from './client.mjs'
+ * @import { PageInfo } from './protocol.mjs'
+ * @import { GoToAction, Match, Target } from './reading_protocol.mjs'
+ */
+
+/**
+ * Elements of index.html by id.
+ * @typedef {{
+ *   file: HTMLInputElement, filename: HTMLElement, strict: HTMLInputElement,
+ *   previous: HTMLButtonElement, next: HTMLButtonElement, page: HTMLInputElement, count: HTMLElement,
+ *   'page-label': HTMLElement, zoom: HTMLSelectElement, 'custom-zoom': HTMLOptionElement,
+ *   'find-open': HTMLButtonElement, 'copy-page': HTMLButtonElement, status: HTMLElement,
+ *   'find-panel': HTMLElement, 'find-query': HTMLInputElement, 'find-case': HTMLInputElement,
+ *   'find-word': HTMLInputElement, 'find-previous': HTMLButtonElement, 'find-next': HTMLButtonElement,
+ *   'find-count': HTMLElement, 'find-close': HTMLButtonElement, 'reading-status': HTMLElement,
+ *   error: HTMLElement, 'outline-tree': HTMLElement, viewport: HTMLElement, 'page-surface': HTMLElement,
+ *   diagnostics: HTMLDetailsElement, 'diagnostic-count': HTMLElement, 'repair-list': HTMLUListElement,
+ * }} ViewerElements
+ */
+/**
+ * The viewer's current document, read afresh on every use.
+ * @typedef {object} ReadingState
+ * @property {SessionClient} client
+ * @property {number | null} handle Open document, or null.
+ * @property {number} epoch Changes whenever another document replaces this one.
+ * @property {number} page Selected page.
+ * @property {number} count Page count.
+ * @property {number} zoom
+ * @property {(page: number, y: number) => void} scrollMatch Scroll a page offset (CSS pixels) into view.
+ */
+/**
+ * @typedef {object} ReadingOptions
+ * @property {() => ReadingState} state
+ * @property {(page: number) => Promise<void>} navigate
+ * @property {(action: GoToAction) => Promise<void>} destination
+ * @property {(error: unknown) => void} report
+ * @property {(message: string | null) => void} notice Polite reading status.
+ * @property {() => void} controls Refresh the page controls, for example after labels arrive.
+ */
+/**
+ * Reading state of one mounted page.
+ * @typedef {object} PageRecord
+ * @property {PageInfo} info
+ * @property {HTMLElement} element
+ * @property {number} zoom
+ * @property {{ text: string } | null} text
+ * @property {number} [characterCount]
+ * @property {number} [linkAreas]
+ * @property {{ area: HTMLElement, target: Target }[]} [links]
+ * @property {HTMLElement} [highlights]
+ */
 
 /** Reading state follows the document epoch, independently of tile generations. */
 export class ReadingView {
+  /** @param {ReadingOptions} options */
   constructor({ state, navigate, destination, report, notice, controls }) {
-    Object.assign(this, { state, navigate, destination, report, notice, controls });
-    this.$ = (id) => document.getElementById(id);
+    this.state = state;
+    this.navigate = navigate;
+    this.destination = destination;
+    this.report = report;
+    this.notice = notice;
+    this.controls = controls;
+    /**
+     * @template {keyof ViewerElements} K
+     * @param {K} id
+     * @returns {ViewerElements[K]}
+     */
+    this.$ = (id) => /** @type {ViewerElements[K]} */ (document.getElementById(id));
+    /** @type {Map<number, PageRecord>} */
     this.pages = new Map();
+    /** @type {string[]} */
     this.labels = [];
+    /** @type {Map<string, number>} First page index per label. */
     this.labelIndex = new Map();
+    /** @type {Match[]} */
     this.matches = [];
     this.current = -1;
     this.searchId = 0;
@@ -22,7 +90,7 @@ export class ReadingView {
       this.cancelSearch();
       this.$('find-open').focus();
     });
-    for (const id of ['find-query', 'find-case', 'find-word'])
+    for (const id of /** @type {const} */ (['find-query', 'find-case', 'find-word']))
       this.$(id).addEventListener(id === 'find-query' ? 'input' : 'change', () => {
         void this.search();
       });
@@ -73,6 +141,7 @@ export class ReadingView {
   }
   cancelSearch() {
     this.searchNote = '';
+    /** @type {Match | null} Match to scroll to once its page is mounted. */
     this.pendingScroll = null;
     this.searchId++;
     this.state().client?.invalidateSearch();
@@ -85,7 +154,11 @@ export class ReadingView {
     const { client, handle, epoch } = this.state();
     this.reset();
     // Independent navigation failures do not hide available page text or pixels.
-    const results = await Promise.allSettled([client.labels(handle), client.outlines(handle)]);
+    // The viewer calls open() once a document is open, so handle is set.
+    const results = await Promise.allSettled([
+      client.labels(/** @type {number} */ (handle)),
+      client.outlines(/** @type {number} */ (handle)),
+    ]);
     if (epoch !== this.state().epoch) return;
     if (results[0].status === 'fulfilled') {
       this.labels = results[0].value;
@@ -104,9 +177,11 @@ export class ReadingView {
     this.controls();
     if (this.$('find-query').value && !this.$('find-panel').hidden) void this.search();
   }
+  /** @param {number} page */
   label(page) {
     return this.labels[page] ?? String(page + 1);
   }
+  /** @param {PageRecord} record */
   nameLinks(record) {
     for (const { area, target } of record.links ?? []) {
       const name = targetLabel(target, (page) => this.label(page));
@@ -114,22 +189,39 @@ export class ReadingView {
       area.setAttribute('title', name);
     }
   }
+  /**
+   * Page index for the page field: an exact label, otherwise a 1-based number; -1 if neither.
+   * @param {string} value
+   * @returns {number}
+   */
   pageIndex(value) {
     // Explicit displayed index wins for the default numeric labels. Exact PDF
     // labels, including nonnumeric and duplicated labels, resolve to the first.
-    if (this.labelIndex.has(value)) return this.labelIndex.get(value);
+    if (this.labelIndex.has(value)) return /** @type {number} */ (this.labelIndex.get(value));
     const index = Number(value) - 1;
     return Number.isInteger(index) ? index : -1;
   }
+  /** @param {number[]} indexes Pages that stay mounted. */
   prune(indexes) {
     for (const key of this.pages.keys()) if (!indexes.includes(key)) this.pages.delete(key);
   }
+  /**
+   * Add the text and link layers to a rendered page element.
+   * @param {number} index
+   * @param {PageInfo} info
+   * @param {HTMLElement} element
+   */
   async page(index, info, element) {
     if (this.pages.get(index)?.element === element) return;
     const { client, handle, epoch, zoom } = this.state();
+    /** @type {PageRecord} */
     const record = { info, element, zoom, text: null };
     this.pages.set(index, record);
-    const results = await Promise.allSettled([client.pageText(handle, index), client.links(handle, index)]);
+    // Pages render only while a document is open.
+    const results = await Promise.allSettled([
+      client.pageText(/** @type {number} */ (handle), index),
+      client.links(/** @type {number} */ (handle), index),
+    ]);
     if (epoch !== this.state().epoch || this.pages.get(index) !== record) return;
     try {
       if (results[0].status === 'fulfilled') {
@@ -198,6 +290,7 @@ export class ReadingView {
       this.$('reading-status').textContent = String(error);
     }
   }
+  /** @param {Target} target */
   activate(target) {
     return activateTarget(target, {
       destination: this.destination,
@@ -205,7 +298,14 @@ export class ReadingView {
       notice: this.notice,
       named: (name) => {
         const s = this.state();
-        return this.navigate({ NextPage: s.page + 1, PrevPage: s.page - 1, FirstPage: 0, LastPage: s.count - 1 }[name]);
+        return this.navigate(
+          /** @type {Record<string, number>} */ ({
+            NextPage: s.page + 1,
+            PrevPage: s.page - 1,
+            FirstPage: 0,
+            LastPage: s.count - 1,
+          })[name],
+        );
       },
     });
   }
@@ -213,6 +313,7 @@ export class ReadingView {
     this.$('find-panel').hidden = false;
     this.$('find-query').focus();
   }
+  /** @param {string} [suffix] Replaces the status after the match count. */
   count(suffix) {
     if (suffix !== undefined) this.searchNote = suffix;
     this.$('find-count').textContent =
@@ -280,6 +381,7 @@ export class ReadingView {
     this.count(skipped ? ` — ${skipped} pages unavailable` : '');
     this.highlight();
   }
+  /** @param {number} delta */
   async move(delta) {
     if (!this.matches.length) return;
     this.current = (Math.max(0, this.current) + delta + this.matches.length) % this.matches.length;
@@ -327,7 +429,7 @@ export class ReadingView {
     const s = this.state(),
       epoch = s.epoch;
     try {
-      const text = this.pages.get(s.page)?.text ?? (await s.client.pageText(s.handle, s.page));
+      const text = this.pages.get(s.page)?.text ?? (await s.client.pageText(/** @type {number} */ (s.handle), s.page));
       if (epoch !== this.state().epoch) return;
       await navigator.clipboard.writeText(text.text);
       this.$('reading-status').textContent = `Page ${s.page + 1} text copied`;

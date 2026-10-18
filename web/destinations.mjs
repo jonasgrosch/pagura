@@ -1,5 +1,24 @@
+// @ts-check
 import { pagePoint, quadBounds } from './page_geometry.mjs';
-/** ISO 32000-2 12.3.2.2, Table 149 destination views. */
+/**
+ * @import { PageInfo } from './protocol.mjs'
+ * @import { GoToAction } from './reading_protocol.mjs'
+ */
+/**
+ * @typedef {{ zoom: number, x: number | null, y: number | null, notice?: string }} DestinationPlan
+ *   Zoom and CSS-pixel scroll offsets within the page; null keeps the current offset.
+ */
+/**
+ * ISO 32000-2 12.3.2.2, Table 149 destination views.
+ * @param {Pick<GoToAction, 'fit' | 'coordinates'>} action
+ * @param {PageInfo} info
+ * @param {number} width Available CSS pixels.
+ * @param {number} height
+ * @param {number} currentZoom
+ * @param {{ left?: number | null, top?: number | null }} [retained] Current user-space position for null coordinates.
+ * @param {number[] | null} [contentBounds] Painted bounds for FitB, FitBH and FitBV.
+ * @returns {DestinationPlan}
+ */
 export function destinationView(action, info, width, height, currentZoom, retained = {}, contentBounds = null) {
   const [a, b, c, d] = action.coordinates,
     [x0, , , y1] = info.crop;
@@ -10,13 +29,14 @@ export function destinationView(action, info, width, height, currentZoom, retain
   if (action.fit === 2) requestedZoom = width / info.width;
   if (action.fit === 3) requestedZoom = height / info.height;
   if (action.fit === 4) {
+    // A FitR destination always carries all four coordinates.
     bounds = quadBounds(
-      [
+      /** @type {number[][]} */ ([
         [a, b],
         [c, b],
         [c, d],
         [a, d],
-      ].map(([x, y]) => pagePoint(info, 1, x, y)),
+      ]).map(([x, y]) => pagePoint(info, 1, x, y)),
     );
     if (!bounds.width || !bounds.height) throw new Error('Empty FitR destination');
     requestedZoom = Math.min(width / bounds.width, height / bounds.height);
@@ -40,6 +60,10 @@ export function destinationView(action, info, width, height, currentZoom, retain
   const zoom = Math.max(0.1, Math.min(8, requestedZoom));
   let x = null,
     y = null;
+  /**
+   * @param {number | null} left
+   * @param {number | null} top
+   */
   const coordinate = (left, top) => {
     left ??= retained.left ?? null;
     top ??= retained.top ?? null;
@@ -71,6 +95,7 @@ export function destinationView(action, info, width, height, currentZoom, retain
       else x = value === null ? null : point[0];
     }
   }
+  /** @type {DestinationPlan} */
   const plan = { zoom, x, y };
   if (zoom !== requestedZoom)
     plan.notice = `Destination zoom limited to ${Math.round(zoom * 100)}% (viewer range: 10%–800%).`;

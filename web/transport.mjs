@@ -1,3 +1,4 @@
+// @ts-check
 /** One bounded 64 KiB stdin mailbox. Ownership transfers via atomic state:
  * 0 empty, 1 ready, 2 EOF. Only the worker blocks; the UI never Atomics.waits.
  */
@@ -8,13 +9,16 @@ export function createInput() {
 
 /** Main-thread producer. Requests can span arbitrarily many mailbox chunks. */
 export class InputWriter {
+  /** @param {SharedArrayBuffer} shared From createInput. */
   constructor(shared) {
     this.control = new Int32Array(shared, 0, 2);
     this.data = new Uint8Array(shared, 8);
+    /** @type {Uint8Array[]} */
     this.queue = [];
     this.offset = 0;
     this.ended = false;
   }
+  /** @param {Uint8Array} bytes */
   write(bytes) {
     if (this.ended) throw new Error('Host input is closed');
     this.queue.push(bytes);
@@ -47,7 +51,12 @@ export class InputWriter {
   }
 }
 
-/** Worker consumer; a short read is legal and avoids waiting to fill iovecs. */
+/**
+ * Worker consumer; a short read is legal and avoids waiting to fill iovecs.
+ * @param {SharedArrayBuffer} shared
+ * @param {() => void} drained Called when the writer may fill the mailbox again.
+ * @returns {(destination: Uint8Array) => number} Reads at most one mailbox segment; 0 at EOF.
+ */
 export function inputReader(shared, drained) {
   const control = new Int32Array(shared, 0, 2),
     data = new Uint8Array(shared, 8);
