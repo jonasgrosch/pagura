@@ -24,7 +24,7 @@ Dependencies point downward only and are fixed in the crate manifests.
 | `pagura-codec` | stream filters and predictors with streaming output caps | documents, references |
 | `pagura-crypto` | `Digest` hashes (MD5, SHA-1, SHA-2), RSA and ECDSA signature verification; the standard security handler from plain parameters, with RC4 and AES internal to it (ADR 0021) | the object model beyond `ObjectId`; signing; certificates and trust |
 | `pagura-document` | immutable source bytes, cross-reference data and revisions, lazily parsed and cached objects, decoded streams, typed page tree, recovery; navigation (12.3–12.6), interactive-form views and in-memory filling (12.7) and signature structure (12.8) as inert views | content streams, pixels, executing actions, cryptographic verification |
-| `pagura-raster` | geometry, paths, flattening, exact-area fill, stroking, masks, `Pixmap` | PDF |
+| `pagura-raster` | geometry, paths, flattening, exact-area fill, stroking, masks, `Pixmap`; the one float-to-byte quantizer (ADR 0022) | PDF |
 | `pagura-font` | font programs (TrueType/OpenType, CFF/CFF2, Type 1) as outlines, advances, encodings and cmaps | PDF dictionaries |
 | `pagura-data` | optional bundled data for fonts a PDF does not embed: standard-14 metrics and substitute outlines, predefined CMaps, CID-to-Unicode data and CJK substitutes, behind one cargo feature each, as a `Provider` with lazy caches (ADR 0009, 0026) | documents, content streams |
 | `pagura-text` | PDF font dictionaries, encodings, widths, CMaps and ToUnicode; shown strings to positioned glyphs | content streams, pixels |
