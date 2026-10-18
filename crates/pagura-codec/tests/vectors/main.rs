@@ -9,6 +9,10 @@ use pagura_testkit::fixture;
 use std::collections::BTreeMap;
 
 /// The `key=value` lines of a vector's `.params` file.
+#[expect(
+    clippy::unwrap_used,
+    reason = "generated .params files are ASCII key=value lines"
+)]
 fn options(name: &str) -> BTreeMap<String, String> {
     String::from_utf8(fixture("codec", &format!("{name}.params")))
         .unwrap()
