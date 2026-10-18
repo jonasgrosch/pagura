@@ -272,11 +272,7 @@ fn expand_indexed<'a>(
         let bytes = lookup
             .get(index * n..(index + 1) * n)
             .ok_or(Error::syntax("truncated image palette"))?;
-        let decoded = if let Space::Cie(cie) = base.as_ref() {
-            cie.decode_lookup(bytes)
-        } else {
-            bytes.iter().map(|&v| f64::from(v) / 255.0).collect()
-        };
+        let decoded = base.decode_lookup(bytes);
         for (out, value) in values.iter_mut().zip(decoded) {
             *out = value;
         }
@@ -374,6 +370,7 @@ mod tests {
             mask: None,
             matte: None,
             decode: vec![(0.0, 1.0)],
+            intent: None,
         });
         let mut texels = Texels::new(&image);
         let command = ImageCommand {

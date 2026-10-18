@@ -112,8 +112,9 @@ fn run(args: &[String]) -> CliResult {
                 println!("{subject}\n\n{notice}");
                 found = true;
             }
+            println!("Unicode 3.2.0\n\n{}", pagura_crypto::unicode_notice());
             if !found {
-                println!("No bundled data is linked.");
+                println!("Font and CMap data: No bundled data is linked.");
             }
             Ok(())
         }
@@ -172,10 +173,17 @@ fn open(path: &str, flags: &Flags) -> CliResult<Document> {
 fn open_bytes(bytes: std::sync::Arc<[u8]>, flags: &Flags) -> CliResult<Document> {
     let options = flags.open_options();
     let document = password::open(bytes, &options)?;
+    Ok(document)
+}
+
+fn rendering(document: std::sync::Arc<Document>, flags: &Flags) -> pagura::RenderContext {
     #[cfg(feature = "bundled-data")]
-    return Ok(Document::with_provider(document, flags.provider.clone()));
+    return pagura::RenderContext::with_provider(document, flags.provider.clone());
     #[cfg(not(feature = "bundled-data"))]
-    Ok(Document::from(document))
+    {
+        let _ = flags;
+        pagura::RenderContext::new(document)
+    }
 }
 
 /// Creates `path` and writes `bytes`; never truncates an existing file.
@@ -232,7 +240,8 @@ fn convert(
     flags: &Flags,
 ) -> CliResult {
     let started = Instant::now();
-    let document = open(input, flags)?;
+    let document = std::sync::Arc::new(open(input, flags)?);
+    let context = rendering(document.clone(), flags);
     let count = document.page_count()?;
     let indices = pages.unwrap_or(0..=count.saturating_sub(1));
     if count == 0 || indices.is_empty() || *indices.end() >= count {
@@ -243,7 +252,7 @@ fn convert(
     let mut stages = Vec::with_capacity(indices.clone().count());
     for index in indices {
         let render_started = Instant::now();
-        let pixmap = pagura::render_page(&document, document.page(index)?, &options)?;
+        let pixmap = context.render_page(document.page(index)?, &options)?;
         let render_time = render_started.elapsed();
         let emit_started = Instant::now();
         let path = match output {
@@ -334,7 +343,7 @@ fn scan(input: &str, dpi: f64, flags: &Flags) -> String {
         document.pages()?;
         Ok(document)
     });
-    let mut document = if let Ok(document) = clean {
+    let document = if let Ok(document) = clean {
         document
     } else {
         strict = false;
@@ -343,9 +352,11 @@ fn scan(input: &str, dpi: f64, flags: &Flags) -> String {
             Err(error) => return scan_open_error(&*error),
         }
     };
+    let mut context = rendering(std::sync::Arc::new(document), flags);
     let options = RenderOptions::from_dpi(dpi);
     let mut failures = Vec::new();
-    let pages = document
+    let pages = context
+        .document()
         .page_count()
         .inspect_err(|error| {
             failures.push(format!("{{\"page\":null,\"error\":{}}}", json_error(error)));
@@ -356,20 +367,23 @@ fn scan(input: &str, dpi: f64, flags: &Flags) -> String {
         .min(flags.max_pages.unwrap_or(usize::MAX));
     let mut rendered = 0_usize;
     for index in 0..limit {
-        let mut list = document
+        let mut list = context
+            .document()
             .page(index)
-            .and_then(|page| pagura::compile_page(&document, page));
+            .and_then(|page| context.compile_page(page));
         if strict && list.as_ref().is_err_and(|error| error.repair.is_some()) {
-            let diagnostics = document.diagnostics();
-            document = match open_bytes(bytes.clone(), &repair_flags) {
+            let diagnostics = context.document().diagnostics();
+            let document = match open_bytes(bytes.clone(), &repair_flags) {
                 Ok(document) => document,
                 Err(error) => return scan_open_error(&*error),
             };
             document.report(diagnostics);
+            context = rendering(std::sync::Arc::new(document), flags);
             strict = false;
-            list = document
+            list = context
+                .document()
                 .page(index)
-                .and_then(|page| pagura::compile_page(&document, page));
+                .and_then(|page| context.compile_page(page));
         }
         let result = list.and_then(|list| list.render(&options));
         match result {
@@ -387,7 +401,7 @@ fn scan(input: &str, dpi: f64, flags: &Flags) -> String {
         "{{\"schema\":1,\"strict\":{strict},\"open\":null,\"pages\":{},\"rendered\":{rendered},\
          \"repairs\":[{}],\"failures\":[{}]}}",
         pages.map_or_else(|| "null".into(), |count| count.to_string()),
-        repair_tags(&document),
+        repair_tags(context.document()),
         failures.join(",")
     )
 }
@@ -407,7 +421,10 @@ fn microbench(input: &str, operation: &str, count: u32, dpi: f64) -> CliResult {
     let options = OpenOptions::default();
     let bytes: std::sync::Arc<[u8]> = load(input, options.limits)?.into();
     let render_options = RenderOptions::from_dpi(dpi);
-    let warm = Document::open(bytes.clone(), &options)?;
+    let warm = pagura::render_context(std::sync::Arc::new(Document::open(
+        bytes.clone(),
+        &options,
+    )?));
     let started = Instant::now();
     for _ in 0..count {
         match operation {
@@ -424,7 +441,7 @@ fn microbench(input: &str, operation: &str, count: u32, dpi: f64) -> CliResult {
                 )?);
             }
             "render-warm" => {
-                black_box(pagura::render_page(&warm, warm.page(0)?, &render_options)?);
+                black_box(warm.render_page(warm.document().page(0)?, &render_options)?);
             }
             _ => return Err("unknown microbenchmark operation".into()),
         }

@@ -21,6 +21,7 @@ pub(crate) struct Image {
     pub(crate) mask: Option<Arc<Self>>,
     pub(crate) matte: Option<Vec<f64>>,
     pub(crate) decode: Vec<(f64, f64)>,
+    pub(crate) intent: Option<crate::icc::Intent>,
 }
 impl Compiler<'_> {
     pub(super) fn xobject(&mut self, values: &[Value], resources: &Dictionary) -> Result<()> {
@@ -61,6 +62,7 @@ impl Compiler<'_> {
             self.form(values, resources)
         }
     }
+
     fn image_resource(
         &self,
         id: ObjectId,
@@ -81,7 +83,14 @@ impl Compiler<'_> {
         let object = self.document.object(id)?;
         let decoded = pagura_image::decode_xobject(self.document, object)?;
         let image = self
-            .prepare_image(decoded, resources, stack)
+            .prepare_image(
+                decoded,
+                object
+                    .dictionary()
+                    .ok_or(Error::syntax("image dictionary missing"))?,
+                resources,
+                stack,
+            )
             .map_err(|e| e.in_object(id))?;
         stack.pop();
         self.state
@@ -92,9 +101,11 @@ impl Compiler<'_> {
             .insert(key, Arc::clone(&image));
         Ok(image)
     }
+
     fn prepare_image(
         &self,
         decoded: DecodedImage,
+        dictionary: &Dictionary,
         resources: &Dictionary,
         stack: &mut Vec<ObjectId>,
     ) -> Result<Arc<Image>> {
@@ -162,6 +173,7 @@ impl Compiler<'_> {
             None
         };
         let decode = decode_ranges(&decoded, space.as_ref())?;
+        let intent = self.image_intent(dictionary, space.as_ref())?;
         if decoded.samples.len()
             != count
                 .checked_mul(usize::from(decoded.components))
@@ -183,10 +195,35 @@ impl Compiler<'_> {
             mask,
             matte,
             decode,
+            intent,
         }))
     }
+
+    fn image_intent(
+        &self,
+        dictionary: &Dictionary,
+        space: Option<&Space>,
+    ) -> Result<Option<crate::icc::Intent>> {
+        // Table 87: image masks keep the current nonstroking colour's intent.
+        if space.is_none() {
+            return Ok(None);
+        }
+        dictionary
+            .get(b"Intent")
+            .map(|value| self.document.resolve(value))
+            .transpose()?
+            .filter(|value| !value.is_null()) // Null entries are absent (7.3.9).
+            .map(|value| {
+                value
+                    .as_name()
+                    .map(|name| crate::icc::Intent::from_name(name.as_bytes()))
+                    .ok_or(Error::syntax("image Intent must be a name"))
+            })
+            .transpose()
+    }
+
     fn image_space(&self, decoded: &DecodedImage, resources: &Dictionary) -> Result<Option<Space>> {
-        let context = crate::icc::ColorContext::new(self.document, &self.profiles);
+        let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
         let space = match &decoded.kind {
             ImageKind::Color {
                 color_space: Some(value),
@@ -211,6 +248,7 @@ impl Compiler<'_> {
         };
         Ok(space)
     }
+
     fn image_mark(&mut self, image: Arc<Image>) -> Result<()> {
         if self.uncolored_glyph() && image.space.is_some() {
             return Ok(());
@@ -221,6 +259,9 @@ impl Compiler<'_> {
             .filter(|&n| n <= self.document.limits().display_commands)
             .ok_or(Error::limit("image display list budget exceeded"))?;
         let mut composite = self.state.composite.clone();
+        if let Some(intent) = image.intent {
+            composite.conversion.intent = intent;
+        }
         // Image-local masks override the graphics-state soft mask (11.6.4.3).
         if !matches!(image.decoded.mask, MaskKind::None) {
             composite.mask = None;
@@ -236,6 +277,52 @@ impl Compiler<'_> {
         }));
         self.paint_charge(0, 0)
     }
+
+    fn inline_framing(
+        &self,
+        dictionary: &Dictionary,
+        resources: &Dictionary,
+    ) -> Result<Dictionary> {
+        // Supply the actual colour-space definition for unfiltered size framing.
+        let mut framing = dictionary.clone();
+        if let Some(value) = dictionary
+            .get(b"CS")
+            .or_else(|| dictionary.get(b"ColorSpace"))
+            && let Some(name) = value.as_name().filter(|n| {
+                !matches!(
+                    n.as_bytes(),
+                    b"G" | b"RGB" | b"CMYK" | b"DeviceGray" | b"DeviceRGB" | b"DeviceCMYK"
+                )
+            })
+        {
+            let space = resource(self.document, resources, b"ColorSpace", name.as_bytes())?;
+            let space = self.document.resolve(space)?;
+            // Framing has no document resolver. ICC profiles are indirect;
+            // supply only their channel count through an equivalent device
+            // name here. Decoding and painting retain the real colour space.
+            let framing_space = if space.as_array().is_some_and(|a| {
+                a.first()
+                    .and_then(Value::as_name)
+                    .is_some_and(|n| n == b"ICCBased")
+            }) {
+                let context =
+                    crate::icc::ColorContext::new(self.document, &self.compilation.colors);
+                let count = color::blending(&context, resources, space)?.components();
+                Value::name(match count {
+                    1 => b"DeviceGray",
+                    3 => b"DeviceRGB",
+                    4 => b"DeviceCMYK",
+                    _ => return Err(Error::syntax("invalid ICC component count")),
+                })
+            } else {
+                space.clone()
+            };
+            framing.insert(Name::new(b"ColorSpace"), framing_space);
+            framing.remove(b"CS");
+        }
+        Ok(framing)
+    }
+
     pub(super) fn inline_image(
         &mut self,
         parser: &mut Parser<'_>,
@@ -286,25 +373,7 @@ impl Compiler<'_> {
             .data()
             .get(offset..)
             .ok_or(Error::syntax("missing inline image data"))?;
-        // Supply the actual colour-space definition for unfiltered size framing.
-        let mut framing = dictionary.clone();
-        if let Some(value) = dictionary
-            .get(b"CS")
-            .or_else(|| dictionary.get(b"ColorSpace"))
-            && let Some(name) = value.as_name().filter(|n| {
-                !matches!(
-                    n.as_bytes(),
-                    b"G" | b"RGB" | b"CMYK" | b"DeviceGray" | b"DeviceRGB" | b"DeviceCMYK"
-                )
-            })
-        {
-            let space = resource(self.document, resources, b"ColorSpace", name.as_bytes())?;
-            framing.insert(
-                Name::new(b"ColorSpace"),
-                self.document.resolve(space)?.clone(),
-            );
-            framing.remove(b"CS");
-        }
+        let framing = self.inline_framing(&dictionary, resources)?;
         let length = pagura_image::inline_data_length(&framing, data)?;
         parser.seek(
             offset
@@ -334,7 +403,7 @@ impl Compiler<'_> {
             data.get(..length)
                 .ok_or(Error::syntax("truncated inline data"))?,
         )?;
-        let image = self.prepare_image(image, resources, &mut Vec::new())?;
+        let image = self.prepare_image(image, &dictionary, resources, &mut Vec::new())?;
         if self.visible {
             self.image_mark(image)?;
         }
@@ -397,9 +466,9 @@ fn decode_ranges(decoded: &DecodedImage, space: Option<&Space>) -> Result<Vec<(f
             )
         } else if matches!(space, Some(Space::Indexed { .. })) {
             (0.0, f64::from(max_sample(decoded, component)?))
-        } else if let Some(Space::Cie(cie)) = space {
-            let low = cie.decode_lookup(&vec![0; usize::from(decoded.components)]);
-            let high = cie.decode_lookup(&vec![255; usize::from(decoded.components)]);
+        } else if let Some(space @ (Space::Cie(_) | Space::Icc { .. })) = space {
+            let low = space.decode_lookup(&vec![0; usize::from(decoded.components)]);
+            let high = space.decode_lookup(&vec![255; usize::from(decoded.components)]);
             (
                 *low.get(component)
                     .ok_or(Error::syntax("missing CIE Decode"))?,

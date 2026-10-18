@@ -24,7 +24,7 @@ pub use pagura_core::{
     Diagnostic, Dictionary, Error, ErrorKind, Feature, Limits, Name, ObjectId, Position, Recovery,
     Rect, Repair, Result, Value,
 };
-pub use pagura_document::{IndirectObject, OpenOptions, Page, Rotation};
+pub use pagura_document::{Document, IndirectObject, OpenOptions, Page, Rotation};
 pub use pagura_raster::{Pixmap, Rgba8};
 pub use pagura_render::{
     DisplayList, Provider, RenderContext, RenderOptions, Tile, compile_page_with, device_size,
@@ -32,40 +32,58 @@ pub use pagura_render::{
 };
 pub use pagura_write::{Builder, NewObject};
 
-mod document;
-pub use document::Document;
+use std::sync::Arc;
 
-/// Compiles a page with the document's shared rendering resources. The default
+/// Creates document-bound rendering resources using the feature-selected data.
+/// Keep this context when compiling or rendering many pages.
+pub fn render_context(document: Arc<Document>) -> RenderContext {
+    #[cfg(feature = "bundled-data")]
+    {
+        let provider = Arc::new(pagura_data::Bundled::new(document.limits()));
+        RenderContext::with_provider(document, provider)
+    }
+    #[cfg(not(feature = "bundled-data"))]
+    RenderContext::new(document)
+}
+
+/// Compiles one page. For many pages, keep a [`render_context`]. The default
 /// `bundled-data` feature provides standard-font substitutes and predefined CMaps.
 ///
 /// # Errors
-/// As [`RenderContext::compile_page`].
+/// As [`pagura_render::compile_page`] and the feature-selected provider.
 pub fn compile_page(document: &Document, page: &Page) -> Result<DisplayList> {
-    document.render_context().compile_page(page)
+    #[cfg(feature = "bundled-data")]
+    return compile_page_with(
+        document,
+        page,
+        &pagura_data::Bundled::new(document.limits()),
+    );
+    #[cfg(not(feature = "bundled-data"))]
+    pagura_render::compile_page(document, page)
 }
 
-/// Renders a whole page using this document's shared fonts and glyph outlines.
+/// Renders one page. For many pages, keep a [`render_context`].
 ///
 /// # Errors
-/// As [`RenderContext::render_page`].
+/// As [`compile_page`] and [`DisplayList::render`].
 pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
-    document.render_context().render_page(page, options)
+    compile_page(document, page)?.render(options)
 }
 
-/// Renders a tile using this document's shared fonts and glyph outlines.
+/// Renders one tile. For repeated work, keep a [`render_context`].
 ///
 /// # Errors
-/// As [`RenderContext::render_tile`].
+/// As [`compile_page`] and [`DisplayList::render_tile`].
 pub fn render_tile(
     document: &Document,
     page: &Page,
     options: &RenderOptions,
     tile: Tile,
 ) -> Result<Pixmap> {
-    document.render_context().render_tile(page, options, tile)
+    compile_page(document, page)?.render_tile(options, tile)
 }
 
-/// Licence notices for data linked by this facade's features. Distributors must
+/// Licence notices for font and CMap data linked by this facade's features. Distributors must
 /// reproduce these notices; the CLI exposes them through `pagura licenses`.
 pub fn data_notices() -> impl Iterator<Item = (&'static str, &'static str)> {
     #[cfg(feature = "bundled-data")]

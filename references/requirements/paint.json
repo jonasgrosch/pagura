@@ -359,7 +359,9 @@
         "paint/image-area-reflected",
         "paint/image-area-quarter",
         "paint/image-area-sheared",
-        "pagura-render compositor::images::tests::scalar_cache_uses_component_precision_for_mixed_samples"
+        "pagura-render compositor::images::tests::scalar_cache_uses_component_precision_for_mixed_samples",
+        "paint/image-area-separable",
+        "paint/image-area-separable-colour-key"
       ],
       "gaps": "Interpolation is device policy rather than an ISO-prescribed filter. Strongly anisotropic transforms use area integration whenever an inverse pixel edge exceeds one source pixel.",
       "review": [
@@ -455,7 +457,9 @@
         "pagura-render interpreter::text::cache::tests::retained_cache_admission_eviction_and_duplicate_publication_are_bounded",
         "paint/text-late-font-repair",
         "pagura cli::scan_retries_a_late_repair_without_losing_earlier_pages",
-        "pagura-render interpreter::text::cache::tests::embedded_cid_font_inputs_are_charged_through_descendants"
+        "pagura-render interpreter::text::cache::tests::embedded_cid_font_inputs_are_charged_through_descendants",
+        "pagura-render interpreter::text::cache::tests::each_dictionary_owns_its_glyph_outlines",
+        "pagura-render interpreter::text::cache::tests::evicted_records_cannot_populate_replacements"
       ],
       "gaps": "PdfFont exposes no complete retained-memory estimator. The shared cache charges font input and dictionary estimates, path-segment estimates and bookkeeping; opaque parsed internals retain their own per-font bounds, with at most 256 fonts. Provider caches have independent bounds.",
       "review": [
@@ -463,6 +467,82 @@
           "locator": "Annex C.1",
           "rule": "Document-bound font and outline caches use immutable font dictionaries and resource identities. Retained input, dictionary and path-segment estimates are bounded by document_bytes, eviction never changes pixels, and foreign pages are rejected.",
           "verdict": "verified against local primary text; cache accounting is implementation policy"
+        }
+      ]
+    },
+    {
+      "id": "paint-image-icc-range",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.5.2",
+        "Table 88",
+        "8.6.5.5",
+        "8.6.6.3"
+      ],
+      "status": "implemented",
+      "tests": [
+        "paint/image-icc-default-decode",
+        "paint/image-icc-indexed-range"
+      ],
+      "gaps": "",
+      "review": [
+        {
+          "locator": "8.9.5.2; Table 88; 8.6.5.5; 8.6.6.3",
+          "rule": "Default Decode uses ICC Range; Indexed lookup bytes are mapped through the base colour space before conversion.",
+          "verdict": "verified against local primary text"
+        }
+      ]
+    },
+    {
+      "id": "paint-image-intent",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.9.5",
+        "Table 87",
+        "8.9.7",
+        "Table 91",
+        "7.3.9",
+        "7.3.7"
+      ],
+      "status": "implemented",
+      "tests": [
+        "paint/image-intent-perceptual",
+        "paint/image-intent-saturation",
+        "paint/image-intent-inherited",
+        "paint/image-inline-intent",
+        "paint/image-stencil-intent-ignored-named",
+        "paint/image-stencil-intent-ignored-wrong-type",
+        "paint/image-intent-wrong-type",
+        "paint/image-intent-null",
+        "paint/image-intent-indirect-null"
+      ],
+      "gaps": "",
+      "review": [
+        {
+          "locator": "8.9.5; Table 87; 8.9.7; Table 91; 7.3.9; 7.3.7",
+          "rule": "An image Intent overrides the graphics state rendering intent for that image, including inline images. Image masks ignore Intent and keep the current nonstroking colour. A null entry, including an indirect null, is absent and inherits the current intent.",
+          "verdict": "verified against local primary text"
+        }
+      ]
+    },
+    {
+      "id": "paint-glyph-diagnostics",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "9.2.4",
+        "9.4.4",
+        "Annex C.1"
+      ],
+      "status": "implemented",
+      "tests": [
+        "paint/text-unusable-glyph-advance"
+      ],
+      "gaps": "",
+      "review": [
+        {
+          "locator": "9.2.4; 9.4.4; Annex C.1",
+          "rule": "The PDF advance is independent of the glyph outline. Diagnostic-aware outlining reports a bounded repair for an unusable glyph, leaving its advance and subsequent glyphs intact; Strict rejects the repair.",
+          "verdict": "verified against local primary text; glyph recovery is explicit implementation policy (ADR 0003)"
         }
       ]
     }

@@ -2206,6 +2206,292 @@
       "dpi": 72,
       "width": 32,
       "height": 32
+    },
+    {
+      "id": "paint/image-icc-default-decode",
+      "kind": "pdf",
+      "description": "image icc default decode",
+      "expected": "render",
+      "requirements": [
+        "paint-image-icc-range"
+      ],
+      "path": "corpus/generated/paint/image-icc-default-decode.pdf",
+      "sha256": "ddf961f1afa6abb1cc33c13f759a2f3f35cc9c68586eb16da8d003558f94ee25",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-icc-default-decode.ppm",
+      "oracle_sha256": "69912b0285639ec61d0ab32c3cdee0fa21bd32da86cf40b8f5dfe131f5685b54",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-icc-indexed-range",
+      "kind": "pdf",
+      "description": "image icc indexed range",
+      "expected": "render",
+      "requirements": [
+        "paint-image-icc-range"
+      ],
+      "path": "corpus/generated/paint/image-icc-indexed-range.pdf",
+      "sha256": "9dc19260d517f245ae6d46d67f420392a6aef314825a9d792ed4695de9ab03c0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-icc-indexed-range.ppm",
+      "oracle_sha256": "69912b0285639ec61d0ab32c3cdee0fa21bd32da86cf40b8f5dfe131f5685b54",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-intent-perceptual",
+      "kind": "pdf",
+      "description": "image intent perceptual",
+      "expected": "render",
+      "requirements": [
+        "paint-image-intent"
+      ],
+      "path": "corpus/generated/paint/image-intent-perceptual.pdf",
+      "sha256": "585dddfc766fec9c0cd7e71910fa8c0f95fe5f09abf2be2f01eb0a94a7d180a8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-intent-perceptual.ppm",
+      "oracle_sha256": "cd02084518ced2f7c8b45b12b49df135d4ba0b049e2058a3208a6313d63cd39f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/image-intent-saturation",
+      "kind": "pdf",
+      "description": "image intent saturation",
+      "expected": "render",
+      "requirements": [
+        "paint-image-intent"
+      ],
+      "path": "corpus/generated/paint/image-intent-saturation.pdf",
+      "sha256": "70c81a19db01094462ef85fc4654b07903b2f4cac8ba61f276b8cb44d7d8cfab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-intent-saturation.ppm",
+      "oracle_sha256": "61334bb0d2a39682ef861ac80bb56cb41d7f8cd0b9144eaed3ba749e0ed7041e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/image-intent-inherited",
+      "kind": "pdf",
+      "description": "image intent inherited",
+      "expected": "render",
+      "requirements": [
+        "paint-image-intent"
+      ],
+      "path": "corpus/generated/paint/image-intent-inherited.pdf",
+      "sha256": "338bf556b1e7ef61f03ea364133135ed7cad937bde9563025b7c7b626f79828c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-intent-inherited.ppm",
+      "oracle_sha256": "ea5a4bf962965968b3e8aa2416ad472f03ff3f596cca253d74153adf51ec8f3b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/image-intent-null",
+      "kind": "pdf",
+      "description": "image intent null",
+      "expected": "render",
+      "requirements": [
+        "paint-image-intent"
+      ],
+      "path": "corpus/generated/paint/image-intent-null.pdf",
+      "sha256": "4d8db231cc1ac58cdf9faf21120d3a34d63db4f615280315baf0da9eb6825fd3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-intent-null.ppm",
+      "oracle_sha256": "ea5a4bf962965968b3e8aa2416ad472f03ff3f596cca253d74153adf51ec8f3b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/image-intent-indirect-null",
+      "kind": "pdf",
+      "description": "image intent indirect null",
+      "expected": "render",
+      "requirements": [
+        "paint-image-intent"
+      ],
+      "path": "corpus/generated/paint/image-intent-indirect-null.pdf",
+      "sha256": "3d191dddd98e678a65efc1eba9cde864c553138b7914c3805570ee43d57789dd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-intent-indirect-null.ppm",
+      "oracle_sha256": "ea5a4bf962965968b3e8aa2416ad472f03ff3f596cca253d74153adf51ec8f3b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/image-stencil-intent-ignored-named",
+      "kind": "pdf",
+      "description": "image stencil intent ignored named",
+      "expected": "render",
+      "requirements": [
+        "paint-image-intent"
+      ],
+      "path": "corpus/generated/paint/image-stencil-intent-ignored-named.pdf",
+      "sha256": "4f489dfc55696fd9f9f3c06d516a424e18202ab6122713fbd8a3de09a1fa21f1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-stencil-intent-ignored-named.ppm",
+      "oracle_sha256": "cd02084518ced2f7c8b45b12b49df135d4ba0b049e2058a3208a6313d63cd39f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/image-stencil-intent-ignored-wrong-type",
+      "kind": "pdf",
+      "description": "image stencil intent ignored wrong type",
+      "expected": "render",
+      "requirements": [
+        "paint-image-intent"
+      ],
+      "path": "corpus/generated/paint/image-stencil-intent-ignored-wrong-type.pdf",
+      "sha256": "040a841dcfa0b2a130a1eb38736bfdc3193c2d8147cb78ff5435ef3b1e76efb4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-stencil-intent-ignored-wrong-type.ppm",
+      "oracle_sha256": "cd02084518ced2f7c8b45b12b49df135d4ba0b049e2058a3208a6313d63cd39f",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/image-intent-wrong-type",
+      "kind": "pdf",
+      "description": "A non-mask image Intent must be a name",
+      "expected": "open",
+      "requirements": [
+        "paint-image-intent"
+      ],
+      "path": "corpus/generated/paint/image-intent-wrong-type.pdf",
+      "sha256": "964ff38d51f999142541e213dd8ddfefe94848ab4e197ae212751e50d2545b17",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "paint/image-inline-intent",
+      "kind": "pdf",
+      "description": "image inline intent",
+      "expected": "render",
+      "requirements": [
+        "paint-image-intent"
+      ],
+      "path": "corpus/generated/paint/image-inline-intent.pdf",
+      "sha256": "c0a1dd3eeedc437acf6ca5818d01a58f10b76bd475477e751b09827658de1f28",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-inline-intent.ppm",
+      "oracle_sha256": "61334bb0d2a39682ef861ac80bb56cb41d7f8cd0b9144eaed3ba749e0ed7041e",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 1
+    },
+    {
+      "id": "paint/text-unusable-glyph-advance",
+      "kind": "pdf",
+      "description": "An unusable glyph reports its repair and advances; an intact following glyph still paints",
+      "requirements": [
+        "paint-glyph-diagnostics"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/text-unusable-glyph-advance.pdf",
+          "sha256": "664c0f3735a13a0d44cbfafc6d12d07ff5ce61507987a18c83649bba4674cd1c"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/text-unusable-glyph-advance.rgb",
+          "sha256": "cc8064123090c3f6c6e5e13e06f95153daf0f617909b929140a7279f9cf0c760"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/text-unusable-glyph-advance.pdf",
+      "sha256": "664c0f3735a13a0d44cbfafc6d12d07ff5ce61507987a18c83649bba4674cd1c",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.glyph-data"
+      ],
+      "oracle": "corpus/generated/paint/text-unusable-glyph-advance.rgb",
+      "oracle_sha256": "cc8064123090c3f6c6e5e13e06f95153daf0f617909b929140a7279f9cf0c760",
+      "dpi": 72,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "id": "paint/image-area-separable",
+      "kind": "pdf",
+      "description": "image area separable",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-area-separable.pdf",
+      "sha256": "740dc2ed149b38da1534dc7e36b293cc38cbc4097a04cc2bb9aa86ae0928ac43",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-area-separable.ppm",
+      "oracle_sha256": "8eec4e502d93973cd5454b95235f34b49db8243d55515be03efac4225b5e71b9",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-area-separable-colour-key",
+      "kind": "pdf",
+      "description": "image area separable colour key",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-area-separable-colour-key.pdf",
+      "sha256": "1492f9f7b8a3ee5434364dd90b8140c3d96ed54c8eeb9ef9ebdc3bb20c5f25fa",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-area-separable-colour-key.ppm",
+      "oracle_sha256": "df088e288a226f4666151f3307fc55585dc86a0eebd2dd5439e4df36ffb738ad",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
     }
   ]
 }

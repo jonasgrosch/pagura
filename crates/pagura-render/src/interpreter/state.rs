@@ -63,7 +63,7 @@ impl Compiler<'_> {
     }
 
     pub(super) fn color(&mut self, word: &[u8], v: &[Value], resources: &Dictionary) -> Result<()> {
-        let context = crate::icc::ColorContext::new(self.document, &self.profiles);
+        let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
         let stroking = matches!(word, b"G" | b"RG" | b"K" | b"CS" | b"SC" | b"SCN");
         let color = if stroking {
             &mut self.state.stroke_color

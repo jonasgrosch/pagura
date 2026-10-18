@@ -77,7 +77,7 @@ impl Compiler<'_> {
             .map(|v| self.document.resolve_dictionary(v))
             .transpose()?
             .unwrap_or(resources);
-        let context = crate::icc::ColorContext::new(self.document, &self.profiles);
+        let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
         let attributes = crate::transparency::Attributes::parse(&context, dictionary, resources)?;
         if attributes.is_some() {
             child.state.composite = crate::transparency::Composite {
@@ -139,7 +139,7 @@ impl Compiler<'_> {
     pub(super) fn detached(&self) -> Self {
         Self {
             document: self.document,
-            profiles: std::rc::Rc::clone(&self.profiles),
+            compilation: std::rc::Rc::clone(&self.compilation),
             list: DisplayList {
                 commands: Vec::new(),
                 crop: self.list.crop,

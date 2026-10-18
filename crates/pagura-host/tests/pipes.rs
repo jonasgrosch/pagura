@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
 //! Cross-process transport checks (host-native-pipes).
 
-use pagura_testkit::fixture;
+#[path = "../../pagura/tests/support/mod.rs"]
+mod support;
 use std::io::Write;
 use std::process::{Command, Stdio};
 
@@ -22,7 +23,8 @@ fn binary_flushes_live_responses_and_reports_structured_unsupported() {
     let mut hello = [0; 13];
     std::io::Read::read_exact(&mut output, &mut hello).unwrap();
     assert_eq!(hello, [9, 0, 0, 0, 129, 1, 0, 0, 0, 1, 0, 0, 0]);
-    let pdf = fixture("classic", "pattern-unsupported.pdf");
+    let (path, feature) = support::unsupported_cases().remove(0);
+    let pdf = std::fs::read(path).unwrap();
     let mut open = u32::try_from(pdf.len() + 14)
         .unwrap()
         .to_le_bytes()
@@ -31,9 +33,20 @@ fn binary_flushes_live_responses_and_reports_structured_unsupported() {
     open.extend(u32::try_from(pdf.len()).unwrap().to_le_bytes());
     open.extend(pdf);
     input.write_all(&open).unwrap();
-    let mut tile = vec![4, 3, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0];
+    let mut opened = [0; 17];
+    std::io::Read::read_exact(&mut output, &mut opened).unwrap();
+    assert_eq!(opened[4], 130);
+    input
+        .write_all(&[13, 0, 0, 0, 3, 3, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0])
+        .unwrap();
+    let mut info = [0; 59];
+    std::io::Read::read_exact(&mut output, &mut info).unwrap();
+    assert_eq!(info[4], 131);
+    let width = u32::from_le_bytes(info[51..55].try_into().unwrap());
+    let height = u32::from_le_bytes(info[55..59].try_into().unwrap());
+    let mut tile = vec![4, 4, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0];
     tile.extend(1_f64.to_le_bytes());
-    for value in [0_u32, 0, 64, 64] {
+    for value in [0_u32, 0, width, height] {
         tile.extend(value.to_le_bytes());
     }
     input
@@ -44,17 +57,11 @@ fn binary_flushes_live_responses_and_reports_structured_unsupported() {
     let mut responses = Vec::new();
     std::io::Read::read_to_end(&mut output, &mut responses).unwrap();
     assert!(child.wait().unwrap().success());
-    assert_eq!(responses[4], 130);
-    let next = 4 + u32::from_le_bytes(responses[..4].try_into().unwrap()) as usize;
-    assert_eq!(responses[next + 4], 255);
-    assert_eq!(responses[next + 9], 3);
-    let tag_length =
-        u32::from_le_bytes(responses[next + 10..next + 14].try_into().unwrap()) as usize;
-    let tag = std::str::from_utf8(&responses[next + 14..next + 14 + tag_length]).unwrap();
-    assert!(
-        tag.contains('.'),
-        "Unsupported must carry a stable feature tag"
-    );
+    assert_eq!(responses[4], 255);
+    assert_eq!(responses[9], 3);
+    let tag_length = u32::from_le_bytes(responses[10..14].try_into().unwrap()) as usize;
+    let tag = std::str::from_utf8(&responses[14..14 + tag_length]).unwrap();
+    assert_eq!(tag, feature);
 }
 
 #[test]

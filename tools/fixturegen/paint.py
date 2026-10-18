@@ -231,6 +231,9 @@ def cases():
     yield from affine_area_cases()
     yield shared_font_case()
     yield late_font_repair_case()
+    yield from image_colour_cases()
+    yield damaged_glyph_case()
+    yield from separable_area_cases()
 
 
 def type1_lengths(program):
@@ -525,3 +528,89 @@ def late_font_repair_case():
     return Case('text-late-font-repair',document(objects),RENDER,('paint-font-cache',),
                 'A repair on page two preserves both rendered pages and strict audit status',
                 oracle=rects([((2,2,4,6),BLACK)]),pages=2,repairs=('font.stream-lengths',),strict_valid=False)
+
+
+def image_colour_cases():
+    """Table 88, 8.6.6.3 and Table 87, with independent profile functions."""
+    from . import content as colour
+    profile = stream(colour.icc_profile(1, version=5),
+                     b'/N 1 /Alternate /DeviceGray /Range [.25 .75]')
+    for indexed in (False, True):
+        name = 'image-icc-indexed-range' if indexed else 'image-icc-default-decode'
+        space = b'[/Indexed [/ICCBased 6 0 R] 3 <0055aaff>]' if indexed else b'[/ICCBased 6 0 R]'
+        data = bytes([0,1,2,3] if indexed else [0,85,170,255])
+        yield image_case(name,data,b'/ColorSpace '+space+b' /BitsPerComponent 8',
+                         [64,106,149,191],4,1,masks=[profile],requirement='paint-image-icc-range')
+    tags = colour.icc_tags(4)
+    for i, lightness in enumerate((20,60,85)):
+        tags[f'A2B{i}'.encode()] = colour.icc_legacy(4,pcs=b'Lab ',
+            constant=(lightness/100*65280/65535,32768/65535,32768/65535))[0]
+    profile = stream(colour.icc_pack(tags,4,pcs=b'Lab '),b'/N 4 /Alternate /DeviceCMYK')
+    for name, intent, lightness in [('perceptual',b'/Intent /Perceptual',20),
+                                   ('saturation',b'/Intent /Saturation',85),
+                                   ('inherited',b'',60),('null',b'/Intent null',60),
+                                   ('indirect-null',b'/Intent 7 0 R',60)]:
+        rgb = colour.cie_rgb('Lab',(lightness,0,0),white=colour.ICC_D50)
+        yield image_case('image-intent-'+name,bytes([128]*4),
+                         b'/ColorSpace [/ICCBased 6 0 R] /BitsPerComponent 8 '+intent,
+                         [],1,1,masks=[profile,b'null'] if name=='indirect-null' else [profile],colors=[rgb],fill=b'/RelativeColorimetric ri',
+                         tolerance=1,requirement='paint-image-intent')
+    rgb = colour.cie_rgb('Lab',(20,0,0),white=colour.ICC_D50)
+    for name, intent in [('named',b'/Saturation'),('wrong-type',b'true')]:
+        image = stream(bytes([0]),b'/Subtype /Image /Width 1 /Height 1 /BitsPerComponent 1 /ImageMask true /Intent '+intent)
+        yield case('image-stencil-intent-ignored-'+name,
+                   b'/C cs /Perceptual ri .5 .5 .5 .5 scn q 2 0 0 2 2 2 cm /I Do Q',
+                   [image,profile],b'<< /XObject << /I 5 0 R >> /ColorSpace << /C [/ICCBased 6 0 R] >> >>',
+                   [((2,2,2,2),rgb)],tolerance=1,requirement='paint-image-intent')
+    image = stream(bytes([0]),b'/Subtype /Image /Width 1 /Height 1 /BitsPerComponent 8 /ColorSpace /DeviceGray /Intent true')
+    yield Case('image-intent-wrong-type',page(b'/I Do',[image],b'<< /XObject << /I 5 0 R >> >>'),OPEN,
+               ('paint-image-intent',),'A non-mask image Intent must be a name',extra={'render_error':'syntax'})
+    # Inline image dictionaries retain Intent too (8.9.7, Table 91).
+    rgb = colour.cie_rgb('Lab',(85,0,0),white=colour.ICC_D50)
+    yield case('image-inline-intent',
+               b'/Perceptual ri q 2 0 0 2 2 2 cm BI /W 1 /H 1 /BPC 8 /CS /C /Intent /Saturation ID '+bytes([128]*4)+b' EI Q',
+               [profile],b'<< /ColorSpace << /C [/ICCBased 5 0 R] >> >>',
+               [((2,2,2,2),rgb)],tolerance=1,requirement='paint-image-intent')
+
+
+def damaged_glyph_case():
+    # Glyph 1 lacks its header. Glyph 2 remains a complete rectangle; A's PDF
+    # advance still positions B at x=6. No result is derived from a renderer.
+    rectangle = simple([(0,0,True),(400,0,True),(400,600,True),(0,600,True)])
+    rectangle = rectangle[:2]+struct.pack('>hhhh',0,0,400,600)+rectangle[10:]
+    glyf = bytes(2)+rectangle
+    loca = struct.pack('>6I',0,0,2,len(glyf),len(glyf),len(glyf))
+    cmap = struct.pack('>HHHHI',0,1,3,1,12)+struct.pack('>6H',6,14,0,65,2,1)+struct.pack('>H',2)
+    program = truetype(table_overrides={b'glyf':glyf,b'loca':loca,b'cmap':cmap,
+                        b'hmtx':struct.pack('>HhHh',500,0,400,0)+bytes(6)})
+    font,descriptor,_ = ttf()
+    font = font.replace(b'/LastChar 65 /Widths [400]',b'/LastChar 66 /Widths [400 400]')
+    from .model import Vector
+    import hashlib
+    name = 'text-unusable-glyph-advance'
+    pdf = page(b'BT /F 10 Tf 2 2 Td (AAB) Tj ET',
+               [font,descriptor,stream(program,b'/Length1 %d'%len(program))],FONT)
+    oracle = rects([((10,2,4,6),BLACK)])
+    return Vector(name,{'.pdf':pdf,'.rgb':oracle},('paint-glyph-diagnostics',),
+                  'An unusable glyph reports its repair and advances; an intact following glyph still paints',
+                  extra=dict(kind='pdf',expected=RENDER,path=f'corpus/generated/paint/{name}.pdf',
+                             sha256=hashlib.sha256(pdf).hexdigest(),pages=1,strict_valid=False,
+                             repairs=['font.glyph-data'],oracle=f'corpus/generated/paint/{name}.rgb',
+                             oracle_sha256=hashlib.sha256(oracle).hexdigest(),dpi=72,width=SIZE,height=SIZE))
+
+
+def separable_area_cases():
+    # Four equal source-cell areas per device pixel. Include half-level ties
+    # and associated colour/alpha; expectations use integers alone.
+    data = list(range(24))
+    for masked in (False, True):
+        marks = []
+        for y in range(2):
+            for x in range(3):
+                samples = [data[j*6+i] for j in range(y*2,y*2+2) for i in range(x*2,x*2+2)]
+                value = (sum(255 if masked and v == 0 else v for v in samples)+2)//4
+                marks.append(((2+x,3-y,1,1),(value,)*3))
+        name = 'image-area-separable'+('-colour-key' if masked else '')
+        image = stream(bytes(data),b'/Subtype /Image /Width 6 /Height 4 /BitsPerComponent 8 /ColorSpace /DeviceGray'+(b' /Mask [0 0]' if masked else b''))
+        yield case(name,b'q 3 0 0 2 2 2 cm /I Do Q',[image],b'<< /XObject << /I 5 0 R >> >>',
+                   rectangles=marks,requirement='paint-image-resampling')

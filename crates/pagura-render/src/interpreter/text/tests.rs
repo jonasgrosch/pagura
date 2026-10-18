@@ -103,8 +103,7 @@ fn fonts_and_outlines_are_reused() {
     let mut compiler = super::super::Compiler::new(&document, document.page(0).unwrap()).unwrap();
     compiler.page(document.page(0).unwrap()).unwrap();
     let cache = compiler.state.text.cache.borrow();
-    assert_eq!(cache.fonts.len(), 1);
-    assert_eq!(cache.outlines.len(), 1);
+    assert_eq!(cache.font_counts(), (1, 1));
 }
 
 #[test]

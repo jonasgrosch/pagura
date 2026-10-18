@@ -37,7 +37,7 @@ const RENDER_CASES: [&str; 17] = [
     "two-pages",
 ];
 
-const UNSUPPORTED_CASES: [(&str, &str); 1] = [("pattern-unsupported", "pattern.tiling")];
+mod support;
 
 #[test]
 fn exact_pixels_match_independent_oracles() {
@@ -58,8 +58,8 @@ fn exact_pixels_match_independent_oracles() {
 
 #[test]
 fn unsupported_features_are_tagged_errors_not_partial_images() {
-    for (name, feature) in UNSUPPORTED_CASES {
-        let document = open(fixture("classic", &format!("{name}.pdf"))).unwrap();
+    for (path, feature) in support::unsupported_cases() {
+        let document = open(std::fs::read(&path).unwrap()).unwrap();
         let error = pagura::render_page(
             &document,
             document.page(0).unwrap(),
@@ -68,8 +68,9 @@ fn unsupported_features_are_tagged_errors_not_partial_images() {
         .unwrap_err();
         assert_eq!(
             error.feature().map(pagura::Feature::as_str),
-            Some(feature),
-            "{name}: {error}"
+            Some(feature.as_str()),
+            "{}: {error}",
+            path.display()
         );
     }
 }

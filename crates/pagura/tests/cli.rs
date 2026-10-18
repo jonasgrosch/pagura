@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 //! The command-line tool, run as a subprocess.
 
+mod support;
+
 use pagura_testkit::{assert_bytes_eq, fixture, fixture_path};
 use std::path::PathBuf;
 use std::process::Command;
@@ -93,15 +95,16 @@ fn does_not_overwrite_files_or_emit_partial_unsupported_images() {
         .unwrap();
     assert!(!result.status.success());
     assert_eq!(std::fs::read(existing).unwrap(), b"preserve me");
+    let (unsupported, feature) = support::unsupported_cases().remove(0);
     let missing = scratch.0.join("unsupported.ppm");
     let result = pagura()
         .arg("render")
-        .arg(fixture_path("classic", "pattern-unsupported.pdf"))
+        .arg(unsupported)
         .arg(&missing)
         .output()
         .unwrap();
     assert!(!result.status.success());
-    assert!(String::from_utf8_lossy(&result.stderr).contains("unsupported [pattern.tiling]"));
+    assert!(String::from_utf8_lossy(&result.stderr).contains(&format!("unsupported [{feature}]")));
     assert!(!missing.exists());
 }
 
@@ -168,6 +171,7 @@ fn licenses_reproduces_every_linked_data_notice() {
     assert!(output.status.success());
     let text = String::from_utf8(output.stdout).unwrap();
     let mut count = 0;
+    assert!(text.contains(pagura_crypto::unicode_notice()));
     for (subject, notice) in pagura::data_notices() {
         assert!(text.contains(subject));
         assert!(text.contains(notice));

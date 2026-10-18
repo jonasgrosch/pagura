@@ -20,7 +20,7 @@ pub enum SessionEnd {
 #[derive(Debug)]
 pub struct Session {
     limits: Limits,
-    documents: BTreeMap<u32, Document>,
+    documents: BTreeMap<u32, pagura::RenderContext>,
     retained_bytes: usize,
     next_handle: u32,
     last_request: u32,
@@ -293,7 +293,7 @@ impl Session {
                 self.generations.remove(&handle);
                 self.retained_bytes = self
                     .retained_bytes
-                    .saturating_sub(document.original_bytes().len());
+                    .saturating_sub(document.document().original_bytes().len());
                 Ok(Response::Close)
             }
         }
@@ -345,7 +345,12 @@ impl Session {
         let list = if let Some(list) = cached {
             list
         } else {
-            let list = Arc::new(pagura::compile_page(document, page)?);
+            let list = Arc::new(
+                self.documents
+                    .get(&key.0)
+                    .ok_or(Error::invalid_argument("unknown document handle"))?
+                    .compile_page(page)?,
+            );
             if let Some(response) = self.cancelled(generation) {
                 return Ok(response);
             }
@@ -389,7 +394,8 @@ impl Session {
         let pages = u32::try_from(document.page_count()?)
             .map_err(|_| Error::limit("page count exceeds protocol range"))?;
         let handle = self.next_handle;
-        self.documents.insert(handle, document);
+        self.documents
+            .insert(handle, pagura::render_context(Arc::new(document)));
         self.next_handle += 1;
         self.retained_bytes = retained;
         Ok(Response::Open {
@@ -419,6 +425,7 @@ impl Session {
     fn document_at(&self, handle: u32, offset: usize) -> Result<&Document> {
         self.documents
             .get(&handle)
+            .map(pagura::RenderContext::document)
             .ok_or(Error::invalid_argument("unknown document handle").at(Position::Buffer(offset)))
     }
 

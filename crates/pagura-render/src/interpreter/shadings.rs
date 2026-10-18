@@ -12,7 +12,7 @@ impl Compiler<'_> {
             .and_then(Value::as_name)
             .ok_or(Error::syntax("shading name expected"))?;
         let value = resource(self.document, resources, b"Shading", name.as_bytes())?;
-        let context = crate::icc::ColorContext::new(self.document, &self.profiles);
+        let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
         let shading = Arc::new(crate::shading::Shading::parse(&context, resources, value)?);
         self.paint_charge(shading.mesh_bytes(), 0)?;
         if !self.visible {

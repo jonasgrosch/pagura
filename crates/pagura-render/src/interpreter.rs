@@ -53,7 +53,7 @@ pub(crate) fn compile_cached(
     fonts: &std::sync::Mutex<text::cache::FontCache>,
 ) -> Result<DisplayList> {
     let mut compiler = Compiler::new(document, page)?;
-    compiler.profiles = std::rc::Rc::new(Compilation {
+    compiler.compilation = std::rc::Rc::new(Compilation {
         colors: crate::icc::Cache::default(),
         provider,
         fonts: Some(fonts),
@@ -62,18 +62,11 @@ pub(crate) fn compile_cached(
     Ok(compiler.list)
 }
 
-// The shared compilation resources travel through the existing colour-context
-// field, so detached forms and masks inherit them with their existing Rc clone.
+// Resources shared by detached forms and masks within one compilation.
 struct Compilation<'a> {
     colors: crate::icc::Cache,
     provider: Option<&'a dyn pagura_text::Provider>,
     fonts: Option<&'a std::sync::Mutex<text::cache::FontCache>>,
-}
-impl std::ops::Deref for Compilation<'_> {
-    type Target = crate::icc::Cache;
-    fn deref(&self) -> &Self::Target {
-        &self.colors
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -117,7 +110,7 @@ impl Default for Graphics {
 
 struct Compiler<'a> {
     document: &'a Document,
-    profiles: std::rc::Rc<Compilation<'a>>,
+    compilation: std::rc::Rc<Compilation<'a>>,
     list: DisplayList,
     state: Graphics,
     saved: Vec<Graphics>,
@@ -141,7 +134,7 @@ impl<'a> Compiler<'a> {
     fn new(document: &'a Document, page: &Page) -> Result<Self> {
         Ok(Self {
             document,
-            profiles: std::rc::Rc::new(Compilation {
+            compilation: std::rc::Rc::new(Compilation {
                 colors: crate::icc::Cache::default(),
                 provider: None,
                 fonts: None,
@@ -170,7 +163,7 @@ impl<'a> Compiler<'a> {
         self.paint_charge(page.resources().retained_bytes(), 0)?;
         self.state.text.cache.borrow_mut().page_resources =
             Some(Arc::new(page.resources().clone()));
-        let context = crate::icc::ColorContext::new(self.document, &self.profiles);
+        let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
         self.list.group =
             crate::transparency::Attributes::parse(&context, page.dictionary(), page.resources())?
                 .unwrap_or_default();

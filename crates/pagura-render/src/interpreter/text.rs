@@ -15,7 +15,7 @@ use std::{cell::RefCell, rc::Rc};
 
 #[derive(Debug)]
 pub(super) struct TextState {
-    font: Option<Arc<PdfFont>>,
+    font: Option<Arc<cache::CachedFont>>,
     size: f64,
     character: f64,
     word: f64,
@@ -67,6 +67,7 @@ impl Default for TextState {
         }
     }
 }
+
 #[derive(Debug, Clone)]
 pub(super) struct TextObject {
     matrix: Transform,
@@ -89,6 +90,7 @@ impl Compiler<'_> {
         self.state.text.object = object;
         Ok(())
     }
+
     pub(super) fn restore_graphics(&mut self) -> Result<()> {
         if self
             .state
@@ -109,6 +111,7 @@ impl Compiler<'_> {
         self.state.text.procedure = procedure;
         Ok(())
     }
+
     pub(super) fn text_operator(
         &mut self,
         word: &[u8],
@@ -205,6 +208,7 @@ impl Compiler<'_> {
         });
         Ok(())
     }
+
     fn end_text(&mut self) -> Result<()> {
         let mut object = self
             .state
@@ -236,6 +240,7 @@ impl Compiler<'_> {
         }
         Ok(())
     }
+
     fn text_object(&mut self) -> Result<&mut TextObject> {
         self.state
             .text
@@ -243,17 +248,20 @@ impl Compiler<'_> {
             .as_mut()
             .ok_or(Error::syntax("text positioning or showing outside BT"))
     }
+
     fn text_line(&mut self, x: f64, y: f64) -> Result<()> {
         let object = self.text_object()?;
         object.line = checked(Transform::translate(x, y).then(object.line))?;
         object.matrix = object.line;
         Ok(())
     }
+
     fn text_translate(&mut self, x: f64, y: f64) -> Result<()> {
         let object = self.text_object()?;
         object.matrix = checked(Transform::translate(x, y).then(object.matrix))?;
         Ok(())
     }
+
     fn text_adjust(&mut self, amount: f64) -> Result<()> {
         let text = &self.state.text;
         let font = text
@@ -261,12 +269,13 @@ impl Compiler<'_> {
             .as_ref()
             .ok_or(Error::syntax("text showing requires a font"))?;
         let amount = -amount / 1000.0 * text.size;
-        if font.writing_mode() == WritingMode::Vertical {
+        if font.font.writing_mode() == WritingMode::Vertical {
             self.text_translate(0.0, amount)
         } else {
             self.text_translate(amount * text.horizontal, 0.0)
         }
     }
+
     fn show_value(&mut self, value: &Value, resources: &Dictionary) -> Result<()> {
         self.text_object()?;
         let bytes = value
@@ -278,7 +287,7 @@ impl Compiler<'_> {
             .font
             .clone()
             .ok_or(Error::syntax("text showing requires a font"))?;
-        let glyphs = font.decode(bytes).map_err(|mut e| {
+        let glyphs = font.font.decode(bytes).map_err(|mut e| {
             e.position = self.position;
             e
         })?;
@@ -292,7 +301,13 @@ impl Compiler<'_> {
         }
         Ok(())
     }
-    fn show_glyph(&mut self, font: &PdfFont, glyph: Glyph, resources: &Dictionary) -> Result<()> {
+
+    fn show_glyph(
+        &mut self,
+        font: &cache::CachedFont,
+        glyph: Glyph,
+        resources: &Dictionary,
+    ) -> Result<()> {
         let text = &self.state.text;
         let matrix = text
             .object
@@ -330,48 +345,13 @@ impl Compiler<'_> {
                     glyph,
                     matrix,
                 } if mode != 3 => {
-                    let key = (Arc::as_ptr(&program) as usize, glyph.0);
-                    let shared = self.profiles.fonts.and_then(|fonts| {
-                        fonts
-                            .lock()
-                            .unwrap_or_else(std::sync::PoisonError::into_inner)
-                            .outlines
-                            .get(&key)
-                            .cloned()
-                    });
-                    let cached = shared
-                        .or_else(|| self.state.text.cache.borrow().outlines.get(&key).cloned());
-                    let path = if let Some(path) = cached {
-                        path
-                    } else {
-                        let path = program.outline(glyph).map_err(|mut error| {
-                            // A font-buffer offset is not an offset in the
-                            // calling content sequence. Retain its call site.
-                            error.position = self.position;
-                            error
-                        })?;
-                        self.paint_charge(path_bytes(&path), 1)?;
-                        let path = Arc::new(path);
-                        if let Some(fonts) = self.profiles.fonts {
-                            fonts
-                                .lock()
-                                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                                .outline(font, key, Arc::clone(&path));
-                        }
-                        self.state
-                            .text
-                            .cache
-                            .borrow_mut()
-                            .outlines
-                            .insert(key, Arc::clone(&path));
-                        path
-                    };
+                    let path = self.glyph_outline(font, glyph, &program)?;
                     let transform = checked(matrix.then(transform))?;
                     self.outline_text(&path, transform, mode)?;
                 }
                 GlyphShape::Type3 { procedure, matrix } if mode != 3 && mode != 7 => {
                     self.type3_glyph(
-                        font,
+                        &font.font,
                         procedure,
                         checked(matrix.then(transform))?,
                         resources,
@@ -383,6 +363,7 @@ impl Compiler<'_> {
         }
         self.text_translate(dx, dy)
     }
+
     fn outline_text(&mut self, outline: &Path, transform: Transform, mode: u8) -> Result<()> {
         if outline.is_empty() {
             return Ok(());

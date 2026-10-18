@@ -66,12 +66,11 @@ impl RenderContext {
     /// # Errors
     /// As [`crate::compile_page`]. A page from another document is rejected.
     pub fn compile_page(&self, page: &Page) -> Result<DisplayList> {
-        if !self.document.pages()?.iter().any(|p| {
-            std::ptr::eq(p, page)
-                || (p.id() == page.id()
-                    && std::ptr::eq(p.resources(), page.resources())
-                    && p == page)
-        }) {
+        let owned = self.document.page(page.index())?;
+        if owned.id() != page.id()
+            || !std::ptr::eq(owned.resources(), page.resources())
+            || owned != page
+        {
             return Err(pagura_core::Error::invalid_argument(
                 "page does not belong to rendering context",
             ));
