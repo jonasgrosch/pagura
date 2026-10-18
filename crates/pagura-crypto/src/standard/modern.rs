@@ -6,7 +6,8 @@ use super::{
     Authority, FileKey, PermissionsCheck, PermissionsValidation, SecurityParams, aes_key, equal,
     file_key,
 };
-use crate::{Aes, Sha256, sha256, sha384, sha512};
+use crate::aes::Aes;
+use crate::{Sha256, sha256, sha384, sha512};
 
 // The parent validates parameter lengths before calling this module.
 // Algorithms 2.A and 2.B. All intermediate lengths are bounded: password <=127,
@@ -45,7 +46,7 @@ fn modern_hash(revision: u8, password: &[u8], salt: &[u8], user: &[u8]) -> Resul
         let iv = key[16..32]
             .try_into()
             .map_err(|_| Error::syntax("invalid revision 6 hash IV"))?;
-        aes.encrypt_cbc(iv, &mut encrypted)?;
+        aes.encrypt_cbc(iv, encrypted.as_chunks_mut::<16>().0);
         // 256 is 1 modulo 3: the first big-endian 128-bit integer reduces
         // to the byte sum without a wide integer conversion.
         let selector = encrypted[..16]
@@ -116,7 +117,7 @@ pub(super) fn authenticate(params: &SecurityParams, password: &[u8]) -> Result<F
             .as_ref()
             .ok_or_else(|| Error::syntax("encrypted file key is missing"))?;
         let mut key = encrypted.clone();
-        Aes::new256(&intermediate).decrypt_cbc(&[0; 16], &mut key)?;
+        Aes::new256(&intermediate).decrypt_cbc(&[0; 16], key.as_chunks_mut::<16>().0);
         let validation = validate_permissions(params, &key)?;
         let mut result = file_key(params, key, authority);
         result.permissions_validation = validation;
