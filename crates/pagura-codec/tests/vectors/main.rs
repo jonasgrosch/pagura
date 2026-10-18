@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Generated codec vectors (`corpus/generated/codec`): decoding against
 //! independent expected bytes, and encoder round trips.
 
