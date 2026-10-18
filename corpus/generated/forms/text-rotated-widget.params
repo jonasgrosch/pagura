@@ -1,0 +1,4 @@
+mode=text
+error=
+appearance=error:unsupported:form.widget-rotation
+changed=true

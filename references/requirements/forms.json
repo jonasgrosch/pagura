@@ -1,0 +1,91 @@
+{
+  "schema": 2,
+  "area": "forms",
+  "scope": "Fill and appearance rules checked against the locally supplied ISO 32000-2:2020 EC3 text, 12.7.4.3 and 12.7.5.2-12.7.5.4 (Tables 228-234), 12.5.5 and 12.5.6.19 (Table 192). Scalar-value length, CR normalization, auto-size, padding, line wrapping and selection colors are explicit reader policies. Rendering overrides and saving remain outside this data API. Null-as-absent entries follow 7.3.9. Text-state setup and the distinction between valid negative font sizes and unsupported generation were checked against 9.3 and 9.4.1 (Tables 102-105). Explicit state reset before DA is generation policy to keep layout independent of an old appearance prefix.",
+  "requirements": [
+    {
+      "id": "forms-fill-text",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.7.4.1; Table 227",
+        "12.7.5.3; Tables 231-232"
+      ],
+      "status": "implemented for plain text",
+      "tests": [
+        "forms/text-maxlen",
+        "forms/text-invalid-comb-0",
+        "forms/text-password",
+        "pagura-document forms::fill::tests"
+      ],
+      "gaps": "Rich text, XFA and actions remain unsupported or inert; DoNotScroll is checked during appearance generation. Passwords remain in caller-owned memory."
+    },
+    {
+      "id": "forms-fill-button",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.7.5.2; Tables 229-230",
+        "12.5.5"
+      ],
+      "status": "implemented",
+      "tests": [
+        "forms/radio-unison",
+        "forms/radio-export-opt",
+        "forms/radio-no-toggle-off",
+        "forms/checkbox-generated"
+      ],
+      "gaps": "An absent AP permits a generated ZaDb mark; existing state dictionaries are only selected, never replaced."
+    },
+    {
+      "id": "forms-fill-choice",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.7.5.4; Tables 233-234"
+      ],
+      "status": "implemented",
+      "tests": [
+        "forms/choice-multi",
+        "forms/choice-export",
+        "forms/choice-editable",
+        "forms/choice-ambiguous-export"
+      ],
+      "gaps": "V contains displayed names per Table 234; exports remain separate. Ambiguity requires explicit option indexes."
+    },
+    {
+      "id": "forms-appearance-update",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.7.4.3; Table 228",
+        "12.5.5",
+        "7.3.9",
+        "9.3; Tables 102-103",
+        "9.4.1; Table 105",
+        "14.6.1; Table 352"
+      ],
+      "status": "implemented as data",
+      "tests": [
+        "forms/text-update-existing",
+        "forms/text-need-appearances",
+        "forms/text-preserve-existing"
+      ],
+      "gaps": "No renderer override hook or saving. Composite font encoding, oblique Tm and updates containing inline images or multiple Tx sections fail explicitly. Existing Tx sections inside BT or crossing graphics scopes fail explicitly."
+    },
+    {
+      "id": "forms-appearance-style",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.5.6.19; Table 192",
+        "12.5.4; Table 168",
+        "12.7.4.3"
+      ],
+      "status": "implemented for solid, dashed and underline borders",
+      "tests": [
+        "forms/text-background-border",
+        "forms/text-quadding-0",
+        "forms/text-comb",
+        "forms/text-multiline-wrap",
+        "forms/text-auto-shrink"
+      ],
+      "gaps": "Rotated widgets, beveled/inset and rounded borders fail explicitly. Detailed layout and sizing are documented reader policy."
+    }
+  ]
+}

@@ -28,7 +28,7 @@ pub use pagura_core::{
     Diagnostic, DiagnosticKind, Dictionary, Error, ErrorKind, Feature, Limits, Name, ObjectId,
     Position, Recovery, Rect, Repair, Result, Value,
 };
-/// The interactive form's field model, read-only (12.7). Form actions are inert data.
+/// Interactive form source views and in-memory filling (12.7). Actions are inert data.
 pub use pagura_document::forms;
 /// Outlines, destinations, links, actions and page labels (12.3, 12.4, 12.5.6.5, 12.6).
 /// Actions are data: Pagura never follows a URI, opens a file or runs a script.
@@ -37,6 +37,8 @@ pub use pagura_document::navigation;
 pub use pagura_document::signatures;
 pub use pagura_document::{Document, IndirectObject, OpenOptions, Page, Rotation};
 pub use pagura_raster::{Pixmap, Rgba8};
+/// Form appearance programs and resources kept as data (12.7.4.3).
+pub use pagura_render::form_appearance;
 pub use pagura_render::{
     DisplayList, Provider, RenderContext, RenderOptions, SearchOptions, TextMatch, TextPage, Tile,
     compile_page_with, compile_page_with_text, device_size, render_page_with, render_tile_with,
@@ -111,6 +113,24 @@ pub fn render_tile(
     tile: Tile,
 ) -> Result<Pixmap> {
     compile_page(document, page)?.render_tile(options, tile)
+}
+
+/// Prepares normal widget appearances for an in-memory form session (12.7.4.3).
+/// Uses the feature-selected font provider, as [`compile_page`]. The returned
+/// programs and document-relative resources remain data; nothing is saved.
+///
+/// # Errors
+/// As [`form_appearance::prepare`], including explicit unsupported capabilities.
+pub fn prepare_form(
+    filler: &forms::FormFiller<'_>,
+) -> Result<Vec<form_appearance::WidgetAppearance>> {
+    #[cfg(feature = "bundled-data")]
+    return form_appearance::prepare(
+        filler,
+        Some(&pagura_data::Bundled::new(filler.document().limits())),
+    );
+    #[cfg(not(feature = "bundled-data"))]
+    form_appearance::prepare(filler, None)
 }
 
 /// Licence notices for font and CMap data, including opt-in CJK outlines,
