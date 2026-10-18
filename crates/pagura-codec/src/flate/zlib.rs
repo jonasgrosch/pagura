@@ -26,8 +26,8 @@ pub(super) fn window(cmf: u8, flg: u8) -> Option<usize> {
     let log = cmf >> 4;
     (is_deflate(cmf)
         && log <= MAX_WINDOW_LOG
-        && u16::from_be_bytes([cmf, flg]) % CHECK_MODULUS == 0)
-        .then(|| 1 << (log + 8))
+        && u16::from_be_bytes([cmf, flg]).is_multiple_of(CHECK_MODULUS))
+    .then_some(1 << (log + 8))
 }
 
 /// The header [`super::compress`] writes: a 32 KiB window, no preset
@@ -40,10 +40,7 @@ pub(super) const fn header(level: Level) -> [u8; HEADER] {
     };
     let flg = level << 6;
     let remainder = u16::from_be_bytes([cmf, flg]) % CHECK_MODULUS;
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "FCHECK is below 31 and fits the low five bits"
-    )]
+    // FCHECK is below 31, so it fits the low five bits.
     let check = ((CHECK_MODULUS - remainder) % CHECK_MODULUS) as u8;
     [cmf, flg | check]
 }
