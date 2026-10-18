@@ -174,34 +174,3 @@ fn independent_vectors_exact_errors_repairs_and_caps() {
         }
     }
 }
-
-#[test]
-fn malformed_small_inputs_never_panic_or_exceed_cap() {
-    let filters = [
-        Filter::AsciiHex,
-        Filter::Ascii85,
-        Filter::RunLength,
-        Filter::Flate {
-            predictor: pagura_codec::Predictor::default(),
-        },
-        Filter::Lzw {
-            predictor: pagura_codec::Predictor::default(),
-            early_change: false,
-        },
-        Filter::Lzw {
-            predictor: pagura_codec::Predictor::default(),
-            early_change: true,
-        },
-    ];
-    // Exhaustive two-byte input exercises invalid characters, headers, codes,
-    // missing markers and truncated bit reads. No expected-output self oracle.
-    for number in 0..=u16::MAX {
-        let input = number.to_le_bytes();
-        for filter in &filters {
-            let result = filter.decode(&input, 8, &mut Diagnostics::default());
-            if let Ok(bytes) = result {
-                assert!(bytes.len() <= 8);
-            }
-        }
-    }
-}

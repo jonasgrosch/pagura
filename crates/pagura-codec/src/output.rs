@@ -1,7 +1,8 @@
 //! Bounded output and incremental predictor reversal (ISO 32000-2 7.4.4.4).
 //! PNG arithmetic: Second Edition 9.2, Table 9.1, 9.3 and 9.4. TIFF sample
 //! arithmetic: TIFF 6.0 section 14, pp.64-65; PDF supplies high-bit-first packing.
-use crate::{Predictor, PredictorKind, syntax};
+use crate::report::syntax;
+use crate::{Predictor, PredictorKind};
 use pagura_core::Result;
 
 pub(crate) struct Output {
@@ -33,11 +34,11 @@ impl Output {
         let row_samples = usize::try_from(columns)
             .ok()
             .and_then(|columns| columns.checked_mul(usize::from(predictor.colors)))
-            .ok_or_else(|| crate::limit(0))?;
+            .ok_or_else(|| crate::report::limit(0))?;
         let row_bytes = row_samples
             .checked_mul(usize::from(predictor.bits_per_component))
             .map(|bits| bits.div_ceil(8))
-            .ok_or_else(|| crate::limit(0))?;
+            .ok_or_else(|| crate::report::limit(0))?;
         Ok(Self {
             bytes: Vec::new(),
             cap,
@@ -131,7 +132,7 @@ impl Output {
             let stride = self
                 .row_bytes
                 .checked_add(1)
-                .ok_or_else(|| crate::limit(offset))?;
+                .ok_or_else(|| crate::report::limit(offset))?;
             let until_tag = if self.png_filter.is_none() {
                 0
             } else {
@@ -149,7 +150,7 @@ impl Output {
             .len()
             .checked_add(raw - tags)
             .filter(|&n| n <= self.cap)
-            .ok_or_else(|| crate::limit(offset))?;
+            .ok_or_else(|| crate::report::limit(offset))?;
         Ok(())
     }
 
@@ -159,14 +160,14 @@ impl Output {
             .len()
             .checked_add(count)
             .filter(|&n| n <= self.cap)
-            .ok_or_else(|| crate::limit(offset))?;
+            .ok_or_else(|| crate::report::limit(offset))?;
         if required > self.bytes.capacity() {
             let target = required
                 .max(self.bytes.capacity().saturating_mul(2).max(64))
                 .min(self.cap);
             self.bytes
                 .try_reserve_exact(target - self.bytes.len())
-                .map_err(|_| crate::limit(offset))?;
+                .map_err(|_| crate::report::limit(offset))?;
         }
         Ok(())
     }
