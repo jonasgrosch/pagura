@@ -89,7 +89,7 @@ pub(crate) fn read(
     let mut attempt = Diagnostics::new(diagnostics.mode());
     match primary(bytes, header, limits, &mut attempt) {
         Ok(table) => {
-            diagnostics.extend(attempt.take());
+            diagnostics.absorb(attempt.take())?;
             Ok(table)
         }
         Err(error) if diagnostics.mode() == pagura_core::Recovery::Repair && structural(&error) => {
@@ -350,7 +350,7 @@ fn section(
             .as_dictionary()
             .cloned()
             .ok_or(Error::syntax("trailer must be a dictionary").at(parser.position()))?;
-        diagnostics.extend(parser.take_diagnostics());
+        diagnostics.absorb(parser.take_diagnostics())?;
         (entries, trailer, RevisionKind::Table)
     } else {
         let (entries, trailer) = crate::xref_stream::read(bytes, offset, limits, diagnostics)?;

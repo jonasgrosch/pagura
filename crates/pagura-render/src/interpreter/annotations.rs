@@ -172,17 +172,20 @@ impl Compiler<'_> {
         let form = body.dictionary()?;
         let (bbox, transform) = self.form_geometry(form)?;
         let Some(placement) = placement(bbox, transform, rect)? else {
-            let mut diagnostic = pagura_core::Diagnostic::new(
-                super::tags::APPEARANCE_EMPTY,
-                "zero-sized appearance or annotation rectangle; appearance skipped",
-            )
-            .at(self.position);
-            if let Some(id) = body.id() {
-                diagnostic = diagnostic.in_object(id).at(pagura_core::Position::Stream {
+            // An indirect appearance names its own stream; an inline one only
+            // the annotation's position.
+            let position = body
+                .id()
+                .map_or(self.position, |id| pagura_core::Position::Stream {
                     object: id,
                     offset: 0,
                 });
-            }
+            let diagnostic = pagura_core::Diagnostic::new(
+                super::tags::APPEARANCE_EMPTY,
+                "zero-sized appearance or annotation rectangle; appearance skipped",
+            )
+            .in_object_opt(body.id())
+            .at(position);
             return super::repair(self.document, diagnostic);
         };
         // Annotation appearances start independently of the page's final state.

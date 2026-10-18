@@ -122,7 +122,7 @@ impl FontProgram {
     ) -> Result<Self> {
         let mut local = Diagnostics::new(diagnostics.mode());
         let result = Self::parse_inner(data.into(), format, limits, &mut local);
-        diagnostics.extend(local.take());
+        diagnostics.absorb(local.take())?;
         result
     }
 
@@ -245,7 +245,7 @@ impl FontProgram {
             }
             other => other,
         };
-        diagnostics.extend(local.take());
+        diagnostics.absorb(local.take())?;
         result
     }
 
