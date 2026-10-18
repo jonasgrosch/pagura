@@ -6,6 +6,9 @@
 use pagura_core::{Error, Result};
 use std::borrow::Cow;
 
+use super::discard;
+use crate::secret::wipe;
+
 mod tables;
 
 const S_BASE: u32 = 0xac00;
@@ -63,21 +66,21 @@ fn decompose(input: &str) -> Result<Vec<char>> {
         let code = u32::from(ch);
         if (S_BASE..S_BASE + S_COUNT).contains(&code) {
             let index = code - S_BASE;
-            // Every value lies in the assigned Hangul Jamo scalar ranges.
-            for value in [L_BASE + index / N_COUNT, V_BASE + index % N_COUNT / T_COUNT]
+            // Every value lies in the Hangul Jamo block, so none is filtered.
+            for jamo in [L_BASE + index / N_COUNT, V_BASE + index % N_COUNT / T_COUNT]
                 .into_iter()
                 .chain((!index.is_multiple_of(T_COUNT)).then_some(T_BASE + index % T_COUNT))
+                .filter_map(char::from_u32)
             {
-                let jamo = char::from_u32(value)
-                    .ok_or_else(|| Error::syntax("invalid Unicode 3.2 Hangul table"))?;
                 append(&mut output, jamo)?;
             }
         } else if let Ok(index) = tables::DECOMPOSITIONS.binary_search_by_key(&ch, |&(c, _, _)| c) {
             let (_, offset, length) = tables::DECOMPOSITIONS[index];
             let start = usize::from(offset);
-            let sequence = tables::TEXT
-                .get(start..start + usize::from(length))
-                .ok_or_else(|| Error::syntax("invalid Unicode 3.2 decomposition table"))?;
+            // The generator checks that every entry lies on character boundaries.
+            let sequence = tables::TEXT.get(start..start + usize::from(length));
+            debug_assert!(sequence.is_some(), "decomposition {ch:?} outside the pool");
+            let sequence = sequence.unwrap_or_default();
             // The generator recursively expands compatibility decompositions.
             for item in sequence.chars() {
                 append(&mut output, item)?;
@@ -134,6 +137,7 @@ fn reorder(output: &mut [char]) -> Result<()> {
         }
         start = end;
     }
+    wipe(&mut scratch);
     Ok(())
 }
 
@@ -187,10 +191,24 @@ pub(super) fn nfkc32(input: Cow<'_, str>) -> Result<Cow<'_, str>> {
         return Ok(input);
     }
     let mut output = decompose(&input)?;
-    reorder(&mut output)?;
-    compose(&mut output);
+    let normalized = normalize(&input, &mut output);
+    wipe(&mut output);
+    Ok(match normalized? {
+        Some(normalized) => {
+            discard(input);
+            Cow::Owned(normalized)
+        }
+        None => input,
+    })
+}
+
+/// Reorders and composes the decomposed `output`; `None` if that reproduces
+/// `input`.
+fn normalize(input: &str, output: &mut Vec<char>) -> Result<Option<String>> {
+    reorder(output)?;
+    compose(output);
     if input.chars().eq(output.iter().copied()) {
-        return Ok(input);
+        return Ok(None);
     }
     let length = output.iter().try_fold(0_usize, |length, ch| {
         length
@@ -201,8 +219,8 @@ pub(super) fn nfkc32(input: Cow<'_, str>) -> Result<Cow<'_, str>> {
     normalized
         .try_reserve_exact(length)
         .map_err(|_| allocation_error())?;
-    normalized.extend(output);
-    Ok(Cow::Owned(normalized))
+    normalized.extend(output.iter());
+    Ok(Some(normalized))
 }
 
 #[cfg(test)]

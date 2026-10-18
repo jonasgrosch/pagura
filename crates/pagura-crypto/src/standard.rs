@@ -4,31 +4,25 @@
 //! `/ID` element into [`SecurityParams`], calls [`authenticate`] once, and
 //! decrypts every string and stream with the returned [`FileKey`].
 
-use pagura_core::{Error, Feature, ObjectId, Position, Result};
+use pagura_core::{Error, ObjectId, Position, Result, ResultExt};
 
 use crate::aes::{Aes, pkcs7_padding};
 use crate::rc4::Rc4;
+use crate::secret::wipe;
+use handler::{Conformance, Handler, KeyLength, Revision, restricts_revision3_permissions};
+use legacy::LegacyKey;
 
+mod handler;
 mod legacy;
 mod modern;
 mod saslprep;
-
-/// Retained compatibility tag; complete revision 6 SASLprep no longer emits it.
-pub const SASLPREP: Feature = Feature::new("security.saslprep");
-
-/// Stable feature tags for unsupported security algorithms.
-pub mod features {
-    use pagura_core::Feature;
-    /// A handler revision outside the implemented standard revisions.
-    pub const REVISION: Feature = Feature::new("security.revision");
-    /// The unpublished version 3 encryption algorithm.
-    pub const VERSION3: Feature = Feature::new("security.V3");
-}
 
 /// The Algorithm 13 outcome for an authenticated file key (ISO 32000-2 clause 7.6).
 ///
 /// Inconsistency does not invalidate password authentication. The document caller
 /// decides whether to reject it or report a repair through its recovery policy.
+/// Algorithm 13 either applies or not, and passes or fails, so the set is
+/// closed and the enum is exhaustive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PermissionsValidation {
     /// Revisions 2–4 have no authenticated `/Perms` entry.
@@ -43,7 +37,8 @@ pub enum PermissionsValidation {
     Inconsistent(PermissionsCheck),
 }
 
-/// Which Algorithm 13 consistency check failed, without disclosing decrypted data.
+/// Which Algorithm 13 consistency check failed, without disclosing decrypted
+/// data. The four checks are those of Algorithm 13, so the enum is exhaustive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PermissionsCheck {
     /// Bytes 0–3 disagree with the little-endian `/P` value.
@@ -57,7 +52,9 @@ pub enum PermissionsCheck {
 }
 
 /// Plain values from the `/Encrypt` dictionary (Tables 20 and 21) and the
-/// trailer `/ID`.
+/// trailer `/ID`, as the document layer read them. [`authenticate`] checks
+/// them. The fields mirror those tables, and the document layer builds the
+/// record with a struct literal, so it is exhaustive.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SecurityParams {
     /// `/V`: the algorithm version, 1–5.
@@ -87,7 +84,8 @@ pub struct SecurityParams {
     pub document_id: Vec<u8>,
 }
 
-/// The cipher a crypt filter applies (clause 7.6.6, `/CFM`).
+/// The cipher a crypt filter applies (clause 7.6.6, `/CFM`). Table 25 closes
+/// the set of methods, so the enum is exhaustive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CryptMethod {
     /// The standard `Identity` filter: pass bytes through (Table 26).
@@ -102,7 +100,8 @@ pub enum CryptMethod {
     AesV3,
 }
 
-/// Which password authenticated the document.
+/// Which password authenticated the document. A standard security handler
+/// has exactly a user and an owner password (7.6.4.1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Authority {
     /// The user password (often empty).
@@ -111,28 +110,57 @@ pub enum Authority {
     Owner,
 }
 
-/// The authenticated file encryption key.
-#[derive(Clone, PartialEq, Eq)]
+/// The authenticated file encryption key. It is not comparable, never
+/// printed, and its key material is cleared when dropped.
+#[derive(Clone)]
 pub struct FileKey {
-    key: Vec<u8>,
+    key: Key,
     authority: Authority,
-    revision: u8,
+    revision: Revision,
     permissions_validation: PermissionsValidation,
+}
+
+/// The key material a revision uses.
+#[derive(Clone)]
+enum Key {
+    /// Revisions 2–4: the file key for Algorithm 1's object keys.
+    Legacy(LegacyKey),
+    /// Revisions 5 and 6: AESV3 uses the file key directly, so it is expanded
+    /// once instead of for every string and stream.
+    Aes256(Box<Aes>),
 }
 
 /// Never prints key material.
 impl std::fmt::Debug for FileKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let length = match &self.key {
+            Key::Legacy(key) => key.len(),
+            Key::Aes256(_) => 32,
+        };
         f.debug_struct("FileKey")
-            .field("len", &self.key.len())
+            .field("len", &length)
             .field("authority", &self.authority)
-            .field("revision", &self.revision)
+            .field("revision", &u8::from(self.revision))
             .field("permissions_validation", &self.permissions_validation)
             .finish()
     }
 }
 
 impl FileKey {
+    const fn new(key: Key, authority: Authority, revision: Revision) -> Self {
+        Self {
+            key,
+            authority,
+            revision,
+            permissions_validation: PermissionsValidation::NotApplicable,
+        }
+    }
+
+    const fn with_permissions_validation(mut self, validation: PermissionsValidation) -> Self {
+        self.permissions_validation = validation;
+        self
+    }
+
     /// Which password produced this key.
     pub fn authority(&self) -> Authority {
         self.authority
@@ -155,8 +183,29 @@ impl FileKey {
     /// a cipher incompatible with this revision; `Limit` if allocation fails.
     /// Ciphertext positions are relative to `data`, including its IV.
     pub fn decrypt(&self, method: CryptMethod, object: ObjectId, data: &[u8]) -> Result<Vec<u8>> {
-        self.decrypt_inner(method, object, data)
-            .map_err(|error| error.in_object(object))
+        match (method, &self.key) {
+            (CryptMethod::Identity, _) => copy_bytes(data),
+            (CryptMethod::Rc4, Key::Legacy(key)) => {
+                let mut object_key = legacy::object_key(key.as_bytes(), method, object);
+                let length = (key.len() + 5).min(object_key.len());
+                let output = decrypt_rc4(&object_key[..length], data);
+                wipe(&mut object_key);
+                output
+            }
+            (CryptMethod::AesV2, Key::Legacy(key))
+                if self.revision == Revision::R4 && key.len() == KeyLength::MAX =>
+            {
+                let mut object_key = legacy::object_key(key.as_bytes(), method, object);
+                let aes = Aes::new128(&object_key);
+                wipe(&mut object_key);
+                decrypt_aes(&aes, data)
+            }
+            (CryptMethod::AesV3, Key::Aes256(aes)) => decrypt_aes(aes, data),
+            _ => Err(Error::syntax(
+                "crypt filter is incompatible with the security handler",
+            )),
+        }
+        .in_object(object)
     }
 
     /// Decrypts a legacy RC4 object whose writer zero-padded a short R4 file
@@ -171,71 +220,53 @@ impl FileKey {
     /// Returns Syntax unless this is an authenticated R4 key of 5–15 bytes;
     /// returns Limit on allocation failure. Errors carry the object identity.
     pub fn decrypt_legacy_zero_padded(&self, object: ObjectId, data: &[u8]) -> Result<Vec<u8>> {
-        if self.revision != 4 || !(5..16).contains(&self.key.len()) {
-            return Err(
-                Error::syntax("zero-padded object derivation requires a short R4 key")
-                    .in_object(object),
-            );
+        match &self.key {
+            Key::Legacy(key) if self.revision == Revision::R4 && key.len() < KeyLength::MAX => {
+                let mut object_key =
+                    legacy::object_key(key.zero_padded(), CryptMethod::Rc4, object);
+                let output = decrypt_rc4(&object_key, data);
+                wipe(&mut object_key);
+                output
+            }
+            _ => Err(Error::syntax(
+                "zero-padded object derivation requires a short R4 key",
+            )),
         }
-        let mut padded = [0; 16];
-        padded[..self.key.len()].copy_from_slice(&self.key);
-        let derived = legacy::object_key(&padded, CryptMethod::Rc4, object);
-        let mut output = copy_bytes(data).map_err(|error| error.in_object(object))?;
-        Rc4::new(&derived).apply_keystream(&mut output);
-        Ok(output)
+        .in_object(object)
     }
+}
 
-    fn decrypt_inner(&self, method: CryptMethod, object: ObjectId, data: &[u8]) -> Result<Vec<u8>> {
-        if method == CryptMethod::Identity {
-            return copy_bytes(data);
-        }
-        let object_key;
-        let key: &[u8] = match method {
-            CryptMethod::Rc4 | CryptMethod::AesV2 => {
-                if self.revision >= 5
-                    || (method == CryptMethod::AesV2
-                        && (self.revision != 4 || self.key.len() != 16))
-                {
-                    return Err(Error::syntax(
-                        "crypt filter is incompatible with the security handler",
-                    ));
-                }
-                object_key = legacy::object_key(&self.key, method, object);
-                &object_key[..(self.key.len() + 5).min(16)]
-            }
-            CryptMethod::AesV3 => {
-                if self.revision < 5 {
-                    return Err(Error::syntax("AESV3 requires revision 5 or 6"));
-                }
-                &self.key
-            }
-            CryptMethod::Identity => return copy_bytes(data),
-        };
-        if method == CryptMethod::Rc4 {
-            let mut output = copy_bytes(data)?;
-            Rc4::new(key).apply_keystream(&mut output);
-            return Ok(output);
-        }
-        let Some((iv, body)) = data
-            .split_first_chunk::<16>()
-            .filter(|(_, body)| !body.is_empty() && body.len().is_multiple_of(16))
-        else {
-            return Err(
-                Error::syntax("AES ciphertext requires an IV and whole padded blocks")
-                    .at(Position::Buffer(data.len())),
-            );
-        };
-        let mut output = copy_bytes(body)?;
-        let blocks = output.as_chunks_mut::<16>().0;
-        aes_key(key)?.decrypt_cbc(iv, blocks);
-        let mut padding = 0;
-        if let Some(last) = blocks.last() {
-            padding = pkcs7_padding(last)
-                .map_err(|error| error.within(Position::Buffer(data.len() - 16)))?;
-        }
-        output.truncate(output.len() - padding);
-        Ok(output)
-    }
+fn decrypt_rc4(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
+    let mut output = copy_bytes(data)?;
+    Rc4::new(key).apply_keystream(&mut output);
+    Ok(output)
+}
+
+/// 7.6.3.2: a 16-byte IV, then CBC blocks whose plaintext ends in PKCS #7
+/// padding.
+fn decrypt_aes(aes: &Aes, data: &[u8]) -> Result<Vec<u8>> {
+    let Some((iv, (middle, last))) = data
+        .split_first_chunk::<16>()
+        .and_then(|(iv, rest)| Some((iv, rest.split_last_chunk::<16>()?)))
+        .filter(|(_, (middle, _))| middle.len().is_multiple_of(16))
+    else {
+        return Err(
+            Error::syntax("AES ciphertext requires an IV and whole padded blocks")
+                .at(Position::Buffer(data.len())),
+        );
+    };
+    let mut output = buffer(middle.len() + last.len())?;
+    output.extend_from_slice(middle);
+    aes.decrypt_cbc(iv, output.as_chunks_mut::<16>().0);
+    // The padded last block is decrypted apart, chained to the block before it.
+    let mut block = *last;
+    aes.decrypt_cbc(
+        middle.last_chunk::<16>().unwrap_or(iv),
+        std::slice::from_mut(&mut block),
+    );
+    let padding = pkcs7_padding(&block).within(Position::Buffer(data.len() - 16))?;
+    output.extend_from_slice(&block[..16 - padding]);
+    Ok(output)
 }
 
 /// Authenticates a `password` (Algorithms 6/7 or 11/12), and derives
@@ -263,15 +294,10 @@ impl FileKey {
 ///
 /// Returns [`pagura_core::ErrorKind::Password`] if neither password
 /// matches or the input violates SASLprep/UTF-8 rules; `Unsupported` for
-/// revisions outside 2–6 or missing normalization data; `Syntax` for structurally
+/// revisions outside 2–6 or version 3; `Syntax` for structurally
 /// malformed parameters; and `Limit` if mapping or hashing allocation fails.
 pub fn authenticate(params: &SecurityParams, password: &[u8]) -> Result<FileKey> {
-    validate_params(params, false)?;
-    if params.revision >= 5 {
-        modern::authenticate(params, password)
-    } else {
-        legacy::authenticate(params, password)
-    }
+    authenticate_with(params, password, Conformance::Strict)
 }
 
 /// Authenticates an explicitly nonconforming legacy document: either R4 with
@@ -289,88 +315,32 @@ pub fn authenticate_legacy_compatibility(
     params: &SecurityParams,
     password: &[u8],
 ) -> Result<FileKey> {
-    let short = params.version == 4 && params.revision == 4 && (5..16).contains(&params.key_length);
-    let later_mask = (1u32 << 8) | (1 << 10) | (1 << 11);
-    let selector = params.version == 1
+    let short_key =
+        params.version == 4 && params.revision == 4 && (5..16).contains(&params.key_length);
+    let early_selector = params.version == 1
         && params.revision == 2
-        && u32::from_le_bytes(params.permissions.to_le_bytes()) & later_mask != later_mask;
-    if !short && !selector {
+        && restricts_revision3_permissions(params.permissions);
+    if !short_key && !early_selector {
         return Err(Error::syntax(
             "legacy compatibility requires an explicit revision or key-size deviation",
         ));
     }
-    validate_params(params, true)?;
-    legacy::authenticate(params, password)
+    authenticate_with(params, password, Conformance::LegacyCompatibility)
 }
 
-fn file_key(params: &SecurityParams, key: Vec<u8>, authority: Authority) -> FileKey {
-    FileKey {
-        key,
-        authority,
-        revision: params.revision,
-        permissions_validation: PermissionsValidation::NotApplicable,
+fn authenticate_with(
+    params: &SecurityParams,
+    password: &[u8],
+    conformance: Conformance,
+) -> Result<FileKey> {
+    match Handler::parse(params, conformance)? {
+        Handler::Legacy(handler) => legacy::authenticate(&handler, password),
+        Handler::Modern(handler) => modern::authenticate(&handler, password),
     }
 }
-fn validate_params(params: &SecurityParams, legacy_compatibility: bool) -> Result<()> {
-    if !(2..=6).contains(&params.revision) {
-        return Err(Error::unsupported(
-            features::REVISION,
-            "security handler revision is not implemented",
-        ));
-    }
-    if params.version == 3 {
-        return Err(Error::unsupported(
-            features::VERSION3,
-            "encryption version 3 is unpublished",
-        ));
-    }
-    // Table 21's R selector refers to the revision-3-only permissions in
-    // Table 22 (bits 9, 11 and 12). Obsolete bit 10 is ignored by readers.
-    let later_mask = (1u32 << 8) | (1 << 10) | (1 << 11);
-    let permission_bits = u32::from_le_bytes(params.permissions.to_le_bytes());
-    let later_restrictions = permission_bits & later_mask != later_mask;
-    let valid = match params.revision {
-        2 => {
-            params.version == 1
-                && params.key_length == 5
-                && (!later_restrictions || legacy_compatibility)
-        }
-        3 => {
-            (params.version == 1 && params.key_length == 5 && later_restrictions)
-                || (params.version == 2 && (5..=16).contains(&params.key_length))
-        }
-        4 => {
-            params.version == 4
-                && (params.key_length == 16
-                    || (legacy_compatibility && (5..16).contains(&params.key_length)))
-        }
-        _ => params.version == 5 && params.key_length == 32,
-    };
-    if !valid {
-        return Err(Error::syntax(
-            "incompatible encryption version, revision or key length",
-        ));
-    }
-    let hash_length = if params.revision >= 5 { 48 } else { 32 };
-    if params.owner_hash.len() != hash_length || params.user_hash.len() != hash_length {
-        return Err(Error::syntax("invalid security password hash length"));
-    }
-    if params.revision >= 5 {
-        for encrypted in [&params.owner_encrypted_key, &params.user_encrypted_key] {
-            if encrypted.as_ref().is_none_or(|bytes| bytes.len() != 32) {
-                return Err(Error::syntax("encrypted file key must contain 32 bytes"));
-            }
-        }
-        if params
-            .encrypted_permissions
-            .as_ref()
-            .is_none_or(|bytes| bytes.len() != 16)
-        {
-            return Err(Error::syntax("encrypted permissions must contain 16 bytes"));
-        }
-    }
-    Ok(())
-}
+
+/// Compares password hashes without an early exit. They are file data, not
+/// secrets, so this is defence in depth rather than a timing guarantee.
 fn equal(a: &[u8], b: &[u8]) -> bool {
     a.len() == b.len()
         && a.iter()
@@ -378,409 +348,20 @@ fn equal(a: &[u8], b: &[u8]) -> bool {
             .fold(0u8, |difference, (a, b)| difference | (a ^ b))
             == 0
 }
-fn copy_bytes(data: &[u8]) -> Result<Vec<u8>> {
+
+fn buffer(capacity: usize) -> Result<Vec<u8>> {
     let mut output = Vec::new();
     output
-        .try_reserve_exact(data.len())
+        .try_reserve_exact(capacity)
         .map_err(|_| Error::limit("cannot allocate decrypted data"))?;
+    Ok(output)
+}
+
+fn copy_bytes(data: &[u8]) -> Result<Vec<u8>> {
+    let mut output = buffer(data.len())?;
     output.extend_from_slice(data);
     Ok(output)
 }
-fn aes_key(key: &[u8]) -> Result<Aes> {
-    match key.len() {
-        16 => Ok(Aes::new128(
-            key.try_into()
-                .map_err(|_| Error::syntax("invalid AES-128 key"))?,
-        )),
-        32 => Ok(Aes::new256(
-            key.try_into()
-                .map_err(|_| Error::syntax("invalid AES-256 key"))?,
-        )),
-        _ => Err(Error::syntax("invalid AES key length")),
-    }
-}
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use pagura_core::ErrorKind;
-    use pagura_testkit::fixture;
-    use std::collections::BTreeMap;
-
-    pub(super) fn params(name: &str) -> SecurityParams {
-        params_in("crypto", name)
-    }
-    fn params_in(area: &str, name: &str) -> SecurityParams {
-        let bytes = fixture(area, &format!("{name}.params"));
-        let text = std::str::from_utf8(&bytes).unwrap();
-        let fields: BTreeMap<_, _> = text
-            .lines()
-            .map(|line| line.split_once('=').unwrap())
-            .collect();
-        let data = |name| -> Option<Vec<u8>> {
-            fields.get(name).map(|hex| {
-                hex.as_bytes()
-                    .as_chunks::<2>()
-                    .0
-                    .iter()
-                    .map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap())
-                    .collect()
-            })
-        };
-        SecurityParams {
-            version: fields["version"].parse().unwrap(),
-            revision: fields["revision"].parse().unwrap(),
-            key_length: fields["key_length"].parse().unwrap(),
-            permissions: fields["permissions"].parse().unwrap(),
-            encrypt_metadata: fields["encrypt_metadata"] == "1",
-            document_id: data("document_id").unwrap(),
-            owner_hash: data("owner_hash").unwrap(),
-            user_hash: data("user_hash").unwrap(),
-            owner_encrypted_key: data("owner_encrypted_key"),
-            user_encrypted_key: data("user_encrypted_key"),
-            encrypted_permissions: data("encrypted_permissions"),
-        }
-    }
-    fn method(name: &str) -> CryptMethod {
-        match fixture("crypto", &format!("{name}.method")).as_slice() {
-            b"V2" => CryptMethod::Rc4,
-            b"AESV2" => CryptMethod::AesV2,
-            b"AESV3" => CryptMethod::AesV3,
-            _ => unreachable!(),
-        }
-    }
-    #[test]
-    fn non_ascii_user_and_owner_authenticate_after_complete_saslprep() {
-        for name in [
-            "r6-saslprep-unicode-passwords",
-            "r6-saslprep-bidi-passwords",
-            "r6-saslprep-normalized-boundary",
-            "r6-saslprep-correction-passwords",
-        ] {
-            let parameters = params(name);
-            let expected = fixture("crypto", &format!("{name}.key"));
-            for (suffix, authority) in [("user", Authority::User), ("owner", Authority::Owner)] {
-                let password = fixture("crypto", &format!("{name}.{suffix}"));
-                let prepared = saslprep::prepare(std::str::from_utf8(&password).unwrap()).unwrap();
-                assert_eq!(
-                    &prepared.as_bytes()[..prepared.len().min(127)],
-                    fixture("crypto", &format!("{name}.prepared-{suffix}")),
-                    "{name}, {suffix}"
-                );
-                let key = authenticate(&parameters, &password).unwrap();
-                assert_eq!(key.authority(), authority, "{name}, {suffix}");
-                assert!(key.key == expected, "{name}, {suffix} key mismatch");
-                assert_eq!(
-                    key.permissions_validation(),
-                    PermissionsValidation::Validated
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn nonstandard_short_rc4_keys_require_the_explicit_compatibility_apis() {
-        let object = ObjectId::new(0x0102_0304, 513);
-        for name in ["r4-zero-padded-40", "r4-zero-padded-48"] {
-            let params = params_in("document", name);
-            assert_eq!(
-                authenticate(&params, b"").unwrap_err().kind,
-                ErrorKind::Syntax
-            );
-            let cipher = fixture("document", &format!("{name}.cipher"));
-            let plain = fixture("document", &format!("{name}.plain"));
-            for (password, authority) in [
-                (b"".as_slice(), Authority::User),
-                (b"owner".as_slice(), Authority::Owner),
-            ] {
-                let key = authenticate_legacy_compatibility(&params, password).unwrap();
-                assert_eq!(key.authority(), authority);
-                assert_eq!(key.key, fixture("document", &format!("{name}.key")));
-                assert_eq!(
-                    key.decrypt_legacy_zero_padded(object, &cipher).unwrap(),
-                    plain
-                );
-                assert_ne!(
-                    key.decrypt(CryptMethod::Rc4, object, &cipher).unwrap(),
-                    plain
-                );
-                assert_ne!(
-                    key.decrypt_legacy_zero_padded(ObjectId::new(object.number, 514), &cipher)
-                        .unwrap(),
-                    plain
-                );
-            }
-            assert_eq!(
-                authenticate_legacy_compatibility(&params, b"wrong")
-                    .unwrap_err()
-                    .kind,
-                ErrorKind::Password
-            );
-        }
-        for name in [
-            "r2-rc4-40-empty",
-            "r3-rc4-128-empty",
-            "r4-aesv2-empty",
-            "r6-aesv3-empty",
-        ] {
-            let params = params(name);
-            assert_eq!(
-                authenticate_legacy_compatibility(&params, b"")
-                    .unwrap_err()
-                    .kind,
-                ErrorKind::Syntax
-            );
-            let key = authenticate(&params, b"").unwrap();
-            let error = key
-                .decrypt_legacy_zero_padded(object, b"ciphertext")
-                .unwrap_err();
-            assert_eq!(error.kind, ErrorKind::Syntax);
-            assert_eq!(error.object, Some(object));
-        }
-    }
-
-    #[test]
-    fn independent_handler_oracles_all_revisions_and_authorities() {
-        for name in [
-            "r2-rc4-40-empty",
-            "r2-rc4-40-password",
-            "r3-rc4-128-empty",
-            "r3-rc4-128-password",
-            "r4-aesv2-empty",
-            "r4-aesv2-password",
-            "r4-rc4-filter-empty",
-            "r4-rc4-filter-password",
-            "r4-identity-strings-empty",
-            "r4-identity-strings-password",
-            "r4-clear-metadata-empty",
-            "r4-clear-metadata-password",
-            "r5-aesv3-empty",
-            "r5-aesv3-password",
-            "r6-aesv3-empty",
-            "r6-aesv3-password",
-            "r6-clear-metadata-empty",
-            "r6-clear-metadata-password",
-            "r3-version1",
-            "r3-key5",
-            "r3-key7",
-            "r2-long-password",
-            "r3-long-password",
-            "r5-long-password",
-            "r6-long-password",
-        ] {
-            let params = params(name);
-            for (suffix, authority) in [("user", Authority::User), ("owner", Authority::Owner)] {
-                let password = fixture("crypto", &format!("{name}.{suffix}"));
-                let key = authenticate(&params, &password).unwrap();
-                assert_eq!(key.authority(), authority, "{name}");
-                assert_eq!(key.key, fixture("crypto", &format!("{name}.key")), "{name}");
-                assert_eq!(
-                    key.permissions_validation(),
-                    if params.revision >= 5 {
-                        PermissionsValidation::Validated
-                    } else {
-                        PermissionsValidation::NotApplicable
-                    }
-                );
-                let object = ObjectId::new(0x0102_0304, 513);
-                let cipher = fixture("crypto", &format!("{name}.cipher"));
-                assert_eq!(
-                    key.decrypt(method(name), object, &cipher).unwrap(),
-                    fixture("crypto", &format!("{name}.plain")),
-                    "{name}"
-                );
-                assert_eq!(
-                    key.decrypt(CryptMethod::Identity, object, b"identity")
-                        .unwrap(),
-                    b"identity"
-                );
-                if matches!(method(name), CryptMethod::AesV2 | CryptMethod::AesV3) {
-                    for size in [0u8, 1, 15, 16, 17, 31, 32] {
-                        let data = fixture("crypto", &format!("{name}.size{size}"));
-                        assert_eq!(
-                            key.decrypt(method(name), ObjectId::new(7, 0), &data)
-                                .unwrap(),
-                            (0..size).collect::<Vec<_>>()
-                        );
-                    }
-                }
-            }
-            assert_eq!(
-                authenticate(&params, b"wrong-password").unwrap_err().kind,
-                ErrorKind::Password,
-                "{name}"
-            );
-        }
-    }
-    #[test]
-    fn dictionary_and_preprocessing_rejections_match_independent_oracles() {
-        for name in [
-            "r4-key7",
-            "r2-revision-permissions",
-            "r3-version1-permissions",
-            "r4-fixed-key-5",
-            "r4-fixed-key-15",
-            "r6-saslprep-ascii-control",
-            "r6-saslprep-control-after-truncation",
-            "r6-saslprep-unicode",
-            "r6-saslprep-invalid-utf8",
-            "r6-saslprep-invalid-utf8-after-truncation",
-        ] {
-            let parameters = params(name);
-            let password = fixture("crypto", &format!("{name}.password"));
-            let expected = fixture("crypto", &format!("{name}.error"));
-            let error = authenticate(&parameters, &password).unwrap_err();
-            if expected == b"syntax" {
-                assert_eq!(error.kind, ErrorKind::Syntax, "{name}");
-            } else if expected == b"password" {
-                assert_eq!(error.kind, ErrorKind::Password, "{name}");
-            } else {
-                panic!("unknown expected rejection for {name}");
-            }
-        }
-    }
-    #[test]
-    fn pdfdocencoding_and_raw_permission_bits_match_independent_oracles() {
-        for name in [
-            "r3-pdfdocencoding-euro",
-            "r3-permissions-reserved-low",
-            "r3-permissions-reserved-high",
-            "r3-permissions-accessibility-clear",
-            "r3-user-hash-tail",
-        ] {
-            let parameters = params(name);
-            for (suffix, authority) in [("user", Authority::User), ("owner", Authority::Owner)] {
-                let password = fixture("crypto", &format!("{name}.{suffix}"));
-                let key = authenticate(&parameters, &password).unwrap();
-                assert_eq!(key.authority(), authority, "{name}");
-                assert!(
-                    key.key == fixture("crypto", &format!("{name}.key")),
-                    "file key oracle mismatch: {name}"
-                );
-            }
-        }
-    }
-    #[test]
-    fn revision6_shared_password_has_owner_authority() {
-        let name = "r6-owner-precedence";
-        let parameters = params(name);
-        let password = fixture("crypto", &format!("{name}.user"));
-        let key = authenticate(&parameters, &password).unwrap();
-        assert_eq!(key.authority(), Authority::Owner);
-        assert!(
-            key.key == fixture("crypto", &format!("{name}.key")),
-            "file key oracle mismatch"
-        );
-    }
-    #[test]
-    fn saslprep_mapping_authenticates_before_truncating_password_bytes() {
-        for name in [
-            "r6-saslprep-mapping-removal",
-            "r6-saslprep-mapping-space",
-            "r6-saslprep-mapping-empty",
-            "r6-saslprep-mapping-before-truncation",
-        ] {
-            let parameters = params(name);
-            let password = fixture("crypto", &format!("{name}.user"));
-            let prepared = fixture("crypto", &format!("{name}.prepared"));
-            let mapped = saslprep::prepare(std::str::from_utf8(&password).unwrap()).unwrap();
-            assert_eq!(mapped.as_bytes(), prepared, "{name}");
-            let key = authenticate(&parameters, &password).unwrap();
-            assert_eq!(key.authority(), Authority::User, "{name}");
-            assert!(
-                key.key == fixture("crypto", &format!("{name}.key")),
-                "{name}"
-            );
-        }
-    }
-
-    #[test]
-    fn user_authentication_takes_precedence() {
-        for name in ["r3-same-password", "r5-same-password"] {
-            let password = fixture("crypto", &format!("{name}.user"));
-            let key = authenticate(&params(name), &password).unwrap();
-            assert_eq!(key.authority(), Authority::User);
-            assert_eq!(key.key, fixture("crypto", &format!("{name}.key")));
-        }
-    }
-    #[test]
-    fn invalid_parameters_fail_before_slicing_or_hashing() {
-        for name in [
-            "r2-rc4-40-empty",
-            "r3-rc4-128-empty",
-            "r4-aesv2-empty",
-            "r5-aesv3-empty",
-            "r6-aesv3-empty",
-        ] {
-            let good = params(name);
-            for field in 0..7 {
-                let mut bad = good.clone();
-                match field {
-                    0 => bad.version = 0,
-                    1 => bad.key_length = usize::MAX,
-                    2 => bad.owner_hash.clear(),
-                    3 => bad.user_hash.truncate(3),
-                    4 => bad.owner_encrypted_key = None,
-                    5 => bad.user_encrypted_key = Some(vec![0; 31]),
-                    _ => bad.encrypted_permissions = Some(vec![0; 15]),
-                }
-                if field < 4 || bad.revision >= 5 {
-                    assert_eq!(authenticate(&bad, b"").unwrap_err().kind, ErrorKind::Syntax);
-                }
-            }
-        }
-        let mut bad = params("r2-rc4-40-empty");
-        bad.revision = 1;
-        assert_eq!(
-            authenticate(&bad, b"").unwrap_err().feature(),
-            Some(features::REVISION)
-        );
-        bad.revision = 3;
-        bad.version = 3;
-        assert_eq!(
-            authenticate(&bad, b"").unwrap_err().feature(),
-            Some(features::VERSION3)
-        );
-        let modern = params("r6-aesv3-empty");
-        assert_eq!(
-            authenticate(&modern, "\u{00e9}".as_bytes())
-                .unwrap_err()
-                .kind,
-            ErrorKind::Password
-        );
-    }
-    #[test]
-    fn ciphertext_errors_include_object_and_buffer_context() {
-        let key = authenticate(&params("r4-aesv2-empty"), b"").unwrap();
-        let object = ObjectId::new(7, 3);
-        for length in 0..32 {
-            let error = key
-                .decrypt(CryptMethod::AesV2, object, &vec![0; length])
-                .unwrap_err();
-            assert_eq!(error.kind, ErrorKind::Syntax);
-            assert_eq!(error.object, Some(object));
-            assert!(matches!(error.position, Position::Buffer(_)));
-        }
-        let mut data = fixture("crypto", "r4-aesv2-empty.size0");
-        // The sole block is sixteen 0x10 bytes: changing IV[0] invalidates padding.
-        data[0] ^= 1;
-        let error = key
-            .decrypt(CryptMethod::AesV2, ObjectId::new(7, 0), &data)
-            .unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Syntax);
-        assert_eq!(error.position, Position::Buffer(31));
-        let legacy = authenticate(&params("r2-rc4-40-empty"), b"").unwrap();
-        assert!(legacy.decrypt(CryptMethod::AesV2, object, &[]).is_err());
-        assert!(legacy.decrypt(CryptMethod::AesV3, object, &[]).is_err());
-        let modern = authenticate(&params("r5-aesv3-empty"), b"").unwrap();
-        assert!(modern.decrypt(CryptMethod::Rc4, object, &[]).is_err());
-    }
-    #[test]
-    fn file_key_debug_is_redacted() {
-        let key = authenticate(&params("r2-rc4-40-empty"), b"").unwrap();
-        assert_eq!(
-            format!("{key:?}"),
-            "FileKey { len: 5, authority: User, revision: 2, permissions_validation: NotApplicable }"
-        );
-    }
-}
+mod tests;

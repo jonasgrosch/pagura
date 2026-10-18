@@ -5,6 +5,8 @@
 use pagura_core::{Error, Position, Result};
 use std::borrow::Cow;
 
+use crate::secret::wipe;
+
 mod normalization;
 mod tables;
 
@@ -96,9 +98,19 @@ fn validate_output(output: &str) -> Result<()> {
     Ok(())
 }
 
+/// Clears text that SASLprep allocated from a password before freeing it.
+fn discard(text: Cow<'_, str>) {
+    if let Cow::Owned(text) = text {
+        wipe(&mut text.into_bytes());
+    }
+}
+
 pub(super) fn prepare(input: &str) -> Result<Cow<'_, str>> {
     let normalized = normalization::nfkc32(map(input)?)?;
-    validate_output(&normalized)?;
+    if let Err(error) = validate_output(&normalized) {
+        discard(normalized);
+        return Err(error);
+    }
     Ok(normalized)
 }
 
