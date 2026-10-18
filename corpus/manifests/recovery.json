@@ -468,6 +468,26 @@
       "tolerance": 0
     },
     {
+      "id": "recovery/widget-unsigned-signature-background",
+      "kind": "pdf",
+      "description": "widget unsigned signature background",
+      "expected": "render",
+      "requirements": [
+        "recovery-widgets"
+      ],
+      "path": "corpus/generated/recovery/widget-unsigned-signature-background.pdf",
+      "sha256": "52fa890128d4679d97760cca735e4993edf52241f1f42ff57c3ea264878a5a62",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/widget-unsigned-signature-background.ppm",
+      "oracle_sha256": "a712f3267e81f28bdf1a4ae1367ab42b976ef224ec6cbea7b3c7701e0665f4cf",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
       "id": "recovery/widget-value",
       "kind": "pdf",
       "description": "widget-value",
