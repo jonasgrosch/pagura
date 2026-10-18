@@ -41,6 +41,41 @@
    "sha256": "c4513869bb7098d19838be4a1fd5d760843c5804bfe03bd6bbb20623ceb6e57d",
    "licence": "Unicode License V3 (data/unicode/LICENSE)"
   },
+  "foxit-symbol": {
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/4315a4be3168373e6c674fbf6723a20c50994f80/external/standard_fonts/FoxitSymbol.pfb",
+   "sha256": "47967d055530e7357088a08403115425643ec2cdfd6201ba8af0fbd7116c1539",
+   "licence": "BSD-3-Clause (data/fonts/LICENSE-FOXIT)"
+  },
+  "foxit-dingbats": {
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/4315a4be3168373e6c674fbf6723a20c50994f80/external/standard_fonts/FoxitDingbats.pfb",
+   "sha256": "845c752392b6c914fb989c75a08b7792b88f542d2499042ef2889f8c814a16ed",
+   "licence": "BSD-3-Clause (data/fonts/LICENSE-FOXIT)"
+  },
+  "foxit-license": {
+   "url": "https://raw.githubusercontent.com/mozilla/pdf.js/4315a4be3168373e6c674fbf6723a20c50994f80/external/standard_fonts/LICENSE_FOXIT",
+   "sha256": "b578cdd2345840ada550bd12519533812320d5f1d21cf4c1c7e1b1b0a31c98b7",
+   "licence": "BSD-3-Clause"
+  },
+  "source-han-sans-jp": {
+   "url": "https://github.com/adobe-fonts/source-han-sans/releases/download/2.005R/17_SourceHanSansJP.zip",
+   "sha256": "076a167394a2bf125a7ab13164a5ea1ce529b988d867c11052e83473b2a704f1",
+   "licence": "OFL-1.1 (data/cjk/LICENSE-OFL.txt)"
+  },
+  "source-han-sans-kr": {
+   "url": "https://github.com/adobe-fonts/source-han-sans/releases/download/2.005R/18_SourceHanSansKR.zip",
+   "sha256": "ada0398122ebfebcae9efc1c6bb1dc5512c03b8f54035a8f527cd82a3c0441ac",
+   "licence": "OFL-1.1 (data/cjk/LICENSE-OFL.txt)"
+  },
+  "source-han-sans-cn": {
+   "url": "https://github.com/adobe-fonts/source-han-sans/releases/download/2.005R/19_SourceHanSansCN.zip",
+   "sha256": "3a769d1b082ebd813cdb4c06ea57d29b340bce548edcc8e61976b78ca28e6236",
+   "licence": "OFL-1.1 (data/cjk/LICENSE-OFL.txt)"
+  },
+  "source-han-sans-tw": {
+   "url": "https://github.com/adobe-fonts/source-han-sans/releases/download/2.005R/20_SourceHanSansTW.zip",
+   "sha256": "2cbfe304a4d794725d5c1873e159b74d5f874ae4ea007a2dcaa18afbb0f00321",
+   "licence": "OFL-1.1 (data/cjk/LICENSE-OFL.txt)"
+  },
   "unicode-license": {
    "url": "https://www.unicode.org/license.txt",
    "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96",
@@ -98,12 +133,18 @@
   },
   "Symbol": {
    "metrics": "afm/Symbol.afm",
-   "outline": null
+   "outline": "fonts/FoxitSymbol.cff"
   },
   "ZapfDingbats": {
    "metrics": "afm/ZapfDingbats.afm",
-   "outline": null
+   "outline": "fonts/FoxitDingbats.cff"
   }
+ },
+ "cid_substitutes": {
+  "Adobe-Japan1": "cjk/SourceHanSansJP-Regular.otf",
+  "Adobe-GB1": "cjk/SourceHanSansCN-Regular.otf",
+  "Adobe-CNS1": "cjk/SourceHanSansTW-Regular.otf",
+  "Adobe-Korea1": "cjk/SourceHanSansKR-Regular.otf"
  },
  "files": {
   "afm/Courier-Bold.afm": "ad0150d4bedcc8877742bf94251fcec13e348dd599d4603f679d92027d1e6e99",
@@ -121,6 +162,11 @@
   "afm/Times-Italic.afm": "ed37fa2e6a67b5b17dfd47f36fc7e90df32891a4408860dbc8d4cbbe9959e242",
   "afm/Times-Roman.afm": "768e1cabea085d489a63da3e80b96bc5abf0ec98d3073c9b4d6ba76e7bccba64",
   "afm/ZapfDingbats.afm": "a32565c90afd1b57a7008fc567b78d95cf1c22adff5e086094d666d88b039859",
+  "cjk/LICENSE-OFL.txt": "fcac737e761ec63dbfbdce11030a1780161920d80315edba9c8beff1c2bac5a2",
+  "cjk/SourceHanSansCN-Regular.otf": "e2bc8a2e7f37474b774fff8db758681ece40bb6947a90d571bce9dd60671a8e4",
+  "cjk/SourceHanSansJP-Regular.otf": "40d1b760d1135539f6b6e0ee2b9f415de6d97576f7676840b06306c7c190c074",
+  "cjk/SourceHanSansKR-Regular.otf": "d8299926a5284f7461b46fa0617cc05d4f1fce8f034ffff78084225ce8b38071",
+  "cjk/SourceHanSansTW-Regular.otf": "5034bc32aa64bc93ce673fe05752724bb31fc6757c6bc1d23e925052c54fd2ac",
   "cmaps/Adobe-CNS1-7/B5pc-H": "7a2af623d66158fd9b2eae590d3b0373b2e73125f008befda26c40a6c5d396fb",
   "cmaps/Adobe-CNS1-7/B5pc-V": "f1b09f3752437a802f0992297a18361fd3bceed8e208cfbb97f2e6c035a29d2e",
   "cmaps/Adobe-CNS1-7/CNS-EUC-H": "61a5163ddf2dcbeed5efc4c8e9a612c7b3c5a0c062df75b2b3d73e3e46e7a299",
@@ -193,7 +239,10 @@
   "fonts/Cousine-BoldItalic.ttf": "d2803caf15358e14144aa95ca9b364669cd6c6a9b4d5447926e7cd4b6be5d5b4",
   "fonts/Cousine-Italic.ttf": "4338d67dc364f6655ae530294efc7e9a93adcec3a2f9524b219adb199c7c2f47",
   "fonts/Cousine-Regular.ttf": "42184656557104572298db92c12f31ed5055304facd9af229125219f2f3e65ac",
+  "fonts/FoxitDingbats.cff": "845c752392b6c914fb989c75a08b7792b88f542d2499042ef2889f8c814a16ed",
+  "fonts/FoxitSymbol.cff": "47967d055530e7357088a08403115425643ec2cdfd6201ba8af0fbd7116c1539",
   "fonts/LICENSE-APACHE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+  "fonts/LICENSE-FOXIT": "b578cdd2345840ada550bd12519533812320d5f1d21cf4c1c7e1b1b0a31c98b7",
   "fonts/NOTICE": "a8556a530e0254222cc0fa269509871e5453a8bf2456712f5836a39ad785cdb8",
   "fonts/Tinos-Bold.ttf": "f28af65ead96dfa99af139e0d4932fde6c602154116c49dd4db9057e4cf1f1f0",
   "fonts/Tinos-BoldItalic.ttf": "c7ddcea49e5b84fb50df15b512a6422a4868bed5724312b3421749188cecdc2b",

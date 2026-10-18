@@ -5,7 +5,8 @@
     python3 tools/bundled_data.py verify   # every file in data/ matches data/lock.json
 
 Font metrics, substitute outlines and predefined CMaps serve non-embedded
-fonts (ADR 0009); Unicode 3.2.0 normalization data serves SASLprep for
+fonts (ADR 0009); CJK substitute outlines serve non-embedded CID fonts behind
+the opt-in `cjk-fonts` feature; Unicode 3.2.0 normalization data serves SASLprep for
 revision 6 passwords (RFC 3454 section 4, ISO 32000-2 7.6.4.3.3).
 
 Sources are pinned by SHA-256. Archives are cached in $PAGURA_DATA_SOURCES
@@ -32,6 +33,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
 LOCK = DATA / "lock.json"
 MAX_ARCHIVE = 64 << 20
+PDFJS = "https://raw.githubusercontent.com/mozilla/pdf.js/4315a4be3168373e6c674fbf6723a20c50994f80/external/standard_fonts"
+SOURCE_HAN = "https://github.com/adobe-fonts/source-han-sans/releases/download/2.005R"
 
 
 @dataclass(frozen=True)
@@ -76,6 +79,39 @@ SOURCES = {
         "https://www.unicode.org/Public/3.2-Update/NormalizationTest-3.2.0.txt",
         "c4513869bb7098d19838be4a1fd5d760843c5804bfe03bd6bbb20623ceb6e57d",
         "NormalizationTest-3.2.0.txt", "Unicode License V3 (data/unicode/LICENSE)"),
+    # PDFium's metric-compatible Symbol and ZapfDingbats substitutes, as
+    # redistributed by pdf.js. Despite the upstream .pfb name, each file is a
+    # bare CFF font program.
+    "foxit-symbol": Source(
+        f"{PDFJS}/FoxitSymbol.pfb",
+        "47967d055530e7357088a08403115425643ec2cdfd6201ba8af0fbd7116c1539",
+        "FoxitSymbol.pfb", "BSD-3-Clause (data/fonts/LICENSE-FOXIT)"),
+    "foxit-dingbats": Source(
+        f"{PDFJS}/FoxitDingbats.pfb",
+        "845c752392b6c914fb989c75a08b7792b88f542d2499042ef2889f8c814a16ed",
+        "FoxitDingbats.pfb", "BSD-3-Clause (data/fonts/LICENSE-FOXIT)"),
+    "foxit-license": Source(
+        f"{PDFJS}/LICENSE_FOXIT",
+        "b578cdd2345840ada550bd12519533812320d5f1d21cf4c1c7e1b1b0a31c98b7",
+        "LICENSE_FOXIT", "BSD-3-Clause"),
+    # Region-specific subset OpenType/CFF fonts of Source Han Sans 2.005R;
+    # only each region's Regular weight is kept.
+    "source-han-sans-jp": Source(
+        f"{SOURCE_HAN}/17_SourceHanSansJP.zip",
+        "076a167394a2bf125a7ab13164a5ea1ce529b988d867c11052e83473b2a704f1",
+        "17_SourceHanSansJP.zip", "OFL-1.1 (data/cjk/LICENSE-OFL.txt)"),
+    "source-han-sans-kr": Source(
+        f"{SOURCE_HAN}/18_SourceHanSansKR.zip",
+        "ada0398122ebfebcae9efc1c6bb1dc5512c03b8f54035a8f527cd82a3c0441ac",
+        "18_SourceHanSansKR.zip", "OFL-1.1 (data/cjk/LICENSE-OFL.txt)"),
+    "source-han-sans-cn": Source(
+        f"{SOURCE_HAN}/19_SourceHanSansCN.zip",
+        "3a769d1b082ebd813cdb4c06ea57d29b340bce548edcc8e61976b78ca28e6236",
+        "19_SourceHanSansCN.zip", "OFL-1.1 (data/cjk/LICENSE-OFL.txt)"),
+    "source-han-sans-tw": Source(
+        f"{SOURCE_HAN}/20_SourceHanSansTW.zip",
+        "2cbfe304a4d794725d5c1873e159b74d5f874ae4ea007a2dcaa18afbb0f00321",
+        "20_SourceHanSansTW.zip", "OFL-1.1 (data/cjk/LICENSE-OFL.txt)"),
     "unicode-license": Source(
         "https://www.unicode.org/license.txt",
         "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96",
@@ -86,16 +122,26 @@ SOURCES = {
 # exclusions and the NFKC quick-check values.
 NORMALIZATION_PROPERTIES = ("Full_Composition_Exclusion", "NFKC_NO", "NFKC_MAYBE")
 
-# The standard 14 fonts (9.6.2.2): Adobe metrics, and a metric-compatible
-# Apache-2.0 outline where one exists. Symbol and ZapfDingbats have none.
+# The standard 14 fonts (9.6.2.2): Adobe metrics and a metric-compatible
+# outline, Apache-2.0 croscore TrueType or BSD-3-Clause Foxit CFF.
 STANDARD_14 = {
-    "Courier": "Cousine-Regular", "Courier-Bold": "Cousine-Bold",
-    "Courier-Oblique": "Cousine-Italic", "Courier-BoldOblique": "Cousine-BoldItalic",
-    "Helvetica": "Arimo-Regular", "Helvetica-Bold": "Arimo-Bold",
-    "Helvetica-Oblique": "Arimo-Italic", "Helvetica-BoldOblique": "Arimo-BoldItalic",
-    "Times-Roman": "Tinos-Regular", "Times-Bold": "Tinos-Bold",
-    "Times-Italic": "Tinos-Italic", "Times-BoldItalic": "Tinos-BoldItalic",
-    "Symbol": None, "ZapfDingbats": None,
+    "Courier": "Cousine-Regular.ttf", "Courier-Bold": "Cousine-Bold.ttf",
+    "Courier-Oblique": "Cousine-Italic.ttf", "Courier-BoldOblique": "Cousine-BoldItalic.ttf",
+    "Helvetica": "Arimo-Regular.ttf", "Helvetica-Bold": "Arimo-Bold.ttf",
+    "Helvetica-Oblique": "Arimo-Italic.ttf", "Helvetica-BoldOblique": "Arimo-BoldItalic.ttf",
+    "Times-Roman": "Tinos-Regular.ttf", "Times-Bold": "Tinos-Bold.ttf",
+    "Times-Italic": "Tinos-Italic.ttf", "Times-BoldItalic": "Tinos-BoldItalic.ttf",
+    "Symbol": "FoxitSymbol.cff", "ZapfDingbats": "FoxitDingbats.cff",
+}
+FOXIT = {"FoxitSymbol.cff": "foxit-symbol", "FoxitDingbats.cff": "foxit-dingbats"}
+
+# Substitute outlines for non-embedded CID fonts, by character collection.
+# Selection goes through Unicode (cid2unicode.txt), never the fonts' own CIDs.
+CJK = {
+    "Adobe-Japan1": ("source-han-sans-jp", "SubsetOTF/JP/SourceHanSansJP-Regular.otf"),
+    "Adobe-GB1": ("source-han-sans-cn", "SubsetOTF/CN/SourceHanSansCN-Regular.otf"),
+    "Adobe-CNS1": ("source-han-sans-tw", "SubsetOTF/TW/SourceHanSansTW-Regular.otf"),
+    "Adobe-Korea1": ("source-han-sans-kr", "SubsetOTF/KR/SourceHanSansKR-Regular.otf"),
 }
 
 # ISO 32000-2:2020, Table 116 (predefined CJK CMap names), without the
@@ -190,15 +236,26 @@ def selection() -> dict[str, bytes]:
             member = f"{name}.html" if name == "MustRead" else f"{name}.afm"
             out[f"afm/{member}"] = afm.read(member)
     with tarfile.open(fileobj=io.BytesIO(archive("croscorefonts")), mode="r:bz2") as fonts:
-        for outline in sorted({o for o in STANDARD_14.values() if o}):
-            member = fonts.extractfile(f"croscorefonts-1.31.0/{outline}.ttf")
-            out[f"fonts/{outline}.ttf"] = member.read()
+        for outline in sorted(o for o in STANDARD_14.values() if o.endswith(".ttf")):
+            member = fonts.extractfile(f"croscorefonts-1.31.0/{outline}")
+            out[f"fonts/{outline}"] = member.read()
     out["fonts/LICENSE-APACHE"] = (ROOT / "LICENSE-APACHE").read_bytes()
     out["fonts/NOTICE"] = (
         "Arimo, Tinos and Cousine (croscorefonts 1.31.0)\n"
         "Copyright 2010-2014 Google Inc. All Rights Reserved.\n"
         "Licensed under the Apache License, Version 2.0 (LICENSE-APACHE), as stated in\n"
         "each font's name table. The files are unmodified.\n").encode()
+    for outline, ident in FOXIT.items():
+        out[f"fonts/{outline}"] = archive(ident)
+    out["fonts/LICENSE-FOXIT"] = archive("foxit-license")
+    licences = set()
+    for ordering, (ident, member) in CJK.items():
+        with zipfile.ZipFile(io.BytesIO(archive(ident))) as fonts:
+            out[f"cjk/{member.rsplit('/', 1)[1]}"] = fonts.read(member)
+            licences.add(fonts.read("LICENSE.txt"))
+    if len(licences) != 1:
+        raise SystemExit("Source Han Sans archives carry different licence texts")
+    out["cjk/LICENSE-OFL.txt"] = licences.pop()
     with tarfile.open(fileobj=io.BytesIO(archive("cmap-resources")), mode="r:gz") as cmaps:
         prefix = "cmap-resources-20231115/"
         members = {m.name: m for m in cmaps.getmembers() if m.isfile()}
@@ -250,9 +307,10 @@ def build() -> None:
         "schema": 1,
         "sources": {ident: {"url": s.url, "sha256": s.sha256, "licence": s.licence}
                     for ident, s in SOURCES.items()},
-        "standard_14": {name: {"metrics": f"afm/{name}.afm",
-                               "outline": f"fonts/{outline}.ttf" if outline else None}
+        "standard_14": {name: {"metrics": f"afm/{name}.afm", "outline": f"fonts/{outline}"}
                         for name, outline in STANDARD_14.items()},
+        "cid_substitutes": {ordering: f"cjk/{member.rsplit('/', 1)[1]}"
+                            for ordering, (_, member) in CJK.items()},
         "files": {relative: sha256(data) for relative, data in sorted(files.items())},
     }
     LOCK.write_text(json.dumps(lock, indent=1) + "\n")
