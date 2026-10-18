@@ -21,6 +21,7 @@ pub(crate) struct Type1 {
     glyphs: Vec<Vec<u8>>,
     subrs: Vec<Vec<u8>>,
     names: BTreeMap<Name, GlyphId>,
+    glyph_names: Vec<Option<Name>>,
     encoding: Box<[Option<Name>; 256]>,
     matrix: Transform,
 }
@@ -114,31 +115,19 @@ impl Type1 {
         if !closed {
             return Err(bad(r.pos, "missing Type 1 closefile"));
         }
-        let CharStrings {
-            mut glyphs,
-            mut names,
-        } = chars;
-        if glyphs.is_empty() || !names.contains_key(b".notdef".as_slice()) {
-            return Err(bad(start, "Type 1 font has no .notdef charstring"));
-        }
-        // .notdef is glyph zero for the public API, regardless of dictionary order.
-        let notdef = usize::try_from(names[b".notdef".as_slice()].0)
-            .map_err(|_| bad(start, "invalid Type 1 glyph index"))?;
-        if notdef != 0 {
-            glyphs.swap(0, notdef);
-            for glyph in names.values_mut() {
-                if glyph.0 == 0 {
-                    glyph.0 = u32::try_from(notdef)
-                        .map_err(|_| crate::read::limit(start, "glyph index overflow"))?;
-                } else if usize::try_from(glyph.0).ok() == Some(notdef) {
-                    glyph.0 = 0;
-                }
-            }
-        }
+        chars.normalize(start)?;
+        let CharStrings { glyphs, names } = chars;
+        let glyph_names = crate::names::indexed(
+            glyphs.len(),
+            names.iter().map(|(name, glyph)| Ok((*glyph, name))),
+            limits,
+            start,
+        )?;
         Ok(Self {
             glyphs,
             subrs,
             names,
+            glyph_names,
             encoding,
             matrix,
         })
@@ -148,6 +137,11 @@ impl Type1 {
     }
     pub fn matrix(&self) -> Transform {
         self.matrix
+    }
+    pub fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
+        self.glyph_names
+            .get(usize::try_from(glyph.0).ok()?)?
+            .as_ref()
     }
     pub fn name(&self, name: &[u8]) -> Option<GlyphId> {
         self.names.get(name).copied()

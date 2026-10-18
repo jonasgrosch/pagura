@@ -23,7 +23,7 @@ pub(crate) struct Sfnt {
     glyph_count: u32,
     units: u16,
     cmaps: Vec<cmap::Cmap>,
-    names: BTreeMap<Name, GlyphId>,
+    names: names::PostNames,
 }
 
 impl Sfnt {
@@ -107,12 +107,12 @@ impl Sfnt {
             match names::parse(table(b"post")?, glyph_count, limits) {
                 Ok(names) => names,
                 Err(error) if clipped_post && crate::recovery::glyph_error(&error) => {
-                    BTreeMap::new()
+                    names::PostNames::default()
                 }
                 Err(error) => return Err(error),
             }
         } else {
-            BTreeMap::new()
+            names::PostNames::default()
         };
         Ok(Self {
             glyf,
@@ -157,11 +157,22 @@ impl Sfnt {
             self.cff.as_ref()?.advance(data, glyph, limits)
         }
     }
+    pub fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
+        self.cff
+            .as_ref()
+            .and_then(|cff| cff.glyph_name(glyph))
+            .or_else(|| {
+                self.names
+                    .by_glyph
+                    .get(usize::try_from(glyph.0).ok()?)?
+                    .as_ref()
+            })
+    }
     pub fn name(&self, name: &[u8]) -> Option<GlyphId> {
         self.cff
             .as_ref()
             .and_then(|cff| cff.name(name))
-            .or_else(|| self.names.get(name).copied())
+            .or_else(|| self.names.by_name.get(name).copied())
     }
     pub fn has_cmap(&self, subtable: CmapSubtable) -> bool {
         self.cmaps.iter().any(|c| c.selection == subtable)

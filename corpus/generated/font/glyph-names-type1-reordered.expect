@@ -1,0 +1,10 @@
+count 2
+name A 1
+glyph-name 0 .notdef
+glyph-name 1 A
+outline 1
+m 0 0
+l 100 0
+l 100 200
+l 0 200
+h

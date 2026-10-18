@@ -67,6 +67,8 @@ def simple_case(name, pairs, *, encoding=None, first=32, widths=None, matrix=b"[
         width = widths[c-first] if first <= c < first+len(widths) else 0
         objects.append(stream(b"%d 0 d0\n" % width))
     extra = b"/ToUnicode %d 0 R" % (5+len(objects)) if unicode_map else b""
+    if base == b"ZapfDingbats":
+        extra += b" /BaseFont /ZapfDingbats"
     font = type3(encoding, first, widths, matrix, extra, procedures.items())
     if unicode_map:
         objects.append(stream(unicode_map))

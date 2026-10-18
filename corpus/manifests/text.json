@@ -5189,7 +5189,7 @@
         },
         ".pdf": {
           "path": "corpus/generated/text/encoding-dingbats.pdf",
-          "sha256": "ab2019da4d03c8c52af91908479f4d23b7886538ef4f837cf63941874d525d08"
+          "sha256": "24fdc144c56f875731bfd6549af2b724c358f935ce65f72a803b90e886062c8c"
         }
       }
     },

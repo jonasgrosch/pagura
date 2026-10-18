@@ -1,7 +1,12 @@
 //! Length-delimited CharStrings extraction (Type 1 chapters 6 and 10).
 //! Duplicate names keep the first definition as reported recovery policy.
 use super::{Tokens, aliases, char_bytes};
-use crate::{GlyphId, read::cap, recovery::repair, tags};
+use crate::{
+    GlyphId,
+    read::{bad, cap},
+    recovery::repair,
+    tags,
+};
 use pagura_core::{Diagnostics, Limits, Name, Position, Result};
 use std::collections::{BTreeMap, btree_map::Entry};
 
@@ -11,6 +16,27 @@ pub(super) struct CharStrings {
     pub names: BTreeMap<Name, GlyphId>,
 }
 impl CharStrings {
+    pub fn normalize(&mut self, at: usize) -> Result<()> {
+        if self.glyphs.is_empty() || !self.names.contains_key(b".notdef".as_slice()) {
+            return Err(bad(at, "Type 1 font has no .notdef charstring"));
+        }
+        // .notdef is glyph zero for the public API, regardless of dictionary order.
+        let notdef = usize::try_from(self.names[b".notdef".as_slice()].0)
+            .map_err(|_| bad(at, "invalid Type 1 glyph index"))?;
+        if notdef != 0 {
+            self.glyphs.swap(0, notdef);
+            for glyph in self.names.values_mut() {
+                if glyph.0 == 0 {
+                    glyph.0 = u32::try_from(notdef)
+                        .map_err(|_| crate::read::limit(at, "glyph index overflow"))?;
+                } else if usize::try_from(glyph.0).ok() == Some(notdef) {
+                    glyph.0 = 0;
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn read(
         &mut self,
         r: &mut Tokens<'_>,

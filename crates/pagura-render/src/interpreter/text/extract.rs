@@ -11,6 +11,8 @@ use pagura_text::{
 };
 use std::collections::BTreeMap;
 
+mod unicode;
+
 #[derive(Clone)]
 pub(in crate::interpreter) struct Extraction {
     output: Rc<RefCell<Output>>,
@@ -24,6 +26,7 @@ struct Output {
     fonts: BTreeMap<usize, Font>,
     bytes: usize,
     show: usize,
+    name_work: usize,
 }
 struct Font {
     index: usize,
@@ -214,8 +217,13 @@ impl Compiler<'_> {
         if output.text.glyphs.len() >= self.document.limits().value_nodes {
             return Err(Error::limit("positioned glyph count exceeded"));
         }
+        let unicode = output.unicode(
+            std::ptr::from_ref(font).addr(),
+            glyph,
+            self.document.limits(),
+        )?;
         output.charge(
-            size_of::<PositionedGlyph>() * 2 + glyph.unicode.as_ref().map_or(0, String::len),
+            size_of::<PositionedGlyph>() * 2 + unicode.as_deref().map_or(0, str::len),
             self.document.limits(),
         )?;
         let info = output
@@ -281,7 +289,7 @@ impl Compiler<'_> {
             return Err(Error::syntax("text selection geometry overflow"));
         }
         let record = PositionedGlyph {
-            unicode: glyph.unicode.clone(),
+            unicode: unicode.map(std::borrow::Cow::into_owned),
             font: info.index,
             size: text.size,
             writing_mode: font.font.writing_mode(),
@@ -387,6 +395,25 @@ impl Compiler<'_> {
     }
 }
 impl Output {
+    fn unicode<'a>(
+        &mut self,
+        font: usize,
+        glyph: &'a Glyph,
+        limits: pagura_core::Limits,
+    ) -> Result<Option<std::borrow::Cow<'a, str>>> {
+        let info = self
+            .fonts
+            .get(&font)
+            .ok_or(Error::syntax("missing extraction font"))?;
+        let base = self
+            .text
+            .fonts
+            .get(info.index)
+            .and_then(|font| font.base_name.as_ref())
+            .map_or(b"".as_slice(), Name::as_bytes);
+        unicode::recover(glyph, base, &mut self.name_work, limits)
+    }
+
     fn charge(&mut self, bytes: usize, limits: pagura_core::Limits) -> Result<()> {
         self.bytes = self
             .bytes

@@ -13,6 +13,7 @@ impl Cff {
             .saturating_add(vector(&self.global))
             .saturating_add(vector(&self.select))
             .saturating_add(names(&self.names))
+            .saturating_add(crate::names::heap_bytes(&self.glyph_names))
             .saturating_add(self.cids.as_ref().map_or(0, tree))
             .saturating_add(self.encoding.as_deref().map_or(0, encoding))
             .saturating_add(nested(&self.variations))

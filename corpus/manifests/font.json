@@ -6187,11 +6187,350 @@
       ]
     },
     {
+      "id": "font/descriptor-both-post",
+      "kind": "vector",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-both-post.expect",
+          "sha256": "cc1aa3f6d2b365055c14bc1a7357b8341c3bf1e71d4321a2df8a12b79950b304"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-both-post.pdf",
+          "sha256": "010037e4b6bd4aa2b9e47727ce6700ad792a7e8a04de5bee0696a5fe37a8718b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-both-post.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-both-post.strict",
+          "sha256": "b823c5af7647df9943f5d1759f3f720a8993cb293805b209345be9313a80aa8c"
+        }
+      },
+      "repairs": [
+        "font.descriptor-flags"
+      ]
+    },
+    {
+      "id": "font/descriptor-symbolic-latin-post",
+      "kind": "vector",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-symbolic-latin-post.expect",
+          "sha256": "cc1aa3f6d2b365055c14bc1a7357b8341c3bf1e71d4321a2df8a12b79950b304"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-symbolic-latin-post.pdf",
+          "sha256": "0790d439c8113191c90ffb618420905589176622a4a3019632fb7c677644ad3b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-symbolic-latin-post.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-symbolic-latin-post.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
+    },
+    {
+      "id": "font/descriptor-post-agl-components",
+      "kind": "vector",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-post-agl-components.expect",
+          "sha256": "1fcaa78a3fc4e4dcdb225a5b1c18da3b81d2707adb7c461840ce4d7d0805bebb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-post-agl-components.pdf",
+          "sha256": "d5275f69a6ac893a57da905b63177786abc3abba883f2f941eb1ca8a0bb0f84c"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-post-agl-components.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-post-agl-components.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
+    },
+    {
+      "id": "font/descriptor-post-tounicode-priority",
+      "kind": "vector",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-post-tounicode-priority.expect",
+          "sha256": "0677873ebb32583566798883d8db83ce77b0c1ee6779bca216f1c9057597f85e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-post-tounicode-priority.pdf",
+          "sha256": "fb0f272bc62567a7032e3f6e92d5d97693616394fa9c8990ec910b162c4c65a8"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-post-tounicode-priority.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-post-tounicode-priority.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
+    },
+    {
+      "id": "font/descriptor-post-encoding-priority",
+      "kind": "vector",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-post-encoding-priority.expect",
+          "sha256": "6f4252e0f666eacc25d6836adf31bd488cf79587fe8b2c6c1743f29c428cb14e"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-post-encoding-priority.pdf",
+          "sha256": "48c3831d563d5e5f9ec01572fb6779f6af406d871142007fff8438400d824f6b"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-post-encoding-priority.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-post-encoding-priority.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
+    },
+    {
+      "id": "font/descriptor-post-unknown-name",
+      "kind": "vector",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-post-unknown-name.expect",
+          "sha256": "01d953ac151148fe175519f5efaf91f428495596abc5aa19dbb6a75b651def9f"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-post-unknown-name.pdf",
+          "sha256": "74492730bc57c76f7a57ec5e776d968f8dbd2c64685401dc9ed39543af21fec4"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-post-unknown-name.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-post-unknown-name.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
+    },
+    {
+      "id": "font/descriptor-post-nondingbats-a12",
+      "kind": "vector",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-post-nondingbats-a12.expect",
+          "sha256": "d29d22d581654ed79d6512e79d4c178a67f3161b5f80a7cae1aeebe0204c9a86"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-post-nondingbats-a12.pdf",
+          "sha256": "3def17e988ed98013aa3834312f2364626f69e91a824f800eb608274b06e622a"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-post-nondingbats-a12.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-post-nondingbats-a12.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
+    },
+    {
+      "id": "font/descriptor-post-nondingbats-a19",
+      "kind": "vector",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-post-nondingbats-a19.expect",
+          "sha256": "d29d22d581654ed79d6512e79d4c178a67f3161b5f80a7cae1aeebe0204c9a86"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-post-nondingbats-a19.pdf",
+          "sha256": "23969b41ee2d1f5dc83b35c62c6718eaa62492691a2a4d5562a4cf96cd9b7256"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-post-nondingbats-a19.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-post-nondingbats-a19.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
+    },
+    {
+      "id": "font/descriptor-post-zapfdingbats-a12",
+      "kind": "vector",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-post-zapfdingbats-a12.expect",
+          "sha256": "67b8f1c0eea7df67f0089fe077283e08a36da52d54e0be4c832fddfc762439ef"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-post-zapfdingbats-a12.pdf",
+          "sha256": "9de760ff05780006f1f95c8d6971cb3ccfc137ca7e25d90e32c775f3eea72c26"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-post-zapfdingbats-a12.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-post-zapfdingbats-a12.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
+    },
+    {
+      "id": "font/descriptor-post-zapfdingbats-a19",
+      "kind": "vector",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-post-zapfdingbats-a19.expect",
+          "sha256": "d6b077102d44ff913b478312ecdd458bcfb01fea4367d0fe22f8a74222258514"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-post-zapfdingbats-a19.pdf",
+          "sha256": "f30b15730d849ae5b5606990f23b4d60e19bf27c457442f9d3db80540f0a16ce"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-post-zapfdingbats-a19.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-post-zapfdingbats-a19.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
+    },
+    {
+      "id": "font/descriptor-post-dingbats-a19",
+      "kind": "vector",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-post-dingbats-a19.expect",
+          "sha256": "d6b077102d44ff913b478312ecdd458bcfb01fea4367d0fe22f8a74222258514"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-post-dingbats-a19.pdf",
+          "sha256": "ec5afccecb8d205ffefef8bf58e13004f40fdbbb22319d8009c591f1bbfb1e77"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-post-dingbats-a19.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-post-dingbats-a19.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
+    },
+    {
+      "id": "font/descriptor-post-nondingbats-a12-encoding",
+      "kind": "vector",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
+      "requirements": [
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/descriptor-post-nondingbats-a12-encoding.expect",
+          "sha256": "e7f59895aef4979cf007b844c09ce3d0fc4ae0fd362540def3d83e7b56ba3bce"
+        },
+        ".pdf": {
+          "path": "corpus/generated/font/descriptor-post-nondingbats-a12-encoding.pdf",
+          "sha256": "5383ba6dc19cfba0a64159b76692c9dff2b87e2452eaf00b6b97d56912749c59"
+        },
+        ".ppm": {
+          "path": "corpus/generated/font/descriptor-post-nondingbats-a12-encoding.ppm",
+          "sha256": "c3bd839cc94a76222939524078110b8c0d89598f4de7b89620338475f8c5a52f"
+        },
+        ".strict": {
+          "path": "corpus/generated/font/descriptor-post-nondingbats-a12-encoding.strict",
+          "sha256": "009d962905920ad0e3ff46c6987fad36418982deb81796fd1f58e326d167c268"
+        }
+      },
+      "repairs": []
+    },
+    {
       "id": "font/descriptor-both",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6218,9 +6557,10 @@
     {
       "id": "font/descriptor-neither",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6247,9 +6587,10 @@
     {
       "id": "font/descriptor-symbolic-latin",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6274,9 +6615,10 @@
     {
       "id": "font/descriptor-nonsymbolic-symbol",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6301,9 +6643,10 @@
     {
       "id": "font/descriptor-nonsymbolic-symbol-encoding",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6328,9 +6671,10 @@
     {
       "id": "font/descriptor-symbolic-latin-differences",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6355,9 +6699,10 @@
     {
       "id": "font/descriptor-nonsymbolic-latin-differences",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6382,9 +6727,10 @@
     {
       "id": "font/descriptor-symbol-post-named",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6409,9 +6755,10 @@
     {
       "id": "font/descriptor-valid-latin",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6436,9 +6783,10 @@
     {
       "id": "font/descriptor-valid-symbol",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6463,9 +6811,10 @@
     {
       "id": "font/descriptor-ignored-encoding-cycle",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6490,9 +6839,10 @@
     {
       "id": "font/descriptor-both-ambiguous",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6519,9 +6869,10 @@
     {
       "id": "font/descriptor-neither-ambiguous",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6548,9 +6899,10 @@
     {
       "id": "font/descriptor-ambiguous-symbol",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6575,9 +6927,10 @@
     {
       "id": "font/descriptor-unicode-no-encoding",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6602,9 +6955,10 @@
     {
       "id": "font/descriptor-type1-symbolic-latin",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6629,9 +6983,10 @@
     {
       "id": "font/descriptor-type1-nonsymbolic-symbol",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6656,9 +7011,10 @@
     {
       "id": "font/descriptor-type1-nonsymbolic-override",
       "kind": "vector",
-      "description": "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+      "description": "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
       "requirements": [
-        "font-descriptor-flags"
+        "font-descriptor-flags",
+        "font-glyph-name-unicode"
       ],
       "files": {
         ".expect": {
@@ -6679,6 +7035,120 @@
         }
       },
       "repairs": []
+    },
+    {
+      "id": "font/glyph-names-post-alias",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-program-glyph-names"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/glyph-names-post-alias.expect",
+          "sha256": "decd20abbfc48ec137bd1cca4014786d2ecf3c4a2753ee1ac9ed58c94ebe1e68"
+        },
+        ".font": {
+          "path": "corpus/generated/font/glyph-names-post-alias.font",
+          "sha256": "c575f80b0e07f608ad9d1afe18f3a88e86e09099ac3a9c28afc6bff29e43db38"
+        }
+      },
+      "format": "truetype"
+    },
+    {
+      "id": "font/glyph-names-post-standard",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-program-glyph-names"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/glyph-names-post-standard.expect",
+          "sha256": "8bf705660777d1bfc896b8e68105a06827f27934a3d71b5caad44b9a53f0a048"
+        },
+        ".font": {
+          "path": "corpus/generated/font/glyph-names-post-standard.font",
+          "sha256": "42d43d8a4e69e4a9c47fba32364008013d69a523c83d5517738bc9f1e381ee36"
+        }
+      },
+      "format": "truetype"
+    },
+    {
+      "id": "font/glyph-names-type1-reordered",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-program-glyph-names"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/glyph-names-type1-reordered.expect",
+          "sha256": "cd852f7f40e1f1b65d94debbad239747a4e5a473a7e8736b469ee5e8ecf9d256"
+        },
+        ".font": {
+          "path": "corpus/generated/font/glyph-names-type1-reordered.font",
+          "sha256": "637832aaa774bbea2d4f60c72692f97972ef3b689552e9713e65f124456e4463"
+        }
+      },
+      "format": "type1"
+    },
+    {
+      "id": "font/glyph-names-cff",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-program-glyph-names"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/glyph-names-cff.expect",
+          "sha256": "32ab18ee515eb8b8acbc9eca9730dcf5ba4696bf5f149bda4b7d34a185cc148f"
+        },
+        ".font": {
+          "path": "corpus/generated/font/glyph-names-cff.font",
+          "sha256": "7680ed5bb2d3e70fe869c2a41b72aef36f1284e1dfec0f827e571f4825440f0a"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/glyph-names-cid",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-program-glyph-names"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/glyph-names-cid.expect",
+          "sha256": "420f36c804ae399ac980044d1f6920fa63e3266c5dc1992c0a3d1176bd4c5f2b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/glyph-names-cid.font",
+          "sha256": "164c670a2bbe2f95c947d2547f53c2d00dfde079559f27ea5a98f706c8d1f2f4"
+        }
+      },
+      "format": "cff"
+    },
+    {
+      "id": "font/glyph-names-cff2",
+      "kind": "vector",
+      "description": "Independent font writer and analytic glyph-space expectations",
+      "requirements": [
+        "font-program-glyph-names"
+      ],
+      "files": {
+        ".expect": {
+          "path": "corpus/generated/font/glyph-names-cff2.expect",
+          "sha256": "420f36c804ae399ac980044d1f6920fa63e3266c5dc1992c0a3d1176bd4c5f2b"
+        },
+        ".font": {
+          "path": "corpus/generated/font/glyph-names-cff2.font",
+          "sha256": "dc446b113adcd2e4c58f5c66c73b1c1be362f5497abf94e43f8922191f435635"
+        }
+      },
+      "format": "cff"
     },
     {
       "id": "font/cff-nonfinite",

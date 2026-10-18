@@ -276,3 +276,22 @@ feeds painting and positioned extraction. CID flag-pair normalization leaves
 CID/CMap selection unchanged. Programs are parsed once, without a speculative
 glyph decode or repertoire scan. Direct pagura-text PdfFont::load calls retain
 strict flag-pair validation.
+
+`FontProgram::glyph_name` looks up a selected glyph's existing program name
+without changing selection. It uses TrueType `post`, or a name-keyed Type 1/CFF
+charset; unnamed glyphs stay unknown. Names are indexed once within font byte
+budgets and included in `retained_bytes`; lookup is constant time and clones
+share the parsed index. Repeated post names remain available for each glyph.
+
+Positioned extraction can use that name through the text crate's existing AGL
+converter when ToUnicode and encoding mappings provide no Unicode (9.10.2,
+final paragraph: reader-selected fallback). This is extraction policy, not a
+repair. It runs only during text recording, preserves all existing mappings,
+and never changes the chosen glyph, advances or painting. Composite collection
+mappings also retain priority. Unknown names and nameless programs remain
+unknown; Unicode is not guessed from raw bytes or by inverting cmap tables.
+
+The separate ZapfDingbats glyph-name list applies only to recognized
+ZapfDingbats/Dingbats base fonts, including their supported subset/style
+spellings (Annex D.6). Other fonts use AGL alone; names such as `a12` do not
+acquire a Dingbats meaning. Glyph-name index errors retain the source offset.

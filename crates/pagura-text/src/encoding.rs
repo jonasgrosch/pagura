@@ -1,6 +1,6 @@
 //! Simple encodings and the glyph-name algorithm (9.6.5, 9.10.2, Annex D).
 use crate::tables;
-use pagura_core::{Error, Limits, Name, Result, Value};
+use pagura_core::{Dictionary, Error, Limits, Name, Result, Value};
 use pagura_document::Document;
 
 pub(crate) type Encoding = [Option<Name>; 256];
@@ -12,14 +12,15 @@ pub(crate) struct SimpleMapping {
 }
 
 impl SimpleMapping {
-    pub(crate) fn new(names: Encoding, limits: Limits) -> Result<Self> {
+    pub(crate) fn new(names: Encoding, limits: Limits, base_font: &[u8]) -> Result<Self> {
+        let dingbats = crate::substitute::standard_name(base_font) == Some(b"ZapfDingbats");
         let mut work = 0;
         let mut bytes = 0;
         let mut texts = std::array::from_fn(|_| None);
         for (slot, name) in texts.iter_mut().zip(&names) {
             if let Some(name) = name {
                 crate::cmap::charge(&mut work, name.len(), limits.operations)?;
-                *slot = unicode(name.as_bytes());
+                *slot = unicode_with(name.as_bytes(), dingbats);
                 crate::cmap::charge(
                     &mut bytes,
                     slot.as_ref().map_or(0, String::len),
@@ -32,6 +33,12 @@ impl SimpleMapping {
             unicode: texts,
         })
     }
+}
+
+pub(crate) fn font_name<'a>(document: &'a Document, font: &'a Dictionary) -> Result<&'a [u8]> {
+    Ok(crate::objects::optional(document, font, b"BaseFont")?
+        .and_then(Value::as_name)
+        .map_or(b"", Name::as_bytes))
 }
 
 pub(crate) fn base(name: &[u8]) -> Result<Encoding> {
@@ -112,20 +119,37 @@ pub(crate) fn load(
 /// AGL name decomposition: suffix removal, components, uniXXXX and uXXXX.
 /// Unknown names remain unknown rather than inventing a Unicode value.
 pub(crate) fn unicode(name: &[u8]) -> Option<String> {
+    unicode_with(name, false)
+}
+
+pub(crate) fn unicode_for_font(name: &[u8], base_font: &[u8]) -> Option<String> {
+    unicode_with(
+        name,
+        crate::substitute::standard_name(base_font) == Some(b"ZapfDingbats"),
+    )
+}
+
+fn unicode_with(name: &[u8], dingbats: bool) -> Option<String> {
     let stem = name.split(|byte| *byte == b'.').next()?;
     let mut result = String::new();
     for component in stem.split(|byte| *byte == b'_') {
-        if let Some(text) = component_unicode(component) {
+        if let Some(text) = component_unicode(component, dingbats) {
             result.push_str(&text);
         }
     }
     (!result.is_empty()).then_some(result)
 }
 
-fn component_unicode(component: &[u8]) -> Option<String> {
+fn component_unicode(component: &[u8], dingbats: bool) -> Option<String> {
     let component = std::str::from_utf8(component).ok()?;
     if let Ok(index) = tables::UNICODE.binary_search_by_key(&component, |(name, _)| *name) {
         return Some(char::from_u32(tables::UNICODE[index].1)?.to_string());
+    }
+    if dingbats
+        && let Ok(index) =
+            tables::DINGBATS_UNICODE.binary_search_by_key(&component, |(name, _)| *name)
+    {
+        return Some(char::from_u32(tables::DINGBATS_UNICODE[index].1)?.to_string());
     }
     if let Some(scalar) = cyrillic(component) {
         return Some(scalar.to_string());
@@ -178,6 +202,35 @@ fn upper_hex(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn dingbats_names_require_a_recognized_font_family() {
+        for &(name, _) in tables::DINGBATS_UNICODE {
+            assert_eq!(unicode(name.as_bytes()), None, "{name}");
+            assert_eq!(unicode_for_font(name.as_bytes(), b"Rect"), None, "{name}");
+        }
+        for font in [
+            b"ZapfDingbats".as_slice(),
+            b"ABCDEF+ZapfDingbats-Bold",
+            b"Dingbats",
+        ] {
+            assert_eq!(
+                unicode_for_font(b"a12_a19.alt", font).as_deref(),
+                Some("☞✓")
+            );
+        }
+        for font in [b"Rect".as_slice(), b"NotZapfDingbats", b"ZapfDingbatsExtra"] {
+            assert_eq!(unicode_for_font(b"a12_a19.alt", font), None);
+            assert_eq!(
+                unicode_for_font(b"A_uni0042.alt", font).as_deref(),
+                Some("AB")
+            );
+        }
+        assert_eq!(
+            unicode_for_font(b"a12_a19.alt", b"ZapfDingbats").as_deref(),
+            Some("☞✓")
+        );
+    }
+
     #[test]
     fn names_and_encoding_exceptions() -> Result<()> {
         assert_eq!(unicode(b"uni00410042_u1F600.alt").as_deref(), Some("AB😀"));

@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 mod cff;
 mod memory;
+mod names;
 mod read;
 mod recovery;
 mod sfnt;
@@ -275,6 +276,19 @@ impl FontProgram {
             Program::Sfnt(p) => p.name(name),
             Program::Cff(p) => p.name(name),
             Program::Type1(p) => p.name(name),
+        }
+    }
+
+    /// The program's name for a glyph: TrueType `post`, or a name-keyed
+    /// Type 1/CFF charset. Unnamed glyphs and bare CID-keyed CFF/CFF2 charsets
+    /// return `None`; an OpenType container can also provide `post` names.
+    /// This constant-time metadata lookup does not select or change a glyph.
+    /// Readers may use it after other Unicode mappings fail (PDF 9.10.2).
+    pub fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
+        match self.parsed.as_ref() {
+            Program::Sfnt(p) => p.glyph_name(glyph),
+            Program::Cff(p) => p.glyph_name(glyph),
+            Program::Type1(p) => p.glyph_name(glyph),
         }
     }
 

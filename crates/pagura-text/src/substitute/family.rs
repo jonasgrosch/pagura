@@ -63,6 +63,7 @@ pub(crate) fn standard_name(name: &[u8]) -> Option<&'static [u8]> {
     for (prefix, canonical) in [
         (b"symbol".as_slice(), b"Symbol".as_slice()),
         (b"zapfdingbats", b"ZapfDingbats"),
+        (b"dingbats", b"ZapfDingbats"),
     ] {
         if normalized
             .strip_prefix(prefix)

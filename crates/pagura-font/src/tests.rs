@@ -47,11 +47,7 @@ fn check_vector(
         match words[0] {
             "count" => assert_eq!(font.glyph_count(), u(1), "{name}"),
             "matrix" => check_matrix(font, &[n(1), n(2), n(3), n(4), n(5), n(6)]),
-            "name" => assert_eq!(
-                font.glyph_for_name(words[1].as_bytes()),
-                Some(GlyphId(u(2))),
-                "{name}"
-            ),
+            "name" | "glyph-name" | "glyph-name-none" => check_name(font, &words, name),
             "advance" => assert_eq!(font.advance(GlyphId(u(1))), Some(n(2)), "{name}"),
             "is-cid" => assert_eq!(font.is_cid_keyed(), u(1) == 1),
             "cid" => assert_eq!(font.glyph_for_cid(u(1)), Some(GlyphId(u(2)))),
@@ -133,6 +129,25 @@ fn check_vector(
     assert!(font.outline(GlyphId(u32::MAX)).is_err());
     assert_eq!(font.advance(GlyphId(u32::MAX)), None);
     assert_eq!(font.glyph_for_name(b"no such glyph"), None);
+}
+
+fn check_name(font: &FontProgram, words: &[&str], name: &str) {
+    let n = |i: usize| words[i].parse::<u32>().unwrap();
+    match words[0] {
+        "name" => assert_eq!(
+            font.glyph_for_name(words[1].as_bytes()),
+            Some(GlyphId(n(2))),
+            "{name}"
+        ),
+        "glyph-name" => assert_eq!(
+            font.glyph_name(GlyphId(n(1)))
+                .map(pagura_core::Name::as_bytes),
+            Some(words[2].as_bytes()),
+            "{name}"
+        ),
+        "glyph-name-none" => assert_eq!(font.glyph_name(GlyphId(n(1))), None, "{name}"),
+        _ => panic!("invalid name expectation"),
+    }
 }
 
 #[test]
@@ -739,5 +754,19 @@ fn primary_text_type1_vectors_0() {
         "review-type1-length-65536",
     ] {
         vector(name, FontFormat::Type1);
+    }
+}
+
+#[test]
+fn indexed_program_names_preserve_aliases_charsets_and_notdef_order() {
+    for (name, format) in [
+        ("post-alias", FontFormat::TrueType),
+        ("post-standard", FontFormat::TrueType),
+        ("type1-reordered", FontFormat::Type1),
+        ("cff", FontFormat::Cff),
+        ("cid", FontFormat::Cff),
+        ("cff2", FontFormat::Cff),
+    ] {
+        vector(&format!("glyph-names-{name}"), format);
     }
 }

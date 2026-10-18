@@ -525,6 +525,7 @@ def cases():
     yield from static_font_cases()
     yield from metadata_recovery_cases()
     yield from descriptor_flag_cases()
+    yield from glyph_name_cases()
 
     yield vector("cff-nonfinite",cff_font(conforming=True,hostile="nonfinite"),"outline-error 1\n","font-bounds","cff")
 
@@ -945,7 +946,7 @@ def recovery_cases():
 
 
 def static_type1(aliases=(b"-|", b"|-", b"|"), subrs=1, clear_definitions=False,
-                 qualifier=b"executeonly", short=False, comments=False, computed=None, duplicate=None, glyph_name=b"A"):
+                 qualifier=b"executeonly", short=False, comments=False, computed=None, duplicate=None, glyph_name=b"A", notdef_last=False):
     """Type 1 2.4/7.3/10.3: explicit procedures and length-delimited cipher bytes."""
     reader, define, put = aliases
     bodies = [b"string currentfile exch readstring pop", b"def" if short else b"noaccess def",
@@ -974,6 +975,8 @@ def static_type1(aliases=(b"-|", b"|-", b"|"), subrs=1, clear_definitions=False,
     width = operands(0,600)+b"\x0d"
     glyphs = [(b".notdef",width+b"\x0e"),
               (glyph_name,width+operands(0,0)+b"\x15"+operands(0)+b"\x0a\x0e")]
+    if notdef_last:
+        glyphs.reverse()
     if duplicate is not None:
         if duplicate==b"":
             glyphs.append((b"",width+b"\x0e"))
@@ -1099,9 +1102,9 @@ def descriptor_flag_cases():
     """PDF 9.8.2/Table 121, 9.6.5.2/4: flag validity and explicit selection routes."""
     from .pdf import document, stream
     def vector_case(name, program, flags, *, encoding=b"/Encoding /WinAnsiEncoding",
-                    subtype=b"TrueType", code=65, text="A", repaired=True, symbolic=False, glyph=1, objects=()):
-        font = (b"<< /Type /Font /Subtype /"+subtype+b" /BaseFont /Rect /FontDescriptor 6 0 R "
-                b"/FirstChar "+str(code).encode()+b" /LastChar "+str(code).encode()+b" /Widths [600] "+encoding+b" >>")
+                    subtype=b"TrueType", code=65, text="A", repaired=True, symbolic=False, glyph=1, decoded_text=None, unicode_entry=b"", objects=(), base_font=b"Rect"):
+        font = (b"<< /Type /Font /Subtype /"+subtype+b" /BaseFont /"+base_font+b" /FontDescriptor 6 0 R "
+                b"/FirstChar "+str(code).encode()+b" /LastChar "+str(code).encode()+b" /Widths [600] "+encoding+(b" "+unicode_entry if unicode_entry else b"")+b" >>")
         descriptor = (b"<< /Type /FontDescriptor /FontName /Rect /Flags "+str(flags).encode()+
                       b" /FontBBox [0 0 100 200] /ItalicAngle 0 /Ascent 200 /Descent 0 /CapHeight 200 /StemV 50 ")
         if subtype==b"Type1":
@@ -1120,11 +1123,49 @@ def descriptor_flag_cases():
         pixels = bytes(v for y in range(16) for x in range(16)
                        for v in ([0,0,0] if glyph and 4<=x<6 and 8<=y<12 else [255,255,255]))
         expect = f"glyph {glyph}\ntext {text}\nadvance 0.6\nsymbolic {int(symbolic)}\n".encode()
+        if decoded_text is not None:
+            expect += f"decoded-text {decoded_text}\n".encode()
         files={".pdf":pdf,".ppm":b"P6\n16 16\n255\n"+pixels,".expect":expect,
                ".strict":b"font.descriptor-flags\n" if repaired else b"valid\n"}
-        return Vector("descriptor-"+name,files,("font-descriptor-flags",),
-                      "Descriptor flag recovery keeps explicit glyphs, advances, extraction and exact pixels",
+        return Vector("descriptor-"+name,files,("font-descriptor-flags","font-glyph-name-unicode"),
+                      "Descriptor flags select explicit glyphs, advances, extraction and exact pixels",
                       extra={"repairs":["font.descriptor-flags"] if repaired else []})
+    # 9.10.2 reader fallback recovers the selected glyph's program name only
+    # for extraction. Both flags and glyph selection stay on the raw route.
+    for name,flags in [("both-post",36),("symbolic-latin-post",4)]:
+        yield vector_case(name,truetype(),flags,text="A",decoded_text="",symbolic=True,
+                          repaired=flags==36)
+    compound = named_post([b".notdef",b"uni00410042_u1F600.alt",b"curve",b"composite",b"attached"])
+    yield vector_case("post-agl-components",truetype(table_overrides={b"post":compound}),4,
+                      text="AB😀",decoded_text="",symbolic=True,repaired=False)
+    tounicode = stream(b"begincmap 1 begincodespacerange <00> <FF> endcodespacerange "
+                       b"1 beginbfchar <41> <005A> endbfchar endcmap")
+    yield vector_case("post-tounicode-priority",truetype(),4,text="Z",symbolic=True,repaired=False,
+                      unicode_entry=b"/ToUnicode 8 0 R",objects=(tounicode,))
+    # Name B selects glyph 1 through Unicode, whose post name is A. The
+    # encoding's B is authoritative for text and must not become A.
+    sub = u16(6)+u16(14)+u16(0)+u16(65)+u16(2)+u16(1)+u16(1)
+    cm = u16(0)+u16(1)+u16(3)+u16(1)+u32(12)+sub
+    yield vector_case("post-encoding-priority",truetype(table_overrides={b"cmap":cm}),32,
+                      encoding=b"/Encoding << /Differences [65 /B] >>",text="B",repaired=False)
+    unknown = named_post([b".notdef",b"unknownGlyph",b"curve",b"composite",b"attached"])
+    yield vector_case("post-unknown-name",truetype(table_overrides={b"post":unknown}),4,
+                      text="",symbolic=True,repaired=False)
+    # Annex D.6 names are separate from AGL: a12 is U+261E and a19 is U+2713
+    # only in the Dingbats family. Glyph IDs, widths and pixels stay fixed.
+    for name,glyph_name,base,text in [
+        ("post-nondingbats-a12",b"a12",b"Rect",""),
+        ("post-nondingbats-a19",b"a19",b"Rect",""),
+        ("post-zapfdingbats-a12",b"a12",b"ZapfDingbats","☞"),
+        ("post-zapfdingbats-a19",b"a19",b"ABCDEF+ZapfDingbats-Bold","✓"),
+        ("post-dingbats-a19",b"a19",b"Dingbats","✓"),
+    ]:
+        post = named_post([b".notdef",glyph_name,b"curve",b"composite",b"attached"])
+        yield vector_case(name,truetype(table_overrides={b"post":post}),4,
+                          base_font=base,text=text,decoded_text="",symbolic=True,repaired=False)
+    post = named_post([b".notdef",b"a12",b"curve",b"composite",b"attached"])
+    yield vector_case("post-nondingbats-a12-encoding",truetype(table_overrides={b"post":post}),32,
+                      encoding=b"/Encoding << /Differences [65 /a12] >>",text="",repaired=False)
     # Without post names, these programs exercise only the cmap selection routes.
     unicode = truetype(omit_tables=(b"post",))
     symbol = truetype(fmt=6,omit_tables=(b"post",))
@@ -1149,8 +1190,7 @@ def descriptor_flag_cases():
     yield vector_case("valid-symbol",symbol,4,encoding=b"",text="",symbolic=True,repaired=False)
     yield vector_case("ignored-encoding-cycle",symbol,4,encoding=b"/Encoding 8 0 R",
                       text="",symbolic=True,repaired=False,objects=(b"8 0 R",))
-    # A dual cmap is ambiguous. Preserve the existing Symbolic route and ignore
-    # PDF Differences, as 9.6.5.4 requires, rather than guessing Latin intent.
+    # A dual (3,0)/(3,1) cmap: Symbolic still takes the raw route and ignores PDF Differences (9.6.5.4).
     c0,c1 = cmap(6)[12:],cmap(4)[12:]
     dual = u16(0)+u16(2)+u16(3)+u16(0)+u32(20)+u16(3)+u16(1)+u32(20+len(c0))+c0+c1
     dual_font = truetype(omit_tables=(b"post",),table_overrides={b"cmap":dual})
@@ -1170,3 +1210,30 @@ def descriptor_flag_cases():
     yield vector_case("type1-nonsymbolic-override",static_type1(glyph_name=b"alpha"),32,
                       encoding=b"/Encoding << /Differences [65 /alpha] >>",
                       subtype=b"Type1",text="α",repaired=False)
+
+
+def named_post(names):
+    """Independent post-2 name indices, including aliases at separate glyphs."""
+    custom = list(dict.fromkeys(name for name in names if name != b".notdef"))
+    indices = [0 if name==b".notdef" else 258+custom.index(name) for name in names]
+    return (u32(0x20000)+bytes(28)+u16(len(names))+b"".join(u16(i) for i in indices)
+            +b"".join(bytes([len(name)])+name for name in custom))
+
+
+def glyph_name_cases():
+    req = "font-program-glyph-names"
+    aliases = named_post([b".notdef",b"A",b"A",b"composite",b"attached"])
+    yield vector("glyph-names-post-alias",truetype(table_overrides={b"post":aliases}),
+                 "count 5\nname A 1\nglyph-name 0 .notdef\nglyph-name 1 A\nglyph-name 2 A\n"
+                 "glyph-name-none 5\nglyph-name-none 4294967295\noutline 1\n"+RECT+"outline 2\n"+QUAD,req)
+    standard = u32(0x10000)+bytes(28)
+    yield vector("glyph-names-post-standard",truetype(table_overrides={b"post":standard}),
+                 "count 5\nglyph-name 0 .notdef\nglyph-name 3 space\n",req)
+    yield vector("glyph-names-type1-reordered",static_type1(notdef_last=True),
+                 "count 2\nname A 1\nglyph-name 0 .notdef\nglyph-name 1 A\noutline 1\n"+RECT,req,"type1")
+    yield vector("glyph-names-cff",cff_font(conforming=True),
+                 "count 5\nglyph-name 0 .notdef\nglyph-name 1 A\nglyph-name 4 acute\n",req,"cff")
+    yield vector("glyph-names-cid",cff_font(cid=True,conforming=True),
+                 "count 5\nglyph-name-none 0\nglyph-name-none 1\n",req,"cff")
+    yield vector("glyph-names-cff2",cff_font(cff2=True,conforming=True),
+                 "count 5\nglyph-name-none 0\nglyph-name-none 1\n",req,"cff")
