@@ -5,39 +5,16 @@ use std::collections::BTreeSet;
 
 pub(crate) const CAPACITY: usize = 1024;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum At {
-    Unknown,
-    File(usize),
-    Stream(ObjectId, usize),
-    Buffer(usize),
-}
-
-impl From<Position> for At {
-    fn from(position: Position) -> Self {
-        match position {
-            Position::Unknown => Self::Unknown,
-            Position::File(offset) => Self::File(offset),
-            Position::Stream { object, offset } => Self::Stream(object, offset),
-            Position::Buffer(offset) => Self::Buffer(offset),
-        }
-    }
-}
-
 #[derive(Debug, Default)]
 pub(crate) struct Log {
     pub(crate) items: Vec<Diagnostic>,
-    keys: BTreeSet<(DiagnosticKind, Option<ObjectId>, At)>,
+    keys: BTreeSet<(DiagnosticKind, Option<ObjectId>, Position)>,
     pub(crate) suppressed: usize,
 }
 
 impl Log {
     pub(crate) fn push(&mut self, diagnostic: Diagnostic) {
-        let key = (
-            diagnostic.kind,
-            diagnostic.object,
-            At::from(diagnostic.position),
-        );
+        let key = (diagnostic.kind, diagnostic.object, diagnostic.position);
         if self.keys.contains(&key) {
             return;
         }
@@ -87,15 +64,13 @@ mod tests {
         let diagnostic = Diagnostic::new(TAG, "first message").at(Position::File(1));
         document.report([
             diagnostic.clone(),
-            Diagnostic {
-                message: "second message",
-                ..diagnostic.clone()
-            },
+            Diagnostic::new(TAG, "second message").at(Position::File(1)),
         ]);
+        // Builders keep the innermost context, so each identity is built afresh.
         document.report([
             diagnostic.clone().in_object(ObjectId::new(1, 0)),
-            diagnostic.clone().at(Position::Buffer(1)),
-            diagnostic.clone().at(Position::Stream {
+            Diagnostic::new(TAG, "first message").at(Position::Buffer(1)),
+            Diagnostic::new(TAG, "first message").at(Position::Stream {
                 object: ObjectId::new(1, 0),
                 offset: 1,
             }),

@@ -18,7 +18,7 @@ mod value;
 
 pub use diagnostic::{Diagnostic, DiagnosticKind, Diagnostics, Recovery, Repair};
 pub use dictionary::Dictionary;
-pub use error::{Error, ErrorKind, Feature, Position, Result};
+pub use error::{Error, ErrorKind, Feature, Position, Result, ResultExt};
 pub use limits::Limits;
 pub use name::Name;
 pub use rect::Rect;

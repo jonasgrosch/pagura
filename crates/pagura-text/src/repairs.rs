@@ -70,12 +70,12 @@ impl<'a> Report<'a> {
         {
             return Err(error);
         }
-        let diagnostic = Diagnostic {
-            kind: pagura_core::DiagnosticKind::Repair(error.repair.unwrap_or(TOUNICODE_INVALID)),
-            message: "invalid ToUnicode data discarded; glyph selection is unchanged",
-            position: error.position,
-            object: error.object.or(object),
-        };
+        let diagnostic = Diagnostic::new(
+            error.repair.unwrap_or(TOUNICODE_INVALID),
+            "invalid ToUnicode data discarded; glyph selection is unchanged",
+        )
+        .in_object_opt(error.object.or(object))
+        .at(error.position);
         self.diagnostic(diagnostic)
     }
 }

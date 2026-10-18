@@ -224,13 +224,12 @@ pub(crate) fn parse_at(
         end(&mut parser, document.limits(), id, &mut repairs)?;
     }
     let source = ObjectSource::File(offset..parser.offset());
-    repairs.extend(
+    repairs.absorb(
         parser
             .take_diagnostics()
             .into_iter()
-            .map(|diagnostic| diagnostic.in_object(id))
-            .collect::<Vec<_>>(),
-    );
+            .map(|diagnostic| diagnostic.in_object(id)),
+    )?;
     let direct = direct_objects(id, &value, direct, document.limits().document_bytes)?;
     let mut object = IndirectObject::new(id, value, stream, source);
     object.direct = direct;

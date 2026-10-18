@@ -191,7 +191,7 @@ pub(crate) fn decode_pdf(
     budget.diagnostics = pagura_core::Diagnostics::new(diagnostics.mode());
     let result = decode_bounded(data, &mut budget, options, indexed)
         .map_err(|error| error.at(Position::Buffer(0)));
-    diagnostics.extend(budget.diagnostics.take());
+    diagnostics.absorb(budget.diagnostics.take())?;
     result
 }
 
