@@ -9,17 +9,57 @@ use pagura_core::Meter;
 use std::collections::{BTreeMap, BTreeSet};
 pub(super) mod copy;
 pub(super) mod geometry;
-use copy::{append, export};
+use copy::{Origin, append, export};
 use geometry::{content_lines, order};
 
 pub(super) struct Atom {
-    pub(super) chars: Vec<Option<char>>,
+    pub(super) chars: AtomText,
     pub(super) glyphs: Range<usize>,
     pub(super) geometry: Option<usize>,
     pub(super) marked: Option<usize>,
     pub(super) replacement: Option<Replacement>,
     pub(super) occurrence: Option<usize>,
 }
+/// The characters of an atom. Almost every atom is one glyph with one
+/// character, stored inline instead of in a vector per glyph.
+pub(super) enum AtomText {
+    One(Option<char>),
+    Many(Box<[Option<char>]>),
+}
+
+impl std::ops::Deref for AtomText {
+    type Target = [Option<char>];
+
+    fn deref(&self) -> &[Option<char>] {
+        match self {
+            Self::One(unicode) => std::slice::from_ref(unicode),
+            Self::Many(chars) => chars,
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a AtomText {
+    type Item = &'a Option<char>;
+    type IntoIter = std::slice::Iter<'a, Option<char>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl FromIterator<Option<char>> for AtomText {
+    fn from_iter<I: IntoIterator<Item = Option<char>>>(iter: I) -> Self {
+        let mut iter = iter.into_iter();
+        match (iter.next(), iter.next()) {
+            (Some(unicode), None) => Self::One(unicode),
+            (None, _) => Self::Many(Box::default()),
+            (Some(first), Some(second)) => {
+                Self::Many([first, second].into_iter().chain(iter).collect())
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum Replacement {
     Actual,
@@ -74,7 +114,7 @@ pub(super) fn build(
                 &mut page.content_text,
                 Some(' '),
                 0..0,
-                true,
+                Origin::Inserted,
             );
         }
         alternate = current;
@@ -84,7 +124,7 @@ pub(super) fn build(
                 &mut page.content_text,
                 unicode,
                 atom.glyphs.clone(),
-                false,
+                Origin::Decoded,
             );
         }
     }
@@ -280,8 +320,8 @@ pub(super) fn atoms(
             }
             let chars = record
                 .unicode
-                .as_ref()
-                .map_or_else(|| vec![None], |s| s.chars().map(Some).collect());
+                .as_deref()
+                .map_or(AtomText::One(None), |s| s.chars().map(Some).collect());
             result.push(Atom {
                 occurrence: None,
                 chars,

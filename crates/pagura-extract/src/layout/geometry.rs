@@ -1,6 +1,25 @@
 //! Geometric line/column policy; marked occurrences stay in content order.
 use super::{Atom, LayoutOptions, Line, Point, PositionedGlyph, PositionedText, Replacement};
 use std::collections::BTreeMap;
+/// Directions whose cosine exceeds this are parallel: within about 11°.
+pub(crate) const PARALLEL: f64 = 0.98;
+/// Inline displacements beyond this many ems split a line into fragments,
+/// and column shifts beyond it start a paragraph.
+pub(crate) const FRAGMENT_EMS: f64 = 2.5;
+/// Inline starts within this many ems belong to one column.
+pub(crate) const COLUMN_EMS: f64 = 1.5;
+/// The smallest em thresholds scale by, so zero-size text stays comparable.
+pub(crate) const MIN_EM: f64 = 1e-6;
+
+/// The larger em of two glyphs, the unit of every layout threshold.
+pub(crate) fn em(a: &PositionedGlyph, b: &PositionedGlyph) -> f64 {
+    a.em.max(b.em).max(MIN_EM)
+}
+
+pub(crate) fn dot(a: Point, b: Point) -> f64 {
+    a.x * b.x + a.y * b.y
+}
+
 struct Block {
     lines: Vec<Line>,
     geometry: Option<usize>,
@@ -24,13 +43,14 @@ pub(crate) fn same_line(a: &PositionedGlyph, b: &PositionedGlyph, options: Layou
     let other = direction(b);
     let (_, av) = coordinates(a.origin, axis);
     let (_, bv) = coordinates(b.origin, axis);
-    axis.x * other.x + axis.y * other.y > 0.98
-        && (av - bv).abs() <= options.baseline_tolerance * a.em.max(b.em).max(1e-6)
+    dot(axis, other) > PARALLEL && (av - bv).abs() <= options.baseline_tolerance * em(a, b)
 }
 pub(crate) fn gap(a: &PositionedGlyph, b: &PositionedGlyph) -> f64 {
     let axis = direction(a);
-    let delta = Point::new(b.origin.x - a.advance_end.x, b.origin.y - a.advance_end.y);
-    delta.x * axis.x + delta.y * axis.y
+    dot(
+        Point::new(b.origin.x - a.advance_end.x, b.origin.y - a.advance_end.y),
+        axis,
+    )
 }
 pub(super) fn content_lines(
     source: &PositionedText,
@@ -55,9 +75,9 @@ pub(super) fn content_lines(
                 atom.geometry,
             ) {
                 (Some(a), Some(b)) => {
-                    same_line(&source.glyphs[a], &source.glyphs[b], options)
-                        && gap(&source.glyphs[a], &source.glyphs[b]).abs()
-                            <= 2.5 * source.glyphs[a].em.max(source.glyphs[b].em).max(1e-6)
+                    let (a, b) = (&source.glyphs[a], &source.glyphs[b]);
+                    same_line(a, b, options)
+                        && gap(a, b).abs() <= FRAGMENT_EMS * em(a, b)
                         && line.marked == marked
                 }
                 _ => line.marked == marked,
@@ -163,8 +183,8 @@ fn order_positioned(source: &PositionedText, blocks: Vec<Block>) -> Vec<Line> {
                     .into_iter()
                     .chain(b.geometry)
                     .map(|i| source.glyphs[i].em)
-                    .fold(1e-6, f64::max);
-                if position(b).0 - position(a).0 > 1.5 * em {
+                    .fold(MIN_EM, f64::max);
+                if position(b).0 - position(a).0 > COLUMN_EMS * em {
                     break;
                 }
                 end += 1;

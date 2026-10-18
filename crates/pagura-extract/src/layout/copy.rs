@@ -1,25 +1,42 @@
 //! Copy text, semantic separators and byte-indexed word/line boundaries.
 use super::super::{Character, TextLine, TextWord, search};
-use super::geometry::{coordinates, direction, gap, same_line};
+use super::geometry::{FRAGMENT_EMS, PARALLEL, coordinates, direction, dot, em, gap, same_line};
 use super::{
     Atom, Error, LayoutOptions, Line, PositionedText, Range, Replacement, Result, TextPage,
     reversed,
 };
+/// Whether layout decoded a character from glyphs or inserted it.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Origin {
+    Decoded,
+    Inserted,
+}
+
 pub(crate) fn append(
     chars: &mut Vec<Character>,
     text: &mut String,
     unicode: Option<char>,
     glyphs: Range<usize>,
-    inserted: bool,
+    origin: Origin,
 ) {
     let start = text.len();
     text.push(unicode.unwrap_or('\u{fffd}'));
     chars.push(Character {
         unicode,
         glyphs,
-        inserted,
+        inserted: origin == Origin::Inserted,
         range: start..text.len(),
     });
+}
+
+/// Whether a separator between `text` and `atom` would be redundant:
+/// either side is already whitespace.
+pub(crate) fn borders_whitespace(text: &str, atom: &Atom) -> bool {
+    text.ends_with(char::is_whitespace)
+        || atom
+            .chars
+            .first()
+            .is_some_and(|c| c.is_some_and(char::is_whitespace))
 }
 pub(super) fn export(
     page: &mut TextPage,
@@ -40,15 +57,26 @@ pub(super) fn export(
                         let axis = direction(first);
                         let (au, av) = coordinates(first.origin, axis);
                         let (bu, bv) = coordinates(next.origin, axis);
-                        (av - bv).abs() > options.paragraph_gap * first.em.max(next.em).max(1e-6)
-                            || (au - bu).abs() > 2.5 * first.em.max(next.em).max(1e-6)
-                            || direction(first).x * direction(next).x
-                                + direction(first).y * direction(next).y
-                                < 0.98
+                        let em = em(first, next);
+                        (av - bv).abs() > options.paragraph_gap * em
+                            || (au - bu).abs() > FRAGMENT_EMS * em
+                            || dot(axis, direction(next)) < PARALLEL
                     });
-            append(&mut page.reading, &mut page.text, Some('\n'), 0..0, true);
+            append(
+                &mut page.reading,
+                &mut page.text,
+                Some('\n'),
+                0..0,
+                Origin::Inserted,
+            );
             if paragraph {
-                append(&mut page.reading, &mut page.text, Some('\n'), 0..0, true);
+                append(
+                    &mut page.reading,
+                    &mut page.text,
+                    Some('\n'),
+                    0..0,
+                    Origin::Inserted,
+                );
             }
         }
         let mut previous: Option<usize> = None;
@@ -58,14 +86,7 @@ pub(super) fn export(
         for index in line.atoms {
             let atom = &atoms[index];
             let alt = atom.replacement == Some(Replacement::Alt);
-            let whitespace = page
-                .reading
-                .last()
-                .is_some_and(|c| c.unicode.is_some_and(char::is_whitespace))
-                || atom
-                    .chars
-                    .first()
-                    .is_some_and(|c| c.is_some_and(char::is_whitespace));
+            let whitespace = borders_whitespace(&page.text, atom);
             let semantic_space = previous_atom && (alt || previous_alt);
             let geometric_space = previous.zip(atom.geometry).is_some_and(|(a, b)| {
                 let a = &page.positioned.glyphs[a];
@@ -76,12 +97,16 @@ pub(super) fn export(
                         == b.marked_content.first().map(|m| m.id);
                 let replacement_pair = previous_replacement == Some(Replacement::Actual)
                     && atom.replacement == Some(Replacement::Actual);
-                !reversed_pair
-                    && !replacement_pair
-                    && gap(a, b) > options.space_gap * a.em.max(b.em).max(1e-6)
+                !reversed_pair && !replacement_pair && gap(a, b) > options.space_gap * em(a, b)
             });
             if !whitespace && (semantic_space || geometric_space) {
-                append(&mut page.reading, &mut page.text, Some(' '), 0..0, true);
+                append(
+                    &mut page.reading,
+                    &mut page.text,
+                    Some(' '),
+                    0..0,
+                    Origin::Inserted,
+                );
             }
             for &unicode in &atom.chars {
                 append(
@@ -89,7 +114,7 @@ pub(super) fn export(
                     &mut page.text,
                     unicode,
                     atom.glyphs.clone(),
-                    false,
+                    Origin::Decoded,
                 );
             }
             previous = atom
@@ -157,7 +182,7 @@ fn merge_lines(
             || last.zip(line.geometry).is_some_and(|(a, b)| {
                 let a = &source.glyphs[a];
                 let b = &source.glyphs[b];
-                same_line(a, b, options) && gap(a, b).abs() <= 2.5 * a.em.max(b.em).max(1e-6)
+                same_line(a, b, options) && gap(a, b).abs() <= FRAGMENT_EMS * em(a, b)
             });
         if join {
             if let Some(previous) = merged.last_mut() {
