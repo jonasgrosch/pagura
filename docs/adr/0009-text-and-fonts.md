@@ -1,6 +1,6 @@
 # ADR 0009: Text and fonts
 
-Status: accepted, 2026-10-17.
+Status: accepted, 2026-10-17. Amended by ADR 0025 (descriptor flags are normalized in `pagura-text`).
 
 ## Decision
 

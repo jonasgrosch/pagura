@@ -1,6 +1,6 @@
 # ADR 0014: Text extraction and search
 
-Status: accepted, 2026-10-18. Amended 2026-10-18 (decision 5).
+Status: accepted, 2026-10-18. Amended 2026-10-18 (decision 5) and by ADR 0025 (layout and search live in `pagura-extract`).
 
 ## Context
 
