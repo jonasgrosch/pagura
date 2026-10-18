@@ -217,8 +217,7 @@ fn validate_identities(bytes: &[u8], table: &XrefTable, limits: Limits) -> Resul
                 )
             };
             let matches = |offset| header(offset) == Some(id);
-            if header(at).is_some()
-                && !matches(at)
+            if header(at).is_some_and(|found| found != id)
                 && !(at.saturating_sub(32)..at.saturating_add(33).min(bytes.len())).any(|offset| {
                     (offset == 0
                         || bytes
