@@ -695,6 +695,2134 @@
         }
       },
       "tolerance": 1
+    },
+    {
+      "id": "raster/winding-boundary-triangle-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-boundary-triangle-nonzero.path",
+          "sha256": "d136f82dae5f96b886afc7ba25954d4e567bb082faef06e23ab178bfbfb97626"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-boundary-triangle-nonzero.pgm",
+          "sha256": "3dcfdfb9f9825424e718be1cb5cd58be6f4c1ba4478e1d673f1abff229491c64"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-boundary-triangle-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-boundary-triangle-evenodd.path",
+          "sha256": "7f4eef788632cad1b0bf9fabf6b571b1b1117290c71a2d52f75223aa142aafa3"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-boundary-triangle-evenodd.pgm",
+          "sha256": "3dcfdfb9f9825424e718be1cb5cd58be6f4c1ba4478e1d673f1abff229491c64"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-opposite-chains-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-opposite-chains-nonzero.path",
+          "sha256": "1a37b6c7c8ded082cbb2f7141334a3e2fd6dda5ac5b1bfe9b79aa71c0aa42bff"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-opposite-chains-nonzero.pgm",
+          "sha256": "067e3e9f1e0e8f3f9cfb5228118af9ed4173912626e3531dcf3a1a3c0e9ec4b0"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-opposite-chains-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-opposite-chains-evenodd.path",
+          "sha256": "ada3c30dadc413ef0746c54a3225db5b994521fc9dc330b93be1a511ac15a17c"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-opposite-chains-evenodd.pgm",
+          "sha256": "067e3e9f1e0e8f3f9cfb5228118af9ed4173912626e3531dcf3a1a3c0e9ec4b0"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-crossed-rules-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-crossed-rules-nonzero.path",
+          "sha256": "f2ca502e74c87510e2fcb57514ca8d3f5934f7362e9e1580523e5dcd6c9846c1"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-crossed-rules-nonzero.pgm",
+          "sha256": "b91c6a6442a838f4ee3ae7ea2fc02b2bbc299e08aa58f64dafd0fb05a2f2d78b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-crossed-rules-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-crossed-rules-evenodd.path",
+          "sha256": "d9acf0f02ab76da2f6b7a2592c62fd3152dc873d223140890ee577a792888331"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-crossed-rules-evenodd.pgm",
+          "sha256": "3a48d26ada6caecd742832db79d85e919f73ffe7bfbf70c7b2bb86c0da5f45ee"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-tiny-bowtie-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-tiny-bowtie-nonzero.path",
+          "sha256": "bebba35914bdca1cfd86d97b9fd4127dbe2c55def60dd3d374baa36b63188352"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-tiny-bowtie-nonzero.pgm",
+          "sha256": "9b37b5c96888554162758267236663b7453574a101ca84e8b4956696dff7ce10"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-tiny-bowtie-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-tiny-bowtie-evenodd.path",
+          "sha256": "dd675db639a77a4fcd0fda6806384e85e4abd6b7960a0ab286f50682c6df1970"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-tiny-bowtie-evenodd.pgm",
+          "sha256": "9b37b5c96888554162758267236663b7453574a101ca84e8b4956696dff7ce10"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-overlapping-contours-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-overlapping-contours-nonzero.path",
+          "sha256": "16b7f112959724a5b1e97ddf5eb533df1f99237c243eac530804fbe798ea1ff0"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-overlapping-contours-nonzero.pgm",
+          "sha256": "20660ed3003715d56dd8b103a8646a3e8e98d5f3566ad91e9d370bd0e75613ef"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-overlapping-contours-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-overlapping-contours-evenodd.path",
+          "sha256": "250a0417051097bc121672d0e51f2ff7d2129fdda84d23234e45993e789082a3"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-overlapping-contours-evenodd.pgm",
+          "sha256": "07e1c45ad5b63bbe6bee84f998b84af8b60cbce227aba8b8f20b1cf62f56dbd4"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-coincident-opposite-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-coincident-opposite-nonzero.path",
+          "sha256": "f5d5a6c7d3aa0bb0f7258137b5ef7a37c219ecf76a9fefce3ccc475de492f33c"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-coincident-opposite-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-coincident-opposite-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-coincident-opposite-evenodd.path",
+          "sha256": "feca7355155075a0ac3a21e40c465dde2803d595c909b871dcfc1ca80df372f9"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-coincident-opposite-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-touching-contours-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-touching-contours-nonzero.path",
+          "sha256": "1bd828d99413d321482a353b987e51fb1eefb95fab45a86dc26656dec67898c4"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-touching-contours-nonzero.pgm",
+          "sha256": "382cd226b6dc437a48a3c1317104d672ced96c36539c4cbdd840f91c184ddcef"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-touching-contours-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-touching-contours-evenodd.path",
+          "sha256": "3794cbe5b8652ff114df3016b3561aad6c691cd327a44e822351047573196f59"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-touching-contours-evenodd.pgm",
+          "sha256": "382cd226b6dc437a48a3c1317104d672ced96c36539c4cbdd840f91c184ddcef"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-same-clip-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-same-clip-nonzero.path",
+          "sha256": "337dc7fb59b09b415f8df4ea661884a50d73dce91292a950bdcea40e6c227483"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-same-clip-nonzero.pgm",
+          "sha256": "34026a5252fa91310f779827b0e5b287b754866ae33e7fcb7249910f6877e23b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-same-clip-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-same-clip-evenodd.path",
+          "sha256": "3fa528856fd0cceb34ac6cc2bc3dc171d79edfdba303aeae4ecb3f353ae2e743"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-same-clip-evenodd.pgm",
+          "sha256": "34026a5252fa91310f779827b0e5b287b754866ae33e7fcb7249910f6877e23b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-nested-clips-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-nested-clips-nonzero.path",
+          "sha256": "e98c423196209e2d7bfe64a62491b51a0f0e00f7aae9f75ce778b0df3771a70b"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-nested-clips-nonzero.pgm",
+          "sha256": "17eae48cc3ebfebb37d871513122070b70f10cafec51a2761ab03c6682ca9b07"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-nested-clips-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-nested-clips-evenodd.path",
+          "sha256": "a453ead0987c928fcb02241d29e1e15b2d5ba3fee28d9791c382857d0e09024f"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-nested-clips-evenodd.pgm",
+          "sha256": "17eae48cc3ebfebb37d871513122070b70f10cafec51a2761ab03c6682ca9b07"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-crossing-clips-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-crossing-clips-nonzero.path",
+          "sha256": "85d17e9db2e5513815befc8222839fb45d466cbbc8f411332dceeed036c9b987"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-crossing-clips-nonzero.pgm",
+          "sha256": "34026a5252fa91310f779827b0e5b287b754866ae33e7fcb7249910f6877e23b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-crossing-clips-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-crossing-clips-evenodd.path",
+          "sha256": "c9493574bfc590123a476bd81b60de6cc63ffa18134772d2c5b69d3e3c8432d4"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-crossing-clips-evenodd.pgm",
+          "sha256": "34026a5252fa91310f779827b0e5b287b754866ae33e7fcb7249910f6877e23b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-star-in-cell-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-star-in-cell-nonzero.path",
+          "sha256": "fc346364edacb357cdd470dfa8d39b722191e8b1b6dc011229961f5ecba52dc9"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-star-in-cell-nonzero.pgm",
+          "sha256": "7c165077a63af39d971e2515474b9ef6400cc666fc7611bbe050843395757a4d"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-star-in-cell-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-star-in-cell-evenodd.path",
+          "sha256": "0a3596bcca6d20abf95fbe860e37c25b5ee9385d33a9d6203637e545e9966584"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-star-in-cell-evenodd.pgm",
+          "sha256": "c4a42e5560ed17bddfb0d92dd8b5c66eedb231eee1d543da921b0ca47f7bb12f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-double-crossing-chains-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-double-crossing-chains-nonzero.path",
+          "sha256": "36cfe1b2a3f9ff603d82234d38beebb3b8d76b3c82eee09afcfdd0940fd34444"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-double-crossing-chains-nonzero.pgm",
+          "sha256": "6a6488b7940d16774f54468caef6be2e911a9db683b988c94614a1bdba5f179d"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-double-crossing-chains-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-double-crossing-chains-evenodd.path",
+          "sha256": "3a023850c1154cffbd141b7e9df7d551d6b868f83dbf3369b8e9bfef50883be6"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-double-crossing-chains-evenodd.pgm",
+          "sha256": "6a6488b7940d16774f54468caef6be2e911a9db683b988c94614a1bdba5f179d"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-thin-rule-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-thin-rule-nonzero.path",
+          "sha256": "62eaff9344fbc004d1ffc5d8ac820cbf6b7cd2e4474b4ac85884e836b36213ec"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-thin-rule-nonzero.pgm",
+          "sha256": "00323c085e02e1ca2b33e9d8a17059b8a938062be71c9d7616e8250217e90382"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-thin-rule-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-thin-rule-evenodd.path",
+          "sha256": "cbc3fd9979a9c28757c00458a74b4de0abcbab678540d7b42a11108f2d6b672d"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-thin-rule-evenodd.pgm",
+          "sha256": "00323c085e02e1ca2b33e9d8a17059b8a938062be71c9d7616e8250217e90382"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-coincident-same-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-coincident-same-nonzero.path",
+          "sha256": "88ff31e5e595117be8e9e1ca4cf23be9855b31c852a3abe301ba6f1a93e9e4b8"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-coincident-same-nonzero.pgm",
+          "sha256": "34026a5252fa91310f779827b0e5b287b754866ae33e7fcb7249910f6877e23b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-coincident-same-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-coincident-same-evenodd.path",
+          "sha256": "a63e1f70ce877aabc002443fe58beb69d6b91b6b982d839cf00484819dc2a41c"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-coincident-same-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-collinear-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-collinear-nonzero.path",
+          "sha256": "dba7ee5a3dcf942fd47dd747e89d0f5f9e5cb7e1e6c568f8db9fdc764cc7eaf0"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-collinear-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-collinear-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-collinear-evenodd.path",
+          "sha256": "af9bf376dfc1eb41ca08a63dbb8a72f16f1b276f1c47d52b108502f5d9995599"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-collinear-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-huge-endpoints-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-huge-endpoints-nonzero.path",
+          "sha256": "5550cc3994f47ed4389db42b2346eecd837010f03d908d9ccba7287f7c0739e8"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-huge-endpoints-nonzero.pgm",
+          "sha256": "34c76af17df53fea2a503a1170d88439507288483898b9ae5972750313838759"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-huge-endpoints-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-huge-endpoints-evenodd.path",
+          "sha256": "f4747b3e86d4681f540e801dadbd9d9a4917746d45dd2c68a8c98d1ca7b4e6fd"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-huge-endpoints-evenodd.pgm",
+          "sha256": "34c76af17df53fea2a503a1170d88439507288483898b9ae5972750313838759"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-translated-half-tie-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-translated-half-tie-nonzero.path",
+          "sha256": "9f4c6cacc9550aca7a12f92f9fcc69839ddf554783e2737660edabd14f4d2dff"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-translated-half-tie-nonzero.pgm",
+          "sha256": "86b0a8d2328437256d90969fdf6c48499c7486f8d9838718bec13e802c07438b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-translated-half-tie-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-translated-half-tie-evenodd.path",
+          "sha256": "2acff6b25a98d8c95f27583d127b869493952508c9216761dd2500e59a56fc2c"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-translated-half-tie-evenodd.pgm",
+          "sha256": "86b0a8d2328437256d90969fdf6c48499c7486f8d9838718bec13e802c07438b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-rounding-threshold-nonzero",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-rounding-threshold-nonzero.path",
+          "sha256": "f5f6b9851ee05423efb633afbe2c6b1362a0419c9f1e73f17e91196d46ff09b4"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-rounding-threshold-nonzero.pgm",
+          "sha256": "1081c5c733f7eb4ef71c44e894bb74c9ddae61aa961ceffb85773868606419fe"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-rounding-threshold-evenodd",
+      "kind": "vector",
+      "description": "Rational vertical-slab winding integration with geometric clip intersection",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-rounding-threshold-evenodd.path",
+          "sha256": "0faf53b1a4ad622bebd2ca340607e7f11c986b76d032f89211a1bfb5b41430ba"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-rounding-threshold-evenodd.pgm",
+          "sha256": "1081c5c733f7eb4ef71c44e894bb74c9ddae61aa961ceffb85773868606419fe"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/collapse-horizontal-forward-127-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-127-nonzero.path",
+          "sha256": "3407587bdbd4fd5316d35da8fc35106eec75da85a4cd7cad228d00d1d1493989"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-127-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-forward-127-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-127-evenodd.path",
+          "sha256": "09eff1895cf40bf7113c85f358405c3790618eb09c4444b24520982c38eecacc"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-127-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-reverse-127-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-127-nonzero.path",
+          "sha256": "d4fd6e8d133a20fd3e5c1804bd342ebb571e33f3eef4361dbb46bd8510226597"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-127-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-reverse-127-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-127-evenodd.path",
+          "sha256": "fb9bac67647438fdb9fbf0c549c0cb384c8622530c46a00328820ec440dfe1f3"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-127-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-forward-127-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-127-nonzero.path",
+          "sha256": "a4316e508655d28a877bdb84653f66dbc9399b74dcc0c5be332a11d939b66080"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-127-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-forward-127-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-127-evenodd.path",
+          "sha256": "1eca91a45063c42eedd7419d4b44fdc940feaaf3d58a1671608b3fc27bdd3d0d"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-127-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-reverse-127-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-127-nonzero.path",
+          "sha256": "2cb6667304108e87320d8b445698a7eb559e0db3f5a049aad370b18b0e4ba4ed"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-127-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-reverse-127-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-127-evenodd.path",
+          "sha256": "8f2eabbc70feb881f87309f550f7b6e8c8c2c7b3fe9f5568e43813e9ce473fbb"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-127-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-forward-128-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-128-nonzero.path",
+          "sha256": "155c9fc655f726a9ef8dca04c325111675ad3dbaaae1c1f33388a66c8773c80d"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-128-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-forward-128-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-128-evenodd.path",
+          "sha256": "3106d80f02985eb2316ab7ce5706ad4490867730df56aa15d95c386c8bc306af"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-128-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-reverse-128-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-128-nonzero.path",
+          "sha256": "8519d9bc75f1705e74bf2cc11c313c99cba962f63a30684617d74ef92e89f651"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-128-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-reverse-128-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-128-evenodd.path",
+          "sha256": "5f97c0e4cfbb25f2151b36f284a5b40c4b8032d94887883306ddae77ebb6ba12"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-128-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-forward-128-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-128-nonzero.path",
+          "sha256": "e9f160ac4f94fc74f62bb7b14f838bbf1241a1a7d82ba073360fc48f8936ab65"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-128-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-forward-128-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-128-evenodd.path",
+          "sha256": "15beb364676e6d723c5bdd2c1800326303b597a24445096c3419e18530c48ed0"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-128-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-reverse-128-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-128-nonzero.path",
+          "sha256": "8ba9f41f7a33041f15183a0228f7dfac1a81e6c077e5d4f2193f91ecadebc305"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-128-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-reverse-128-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-128-evenodd.path",
+          "sha256": "f55e40c150680dcf9d6073497531048868849770c6afd093ba7015241e74ee7f"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-128-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-forward-129-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-129-nonzero.path",
+          "sha256": "e0c9769e9239d1d55d8c5dc0c302122cb9531e67851cc856fb80d5f546069ddc"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-129-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-forward-129-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-129-evenodd.path",
+          "sha256": "c400e0f0f184c274a45c0d22a7fc124b3aff937d8f5c93fcdad5bdeec5053068"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-129-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-reverse-129-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-129-nonzero.path",
+          "sha256": "d2014bbb91be66150a38e7540b3c5bdc728cb0032d413e6a1f24f3c1977850d9"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-129-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-reverse-129-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-129-evenodd.path",
+          "sha256": "03cb4fc06704499a7766544a396f974070702ea50a74e1da480c366beab0d23d"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-129-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-forward-129-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-129-nonzero.path",
+          "sha256": "4078920692da5842942f886b2e3870fa06bd5e56065210adcb7d2db4f8c67434"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-129-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-forward-129-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-129-evenodd.path",
+          "sha256": "e682fa3de3338bcf609ff2ee823dc8bf4040f4d794cc846b33a39a98577a1428"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-129-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-reverse-129-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-129-nonzero.path",
+          "sha256": "30f543450bc456a4cf59db4b0f80928ecdee105f884a5dc8aad38f2bf1f81d61"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-129-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-reverse-129-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-129-evenodd.path",
+          "sha256": "b3e1fa19161d79cc98d25c8ffeeebfe137168dd2946d94026a3273555fedbb09"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-129-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-forward-512-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-512-nonzero.path",
+          "sha256": "e97002b60976fec2178054aa1827c9d1d76075d166227062752138eef84ad942"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-512-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-forward-512-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-512-evenodd.path",
+          "sha256": "8181e47f6572d351bbb49c6468d5215feb472ed4b19c427cf1d8bd54d23d7e48"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-512-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-reverse-512-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-512-nonzero.path",
+          "sha256": "04eb87b71aa90a75de161e4f39b5028747a270a15d07a382a9b898e9430a417b"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-512-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-reverse-512-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-512-evenodd.path",
+          "sha256": "4d6e1793084d067702015892322031f2a9e694f7643113bfe781ccb45a557d0a"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-512-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-forward-512-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-512-nonzero.path",
+          "sha256": "3fe6c12a33295a5871a21bbca71e13ae978ba3db6078c403202812259bd0623f"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-512-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-forward-512-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-512-evenodd.path",
+          "sha256": "1bf7c0c8e2f5c5a0a88f22b656b13cf92319b12f6a94dd62f2338eb1841baefc"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-512-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-reverse-512-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-512-nonzero.path",
+          "sha256": "aade5bfc53309d03f7517a94943f33359786b8a4315e4c4bf15fd499148f3f47"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-512-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-reverse-512-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-512-evenodd.path",
+          "sha256": "95d78e6715c46af71adbd08b13e2ae1cb75ec294aa40a081800a6712055bc498"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-512-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-forward-513-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-513-nonzero.path",
+          "sha256": "dad10faacf3792d5692c190a882d7f9bcc18cf9beca9b0c6d7542dcdf876a6c2"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-513-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-forward-513-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-513-evenodd.path",
+          "sha256": "d5646d850ea48ae51f676d68e92e0dd42c9b4c5bc487b6d705e37d88a92b2740"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-forward-513-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-reverse-513-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-513-nonzero.path",
+          "sha256": "daa80fb88b9a6cbecbd77c3c20c2ce1e57cb1b590f63e2a335af00a35e34e93a"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-513-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-horizontal-reverse-513-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-513-evenodd.path",
+          "sha256": "b5b690fa8a45fb27f296d6ca1e317174a00c8e72a29fdde7e96784cf2ef4c54d"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-horizontal-reverse-513-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-forward-513-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-513-nonzero.path",
+          "sha256": "eb4031da84432314dfeefd1f5e2e0d7413d2c6d4efe335d6b7ebd4e8e424f431"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-513-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-forward-513-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-513-evenodd.path",
+          "sha256": "cf405f6a8832af7cfa05afe50731900e1451153a1161940b5b4620e71539e7fa"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-forward-513-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-reverse-513-nonzero",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-513-nonzero.path",
+          "sha256": "df35fa8b862dc698aa1f1a49e860439ae1c3814cb6a82adf257ca6991010ad62"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-513-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/collapse-vertical-reverse-513-evenodd",
+      "kind": "vector",
+      "description": "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-513-evenodd.path",
+          "sha256": "748cbae5681d883418880aa4a4c12229984a30921cafbe5ef52499b0ca1fee71"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/collapse-vertical-reverse-513-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/winding-random-0-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-0-nonzero.path",
+          "sha256": "1b790ce8be2552d63816979a99efd7f81726b32471a044d086a47a3d123921e6"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-0-nonzero.pgm",
+          "sha256": "b7c09e979d78e5f6df10f12c479ff533559267dfaa18ce083ba7c0a501222c71"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-0-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-0-evenodd.path",
+          "sha256": "abb350de00c43802c62bcfd78b7ec6cb1eae703899704e202b90d096e0fc95ee"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-0-evenodd.pgm",
+          "sha256": "b7c09e979d78e5f6df10f12c479ff533559267dfaa18ce083ba7c0a501222c71"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-1-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-1-nonzero.path",
+          "sha256": "8faa71b40f770aa845f9c76973571900d5e4c7ca3a4d3c94d15bdad9c6993279"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-1-nonzero.pgm",
+          "sha256": "3329292c8ec89fe91e1bc5096f846b31cac8d7e1720b495be2abe0bfbca53c80"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-1-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-1-evenodd.path",
+          "sha256": "508168ebe52e0ec988f414f5097cc0c72de8ba2f8e3a62026c79d3ca0b7d858e"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-1-evenodd.pgm",
+          "sha256": "3329292c8ec89fe91e1bc5096f846b31cac8d7e1720b495be2abe0bfbca53c80"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-2-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-2-nonzero.path",
+          "sha256": "b757a05678f5e7a7e5cdec0f24bb1a72025341374f7023a8a5503916c0efebed"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-2-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-2-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-2-evenodd.path",
+          "sha256": "d3ca4d7eb7997a8bca10631beb5fcce75271f264f88402e594b1b3a4688d4b9c"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-2-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-3-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-3-nonzero.path",
+          "sha256": "a4ad8c586edf09ad127605d88367b28b28a587515e8faf38443299e54421e05b"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-3-nonzero.pgm",
+          "sha256": "c403e5bdc6d0801c36fe4f6523083aebaa6e51b77703cc328f10518e17290f48"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-3-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-3-evenodd.path",
+          "sha256": "dc1f6e321626c2802909898eb0c4d04aba76e743e67fab0b4c0ec756836b2414"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-3-evenodd.pgm",
+          "sha256": "bdf32478ce3255bf635617bd57dfb3d90cce5cf6b05f65f9e23a1d2ccf574885"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-4-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-4-nonzero.path",
+          "sha256": "d69502c4e889c0615a48920d9359332462f3ae9f973238690d7cd41ea4c34cee"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-4-nonzero.pgm",
+          "sha256": "b09ab21c13d2a2ff6f7657517fe196608285a9af6c6a2401b47406113fb6a0c4"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-4-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-4-evenodd.path",
+          "sha256": "37caf82df77dc3d3a0629c65ac93af0ca18d87167e7c10d2af88d6e320e9a4b1"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-4-evenodd.pgm",
+          "sha256": "b09ab21c13d2a2ff6f7657517fe196608285a9af6c6a2401b47406113fb6a0c4"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-5-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-5-nonzero.path",
+          "sha256": "ccb4b79b9063b0e69275c6aae93a5a2c32e2e5a5a2e79fbebd4089bbb02429b3"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-5-nonzero.pgm",
+          "sha256": "3586a752f5e2d215b1a5aba10603fa5ff4baa42a48d74f005d477a5fa6c046d9"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-5-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-5-evenodd.path",
+          "sha256": "97e6990987705b863680851586ca307b9c63e2143be271b322cd71487646ce61"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-5-evenodd.pgm",
+          "sha256": "3586a752f5e2d215b1a5aba10603fa5ff4baa42a48d74f005d477a5fa6c046d9"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-6-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-6-nonzero.path",
+          "sha256": "a8acdb80607cf06c6b6c214aab39ab8182c4f9947e15275aeb7db9ea1a1c4688"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-6-nonzero.pgm",
+          "sha256": "07f9142a901d9a24186da6a4154778fabd97b0741fef75d0e8daedba87c98e06"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-6-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-6-evenodd.path",
+          "sha256": "65fa6f484495f7cc7f01da93c00099566410b3e98c48b3f778aea10b3f0cd7f4"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-6-evenodd.pgm",
+          "sha256": "07f9142a901d9a24186da6a4154778fabd97b0741fef75d0e8daedba87c98e06"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-7-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-7-nonzero.path",
+          "sha256": "a70a0b0ef5a765fe2a3be6fa1f94b0952c3b2b7a252540c0e5e5fb20f896cd4c"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-7-nonzero.pgm",
+          "sha256": "6f9e442a30988205c1ef5127ad0de9cbb834c443131e4990ce6b816c7242b0f9"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-7-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-7-evenodd.path",
+          "sha256": "47f8313ed47a94eda733b5b9408ec46d81a7ae22fb498bba707232de3fdcc437"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-7-evenodd.pgm",
+          "sha256": "f424bbee8348310271599630cedebc59893a3a27b95b960c2e49925efc19c635"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-8-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-8-nonzero.path",
+          "sha256": "1fe8f296a298aa6c94a3c91ba21f83dbc576575fe5f0ebf1a602db05620730f9"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-8-nonzero.pgm",
+          "sha256": "b94aeaa19a8aa3226bc1a6422ed4b9d62822c07880ec7b0ce50d3fbbd9533e6a"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-8-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-8-evenodd.path",
+          "sha256": "97fa091c8d2b45d3cfd00786335cf36c2c070d75015742e33f554619b501c398"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-8-evenodd.pgm",
+          "sha256": "8dfe6b9bc99639f17f81daacceba0448a737fdba1c53db3c65c1d9d126e21485"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-9-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-9-nonzero.path",
+          "sha256": "7d80395caf0b28b789ab5c1ea052923a28a76adbd6b9ff06bfc09dcdb7e29340"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-9-nonzero.pgm",
+          "sha256": "b462b85e9a4050a876007ac10cef036f89b5069c28c2352e0c1fd06ebabba2ff"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-9-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-9-evenodd.path",
+          "sha256": "b28d82c9794314ab2df218fef22c3e73f41cdcc5aa8b496f9b32e7d060f94e4a"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-9-evenodd.pgm",
+          "sha256": "35a0174540b294b4efcdcae0f3e67f73a7781ab36d7a08a684ff7b480243fe86"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-10-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-10-nonzero.path",
+          "sha256": "58aedec57189da0a601261103e0ee8b05cac3b40c41d0bd8a041368a23dc9745"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-10-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-10-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-10-evenodd.path",
+          "sha256": "50a18dc2f780a2eeaa34415b0edc258c3a8fb09370f8322a93d0cc094e17cead"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-10-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-11-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-11-nonzero.path",
+          "sha256": "a9a3f87f70c538d62ae072c271b724b737a2e28cb643565fa2c0224ed6e52f98"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-11-nonzero.pgm",
+          "sha256": "44e3b0dbe7f3f4988f73f3a127b78f17b228af4ee9b981d386c6ba8f42eed4c0"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-11-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-11-evenodd.path",
+          "sha256": "2973bf0fef1eea3af809613172efe94c43588b674a79202661c03fc3147dc5d3"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-11-evenodd.pgm",
+          "sha256": "19df265d850beab453c91f6b16c9fd4a4de0ac0b1e6f0c8678d66482c3450574"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-12-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-12-nonzero.path",
+          "sha256": "b41d8a170c60bd71f0841fb54c9c141bc6ea04c0053dc74f72e540574527ce6b"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-12-nonzero.pgm",
+          "sha256": "ac978b9cfd3b916e23e6ba44c8f61efcc5680a6569e9430f71e2c4948c4fa5a1"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-12-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-12-evenodd.path",
+          "sha256": "7ca07d069425569818a606a95838a8d5ade3194e3d95b58c6b77458df5fb134d"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-12-evenodd.pgm",
+          "sha256": "ac978b9cfd3b916e23e6ba44c8f61efcc5680a6569e9430f71e2c4948c4fa5a1"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-13-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-13-nonzero.path",
+          "sha256": "3779c2696db6ae7bcb58a00ea33c3dee8c78363456cc178821706351a694d91e"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-13-nonzero.pgm",
+          "sha256": "63347b2b821d3ab0de86824957849e5c0fd38ae2fb6b7a89513eb760acdd286e"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-13-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-13-evenodd.path",
+          "sha256": "2a0ec715496b509d813e37025ed4b7ca9d09c2ad08b97ceaac303d049dcbdfff"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-13-evenodd.pgm",
+          "sha256": "b8b0800ea548c58b5233c859be1edb3c8220ad5b1aaeb3b18608ac85629dff57"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-14-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-14-nonzero.path",
+          "sha256": "6b4dd49c14a72fb4203d8a9dc7dc194ca0e92dde0aa259048a0d3059d1367c06"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-14-nonzero.pgm",
+          "sha256": "60cfa89a6e7e4c557192849eb908bf3bc5a79a70dc7408b2319a7d3d00b7c7e5"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-14-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-14-evenodd.path",
+          "sha256": "c1a571f53e3e13f0204bdf73c8cce61086f40b4b67417c050f39780b7bf00a64"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-14-evenodd.pgm",
+          "sha256": "60cfa89a6e7e4c557192849eb908bf3bc5a79a70dc7408b2319a7d3d00b7c7e5"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-15-nonzero",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-15-nonzero.path",
+          "sha256": "f4db02118ea74f5c7610b4d09ea4c1328a8971bd28120e35754e91fbea678eda"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-15-nonzero.pgm",
+          "sha256": "2575273f6bf1e9ec35867bd0304e611415106f94932b86543140b0886798a746"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/winding-random-15-evenodd",
+      "kind": "vector",
+      "description": "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/winding-random-15-evenodd.path",
+          "sha256": "6fdda14b0ba18281a3e68b33c1bb30a1717a7e4ed8b2cc5b669a9285e0a24f92"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/winding-random-15-evenodd.pgm",
+          "sha256": "d71a1ec682f6e780e438cc71d878a1fe4933402ac7c57298928a04b3d4235211"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "raster/dense-micro-slivers-horizontal-nonzero",
+      "kind": "vector",
+      "description": "Exact area of 1000 disjoint millionth-pixel slivers in one cell",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/dense-micro-slivers-horizontal-nonzero.path",
+          "sha256": "010c4f88f87104340dc87c2306d803a526ae1ec5ffd1681138acf27a637212e4"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/dense-micro-slivers-horizontal-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/dense-micro-slivers-horizontal-evenodd",
+      "kind": "vector",
+      "description": "Exact area of 1000 disjoint millionth-pixel slivers in one cell",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/dense-micro-slivers-horizontal-evenodd.path",
+          "sha256": "162bfe7af5649564324066780d3aec2cf747349b0519c75c69d22ddb08c055c9"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/dense-micro-slivers-horizontal-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/dense-micro-slivers-vertical-nonzero",
+      "kind": "vector",
+      "description": "Exact area of 1000 disjoint millionth-pixel slivers in one cell",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/dense-micro-slivers-vertical-nonzero.path",
+          "sha256": "541a8a690de6d7649a14e68e2ee86c0f4b9b9330e01a9805ca3a750a27332e38"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/dense-micro-slivers-vertical-nonzero.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/dense-micro-slivers-vertical-evenodd",
+      "kind": "vector",
+      "description": "Exact area of 1000 disjoint millionth-pixel slivers in one cell",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/dense-micro-slivers-vertical-evenodd.path",
+          "sha256": "4398af49cc0489590b44851a91b88dcd94008a8e4fa56282d858fd281476640b"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/dense-micro-slivers-vertical-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
     }
   ]
 }

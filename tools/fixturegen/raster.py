@@ -15,12 +15,13 @@ AREA = "raster"
 SIZE = 8
 
 
-def clipped_area(points, x, y):
+def clipped_polygon(points, x, y):
+    """Clip a closed contour to one closed pixel using rational arithmetic."""
     points = [(F(a), F(b)) for a, b in points]
     for axis, bound, sign in ((0, x, 1), (0, x + 1, -1), (1, y, 1), (1, y + 1, -1)):
         output = []
         if not points:
-            return F(0)
+            return []
         for a, b in zip(points, points[1:] + points[:1]):
             ain = sign * (a[axis] - bound) >= 0
             bin = sign * (b[axis] - bound) >= 0
@@ -30,10 +31,63 @@ def clipped_area(points, x, y):
                 t = (bound - a[axis]) / (b[axis] - a[axis])
                 output.append(tuple(p + t * (q - p) for p, q in zip(a, b)))
         points = output
+    return points
+
+
+def clipped_area(points, x, y):
+    points = clipped_polygon(points, x, y)
     if not points:
         return F(0)
     return abs(sum(a[0] * b[1] - a[1] * b[0]
                    for a, b in zip(points, points[1:] + points[:1]))) / 2
+
+
+def winding_area(groups, x, y):
+    """Exact pixel area for an intersection of nonzero/even-odd path groups.
+
+    ISO 32000-2 8.5.3.3.2–3 defines the interiors, and 8.5.4 defines their
+    geometric intersection. Vertical slabs between vertices and intersections
+    have a fixed edge order; their filled trapezoids integrate in Fraction.
+    This includes self-intersections and coincident edges, without sampling.
+    """
+    edges, cuts = [], {F(x), F(x + 1)}
+    for group, (_, contours) in enumerate(groups):
+        for contour in contours:
+            points = clipped_polygon(contour, x, y)
+            for a, b in zip(points, points[1:] + points[:1]):
+                if a[0] != b[0]:
+                    edges.append((a, b, group, 1 if b[0] > a[0] else -1))
+                    cuts.update((a[0], b[0]))
+    def cross(a, b):
+        return a[0] * b[1] - a[1] * b[0]
+    for i, (a, b, _, _) in enumerate(edges):
+        direction = tuple(q - p for p, q in zip(a, b))
+        for c, d, _, _ in edges[:i]:
+            other = tuple(q - p for p, q in zip(c, d))
+            denominator = cross(direction, other)
+            if denominator:
+                offset = tuple(q - p for p, q in zip(a, c))
+                t = cross(offset, other) / denominator
+                u = cross(offset, direction) / denominator
+                if 0 < t < 1 and 0 < u < 1:
+                    cuts.add(a[0] + t * direction[0])
+    cuts, area = sorted(cuts), F(0)
+    for left, right in zip(cuts, cuts[1:]):
+        middle, active = (left + right) / 2, []
+        for a, b, group, delta in edges:
+            if min(a[0], b[0]) <= left and right <= max(a[0], b[0]):
+                def height(at):
+                    return a[1] + (b[1] - a[1]) * (at - a[0]) / (b[0] - a[0])
+                active.append((height(middle), height(left), height(right), group, delta))
+        active.sort()
+        winding = [0] * len(groups)
+        for edge, following in zip(active, active[1:]):
+            _, top_left, top_right, group, delta = edge
+            winding[group] += delta
+            if all((value != 0 if rule == "nonzero" else value % 2 != 0)
+                   for value, (rule, _) in zip(winding, groups)):
+                area += (following[1] - top_left + following[2] - top_right) * (right - left) / 2
+    return area
 
 
 def pgm(areas):
@@ -112,6 +166,10 @@ def cases():
                   lambda x,y: 1 <= x <= 7 and 1 <= y <= 1 + 3*((x-1)/6)*(1-(x-1)/6), "raster-curves")
 
     yield from crossing_cases()
+    yield from winding_cases()
+    yield from collapsing_cases()
+    yield from winding_stress_cases()
+    yield from micro_sliver_cases()
 
 
 def intersect_convex(subject, clip):
@@ -156,3 +214,131 @@ def crossing_cases():
                 overlap=clipped_area(intersection,x,y) if intersection else F(0)
                 values.append(overlap if mode==3 else clipped_area(a,x,y)+clipped_area(b,x,y)-(2 if mode in (1,2) else 1)*overlap)
         yield Vector('crossing-set-'+str(i),{'.path':text.encode(),'.pgm':pgm(values)},('raster-exact-area',),'Rational union, parity, opposite-winding or geometric intersection of two independently generated triangles',extra={'tolerance':1})
+
+
+def contour_path(points):
+    """Round-trip binary64 coordinates; dyadic stress inputs remain exact."""
+    def pair(point):
+        return " ".join(format(float(value), ".17g") for value in point)
+    return "m " + pair(points[0]) + "\n" + "".join("l " + pair(p) + "\n" for p in points[1:]) + "h\n"
+
+
+def winding_cases():
+    square = [(F(1, 4), F(1, 4)), (F(3, 4), F(1, 4)),
+              (F(3, 4), F(3, 4)), (F(1, 4), F(3, 4))]
+    shifted = [(x + F(1, 8), y + F(1, 8)) for x, y in square]
+    shapes = {
+        "boundary-triangle": [[[(0, 0), (1, 0), (0, 1)]]],
+        "opposite-chains": [[[(-1, F(-1, 2)), (F(3, 2), F(-1, 2)), (-1, F(9, 10))],
+                              [(-1, F(3, 2)), (F(3, 2), F(3, 2)), (-1, F(2, 5))]]],
+        "crossed-rules": [[[(-1, F(3, 8)), (2, F(3, 8)), (2, F(5, 8)), (-1, F(5, 8))],
+                            [(F(3, 8), -1), (F(5, 8), -1), (F(5, 8), 2), (F(3, 8), 2)]]],
+        "tiny-bowtie": [[[(F(1, 8), F(1, 8)), (F(7, 8), F(7, 8)),
+                          (F(1, 8), F(7, 8)), (F(7, 8), F(1, 8))]]],
+        "overlapping-contours": [[square, shifted]],
+        "coincident-opposite": [[square, square[::-1]]],
+        "touching-contours": [[square, [(x + F(1, 2), y) for x, y in square]]],
+        "same-clip": [[square], [square]],
+        "nested-clips": [[[(-1, -1), (2, -1), (2, 2), (-1, 2)]],
+                         [[(-1, 0), (2, 0), (2, 1), (-1, 1)]], [square], [shifted]],
+        "crossing-clips": [[[(0, 0), (1, 0), (0, 1)]], [[(0, 0), (1, 1), (0, 1)]]],
+        "star-in-cell": [[[(F(1, 2), 0), (F(7, 8), 1), (0, F(3, 8)),
+                           (1, F(3, 8)), (F(1, 8), 1)]]],
+        "double-crossing-chains": [[[(F(1, 8), F(1, 8)), (F(7, 8), F(3, 8)),
+                                    (F(1, 8), F(5, 8)), (F(7, 8), F(7, 8)),
+                                    (F(7, 8), F(1, 8)), (F(1, 8), F(7, 8))]]],
+        "thin-rule": [[[(F(1, 8), F(1, 8)), (F(27, 200), F(1, 8)),
+                        (F(27, 200), F(7, 8)), (F(1, 8), F(7, 8))]]],
+        "coincident-same": [[square, square]],
+        "collinear": [[[(1, 1), (2, 2), (3, 3)]]],
+        "huge-endpoints": [[[(-10**12, -10**12), (10**12, 10**12), (10**12, -10**12)]]],
+        "translated-half-tie": [[[(-2, 5 + F(3, 1 << 22)),
+                                    (F(-3, 1 << 22), 2 + F(2, 1 << 22)),
+                                    (7 + F(3, 1 << 22), 4 - F(2, 1 << 22))]]],
+        "rounding-threshold": [[[(0, 0), (F(1, 1020), 0), (F(1, 510), 0),
+                                  (F(1, 510), 1), (0, 1)]]],
+    }
+    for name, contours in shapes.items():
+        for rule in ("nonzero", "evenodd"):
+            groups = [(rule, group) for group in contours]
+            text = (rule + "\n") + "clip\n".join("".join(contour_path(c) for c in group) for group in contours)
+            yield Vector("winding-" + name + "-" + rule,
+                         {".path": text.encode(), ".pgm": pgm(
+                             winding_area(groups, x, y) for y in range(SIZE) for x in range(SIZE))},
+                         ("raster-exact-area",),
+                         "Rational vertical-slab winding integration with geometric clip intersection",
+                         extra={"tolerance": 1})
+
+
+def collapsing_cases():
+    grid = 1 << 20
+    for count in (127, 128, 129, 512, 513):
+        for axis in ("horizontal", "vertical"):
+            for direction in ("forward", "reverse"):
+                contours = []
+                for i in range(count):
+                    center = F(4 * i + 2, grid)
+                    lo, hi = center - F(1, 4 * grid), center + F(1, 4 * grid)
+                    points = [(F(1, 8), lo), (F(7, 8), lo), (F(7, 8), hi), (F(1, 8), hi)]
+                    if axis == "vertical":
+                        points = [(y, x) for x, y in points]
+                    if direction == "reverse":
+                        points.reverse()
+                    contours.append(points)
+                # The rectangles are disjoint. Their union and parity areas are
+                # count * (3/4) * 2^-21, independently of the contour direction.
+                # Four original segments per contour straddle the 512 cutoff
+                # at counts 127, 128 and 129, even if snapping removes them all.
+                expected = [F(3 * count, 8 * grid)] + [F(0)] * (SIZE * SIZE - 1)
+                for rule in ("nonzero", "evenodd"):
+                    name = f"collapse-{axis}-{direction}-{count}-{rule}"
+                    text = rule + "\n" + "".join(contour_path(c) for c in contours)
+                    yield Vector(name, {".path": text.encode(), ".pgm": pgm(expected)},
+                                 ("raster-exact-area",),
+                                 "Exact disjoint dyadic rectangle areas across the original-segment density cutoff",
+                                 extra={"tolerance": 0})
+
+
+def winding_stress_cases():
+    import random
+    rng = random.Random(391771)
+    for case in range(16):
+        groups = []
+        for _ in range(1 + case % 3):
+            contours = []
+            for _ in range(1 + case % 2):
+                points = [(F(rng.randrange(-8, 72), 8), F(rng.randrange(-8, 72), 8))
+                          for _ in range(3 + case % 5)]
+                if all(p == points[0] for p in points):
+                    points[-1] = (points[-1][0] + F(1, 8), points[-1][1])
+                contours.append(points)
+            groups.append(contours)
+        for rule in ("nonzero", "evenodd"):
+            text = rule + "\n" + "clip\n".join("".join(contour_path(c) for c in group) for group in groups)
+            yield Vector(f"winding-random-{case}-{rule}",
+                         {".path": text.encode(), ".pgm": pgm(
+                             winding_area([(rule, g) for g in groups], x, y)
+                             for y in range(SIZE) for x in range(SIZE))},
+                         ("raster-exact-area",),
+                         "Seeded rational winding arrangements with self-intersections and multiple clip groups",
+                         extra={"tolerance": 1})
+
+
+def micro_sliver_cases():
+    count, width = 1000, F(1, 10**6)
+    for axis in ("horizontal", "vertical"):
+        contours = []
+        for i in range(count):
+            lo = F(1, 8) + 4 * i * width
+            points = [(lo, F(1, 8)), (lo + width, F(1, 8)),
+                      (lo + width, F(7, 8)), (lo, F(7, 8))]
+            if axis == "horizontal":
+                points = [(y, x) for x, y in points]
+            contours.append(points)
+        expected = [count * width * F(3, 4)] + [F(0)] * (SIZE * SIZE - 1)
+        for rule in ("nonzero", "evenodd"):
+            yield Vector(f"dense-micro-slivers-{axis}-{rule}",
+                         {".path": (rule + "\n" + "".join(contour_path(c) for c in contours)).encode(),
+                          ".pgm": pgm(expected)}, ("raster-exact-area",),
+                         "Exact area of 1000 disjoint millionth-pixel slivers in one cell",
+                         extra={"tolerance": 0})
