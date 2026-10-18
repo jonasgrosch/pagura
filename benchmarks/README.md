@@ -258,6 +258,70 @@ regions, with integer round-to-nearest for straight alpha. Premultiplied channel
 must be <= alpha. Readers enforce dimensions, byte budgets and exact payload
 lengths; they never trim pixel whitespace or resize output to match an oracle.
 
+### Re-time selected engines against round 5
+
+After a change to Pagura, reuse an existing run on the same runner:
+
+```sh
+"$PAGURA_COMPETITORS_DIR/venv/bin/python" benchmarks/round5.py \
+  --output benchmarks/results/local/round5-retime \
+  --engines pagura --reference /absolute/path/to/round5-run --control 4
+```
+
+`--engines NAME[,NAME...]` selects distinct applicable engine names. Without any
+new options the all-engine protocol and reports are unchanged. Selected engines
+keep the same page/DPI plan, randomized blocks, three warmups, ten samples, idle
+checks, stage boundaries and per-process CPU/RSS accounting. Unselected engines
+are not launched. Pagura-only runs build the native CLI and geometry control
+without building WASI or requiring Wasmtime. Competitors needed only as stored
+references need not be installed in the current checkout.
+
+`--reference RUN_DIR` reads the completed run's `conversion.json`, `blocks.jsonl`,
+`machine.json`, `engines.json` and `status.json`. A different external manifest
+hash, CPU model, OS/platform or architecture is refused, as are incomplete runs,
+failed samples and inconsistent engine identities. References must use identical
+sample and warmup counts, policy hash, measurement options (except the measured
+`rss_floor_bytes`), and `process_measurement.py` hash. A re-timing run cannot be
+a reference. `--reference` requires at least one control cell. The selected
+page/DPI plan must be covered by the reference. Reference document ranges are preserved, so
+open/process costs remain comparable. `reference.json` records the reference run
+id, commit, manifest hash, machine identity and hashes of those five files;
+`conversion.json` also retains that provenance. Files remain in place.
+
+`--control N` requires a reference and re-times N fixed Hayro page/DPI cells.
+The selection cycles through text, image, vector and mixed categories, rotating
+72/150/300 dpi, with case/page ordering independent of performance. Each control
+runs its reference's complete document range; overlapping jobs share their
+blocks. The Hayro version and artifact hashes must match the reference even
+when their paths move. Controls check render, engine contribution and process
+elapsed time separately: per-page render medians and per-document engine/process
+medians, counting each document/DPI once. Each metric's cell ratios (new ÷
+reference), median ratio and status appear in `comparison.json` and `summary.md`.
+All three medians must be within [0.97, 1.03] for the comparison to be stable.
+Any metric outside that interval marks the comparison **DRIFTED**; missing
+control results mark it incomplete. No drift correction is applied. Any status
+other than stable prints **NOT A RESULT**, withholds comparison ratio tables,
+and returns exit code 3. Raw measurements and control diagnostics are retained.
+Controls do not replace stored competitor medians.
+
+`medians.json` retains newly measured per-page render/emit and per-document
+stage/process/CPU/RSS medians. `comparison.json` and `summary.md` compare Pagura
+with every engine, the fastest applicable competitor per cell, and reference
+Pagura. Best excludes the stored V8/Wasmtime builds of Pagura. Each category/DPI
+entry is the median of its cell ratios of medians; reference values are used
+only for engines absent from `--engines`. Render
+cells are pages; engine contribution (`open + render`) and process cells are
+document/DPI jobs, counted once per category. Poppler remains process-only.
+Missing or failed results suppress ratios rather than narrowing the sample.
+These cross-run comparisons are unpaired and exploratory, not release evidence.
+
+Add `--smoke` for a functional check: one text and one image page at 72 dpi,
+three samples and one warmup, plus the requested controls. A reference's full
+document ranges are retained even when the smoke selects just one page from a
+range. Control cells still span categories and DPIs. Smoke bypasses the idle
+wait and its timings are not performance evidence. A smoke re-timing requires a
+compatible smoke reference; it cannot use a full ten-sample round-5 reference.
+
 ### Arbitrary corpora and correctness
 
 `--corpus` accepts any local directory with `manifest.json` (or an explicit

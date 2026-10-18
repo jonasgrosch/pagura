@@ -25,6 +25,7 @@ import benchkit.documents as documents
 from agreement import pixel_difference
 from machine_record import snapshot
 from process_measurement import measurement_options, run_process
+import round5_compare as compare
 
 NATIVE = tuple(name for name in ("pagura", "pdfium", "mupdf", "quartz", "hayro", "pdfjs", "poppler")
                if name != "quartz" or sys.platform == "darwin")
@@ -65,7 +66,7 @@ def checked(command, log, *, env=None):
                        env=env, check=True, timeout=900)
 
 
-def build(output, wasmtime):
+def build(output, wasmtime, *, include_wasm=True):
     """Offline clean targets and explicit identical bundled-data features."""
     artifacts = output / "artifacts"
     artifacts.mkdir()
@@ -85,9 +86,11 @@ def build(output, wasmtime):
     checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "--target", host,
              "-p", "pagura", "-p", "pagura-host", "--features", "pagura-host/bundled-data"], log, env=env)
     wasi_env = dict(env, CARGO_ENCODED_RUSTFLAGS="-C\x1ftarget-feature=+simd128")
-    checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "-p", "pagura-host",
-             "--features", "bundled-data", "--target", "wasm32-wasip1"], log, env=wasi_env)
-    for triple, name in ((host, "native-control"), ("wasm32-wasip1", "convert.wasm")):
+    if include_wasm:
+        checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "-p", "pagura-host",
+                 "--features", "bundled-data", "--target", "wasm32-wasip1"], log, env=wasi_env)
+    targets = [(host, "native-control")] + ([("wasm32-wasip1", "convert.wasm")] if include_wasm else [])
+    for triple, name in targets:
         deps = target / triple / "release/deps"
         libraries = list(deps.glob("libpagura-*.rlib"))
         if len(libraries) != 1:
@@ -98,13 +101,15 @@ def build(output, wasmtime):
         if triple == "wasm32-wasip1":
             command += ["-C", "target-feature=+simd128"]
         checked(command, log, env=env)
-    checked([wasmtime, "compile", "-C", "cache=n", "-C", "parallel-compilation=n",
-             artifacts / "convert.wasm", "-o", artifacts / "convert.cwasm"], log)
+    if include_wasm:
+        checked([wasmtime, "compile", "-C", "cache=n", "-C", "parallel-compilation=n",
+                 artifacts / "convert.wasm", "-o", artifacts / "convert.cwasm"], log)
     atomic_json(output / "compiler.json", {"rustc": info, "host": host,
         "features": ["bundled-data"], "native_rustflags": "target baseline; inherited RUSTFLAGS cleared",
         "native_target_features": features,
-        "wasm_rustflags": "-C target-feature=+simd128", "wasmtime": "Cranelift AOT opt-level=2; parallel-compilation=n",
-        "product_host_wasm_sha256": sha((target / "wasm32-wasip1/release/pagura-host.wasm").read_bytes())})
+        "wasm_rustflags": "-C target-feature=+simd128" if include_wasm else None,
+        "wasmtime": "Cranelift AOT opt-level=2; parallel-compilation=n" if include_wasm else None,
+        "product_host_wasm_sha256": sha((target / "wasm32-wasip1/release/pagura-host.wasm").read_bytes()) if include_wasm else None})
     return target / host / "release/pagura", artifacts
 
 
@@ -233,8 +238,7 @@ def measurement(report, jobs, bases, node, wasmtime, artifacts, policy, output, 
     """Each engine runs exactly once per complete block; no retry/filtering."""
     rng = random.Random(args.seed)
     rng.shuffle(jobs)
-    names = (*NATIVE, *WASM)
-    baselines = names[1:]
+    selected_names = args.engines or (*NATIVE, *WASM)
     documents.run_process = run_process
     documents.preserve_failure = failure_sink(output / "failures")
     temporary = output / "temporary"
@@ -246,6 +250,10 @@ def measurement(report, jobs, bases, node, wasmtime, artifacts, policy, output, 
             remaining_time(args)
             idle_record(machine, output / "machine.json", node, smoke=args.smoke)
             case = pages[0]
+            names = tuple(name for name in selected_names if (case["id"], case["dpi"]) in args.main_jobs)
+            if (case["id"], case["dpi"]) in args.control_jobs and "hayro" not in names:
+                names += ("hayro",)
+            baselines = tuple(name for name in names if name != "pagura") if "pagura" in names else ()
             if sha(Path(case["path"]).read_bytes()) != case["sha256"]:
                 raise ValueError("PDF changed after manifest validation")
             expected = expected_pages(pages)
@@ -287,6 +295,8 @@ def measurement(report, jobs, bases, node, wasmtime, artifacts, policy, output, 
                                 retained[name, page] = target
                 by_page = {name: {page["page"]: page for page in run["pages"]} for name, run in runs.items()}
                 for name in WASM:
+                    if name not in runs or "pagura" not in runs:
+                        continue
                     for page in expected:
                         match = verify_runtime_parity(by_page["pagura"][page], by_page[name][page])
                         report["runtime_parity"].append({"block_id": block_id, "case": case["id"], "dpi": case["dpi"], "page": page, "engine": name,
@@ -371,16 +381,48 @@ def cpu_summary(output):
     return summary
 
 
-def main(argv=None):
+def engine_names(value):
+    names = value.split(",")
+    allowed = (*NATIVE, *WASM)
+    if not names or len(set(names)) != len(names) or any(name not in allowed for name in names):
+        raise argparse.ArgumentTypeError("engines must be distinct names from: " + ",".join(allowed))
+    return tuple(name for name in allowed if name in names)
+
+
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--smoke", action="store_true", help="two pages, 72 dpi, three samples and one warmup")
     parser.add_argument("--dpi300-pages", type=int, choices=(20, 40), default=20)
     parser.add_argument("--seed", type=int, default=52018)
     parser.add_argument("--timebox-seconds", type=int, default=7200)
+    parser.add_argument("--engines", type=engine_names, help="comma-separated engines; default: all applicable engines")
+    parser.add_argument("--reference", type=Path, help="completed round-5 run on this machine and manifest")
+    parser.add_argument("--control", type=int, default=0, help="fixed Hayro page/DPI controls against --reference")
     args = parser.parse_args(argv)
+    if args.control < 0:
+        parser.error("control must be nonnegative")
+    if args.control and not args.reference:
+        parser.error("control requires --reference")
+    if args.reference and args.control < 1:
+        parser.error("reference requires --control >= 1")
     if args.timebox_seconds <= 0:
         parser.error("timebox-seconds must be positive")
+    return args
+
+
+def result_exit_status(exact, failed, comparison_status=None):
+    if comparison_status is not None and comparison_status != "stable":
+        return 3
+    return 0 if exact and not failed else 2
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    retiming = args.engines is not None or args.reference is not None or args.control != 0
+    names = args.engines or (*NATIVE, *WASM)
+    needed = tuple(dict.fromkeys((*names, *(("hayro",) if args.control else ()))))
+    include_wasm = any(name in WASM for name in needed)
     args.deadline = time.monotonic() + args.timebox_seconds
     args.samples, args.warmups = (3, 1) if args.smoke else (10, 3)
     output = args.output.resolve()
@@ -398,12 +440,14 @@ def main(argv=None):
     cases, _ = corpus_cases(corpus, manifest, dpis=(72,))
     metadata = page_metadata(read_json(manifest))
     node = os.environ.get("PAGURA_NODE", shutil.which("node") or "node")
-    wasmtime = str(Path(required("PAGURA_WASMTIME")).expanduser().resolve())
-    if subprocess.check_output([wasmtime, "--version"], text=True).split()[:2] != ["wasmtime", "49.0.3"]:
-        raise ValueError("Wasmtime 49.0.3 is required")
-    expected_wasmtime = os.environ.get("PAGURA_WASMTIME_SHA256")
-    if expected_wasmtime and sha(Path(wasmtime).read_bytes()) != expected_wasmtime:
-        raise ValueError("Wasmtime executable SHA-256 mismatch")
+    wasmtime = None
+    if include_wasm:
+        wasmtime = str(Path(required("PAGURA_WASMTIME")).expanduser().resolve())
+        if subprocess.check_output([wasmtime, "--version"], text=True).split()[:2] != ["wasmtime", "49.0.3"]:
+            raise ValueError("Wasmtime 49.0.3 is required")
+        expected_wasmtime = os.environ.get("PAGURA_WASMTIME_SHA256")
+        if expected_wasmtime and sha(Path(wasmtime).read_bytes()) != expected_wasmtime:
+            raise ValueError("Wasmtime executable SHA-256 mismatch")
     import PIL  # installed only in the isolated benchmark environment
     output.mkdir(parents=True, exist_ok=False)
     atomic_json(output / "status.json", {"status": "running", "smoke": args.smoke, "release_eligible": False})
@@ -412,26 +456,42 @@ def main(argv=None):
         pinned = source_digest()
         harness_before = harness_sources()
         checked([sys.executable, "-m", "unittest", "discover", "-s", "benchmarks", "-p", "test_*.py"], output / "preflight.log")
-        native, artifacts = build(output, wasmtime)
+        machine = {"observations": [snapshot(node)], "pauses": []} if retiming else {"observations": [], "pauses": []}
+        options = measurement_options() if args.reference else None
+        protocol = {"samples_requested": args.samples, "warmups": args.warmups,
+                    "policy_sha256": sha(POLICY_PATH.read_bytes()), "measurement_options": options,
+                    "round5": {"harness_sha256": harness_before}}
+        reference = compare.load_reference(args.reference, digest, machine["observations"][0], protocol) if args.reference else None
+        controls = compare.select_controls(reference, args.control) if reference else []
+        if reference:
+            atomic_json(output / "reference.json", reference["provenance"])
+        native, artifacts = build(output, wasmtime, include_wasm=include_wasm)
         if source_digest() != pinned or harness_sources() != harness_before:
             raise ValueError("source changed during build")
-        bases = {name: engines()[name] for name in NATIVE}
-        bases["pagura"] = [str(native)]
-        bases["pdfjs"] = [node, "--single-threaded", *bases["pdfjs"][1:]]
+        bases = {name: engines()[name] for name in NATIVE if name in needed}
+        if "pagura" in bases:
+            bases["pagura"] = [str(native)]
+        if "pdfjs" in bases:
+            bases["pdfjs"] = [node, "--single-threaded", *bases["pdfjs"][1:]]
         identities = {name: identify(name, command) for name, command in bases.items()}
         if any(value["status"] != "available" for value in identities.values()):
             atomic_json(output / "engines.json", identities)
             raise ValueError("all applicable competitors must be installed and available; see engines.json")
         for name, runtime in (("v8-wasi", node), ("wasmtime", wasmtime)):
+            if name not in needed:
+                continue
             paths = [Path(shutil.which(runtime) or runtime), artifacts / "convert.wasm", artifacts / "convert.cwasm",
                      ROOT / "benchmarks/adapters/wasm_convert.rs", ROOT / "benchmarks/adapters/wasi.mjs"]
             identities[name] = {"status": "available", "version": subprocess.check_output([runtime, "--version"], text=True).strip(),
                                 "artifacts": {str(path): sha(path.read_bytes()) for path in paths}}
         atomic_json(output / "engines.json", identities)
+        if controls:
+            compare.check_control_identity(identities["hayro"], reference["report"]["engine_identities"]["hayro"])
         if "quartz" in bases:
             checked([sys.executable, ROOT / "benchmarks/adapters/quartz_geometry_test.py", bases["quartz"][0]], output / "preflight.log")
-        checked([sys.executable, ROOT / "benchmarks/adapters/wasm_convert_test.py", artifacts / "native-control",
-                 artifacts / "convert.wasm", wasmtime], output / "preflight.log")
+        if include_wasm:
+            checked([sys.executable, ROOT / "benchmarks/adapters/wasm_convert_test.py", artifacts / "native-control",
+                     artifacts / "convert.wasm", wasmtime], output / "preflight.log")
         geometry = {}
         for pages in document_jobs(cases, bases):
             for dpi in (72, 150, 300):
@@ -449,12 +509,28 @@ def main(argv=None):
                         for content in ("text-heavy", "image-heavy")]
         else:
             selected = full_plan
-        jobs = document_jobs(selected, bases)
+        if reference:
+            reference_selection = {(cell["case"], cell["page"], cell["dpi"]): cell for cell in reference["report"]["round5"]["selection"]}
+            for case in selected:
+                previous = reference_selection.get((case["id"], case["page"], case["dpi"]))
+                if previous is None or previous["sha256"] != case["sha256"]:
+                    raise ValueError("reference selection does not cover the requested page/DPI plan")
+        args.main_jobs = {(case["id"], case["dpi"]) for case in selected}
+        args.control_jobs = {(cell["case"], cell["dpi"]) for cell in controls}
+        # Reference document timings are comparable only with the same page range.
+        if reference:
+            source_cases = {(case["id"], case["page"]): case for case in cases}
+            planned = [{**source_cases[cell["case"], cell["page"]], "dpi": cell["dpi"]}
+                       for cell in reference["report"]["round5"]["selection"]
+                       if (cell["case"], cell["dpi"]) in args.main_jobs | args.control_jobs]
+            jobs = document_jobs(planned, bases)
+        else:
+            jobs = document_jobs(selected, bases)
         report = new_report(identities, args.samples, args.warmups, args.seed, digest, "conversion", None, process_per_page=False)
         report["source_sha256"] = pinned
         report["suite"] = "round5-smoke" if args.smoke else "round5-real-documents"
         report.update(runtime_parity=[], completed_jobs=0, planned_jobs=len(jobs),
-                      measurement_options=measurement_options())
+                      measurement_options=options if options is not None else measurement_options())
         compiler = read_json(output / "compiler.json")
         report["round5"] = {"smoke": args.smoke, "manifest_external_path": str(manifest), "corpus_external_path": str(corpus),
             "validated_full_plan": {"page_dpi_cases": len(full_plan), "document_dpi_jobs": len(document_jobs(full_plan, bases)),
@@ -475,8 +551,11 @@ def main(argv=None):
             "selection": [{"case": case["id"], "page": case["page"], "dpi": case["dpi"], "sha256": case["sha256"],
                            **{key: metadata[case["id"], case["page"]][key] for key in ("content", "size", "producer", "reason")}}
                           for case in selected]}
+        if retiming:
+            report["retiming"] = {"engines": list(names), "control_cells": controls,
+                                  "wasm_built": include_wasm,
+                                  "reference": reference["provenance"] if reference else None}
         atomic_json(output / "conversion.json", report)
-        machine = {"observations": [], "pauses": []}
         policy = read_json(POLICY_PATH)
         measurement(report, jobs, bases, node, wasmtime, artifacts, policy, output, machine, args)
         machine["observations"].append(snapshot(node))
@@ -496,14 +575,36 @@ def main(argv=None):
         report["gate"] = {"pass": False, "reasons": ["exploratory real pages without independent oracles; insufficient release samples; release matrix incomplete"]}
         atomic_json(output / "conversion.json", report)
         atomic_json(output / "cpu-summary.json", cpu_summary(output))
-        write_summary(output / "conversion.json", output / "summary.md")
+        if retiming:
+            measured = compare.medians(output, args.samples)
+            drift = compare.control_drift(controls, measured, reference["medians"]) if reference else compare.control_drift([], {}, {})
+            result = compare.comparison(report["round5"]["selection"], measured, reference, names)
+            result["control"] = drift
+            result["comparison_status"] = drift["status"]
+            report["retiming"]["comparison_status"] = drift["status"]
+            atomic_json(output / "medians.json", list(measured.values()))
+            atomic_json(output / "comparison.json", result)
+            atomic_json(output / "conversion.json", report)
+            summary = compare.markdown(result, drift, reference["provenance"] if reference else None)
+            (output / "summary.md").write_text(summary)
+            print(summary, flush=True)
+        else:
+            write_summary(output / "conversion.json", output / "summary.md")
         exact = all(item["exact"] for item in report["runtime_parity"])
         bad = any(sample[key]["status"] not in GOOD for cell in report["document_cells"]
                   for sample in cell["samples"] + cell["warmup_failures"] for key in ("pagura", "baseline"))
-        atomic_json(output / "status.json", {"status": "complete", "page_dpi_cases": len(selected), "jobs": len(jobs),
-                    "samples": args.samples, "warmups": args.warmups, "runtime_pixel_parity": exact, "failed_cells": bad,
-                    "release_eligible": False})
-        return 0 if exact and not bad else 2
+        if retiming:
+            bad = any(cell["status"] != "measured" for cell in measured.values())
+        status = {"status": "complete", "page_dpi_cases": len(selected), "jobs": len(jobs),
+                  "samples": args.samples, "warmups": args.warmups, "runtime_pixel_parity": exact, "failed_cells": bad,
+                  "release_eligible": False}
+        if retiming:
+            status["comparison_status"] = drift["status"]
+            if not report["runtime_parity"]:
+                status["runtime_pixel_parity"] = None
+        atomic_json(output / "status.json", status)
+
+        return result_exit_status(exact, bad, drift["status"] if retiming else None)
     except BaseException as error:
         if report is not None:
             atomic_json(output / "conversion.json", report)
