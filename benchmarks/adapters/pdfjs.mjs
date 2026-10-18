@@ -45,6 +45,9 @@ if (process.argv[2] === '--version') {
   const surface = document.canvasFactory.create(Math.ceil(viewport.width), Math.ceil(viewport.height));
   await page.render({canvasContext: surface.context, viewport, background: 'rgb(255,255,255)'}).promise;
   const width = surface.canvas.width, height = surface.canvas.height;
+  // Canvas 1.x can defer raster playback until readback. A one-pixel read
+  // flushes the complete recording here; full pixel extraction stays in emit.
+  surface.context.getImageData(0, 0, 1, 1);
   const rendered = process.hrtime.bigint();
   const rgba = surface.context.getImageData(0, 0, width, height).data;
   const output = args.length === 5 ? path.join(target, `page-${String(index + 1).padStart(4, '0')}.ppm`) : target;

@@ -24,7 +24,8 @@ ancestors, descendants and symlink aliases into the repository are rejected.
 The hayro adapter and checked-in lock are copied there; its isolated `CARGO_HOME`
 and target directory are also there. It uses the workspace's pinned toolchain.
 Node resolves packages from this same external cache. Dependency locks remain in
-`benchmarks/`. No competitor source, tests or history are needed or read.
+`benchmarks/`. Studying other engines is allowed; copying or translating their
+implementation remains forbidden (ADR 0006).
 
 Set `PAGURA_POPPLER` to the actual `pdftoppm` binary when PATH supplies a launcher.
 Poppler is supplied by the operating system. Adobe is not a required baseline
@@ -59,6 +60,11 @@ All adapters use these stage boundaries:
   Lazy page/resource loading, viewport/context setup and rasterization belong here.
 - `emit`: convert/extract image pixels, encode the raw format and write it.
 
+PDF.js forces deferred Canvas raster playback with a one-pixel read before the
+render timer stops; full image extraction stays in emit. Its synchronous raster
+Canvas path uses no async image encoder. Runtime background work is still checked
+through process CPU/wall rather than assumed absent from the process.
+
 The default **document mode** launches one process per document, DPI and engine
 in each randomized pair. That process opens once and converts all selected pages.
 Document engine contribution is **open + sum(page render)**; `emit`, runtime/import
@@ -91,6 +97,128 @@ A failing instrumentation wrapper fails the sample; missing RSS cannot pass the
 gate. `--no-rss` explicitly omits unavailable instrumentation in exploratory
 conversion/regression runs and records `rss_enabled: false` and null RSS.
 It does not change checked-in policy or make the release gate eligible. Timeouts terminate the process group on POSIX.
+
+### Exploratory CPU accounting and WebAssembly
+
+`python3 benchmarks/process_measurement.py convert ...` is an opt-in POSIX front
+end to the same CLI. It replaces only process instrumentation with `wait4`:
+each raw document sample retains `cpu_user_ns`, `cpu_system_ns`, their sum
+`cpu_ns`, wall `elapsed_ns`, `cpu_wall_ratio`, and `cpu_parallelism_flag` (>1.05).
+CPU accounting starts at zero for each child and is read after that child exits;
+it is never a cumulative delta across unrelated children. Launch/runtime startup
+is included in process CPU and wall, separately from engine stages. A ratio below
+1.05 does not prove that no worker ever ran. Waited-for descendants contribute
+CPU; RSS is an individual-process high-water mark, not a summed process tree.
+No `/usr/bin/time` wrapper or unavailable RSS fallback is used on this path.
+Timeouts kill the child process group; absent `wait4` fails explicitly.
+
+`adapters/wasm_convert.rs` calls the same public facade and rendering function as
+`pagura convert`. It is built against the native and `wasm32-wasip1` release
+libraries with identical `bundled-data` features. The runner also builds the
+product WASI host. Render is exactly page lookup plus `RenderContext::render_page`
+(compilation and painting); RGB conversion and writes belong to emit. There is
+no session framing or RGBA packing in render. A native build of the adapter is
+an analytic test control, not an extra measured competitor.
+
+`adapters/wasi.mjs` runs that conversion adapter in Node/V8 WASI preview1, with
+only input/output directories preopened. V8 uses `--single-threaded --no-liftoff
+--wasm-num-compilation-tasks=1`: optimizing compilation/instantiation happens
+before Rust stage timers, and remains included in process CPU/wall/RSS. Wasmtime
+49.0.3 uses a locally generated, hash-recorded Cranelift AOT artifact (optimization
+level 2, parallel compilation disabled). Never load an untrusted AOT artifact.
+Both use explicit SIMD128 compiler flags; native uses the target's NEON baseline
+and compiler autovectorization. Other engines' ISA dispatch is not audited.
+
+Every warmup and measured WASI output must be byte-identical to its block's
+native Pagura pixels. A mismatch is retained as `runtime-parity-mismatch` and
+suppresses ratios; native output is a runtime parity reference, not a PDF oracle.
+Independent analytic two-page fixtures check both runtimes and the native control
+at 72/144 dpi, including out-of-range refusal. Poppler remains process-time only.
+PDF.js uses its Node main-thread path, synchronous raster Canvas/readback, and no
+async encoder; V8 background tasks are disabled. Native library background work
+cannot be ruled out from that API alone: every CPU/wall flag remains visible.
+
+### One unattended round-5 entry point
+
+Prepare an Apple Silicon Mac with Python 3.11+, the repository's pinned Rust
+1.99.1 toolchain including `wasm32-wasip1`, Node 26.8.1, Xcode command-line tools
+(Swift/CoreGraphics), and Poppler 26.10.0. Install competitors **outside the
+repository** with the explicitly networked `python3 tools/competitors.py setup`
+before running. The checked-in Python/Node/Cargo locks pin pypdfium2 5.14.0
+(PDFium 156), PyMuPDF 1.28.2, Pillow 13.0.0, pdf.js 6.4.299, Canvas 1.0.11 and
+hayro 0.8.0. Supply Wasmtime 49.0.3 separately, verifying its downloaded archive
+against the release's published SHA-256. No setup/download occurs during a run.
+Keep at least 15 GB free for build artifacts and representative PPMs.
+
+Set these environment variables (absolute paths; the manifest stays external):
+
+| Variable | Meaning |
+|---|---|
+| `PAGURA_CORPUS_DIR` | Corpus root matching the manifest's relative PDF paths |
+| `PAGURA_BENCH_MANIFEST` | Original external round-4 40-page manifest |
+| `PAGURA_BENCH_MANIFEST_SHA256` | Trusted SHA-256 of that exact manifest |
+| `PAGURA_COMPETITORS_DIR` | External cache populated by competitor setup |
+| `PAGURA_WASMTIME` | Wasmtime 49.0.3 executable |
+| `PAGURA_WASMTIME_SHA256` | Optional trusted executable digest, checked in addition to recording its actual digest |
+| `PAGURA_POPPLER` | Actual `pdftoppm` executable, or supply it on PATH |
+| `PAGURA_QUARTZ`, `PAGURA_HAYRO` | Optional external rebuilt adapter overrides |
+| `PAGURA_NODE` | Optional Node executable override; otherwise PATH |
+
+From a clean checkout, after setting that environment, run exactly:
+
+```sh
+"$PAGURA_COMPETITORS_DIR/venv/bin/python" benchmarks/round5.py \
+  --output benchmarks/results/local/round5 --dpi300-pages 20
+```
+
+The entry point builds Pagura and its WASI conversion adapter offline in a fresh
+output-local target, checks every input hash and engine availability, and runs
+the CoreGraphics geometry and independent native/WASI analytic controls before
+measurement. It uses all 40 pages at 72 and 150 dpi. To bound the unattended
+round's two-hour budget, the command predeclares 20 pages at 300 dpi: five per
+content category, 4 small/13 standard/3 large, from 20 distinct files/producers.
+Selection is seeded and independent of timings, and never enlarges the existing
+16-million-pixel normalization budget. Missing strata fail explicitly. An explicit
+`--dpi300-pages 40` includes every page, retaining any budget-refused cells.
+The manifest is read in place and is never copied into the repository.
+
+Document/DPI jobs and all nine engines are randomized in complete paired blocks
+(seed 52018): one open/process per document range/engine/block, three warmups,
+ten samples. Pagura's sample is shared across comparisons, so those comparisons
+are correlated. Each cell is measured once; failures and warmup failures remain.
+The two-hour deadline includes build/preflight work and is checked before each
+job, block and process; child timeouts are bounded by its remaining time. Partial
+results are labelled incomplete. Machine/process/power observations precede each
+job and finish the run. Other processes above 25% CPU trigger up to three 30-second pauses, then an
+explicit failure; denied process inspection is recorded as unavailable, not idle.
+
+All artifacts are under the one new output directory: `blocks.jsonl` (every
+raw block, including warmups and CPU/wall/RSS), `processes.jsonl` (every completed
+process, including partial blocks), `conversion.json` (stages, paired
+bootstrap bounds, parity and exact representative differences), `cpu-summary.json`
+(including measured and warmup >1.05 flags and RSS peaks), `machine.json`,
+`engines.json`, `compiler.json`,
+`status.json`, build/preflight logs, representative PPMs, bounded `failures/`
+artifacts and `summary.md`.
+No image is resized or realigned. Different dimensions remain incomparable;
+representative outliers are flagged for visual review (dimension mismatch,
+mean channel error >=10/255, or max >=200 with >=2% changed channels).
+Agreement does not establish correctness. Source/binary changes fail the run.
+The release gate remains blocked. `status.json` distinguishes complete/failed
+cells from an interrupted/incomplete run; process failure or parity failure
+returns a nonzero exit status.
+
+The only development-machine run should be the functional smoke:
+
+```sh
+"$PAGURA_COMPETITORS_DIR/venv/bin/python" benchmarks/round5.py \
+  --smoke --output benchmarks/results/local/round5-smoke
+```
+
+Smoke selects one text and one image page, 72 dpi, one warmup and three samples
+for every engine. It records a busy/unattested machine without waiting for idle;
+its timings are never performance evidence. Offline unit controls:
+`"$PAGURA_COMPETITORS_DIR/venv/bin/python" -m unittest discover -s benchmarks -p 'test_*.py'`.
 
 Adapters emit P6 PPM (Pagura, PDFium, MuPDF, Poppler) or packed RGBA8 (PDF.js,
 hayro, CoreGraphics). The harness also accepts RGB/RGB_ALPHA P7 PAM. RGBA8 has an
