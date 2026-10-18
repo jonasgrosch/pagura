@@ -579,6 +579,17 @@ impl Context {
                 depth,
             );
         }
+        self.paint_color((p, mask), target, initial, model, knockout, depth)
+    }
+    fn paint_color(
+        &mut self,
+        (p, mask): (&PathCommand, &Mask),
+        target: &mut Surface,
+        initial: Backdrop<'_>,
+        model: Model,
+        knockout: bool,
+        depth: usize,
+    ) -> Result<()> {
         let pattern = pattern_source(p);
         self.charge(mask.coverage().len())?;
         let color = if pattern.is_none() {
@@ -598,6 +609,9 @@ impl Context {
                     ))
             })
             .transpose()?;
+        let boundary = self.pattern_boundary(pattern.as_ref(), mask)?;
+        let boundary_width = usize::try_from(mask.width())
+            .map_err(|_| Error::limit("pattern mask width exceeds usize"))?;
         let soft = p
             .composite
             .mask
@@ -640,8 +654,16 @@ impl Context {
                 } else if let (Some(pattern), Some(inverse)) = (&pattern, inverse) {
                     let rate = if pattern.shading.antialias { 2 } else { 1 };
                     self.charge(rate * rate)?;
-                    let Some(mut source) =
-                        self.shading_sample(pattern, inverse, (x, y), model, rate)?
+                    let Some(mut source) = self.shading_sample(
+                        pattern,
+                        inverse,
+                        (x, y),
+                        model,
+                        rate,
+                        boundary.as_ref().map(|mask| {
+                            f64::from(mask.coverage()[row * boundary_width + col + column]) / 255.0
+                        }),
+                    )?
                     else {
                         continue;
                     };
@@ -721,12 +743,10 @@ impl Context {
         } = &p.color
             && let crate::pattern::Kind::Shading(shading) = &pattern.kind
             && shading.background.is_none()
-            && let Some(bbox) = shading.bbox
+            && let Some(path) = &shading.bbox_path
         {
-            let mut path = PathBuilder::new();
-            path.rect(bbox.x0, bbox.y0, bbox.width(), bbox.height());
             let Some(clipped) = mask.clipped_path(
-                &path.finish(),
+                path,
                 pattern.transform.then(self.device),
                 FillRule::NonZero,
                 self.limits,
@@ -905,11 +925,8 @@ impl Context {
             "singular shading transform",
         ))?;
         let clip = self.clip(command.clip.as_ref(), target.tile)?;
-        let clip = if let Some(bbox) = command.shading.bbox {
-            let mut path = PathBuilder::new();
-            path.rect(bbox.x0, bbox.y0, bbox.width(), bbox.height());
-            let Some(mask) =
-                clip.clipped_path(&path.finish(), transform, FillRule::NonZero, self.limits)?
+        let clip = if let Some(path) = &command.shading.bbox_path {
+            let Some(mask) = clip.clipped_path(path, transform, FillRule::NonZero, self.limits)?
             else {
                 return Ok(());
             };
@@ -939,7 +956,7 @@ impl Context {
                 let x = origin.0
                     + u32::try_from(column)
                         .map_err(|_| Error::limit("shading column exceeds u32"))?;
-                let source = self.shading_sample(command, inverse, (x, y), model, rate)?;
+                let source = self.shading_sample(command, inverse, (x, y), model, rate, None)?;
                 let Some(mut source) = source else { continue };
                 let factor = f64::from(coverage) / 255.0;
                 source.alpha *= factor;
@@ -981,7 +998,24 @@ impl Context {
         coordinate: (u32, u32),
         model: Model,
         rate: usize,
+        boundary: Option<f64>,
     ) -> Result<Option<Source>> {
+        let background = boundary
+            .and(command.shading.background)
+            .map(|values| {
+                self.source(
+                    &command.shading.space,
+                    &values[..command.shading.space.components()],
+                    model,
+                    &command.composite,
+                    false,
+                )
+            })
+            .transpose()?;
+        let certified = command.shading.bbox_path.as_ref().is_some_and(|path| {
+            path.fill_region(FillRule::NonZero)
+                .is_some_and(|region| region != pagura_raster::FillRegion::Ordinary)
+        });
         let mut values = [0.0; 32];
         let mut color = [0.0; 4];
         let mut covered = 0;
@@ -993,9 +1027,10 @@ impl Context {
                     f64::from(coordinate.0) + (x as f64 + 0.5) / divisor,
                     f64::from(coordinate.1) + (y as f64 + 0.5) / divisor,
                 ) * inverse;
-                let inside = command.shading.bbox.is_none_or(|b| {
-                    point.x >= b.x0 && point.x <= b.x1 && point.y >= b.y0 && point.y <= b.y1
-                });
+                let inside = certified
+                    || command.shading.bbox.is_none_or(|b| {
+                        point.x >= b.x0 && point.x <= b.x1 && point.y >= b.y0 && point.y <= b.y1
+                    });
                 let hit = (!command.background || inside)
                     && command.shading.sample(
                         point,
@@ -1021,8 +1056,12 @@ impl Context {
                     &command.composite,
                     false,
                 )?;
-                for (out, sample) in color.iter_mut().zip(sample.color) {
-                    *out += sample;
+                for (i, out) in color.iter_mut().enumerate() {
+                    *out += if let (Some(coverage), Some(background)) = (boundary, background) {
+                        coverage * sample.color[i] + (1.0 - coverage) * background.color[i]
+                    } else {
+                        sample.color[i]
+                    };
                 }
                 covered += 1;
             }

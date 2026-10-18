@@ -81,7 +81,7 @@ impl Compiler<'_> {
         if matches!(word, b"s" | b"b" | b"b*") {
             self.path.close();
         }
-        let path = Arc::new(self.path.finish());
+        let mut path = self.path.finish();
         let rule = if matches!(word, b"f*" | b"B*" | b"b*") {
             FillRule::EvenOdd
         } else {
@@ -89,6 +89,13 @@ impl Compiler<'_> {
         };
         let fill = matches!(word, b"f" | b"F" | b"f*" | b"B" | b"B*" | b"b" | b"b*");
         let stroke = matches!(word, b"S" | b"s" | b"B" | b"B*" | b"b" | b"b*");
+        if fill && self.visible {
+            self.prepare_fill(&mut path, rule)?;
+        }
+        if let Some(rule) = self.pending_clip {
+            self.prepare_fill(&mut path, rule)?;
+        }
+        let path = Arc::new(path);
         if self.visible {
             self.marks = self
                 .marks
@@ -167,11 +174,25 @@ impl Compiler<'_> {
         Ok(())
     }
 
-    pub(super) fn add_clip(
-        &mut self,
-        path: Arc<pagura_raster::Path>,
+    pub(super) fn prepare_fill(
+        &self,
+        path: &mut pagura_raster::Path,
         rule: FillRule,
     ) -> Result<()> {
+        let mut work = self.fill_work.get();
+        let result = path.classify_fill(rule, &self.document.limits(), &mut work);
+        self.fill_work.set(work);
+        result
+    }
+
+    pub(super) fn add_clip(
+        &mut self,
+        mut path: Arc<pagura_raster::Path>,
+        rule: FillRule,
+    ) -> Result<()> {
+        if path.fill_region(rule).is_none() {
+            self.prepare_fill(Arc::make_mut(&mut path), rule)?;
+        }
         self.state.clip_depth = nested(self.state.clip_depth, self.document.limits().depth)?;
         self.state.clip = Some(Arc::new(Clip {
             parent: self.state.clip.clone(),
@@ -179,5 +200,41 @@ impl Compiler<'_> {
             rule,
         }));
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fill_certification_is_charged_once_and_shared_with_detached_compilers() {
+        let document = pagura_document::Document::open(
+            pagura_testkit::fixture("zero_area", "zero-width-rectangle.pdf"),
+            &pagura_document::OpenOptions::default(),
+        )
+        .unwrap();
+        let compiler = Compiler::new(&document, document.page(0).unwrap()).unwrap();
+        let mut builder = pagura_raster::PathBuilder::new();
+        builder.rect(3.5, 1.0, 0.0, 6.0);
+        let mut path = builder.finish();
+        compiler.prepare_fill(&mut path, FillRule::NonZero).unwrap();
+        let first = compiler.fill_work.get();
+        assert!(first > 0);
+        compiler.prepare_fill(&mut path, FillRule::NonZero).unwrap();
+        assert_eq!(compiler.fill_work.get(), first);
+        let child = compiler.detached();
+        let mut other = path.transformed(pagura_raster::Transform::IDENTITY);
+        child.prepare_fill(&mut other, FillRule::NonZero).unwrap();
+        assert_eq!(compiler.fill_work.get(), first * 2);
+        compiler.fill_work.set(document.limits().raster_work);
+        let mut other = path.transformed(pagura_raster::Transform::IDENTITY);
+        assert_eq!(
+            child
+                .prepare_fill(&mut other, FillRule::NonZero)
+                .unwrap_err()
+                .kind,
+            pagura_core::ErrorKind::Limit
+        );
     }
 }

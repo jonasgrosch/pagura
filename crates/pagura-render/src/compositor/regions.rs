@@ -74,7 +74,8 @@ fn bounded_group(
 ) -> Result<Option<Tile>> {
     let mut region = tile;
     if let Some(path) = &group.bounds {
-        let Some(bounds) = retained_region(path, device, tile, (0.0, 0.0), work)? else {
+        let Some(bounds) = fill_region(path, pagura_raster::FillRule::NonZero, device, tile, work)?
+        else {
             return Ok(None);
         };
         region = bounds;
@@ -172,7 +173,33 @@ fn paint_region(
     device: Transform,
     work: &mut Work<'_>,
 ) -> Result<Option<Tile>> {
+    if let Mark::Fill(rule) = p.mark
+        && let Some(outline) = empty_outline(&p.path, device, rule, work)?
+    {
+        return path_region(&outline, Transform::IDENTITY, tile, (0.0, 0.0), work);
+    }
     retained_region(&p.path, device, tile, stroke_pad(p, device), work)
+}
+
+fn empty_outline(
+    path: &Path,
+    device: Transform,
+    rule: pagura_raster::FillRule,
+    work: &mut Work<'_>,
+) -> Result<Option<Path>> {
+    if path.fill_region(rule) != Some(pagura_raster::FillRegion::EmptyBoundary) {
+        return Ok(None);
+    }
+    work.charge(path.segments().len())?;
+    pagura_raster::empty_fill_outline(
+        path,
+        device,
+        rule,
+        &pagura_core::Limits {
+            raster_work: work.maximum.saturating_sub(*work.used),
+            ..pagura_core::Limits::default()
+        },
+    )
 }
 fn stroke_pad(p: &PathCommand, device: Transform) -> (f64, f64) {
     match &p.mark {
@@ -196,13 +223,25 @@ fn clip_region(
     work: &mut Work<'_>,
 ) -> Result<Option<Tile>> {
     while let Some(node) = clip {
-        let Some(next) = retained_region(&node.path, device, tile, (0.0, 0.0), work)? else {
+        let Some(next) = fill_region(&node.path, node.rule, device, tile, work)? else {
             return Ok(None);
         };
         tile = next;
         clip = node.parent.as_ref();
     }
     Ok(Some(tile))
+}
+fn fill_region(
+    path: &Arc<Path>,
+    rule: pagura_raster::FillRule,
+    device: Transform,
+    tile: Tile,
+    work: &mut Work<'_>,
+) -> Result<Option<Tile>> {
+    if let Some(outline) = empty_outline(path, device, rule, work)? {
+        return path_region(&outline, Transform::IDENTITY, tile, (0.0, 0.0), work);
+    }
+    retained_region(path, device, tile, (0.0, 0.0), work)
 }
 fn retained_region(
     path: &Arc<Path>,
@@ -333,7 +372,7 @@ fn content_region(
             }
             Command::Path(p) if !p.color.paints() => continue,
             Command::Path(p) => {
-                let bounds = content_hull(&p.path, work)?;
+                let bounds = content_path_hull(p, work)?;
                 let pad = stroke_pad(p, Transform::IDENTITY);
                 let bounds = bounds
                     .map(|r| {
@@ -364,7 +403,10 @@ fn content_region(
                 let bounds = if let Some(bbox) = s.shading.bbox {
                     let mut path = pagura_raster::PathBuilder::new();
                     path.rect(bbox.x0, bbox.y0, bbox.width(), bbox.height());
-                    hull_rect(control_hull(&path.finish(), s.transform, work)?)
+                    let pad = if bbox.is_empty() { 1.0 } else { 0.0 };
+                    hull_rect(control_hull(&path.finish(), s.transform, work)?).and_then(|r| {
+                        Rect::from_corners(r.x0 - pad, r.y0 - pad, r.x1 + pad, r.y1 + pad)
+                    })
                 } else {
                     Some(clip)
                 };
@@ -372,7 +414,8 @@ fn content_region(
             }
             Command::Group(g) => {
                 let bounds = if let Some(path) = &g.bounds {
-                    content_hull(path, work)?.and_then(|r| r.intersection(&clip))
+                    content_fill_hull(path, pagura_raster::FillRule::NonZero, work)?
+                        .and_then(|r| r.intersection(&clip))
                 } else {
                     Some(clip)
                 };
@@ -391,7 +434,7 @@ fn content_region(
         let mut chain = chain;
         let mut visible = true;
         while let Some(node) = chain {
-            let rect = content_hull(&node.path, work)?;
+            let rect = content_fill_hull(&node.path, node.rule, work)?;
             if let Some(next) = rect.and_then(|r| r.intersection(&bounds)) {
                 bounds = next;
             } else {
@@ -410,6 +453,32 @@ fn content_region(
         }
     }
     Ok(total)
+}
+fn content_path_hull(p: &PathCommand, work: &mut Work<'_>) -> Result<Option<Rect>> {
+    if let Mark::Fill(rule) = p.mark
+        && let Some(outline) = empty_outline(&p.path, Transform::IDENTITY, rule, work)?
+    {
+        return Ok(hull_rect(control_hull(
+            &outline,
+            Transform::IDENTITY,
+            work,
+        )?));
+    }
+    content_hull(&p.path, work)
+}
+fn content_fill_hull(
+    path: &Arc<Path>,
+    rule: pagura_raster::FillRule,
+    work: &mut Work<'_>,
+) -> Result<Option<Rect>> {
+    if let Some(outline) = empty_outline(path, Transform::IDENTITY, rule, work)? {
+        return Ok(hull_rect(control_hull(
+            &outline,
+            Transform::IDENTITY,
+            work,
+        )?));
+    }
+    content_hull(path, work)
 }
 fn content_hull(path: &Arc<Path>, work: &mut Work<'_>) -> Result<Option<Rect>> {
     let hull = retained_hull(path, Transform::IDENTITY, work)?;

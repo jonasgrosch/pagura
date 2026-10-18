@@ -8,6 +8,36 @@ use pagura_core::{Error, Result};
 use pagura_raster::{Mask, Point, Transform};
 
 impl Context {
+    /// Shading patterns first paint their background, then the clipped shading
+    /// (11.6.7). Retain geometric boundary coverage for that colour mixture.
+    pub(super) fn pattern_boundary(
+        &self,
+        pattern: Option<&crate::display::ShadingCommand>,
+        mask: &Mask,
+    ) -> Result<Option<Mask>> {
+        let Some(pattern) = pattern else {
+            return Ok(None);
+        };
+        let Some(path) = pattern.shading.bbox_path.as_ref().filter(|path| {
+            pattern.shading.background.is_some()
+                && path
+                    .fill_region(pagura_raster::FillRule::NonZero)
+                    .is_some_and(|region| region != pagura_raster::FillRegion::Ordinary)
+        }) else {
+            return Ok(None);
+        };
+        Mask::from_path_with_limits(
+            mask.width(),
+            mask.height(),
+            path,
+            pattern.transform.then(self.device),
+            pagura_raster::FillRule::NonZero,
+            self.limits,
+            mask.origin(),
+        )
+        .map(Some)
+    }
+
     #[expect(
         clippy::too_many_arguments,
         reason = "explicit source, backdrop and geometry state"
@@ -30,8 +60,8 @@ impl Context {
             "singular tiling transform",
         ))?;
         let tile = mask_tile(mask);
-        let [x0, y0, x1, y1] = envelope(tile, inverse);
         let b = pattern.bbox;
+        let [x0, y0, x1, y1] = cell_envelope(tile, inverse, b);
         let (ix0, ix1) = intervals(x0, x1, b.x0, b.x1, pattern.step[0])?;
         let (iy0, iy1) = intervals(y0, y1, b.y0, b.y1, pattern.step[1])?;
         self.charge(instance_count(
@@ -245,4 +275,18 @@ fn mask_tile(mask: &Mask) -> Tile {
         width: mask.width(),
         height: mask.height(),
     }
+}
+
+fn cell_envelope(tile: Tile, inverse: Transform, b: pagura_core::Rect) -> [f64; 4] {
+    let [mut x0, mut y0, mut x1, mut y1] = envelope(tile, inverse);
+    if b.is_empty() {
+        // Include cells whose one-device-pixel boundary reaches this tile.
+        let px = inverse.a.abs() + inverse.c.abs();
+        let py = inverse.b.abs() + inverse.d.abs();
+        x0 -= px;
+        x1 += px;
+        y0 -= py;
+        y1 += py;
+    }
+    [x0, y0, x1, y1]
 }

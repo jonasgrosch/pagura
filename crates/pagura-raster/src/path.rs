@@ -1,6 +1,7 @@
 //! Path geometry: subpaths of lines and cubic Bézier curves.
 
-use crate::{Point, Transform};
+use crate::{FillRule, Point, Transform};
+use pagura_core::{Limits, Result};
 
 /// One path construction step (ISO 32000-2 clause 8.5.2 semantics).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -15,10 +16,22 @@ pub enum Segment {
     Close,
 }
 
+/// Geometric filling-region certificate retained before scan conversion.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FillRegion {
+    /// Ordinary filling, including geometry whose emptiness cannot be proved.
+    Ordinary,
+    /// Geometric points retain the existing floor-cell scan conversion.
+    Points,
+    /// Empty interior with a nonpoint boundary, painted as device hairlines.
+    EmptyBoundary,
+}
+
 /// An immutable path. Build one with [`PathBuilder`].
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Path {
     segments: Vec<Segment>,
+    fill_certificates: [Option<FillRegion>; 2],
 }
 
 impl Path {
@@ -31,6 +44,32 @@ impl Path {
     /// Whether the path has no segments.
     pub fn is_empty(&self) -> bool {
         self.segments.is_empty()
+    }
+
+    /// Certifies an empty filling region once, before retaining a fill or clip.
+    /// `work` is the caller's cumulative page work counter. Uncertain geometry
+    /// keeps ordinary filling. Transforming geometry clears this certificate.
+    ///
+    /// # Errors
+    /// Returns invalid geometry or exhausted page geometry/work budgets.
+    pub fn classify_fill(
+        &mut self,
+        rule: FillRule,
+        limits: &Limits,
+        work: &mut usize,
+    ) -> Result<()> {
+        let index = usize::from(rule == FillRule::EvenOdd);
+        if self.fill_certificates[index].is_none() {
+            self.fill_certificates[index] =
+                Some(crate::empty_fill::classify(self, rule, limits, work)?);
+        }
+        Ok(())
+    }
+
+    /// The retained certificate, or `None` for unprepared geometry. Ordinary
+    /// raster paths and all stroke outlines remain unprepared.
+    pub fn fill_region(&self, rule: FillRule) -> Option<FillRegion> {
+        self.fill_certificates[usize::from(rule == FillRule::EvenOdd)]
     }
 
     /// A copy with every point mapped by `transform`.
@@ -47,7 +86,10 @@ impl Path {
                 Segment::Close => Segment::Close,
             })
             .collect();
-        Self { segments }
+        Self {
+            segments,
+            fill_certificates: [None; 2],
+        }
     }
 }
 
@@ -133,6 +175,7 @@ impl PathBuilder {
         self.current = None;
         Path {
             segments: std::mem::take(&mut self.segments),
+            fill_certificates: [None; 2],
         }
     }
 }

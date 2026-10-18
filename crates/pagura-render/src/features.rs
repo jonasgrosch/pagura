@@ -137,7 +137,7 @@ pub const TRANSPARENCY_OVERPRINT: Feature = Feature::new("transparency.overprint
 pub const SHADING_MESH: Feature = Feature::new("shading.mesh");
 /// Singular shading coordinate systems.
 pub const SHADING_TRANSFORM: Feature = Feature::new("shading.transform");
-/// Zero-width or zero-height shading boxes requiring scan-conversion adjustment.
+/// Retained capability tag for degenerate shading boxes.
 pub const SHADING_BOUNDS: Feature = Feature::new("shading.degenerate-bounds");
 /// Repeated coloured and uncoloured pattern cells.
 pub const PATTERN_TILING: Feature = Feature::new("pattern.tiling");

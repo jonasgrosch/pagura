@@ -210,6 +210,7 @@ impl Compiler<'_> {
             visible: self.visible,
             visibility: Arc::clone(&self.visibility),
             operations: self.operations,
+            fill_work: std::rc::Rc::clone(&self.fill_work),
             marks: self.marks,
             initial_ctm: self.initial_ctm,
             initial_state: self.initial_state.clone(),

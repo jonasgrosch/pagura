@@ -24,8 +24,13 @@ impl Compiler<'_> {
         };
         let unique = Arc::get_mut(&mut pattern)
             .ok_or(Error::invalid_argument("shared uncompiled pattern"))?;
-        if let Kind::Shading(s) = &unique.kind {
+        if let Kind::Shading(s) = &mut unique.kind {
             self.paint_charge(s.mesh_bytes(), 0)?;
+            let shading =
+                Arc::get_mut(s).ok_or(Error::invalid_argument("shared uncompiled shading"))?;
+            if let Some(path) = &mut shading.bbox_path {
+                self.prepare_fill(path, FillRule::NonZero)?;
+            }
         }
         if let Kind::Tiling(t) = &mut unique.kind {
             if self.forms.contains(&t.id) {

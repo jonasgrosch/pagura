@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "raster",
-  "scope": "Geometry, fill, stroke, user-space dashes and stroke adjustment checked against the local ISO 32000-2:2020 sponsored EC3 text. Exact-area antialiasing, flattening tolerance, half-open pixel boundaries and channel rounding are project policy. General zero-area scan conversion and minimum visible coverage remain unresolved.",
+  "scope": "Geometry, fill, stroke, user-space dashes and stroke adjustment checked against the local ISO 32000-2:2020 sponsored EC3 text. Exact-area antialiasing, flattening tolerance, half-open pixel boundaries and channel rounding are project policy. Empty polygon filling regions use device hairline outlines; minimum visible coverage of positive-area regions remains unresolved.",
   "requirements": [
     {
       "id": "raster-exact-area",
@@ -257,7 +257,61 @@
         "content/stroke-square-point",
         "content/stroke-adjusted-open-point"
       ],
-      "gaps": "general collinear zero-area boundaries and minimum nonzero coverage need a scan-conversion policy decision"
+      "gaps": "Minimum nonzero coverage of positive-area regions remains unresolved; empty fill boundaries are covered by raster-zero-area-fill."
+    },
+    {
+      "id": "raster-zero-area-fill",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "10.7.4",
+        "8.4.3.2",
+        "8.5.3.3.1",
+        "8.5.4",
+        "8.7.3.1, Table 74",
+        "8.7.4.3, Table 77"
+      ],
+      "rule": "A filling region with empty interior and nonempty extent retains its boundary in scan conversion. Project exact-area policy paints that boundary as a solid one-device-pixel butt/miter hairline, independent of stroke state. Point floor cells retain their existing rule. A clipping path includes exactly the pixels that filling the same path would include, including zero-area boundaries and zero-size pattern BBoxes. Positive-area regions retain ordinary area coverage.",
+      "status": "Page-budgeted allocation-free polygon precheck for both fill rules; uncertain paths use supporting-line cancellation once per retained fill or clip, with canonical approximate-key sorting and exact confirmation, then device hairlines for certified empty regions",
+      "tests": [
+        "zero_area/zero-width-rectangle",
+        "zero_area/zero-width-rectangle-reversed",
+        "zero_area/zero-height-rectangle",
+        "zero_area/zero-height-rectangle-reversed",
+        "zero_area/integral-boundary",
+        "zero_area/collinear-triangle",
+        "zero_area/oblique-collinear-triangle",
+        "zero_area/open-segment-evenodd",
+        "zero_area/collinear-cubic",
+        "zero_area/singular-transform",
+        "zero_area/multiple-subpaths",
+        "zero_area/point-and-segment",
+        "zero_area/trailing-move",
+        "zero_area/stroke-state-independent",
+        "zero_area/degenerate-clip",
+        "zero_area/degenerate-clip-evenodd",
+        "zero_area/paint-before-clip",
+        "zero_area/hairline-clipped-geometrically",
+        "zero_area/cancelled-evenodd",
+        "zero_area/cancelled-nonzero-subdivided",
+        "zero_area/positive-sliver",
+        "zero_area/tiny-nonpoint-curve",
+        "zero_area/positive-bow-tie",
+        "zero_area/transparent-compositor",
+        "zero_area/point-pair-evenodd",
+        "zero_area/point-pair-nonzero",
+        "zero_area/half-alpha",
+        "zero_area/zero-area-clip-content",
+        "zero_area/zero-width-pattern-bbox",
+        "zero_area/zero-size-pattern-bbox",
+        "zero_area/zero-width-shading-bbox",
+        "zero_area/zero-width-shading-pattern-bbox",
+        "zero_area/zero-width-shading-pattern-background",
+        "zero_area/zero-size-shading-bbox",
+        "zero_area/zero-size-shading-pattern-bbox",
+        "zero_area/zero-size-shading-pattern-background",
+        "pagura-raster/src/empty_fill.rs"
+      ],
+      "gaps": "Nonlinear curved boundaries, partial degeneracies within nonempty regions, and collinearity that cannot be certified at extreme numeric scales retain ordinary filling."
     }
   ]
 }

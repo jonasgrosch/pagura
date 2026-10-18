@@ -140,7 +140,7 @@ impl Compiler<'_> {
     pub(super) fn annotation_mark(
         &mut self,
         d: &Dictionary,
-        path: Path,
+        mut path: Path,
         mark: Mark,
         color: Color,
         rect: Rect,
@@ -160,13 +160,18 @@ impl Compiler<'_> {
                 .unwrap_or(stroke_alpha)
                 .clamp(0.0, 1.0)
         };
+        if let Mark::Fill(rule) = mark {
+            self.prepare_fill(&mut path, rule)?;
+        }
+        let mut clip = rect_path(rect);
+        self.prepare_fill(&mut clip, FillRule::NonZero)?;
         self.list.commands.push(Command::Path(PathCommand {
             path: Arc::new(path),
             mark,
             color,
             clip: Some(Arc::new(Clip {
                 parent: None,
-                path: Arc::new(rect_path(rect)),
+                path: Arc::new(clip),
                 rule: FillRule::NonZero,
             })),
             position: self.position,
