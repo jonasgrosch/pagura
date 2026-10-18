@@ -1,9 +1,10 @@
 //! Unit tests of the bounded parser: budgets, positions and every reported
 //! lexical repair in both recovery modes.
 
-use super::{
-    DICTIONARY_CLOSER, DICTIONARY_OPENER, KEY_SOLIDUS, LEADING_ZERO_REFERENCE, NAME_ESCAPE, Origin,
-    Parser, ZERO_REFERENCE, hex_digit,
+use super::{Origin, Parser, hex_digit};
+use crate::repairs::{
+    DICTIONARY_CLOSER, DICTIONARY_OPENER, KEY_SOLIDUS, LEADING_ZERO_REFERENCE, NAME_ESCAPE,
+    ZERO_REFERENCE,
 };
 use crate::{ErrorKind, Limits, Name, ObjectId, Position, Recovery, Value};
 

@@ -880,7 +880,8 @@ mod length_dependencies {
 mod direct_tests {
     use super::DirectObject;
     use crate::{Document, OpenOptions};
-    use pagura_core::syntax::{DIRECT_STREAM, PathComponent};
+    use pagura_core::repairs::DIRECT_STREAM;
+    use pagura_core::syntax::PathComponent;
     use pagura_core::{ErrorKind, Limits, ObjectId, Recovery, Value};
     use pagura_testkit::fixture;
 
