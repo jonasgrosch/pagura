@@ -342,7 +342,7 @@ fn section(
     diagnostics: &mut Diagnostics,
 ) -> Result<(BTreeMap<u32, XrefEntry>, Dictionary, RevisionKind)> {
     let mut parser =
-        Parser::at(bytes, offset, Origin::File, limits)?.with_recovery(diagnostics.mode());
+        Parser::with_offset(bytes, offset, Origin::File, limits)?.with_recovery(diagnostics.mode());
     let result = if parser.keyword(b"xref") {
         let entries = classic_section(bytes, &mut parser, limits)?;
         let trailer = parser
@@ -367,7 +367,7 @@ fn charge(remaining: &mut usize, count: usize) -> Result<()> {
 }
 
 fn is_section(bytes: &[u8], offset: usize, limits: Limits) -> bool {
-    let Ok(mut parser) = Parser::at(bytes, offset, Origin::File, limits) else {
+    let Ok(mut parser) = Parser::with_offset(bytes, offset, Origin::File, limits) else {
         return false;
     };
     parser.keyword(b"xref")
@@ -448,7 +448,7 @@ fn find_startxref(
     else {
         return Ok(None);
     };
-    let mut tail = Parser::at(bytes, marker + 9, Origin::File, limits)?;
+    let mut tail = Parser::with_offset(bytes, marker + 9, Origin::File, limits)?;
     let offset = usize::try_from(tail.unsigned()?)
         .ok()
         .filter(|&offset| offset < bytes.len())

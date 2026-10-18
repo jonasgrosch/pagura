@@ -16,7 +16,8 @@ impl Compiler<'_> {
             return Err(Error::syntax("operands before BI"));
         }
         let start = parser.offset();
-        let mut probe = Parser::at(parser.data(), start, Origin::Buffer, self.document.limits())?;
+        let mut probe =
+            Parser::with_offset(parser.data(), start, Origin::Buffer, self.document.limits())?;
         let mut d = Dictionary::new();
         while probe.peek() != Some(b'I') {
             self.operations = self

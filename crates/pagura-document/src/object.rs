@@ -337,7 +337,7 @@ pub(crate) fn end(
         )?;
         return parser.seek(at + 6);
     }
-    let mut probe = pagura_core::syntax::Parser::at(
+    let mut probe = pagura_core::syntax::Parser::with_offset(
         parser.data(),
         parser.offset(),
         pagura_core::syntax::Origin::File,
@@ -362,9 +362,13 @@ pub(crate) fn header(bytes: &[u8], offset: usize, limits: pagura_core::Limits) -
     if !bytes.get(offset).is_some_and(u8::is_ascii_digit) {
         return None;
     }
-    let mut parser =
-        pagura_core::syntax::Parser::at(bytes, offset, pagura_core::syntax::Origin::File, limits)
-            .ok()?;
+    let mut parser = pagura_core::syntax::Parser::with_offset(
+        bytes,
+        offset,
+        pagura_core::syntax::Origin::File,
+        limits,
+    )
+    .ok()?;
     let number = u32::try_from(parser.unsigned().ok()?).ok()?;
     let generation = u16::try_from(parser.unsigned().ok()?).ok()?;
     (number != 0 && parser.keyword(b"obj")).then_some(ObjectId::new(number, generation))
@@ -553,7 +557,7 @@ pub(crate) fn terminator_in(
         if !separated {
             continue;
         }
-        let mut probe = pagura_core::syntax::Parser::at(
+        let mut probe = pagura_core::syntax::Parser::with_offset(
             bytes,
             marker,
             pagura_core::syntax::Origin::File,

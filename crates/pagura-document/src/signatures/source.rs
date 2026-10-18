@@ -14,7 +14,7 @@ pub(super) fn contents_span(
     source: Source,
 ) -> Result<Option<Range<usize>>> {
     let bytes = &ctx.doc.original_bytes()[..extent.end];
-    let mut parser = Parser::at(bytes, extent.start, Origin::File, ctx.doc.limits())?;
+    let mut parser = Parser::with_offset(bytes, extent.start, Origin::File, ctx.doc.limits())?;
     parser.unsigned()?;
     parser.unsigned()?;
     if !parser.keyword(b"obj") {
