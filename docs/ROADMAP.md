@@ -13,7 +13,7 @@ tools/check.py` passes, and `docs/STATUS.md` records the evidence.
 | M3 | **Text.** Embedded and standard fonts: Type 1/CFF, TrueType, Type 3, CID-keyed fonts with CMaps, vertical text, text render modes. | Glyph-outline oracles; text pages render; tag histogram shows no font gaps on the corpus. |
 | M4 | **Images.** DCT, JPX, JBIG2, CCITT, inline images, masks, decode arrays, indexed and 16-bit samples. | Codec vectors; image pages render; decoder output caps proven by tests. |
 | M5 | **Colour and transparency.** ICC, Separation/DeviceN, Lab, shadings, patterns, transparency groups, soft masks, blend modes, overprint simulation. | Ghent and PDF Differences cases investigated with reviewed expectations. |
-| M6 | **Interactive viewer.** Annotation appearances, form display, outlines and links, text extraction, search, selection, accessibility. | Structure-aware cases; viewer usability checks. |
+| M6 | **Interactive viewer.** Annotation appearances, form display, outlines and links, text extraction, search, selection, accessibility, signature validation (ADR 0015). | Structure-aware cases; viewer usability checks; signature results kept separate (integrity, revision coverage, permitted changes, signer trust, timestamps, revocation) against CAVP, Wycheproof and PKITS vectors. |
 | M7 | **Editing.** Transactions, incremental save, full rewrite, sanitizing redaction, signature-aware save, encryption on write. | Untouched-byte preservation; cross-viewer reopen; hidden-content scans. |
 | M8 | **Release.** PDF/A and PDF/UA validation, controlled benchmark runners, the ADR 0002 gate. | Every required comparison cell ≤ 0.80; no memory regression. |
 
