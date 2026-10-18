@@ -16,8 +16,8 @@
   </header>
   <nav aria-label="Page controls">
     <button id="previous" disabled aria-label="Previous page">←</button>
-    <label>Page <input id="page" type="number" value="1" min="1" disabled></label>
-    <span id="count">of 0</span>
+    <label>Page <input id="page" type="text" value="1" aria-describedby="page-label" disabled></label>
+    <span id="count">of 0</span><span id="page-label"></span>
     <button id="next" disabled aria-label="Next page">→</button>
     <label>Zoom <select id="zoom" disabled>
       <option value="fit-width">Fit width</option><option value="fit-page">Fit page</option>
@@ -26,10 +26,20 @@
       <option value="1" selected>100%</option><option value="1.5">150%</option>
       <option value="2">200%</option><option value="3">300%</option>
     </select></label>
+    <button id="find-open" aria-controls="find-panel">Find</button><button id="copy-page" disabled>Copy page text</button>
     <span id="status" role="status" aria-live="polite">Starting engine…</span>
   </nav>
+  <section id="find-panel" role="search" aria-label="Search document" hidden>
+    <label>Find <input id="find-query" type="search" maxlength="4096" autocomplete="off"></label>
+    <label><input id="find-case" type="checkbox"> Match case</label>
+    <label><input id="find-word" type="checkbox"> Whole words</label>
+    <button id="find-previous" aria-label="Previous match">Previous</button><button id="find-next" aria-label="Next match">Next</button>
+    <span id="find-count" role="status" aria-live="polite">0 / 0</span><button id="find-close" aria-label="Close search">Close</button>
+  </section>
+  <div id="reading-status" role="status" aria-live="polite"></div>
   <div id="error" role="alert" hidden></div>
-  <main id="viewport" aria-label="PDF pages" role="region" tabindex="0"><div id="page-surface" hidden></div></main>
+  <div id="reading-layout"><aside id="outline-sidebar" aria-label="Document outline"><div id="outline-tree" role="tree" aria-label="Document outline"></div></aside>
+  <main id="viewport" aria-label="PDF pages" role="region" tabindex="0"><div id="page-surface" hidden></div></main></div>
   <aside>
     <details id="diagnostics"><summary id="diagnostic-count">Repairs: 0</summary><ul id="repair-list"></ul></details>
     <p>Local preview engine. Unsupported content is reported explicitly. Documents stay in this browser.</p>

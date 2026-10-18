@@ -28,6 +28,7 @@ pub struct Session {
     generations: BTreeMap<u32, u32>,
     cache: PageCache,
     cancellation: crate::Cancellation,
+    text_cache: PageCache<pagura::TextPage>,
 }
 
 impl Default for Session {
@@ -43,6 +44,7 @@ impl Session {
         Self {
             limits,
             cancellation: crate::Cancellation::default(),
+            text_cache: PageCache::new(limits.document_bytes.min(16 * 1024 * 1024)),
             documents: BTreeMap::new(),
             retained_bytes: 0,
             next_handle: 1,
@@ -59,6 +61,13 @@ impl Session {
     #[must_use]
     pub fn with_cache_bytes(mut self, bytes: usize) -> Self {
         self.cache = PageCache::new(bytes);
+        self
+    }
+
+    /// Set the independent text-cache estimate budget; zero disables retention.
+    #[must_use]
+    pub fn with_text_cache_bytes(mut self, bytes: usize) -> Self {
+        self.text_cache = PageCache::new(bytes);
         self
     }
 
@@ -177,7 +186,10 @@ impl Session {
         match request {
             Request::Hello(version)
                 if self.version.is_none()
-                    && matches!(*version, protocol::VERSION | protocol::VERSION_1_1) =>
+                    && matches!(
+                        *version,
+                        protocol::VERSION | protocol::VERSION_1_1 | protocol::VERSION_1_2
+                    ) =>
             {
                 self.version = Some(*version);
             }
@@ -200,6 +212,7 @@ impl Session {
     fn execute(&mut self, request: Request<'_>) -> Result<Response> {
         match request {
             Request::Hello(version) => Ok(Response::Hello(version)),
+            Request::Reading(request) => self.reading(request).map(Response::Reading),
             Request::Stats => {
                 self.require_extensions()?;
                 Ok(Response::Stats(self.stats()))
@@ -285,18 +298,22 @@ impl Session {
             Request::Diagnostics(handle) => {
                 Ok(Response::Diagnostics(self.document(handle)?.diagnostics()))
             }
-            Request::Close(handle) => {
-                let document = self.documents.remove(&handle).ok_or(
-                    Error::invalid_argument("unknown document handle").at(Position::Buffer(5)),
-                )?;
-                self.cache.close(handle);
-                self.generations.remove(&handle);
-                self.retained_bytes = self
-                    .retained_bytes
-                    .saturating_sub(document.document().original_bytes().len());
-                Ok(Response::Close)
-            }
+            Request::Close(handle) => self.close(handle),
         }
+    }
+
+    fn close(&mut self, handle: u32) -> Result<Response> {
+        let document = self
+            .documents
+            .remove(&handle)
+            .ok_or(Error::invalid_argument("unknown document handle").at(Position::Buffer(5)))?;
+        self.cache.close(handle);
+        self.text_cache.close(handle);
+        self.generations.remove(&handle);
+        self.retained_bytes = self
+            .retained_bytes
+            .saturating_sub(document.document().original_bytes().len());
+        Ok(Response::Close)
     }
 
     fn render(
@@ -404,6 +421,119 @@ impl Session {
         })
     }
 
+    fn extracted(&mut self, document: u32, page: u32) -> Result<Arc<pagura::TextPage>> {
+        let key = (document, page);
+        if let Some(text) = self.text_cache.get(key) {
+            return Ok(text);
+        }
+        let context = self
+            .documents
+            .get(&document)
+            .ok_or(Error::invalid_argument("unknown document handle").at(Position::Buffer(5)))?;
+        let text = Arc::new(
+            context.text_page(
+                context
+                    .document()
+                    .page(index(page)?)
+                    .map_err(|error| error.at(Position::Buffer(9)))?,
+            )?,
+        );
+        self.text_cache
+            .insert_charged(key, Arc::clone(&text), crate::reading::text_charge(&text));
+        Ok(text)
+    }
+
+    fn reading(
+        &mut self,
+        request: crate::reading::Request<'_>,
+    ) -> Result<crate::reading::Response> {
+        use crate::reading::{Request, Response, Writer};
+        if self.version != Some(protocol::VERSION_1_2) {
+            return Err(Error::invalid_argument(
+                "reading request requires protocol 1.2",
+            ));
+        }
+        let cap = self.limits.decoded_bytes.min(32 * 1024 * 1024);
+        match request {
+            Request::Text(doc, page) => {
+                crate::reading::page_text(self.extracted(doc, page)?.as_ref(), cap)
+            }
+            Request::Search(search) => self.search(search, cap),
+            Request::Links(doc, page) => crate::reading::links(self.document(doc)?, page, cap),
+            Request::Outlines(doc) => crate::reading::outlines(self.document(doc)?, cap),
+            Request::Labels(doc) => crate::reading::labels(self.document(doc)?, cap),
+            Request::Stats => {
+                let stats = self.stats();
+                let (text_bytes, text_pages) = self.text_cache.accounting();
+                let mut out = Writer::new(cap);
+                out.u64(stats.source_bytes)?;
+                out.u64(stats.cache_bytes)?;
+                out.u32(stats.documents)?;
+                out.u32(stats.lists)?;
+                out.u64(u64::try_from(text_bytes).unwrap_or(u64::MAX))?;
+                out.count(text_pages)?;
+                Ok(Response::new(143, out))
+            }
+        }
+    }
+
+    fn search(
+        &mut self,
+        search: crate::reading::Search<'_>,
+        cap: usize,
+    ) -> Result<crate::reading::Response> {
+        use crate::reading::{Response, Writer};
+        let options = search.validate(self.document(search.document)?.page_count()?)?;
+        let mut out = Writer::new(cap);
+        out.push(&[0; 13])?;
+        let mut count = 0;
+        for page in search.start..search.end {
+            let text = self.extracted(search.document, page)?;
+            let matches = text.find(search.query, options)?;
+            let offset = if page == search.start {
+                index(search.offset)?
+            } else {
+                0
+            };
+            if offset > matches.len() {
+                return Err(
+                    Error::invalid_argument("search match cursor outside page results")
+                        .at(Position::Buffer(17)),
+                );
+            }
+            for (ordinal, found) in matches.iter().enumerate().skip(offset) {
+                out.u32(page)?;
+                out.count(found.range.start)?;
+                out.count(found.range.end)?;
+                out.count(found.quads.len())?;
+                for quad in &found.quads {
+                    for point in quad.0 {
+                        out.f64(point.x)?;
+                        out.f64(point.y)?;
+                    }
+                }
+                count += 1;
+                if count == search.limit {
+                    let (next, offset) = if ordinal + 1 == matches.len() {
+                        (page + 1, 0)
+                    } else {
+                        (page, ordinal + 1)
+                    };
+                    out.cursor(
+                        next,
+                        u32::try_from(offset)
+                            .map_err(|_| Error::limit("search match cursor exceeds u32"))?,
+                        next == search.end,
+                        count,
+                    )?;
+                    return Ok(Response::new(139, out));
+                }
+            }
+        }
+        out.cursor(search.end, 0, true, count)?;
+        Ok(Response::new(139, out))
+    }
+
     fn cancelled(&self, generation: Option<u32>) -> Option<Response> {
         generation
             .filter(|_| self.cancellation.is_cancelled())
@@ -411,7 +541,10 @@ impl Session {
     }
 
     fn require_extensions(&self) -> Result<()> {
-        if self.version == Some(protocol::VERSION_1_1) {
+        if matches!(
+            self.version,
+            Some(protocol::VERSION_1_1 | protocol::VERSION_1_2)
+        ) {
             Ok(())
         } else {
             Err(Error::invalid_argument("request requires protocol 1.1"))

@@ -37,9 +37,9 @@ normal viewing lists applied repairs below the document.
   UTF-8 bytes. Non-ASCII legacy passwords requiring PDFDocEncoding are not
   converted by the UI; callers can use SessionClient.open with explicit raw
   bytes. ISO 32000-2 7.6.4.3.2 and 7.6.4.3.3 distinguish those encodings.
-- Controls have labels and standard focus order. Pages have named image roles,
+- Controls have labels and standard focus order. Pages have named region roles,
   loading states and explicit failures. This is visual navigation accessibility,
-  not tagged-PDF text extraction or a screen-reader text representation.
+  with a transparent reading-order text layer for screen readers. Structure-tree ordering and bidirectional reconstruction are still engine limitations.
 
 The layout uses page geometry from ISO 32000-2 7.7.3.3 (Table 31) and 8.3.2.3.
 Compact prefix sums retain discovered heights without creating a DOM element
@@ -50,7 +50,7 @@ exceeding a budget displays an error rather than silently truncating a document.
 
 ## Session and caching
 
-The browser negotiates protocol v1.1; existing protocol v1 clients remain
+The browser negotiates protocol v1.2; existing protocol v1 clients remain
 supported. See crates/pagura-host/PROTOCOL.md for the byte layouts. A viewport
 change invalidates queued old-generation tiles before transmission. The host
 also skips a stale generation before compilation or painting. The current
@@ -203,3 +203,91 @@ internals and temporary/transport/JavaScript allocations. All raw cycle records,
 medians, input and module digests and runtime/hardware identifiers go to stdout.
 These exploratory samples are not release evidence, an RSS leak proof or a
 measurement of browser layout/Canvas/GPU costs. No external corpus data is served.
+
+## Reading, search and navigation
+
+Ctrl/Command+F opens document search. Enter/Shift+Enter or the Next/Previous
+buttons move between matches; Escape closes the panel. Case-sensitive and
+whole-word toggles use the engine's Unicode/word policy (ADR 0014), with
+whitespace folding and joined line hyphens. Search requests cover one page at a
+time, yielding between pages. A changed query invalidates queued requests and
+ignores obsolete replies; executing requests finish. Matches use source quads
+transformed through CropBox, Rotate, UserUnit and zoom. The current match scrolls
+into view. Search retains at most 1,000 matches and 10,000 highlight quads and
+announces when that budget is reached; unavailable pages are counted explicitly.
+
+A transparent DOM text layer places characters in extracted reading order,
+using metric selection quads. Native selection and Ctrl/Command+C copy text;
+the copy handler writes only plain text, preserving extracted spaces and line
+breaks rather than browser-inferred wrapping. Cross-page copy excludes controls
+and link titles; mounted page elements stay in page order even when scrolling
+upward. Copy page text copies the current page's exact extracted string.
+Screen readers can read the text layer; canvases remain aria-hidden. Offscreen
+layers are discarded with their pages, so native browser Find only sees mounted
+pages; the custom document search covers the entire document.
+
+Selection cells approximate glyph ink, as specified by the extraction API.
+An ActualText character with several source quads uses their union for its DOM
+cell; search highlights keep every exact quad. Replacement characters can share
+cells. This is not bidi/shaping or structure-tree reconstruction. Per page the
+layer allows 50,000 characters and 100,000 quads; visible retained text allows
+100,000 characters. Excess is explicit and does not truncate copy text: Copy
+page text remains available through the extraction API. Zoom recreates layers;
+partial native selections are therefore lost across zoom/eviction.
+
+Link areas are focusable, named links activated by Enter or Space. Internal
+XYZ/Fit/FitH/FitV/FitR destinations preserve fit and coordinate instructions,
+including nullable coordinates and rotation. FitB/FitBH/FitBV are preserved on
+the wire but report that engine content bounds are unavailable; no guessed
+page-box fallback is used. Destination zoom outside 10%–800% is also explicit.
+The host needs `DisplayList::content_bounds() -> Result<Option<Rect>>` in default
+user space to implement those three fits accurately.
+
+URI/Base are inert data until activation. Relative references require an
+absolute PDF Base; the viewer URL is never a fallback. Only http, https and
+mailto are allowed, with a native confirmation showing the resolved target.
+URI credentials are rejected. Links have no href before confirmation, so
+middle-click/context menus cannot bypass policy. IsMap (coordinate-appending)
+URIs, GoToR, Launch, JavaScript, unknown Named actions and multi-action chains
+remain inert with an explanation. Standard NextPage, PrevPage, FirstPage and
+LastPage Named actions navigate. No scripts, remote files or action chains run.
+
+The outline sidebar uses an ARIA tree with levels, sibling positions, initial
+open states, styles and colours. Arrow keys move/expand/collapse; Home/End select
+first/last visible items; Enter activates; Space toggles a branch. Typing selects
+by title prefix. Mouse activation follows a target; the branch indicator toggles
+expansion. A roving tab stop keeps the tree to one keyboard entry point. The
+outline DOM is capped at 20,000 items. Page labels display alongside the numeric
+index; the page field accepts a label or `#index`. Duplicate labels select the
+first occurrence; exact labels take precedence over bare numeric input.
+
+All PDF text, labels, outline titles and URI descriptions enter the DOM through
+textContent. Accessible names derive from these text nodes; focusing or hovering
+a link also shows its target in the reading status. No PDF string is HTML, CSS, a script or an event handler.
+Tests use markup-bearing titles/text to verify inert nodes. Protocol 1.2 adds
+kinds 10–15; older sessions reject them operationally and retain their layouts.
+See PROTOCOL.md for the complete bounded layouts and cursor semantics.
+
+## Reading measurements
+
+```
+node web/reading_benchmark.mjs target/wasm32-wasip1/release/pagura-host.wasm > reading.json
+```
+
+This offline exploratory harness uses an independent ASCII/Type-3 PDF generator:
+100 pages with 50 lines per page. The expected copy string and search count are
+computed by the generator, not taken from engine output. It reports module byte
+size/hash, first extraction, five complete document-search timings after one
+warmup, per-page text-cache/linear-memory samples, and zero text retention after
+close. Search timing excludes the separate accounting series. No browser layout
+or rendering is timed. The Node DOM stand-in construction series includes UTF-8
+mapping, node creation and affine transforms; it is explicitly not real-browser
+DOM performance or release evidence.
+
+To measure actual browser construction, open a document with loopback
+`?debug=1` and call `await window.paguraDebug.readingProfile()` in the console.
+It returns seven construction samples after two warmups, character count and
+kind-15 accounting for the selected page. This measures DOM construction only,
+excluding extraction, attachment/layout, Canvas/GPU work and module startup.
+No document is uploaded. The DOM harness does not establish real-browser selection, assistive-technology
+or timing behavior.

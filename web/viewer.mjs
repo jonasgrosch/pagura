@@ -1,3 +1,6 @@
+import { pageUserPoint } from './page_geometry.mjs';
+import { ReadingView } from './reading_view.mjs';
+import { destinationView } from './destinations.mjs';
 import { SessionClient } from './client.mjs';
 import { MAX_FILE, HostError } from './protocol.mjs';
 import { loadFixture } from './fixtures.mjs';
@@ -15,6 +18,11 @@ const debug = new URL(window.location.href).searchParams.get('debug') === '1'
   && ['localhost', '127.0.0.1', '[::1]'].includes(new URL(window.location.href).hostname);
 let source = null, recoveryAttempts = 0, recovering = false;
 
+const reader = new ReadingView({
+  state: () => ({ client, handle, epoch: documentEpoch, page, count: layout.count, zoom,
+    scrollMatch: (index, y) => { viewport.scrollTop = layout.top(index, zoom) + Math.max(0, y - 40); invalidate(); } }),
+  navigate, destination: followDestination, report: (error) => { $('reading-status').textContent = String(error); }, controls,
+});
 function report(error) { errorBox.textContent = String(error); errorBox.hidden = false; status.textContent = 'Page unavailable'; }
 function controls() {
   const count = layout.count;
@@ -23,6 +31,8 @@ function controls() {
   pageInput.max = String(count);
   if (document.activeElement !== pageInput) pageInput.value = String(page + 1);
   $('count').textContent = `of ${count}`;
+  $('page-label').textContent = count ? `Label: ${reader.label(page)}` : '';
+  $('copy-page').disabled = !count;
 }
 function createClient() {
   if (!crossOriginIsolated || typeof SharedArrayBuffer !== 'function') throw new Error('Cross-origin isolation is required. Start python3 tools/serve_web.py and open http://localhost:8000.');
@@ -51,7 +61,7 @@ async function recover(error) {
     if (opened.pages) { await pageInfo(page, epoch); if (epoch !== documentEpoch) return; }
     updateLayout();
     if (opened.pages) restore({ ...position, index: page });
-    controls();
+    controls(); void reader.open();
     errorBox.textContent = `${error}. PDF host restarted; document reopened at page ${page + 1}, ${Math.round(zoom * 100)}%.`;
     errorBox.hidden = false; invalidate();
   } catch (failure) {
@@ -122,10 +132,13 @@ async function pageInfo(index, epoch) {
 function pageView(index) {
   if (views.has(index)) return views.get(index);
   const element = document.createElement('section'); element.className = 'pdf-page';
-  element.setAttribute('data-page', String(index)); element.setAttribute('role', 'img');
+  element.setAttribute('data-page', String(index)); element.setAttribute('role', 'region');
   element.setAttribute('aria-label', `Page ${index + 1}`); element.setAttribute('aria-busy', 'true');
   const message = document.createElement('p'); message.className = 'page-message'; message.textContent = `Loading page ${index + 1}…`;
-  element.append(message); surface.append(element);
+  element.append(message);
+  let following = null, nextIndex = Infinity;
+  for (const [number, view] of views) if (number > index && number < nextIndex) { following = view.element; nextIndex = number; }
+  surface.insertBefore(element, following);
   const view = { element, message, tiles: new Map(), failed: false }; views.set(index, view); return view;
 }
 function visiblePages() {
@@ -172,6 +185,7 @@ async function draw() {
     // Heights become precise only as the visible range is loaded.
     for (let pass = 0; pass < MAX_PAGES; pass++) {
       const indexes = visiblePages();
+      reader.prune(indexes);
       for (const [index, view] of views) if (!indexes.includes(index)) { view.element.remove(); views.delete(index); }
       for (const index of indexes) pageView(index);
       const missing = indexes.find((index) => !infos.get(index)?.width);
@@ -205,6 +219,8 @@ async function draw() {
           view.tiles.set(key, canvas); view.element.append(canvas);
         }
         view.message.hidden = true; view.element.setAttribute('aria-busy', 'false');
+        await reader.page(index, info, view.element);
+        if (epoch !== documentEpoch || token !== generation) return;
       } catch (error) { if (epoch === documentEpoch && token === generation) failPage(index, error); }
     }
     if (epoch === documentEpoch && token === generation) {
@@ -226,7 +242,7 @@ function changeZoom(value, point = viewport.clientHeight / 2) {
   const position = anchor(point), previousZoom = zoom;
   zoom = Math.min(8, Math.max(0.1, value));
   try { updateLayout(); } catch (error) { zoom = previousZoom; report(error); return; }
-  for (const view of views.values()) view.element.remove(); views.clear();
+  for (const view of views.values()) view.element.remove(); views.clear(); reader.prune([]);
   $('custom-zoom').textContent = `${Math.round(zoom * 100)}%`; restore(position); invalidate();
 }
 async function navigate(index) {
@@ -239,11 +255,25 @@ async function navigate(index) {
     viewport.scrollTop = layout.top(index, zoom); pageInput.value = String(index + 1); controls(); invalidate();
   } catch (error) { if (epoch === documentEpoch) report(error); }
 }
+async function followDestination(action) {
+  const epoch = documentEpoch, previous = infos.get(page);
+  const retained = previous?.width ? pageUserPoint(previous, zoom,
+    viewport.scrollLeft - (parseFloat(surface.style.width) - previous.width * zoom) / 2,
+    viewport.scrollTop - layout.top(page, zoom)) : null;
+  const info = await pageInfo(action.page, epoch);
+  if (!info || epoch !== documentEpoch) return;
+  const plan = destinationView(action, info, viewport.clientWidth - 48, viewport.clientHeight - 48, zoom, retained ? { left: retained[0], top: retained[1] } : {});
+  zoomInput.value = 'custom'; changeZoom(plan.zoom, 0);
+  await navigate(action.page); if (epoch !== documentEpoch) return;
+  if (plan.y !== null) viewport.scrollTop = layout.top(action.page, zoom) + plan.y;
+  if (plan.x !== null) viewport.scrollLeft = Math.max(0, (parseFloat(surface.style.width) - info.width * zoom) / 2 + plan.x);
+  invalidate();
+}
 async function openFile(file) {
   if (!file) return;
   cancelPassword();
   source?.password.fill(0); source = null; recoveryAttempts = 0;
-  const epoch = ++documentEpoch;
+  const epoch = ++documentEpoch; reader.reset();
   handle = null; infos.clear(); views.clear(); surface.replaceChildren(); surface.hidden = true;
   layout = new PageLayout(0); page = 0; controls(); errorBox.hidden = true;
   $('filename').textContent = file.name; status.textContent = 'Opening…';
@@ -271,7 +301,7 @@ async function openFile(file) {
       if (epoch !== documentEpoch) return;
     }
     if (epoch !== documentEpoch) return;
-    handle = opened.document; layout = new PageLayout(opened.pages); controls();
+    handle = opened.document; layout = new PageLayout(opened.pages); controls(); void reader.open();
     if (!opened.pages) { status.textContent = 'Document has no pages'; return; }
     await pageInfo(0, epoch); if (epoch !== documentEpoch) return;
     zoom = zoomInput.value.startsWith('fit-') ? fit(zoomInput.value, infos.get(0)) : zoomInput.value === 'custom' ? zoom : Number(zoomInput.value);
@@ -281,7 +311,7 @@ async function openFile(file) {
 }
 $('previous').addEventListener('click', () => { void navigate(page - 1); });
 $('next').addEventListener('click', () => { void navigate(page + 1); });
-pageInput.addEventListener('change', () => { void navigate(Number(pageInput.value) - 1); });
+pageInput.addEventListener('change', () => { void navigate(pageInput.value.startsWith('#') ? Number(pageInput.value.slice(1)) - 1 : reader.pageIndex(pageInput.value)); });
 zoomInput.addEventListener('change', () => {
   const info = infos.get(page); if (!info?.width) return;
   changeZoom(zoomInput.value.startsWith('fit-') ? fit(zoomInput.value, info) : Number(zoomInput.value));
@@ -314,7 +344,7 @@ viewport.addEventListener('touchmove', (event) => {
 }, { passive: false });
 for (const type of ['touchend', 'touchcancel']) viewport.addEventListener(type, () => { pinch = null; });
 window.addEventListener('keydown', (event) => {
-  if (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(event.target?.tagName) || event.altKey) return;
+  if (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(event.target?.tagName) || event.target?.closest?.('[role=tree]') || event.altKey) return;
   if (['PageDown', 'PageUp', 'Home', 'End'].includes(event.key)) {
     event.preventDefault(); void navigate(event.key === 'Home' ? 0 : event.key === 'End' ? layout.count - 1 : page + (event.key === 'PageDown' ? 1 : -1));
   } else if (['+', '=', '-', '0'].includes(event.key)) {
@@ -322,16 +352,29 @@ window.addEventListener('keydown', (event) => {
   }
 });
 let ratio = window.devicePixelRatio;
-window.addEventListener('resize', () => {
+function resizeViewport() {
   if (handle === null) return;
   const info = infos.get(page);
-  if (zoomInput.value.startsWith('fit-') && info?.width) changeZoom(fit(zoomInput.value, info));
-  else if (ratio !== window.devicePixelRatio) changeZoom(zoom);
+  if (zoomInput.value.startsWith('fit-') && info?.width) {
+    const value = Math.min(8, Math.max(0.1, fit(zoomInput.value, info)));
+    if (value === zoom) invalidate(); else changeZoom(value);
+  } else if (ratio !== window.devicePixelRatio) changeZoom(zoom);
   else invalidate();
   ratio = window.devicePixelRatio;
+}
+window.addEventListener('resize', resizeViewport);
+// Search/outline panels resize the document region without resizing the window.
+const regionObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => requestAnimationFrame(resizeViewport)) : null;
+regionObserver?.observe(viewport);
+window.addEventListener('pagehide', () => { ++documentEpoch; handle = null; dirty = false; regionObserver?.disconnect(); reader.reset(); source?.password.fill(0); source = null; client?.destroy(); });
+if (debug) window.paguraDebug = Object.freeze({ fail: (reason) => client.injectFailure(reason),
+  readingProfile: async () => {
+    const { profileTextLayer } = await import('./reading_profile.mjs');
+    const epoch = documentEpoch, text = await client.pageText(handle, page), info = await pageInfo(page, epoch);
+    if (epoch !== documentEpoch) throw new Error('Document changed during profiling');
+    return { characters: text.characters.length, samplesMs: profileTextLayer(text, info), accounting: await client.readingStats() };
+  },
 });
-window.addEventListener('pagehide', () => { source?.password.fill(0); source = null; client?.destroy(); });
-if (debug) window.paguraDebug = Object.freeze({ fail: (reason) => client.injectFailure(reason) });
 let startupEpoch = documentEpoch;
 try {
   client = createClient(); await client.hello(); status.textContent = 'Ready — open a PDF';

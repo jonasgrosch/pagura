@@ -1,5 +1,5 @@
 import { HostFailure } from './failure.mjs';
-import { encodeRequest, FrameDecoder, HostError, VERSION_1_1 } from './protocol.mjs';
+import { encodeRequest, FrameDecoder, HostError, VERSION_1_2 } from './protocol.mjs';
 import { createInput, InputWriter } from './transport.mjs';
 
 /** Long-lived serial session. Recreate the client after a trap/terminal failure. */
@@ -8,7 +8,7 @@ export class SessionClient {
     this.onFailure = onFailure; this.timeoutMs = timeoutMs; this.debug = debug; this.wasmBytes = 0;
     this.timer = setTimeout(() => this.fail(new HostFailure('deadline exceeded', 'startup exceeded its time budget')), timeoutMs);
     this.worker = worker; this.input = new InputWriter(createInput()); this.nextId = 1;
-    this.generations = new Map(); this.selectedGenerations = new Map();
+    this.searchEpoch = 0; this.generations = new Map(); this.selectedGenerations = new Map();
     this.tail = Promise.resolve(); this.pending = null; this.failure = null; this.queued = 0;
     this.decoder = new FrameDecoder((frame) => this.receive(frame));
     this.ready = new Promise((resolve, reject) => { this.resolveReady = resolve; this.rejectReady = reject; });
@@ -55,6 +55,7 @@ export class SessionClient {
     const result = this.tail.then(async () => {
       await this.ready;
       if (this.failure) throw this.failure;
+      if (kind === 11 && values.token !== undefined && values.token !== this.searchEpoch) return { cancelled: true };
       if ((kind === 7 || kind === 8) && this.generations.get(values.document) !== values.generation) {
         return { cancelled: true, generation: values.generation };
       }
@@ -66,10 +67,10 @@ export class SessionClient {
         try { this.input.write(bytes); } catch (error) { this.fail(error); }
       });
     });
-    this.tail = result.catch(() => {}).finally(() => { this.queued--; });
+    this.tail = result.then(() => {}, () => {}).finally(() => { this.queued--; });
     return result;
   }
-  async hello(version = VERSION_1_1) {
+  async hello(version = VERSION_1_2) {
     const result = await this.request(1, { version });
     if (result.version !== version) { const error = new Error('Unsupported host protocol version'); this.fail(error); throw error; }
     return result;
@@ -91,6 +92,13 @@ export class SessionClient {
     }
     return this.request(8, { document, page, scale, ...tile, generation });
   }
+  pageText(document, page) { return this.request(10, { document, page }); }
+  invalidateSearch() { return ++this.searchEpoch; }
+  search(document, query, start, end, offset = 0, limit = 128, flags = 4, token = this.searchEpoch) { return this.request(11, { document, query, start, end, offset, limit, flags, token }); }
+  links(document, page) { return this.request(12, { document, page }); }
+  outlines(document) { return this.request(13, { document }); }
+  labels(document) { return this.request(14, { document }); }
+  readingStats() { return this.request(15); }
   stats() { return this.request(9); }
   /** Development injection stays in the client; no engine instruction changes. */
   injectFailure(reason) {

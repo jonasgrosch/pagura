@@ -7,6 +7,7 @@
 mod cache;
 mod control;
 pub mod protocol;
+pub mod reading;
 mod session;
 
 pub use control::Cancellation;

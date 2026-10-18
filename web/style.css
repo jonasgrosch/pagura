@@ -32,3 +32,23 @@ dialog { max-width: min(90vw, 28rem); border: 1px solid #b4b8c2; border-radius: 
 dialog::backdrop { background: #0007; }
 #password { display: block; width: 100%; font: inherit; margin: .5rem 0 1rem; padding: .5rem; }
 #password-form > div { display: flex; justify-content: flex-end; gap: .5rem; }
+
+#reading-layout { flex: 1; min-height: 0; display: flex; }
+#outline-sidebar { flex: 0 0 13rem; max-height: none; padding: .4rem; border-right: 1px solid #d6d8df; }
+#outline-sidebar:has(#outline-tree:empty) { display: none; }
+[role=treeitem] { cursor: pointer; overflow-wrap: anywhere; padding: .3rem; }
+#find-panel { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; padding: .5rem 1rem; background: white; }
+#reading-status { background: #fff6dc; font-size: .85rem; padding: 0 1rem; }
+.text-layer, .link-layer, .search-highlights { position: absolute; inset: 0; overflow: hidden; }
+.text-layer { z-index: 2; user-select: text; color: transparent; }
+.text-layer span { position: absolute; left: 0; top: 0; display: inline-block; width: 1px; height: 1px; font: 1px/1px monospace; white-space: pre; transform-origin: 0 0; }
+.text-layer ::selection { background: #3488ff66; color: transparent; }
+.link-layer { z-index: 3; pointer-events: none; }
+.pdf-link { position: absolute; pointer-events: auto; cursor: pointer; }
+.pdf-link:focus-visible { background: #3488ff44; outline: 2px solid #145ad6; outline-offset: -2px; }
+.search-highlights { pointer-events: none; z-index: 1; }
+.search-match { position: absolute; background: #ffe10066; }
+.current-match { background: #ff810099; }
+@media (max-width: 650px) { #outline-sidebar { flex-basis: 8rem; } }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

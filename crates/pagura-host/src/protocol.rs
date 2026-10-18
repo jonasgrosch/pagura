@@ -6,6 +6,8 @@ use pagura::{Diagnostic, Error, ErrorKind, ObjectId, Position, Recovery, Result,
 pub const VERSION: u32 = 1;
 /// Protocol 1.1, adding viewport generations and stats without changing v1 frames.
 pub const VERSION_1_1: u32 = 0x0001_0001;
+/// Protocol 1.2, adding reading operations without changing older layouts.
+pub const VERSION_1_2: u32 = 0x0001_0002;
 /// Kind byte for structured error responses.
 pub const ERROR_KIND: u8 = 255;
 
@@ -67,6 +69,8 @@ pub enum Request<'a> {
     Close(u32),
     /// Snapshot session retention accounting (v1.1).
     Stats,
+    /// Reading operations negotiated in v1.2.
+    Reading(crate::reading::Request<'a>),
 }
 
 /// Session-owned retention accounting, not allocator or total-heap telemetry.
@@ -140,6 +144,8 @@ pub enum Response {
     },
     /// Retention accounting (v1.1).
     Stats(SessionStats),
+    /// Bounded reading response, encoded by the reading adapter.
+    Reading(crate::reading::Response),
     /// Repairs in discovery order.
     Diagnostics(Vec<Diagnostic>),
     /// The handle has been released.
@@ -210,6 +216,7 @@ pub fn decode(body: &[u8], limits: pagura::Limits) -> Result<RequestFrame<'_>> {
             },
         },
         9 => Request::Stats,
+        10..=15 => Request::Reading(crate::reading::decode(kind, &mut reader, limits)?),
         _ => return Err(Error::syntax("unknown request kind").at(Position::Buffer(0))),
     };
     if reader.offset != body.len() {
@@ -218,7 +225,7 @@ pub fn decode(body: &[u8], limits: pagura::Limits) -> Result<RequestFrame<'_>> {
     Ok(RequestFrame { id, request })
 }
 
-struct Reader<'a> {
+pub(crate) struct Reader<'a> {
     bytes: &'a [u8],
     offset: usize,
 }
@@ -247,16 +254,16 @@ impl<'a> Reader<'a> {
             .try_into()
             .map_err(|_| self.error("truncated request payload"))
     }
-    fn byte(&mut self) -> Result<u8> {
+    pub(crate) fn byte(&mut self) -> Result<u8> {
         Ok(u8::from_le_bytes(self.array()?))
     }
-    fn u32(&mut self) -> Result<u32> {
+    pub(crate) fn u32(&mut self) -> Result<u32> {
         Ok(u32::from_le_bytes(self.array()?))
     }
     fn f64(&mut self) -> Result<f64> {
         Ok(f64::from_le_bytes(self.array()?))
     }
-    fn blob(&mut self, cap: usize) -> Result<&'a [u8]> {
+    pub(crate) fn blob(&mut self, cap: usize) -> Result<&'a [u8]> {
         let position = Position::Buffer(self.offset);
         let count = usize::try_from(self.u32()?)
             .map_err(|_| Error::limit("byte string length overflows").at(position))?;
@@ -288,6 +295,7 @@ pub fn encode(id: u32, response: &Response, max_body: usize) -> Result<Vec<u8>> 
         Response::Generation(_) => 135,
         Response::Skipped(_) | Response::GenerationTile { .. } => 136,
         Response::Stats(_) => 137,
+        Response::Reading(response) => response.kind,
         Response::Error(_) => ERROR_KIND,
     }])?;
     out.push(&id.to_le_bytes())?;
@@ -359,6 +367,7 @@ fn encode_payload(out: &mut Encoder, response: &Response) -> Result<()> {
             out.push(&stats.documents.to_le_bytes())?;
             out.push(&stats.lists.to_le_bytes())?;
         }
+        Response::Reading(response) => out.push(&response.payload)?,
         Response::Close => (),
         Response::Error(error) => {
             out.push(&[match error.kind {

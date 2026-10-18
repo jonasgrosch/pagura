@@ -1,4 +1,4 @@
-# Pagura session protocol v1 and v1.1
+# Pagura session protocol v1, v1.1 and v1.2
 
 ADR 0005 defines a synchronous command over stdin/stdout, identically on native
 and wasm32-wasip1. This document freezes the v1 byte layout, including the refused-repair field.
@@ -15,7 +15,7 @@ before a complete body is read uses identifier zero. Complete but malformed
 bodies use the identifier from that body. There is exactly one response per
 complete valid request. Callers serialize requests; the host flushes responses.
 
-The first request is `hello(1)` for v1 or `hello(65537)` (0x00010001) for v1.1. Repeated hello, unsupported versions,
+The first request is `hello(1)` for v1 or `hello(65537)` (0x00010001) for v1.1, or `hello(65538)` (0x00010002) for v1.2. Repeated hello, unsupported versions,
 non-increasing IDs, unknown kinds, invalid recovery bytes, trailing payload,
 truncation and oversized frames emit one error and **end the session**. Clean
 EOF between frames is successful. EOF inside a frame is malformed. Native exit
@@ -189,3 +189,125 @@ their structured handling. The browser shim checks its 512 MiB linear-memory
 budget at I/O boundaries; the 30-second client deadline also covers an engine
 that never returns to an import. These are detection boundaries, not a hard
 peak-memory allocation limit or an in-engine interruption guarantee.
+
+## Reading operations (v1.2)
+
+`hello(65538)` (`0x00010002`) enables all v1/v1.1 operations and the following
+additions. Kinds 1–9 and all their response layouts remain byte-for-byte
+unchanged. Valid new requests in older sessions return operational
+InvalidArgument; the session remains usable. Reading errors use the unchanged
+kind 255 layout. No request interrupts a running operation.
+
+| Kind | Request payload | Success kind | Success payload |
+|---|---|---|---|
+| 10 page_text | `u32 document,page` | 138 | `text copy_text; u32 quads; Quad[quads]; u32 characters; Character[characters]` |
+| 11 search | `u32 document,start_page,end_page,match_offset,limit; u8 flags; text query` | 139 | `u32 next_page,next_offset; u8 done; u32 count; Match[count]` |
+| 12 page_links | `u32 document,page` | 140 | `u32 count; Link[count]` |
+| 13 outlines | `u32 document` | 141 | `u32 count; Outline[count]` |
+| 14 page_labels | `u32 document` | 142 | `u32 count; text label[count]` |
+| 15 reading_stats | empty | 143 | unchanged kind-137 fields, followed by `u64 text_bytes; u32 text_pages` |
+
+All counts are u32, strings are length-prefixed UTF-8, booleans are exactly 0
+or 1, and all geometry is finite f64 in default user space. A Quad is eight
+f64 values `(x0,y0,...,x3,y3)`. It precedes page rotation, UserUnit and zoom.
+Text quads use the engine's metric cell corner order; link QuadPoints retain
+source vertex order (which can differ). They are selection/hit geometry,
+not glyph ink. The host does not transform or quantize coordinates.
+
+A Character is `u32 end_byte,first_quad,quad_count`. Its start byte is the
+previous character's end (zero for the first). The range
+`[first_quad,first_quad+quad_count)` indexes the shared page quad table and must
+fit it. The table contains source glyph quads once in content order, including
+unreferenced hidden glyphs. This keeps decoding linear even when many ActualText
+characters share a large source range; clients must not eagerly expand those
+ranges into duplicated arrays.
+Characters partition copy_text in reading order into Unicode scalars; offsets
+are UTF-8 byte offsets, half-open, including inserted spaces/LFs and U+FFFD for
+unknown Unicode. The UTF-8 text is authoritative for copying. Unknown Unicode
+remains a barrier to engine search. An inserted separator or a graphics-only
+ActualText replacement can have zero quads; a replacement can refer to many
+source glyph quads. Repeated replacement characters can share quads. No
+synthetic coordinates are invented. Text and replacement policy follow ADR
+0014, ISO 32000-2 9.10 and 14.9.4; this is not tagged-PDF reading order.
+
+A Match is `u32 page,start_byte,end_byte,quad_count; Quad[quad_count]`.
+The half-open page window must satisfy `start <= end <= page_count` and span
+at most 16 pages. Limit is 1..1024; the query must be nonempty UTF-8 and at most
+min(Limits.string_bytes,4096) bytes. Flags: bit 0 case-sensitive, bit 1 whole
+words, bit 2 join hyphenated line breaks; other bits are invalid. Whitespace
+folding, Unicode uppercase expansions, unknown barriers and word boundaries
+are the engine policy documented in ADR 0014, not browser regex semantics.
+
+Match offset is the zero-based match ordinal on start_page for this exact
+query/options. Zero starts a new window. The response is in page then engine
+match order. Continue with next_page/next_offset and the same query/options
+and end_page. At most limit matches are returned. Done means next_page equals
+end_page; next_offset is then zero. The cursor skips no remaining matches,
+including overlapping text ranges. An offset beyond the current page's match
+count is InvalidArgument. An empty window returns done with no matches and
+requires offset zero. Extraction/search errors fail the whole request and do
+not return partial matches; a caller wanting page-specific errors uses
+one-page windows. Engine find computes that page's bounded match vector before
+host pagination, so the wire limit is not a smaller engine allocation budget.
+The client increments its own query epoch, skips obsolete queued requests and
+drops already-running requests' obsolete results; no generation fields are
+added to older frames. It searches one page at a time and yields between pages.
+
+A Link is `u32 quad_count; Quad[quad_count]; Target`. QuadPoints are used when
+valid; otherwise one quad is constructed from the annotation rectangle
+(12.5.6.5, Table 176). Reported engine repairs remain available via diagnostics.
+An Outline is `u32 depth; text title; u8 initially_open,style; f64 red,green,blue;
+Target`. It is preorder with depth zero at the root. Style bit 0 italic, bit 1
+bold; colours are DeviceRGB in 0..1. Labels contain exactly one decoded label
+per page in page order; absent PageLabels gives decimal indexes (12.4.2).
+
+A Target is `u32 action_count; Action[action_count]`. Zero means no target.
+An Action begins with `u32 parent_plus_one; u8 type`; zero parent means root,
+otherwise parent_plus_one-1 indexes an earlier action. Direct destinations are
+one root action. All Next actions are preserved in engine preorder as inert
+data; serializing them never authorizes execution.
+
+| Action type | Data after type |
+|---|---|
+| 1 internal destination | `u32 page; u8 fit,coordinate_mask; f64 present_coordinates[]` |
+| 2 URI | `text uri; u8 has_base; [text base]; u8 is_map` |
+| 3 named action | `text name` |
+| 4 remote GoToR | empty (inert) |
+| 5 Launch | empty (inert) |
+| 6 JavaScript | empty (inert; no script bytes are sent) |
+| 7 other action | `text escaped_PDF_name` (inert) |
+
+Destination fits preserve Table 149 semantics: 0 XYZ (left,top,zoom), 1 Fit,
+2 FitH (top), 3 FitV (left), 4 FitR (left,bottom,right,top), 5 FitB,
+6 FitBH (top), 7 FitBV (left). Mask bit i selects coordinate i; absent means
+PDF null, including XYZ zoom zero normalized by the engine. XYZ allows mask
+0..7; H/V/BH/BV allow mask 0..1; Fit/FitB require zero; FitR requires 15.
+Named destinations are resolved by the engine before serialization. Standard
+Named actions have their exact names; extension names are escaped PDF names.
+URI/Base must be UTF-8; malformed UTF-8 is an operational Syntax error. Base
+is not resolved by the engine and is never inferred from the host filesystem
+or viewer URL. The viewer only activates one action: multi-action targets,
+GoToR, Launch, JavaScript, unknown Named actions and coordinate-appending IsMap
+URIs remain explicitly inert. External http/https/mailto targets require user
+confirmation after scheme validation. PDF strings never enter HTML markup.
+
+Page text has at most one million semantic characters; larger pages return
+Limit before encoding. Every reading response payload is capped at min(Limits.decoded_bytes,32 MiB),
+and the ordinary frame cap also applies. Output is built with fallible bounded
+reservations. Oversized responses yield Limit with no partial output. Invalid
+handles/pages/windows/cursors/options are operational InvalidArgument; engine
+Syntax, Unsupported, Cycle, Password, Limit and refused repairs preserve the
+existing error fields. Truncation, invalid UTF-8 queries, oversized query blobs,
+unknown kinds and trailing bytes are terminal protocol errors as before.
+
+Extracted TextPages have an independent LRU, keyed by document and page, at most
+eight entries and min(Limits.document_bytes,16 MiB) by default. The configurable
+Session::with_text_cache_bytes budget charges 512 bytes per entry, 2048 per
+positioned glyph, 128 per content/reading character, 256 per marked span and
+both exported string byte lengths. Estimates are fixed across targets; no
+source-size multiplier is used. Hits refresh recency; over-budget pages are
+served without retention. Close releases the text cache for that document.
+Kind 15 reports these charges and entry counts; kind 9 stays unchanged.
+Charges exclude font caches, document internals, temporaries and transport/JS
+buffers and are not heap/RSS measurements. Text extraction may compile a page
+independently of its cached painting list; no text is added to display lists.

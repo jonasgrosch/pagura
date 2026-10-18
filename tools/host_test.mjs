@@ -1,3 +1,9 @@
+import { externalUrl, activateTarget } from '../web/link_actions.mjs';
+import { textLayer, selectedText } from '../web/text_layer.mjs';
+import { pagePoint } from '../web/page_geometry.mjs';
+import { destinationView } from '../web/destinations.mjs';
+import { readingWorkload } from '../web/reading_workload.mjs';
+import { OutlineTree } from '../web/outline_tree.mjs';
 /** Offline parity, independent pixel oracles and browser-shim checks.
  * Prerequisites: cargo build --locked --offline -p pagura-host; cargo wasm --offline
  * Usage: node tools/host_test.mjs
@@ -10,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { WASI } from 'node:wasi';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
-import { FrameDecoder, encodeRequest, HostError, decodeResponse, MAX_FILE, VERSION_1_1 } from '../web/protocol.mjs';
+import { FrameDecoder, encodeRequest, HostError, decodeResponse, MAX_FILE, VERSION_1_1, VERSION_1_2 } from '../web/protocol.mjs';
 import { HostFailure, failureReason } from '../web/failure.mjs';
 import { SessionClient } from '../web/client.mjs';
 import { createWasi } from '../web/wasi.mjs';
@@ -207,6 +213,7 @@ async function main() {
       await assert.rejects(client.pageInfo(opened.document, 0), (error) => error instanceof HostError && error.category === 7);
       tested++;
     }
+    await testReading(client, root, native, wasiRun);
     await testTwoPages(client, root, native, wasiRun);
     await testGenerations(client, root, native, wasiRun);
     const emptyStats = { sourceBytes: 0, cacheBytes: 0, documents: 0, lists: 0 };
@@ -283,7 +290,7 @@ async function main() {
       { name: 'duplicate', url: 'http://localhost:8000/?file=/fixtures/a.pdf&file=/fixtures/b.pdf',
         fetch: async () => assert.fail('Ambiguous startup URL reached fetch'), error: /specified once/ },
     ]) await testViewer(TestWorker, root, manifest, startup);
-    console.log(`Host checks passed: ${tested} classic render cases; native/WASI bytes; browser worker shim/client pixels; ${malformed.length} terminal failures; independent PPM oracles; capability denials; refused repair tags; multi-page navigation; startup fixture loading; viewer DOM harness.`);
+    console.log(`Host checks passed: ${tested} classic render cases; native/WASI bytes; browser worker shim/client pixels; ${malformed.length} terminal failures; independent PPM oracles; capability denials; refused repair tags; multi-page navigation; startup fixture loading; viewer DOM harness; v1.2 reading/search/navigation and markup oracles.`);
   } finally {
     client?.destroy();
     await Promise.all(files.map((file) => file.close())); await rm(scratch, { recursive: true, force: true });
@@ -365,19 +372,28 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
   class Element {
     constructor(id) {
       this.id = id; this.tagName = id.toUpperCase(); this.children = []; this.listeners = new Map(); this.style = {}; this.attributes = new Map();
-      this.hidden = ['page-surface', 'error'].includes(id); this.value = '1'; this.scrollTop = 0; this.scrollLeft = 0;
+      this.hidden = ['page-surface', 'error', 'find-panel'].includes(id); this.value = '1'; this.scrollTop = 0; this.scrollLeft = 0;
       this.clientWidth = 300; this.clientHeight = 300; this.checked = false; this.textContent = '';
+      if (id === 'find-query') this.value = '';
+      if (['page', 'find-query'].includes(id)) this.tagName = 'INPUT';
     }
     addEventListener(type, listener) { const list = this.listeners.get(type) ?? []; list.push(listener); this.listeners.set(type, list); }
     removeEventListener(type, listener) { this.listeners.set(type, (this.listeners.get(type) ?? []).filter((fn) => fn !== listener)); }
     dispatch(type, extra = {}) { for (const fn of [...this.listeners.get(type) ?? []]) fn({ target: this, preventDefault() {}, ...extra }); }
     replaceChildren(...children) { for (const child of this.children) child.parent = null; this.children = children; for (const child of children) child.parent = this; }
     append(child) { this.children.push(child); child.parent = this; }
+    insertBefore(child, next) { const index = next ? this.children.indexOf(next) : this.children.length; this.children.splice(index, 0, child); child.parent = this; }
     remove() { if (this.parent) this.parent.children = this.parent.children.filter((child) => child !== this); }
     setAttribute(name, value) { this.attributes.set(name, value); }
     getAttribute(name) { return this.attributes.get(name); }
     removeAttribute(name) { this.attributes.delete(name); }
     focus() { globalThis.document.activeElement = this; }
+    click() { this.dispatch('click'); }
+    closest(selector) {
+      if (selector === '.text-layer' && this.className === 'text-layer') return this;
+      if (selector === '[role=tree]' && this.getAttribute('role') === 'tree') return this;
+      return this.parent?.closest(selector);
+    }
     showModal() { this.open = true; }
     close() { this.open = false; }
     getBoundingClientRect() {
@@ -388,20 +404,26 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
       const top = (parseFloat(this.style.top) || 0) - viewport.scrollTop;
       return { left, top, right: left + width, bottom: top + height };
     }
-    getContext(kind) { assert.equal(kind, '2d'); return { putImageData: (image) => { this.image = image; } }; }
+    getContext(kind) { assert.equal(kind, '2d'); return { putImageData: (image) => { this.image = image; }, measureText: () => ({ width: 0.6 }) }; }
   }
   const ids = ['page-surface', 'viewport', 'status', 'error', 'page', 'zoom', 'previous', 'next', 'count',
     'file', 'strict', 'filename', 'diagnostic-count', 'repair-list', 'diagnostics', 'custom-zoom',
-    'password-dialog', 'password', 'password-feedback', 'password-form', 'password-cancel'];
+    'password-dialog', 'password', 'password-feedback', 'password-form', 'password-cancel',
+    'find-open', 'find-close', 'find-panel', 'find-query', 'find-case', 'find-word', 'find-next', 'find-previous', 'find-count',
+    'outline-tree', 'page-label', 'reading-status', 'copy-page'];
   const elements = new Map(ids.map((id) => [id, new Element(id)]));
-  const original = new Map(['window', 'document', 'Worker', 'ImageData', 'requestAnimationFrame', 'crossOriginIsolated', 'fetch']
+  const original = new Map(['window', 'document', 'Worker', 'ImageData', 'requestAnimationFrame', 'crossOriginIsolated', 'fetch', 'navigator', 'ResizeObserver']
     .map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   const fakeWindow = new Element('window'); fakeWindow.devicePixelRatio = 1;
+  let observedResize, disconnected = false;
+  let copied = ''; fakeWindow.getSelection = () => null;
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { clipboard: { writeText: async (text) => { copied = text; } } } });
   fakeWindow.location = new URL(startup?.url ?? 'http://localhost:8000/?debug=1');
   Object.assign(globalThis, {
     window: fakeWindow,
-    document: { activeElement: null, getElementById: (id) => elements.get(id), createElement: (name) => new Element(name), body: { classList: { add() {}, remove() {} } } },
+    document: { activeElement: null, addEventListener: (...args) => fakeWindow.addEventListener(...args), getElementById: (id) => elements.get(id), createElement: (name) => new Element(name), body: { classList: { add() {}, remove() {} } } },
     Worker: TestWorker, crossOriginIsolated: true,
+    ResizeObserver: class { constructor(fn) { observedResize = fn; } observe(node) { assert.equal(node, elements.get('viewport')); } disconnect() { disconnected = true; } },
     requestAnimationFrame: (fn) => setTimeout(fn, 0),
     ImageData: class { constructor(data, width, height) { this.data = data; this.width = width; this.height = height; } },
   });
@@ -431,7 +453,7 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
         assert.equal(elements.get('count').textContent, 'of 2');
         const first = manifest.cases.find((entry) => entry.id === 'classic/two-pages');
         checkPixels({ rgba: canvases()[0].image.data }, ppmPixels(await readFile(join(root, first.oracle)), 64, 64));
-        assert.equal(view(0).getAttribute('role'), 'img');
+        assert.equal(view(0).getAttribute('role'), 'region');
       }
       return;
     }
@@ -469,6 +491,7 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
     elements.get('viewport').dispatch('scroll'); await waitFor(() => ready() && canvases(0).length > 0);
     // Both pages coexist when visible, with independently checked content.
     assert.ok(view(0)); assert.ok(view(1));
+    assert.deepEqual(elements.get('page-surface').children.map((n) => n.getAttribute('data-page')), ['0','1']);
     const firstPage = ppmPixels(await readFile(join(root, twoPages.oracle)), 64, 64);
     const checkPage = (index) => {
       assert.equal(elements.get('page').value, String(index + 1)); assert.equal(elements.get('count').textContent, 'of 2');
@@ -516,6 +539,10 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
     elements.get('viewport').clientHeight = 200;
     elements.get('zoom').value = 'fit-page'; elements.get('zoom').dispatch('change'); await waitFor(ready);
     assert.equal(view(0).style.height, '152px');
+    elements.get('viewport').clientHeight = 180; observedResize();
+    await waitFor(() => ready() && view(0).style.height === '132px');
+    elements.get('viewport').clientHeight = 200; observedResize();
+    await waitFor(() => ready() && view(0).style.height === '152px');
     let prevented = false;
     elements.get('viewport').dispatch('wheel', { ctrlKey: true, deltaY: -50, deltaMode: 0, clientY: 100, preventDefault() { prevented = true; } });
     await waitFor(ready); assert.equal(prevented, true); assert.ok(parseFloat(view(0).style.width) > 152);
@@ -553,8 +580,106 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
     checkPixels({ rgba: canvases()[0].image.data }, ppmPixels(await readFile(join(root, encrypted.oracle)), encrypted.width, encrypted.height));
     await pick(encrypted); await waitFor(() => elements.get('password-dialog').open); elements.get('password-cancel').dispatch('click');
     await waitFor(() => elements.get('status').textContent === 'Opening cancelled'); assert.equal(canvases().length, 0);
+    await pick({ id: 'extract-simple', path: 'corpus/generated/text/extract-simple.pdf' }); await waitFor(ready);
+    const text = () => view(0)?.children.find((n) => n.className === 'text-layer');
+    assert.equal(text().children.map((n) => n.textContent).join(''), 'ZZ');
+    assert.equal(text().getAttribute('role'), 'document');
+    assert.equal(text().children[0].style.transform, 'matrix(4,0,0,6,10,214)');
+    elements.get('copy-page').dispatch('click'); await waitFor(() => copied === 'ZZ');
+    let copyResult;
+    fakeWindow.getSelection = () => ({ isCollapsed: false, rangeCount: 1, getRangeAt: () => ({ startContainer: text().children[0], endContainer: text().children[1], cloneContents: () => ({ textContent: 'ZZ' }) }) });
+    fakeWindow.dispatch('copy', { clipboardData: { setData: (type, value) => { assert.equal(type, 'text/plain'); copyResult = value; } } });
+    assert.equal(copyResult, 'ZZ'); fakeWindow.getSelection = () => null;
+    fakeWindow.dispatch('keydown', { key: 'f', ctrlKey: true }); assert.equal(elements.get('find-panel').hidden, false);
+    assert.equal(globalThis.document.activeElement, elements.get('find-query'));
+    elements.get('find-query').value = 'z'; elements.get('find-query').dispatch('input');
+    await waitFor(() => elements.get('find-count').textContent === '1 / 2');
+    const marks = () => view(0).children.find((n) => n.className === 'search-highlights')?.children ?? [];
+    assert.equal(marks().length, 2); assert.equal(marks()[0].style.left, '10px'); assert.equal(marks()[0].style.top, '214px');
+    elements.get('find-next').dispatch('click'); await waitFor(() => elements.get('find-count').textContent === '2 / 2');
+    assert.equal(marks()[1].className, 'search-match current-match');
+    elements.get('find-previous').dispatch('click'); await waitFor(() => elements.get('find-count').textContent === '1 / 2');
+    elements.get('find-case').checked = true; elements.get('find-case').dispatch('change'); await waitFor(() => elements.get('find-count').textContent === '0 / 0');
+    elements.get('find-case').checked = false; elements.get('find-word').checked = true; elements.get('find-word').dispatch('change'); await waitFor(() => elements.get('find-count').textContent === '0 / 0');
+    elements.get('find-word').checked = false; elements.get('find-close').dispatch('click');
+    await pick({ id: 'outlines', path: 'corpus/generated/document/navigation-outlines.pdf' }); await waitFor(ready);
+    const nodes = () => elements.get('outline-tree').children;
+    assert.equal(nodes().length, 3); assert.equal(nodes()[0].textContent, 'Root €'); assert.equal(nodes()[0].getAttribute('aria-expanded'), 'true');
+    nodes()[0].dispatch('keydown', { key: 'ArrowDown' }); assert.equal(globalThis.document.activeElement.textContent, 'Child 😀');
+    globalThis.document.activeElement.dispatch('keydown', { key: 'ArrowRight' }); assert.equal(nodes().length, 4);
+    globalThis.document.activeElement.dispatch('keydown', { key: 'ArrowRight' }); assert.equal(globalThis.document.activeElement.textContent, 'Hidden');
+    globalThis.document.activeElement.dispatch('keydown', { key: 'ArrowLeft' }); assert.equal(globalThis.document.activeElement.textContent, 'Child 😀');
+    globalThis.document.activeElement.dispatch('keydown', { key: 'End' }); assert.equal(globalThis.document.activeElement.textContent, 'Fin');
+    globalThis.document.activeElement.dispatch('keydown', { key: 'Enter' }); await waitFor(() => ready() && elements.get('page').value === '2');
+    await pick({ id: 'labels', path: 'corpus/generated/document/navigation-page-labels.pdf' }); await waitFor(ready);
+    assert.equal(elements.get('page-label').textContent, 'Label: Intro');
+    elements.get('page').value = 'IX'; elements.get('page').dispatch('change'); await waitFor(() => ready() && elements.get('page').value === '4');
+    assert.equal(elements.get('page-label').textContent, 'Label: IX');
+    elements.get('page').value = '#2'; elements.get('page').dispatch('change'); await waitFor(() => ready() && elements.get('page').value === '2');
+    assert.equal(elements.get('page-label').textContent, 'Label: A-8');
+    await pick({ id: 'links', path: 'corpus/generated/document/navigation-links-actions.pdf' }); await waitFor(ready);
+    const links = view(0).children.find((n) => n.className === 'link-layer').children;
+    assert.equal(links[0].getAttribute('role'), 'link'); assert.equal(links[0].getAttribute('tabindex'), '0');
+    assert.equal(links[0].getAttribute('href'), undefined);
+    links[8].dispatch('keydown', { key: 'Enter' }); await waitFor(() => elements.get('reading-status').textContent.includes('Launch: inert'));
+    links[0].dispatch('keydown', { key: 'Enter' }); await waitFor(() => ready() && elements.get('page').value === '2');
+    elements.get('zoom').value = '1';
+    const reading = readingWorkload(2, 1), picker = elements.get('file');
+    picker.files = [new File([reading.bytes], 'reading.pdf')]; picker.dispatch('change'); await waitFor(ready);
+    elements.get('find-open').dispatch('click'); elements.get('find-query').value = 'navigation'; elements.get('find-query').dispatch('input');
+    await waitFor(() => elements.get('find-count').textContent === '1 / 2');
+    elements.get('find-next').dispatch('click'); await waitFor(() => ready() && elements.get('page').value === '2');
+    assert.ok(view(1).children.find((n) => n.className === 'search-highlights').children.some((n) => n.className === 'search-match current-match'));
+    elements.get('find-previous').dispatch('click'); await waitFor(() => ready() && elements.get('page').value === '1');
+    elements.get('find-close').dispatch('click');
+    let uiConfirmed = 0, uiOpened = [];
+    const hostileTitle = '<img src=x onerror=alert(1)>', hostileCopy = '<svg onload=alert(1)>';
+    const pickSecurity = async (uri) => {
+      picker.files = [new File([readingSecurityPdf(uri,hostileTitle,hostileCopy)], 'reading-security.pdf')]; picker.dispatch('change'); await waitFor(ready);
+    };
+    await pickSecurity('https://example.invalid/chapter');
+    assert.equal(elements.get('outline-tree').children[0].textContent,hostileTitle);
+    assert.equal(text().children.map((n)=>n.textContent).join(''),hostileCopy);
+    assert.ok(text().children.every((n)=>n.tagName==='SPAN'));
+    fakeWindow.confirm = (message) => { assert.match(message,/https:\/\/example.invalid\/chapter/); uiConfirmed++; return false; };
+    fakeWindow.open = (url, target, features) => { assert.equal(target,'_blank'); assert.equal(features,'noopener,noreferrer'); uiOpened.push(url); };
+    const externalLink = () => view(0).children.find((n)=>n.className==='link-layer').children[0];
+    externalLink().dispatch('keydown',{key:'Enter'}); assert.equal(uiConfirmed,1); assert.deepEqual(uiOpened,[]);
+    fakeWindow.confirm = () => { uiConfirmed++; return true; };
+    externalLink().dispatch('click'); assert.equal(uiConfirmed,2); assert.deepEqual(uiOpened,['https://example.invalid/chapter']);
+    for (const uri of ['javascript:alert(1)','data:text/html,test','file:///private/test']) {
+      await pickSecurity(uri); externalLink().dispatch('keydown',{key:'Enter'});
+      assert.match(elements.get('reading-status').textContent,/Blocked URI scheme/);
+    }
+    assert.equal(uiConfirmed,2); assert.equal(uiOpened.length,1);
+    // Confirm policy and inert markup use the same production UI modules.
+    let confirmed = 0, opened = [], reported = [];
+    const action = { kind: 2, uri: '../chapter', base: 'https://example.invalid/docs/', isMap: false };
+    const options = { destination: async () => {}, named: async () => {}, report: (v) => reported.push(String(v)), confirm: () => { confirmed++; return false; }, open: (v) => opened.push(v) };
+    await activateTarget([action], options); assert.equal(confirmed, 1); assert.deepEqual(opened, []);
+    await activateTarget([action], { ...options, confirm: (value) => { assert.match(value, /https:\/\/example.invalid\/chapter/); return true; } });
+    assert.deepEqual(opened, ['https://example.invalid/chapter']);
+    for (const uri of ['javascript:alert(1)', 'data:text/html,test', 'file:///private/test']) {
+      assert.throws(() => externalUrl({ ...action, uri }), /Blocked/);
+      await activateTarget([{ ...action, uri }], options);
+    }
+    assert.equal(confirmed, 1); assert.equal(opened.length, 1); assert.equal(reported.length, 3);
+    const hostile = '<img src=x onerror=alert(1)>';
+    const rootElement = new Element('tree'); const tree = new OutlineTree(rootElement, () => {});
+    tree.set([{ depth: 0, title: hostile, open: false, style: 0, color: [0,0,0], target: [] }]);
+    assert.equal(rootElement.children[0].getAttribute('aria-label'), undefined); assert.equal(rootElement.children[0].textContent, hostile);
+    const maliciousText = '<svg onload=alert(1)>';
+    let byte = 0; const characters = [...maliciousText].map((c) => ({ start: byte, end: ++byte, quadStart: 0, quadCount: 0 }));
+    const inertLayer = textLayer({ text: maliciousText, quads: [], characters }, { crop: [0,0,64,64], userUnit: 1, rotation: 0 }, 1);
+    assert.equal(inertLayer.children.map((n) => n.textContent).join(''), maliciousText); assert.ok(inertLayer.children.every((n) => n.tagName === 'SPAN'));
+    for (const [rotation, expected] of [[0,[20,80]],[90,[20,20]],[180,[80,20]],[270,[80,80]]]) assert.deepEqual(pagePoint({crop:[10,20,60,70],userUnit:2,rotation}, 1, 20,30),expected);
+    const geometry = { crop: [0,0,100,200], width:100,height:200,userUnit:1,rotation:0 };
+    assert.deepEqual(destinationView({fit:0,coordinates:[12,150,2,null]},geometry,200,400,1),{zoom:2,x:24,y:100});
+    assert.deepEqual(destinationView({fit:4,coordinates:[10,20,50,100]},geometry,200,400,1),{zoom:5,x:50,y:500});
+    assert.throws(() => destinationView({fit:5,coordinates:[null,null,null,null]},geometry,200,400,1),/content bounds/);
+
   } finally {
-    fakeWindow.dispatch('pagehide');
+    fakeWindow.dispatch('pagehide'); assert.equal(disconnected, true);
     for (const [key, descriptor] of original) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key]; }
   }
 }
@@ -601,4 +726,119 @@ async function testFixtureLoading() {
     await assert.rejects(loadFixture('/fixtures/classic/two-pages.pdf', base), /input budget/);
     assert.equal(cancelled, true); assert.equal(released, true);
   } finally { globalThis.fetch = originalFetch; }
+}
+
+// Minimal independent security PDF (7.5.4, 12.3.3, 12.5.6.5, 14.9.4).
+function readingSecurityPdf(uri, title, text) {
+  const hex = (s) => `<${Buffer.from(s,'utf8').toString('hex')}>`;
+  const content = `/Span << /ActualText ${hex(text)} >> BDC 0 0 10 10 re f EMC\n`;
+  const objects = [null,
+    '<< /Type /Catalog /Pages 2 0 R /Outlines 5 0 R >>',
+    '<< /Type /Pages /Count 1 /Kids [3 0 R] >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 64 64] /Resources << >> /Annots [4 0 R] /Contents 7 0 R >>',
+    `<< /Type /Annot /Subtype /Link /Rect [8 8 24 24] /A << /S /URI /URI ${hex(uri)} >> >>`,
+    '<< /Type /Outlines /Count 1 /First 6 0 R /Last 6 0 R >>',
+    `<< /Title ${hex(title)} /Parent 5 0 R /Dest [3 0 R /Fit] >>`,
+    `<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}endstream`,
+  ];
+  let pdf='%PDF-2.0\n', offsets=[];
+  for (let i=1;i<objects.length;i++) { offsets.push(pdf.length); pdf+=`${i} 0 obj\n${objects[i]}\nendobj\n`; }
+  const xref=pdf.length;
+  pdf+=`xref\n0 ${objects.length}\n0000000000 65535 f \n${offsets.map((n)=>`${String(n).padStart(10,'0')} 00000 n \n`).join('')}trailer\n<< /Root 1 0 R /Size ${objects.length} >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf);
+}
+// Fixture vector syntax is independently generated, never parsed by Pagura here.
+function fixtureVector(source) {
+  const stack = []; let root;
+  for (const token of source.match(/\[|\]|<[^>]*>|true|false|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g) ?? []) {
+    if (token === '[') { const value = []; if (stack.length) stack.at(-1).push(value); else root = value; stack.push(value); }
+    else if (token === ']') stack.pop();
+    else stack.at(-1).push(token[0] === '<' ? Buffer.from(token.slice(1,-1), 'hex') : token === 'true' ? true : token === 'false' ? false : Number(token));
+  }
+  assert.equal(stack.length, 0); return root;
+}
+async function testReading(client, root, native, wasiRun) {
+  const parity = async (name, requests, version = VERSION_1_2) => {
+    const input = Buffer.concat([encodeRequest(1, 1, { version }), ...requests.map(([kind, values], i) => encodeRequest(kind, i + 2, values))]);
+    const result = spawnSync(native, [], { input, timeout: 30000, maxBuffer: 64 * 1024 * 1024 });
+    assert.ifError(result.error); assert.equal(result.status, 0, result.stderr?.toString());
+    const wasi = await wasiRun(input, `reading-${name}`); assert.equal(wasi.code, 0);
+    bytesEqual(wasi.bytes, result.stdout, `reading ${name} native/WASI identity`); return parse(wasi.bytes);
+  };
+  const open = (bytes, recovery = 1) => [2, { bytes, password: new Uint8Array(), recovery }];
+  const manifest = JSON.parse(await readFile(join(root, 'corpus/manifests/text.json'), 'utf8'));
+  for (const entry of manifest.cases.filter((entry) => entry.id.startsWith('text/extract-'))) {
+    const pdf = new Uint8Array(await readFile(join(root, entry.files['.pdf'].path)));
+    const expected = await readFile(join(root, entry.files['.text'].path), 'utf8');
+    const queries = fixtureVector(await readFile(join(root, entry.files['.queries'].path), 'utf8'));
+    const glyphs = fixtureVector(await readFile(join(root, entry.files['.glyphs'].path), 'utf8'));
+    const queryRequests = queries.map((q) => [11, { document:1, start:0, end:1, offset:0, limit:1024, query:q[0].toString('utf8'), flags:(q[1] ? 0 : 1) | (q[2] ? 2 : 0) | (q[3] ? 4 : 0) }]);
+    const frames = await parity(entry.id.split('/')[1], [open(pdf), [10, { document: 1, page: 0 }], ...queryRequests, [15], [6, { document: 1 }], [15]]);
+    for (const [i, query] of queries.entries()) {
+      const response = frames[i + 3]; assert.equal(response.kind,139,String(response.value));
+      assert.deepEqual(response.value.matches.map((m) => [m.start,m.end]),query[4]);
+      assert.deepEqual(response.value.matches.map((m) => m.quads),query[5].map((indexes) => indexes.map((index) => glyphs[index].slice(1,9))));
+    }
+    assert.equal(frames[2].kind, 138, String(frames[2].value)); assert.equal(frames[2].value.text, expected);
+    const opened = await client.open(pdf), text = await client.pageText(opened.document, 0);
+    assert.equal(text.text, expected); assert.deepEqual(text, frames[2].value);
+    assert.equal(text.characters.length, [...expected].length);
+    if (entry.id === 'text/extract-simple') {
+      assert.deepEqual(text.characters.map((c) => [c.start, c.end, text.quads.slice(c.quadStart,c.quadStart+c.quadCount)]), [
+        [0, 1, [[10,20,14,20,14,26,10,26]]], [1, 2, [[14,20,18,20,18,26,14,26]]],
+      ]);
+      const results = [];
+      let offset = 0, page = 0;
+      do {
+        const result = await client.search(opened.document, 'z', page, 1, offset, 1, 4);
+        results.push(...result.matches); page = result.nextPage; offset = result.nextOffset;
+      } while (page < 1);
+      assert.deepEqual(results.map((m) => [m.page, m.start, m.end]), [[0,0,1],[0,1,2]]);
+      assert.equal((await client.search(opened.document, 'z', 0, 1, 0, 128, 5)).matches.length, 0);
+      assert.equal((await client.search(opened.document, 'Z', 0, 1, 0, 128, 6)).matches.length, 0);
+      const searchFrames = await parity('search', [open(pdf), [11, { document: 1, query: 'z', start: 0, end: 1, offset: 0, limit: 1, flags: 4 }],
+        [11, { document: 1, query: 'z', start: 0, end: 1, offset: 1, limit: 1, flags: 4 }]]);
+      assert.equal(searchFrames[2].value.nextOffset, 1); assert.equal(searchFrames[3].value.done, true);
+    }
+    assert.ok(frames.at(-3).value.textBytes > 0); assert.equal(frames.at(-3).value.textPages, 1);
+    assert.equal(frames.at(-1).value.textBytes, 0); assert.equal(frames.at(-1).value.textPages, 0);
+    await client.close(opened.document);
+  }
+  for (const [name, kind] of [['navigation-outlines', 13], ['navigation-links-actions', 12], ['navigation-links-quads', 12], ['navigation-page-labels', 14]]) {
+    const bytes = new Uint8Array(await readFile(join(root, `corpus/generated/document/${name}.pdf`)));
+    const frames = await parity(name, [open(bytes), [kind, { document: 1, page: 0 }]]);
+    assert.equal(frames[2].kind, kind + 128, String(frames[2].value));
+    if (kind === 13) {
+      assert.deepEqual(frames[2].value.map((v) => [v.depth, v.title, v.open, v.style]), [[0,'Root €',true,3],[1,'Child 😀',false,0],[2,'Hidden',false,0],[0,'Fin',false,0]]);
+      assert.deepEqual(frames[2].value[0].color, [0.2,0.3,0.4]);
+      assert.deepEqual(frames[2].value[0].target[0], { parent: 0, kind: 1, page: 0, fit: 1, coordinates: [null,null,null,null] });
+    }
+    if (kind === 14) assert.deepEqual(frames[2].value, (await readFile(join(root, `corpus/generated/document/${name}.expected`), 'utf8')).trimEnd().split('\n'));
+    if (kind === 12) {
+      const links = frames[2].value;
+      assert.deepEqual(links.map((v) => v.target[0].kind), [1,4,4,2,3,3,3,3,5,6,6]);
+      assert.deepEqual(links[0].quads, [[1,2,31,2,31,42,1,42]]);
+      assert.equal(links[3].target.length, 4); assert.equal(links[3].target[0].uri, '../chapter');
+      assert.equal(links[3].target[0].base, 'https://example.invalid/docs/');
+    }
+  }
+  const workload = readingWorkload(10, 1), long = await client.open(workload.bytes);
+  for (let page=0;page<10;page++) assert.equal((await client.pageText(long.document,page)).text,workload.text);
+  const cached=await client.readingStats(); assert.equal(cached.textPages,8);
+  await client.pageText(long.document,9); assert.deepEqual(await client.readingStats(),cached);
+  await client.close(long.document); assert.equal((await client.readingStats()).textBytes,0);
+  const simple = new Uint8Array(await readFile(join(root, 'corpus/generated/text/extract-simple.pdf')));
+  const invalid = [ [10,{document:99,page:0}], [12,{document:1,page:99}], [13,{document:99}], [14,{document:99}],
+    ...[{start:0,end:17}, {start:1,end:0}, {limit:0}, {offset:99}, {query:''}].map((overrides) => [11, {document:1,query:'Z',start:0,end:1,offset:0,limit:1,flags:4,...overrides}]) ];
+  const errors = await parity('errors', [open(simple), ...invalid]);
+  for (const frame of errors.slice(2)) { assert.equal(frame.kind, 255); assert.equal(frame.value.category, 7); }
+  for (const [name,kind,repair] of [['navigation-outlines-cycle',13,'outline.cycle'],['navigation-links-quads',12,'link.quad-points'],['navigation-action-cycle',12,'action.cycle']]) {
+    const bytes=new Uint8Array(await readFile(join(root,`corpus/generated/document/${name}.pdf`)));
+    const frames=await parity(`strict-${name}`,[open(bytes,0),[kind,{document:1,page:0}]]);
+    assert.equal(frames[2].kind,255); assert.equal(frames[2].value.category,1); assert.equal(frames[2].value.repair,repair);
+  }
+  for (const version of [1, VERSION_1_1]) {
+    const frames = await parity(`older-${version}`, [open(simple), ...[10,11,12,13,14,15].map((kind) => [kind, {document:1,page:0,query:'Z',start:0,end:1,offset:0,limit:1,flags:4}]), [3,{document:1,page:0}]], version);
+    assert.ok(frames.slice(2,-1).every((f) => f.kind === 255 && f.value.category === 7)); assert.equal(frames.at(-1).kind,131);
+  }
 }

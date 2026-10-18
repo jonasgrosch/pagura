@@ -16,20 +16,20 @@ const COMMAND_CHARGE: usize = 4096;
 const LIST_CHARGE: usize = 512;
 
 #[derive(Debug)]
-pub(crate) struct PageCache {
-    entries: VecDeque<Entry>,
+pub(crate) struct PageCache<T = DisplayList> {
+    entries: VecDeque<Entry<T>>,
     budget: usize,
     charged: usize,
 }
 
 #[derive(Debug)]
-struct Entry {
+struct Entry<T> {
     key: (u32, u32),
     charge: usize,
-    list: Arc<DisplayList>,
+    list: Arc<T>,
 }
 
-impl PageCache {
+impl<T> PageCache<T> {
     pub(crate) fn new(budget: usize) -> Self {
         Self {
             entries: VecDeque::new(),
@@ -38,7 +38,7 @@ impl PageCache {
         }
     }
 
-    pub(crate) fn get(&mut self, key: (u32, u32)) -> Option<Arc<DisplayList>> {
+    pub(crate) fn get(&mut self, key: (u32, u32)) -> Option<Arc<T>> {
         let index = self.entries.iter().position(|entry| entry.key == key)?;
         let entry = self.entries.remove(index)?;
         let list = Arc::clone(&entry.list);
@@ -46,14 +46,13 @@ impl PageCache {
         Some(list)
     }
 
-    pub(crate) fn insert(&mut self, key: (u32, u32), list: Arc<DisplayList>) {
-        let Some(charge) = list
-            .len()
-            .checked_mul(COMMAND_CHARGE)
-            .and_then(|n| n.checked_add(LIST_CHARGE))
-        else {
-            return;
-        };
+    pub(crate) fn insert_charged(&mut self, key: (u32, u32), list: Arc<T>, charge: usize) {
+        // Replacing an entry never duplicates its charge.
+        if let Some(index) = self.entries.iter().position(|entry| entry.key == key)
+            && let Some(entry) = self.entries.remove(index)
+        {
+            self.charged -= entry.charge;
+        }
         if charge > self.budget || self.budget == 0 {
             return;
         }
@@ -82,6 +81,18 @@ impl PageCache {
                 true
             }
         });
+    }
+}
+
+impl PageCache<DisplayList> {
+    pub(crate) fn insert(&mut self, key: (u32, u32), list: Arc<DisplayList>) {
+        if let Some(charge) = list
+            .len()
+            .checked_mul(COMMAND_CHARGE)
+            .and_then(|n| n.checked_add(LIST_CHARGE))
+        {
+            self.insert_charged(key, list, charge);
+        }
     }
 }
 
