@@ -1,6 +1,12 @@
+#![forbid(unsafe_code)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "independent fixture assertions fail loudly on malformed expected data"
+)]
 //! Independent generated-vector and API invariant tests.
-use crate::{CmapSubtable, FontFormat, FontProgram, GlyphId};
 use pagura_core::{Diagnostics, ErrorKind, Limits, Position, Recovery};
+use pagura_font::{CmapSubtable, FontFormat, FontProgram, GlyphId};
 
 mod recovery;
 mod static_fonts;
