@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(unreachable_pub)]
 //! PDF fonts and text decoding (ISO 32000-2 clause 9; ADR 0009).
 //!
 //! [`PdfFont::load`] interprets a font dictionary — simple fonts (Type 1,

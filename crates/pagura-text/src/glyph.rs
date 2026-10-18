@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 /// Vertical metrics of one glyph (clause 9.7.4.3, `/W2`, `/DW2`).
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub struct VerticalMetrics {
     /// Vertical displacement, in text space.
     pub advance: f64,
@@ -15,6 +16,7 @@ pub struct VerticalMetrics {
 
 /// How a glyph is drawn.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum GlyphShape {
     /// An outline glyph of an embedded or explicitly substituted font program.
     Outline {
@@ -39,6 +41,7 @@ pub enum GlyphShape {
 
 /// One decoded glyph of a string operand.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct Glyph {
     /// The character code.
     pub code: u32,
@@ -56,4 +59,21 @@ pub struct Glyph {
     pub unicode: Option<String>,
     /// How to draw it.
     pub shape: GlyphShape,
+}
+
+impl Glyph {
+    /// A glyph without vertical metrics, word spacing or known text; the
+    /// public fields set the rest. Decoding builds glyphs itself; this is for
+    /// callers that need one, such as tests of glyph consumers.
+    pub fn new(code: u32, byte_len: u8, advance: f64, shape: GlyphShape) -> Self {
+        Self {
+            code,
+            byte_len,
+            advance,
+            vertical: None,
+            word_space: false,
+            unicode: None,
+            shape,
+        }
+    }
 }
