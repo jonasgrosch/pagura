@@ -10,6 +10,7 @@ mod masks;
 mod path;
 mod pattern;
 mod pattern_inline;
+mod session;
 mod shading;
 mod state;
 pub(crate) mod text;
@@ -17,11 +18,13 @@ pub(crate) mod text;
 use crate::color::{self, Color};
 use crate::display::{Clip, Command, DisplayList, Mark, PathCommand};
 use crate::features;
-use crate::operators::{ColorOperation, MAX_OPERANDS, Operation, Operator};
+use crate::operators::{MAX_OPERANDS, Operation, Operator};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Dictionary, Error, Feature, Name, ObjectId, Position, Rect, Result, Value};
 use pagura_document::{Document, IndirectObject, Page};
 use pagura_raster::{FillRule, LineCap, LineJoin, PathBuilder, Point, Stroke, Transform};
+use session::Session;
+use state::Graphics;
 use std::sync::Arc;
 
 pub(crate) fn repair(document: &Document, diagnostic: pagura_core::Diagnostic) -> Result<()> {
@@ -69,68 +72,36 @@ pub(crate) fn compile_cached(
     provider: Option<&dyn pagura_text::Provider>,
     fonts: &std::sync::Mutex<text::cache::FontCache>,
 ) -> Result<DisplayList> {
-    let mut compiler = Compiler::new(document, page)?;
-    compiler.compilation = std::rc::Rc::new(Compilation {
-        colors: crate::icc::Cache::default(),
-        provider,
-        fonts: Some(fonts),
-        filler: None,
-    });
-    compiler.page(page).map_err(|e| e.in_object(page.id()))?;
-    Ok(compiler.list)
+    compile(document, page, provider, fonts, None, None).map(|(list, _)| list)
 }
 
-// Resources shared by detached forms and masks within one compilation.
-struct Compilation<'a> {
-    filler: Option<&'a pagura_document::forms::FormFiller<'a>>,
-    colors: crate::icc::Cache,
-    provider: Option<&'a dyn pagura_text::Provider>,
-    fonts: Option<&'a std::sync::Mutex<text::cache::FontCache>>,
+/// Interprets a page and its annotations in one session, with in-memory
+/// form values when `filler` is given, also collecting positioned text when
+/// `text` is given.
+fn compile(
+    document: &Document,
+    page: &Page,
+    provider: Option<&dyn pagura_text::Provider>,
+    fonts: &std::sync::Mutex<text::cache::FontCache>,
+    filler: Option<&pagura_document::forms::FormFiller<'_>>,
+    text: Option<text::extract::Output>,
+) -> Result<(DisplayList, Option<text::extract::Output>)> {
+    let session = Session::new(document, page, provider, fonts, filler, text)?;
+    let mut compiler = Compiler::new(&session);
+    let group = compiler.page().map_err(|e| e.in_object(page.id()))?;
+    let mut list = DisplayList::new(page, document.limits());
+    list.group = group;
+    list.commands = compiler.commands;
+    list.print_intent = crate::overprint::print_intent(document, page);
+    Ok((list, session.text.map(std::cell::RefCell::into_inner)))
 }
 
-#[derive(Debug, Clone)]
-struct Graphics {
-    text: text::TextState,
-    ctm: Transform,
-    fill: Color,
-    stroke_color: Color,
-    stroke: Stroke,
-    clip: Option<Arc<Clip>>,
-    clip_depth: usize,
-    intent: Vec<u8>,
-    flatness: f64,
-    stroke_adjustment: bool,
-    transfer: Option<crate::functions::Transfer>,
-    composite: crate::transparency::Composite,
-    stroke_alpha: f64,
-    stroke_overprint: bool,
-}
-
-impl Default for Graphics {
-    fn default() -> Self {
-        Self {
-            text: text::TextState::default(),
-            ctm: Transform::IDENTITY,
-            fill: Color::default(),
-            stroke_color: Color::default(),
-            stroke: Stroke::default(),
-            clip: None,
-            clip_depth: 0,
-            intent: b"RelativeColorimetric".to_vec(),
-            flatness: 1.0,
-            stroke_adjustment: false,
-            transfer: None,
-            composite: crate::transparency::Composite::opaque(),
-            stroke_alpha: 1.0,
-            stroke_overprint: false,
-        }
-    }
-}
-
-struct Compiler<'a> {
-    document: &'a Document,
-    compilation: std::rc::Rc<Compilation<'a>>,
-    list: DisplayList,
+/// One content context: the page, or a form, soft mask, tiling cell or
+/// Type 3 glyph interpreted inside it (see [`session::Child`]).
+struct Compiler<'s> {
+    session: &'s Session<'s>,
+    document: &'s Document,
+    commands: Vec<Command>,
     state: Graphics,
     saved: Vec<Graphics>,
     path: PathBuilder,
@@ -139,65 +110,40 @@ struct Compiler<'a> {
     compatibility: usize,
     marked: Vec<bool>,
     visible: bool,
-    visibility: Arc<crate::optional::Visibility>,
-    operations: usize,
-    fill_work: std::rc::Rc<std::cell::Cell<usize>>,
-    marks: usize,
     initial_ctm: Transform,
     initial_state: Graphics,
     stencil_pattern: bool,
     position: Position,
     forms: Vec<ObjectId>,
-    extraction: Option<text::extract::Extraction>,
+    /// The open text object (9.4.1): not graphics state, so `q`/`Q` and
+    /// child contexts never copy it.
+    text_object: Option<text::TextObject>,
+    /// The display-list index of the glyph run this context is extending
+    /// (9.3.8); any operator other than text showing or text state ends it.
+    text_run: Option<usize>,
+    procedure: Option<text::type3::Procedure>,
+    extraction: Option<text::extract::Scope>,
+    /// Coloured patterns and shading patterns already selected in this
+    /// context: their cells and transforms depend only on its initial state.
+    patterns: std::collections::BTreeMap<ObjectId, Arc<crate::pattern::Pattern>>,
 }
 
-impl<'a> Compiler<'a> {
-    fn new(document: &'a Document, page: &Page) -> Result<Self> {
-        Ok(Self {
-            document,
-            compilation: std::rc::Rc::new(Compilation {
-                colors: crate::icc::Cache::default(),
-                provider: None,
-                fonts: None,
-                filler: None,
-            }),
-            list: DisplayList::new(page, document.limits()),
-            state: Graphics::default(),
-            saved: Vec::new(),
-            path: PathBuilder::new(),
-            pending_clip: None,
-            operands: Vec::new(),
-            compatibility: 0,
-            marked: Vec::new(),
-            visible: true,
-            visibility: Arc::new(crate::optional::Visibility::new(document)?),
-            operations: 0,
-            fill_work: std::rc::Rc::default(),
-            marks: 0,
-            initial_ctm: Transform::IDENTITY,
-            initial_state: Graphics::default(),
-            stencil_pattern: false,
-            position: Position::Unknown,
-            forms: Vec::new(),
-            extraction: None,
-        })
-    }
-
-    fn page(&mut self, page: &Page) -> Result<()> {
-        self.paint_charge(page.resources().retained_bytes(), 0)?;
-        self.state.text.cache.borrow_mut().page_resources =
-            Some(Arc::new(page.resources().clone()));
-        let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
-        self.list.group =
+impl Compiler<'_> {
+    /// Interprets the page's content and annotations; returns the page
+    /// group's attributes (11.4.7).
+    fn page(&mut self) -> Result<crate::transparency::Attributes> {
+        let page = self.session.page;
+        let context = crate::icc::ColorContext::new(self.document, &self.session.colors);
+        let group =
             crate::transparency::Attributes::parse(&context, page.dictionary(), page.resources())?
                 .unwrap_or_default();
-        self.state.fill = Color::new(color::named(&context, page.resources(), b"DeviceGray")?);
-        self.state.stroke_color = self.state.fill.clone();
+        self.state.fill.color =
+            Color::new(color::named(&context, page.resources(), b"DeviceGray")?);
+        self.state.stroke.color = self.state.fill.color.clone();
         let streams = self.document.content_streams(page)?;
         self.sequence(&streams, page.resources())?;
         self.annotations(page)?;
-        self.list.print_intent = crate::overprint::print_intent(self.document, page);
-        Ok(())
+        Ok(group)
     }
 
     fn sequence(&mut self, streams: &[&IndirectObject], resources: &Dictionary) -> Result<()> {
@@ -227,17 +173,13 @@ impl<'a> Compiler<'a> {
         origins: &[(usize, ObjectId)],
         resources: &Dictionary,
     ) -> Result<()> {
-        // Pattern execution restores the parent's initial graphics state (8.7.3.1).
-        self.state.composite.conversion.intent = crate::icc::Intent::from_name(&self.state.intent);
+        // Patterns selected in this content start from this state (8.7.3.1).
         self.initial_state = self.state.clone();
         let mut parser = Parser::new(bytes, Origin::Buffer, self.document.limits());
         let mut stream_index = 0;
         while let Some(byte) = parser.peek() {
-            self.operations = self
-                .operations
-                .checked_add(1)
-                .filter(|&n| n <= self.document.limits().operations)
-                .ok_or(Error::limit("content token budget exceeded"))
+            self.session
+                .charge_operations(1, "content token budget exceeded")
                 .map_err(|e| stream_error(e, parser.offset(), origins))?;
             let offset = parser.offset();
             while origins
@@ -275,7 +217,7 @@ impl<'a> Compiler<'a> {
             || !self.marked.is_empty()
             || !self.path.is_empty()
             || self.pending_clip.is_some()
-            || self.state.text.object.is_some()
+            || self.text_object.is_some()
         {
             return Err(stream_error(
                 Error::syntax("content sequence ends with unfinished state"),
@@ -320,7 +262,7 @@ impl<'a> Compiler<'a> {
         // A glyph run continues only across text-showing and text-state
         // operators; any other operator ends it.
         if !parsed.is_some_and(Operator::keeps_text_run) {
-            self.state.text.run = None;
+            self.text_run = None;
         }
         let Some(operator) = parsed else {
             if self.compatibility > 0 {
@@ -398,21 +340,10 @@ impl<'a> Compiler<'a> {
                 }
                 self.pending_clip = Some(rule);
             }
-            Operation::Color(target, color) => {
-                self.color(target, color, resources)?;
-                if matches!(color, ColorOperation::ComponentsOrPattern(_)) {
-                    self.compile_pattern(target)?;
-                }
-            }
+            Operation::Color(target, color) => self.color(target, color, resources)?,
             Operation::GraphicsState(name) => self.graphics_state(name, resources)?,
             Operation::XObject(name) => self.xobject(name, resources)?,
-            Operation::Text(text) => {
-                if self.extraction.is_some() {
-                    self.text_operator::<true>(text, resources)?;
-                } else {
-                    self.text_operator::<false>(text, resources)?;
-                }
-            }
+            Operation::Text(text) => self.text_operator(text, resources)?,
             Operation::Glyph(metrics) => self.glyph_metrics(metrics)?,
             Operation::BeginCompatibility => {
                 self.compatibility = nested(self.compatibility, self.document.limits().depth)?;
@@ -431,9 +362,7 @@ impl<'a> Compiler<'a> {
                     .marked
                     .pop()
                     .ok_or(Error::syntax("EMC without marked content"))?;
-                if self.extraction.is_some() {
-                    self.extract_end()?;
-                }
+                self.extract_end()?;
             }
             Operation::MarkPoint => {}
             Operation::ImageDelimiter => {
@@ -461,13 +390,11 @@ impl<'a> Compiler<'a> {
             } else {
                 properties
             };
-            visible = self.visibility.marked(self.document, properties)?;
+            visible = self.session.visibility.marked(self.document, properties)?;
         }
         self.marked.push(self.visible);
         self.visible &= visible;
-        if self.extraction.is_some() {
-            self.extract_begin(tag, properties, resources)?;
-        }
+        self.extract_begin(tag, properties, resources)?;
         Ok(())
     }
 }
@@ -502,18 +429,6 @@ fn finite(point: Point) -> Result<()> {
         return Err(Error::syntax("path arithmetic overflow"));
     }
     Ok(())
-}
-
-fn rendering_intent(name: &Name) -> Vec<u8> {
-    // ISO 8.6.5.8 Table 69 permits RelativeColorimetric for unknown intents.
-    if matches!(
-        name.as_bytes(),
-        b"RelativeColorimetric" | b"AbsoluteColorimetric" | b"Perceptual" | b"Saturation"
-    ) {
-        name.as_bytes().to_vec()
-    } else {
-        b"RelativeColorimetric".to_vec()
-    }
 }
 
 fn resource<'a>(

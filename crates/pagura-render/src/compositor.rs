@@ -1661,7 +1661,7 @@ mod tests {
 
     #[test]
     fn full_normal_stores_preserve_the_f64_evaluation() {
-        let state = Composite::opaque();
+        let state = Composite::default();
         for alpha in [0.0, 1.0] {
             for backdrop in [-0.0, 0.0, 0.1, 0.5, 1.0] {
                 for source in [-0.0, 0.0, f64::MIN_POSITIVE, 0.3, 0.5, 1.0] {
@@ -1800,7 +1800,7 @@ mod tests {
         for (pixel, mut expected) in surface.pixels().iter().zip(backdrops) {
             expected.paint(
                 source,
-                &Composite::opaque(),
+                &Composite::default(),
                 Pixel::default(),
                 false,
                 Model::Rgb,
@@ -1875,7 +1875,7 @@ mod tests {
                 bounds: None,
                 commands: Vec::new(),
                 attributes: crate::transparency::Attributes::default(),
-                composite: Composite::opaque(),
+                composite: Composite::default(),
             },
             method: MaskMethod::Alpha,
             backdrop: [0.0; 4],
@@ -1929,7 +1929,7 @@ mod tests {
             clip: None,
             color: crate::color::Color::Solid {
                 space: crate::color::Space::Rgb,
-                components: vec![0.2, 0.5, 0.8],
+                components: vec![0.2, 0.5, 0.8].into(),
             },
             position: pagura_core::Position::Unknown,
             transfer: None,

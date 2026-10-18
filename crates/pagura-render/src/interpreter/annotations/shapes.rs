@@ -15,7 +15,7 @@ impl Compiler<'_> {
         rect: Rect,
         flags: i64,
     ) -> Result<()> {
-        let start = self.list.commands.len();
+        let start = self.commands.len();
         match subtype {
             b"Link" | b"Square" => self.annotation_border(d, rect, subtype == b"Square")?,
             b"Text" => self.annotation_icon(d, rect)?,
@@ -111,7 +111,7 @@ impl Compiler<'_> {
             b"C",
             Some(Color::Solid {
                 space: Space::Rgb,
-                components: vec![1.0, 1.0, 0.0],
+                components: Arc::from([1.0, 1.0, 0.0]),
             }),
         )? {
             self.annotation_mark(
@@ -145,11 +145,7 @@ impl Compiler<'_> {
         color: Color,
         rect: Rect,
     ) -> Result<()> {
-        self.marks = self
-            .marks
-            .checked_add(1)
-            .filter(|n| *n <= self.document.limits().display_commands)
-            .ok_or(Error::limit("annotation mark budget exceeded"))?;
+        self.session.charge_marks(1)?;
         let stroke_alpha = scalar(self.document, d, b"CA")?
             .unwrap_or(1.0)
             .clamp(0.0, 1.0);
@@ -165,7 +161,7 @@ impl Compiler<'_> {
         }
         let mut clip = rect_path(rect);
         self.prepare_fill(&mut clip, FillRule::NonZero)?;
-        self.list.commands.push(Command::Path(PathCommand {
+        self.commands.push(Command::Path(PathCommand {
             path: Arc::new(path),
             mark,
             color,
@@ -219,7 +215,10 @@ pub(super) fn annotation_color(
         4 => Space::Cmyk,
         _ => return Err(Error::syntax("invalid annotation colour")),
     };
-    Ok(Some(Color::Solid { space, components }))
+    Ok(Some(Color::Solid {
+        space,
+        components: components.into(),
+    }))
 }
 /// Seven predefined icons, specified as simple geometric symbols by device policy.
 fn icon(name: &[u8]) -> (Path, Path) {

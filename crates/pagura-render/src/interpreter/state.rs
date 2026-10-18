@@ -1,35 +1,145 @@
 //! Graphics-state parameters, colour selection and ExtGState (8.4, 8.6).
 
 use super::{
-    Color, Compiler, Dictionary, Error, LineCap, LineJoin, Name, Result, Value, color, features,
-    rendering_intent, resource, unsupported,
+    Arc, Clip, Color, Compiler, Dictionary, Error, LineCap, LineJoin, Name, Result, Stroke,
+    Transform, Value, color, features, resource, text, unsupported,
 };
 use crate::operators::{ColorOperation, Operation, Operator, Parameter, Target};
+use crate::transparency::{Composite, Conversion};
+
+/// The graphics state saved by `q` and restored by `Q` (8.4, Table 51).
+/// Text objects, Type 3 procedure state and compilation-wide budgets are
+/// not graphics state and live in [`Compiler`] and its session.
+#[derive(Debug, Clone)]
+pub(super) struct Graphics {
+    pub(super) ctm: Transform,
+    pub(super) fill: Paint,
+    pub(super) stroke: Paint,
+    /// Line width, cap, join, miter limit and dash (Table 51).
+    pub(super) pen: Stroke,
+    pub(super) clip: Option<Arc<Clip>>,
+    pub(super) clip_depth: usize,
+    pub(super) stroke_adjustment: bool,
+    pub(super) transfer: Option<crate::functions::Transfer>,
+    /// Blend mode, soft mask, alpha source and colour conversion, shared by
+    /// filling and stroking. Its alpha and overprint are unused: they are
+    /// per paint, see [`Self::composite`].
+    pub(super) blending: Composite,
+    pub(super) text: text::TextState,
+}
+
+/// What one painting operation contributes: colour, constant alpha and
+/// overprint, kept separately for filling and stroking (`ca`/`CA`, `op`/`OP`).
+#[derive(Debug, Clone)]
+pub(super) struct Paint {
+    pub(super) color: Color,
+    pub(super) alpha: f64,
+    pub(super) overprint: bool,
+}
+
+impl Default for Paint {
+    fn default() -> Self {
+        Self {
+            color: Color::default(),
+            alpha: 1.0,
+            overprint: false,
+        }
+    }
+}
+
+impl Default for Graphics {
+    fn default() -> Self {
+        Self {
+            ctm: Transform::IDENTITY,
+            fill: Paint::default(),
+            stroke: Paint::default(),
+            pen: Stroke::default(),
+            clip: None,
+            clip_depth: 0,
+            stroke_adjustment: false,
+            transfer: None,
+            blending: Composite::default(),
+            text: text::TextState::default(),
+        }
+    }
+}
+
+impl Graphics {
+    /// The compositing parameters for a fill (`ca`, `op`) or stroke (`CA`, `OP`).
+    pub(super) fn composite(&self, target: Target) -> Composite {
+        let paint = match target {
+            Target::Fill => &self.fill,
+            Target::Stroke => &self.stroke,
+        };
+        Composite {
+            alpha: paint.alpha,
+            overprint: paint.overprint,
+            ..self.blending.clone()
+        }
+    }
+
+    /// The state a transparency group's contents start from (11.6.6):
+    /// opaque, Normal and unmasked.
+    pub(super) fn isolate(&mut self) {
+        self.fill.alpha = 1.0;
+        self.stroke.alpha = 1.0;
+        self.blending.blend = crate::blend::BlendMode::Normal;
+        self.blending.mask = None;
+    }
+
+    /// The state a tiling cell starts from (8.7.3.1): this initial state in
+    /// pattern space, unclipped and opaque, keeping only the rendering intent.
+    pub(super) fn pattern_cell(&self) -> Self {
+        Self {
+            ctm: Transform::IDENTITY,
+            clip: None,
+            clip_depth: 0,
+            fill: Paint {
+                color: self.fill.color.clone(),
+                ..Paint::default()
+            },
+            stroke: Paint {
+                color: self.stroke.color.clone(),
+                ..Paint::default()
+            },
+            blending: Composite {
+                conversion: Conversion {
+                    intent: self.blending.conversion.intent,
+                    ..Conversion::default()
+                },
+                ..Composite::default()
+            },
+            ..self.clone()
+        }
+    }
+}
 
 impl Compiler<'_> {
     pub(super) fn parameter(&mut self, parameter: Parameter<'_>) -> Result<()> {
         match parameter {
-            Parameter::LineWidth(width) => self.state.stroke.width = width.max(0.0),
+            Parameter::LineWidth(width) => self.state.pen.width = width.max(0.0),
             Parameter::LineCap(cap) => {
-                self.state.stroke.cap = match cap.clamp(0, 2) {
+                self.state.pen.cap = match cap.clamp(0, 2) {
                     0 => LineCap::Butt,
                     1 => LineCap::Round,
                     _ => LineCap::ProjectingSquare,
                 }
             }
             Parameter::LineJoin(join) => {
-                self.state.stroke.join = match join.clamp(0, 2) {
+                self.state.pen.join = match join.clamp(0, 2) {
                     0 => LineJoin::Miter,
                     1 => LineJoin::Round,
                     _ => LineJoin::Bevel,
                 }
             }
-            Parameter::MiterLimit(limit) => self.state.stroke.miter_limit = limit.max(1.0),
-            Parameter::Flatness(flatness) => self.state.flatness = flatness.clamp(0.0, 100.0),
+            Parameter::MiterLimit(limit) => self.state.pen.miter_limit = limit.max(1.0),
+            // Flatness is a device tolerance (10.6.2); exact-area filling
+            // flattens to its own documented tolerance and ignores it.
+            Parameter::Flatness => {}
+            // Table 69 permits relative colorimetric for unknown intents.
             Parameter::Intent(name) => {
-                self.state.intent = rendering_intent(name);
-                self.state.composite.conversion.intent =
-                    crate::icc::Intent::from_name(&self.state.intent);
+                self.state.blending.conversion.intent =
+                    crate::icc::Intent::from_name(name.as_bytes());
             }
             Parameter::Dash { array, phase } => {
                 let dash = array
@@ -43,8 +153,8 @@ impl Compiler<'_> {
                 if !dash.is_empty() && dash.iter().all(|&n| n == 0.0) {
                     return Err(Error::syntax("dash array is all zero"));
                 }
-                self.state.stroke.dash_array = dash;
-                self.state.stroke.dash_phase = phase;
+                self.state.pen.dash_array = dash;
+                self.state.pen.dash_phase = phase;
             }
         }
         Ok(())
@@ -56,10 +166,13 @@ impl Compiler<'_> {
         operation: ColorOperation<'_>,
         resources: &Dictionary,
     ) -> Result<()> {
-        let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
+        if let ColorOperation::ComponentsOrPattern(v) = operation {
+            return self.select_pattern(target, v, resources);
+        }
+        let context = crate::icc::ColorContext::new(self.document, &self.session.colors);
         let color = match target {
-            Target::Stroke => &mut self.state.stroke_color,
-            Target::Fill => &mut self.state.fill,
+            Target::Stroke => &mut self.state.stroke.color,
+            Target::Fill => &mut self.state.fill.color,
         };
         match operation {
             ColorOperation::Space(name) => {
@@ -69,9 +182,7 @@ impl Compiler<'_> {
                 *color = Color::new(color::named(&context, resources, device.name())?);
                 color.set(v)?;
             }
-            ColorOperation::ComponentsOrPattern(v) => {
-                color.select_pattern(&context, resources, v, self.initial_ctm, self.position)?;
-            }
+            ColorOperation::ComponentsOrPattern(_) => {}
             ColorOperation::Components(v) => {
                 color.validate_simple_operator(self.document, v, self.position)?;
                 color.set(v)?;
@@ -106,7 +217,7 @@ impl Compiler<'_> {
                 .resolve(knockout)?
                 .as_bool()
                 .ok_or(Error::syntax("TK must be boolean"))?;
-            if self.state.text.object.is_none() && !uncolored {
+            if self.text_object.is_none() && !uncolored {
                 self.state.text.knockout = knockout;
             }
         }
@@ -133,7 +244,7 @@ impl Compiler<'_> {
                 continue;
             }
             if key == b"SMask" {
-                self.state.composite.mask = self.soft_mask(value, resources)?;
+                self.state.blending.mask = self.soft_mask(value, resources)?;
                 continue;
             }
             if matches!(key.as_bytes(), b"BG" | b"BG2" | b"UCR" | b"UCR2") {
@@ -144,7 +255,7 @@ impl Compiler<'_> {
                     }
                     None
                 } else {
-                    Some(std::sync::Arc::new(crate::functions::Function::parse(
+                    Some(Arc::new(crate::functions::Function::parse(
                         self.document,
                         value,
                         1,
@@ -152,9 +263,9 @@ impl Compiler<'_> {
                     )?))
                 };
                 if matches!(key.as_bytes(), b"BG" | b"BG2") {
-                    self.state.composite.conversion.black = function;
+                    self.state.blending.conversion.black = function;
                 } else {
-                    self.state.composite.conversion.ucr = function;
+                    self.state.blending.conversion.ucr = function;
                 }
                 continue;
             }
@@ -193,7 +304,7 @@ impl Compiler<'_> {
             self.extgstate_entry(key.as_bytes(), value)?;
         }
         if overprint {
-            self.state.composite.overprint = self.state.stroke_overprint;
+            self.state.fill.overprint = self.state.stroke.overprint;
         }
         Ok(())
     }
@@ -235,13 +346,13 @@ impl Compiler<'_> {
                     .ok_or(Error::syntax("alpha must be numeric"))?
                     .clamp(0.0, 1.0);
                 if key == b"CA" {
-                    self.state.stroke_alpha = alpha;
+                    self.state.stroke.alpha = alpha;
                 } else {
-                    self.state.composite.alpha = alpha;
+                    self.state.fill.alpha = alpha;
                 }
             }
             b"BM" => {
-                self.state.composite.blend = crate::blend::BlendMode::parse(self.document, value)?;
+                self.state.blending.blend = crate::blend::BlendMode::parse(self.document, value)?;
             }
             // Retain both flags independently; OP supplies op only when the
             // dictionary omits op (Table 57).
@@ -250,19 +361,19 @@ impl Compiler<'_> {
                     .as_bool()
                     .ok_or(Error::syntax("overprint flag must be boolean"))?;
                 if key == b"OP" {
-                    self.state.stroke_overprint = flag;
+                    self.state.stroke.overprint = flag;
                 } else {
-                    self.state.composite.overprint = flag;
+                    self.state.fill.overprint = flag;
                 }
             }
             b"OPM" => {
                 if !matches!(value.as_integer(), Some(0 | 1)) {
                     return Err(Error::syntax("invalid overprint mode"));
                 }
-                self.state.composite.nonzero_overprint = value.as_integer() == Some(1);
+                self.state.blending.nonzero_overprint = value.as_integer() == Some(1);
             }
             b"AIS" => {
-                self.state.composite.alpha_is_shape = value
+                self.state.blending.alpha_is_shape = value
                     .as_bool()
                     .ok_or(Error::syntax("AIS must be boolean"))?;
             }

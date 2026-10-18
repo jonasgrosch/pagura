@@ -1,8 +1,6 @@
 //! Shading invocation leaves the current path and colour unchanged (8.7.4.2).
 
-use super::{
-    Arc, Clip, Command, Compiler, Dictionary, Error, FillRule, PathBuilder, Result, resource,
-};
+use super::{Arc, Clip, Command, Compiler, Dictionary, FillRule, PathBuilder, Result, resource};
 use crate::display::ShadingCommand;
 
 impl Compiler<'_> {
@@ -12,7 +10,7 @@ impl Compiler<'_> {
         resources: &Dictionary,
     ) -> Result<()> {
         let value = resource(self.document, resources, b"Shading", name.as_bytes())?;
-        let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
+        let context = crate::icc::ColorContext::new(self.document, &self.session.colors);
         let mut shading = crate::shading::Shading::parse(&context, resources, value)?;
         if let Some(path) = &mut shading.bbox_path {
             self.prepare_fill(path, FillRule::NonZero)?;
@@ -22,11 +20,7 @@ impl Compiler<'_> {
         if !self.visible {
             return Ok(());
         }
-        self.marks = self
-            .marks
-            .checked_add(1)
-            .filter(|&n| n <= self.document.limits().display_commands)
-            .ok_or(Error::limit("display list budget exceeded"))?;
+        self.session.charge_marks(1)?;
         let mut clip = self.state.clip.clone();
         if let Some(b) = shading.bbox {
             let mut path = PathBuilder::new();
@@ -39,12 +33,12 @@ impl Compiler<'_> {
                 rule: FillRule::NonZero,
             }));
         }
-        self.list.commands.push(Command::Shading(ShadingCommand {
+        self.commands.push(Command::Shading(ShadingCommand {
             shading,
             position: self.position,
             clip,
             transform: self.state.ctm,
-            composite: self.state.composite.clone(),
+            composite: self.state.composite(crate::operators::Target::Fill),
             transfer: self.state.transfer.clone(),
             background: false,
         }));

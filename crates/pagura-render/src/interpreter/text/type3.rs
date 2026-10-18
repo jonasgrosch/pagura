@@ -1,5 +1,6 @@
 //! Type 3 procedure isolation, metrics and colour restrictions (9.6.4).
-use super::{Compiler, Dictionary, Error, PdfFont, Result, Transform};
+use super::super::session::Child;
+use super::{Compiler, Error, PdfFont, Result, Transform};
 use crate::operators::{GlyphMetrics, Operator};
 use pagura_core::ObjectId;
 
@@ -17,6 +18,18 @@ pub(in crate::interpreter) struct Advance {
     pub(in crate::interpreter) advance: f64,
     pub(in crate::interpreter) scale: f64,
 }
+impl Procedure {
+    /// A procedure that has not set its metrics yet, uncoloured if it runs
+    /// inside an uncoloured glyph.
+    pub(in crate::interpreter) fn new(inherited_uncolored: bool, expected: Advance) -> Self {
+        Self {
+            phase: Phase::AwaitMetrics,
+            uncolored: inherited_uncolored,
+            inherited_uncolored,
+            expected,
+        }
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Phase {
     AwaitMetrics,
@@ -25,18 +38,14 @@ enum Phase {
 
 impl Compiler<'_> {
     pub(in crate::interpreter) fn uncolored_glyph(&self) -> bool {
-        self.state
-            .text
-            .procedure
-            .as_ref()
-            .is_some_and(|p| p.uncolored)
+        self.procedure.as_ref().is_some_and(|p| p.uncolored)
     }
 
     /// Whether an uncoloured glyph ignores `operator` (9.6.4, Table 111),
     /// after normal operand validation; this also applies in nested form
     /// content. A procedure must start with `d0` or `d1`.
     pub(in crate::interpreter) fn glyph_ignores(&mut self, operator: Operator) -> Result<bool> {
-        let Some(procedure) = &mut self.state.text.procedure else {
+        let Some(procedure) = &mut self.procedure else {
             return Ok(false);
         };
         if procedure.phase == Phase::AwaitMetrics
@@ -48,8 +57,6 @@ impl Compiler<'_> {
     }
     pub(in crate::interpreter) fn glyph_metrics(&mut self, metrics: GlyphMetrics) -> Result<()> {
         let procedure = self
-            .state
-            .text
             .procedure
             .as_mut()
             .ok_or(Error::syntax("glyph metrics outside Type3 procedure"))?;
@@ -86,65 +93,44 @@ impl Compiler<'_> {
         procedure.uncolored = procedure.inherited_uncolored || uncolored;
         Ok(())
     }
+    /// Interprets a Type 3 glyph procedure; its resources fall back to the
+    /// page's (9.6.5, Table 110).
     pub(super) fn type3_glyph(
         &mut self,
         font: &PdfFont,
         id: ObjectId,
         transform: Transform,
-        resources: &Dictionary,
         expected: Advance,
     ) -> Result<()> {
-        if self.forms.contains(&id) {
-            return Err(Error::cycle("recursive Type3 glyph"));
-        }
-        if self.forms.len() >= self.document.limits().depth {
-            return Err(Error::limit("Type3 nesting budget exceeded"));
-        }
-        let text_object = self.state.text.object.take();
-        let mut child = self.detached();
-        self.state.text.object = text_object;
-        child.forms.push(id);
-        child.state.ctm = transform;
-        child.initial_ctm = transform;
-        child.state.text.object = None;
-        let inherited_uncolored = self.uncolored_glyph();
-        child.state.text.procedure = Some(Procedure {
-            phase: Phase::AwaitMetrics,
-            uncolored: inherited_uncolored,
-            inherited_uncolored,
+        let mut child = self.child(Child::Glyph {
+            id,
+            transform,
             expected,
-        });
+        })?;
         let object = self.document.object(id)?;
-        let page_resources = self.state.text.cache.borrow().page_resources.clone();
         child.sequence(
             &[object],
             font.type3_resources()
-                .or(page_resources.as_deref())
-                .unwrap_or(resources),
+                .unwrap_or(self.session.page.resources()),
         )?;
         if child
-            .state
-            .text
             .procedure
             .as_ref()
             .is_none_or(|p| p.phase == Phase::AwaitMetrics)
         {
             return Err(Error::syntax("Type3 glyph has no metrics").in_object(id));
         }
-        self.operations = child.operations;
-        self.marks = child.marks;
-        if child.list.commands.is_empty() {
+        if child.commands.is_empty() {
             return Ok(());
         }
         self.paint_charge(0, 1)?;
-        self.list
-            .commands
+        self.commands
             .push(super::super::Command::Group(crate::transparency::Group {
                 position: self.position,
-                bounds: super::bounds::bounds(&child.list.commands),
-                commands: child.list.commands,
+                bounds: super::bounds::bounds(&child.commands),
+                commands: child.commands,
                 attributes: crate::transparency::Attributes::default(),
-                composite: crate::transparency::Composite::opaque(),
+                composite: crate::transparency::Composite::default(),
             }));
         Ok(())
     }

@@ -3521,6 +3521,27 @@
       "height": 8
     },
     {
+      "id": "content/annotation-image-budget",
+      "kind": "pdf",
+      "description": "An annotation appearance shares the page compilation's retained-image budget",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-image-budget.pdf",
+      "sha256": "1f27ada8e642fa9518a8704945167220376c98a1e8704476e564ab451ffe9405",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-image-budget.ppm",
+      "oracle_sha256": "ee9aebb338dfafecf206b0e76918bc6d445266e03fecc268b28872ea8363b000",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "image_samples": 12288
+    },
+    {
       "id": "content/annotation-link-borderless",
       "kind": "pdf",
       "description": "annotation-link-borderless",

@@ -1,7 +1,6 @@
 //! Optional semantic output from the existing interpreter (9.4.4; 14.6).
 use super::{
-    Arc, Compiler, Dictionary, Error, Glyph, GlyphShape, Rc, RefCell, Result, Transform, Value,
-    cache, resource,
+    Arc, Compiler, Dictionary, Error, Glyph, GlyphShape, Result, Transform, Value, cache, resource,
 };
 use pagura_core::{Name, ObjectId, Rect};
 use pagura_raster::Point;
@@ -13,15 +12,35 @@ use std::collections::BTreeMap;
 
 mod unicode;
 
-#[derive(Clone)]
-pub(in crate::interpreter) struct Extraction {
-    output: Rc<RefCell<Output>>,
+/// Where one content context records text: its marked-content ancestry
+/// and the object that owns its marked-content identifiers. Forms inherit
+/// it; annotation appearances, pattern cells, soft masks and Type 3
+/// procedures have none.
+pub(in crate::interpreter) struct Scope {
     path: Arc<[Arc<MarkedContent>]>,
     spans: Vec<usize>,
     container: ObjectId,
 }
+impl Scope {
+    pub(in crate::interpreter) fn new(container: ObjectId) -> Self {
+        Self {
+            path: Arc::from([]),
+            spans: Vec::new(),
+            container,
+        }
+    }
+    /// The scope of a form XObject drawn in this one.
+    pub(in crate::interpreter) fn within(&self, form: ObjectId) -> Self {
+        Self {
+            path: Arc::clone(&self.path),
+            spans: Vec::new(),
+            container: form,
+        }
+    }
+}
+/// A compilation's positioned text, collected in the session.
 #[derive(Default)]
-struct Output {
+pub(in crate::interpreter) struct Output {
     text: PositionedText,
     fonts: BTreeMap<usize, Font>,
     bytes: usize,
@@ -72,35 +91,26 @@ pub(crate) fn compile_with_text(
     provider: Option<&dyn pagura_text::Provider>,
     fonts: &std::sync::Mutex<cache::FontCache>,
 ) -> Result<(crate::DisplayList, TextPage)> {
-    let output = Rc::new(RefCell::new(Output::default()));
-    let mut compiler = Compiler::new(document, page)?;
-    compiler.compilation = Rc::new(super::super::Compilation {
-        colors: crate::icc::Cache::default(),
+    let (list, output) = super::super::compile(
+        document,
+        page,
         provider,
-        fonts: Some(fonts),
-        filler: None,
-    });
-    compiler.extraction = Some(Extraction {
-        output: Rc::clone(&output),
-        path: Arc::from([]),
-        spans: Vec::new(),
-        container: page.id(),
-    });
-    compiler.page(page).map_err(|e| e.in_object(page.id()))?;
-    let text = std::mem::take(&mut output.borrow_mut().text);
+        fonts,
+        None,
+        Some(Output::default()),
+    )?;
+    let text = output.map(|output| output.text).unwrap_or_default();
     let text = TextPage::from_positioned(text, LayoutOptions::default(), document.limits())?
         .with_structure(document, page)?;
-    Ok((compiler.list, text))
+    Ok((list, text))
 }
 
 impl Compiler<'_> {
-    pub(in crate::interpreter) fn inherit_extraction(&self, child: &mut Self, hidden: bool) {
-        if let Some(extraction) = &self.extraction {
-            let mut inherited = extraction.clone();
-            inherited.container = child.forms.last().copied().unwrap_or(extraction.container);
-            child.extraction = Some(inherited);
-            child.visible &= !hidden;
-        }
+    /// This context's text scope and the session's text output, when the
+    /// compilation extracts text and this context contributes page text.
+    fn recorder(&self) -> Option<(&Scope, std::cell::RefMut<'_, Output>)> {
+        let scope = self.extraction.as_ref()?;
+        Some((scope, self.session.text.as_ref()?.borrow_mut()))
     }
 
     pub(in crate::interpreter) fn extract_form_sequence(
@@ -108,15 +118,11 @@ impl Compiler<'_> {
         object: &pagura_document::IndirectObject,
         resources: &Dictionary,
     ) -> Result<()> {
-        let start = self
-            .extraction
-            .as_ref()
-            .map(|e| e.output.borrow().text.glyphs.len());
+        let start = self.recorder().map(|(_, output)| output.text.glyphs.len());
         self.sequence(&[object], resources)?;
-        if let Some(extract) = &self.extraction
+        if let Some((extract, mut output)) = self.recorder()
             && let Some(start) = start
         {
-            let mut output = extract.output.borrow_mut();
             output.charge(size_of::<pagura_text::TextObject>(), self.document.limits())?;
             let end = output.text.glyphs.len();
             output.text.objects.push(pagura_text::TextObject {
@@ -134,8 +140,7 @@ impl Compiler<'_> {
         object: ObjectId,
         hidden: bool,
     ) -> Result<()> {
-        if let Some(extract) = &self.extraction {
-            let mut output = extract.output.borrow_mut();
+        if let Some((extract, mut output)) = self.recorder() {
             output.charge(size_of::<pagura_text::TextObject>(), self.document.limits())?;
             let end = output.text.glyphs.len();
             output.text.objects.push(pagura_text::TextObject {
@@ -167,10 +172,9 @@ impl Compiler<'_> {
         object: Option<ObjectId>,
         dictionary: &Dictionary,
     ) -> Result<()> {
-        let Some(extract) = &self.extraction else {
+        let Some((_, mut output)) = self.recorder() else {
             return Ok(());
         };
-        let mut output = extract.output.borrow_mut();
         let key = std::ptr::from_ref(font).addr();
         if output.fonts.contains_key(&key) {
             return Ok(());
@@ -195,8 +199,7 @@ impl Compiler<'_> {
         Ok(())
     }
     pub(super) fn extract_show(&mut self) -> Result<()> {
-        if let Some(extract) = &self.extraction {
-            let mut output = extract.output.borrow_mut();
+        if let Some((_, mut output)) = self.recorder() {
             output.show = output
                 .show
                 .checked_add(1)
@@ -211,11 +214,10 @@ impl Compiler<'_> {
         matrix: Transform,
         transform: Transform,
     ) -> Result<()> {
-        let Some(extract) = &self.extraction else {
+        let Some((extract, mut output)) = self.recorder() else {
             return Ok(());
         };
-        let mut output = extract.output.borrow_mut();
-        if output.text.glyphs.len() >= self.document.limits().value_nodes {
+        if output.text.glyphs.len() >= self.document.limits().text_items {
             return Err(Error::limit("positioned glyph count exceeded"));
         }
         let unicode = output.unicode(
@@ -313,9 +315,9 @@ impl Compiler<'_> {
         properties: Option<&Value>,
         resources: &Dictionary,
     ) -> Result<()> {
-        let Some(extract) = &mut self.extraction else {
+        if self.recorder().is_none() {
             return Ok(());
-        };
+        }
         let tag = tag.clone();
         let dictionary = match properties
             .map(|properties| marked_properties(self.document, resources, properties))
@@ -331,8 +333,11 @@ impl Compiler<'_> {
         let alt = property(self.document, dictionary, b"Alt", self.position)?;
         // Expansion text is metadata for speech, not a page replacement.
         let _ = property(self.document, dictionary, b"E", self.position)?;
-        let mut output = extract.output.borrow_mut();
-        if output.text.marked.len() >= self.document.limits().value_nodes {
+        let (Some(extract), Some(output)) = (&mut self.extraction, &self.session.text) else {
+            return Ok(());
+        };
+        let mut output = output.borrow_mut();
+        if output.text.marked.len() >= self.document.limits().text_items {
             return Err(Error::limit("marked content count exceeded"));
         }
         output.charge(
@@ -365,17 +370,22 @@ impl Compiler<'_> {
         Ok(())
     }
     pub(in crate::interpreter) fn extract_end(&mut self) -> Result<()> {
-        let Some(extract) = &mut self.extraction else {
+        let (Some(extract), Some(output)) = (&mut self.extraction, &self.session.text) else {
             return Ok(());
         };
         let id = extract
             .spans
             .pop()
             .ok_or(Error::syntax("unbalanced extraction marked content"))?;
-        let mut output = extract.output.borrow_mut();
+        let mut output = output.borrow_mut();
         let end = output.text.glyphs.len();
-        output.text.marked[id].glyphs.end = end;
-        extract.path = Arc::clone(&output.text.marked[id].ancestors);
+        let span = output
+            .text
+            .marked
+            .get_mut(id)
+            .ok_or(Error::syntax("unbalanced extraction marked content"))?;
+        span.glyphs.end = end;
+        extract.path = Arc::clone(&span.ancestors);
         Ok(())
     }
 }

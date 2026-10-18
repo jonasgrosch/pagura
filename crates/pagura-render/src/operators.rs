@@ -152,9 +152,13 @@ pub(crate) enum Parameter<'v> {
     LineCap(i64),
     LineJoin(i64),
     MiterLimit(f64),
-    Dash { array: &'v [Value], phase: f64 },
+    Dash {
+        array: &'v [Value],
+        phase: f64,
+    },
     Intent(&'v Name),
-    Flatness(f64),
+    /// `i`: a device flatness tolerance, validated and ignored (10.6.2).
+    Flatness,
 }
 
 /// Path construction in user space (Table 58).
@@ -339,7 +343,10 @@ impl Operator {
             Self::LineCap => O::Parameter(Parameter::LineCap(one_integer(v)?)),
             Self::LineJoin => O::Parameter(Parameter::LineJoin(one_integer(v)?)),
             Self::MiterLimit => O::Parameter(Parameter::MiterLimit(one_number(v)?)),
-            Self::Flatness => O::Parameter(Parameter::Flatness(one_number(v)?)),
+            Self::Flatness => {
+                one_number(v)?;
+                O::Parameter(Parameter::Flatness)
+            }
             Self::Intent => O::Parameter(Parameter::Intent(one_name(v)?)),
             Self::Dash => match v {
                 [Value::Array(array), phase] => O::Parameter(Parameter::Dash {

@@ -22,8 +22,8 @@ impl Compiler<'_> {
         if values.len() > self.document.limits().value_nodes {
             return Err(Error::limit("annotation count exceeded"));
         }
-        let compilation = std::rc::Rc::clone(&self.compilation);
-        let filled = compilation
+        let filled = self
+            .session
             .filler
             .map(super::annotations_filled::FilledAnnotations::new)
             .transpose()?;
@@ -67,7 +67,7 @@ impl Compiler<'_> {
             return Ok(());
         }
         if let Some(oc) = d.get(b"OC")
-            && !self.visibility.visible(self.document, oc)?
+            && !self.session.visibility.visible(self.document, oc)?
         {
             self.extract_annotation(value, true)?;
             return Ok(());
@@ -90,7 +90,7 @@ impl Compiler<'_> {
                 .transpose()?
                 .flatten()
         {
-            let start = self.list.commands.len();
+            let start = self.commands.len();
             self.paint_filled_appearance(&appearance, rect, resources)?;
             self.annotation_view(start, rect, flags);
             return Ok(());
@@ -109,7 +109,7 @@ impl Compiler<'_> {
         let Some(id) = normal_appearance(self.document, d, ap)? else {
             return Ok(());
         };
-        let start = self.list.commands.len();
+        let start = self.commands.len();
         self.paint_filled_appearance(&Appearance::Existing(id), rect, resources)?;
         let flags = if subtype == b"Text" {
             flags | 8 | 16
@@ -124,11 +124,10 @@ impl Compiler<'_> {
         if flags & (8 | 16) == 0 {
             return;
         }
-        let commands = self.list.commands.split_off(start);
+        let commands = self.commands.split_off(start);
         let mut bounds = pagura_raster::PathBuilder::new();
         bounds.rect(rect.x0(), rect.y0(), rect.width(), rect.height());
-        self.list
-            .commands
+        self.commands
             .push(crate::display::Command::Group(crate::transparency::Group {
                 position: self.position,
                 bounds: Some(std::sync::Arc::new(bounds.finish())),
@@ -141,7 +140,7 @@ impl Compiler<'_> {
                     }),
                     ..Default::default()
                 },
-                composite: crate::transparency::Composite::opaque(),
+                composite: crate::transparency::Composite::default(),
             }));
     }
 
@@ -200,22 +199,21 @@ impl Compiler<'_> {
                 ..Graphics::default()
             },
         );
-        let start = self.list.commands.len();
+        let start = self.commands.len();
         let extraction = self.extraction.take();
         let result = self.form_body(body, resources);
         self.extraction = extraction;
         if result.is_ok() && !form.contains_key(b"Group") {
             let mut bounds = pagura_raster::PathBuilder::new();
             bounds.rect(rect.x0(), rect.y0(), rect.width(), rect.height());
-            let commands = self.list.commands.split_off(start);
-            self.list
-                .commands
+            let commands = self.commands.split_off(start);
+            self.commands
                 .push(crate::display::Command::Group(crate::transparency::Group {
                     position: self.position,
                     commands,
                     bounds: Some(std::sync::Arc::new(bounds.finish())),
                     attributes: crate::transparency::Attributes::default(),
-                    composite: crate::transparency::Composite::opaque(),
+                    composite: crate::transparency::Composite::default(),
                 }));
         }
         self.state = saved;
@@ -438,6 +436,33 @@ mod tests {
             compile_page(&repaired, page).unwrap();
             assert_eq!(repaired.diagnostics(), diagnostics);
         }
+    }
+
+    #[test]
+    fn appearances_share_the_page_compilations_retained_byte_budget() {
+        let manifest = pagura_testkit::Manifest::load("content");
+        let case = manifest.case("annotation-image-budget").unwrap();
+        let samples =
+            usize::try_from(case.get("image_samples").unwrap().as_u64().unwrap()).unwrap();
+        let compile = |render_bytes| {
+            let document = Document::open(
+                fixture("content", "annotation-image-budget.pdf"),
+                &OpenOptions {
+                    limits: pagura_core::Limits {
+                        render_bytes,
+                        ..pagura_core::Limits::default()
+                    },
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            compile_page(&document, document.page(0).unwrap()).map(|list| list.commands.len())
+        };
+        // The page's image and the appearance's image are both retained by
+        // one compilation: room for one and a half images is not enough.
+        let error = compile(samples * 3 / 2).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
+        assert_eq!(compile(samples * 3).unwrap(), 2);
     }
 
     #[test]

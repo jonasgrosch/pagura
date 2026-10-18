@@ -43,15 +43,7 @@ pub(crate) fn compile_filled_cached(
             "page does not belong to form document",
         ));
     }
-    let mut compiler = super::Compiler::new(document, page)?;
-    compiler.compilation = std::rc::Rc::new(super::Compilation {
-        colors: crate::icc::Cache::default(),
-        provider,
-        fonts: Some(fonts),
-        filler: Some(filler),
-    });
-    compiler.page(page).map_err(|e| e.in_object(page.id()))?;
-    Ok(compiler.list)
+    super::compile(document, page, provider, fonts, Some(filler), None).map(|(list, _)| list)
 }
 
 pub(super) struct FilledAnnotations<'f, 'd> {
@@ -118,8 +110,8 @@ impl<'f, 'd> FilledAnnotations<'f, 'd> {
         match form_appearance::prepare_widget_cached(
             self.filler,
             index,
-            compiler.compilation.provider,
-            compiler.compilation.fonts,
+            compiler.session.provider,
+            Some(compiler.session.fonts),
         ) {
             Err(error)
                 if self.filler.get(widget.field).is_none()

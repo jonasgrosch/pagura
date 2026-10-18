@@ -541,7 +541,7 @@ mod tests {
             transform: Transform::IDENTITY,
             clip: None,
             stencil: crate::color::Color::default(),
-            composite: crate::transparency::Composite::opaque(),
+            composite: crate::transparency::Composite::default(),
             transfer: None,
             position: pagura_core::Position::Unknown,
         }
@@ -832,7 +832,7 @@ mod tests {
             transform: Transform::IDENTITY,
             clip: None,
             stencil: crate::color::Color::default(),
-            composite: crate::transparency::Composite::opaque(),
+            composite: crate::transparency::Composite::default(),
             transfer: None,
             position: pagura_core::Position::Unknown,
         };

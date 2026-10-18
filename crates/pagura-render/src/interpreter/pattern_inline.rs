@@ -20,11 +20,8 @@ impl Compiler<'_> {
             Parser::with_offset(parser.data(), start, Origin::Buffer, self.document.limits())?;
         let mut d = Dictionary::new();
         while probe.peek() != Some(b'I') {
-            self.operations = self
-                .operations
-                .checked_add(1)
-                .filter(|n| *n <= self.document.limits().operations)
-                .ok_or(Error::limit("inline image header budget exceeded"))?;
+            self.session
+                .charge_operations(1, "inline image header budget exceeded")?;
             let name = probe
                 .parse()?
                 .as_name()

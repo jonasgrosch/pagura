@@ -1,5 +1,6 @@
 //! Image resources and inline content framing (8.9).
 use super::{Arc, Compiler, Dictionary, Error, ObjectId, Result, Value, resource};
+use crate::operators::Target;
 use crate::{
     color::{self, Space},
     display::{Command, ImageCommand},
@@ -42,7 +43,7 @@ impl Compiler<'_> {
 
             let visible = dict
                 .get(b"OC")
-                .map(|v| self.visibility.visible(self.document, v))
+                .map(|v| self.session.visibility.visible(self.document, v))
                 .transpose()?
                 .unwrap_or(true);
             self.extract_graphic_object(id, !visible)?;
@@ -69,7 +70,7 @@ impl Compiler<'_> {
             return Err(Error::limit("image mask nesting exceeded"));
         }
         let key = (id, self.resource_identity(resources)?);
-        if let Some(image) = self.state.text.cache.borrow().images.get(&key) {
+        if let Some(image) = self.session.paint.borrow().images.get(&key) {
             return Ok(Arc::clone(image));
         }
         stack.push(id);
@@ -86,9 +87,8 @@ impl Compiler<'_> {
             )
             .map_err(|e| e.in_object(id))?;
         stack.pop();
-        self.state
-            .text
-            .cache
+        self.session
+            .paint
             .borrow_mut()
             .images
             .insert(key, Arc::clone(&image));
@@ -216,7 +216,7 @@ impl Compiler<'_> {
     }
 
     fn image_space(&self, decoded: &DecodedImage, resources: &Dictionary) -> Result<Option<Space>> {
-        let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
+        let context = crate::icc::ColorContext::new(self.document, &self.session.colors);
         let space = match &decoded.kind {
             ImageKind::Color {
                 color_space: Some(value),
@@ -246,12 +246,8 @@ impl Compiler<'_> {
         if self.uncolored_glyph() && image.space.is_some() {
             return Ok(());
         }
-        self.marks = self
-            .marks
-            .checked_add(1)
-            .filter(|&n| n <= self.document.limits().display_commands)
-            .ok_or(Error::limit("image display list budget exceeded"))?;
-        let mut composite = self.state.composite.clone();
+        self.session.charge_marks(1)?;
+        let mut composite = self.state.composite(Target::Fill);
         if let Some(intent) = image.intent {
             composite.conversion.intent = intent;
         }
@@ -259,11 +255,11 @@ impl Compiler<'_> {
         if !matches!(image.decoded.mask, MaskKind::None) {
             composite.mask = None;
         }
-        self.list.commands.push(Command::Image(ImageCommand {
+        self.commands.push(Command::Image(ImageCommand {
             image,
             transform: self.state.ctm,
             clip: self.state.clip.clone(),
-            stencil: self.state.fill.clone(),
+            stencil: self.state.fill.color.clone(),
             composite,
             transfer: self.state.transfer.clone(),
             position: self.position,
@@ -298,8 +294,7 @@ impl Compiler<'_> {
                     .and_then(Value::as_name)
                     .is_some_and(|n| n == b"ICCBased")
             }) {
-                let context =
-                    crate::icc::ColorContext::new(self.document, &self.compilation.colors);
+                let context = crate::icc::ColorContext::new(self.document, &self.session.colors);
                 let count = color::blending(&context, resources, space)?.components();
                 Value::name(match count {
                     1 => b"DeviceGray",
@@ -327,11 +322,8 @@ impl Compiler<'_> {
         self.glyph_ignores(crate::operators::Operator::BeginImage)?;
         let mut dictionary = Dictionary::new();
         loop {
-            self.operations = self
-                .operations
-                .checked_add(1)
-                .filter(|&n| n <= self.document.limits().operations)
-                .ok_or(Error::limit("inline image dictionary budget exceeded"))?;
+            self.session
+                .charge_operations(1, "inline image dictionary budget exceeded")?;
             if parser.peek() == Some(b'I') {
                 if parser.word()? != b"ID" {
                     return Err(Error::syntax("inline image requires ID"));

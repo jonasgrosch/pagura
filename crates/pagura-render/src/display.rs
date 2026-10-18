@@ -894,7 +894,7 @@ mod tests {
                     knockout: true,
                     ..Default::default()
                 },
-                composite: crate::transparency::Composite::opaque(),
+                composite: crate::transparency::Composite::default(),
             })]
         } else {
             commands

@@ -222,7 +222,7 @@ mod tests {
             transfer: None,
             composite: Composite {
                 alpha,
-                ..Composite::opaque()
+                ..Composite::default()
             },
         })
     }
@@ -263,7 +263,7 @@ mod tests {
                     knockout: true,
                     ..Attributes::default()
                 },
-                composite: Composite::opaque(),
+                composite: Composite::default(),
             });
             assert_eq!(page(&list(vec![group])).unwrap().format, expected);
         }

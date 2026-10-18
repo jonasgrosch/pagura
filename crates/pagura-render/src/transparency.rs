@@ -32,12 +32,6 @@ impl Default for Composite {
     }
 }
 impl Composite {
-    pub(crate) fn opaque() -> Self {
-        Self {
-            alpha: 1.0,
-            ..Self::default()
-        }
-    }
     pub(crate) fn simple(&self) -> bool {
         self.alpha == 1.0 && self.blend == BlendMode::Normal && self.mask.is_none()
     }

@@ -261,6 +261,7 @@ const RENDER: &[&str] = &[
     "space-CalRGB",
     "annotation-no-normal",
     "annotation-hidden",
+    "annotation-image-budget",
 ];
 
 #[test]

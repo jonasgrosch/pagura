@@ -40,9 +40,11 @@ pub(crate) enum Space {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Color {
+    /// A colour in a non-pattern space. Components are shared, so `q` and
+    /// display commands copy colours without allocating.
     Solid {
         space: Space,
-        components: Vec<f64>,
+        components: Arc<[f64]>,
     },
     Pattern {
         base: Option<Arc<Space>>,
@@ -74,7 +76,10 @@ impl Color {
             Space::Special { inputs, .. } => vec![1.0; *inputs],
             _ => vec![0.0; space.components()],
         };
-        Self::Solid { space, components }
+        Self::Solid {
+            space,
+            components: components.into(),
+        }
     }
     pub(crate) fn validate_simple_operator(
         &self,
@@ -118,56 +123,6 @@ impl Color {
                     .ok_or(Error::syntax("colour component must be a number"))
             })
             .collect::<Result<_>>()?;
-        Ok(())
-    }
-    pub(crate) fn select_pattern(
-        &mut self,
-        document: &ColorContext<'_>,
-        resources: &Dictionary,
-        values: &[Value],
-        initial: pagura_raster::Transform,
-        position: pagura_core::Position,
-    ) -> Result<()> {
-        let Self::Pattern { base, selected } = self else {
-            return self.set(values);
-        };
-        let Some((name, components)) = values.split_last() else {
-            return Err(Error::syntax("missing pattern name"));
-        };
-        let name = name
-            .as_name()
-            .ok_or(Error::syntax("pattern name expected"))?;
-        let mut pattern =
-            crate::pattern::Pattern::parse(document, resources, name.as_bytes(), initial)?;
-        match &mut pattern.kind {
-            crate::pattern::Kind::Tiling(t) if t.uncolored => {
-                let space = base.as_ref().ok_or(Error::syntax(
-                    "uncoloured pattern requires underlying space",
-                ))?;
-                let mut color = Color::new(space.as_ref().clone());
-                color.set(components)?;
-                t.color = Some(color);
-            }
-            _ if !components.is_empty() => {
-                if components.iter().any(|v| v.as_number().is_none())
-                    || base
-                        .as_ref()
-                        .is_none_or(|s| s.components() != components.len())
-                {
-                    return Err(Error::syntax("invalid unused pattern colour operands"));
-                }
-                let mut diagnostic = pagura_core::Diagnostic::new(
-                    crate::repairs::PATTERN_UNDERLYING,
-                    "coloured pattern uses intrinsic colours; extra scn operands ignored (8.7.3.2, Table 73)",
-                ).at(position);
-                if let pagura_core::Position::Stream { object, .. } = position {
-                    diagnostic = diagnostic.in_object(object);
-                }
-                crate::interpreter::repair(document.document(), diagnostic)?;
-            }
-            _ => {}
-        }
-        *selected = Some(Arc::new(pattern));
         Ok(())
     }
     pub(crate) fn to_rgba(

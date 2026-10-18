@@ -197,7 +197,6 @@ impl FontCache {
 pub(in crate::interpreter) struct Cache {
     fonts: Fonts,
     resources: Vec<Dictionary>,
-    pub(in crate::interpreter) page_resources: Option<Arc<Dictionary>>,
     pub(in crate::interpreter) images:
         BTreeMap<(pagura_core::ObjectId, usize), Arc<super::super::images::Image>>,
     pub(super) bytes: usize,
@@ -220,17 +219,17 @@ impl Cache {
 impl Compiler<'_> {
     pub(in crate::interpreter) fn paint_charge(&self, bytes: usize, entries: usize) -> Result<()> {
         let limits = self.document.limits();
-        let mut cache = self.state.text.cache.borrow_mut();
+        let mut cache = self.session.paint.borrow_mut();
         let bytes = cache
             .bytes
             .checked_add(bytes)
-            .filter(|&n| n <= limits.decoded_bytes)
+            .filter(|&n| n <= limits.render_bytes)
             .ok_or(Error::limit("text and image retained byte budget exceeded"))?;
         let entries = cache
             .entries
             .checked_add(entries)
             .filter(|&n| {
-                n.checked_add(self.marks)
+                n.checked_add(self.session.marks())
                     .is_some_and(|total| total <= limits.display_commands)
             })
             .ok_or(Error::limit("text and image cache entry budget exceeded"))?;
@@ -244,9 +243,8 @@ impl Compiler<'_> {
         resources: &Dictionary,
     ) -> Result<usize> {
         if let Some(key) = self
-            .state
-            .text
-            .cache
+            .session
+            .paint
             .borrow()
             .resources
             .iter()
@@ -255,7 +253,7 @@ impl Compiler<'_> {
             return Ok(key);
         }
         self.paint_charge(resources.retained_bytes(), 1)?;
-        let mut cache = self.state.text.cache.borrow_mut();
+        let mut cache = self.session.paint.borrow_mut();
         if cache.resources.len() >= 256 {
             return Err(Error::limit("image resource cache budget exceeded"));
         }
@@ -265,31 +263,18 @@ impl Compiler<'_> {
     }
 
     pub(in crate::interpreter) fn select_font(&mut self, value: &Value, size: f64) -> Result<()> {
-        if self.extraction.is_some() {
-            self.select_font_mode::<true>(value, size)
-        } else {
-            self.select_font_mode::<false>(value, size)
-        }
-    }
-
-    pub(super) fn select_font_mode<const EXTRACT: bool>(
-        &mut self,
-        value: &Value,
-        size: f64,
-    ) -> Result<()> {
         let dictionary = self.document.resolve_dictionary(value)?;
         let key = value.as_reference();
-        let local = self.state.text.cache.borrow().fonts.get(key, dictionary);
+        let local = self.session.paint.borrow().fonts.get(key, dictionary);
         let in_page = local.is_some();
         let shared = if in_page {
             None
         } else {
-            self.compilation.fonts.and_then(|fonts| {
-                fonts
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner)
-                    .get(key, dictionary)
-            })
+            self.session
+                .fonts
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .get(key, dictionary)
         };
         let shared_hit = shared.is_some();
         let cached = local.or(shared);
@@ -309,15 +294,13 @@ impl Compiler<'_> {
                 });
                 self.paint_charge(bytes, 1)?;
             }
-            let mut cache = self.state.text.cache.borrow_mut();
+            let mut cache = self.session.paint.borrow_mut();
             if cache.fonts.len() >= 256 {
                 return Err(Error::limit("font cache budget exceeded"));
             }
             cache.fonts.insert(key, dictionary, Arc::clone(&font));
         }
-        if EXTRACT {
-            self.extract_font(&font, key, dictionary)?;
-        }
+        self.extract_font(&font, key, dictionary)?;
         self.state.text.font = Some(font);
         self.state.text.size = size;
         Ok(())
@@ -332,8 +315,8 @@ impl Compiler<'_> {
             self.document,
             key,
             dictionary,
-            self.compilation.provider,
-            self.compilation.fonts,
+            self.session.provider,
+            Some(self.session.fonts),
             self.position,
         )?;
         self.paint_charge(font_bytes(&font.font, key, dictionary), 1)?;
@@ -364,14 +347,11 @@ impl Compiler<'_> {
             })?)
         };
         self.paint_charge(super::path_bytes(&path), 1)?;
-        if let Some(fonts) = self.compilation.fonts {
-            fonts
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .outline(font, glyph.0, Arc::clone(&path));
-        } else {
-            font.remember(glyph.0, Arc::clone(&path));
-        }
+        self.session
+            .fonts
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .outline(font, glyph.0, Arc::clone(&path));
         Ok(path)
     }
 }

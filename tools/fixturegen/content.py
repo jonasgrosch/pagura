@@ -404,6 +404,14 @@ def annotation_cases():
             pixels.extend((alpha,0,255-alpha))
     yield Case('annotation-sheared',pdf(matrix=b'[1 1 -1 1 0 0]'),RENDER,('content-annotations',),'All four transformed corners determine the fitted envelope; exact rational pixel intersections',oracle=b'P6\n8 8\n255\n'+pixels,extra={'tolerance':1})
     yield Case('annotation-state-isolation',pdf(form=b'0 0 2 4 re f',page=b'0 0 1 rg 0 0 8 8 re f 4 0 0 4 2 2 cm'),RENDER,('content-annotations',),'Appearance starts in default graphics state rather than page final colour and CTM',oracle=opaque_rectangles(8,8,[((0,0,8,8),BLUE),((2,1,4,6),BLACK)]))
+    # The page paints one 64x64 image and an annotation appearance a second
+    # one; both are retained by one compilation and count against one budget.
+    import zlib
+    side=64
+    def solid(rgb):
+        return stream(zlib.compress(bytes(rgb)*side*side),b'/Type /XObject /Subtype /Image /Width %d /Height %d /BitsPerComponent 8 /ColorSpace /DeviceRGB /Filter /FlateDecode' % (side,side))
+    budget=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /XObject << /I 6 0 R >> >> /Contents 4 0 R /Annots [<< /Subtype /Stamp /Rect [4 0 8 8] /AP << /N 5 0 R >> >>] >>',stream(b'4 0 0 8 0 0 cm /I Do'),stream(b'/J Do',b'/Type /XObject /Subtype /Form /BBox [0 0 1 1] /Resources << /XObject << /J 7 0 R >> >>'),solid(RED),solid(BLUE)])
+    yield Case('annotation-image-budget',budget,RENDER,('content-annotations',),'An annotation appearance shares the page compilation\'s retained-image budget',oracle=opaque_rectangles(8,8,[((0,0,4,8),RED),((4,0,4,8),BLUE)]),extra={'api':'compile_page','image_samples':side*side*3})
     yield render('annotation-link-borderless',b'',page_extra=b'/Annots [<< /Subtype /Link /Rect [0 0 8 8] /Border [0 0 0] >>]',requirements=('content-annotations',))
     yield Case('annotation-flags',pdf(extra=b'/F 8'),RENDER,('content-annotation-view',),'12.5.3: fixed display-size annotation at default scale',oracle=opaque_rectangles(8,8,[((0,0,8,8),BLUE),((2,1,4,6),RED)]))
     for name,options in [
