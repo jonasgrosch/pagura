@@ -123,7 +123,7 @@ if (!isMainThread) {
     const compatible = await client.open(compatibleBytes, 1), strict = await client.open(compatibleBytes, 0);
     await client.renderTile(compatible.document, 0, 1, tile);
     await assert.rejects(client.renderTile(strict.document, 0, 1, tile), /SCN or scn/);
-    assert.ok((await client.diagnostics(compatible.document)).some((d) => d.tag === 'content.colour-operator'));
+    assert.ok((await client.diagnostics(compatible.document)).some((d) => d.tag === 'content.color-operator'));
     const filledCompatible = await client.saveForm(strict.document, [{ index: 0, kind: 0, value: 'Compatible view' }]);
     assert.deepEqual(filledCompatible.subarray(0, compatibleBytes.length), compatibleBytes);
     const compatibleAgain = await client.open(filledCompatible, 1);
@@ -132,7 +132,7 @@ if (!isMainThread) {
     const icc = new Uint8Array(await readFile('corpus/generated/content/repair-icc-colour.pdf'));
     const iccView = await client.open(icc, 1);
     await client.renderTile(iccView.document, 0, 1, { x: 0, y: 0, width: 8, height: 8 });
-    assert.ok((await client.diagnostics(iccView.document)).some((d) => d.tag === 'content.colour-operator'));
+    assert.ok((await client.diagnostics(iccView.document)).some((d) => d.tag === 'content.color-operator'));
     console.log('Browser editing bridge: all four field kinds, strict reopen, original prefix, repeated saves, failed-save atomicity and malformed changes passed.');
   } finally { client.destroy(); }
 }

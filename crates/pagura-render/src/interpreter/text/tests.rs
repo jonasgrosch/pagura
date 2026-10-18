@@ -188,7 +188,7 @@ fn text_clip_resets_report_positions_and_preserve_accumulated_outlines() {
         let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
         let object = pagura_core::ObjectId::new(4, 0);
         assert_eq!(error.kind, ErrorKind::Syntax);
-        assert_eq!(error.repair.unwrap().as_str(), "text.clip-mode-reset");
+        assert_eq!(error.repair.unwrap().as_str(), "content.text-clip-reset");
         assert_eq!(error.object, Some(object));
         assert_eq!(
             error.position,
@@ -218,7 +218,7 @@ fn text_clip_resets_report_positions_and_preserve_accumulated_outlines() {
         let diagnostics = repaired.diagnostics();
         assert_eq!(diagnostics.len(), offsets.len());
         for (diagnostic, &offset) in diagnostics.iter().zip(offsets) {
-            assert_eq!(diagnostic.tag(), "text.clip-mode-reset");
+            assert_eq!(diagnostic.tag(), "content.text-clip-reset");
             assert_eq!(diagnostic.object, Some(object));
             assert_eq!(
                 diagnostic.position,

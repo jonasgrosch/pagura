@@ -202,7 +202,7 @@ impl Context {
         let stencil = if command.image.space.is_none() {
             if matches!(command.stencil, crate::color::Color::Pattern { .. }) {
                 return Err(Error::unsupported(
-                    crate::interpreter::images::STENCIL_PATTERN,
+                    crate::features::PATTERN_IMAGE_MASK,
                     "pattern-coloured image stencils are not implemented",
                 ));
             }

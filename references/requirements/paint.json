@@ -225,7 +225,7 @@
         "paint/image-depth-8",
         "paint/image-depth-16"
       ],
-      "gaps": "Embedded JPX ICC and unsupported enumerated colour descriptions fail with image.embedded-color.",
+      "gaps": "Embedded JPX ICC and unsupported enumerated colour descriptions fail with xobject.jpx-color.",
       "review": [
         {
           "locator": "8.9.3; 8.9.5.2; Table 88",
@@ -252,7 +252,7 @@
         "paint/image-mask-resolution",
         "paint/image-rgb-colour-key"
       ],
-      "gaps": "Pattern-coloured stencils fail with image.stencil-pattern.",
+      "gaps": "Pattern-coloured stencils fail with pattern.image-mask.",
       "review": [
         {
           "locator": "8.9.6.2; 8.9.6.3; 8.9.6.4; 11.6.4.3",
@@ -590,7 +590,7 @@
       "review": [
         {
           "locator": "9.3.6; 9.4.1",
-          "rule": "A prohibited reset to a nonclipping mode through Tr or Q before ET reports text.clip-mode-reset. Repair retains the accumulated outline subpaths until ET, honors the new painting mode and appends any later clipping glyphs. Strict rejects the transition before mutating the state; this is reader-dependent recovery policy (ADR 0003).",
+          "rule": "A prohibited reset to a nonclipping mode through Tr or Q before ET reports content.text-clip-reset. Repair retains the accumulated outline subpaths until ET, honors the new painting mode and appends any later clipping glyphs. Strict rejects the transition before mutating the state; this is reader-dependent recovery policy (ADR 0003).",
           "verdict": "verified against local primary text; recovery choice is explicit implementation policy"
         }
       ]

@@ -1,4 +1,4 @@
 mode=text
 error=
-appearance=error:unsupported:form.appearance-update
+appearance=error:unsupported:appearance.update
 changed=true
