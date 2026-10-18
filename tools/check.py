@@ -25,6 +25,9 @@ COMMANDS = [
     (["node", "tools/host_test.mjs"], {}),
     ([sys.executable, "-m", "unittest", "discover", "-s", "tools", "-p", "test_*.py"], {}),
     ([sys.executable, "tools/conformance.py"], {}),
+    # Every table generator in tools/gen/ verifies its output (CONTRIBUTING, Conventions).
+    *(([sys.executable, path.relative_to(ROOT).as_posix(), "--check"], {})
+      for path in sorted((ROOT / "tools/gen").glob("*.py"))),
 ]
 
 if __name__ == "__main__":
