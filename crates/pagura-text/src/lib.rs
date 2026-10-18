@@ -10,12 +10,16 @@
 //! need. Positioning glyphs on the page (text state, `Tm`, `TJ` adjustments)
 //! belongs to the content interpreter in `pagura-render`.
 //!
-//! [`PdfFont::load_with`] accepts a [`Provider`] for non-embedded programs and
-//! predefined CMaps; [`PdfFont::load`] retains explicit failures without one.
-//! Font-program parsing is delegated to `pagura-font`. TrueType selection uses the program's subtable availability
-//! and post names (9.6.5.4). Glyph-name Unicode fallback implements AGL name
-//! decomposition with Latin, Dingbats and common Symbol names; unbundled legacy
-//! names remain unknown. A `/ToUnicode` sequence always takes precedence.
+//! [`PdfFont::load_with_provider`] accepts a [`Provider`] for non-embedded
+//! programs and predefined CMaps; [`PdfFont::load`] retains explicit failures
+//! without one. Font-program parsing is delegated to `pagura-font`. TrueType
+//! selection uses the program's subtable availability and post names
+//! (9.6.5.4). Glyph-name Unicode fallback implements
+//! AGL name decomposition with Latin, Dingbats and common Symbol names;
+//! unbundled legacy names remain unknown. A `/ToUnicode` sequence always
+//! takes precedence. Descriptor flags are normalized while loading
+//! (9.8.2; ADR 0025). Page layout, search and the logical structure view are
+//! in `pagura-extract`.
 //!
 //! Loading and decoding enforce document limits. CID intervals stay compact;
 //! Unicode expansion, inherited CMap graphs and decoded glyph counts are bounded.
