@@ -2,8 +2,10 @@
 use super::{
     Arc, Compiler, Dictionary, Error, Glyph, GlyphShape, Result, Transform, Value, cache, resource,
 };
+use crate::repairs;
 use pagura_core::{Name, ObjectId, Rect};
 use pagura_raster::Point;
+use pagura_text::repairs::MARKED_PROPERTY;
 use pagura_text::{
     LayoutOptions, MarkedContent, MarkedSpan, PositionedGlyph, PositionedText, Quad, TextFont,
     TextPage,
@@ -179,16 +181,14 @@ impl Compiler<'_> {
         if output.fonts.contains_key(&key) {
             return Ok(());
         }
-        let base_name = dictionary
-            .get(b"BaseFont")
-            .and_then(|v| self.document.resolve(v).ok())
+        let base_name = font_metadata(self.document, dictionary.get(b"BaseFont"), self.position)?
             .and_then(Value::as_name)
             .cloned();
         output.charge(
             256 + base_name.as_ref().map_or(0, Name::len),
             self.document.limits(),
         )?;
-        let bbox = font_box(self.document, dictionary, font.font.kind());
+        let bbox = font_box(self.document, dictionary, font.font.kind(), self.position)?;
         let index = output.text.fonts.len();
         output.text.fonts.push(TextFont {
             object,
@@ -325,7 +325,7 @@ impl Compiler<'_> {
         {
             Ok(dictionary) => dictionary,
             Err(error) => {
-                ignore_metadata_fault(self.document, error, self.position)?;
+                ignore_metadata_fault(self.document, error, self.position, MARKED_PROPERTY)?;
                 None
             }
         };
@@ -352,7 +352,7 @@ impl Compiler<'_> {
             id,
             tag,
             container: Some(extract.container),
-            mcid: marked_id(self.document, dictionary)?,
+            mcid: marked_id(self.document, dictionary, self.position)?,
             actual_text,
             alt,
         });
@@ -418,33 +418,60 @@ impl Output {
         Ok(())
     }
 }
-fn font_box(
-    document: &pagura_document::Document,
-    dictionary: &Dictionary,
+/// The FontBBox selection quads use (9.8.1): a Type 3 font's own, else its
+/// descriptor's, a Type 0 font's from its descendant.
+fn font_box<'a>(
+    document: &'a pagura_document::Document,
+    dictionary: &'a Dictionary,
     kind: pagura_text::FontKind,
-) -> Option<Rect> {
+    position: pagura_core::Position,
+) -> Result<Option<Rect>> {
+    let lookup = |dictionary: &'a Dictionary, key: &[u8]| {
+        font_metadata(document, dictionary.get(key), position)
+    };
     let dictionary = if kind == pagura_text::FontKind::Type0 {
-        let first = document
-            .resolve(dictionary.get(b"DescendantFonts")?)
-            .ok()?
-            .as_array()?
-            .first()?;
-        document.resolve_dictionary(first).ok()?
+        let Some(first) = lookup(dictionary, b"DescendantFonts")?
+            .and_then(Value::as_array)
+            .and_then(<[Value]>::first)
+        else {
+            return Ok(None);
+        };
+        match font_metadata(document, Some(first), position)?.and_then(Value::as_dictionary) {
+            Some(dictionary) => dictionary,
+            None => return Ok(None),
+        }
     } else {
         dictionary
     };
     let dictionary = if kind == pagura_text::FontKind::Type3 {
         dictionary
     } else {
-        document
-            .resolve_dictionary(dictionary.get(b"FontDescriptor")?)
-            .ok()?
+        match lookup(dictionary, b"FontDescriptor")?.and_then(Value::as_dictionary) {
+            Some(dictionary) => dictionary,
+            None => return Ok(None),
+        }
     };
-    document
-        .resolve(dictionary.get(b"FontBBox")?)
-        .ok()?
-        .as_array()
-        .and_then(Rect::from_array)
+    Ok(lookup(dictionary, b"FontBBox")?
+        .and_then(Value::as_array)
+        .and_then(Rect::from_array))
+}
+/// Resolves a font entry text extraction reads; faults are reported as
+/// [`repairs::TEXT_FONT_METADATA`] and leave it absent.
+fn font_metadata<'a>(
+    document: &'a pagura_document::Document,
+    value: Option<&'a Value>,
+    position: pagura_core::Position,
+) -> Result<Option<&'a Value>> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    match document.resolve(value) {
+        Ok(value) => Ok(Some(value)),
+        Err(error) => {
+            ignore_metadata_fault(document, error, position, repairs::TEXT_FONT_METADATA)?;
+            Ok(None)
+        }
+    }
 }
 /// The property list of `BDC` (14.6.2): inline or a `Properties` resource.
 fn marked_properties<'a>(
@@ -489,17 +516,20 @@ fn property(
     })();
     match result {
         Err(error) => {
-            ignore_metadata_fault(document, error, position)?;
+            ignore_metadata_fault(document, error, position, MARKED_PROPERTY)?;
             Ok(None)
         }
         result => result,
     }
 }
 
+/// Tolerates a malformed or missing object in metadata only extraction
+/// reads, reporting it as `tag`; a budget error stays an error.
 fn ignore_metadata_fault(
     document: &pagura_document::Document,
     error: Error,
     position: pagura_core::Position,
+    tag: pagura_core::Repair,
 ) -> Result<()> {
     if !matches!(
         error.kind,
@@ -509,35 +539,28 @@ fn ignore_metadata_fault(
     ) {
         return Err(error);
     }
-    let mut diagnostic =
-        pagura_core::Diagnostic::new(pagura_text::repairs::MARKED_PROPERTY, error.message)
-            .at(position);
-    if let pagura_core::Position::Stream { object, .. } = position {
-        diagnostic = diagnostic.in_object(object);
-    }
-    crate::interpreter::repair(document, diagnostic)
+    crate::interpreter::repair(
+        document,
+        pagura_core::Diagnostic::new(tag, error.message)
+            .at(position)
+            .in_object_opt(position.object()),
+    )
 }
 
 fn marked_id(
     document: &pagura_document::Document,
     dictionary: Option<&Dictionary>,
+    position: pagura_core::Position,
 ) -> Result<Option<i64>> {
     let Some(value) = dictionary.and_then(|d| d.get(b"MCID")) else {
         return Ok(None);
     };
     match document.resolve(value) {
         Ok(value) => Ok(value.as_integer().filter(|n| *n >= 0)),
-        Err(error)
-            if matches!(
-                error.kind,
-                pagura_core::ErrorKind::Syntax
-                    | pagura_core::ErrorKind::MissingObject
-                    | pagura_core::ErrorKind::Cycle
-            ) =>
-        {
+        Err(error) => {
+            ignore_metadata_fault(document, error, position, MARKED_PROPERTY)?;
             Ok(None)
         }
-        Err(error) => Err(error),
     }
 }
 
@@ -820,6 +843,46 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn font_metadata_faults_are_reported_and_budget_errors_kept() {
+        let open = |name: &str, recovery| {
+            Document::open(
+                fixture("content", &format!("{name}.pdf")),
+                &OpenOptions {
+                    recovery,
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap()
+        };
+        // A FontBBox reference loop exhausts the reference budget; it is not
+        // a tolerated metadata fault, in either recovery mode.
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            let document = open("text-font-bbox-loop", recovery);
+            let page = document.page(0).unwrap();
+            crate::compile_page(&document, page).unwrap();
+            let error = super::text_page(&document, page, None).unwrap_err();
+            assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
+        }
+        let tag = crate::repairs::TEXT_FONT_METADATA;
+        let strict = open("text-font-bbox-malformed", Recovery::Strict);
+        let error = super::text_page(&strict, strict.page(0).unwrap(), None).unwrap_err();
+        assert_eq!(error.repair, Some(tag), "{error}");
+        assert!(matches!(
+            error.position,
+            pagura_core::Position::Stream { .. }
+        ));
+        let repaired = open("text-font-bbox-malformed", Recovery::Repair);
+        let text = super::text_page(&repaired, repaired.page(0).unwrap(), None).unwrap();
+        assert_eq!(text.glyphs().len(), 1);
+        assert!(
+            repaired
+                .diagnostics()
+                .iter()
+                .any(|d| d.repair() == Some(tag))
+        );
     }
 
     #[test]

@@ -9,7 +9,7 @@ use super::{
     Arc, Compiler, Dictionary, Error, FillRule, PathBuilder, Result, Transform, Value, resource,
 };
 use crate::operators::{Painting, Target, TextOperation};
-use pagura_core::Position;
+use pagura_core::{Position, ResultExt};
 use pagura_raster::{Path, Segment};
 use pagura_text::{Glyph, GlyphShape, PdfFont, WritingMode};
 
@@ -251,10 +251,7 @@ impl Compiler<'_> {
             .font
             .clone()
             .ok_or(Error::syntax("text showing requires a font"))?;
-        let glyphs = font.font.decode(bytes).map_err(|mut e| {
-            e.position = self.position;
-            e
-        })?;
+        let glyphs = font.font.decode(bytes).at(self.position)?;
         self.session
             .charge_operations(glyphs.len(), "text glyph work exceeded")?;
         self.extract_show()?;

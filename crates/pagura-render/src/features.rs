@@ -77,6 +77,11 @@ pub const APPEARANCE_BORDER_STYLE: Feature = Feature::new("appearance.border-sty
 /// Appearance generation for a rotated widget.
 pub const APPEARANCE_WIDGET_ROTATION: Feature = Feature::new("appearance.widget-rotation");
 
+/// Field text that does not fit its widget: no area inside the border
+/// padding, more characters than comb cells, DoNotScroll overflow, or text
+/// smaller than the minimum auto-size (12.7.4.3).
+pub const APPEARANCE_TEXT_FIT: Feature = Feature::new("appearance.text-fit");
+
 /// Inline images, multiple variable text sections or crossed content scopes
 /// in an appearance being updated.
 pub const APPEARANCE_UPDATE: Feature = Feature::new("appearance.update");
@@ -105,5 +110,6 @@ pub const ALL: &[Feature] = &[
     APPEARANCE_FONT_ENCODING,
     APPEARANCE_BORDER_STYLE,
     APPEARANCE_WIDGET_ROTATION,
+    APPEARANCE_TEXT_FIT,
     APPEARANCE_UPDATE,
 ];

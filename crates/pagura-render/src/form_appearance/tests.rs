@@ -240,3 +240,14 @@ fn text_updates_reject_sections_crossing_text_or_graphics_scopes() {
         );
     }
 }
+
+#[test]
+fn padding_that_leaves_no_text_area_is_an_unsupported_fit() {
+    let bbox = Rect::from_corners(0.0, 0.0, 4.0, 20.0).unwrap();
+    assert!(inset(bbox, 1.0).is_ok());
+    let error = inset(bbox, 2.0).unwrap_err();
+    assert_eq!(
+        error.kind,
+        ErrorKind::Unsupported(crate::features::APPEARANCE_TEXT_FIT)
+    );
+}

@@ -8,6 +8,7 @@ use super::{
     forms::FormBody,
 };
 use crate::form_appearance::Appearance;
+use pagura_core::ResultExt;
 
 impl Compiler<'_> {
     pub(super) fn annotations(&mut self, page: &Page) -> Result<()> {
@@ -29,15 +30,7 @@ impl Compiler<'_> {
             .transpose()?;
         for value in values {
             self.annotation(value, page.resources(), filled.as_ref())
-                .map_err(|error| {
-                    if let Some(id) = value.as_reference()
-                        && error.object.is_none()
-                    {
-                        error.in_object(id)
-                    } else {
-                        error
-                    }
-                })?;
+                .in_object_opt(value.as_reference())?;
         }
         Ok(())
     }

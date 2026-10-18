@@ -2253,6 +2253,37 @@
       ]
     },
     {
+      "id": "content/text-font-bbox-loop",
+      "kind": "pdf",
+      "description": "A FontBBox reference loop exhausts the reference budget during extraction",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/text-font-bbox-loop.pdf",
+      "sha256": "52d922f55d4170eb8b9b8176e7663bde3c207d8a73e9b0eb8e035c86923f0f81",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "extraction_error": "Limit"
+    },
+    {
+      "id": "content/text-font-bbox-malformed",
+      "kind": "pdf",
+      "description": "An unparsable FontBBox object is reported and extraction uses the default glyph box",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/text-font-bbox-malformed.pdf",
+      "sha256": "d28c2d296cca058602b1e254a4f55bb3f0302c8645f7ce56d44b3220d7336d31",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "content.text-font-metadata"
+      ]
+    },
+    {
       "id": "content/annotation-link-border",
       "kind": "pdf",
       "description": "12.5.4, 12.5.6.5, 12.5.6.8: border stays inside Rect; absent interior is transparent",

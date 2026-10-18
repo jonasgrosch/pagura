@@ -23,11 +23,12 @@ enum Configuration {
 impl Visibility {
     pub(crate) fn new(document: &Document) -> Result<Self> {
         Self::read(document).map_err(|error| {
-            document
-                .trailer()
-                .get(b"Root")
-                .and_then(Value::as_reference)
-                .map_or(error.clone(), |id| error.in_object(id))
+            error.in_object_opt(
+                document
+                    .trailer()
+                    .get(b"Root")
+                    .and_then(Value::as_reference),
+            )
         })
     }
     fn read(document: &Document) -> Result<Self> {

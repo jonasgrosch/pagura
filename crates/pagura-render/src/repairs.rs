@@ -24,6 +24,9 @@ pub const OPTIONAL_GROUP: Repair = Repair::new("content.optional-group");
 /// 9.3.6: retain accumulated glyph clips through ET after a nonclipping reset.
 /// Most readers keep the clip when recovering this prohibited transition.
 pub const TEXT_CLIP_RESET: Repair = Repair::new("content.text-clip-reset");
+/// 9.8.1, Table 120: text extraction reads BaseFont and FontBBox; an
+/// unreadable value leaves the font unnamed and its glyphs the default box.
+pub const TEXT_FONT_METADATA: Repair = Repair::new("content.text-font-metadata");
 /// 7.9.5; 12.5.5: skip an appearance with a zero-sized source or target
 /// rectangle. Most readers paint nothing where fitting has no area.
 pub const APPEARANCE_EMPTY: Repair = Repair::new("annotation.appearance-empty");
@@ -47,6 +50,7 @@ pub const ALL: &[Repair] = &[
     OPTIONAL_PROPERTIES,
     OPTIONAL_GROUP,
     TEXT_CLIP_RESET,
+    TEXT_FONT_METADATA,
     APPEARANCE_EMPTY,
     GRAPHICS_UNCLOSED,
     TYPE3_WIDTH,

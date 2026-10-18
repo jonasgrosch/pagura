@@ -833,12 +833,7 @@ fn opaque_commands(commands: &[Command]) -> bool {
 }
 
 pub(crate) fn contextual(error: Error, position: pagura_core::Position) -> Error {
-    let error = error.at(position);
-    if let pagura_core::Position::Stream { object, .. } = position {
-        error.in_object(object)
-    } else {
-        error
-    }
+    error.at(position).in_object_opt(position.object())
 }
 impl Command {
     pub(crate) fn position(&self) -> pagura_core::Position {

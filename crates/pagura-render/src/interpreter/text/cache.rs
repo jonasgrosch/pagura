@@ -1,5 +1,6 @@
 //! Per-compilation shared font, outline and image storage admission.
 use super::{Arc, Compiler, Dictionary, Error, PdfFont, Result, Value};
+use pagura_core::ResultExt;
 use pagura_raster::Path;
 use std::collections::BTreeMap;
 
@@ -335,16 +336,13 @@ impl Compiler<'_> {
         let path = {
             let mut diagnostics = pagura_core::Diagnostics::new(self.document.recovery());
             let result = program.outline_with_diagnostics(glyph, &mut diagnostics);
-            self.document
-                .report(diagnostics.take().into_iter().map(|mut diagnostic| {
-                    diagnostic.position = self.position;
-                    diagnostic.object = font.object;
-                    diagnostic
-                }));
-            Arc::new(result.map_err(|mut error| {
-                error.position = self.position;
-                error
-            })?)
+            self.document.report(
+                diagnostics
+                    .take()
+                    .into_iter()
+                    .map(|diagnostic| diagnostic.at(self.position).in_object_opt(font.object)),
+            );
+            Arc::new(result.at(self.position)?)
         };
         self.paint_charge(super::path_bytes(&path), 1)?;
         self.session

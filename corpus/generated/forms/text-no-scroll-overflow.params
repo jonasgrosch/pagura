@@ -1,4 +1,4 @@
 mode=text
 error=
-appearance=error:invalid-argument
+appearance=error:unsupported:appearance.text-fit
 changed=true

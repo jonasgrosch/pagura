@@ -97,15 +97,15 @@ impl Color {
             {
                 return Err(Error::syntax("colour space requires SCN or scn"));
             }
-            let mut diagnostic = pagura_core::Diagnostic::new(
-                crate::repairs::COLOR_OPERATOR,
-                "colour space requires SCN or scn",
-            )
-            .at(position);
-            if let pagura_core::Position::Stream { object, .. } = position {
-                diagnostic = diagnostic.in_object(object);
-            }
-            crate::interpreter::repair(document, diagnostic)?;
+            crate::interpreter::repair(
+                document,
+                pagura_core::Diagnostic::new(
+                    crate::repairs::COLOR_OPERATOR,
+                    "colour space requires SCN or scn",
+                )
+                .at(position)
+                .in_object_opt(position.object()),
+            )?;
         }
         Ok(())
     }
@@ -222,9 +222,10 @@ impl Space {
     ) -> Result<[f64; 3]> {
         let n = |i: usize| c.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0);
         match self {
-            Self::Pattern(_) => Err(Error::invalid_argument(
-                "pattern is not a component colour space",
-            )),
+            Self::Pattern(_) => {
+                debug_assert!(false, "solid colours never use a Pattern space");
+                Ok([0.0; 3])
+            }
             Self::Special { .. } => Ok([1.0 - n(0); 3]),
             Self::Gray => Ok([n(0); 3]),
             Self::Rgb => Ok([n(0), n(1), n(2)]),
