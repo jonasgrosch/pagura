@@ -94,6 +94,7 @@ def summarize(name: str, report: dict) -> str:
     total = len(files)
     count = Counter()
     open_failures, enumeration_failures, page_failures, repairs = Counter(), Counter(), Counter(), Counter()
+    information = Counter()
     pages = rendered = 0
     for entry in files:
         result = entry["result"]
@@ -112,6 +113,7 @@ def summarize(name: str, report: dict) -> str:
             continue
         count["strict" if result["strict"] else "repaired"] += 1
         repairs.update(result["repairs"])
+        information.update(result.get("information", []))
         pages += result["pages"] or 0
         rendered += result["rendered"]
         page_failures.update(tag(failure["error"]) for failure in result["failures"])
@@ -148,6 +150,7 @@ def summarize(name: str, report: dict) -> str:
     lines += table(enumeration_failures, "Page-tree failure")
     lines += table(page_failures, "Page failure")
     lines += table(repairs, "Repair")
+    lines += table(information, "Information")
     return "\n".join(lines)
 
 

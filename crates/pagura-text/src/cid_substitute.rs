@@ -4,7 +4,7 @@ use crate::{
     font::{Mapping, Source, cid_collection, to_unicode},
     metrics::Metrics,
 };
-use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Repair, Result};
+use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Result};
 use pagura_document::Document;
 use pagura_font::{CmapSubtable, FontProgram, GlyphId};
 
@@ -13,7 +13,7 @@ use pagura_font::{CmapSubtable, FontProgram, GlyphId};
 /// a document reference or reporting repeatedly during extraction. Missing
 /// values draw no mark and retain their original PDF metrics in both modes.
 /// This describes a provider coverage limitation, not malformed PDF input.
-pub const CID_GLYPH_MISSING: Repair = Repair::new("font.cid-glyph-missing");
+pub const CID_GLYPH_MISSING: &str = "font.cid-glyph-missing";
 
 pub(crate) fn load(
     document: &Document,
@@ -68,7 +68,7 @@ pub(crate) fn load(
             break;
         }
     }
-    let to_unicode = to_unicode(document, font, &mapping);
+    let to_unicode = to_unicode(document, font, &mapping)?;
     report(
         document,
         id,
@@ -114,8 +114,8 @@ pub(crate) fn glyph(
     })
 }
 
-fn report(document: &Document, id: Option<ObjectId>, tag: Repair, message: &'static str) {
-    let mut diagnostic = Diagnostic::new(tag, message);
+fn report(document: &Document, id: Option<ObjectId>, tag: &'static str, message: &'static str) {
+    let mut diagnostic = Diagnostic::information(tag, message);
     diagnostic.object = id;
     document.report([diagnostic]);
 }

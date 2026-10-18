@@ -12,7 +12,7 @@ primary standards.
 
 | Area | Implemented | Remaining |
 |---|---|---|
-| Core | Order-preserving dictionaries (key-indexed above 16 entries), inline names, finite reals, generation-aware references; per-object value budgets; structured errors with `Feature` tags, positions, objects and the repair a strict rejection refused; reported repairs (`Recovery::Strict`/`Repair`) | Broader syntax recovery |
+| Core | Order-preserving dictionaries (key-indexed above 16 entries), inline names, finite reals, generation-aware references; per-object value budgets; structured errors with `Feature` tags, positions, objects and the repair a strict rejection refused; typed repair/information diagnostics (`Recovery::Strict`/`Repair`) | Broader syntax recovery |
 | Document | Classic and stream cross-references, object streams, `/Prev` revisions with cycle detection, hybrid files, lazily parsed `OnceLock`-cached objects, references to undefined objects as null, typed cached page tree with shared resources, the ADR 0003 repair catalogue including full reconstruction | Linearization hints; the remaining failures of other projects' bug-reproduction suites |
 | Filters | ASCIIHex, ASCII85, RunLength, LZW, Flate (zlib and reported raw DEFLATE), PNG/TIFF predictors at 1–16 bits; caps enforced while decoding | — |
 | Security | MD5, SHA-2, RC4, AES; standard handler R2–R4, R5 (Adobe extension), R6 with SASLprep (Unicode 3.2.0 NFKC) for non-ASCII passwords; crypt filters; `/Perms` checks reported | Public-key handlers (`security.Adobe-PubSec`) |
@@ -20,7 +20,7 @@ primary standards.
 | Text | `pagura-text`: simple, Type 3 and composite fonts; standard encodings and Differences; widths, CID metrics, embedded CMaps with usecmap, CIDToGIDMap, ToUnicode; non-embedded fonts through bundled substitutes via a `Provider` (ADR 0009): metric-compatible Latin outlines, FoxitSymbol and FoxitDingbats, and, with the opt-in `cjk-fonts` feature, Source Han Sans for the four CJK collections; the predefined CJK CMaps; `pagura licenses` lists the notices; fonts and outlines shared across a document's pages by `RenderContext`; TrueType glyph selection per 9.6.5.4 with documented reader fallbacks; per-font retained-memory estimates | Vertical writing with substituted CID fonts (`font.cid-substitute-vertical`); non-embedded fonts with unknown symbolic encodings or Identity-ordered collections; Type 1 programs that need PostScript |
 | Images | `pagura-image`: samples at 1–16 bits, decode arrays, mask metadata, inline images; JPEG (baseline and progressive Huffman, CMYK/YCCK); CCITT G3/G4; JBIG2 generic, refinement, symbol, text, halftone and Huffman-coded regions; JPEG 2000 Part 1 with precincts, progression changes, code-block modes, ROI and partial-quality reconstruction; reported repairs for damaged data and malformed parameters | JPEG arithmetic coding and 12-bit samples; JBIG2 extended templates; JPEG 2000 colour specifications and sample layouts outside the supported set |
 | Rendering | Display list; sweep rasterizer with exact-area antialiasing; strokes with caps, joins, dashes and stroke adjustment; geometric clipping; Device, Default, Indexed, ICC (matrix/TRC and LUT profiles), CalGray, CalRGB, Lab, Separation and DeviceN colour; PDF functions and transfer functions; form XObjects; text in every render mode, Type 3 glyphs and bundled substitutes; images with masks, soft masks, Decode, Interpolate and separable minification; tiling patterns and mesh shadings; transparency groups, soft masks and blend modes in an RGB blending space; optional content with View usage; annotation appearances; crop, rotation, UserUnit; tiles; reported recovery of common content faults | Non-RGB group colour spaces (`transparency.group-colorspace`); overprint simulation (`transparency.overprint`); transfer functions under transparency (`transparency.transfer`); some annotation appearances; known defect: the 8-bit path for all-opaque pages can exceed ADR 0004's one-level bound at partially covered pixels, because it quantizes source colours and rounds twice per mark (up to about 1.5 levels per partial store, accumulating) |
-| Reading | Positioned text extraction from the content interpreter, with words, lines, reading order, ActualText/Alt/ReversedChars (14.9.4) and search with highlight quads (`pagura text`, `pagura find`); a separate logical view for tagged pages (14.7–14.8: structure order, role maps, artifacts, structure ActualText/Alt, linked to the page's glyphs) that never changes page search or selection; viewer search, selection, copy, links and outlines (protocol 1.2); navigation: name and number trees, every destination type, named destinations, outlines, link annotations, inert actions (never followed or executed) and page labels; a read-only form field model (AcroForm 12.7: field tree, types, inherited values, widgets, inert field actions; XFA detected, not interpreted) | The logical view in the viewer's accessibility tree; structure namespaces (`text.structure-namespace`); bidirectional text; form filling and appearance generation; accessibility; signature validation (ADR 0015) (M6) |
+| Reading | Positioned text extraction from the content interpreter, with words, lines, reading order, ActualText/Alt/ReversedChars (14.9.4) and search with highlight quads (`pagura text`, `pagura find`); a separate logical view for tagged pages (14.7–14.8: structure order, role maps, artifacts, structure ActualText/Alt, linked to the page's glyphs) that never changes page search or selection; viewer search, selection, copy, links and outlines (protocol 1.4); navigation: name and number trees, every destination type, named destinations, outlines, link annotations, inert actions (never followed or executed) and page labels; a read-only form field model (AcroForm 12.7: field tree, types, inherited values, widgets, inert field actions; XFA detected, not interpreted) | The logical view in the viewer's accessibility tree; structure namespaces (`text.structure-namespace`); bidirectional text; form filling and appearance generation; accessibility; signature validation (ADR 0015) (M6) |
 | Writing | Deterministic new documents, insertion-ordered dictionaries, budgets | Incremental saves, signatures, redaction (M7) |
 | WebAssembly | `pagura-host` WASI command (protocol v1, `crates/pagura-host/PROTOCOL.md`); dependency-free browser shim and viewer; native/WASI byte parity; protocol 1.1 viewport generations; bounded LRU of compiled pages; continuous scrolling, zoom and a password prompt; verified in a real browser (cross-origin isolated, exact pixels at DPR 2, multi-page navigation, explicit unsupported banner) | Threads; interrupting a running tile; browser checks of the new gestures |
 | Safety | Workspace-only product dependencies; every product target forbids unsafe; clippy pedantic, `missing_docs`, no `unwrap`/`expect`/`panic`; eleven cargo-fuzz targets with a bounded smoke run (`tools/fuzz_smoke.py`) and every finding replayed on stable Rust | Process sandbox, long fuzz campaigns |
@@ -47,9 +47,18 @@ painting dominates their time and is being optimized.
 | PDF Differences | 37 | 75.7% | 24 | 23.3% (10/43) | 0 / 0 |
 | PDF 2.0 examples | 7 | 100.0% | 6 | 12.5% (1/8) | 0 / 0 |
 
-Generated fixtures: 932 PDF cases with independent expectations pass
+Generated fixtures: 951 PDF cases with independent expectations pass
 (`tools/conformance.py`), plus 337 codec, 97 crypto and 19 raster vectors in
 crate tests.
+
+Informational diagnostics (`DiagnosticKind::Information`, ADR 0003/0009):
+`font.substituted` reports permitted non-embedded font substitution;
+`font.cid-glyph-missing` reports incomplete substitute coverage once per font,
+keeping the PDF advance while an unavailable glyph paints nothing. Both are
+permitted in Strict and Repair modes; neither is an applied repair. All other
+existing diagnostic tags remain repairs. CLI reports separate `repairs` and
+`information` lists. Host protocol 1.4 and the viewer preserve the distinction;
+older protocol diagnostic snapshots contain repairs only.
 
 Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 
@@ -77,9 +86,12 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   `font.tounicode-invalid` (9.10.3): use low-byte simple-font sources, omit
   invalid UTF-16 values, carry overflowing range destinations without
   full-string wrap, or discard unusable extraction data. Conflicting low-byte
-  aliases lose their Unicode value. Strict rejects extraction repairs and
-  discards their map, reporting the rejection while painting continues;
-  painting-critical repairs still reject in Strict.
+  aliases lose their Unicode value. Strict rejects font loading on malformed
+  ToUnicode data, preserving the original error kind, repair tag, object and
+  position without reporting an applied repair. Repair mode retains drawable
+  fonts and reports extraction repairs or discarded maps. Null ToUnicode
+  values, including indirect and
+  undefined references, are absent without repairs (7.3.9–7.3.10).
 - `content.colour-operator` (8.6.8, Table 73): `sc`/`SC` on a space that needs
   `scn`/`SCN` reads matching numeric operands as `scn`/`SCN`;
   `content.empty-path` (8.5.3.1): painting with no current path paints nothing
@@ -99,8 +111,6 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   discarded; `image.stencil-color-space` (8.9.5.1, Table 87): an image mask's
   extraneous ColorSpace is ignored; `image.filter-abbreviation` (8.9.7, Table
   92): the inline-image filter abbreviations are accepted on image XObjects.
-- `font.cid-glyph-missing` (9.7.4, 9.7.5): a CID that a substitute CJK font
-  cannot draw paints nothing and keeps its PDF advance, reported once per font.
 - `text.clip-mode-reset` (9.3.6, 9.4.1): a text rendering mode reset to a
   non-clipping mode before `ET` keeps the clip already accumulated.
 - `text.marked-property` (14.6.2, 14.9.3–14.9.5): an unusable marked-content

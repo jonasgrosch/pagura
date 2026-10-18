@@ -170,7 +170,7 @@ mod structure_tests {
             let actual: Vec<_> = document
                 .diagnostics()
                 .iter()
-                .map(|item| item.repair.as_str())
+                .map(pagura_core::Diagnostic::tag)
                 .collect();
             assert_eq!(actual, tags, "{name}");
             let strict = load(name, Recovery::Strict).and_then(|document| contents(&document));
@@ -348,11 +348,7 @@ mod reconstruction {
                 CONTENT,
                 "{name}"
             );
-            assert_eq!(
-                document.diagnostics()[0].repair.as_str(),
-                "xref.rebuilt",
-                "{name}"
-            );
+            assert_eq!(document.diagnostics()[0].tag(), "xref.rebuilt", "{name}");
             assert!(document.revisions().is_empty(), "{name}");
         }
     }
@@ -412,7 +408,7 @@ mod reconstruction {
                 (0_u8..16).map(|n| n * 17).collect::<Vec<_>>()
             );
             assert_eq!(table.rebuild_streams.len(), streams);
-            assert_eq!(diagnostics.as_slice()[0].repair.as_str(), "xref.rebuilt");
+            assert_eq!(diagnostics.as_slice()[0].tag(), "xref.rebuilt");
             assert!(table.entries.contains_key(&encrypt));
         }
     }
@@ -511,7 +507,10 @@ mod field_recovery {
                 "{name}"
             );
             assert!(
-                document.diagnostics().iter().any(|item| item.repair == tag),
+                document
+                    .diagnostics()
+                    .iter()
+                    .any(|item| item.repair() == Some(tag)),
                 "{name}"
             );
             if name == "catalog-type-missing" {
@@ -530,7 +529,7 @@ mod field_recovery {
             document
                 .diagnostics()
                 .iter()
-                .map(|item| item.repair)
+                .filter_map(pagura_core::Diagnostic::repair)
                 .collect::<Vec<_>>(),
             [tags::HEADER_OFFSET, tags::HEADER_FORMAT]
         );
@@ -559,7 +558,7 @@ mod field_recovery {
                 document
                     .diagnostics()
                     .iter()
-                    .any(|item| item.repair == tags::XREF_REBUILT)
+                    .any(|item| item.repair() == Some(tags::XREF_REBUILT))
             );
         }
     }

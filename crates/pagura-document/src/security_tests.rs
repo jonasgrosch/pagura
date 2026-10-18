@@ -61,7 +61,10 @@ fn safe_dictionary_deviations_are_strict_errors_and_reported_repairs() {
                 .starts_with(b"1 0 0 rg")
         );
         assert!(
-            document.diagnostics().iter().any(|item| item.repair == tag),
+            document
+                .diagnostics()
+                .iter()
+                .any(|item| item.repair() == Some(tag)),
             "{name}"
         );
         assert_eq!(document.original_bytes(), bytes);
@@ -164,7 +167,7 @@ fn padded_key_choice_precedes_cached_strings_and_obeys_decoding_limits() {
                 document
                     .diagnostics()
                     .iter()
-                    .filter(|d| d.repair == tags::KEY_PADDING)
+                    .filter(|d| d.repair() == Some(tags::KEY_PADDING))
                     .count(),
                 1
             );

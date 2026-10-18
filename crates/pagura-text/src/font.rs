@@ -122,7 +122,7 @@ pub(crate) fn load_with(
         Mapping::Composite { map, .. } => map.mode,
         Mapping::Simple(_) => WritingMode::Horizontal,
     };
-    let to_unicode = to_unicode(document, font, &mapping);
+    let to_unicode = to_unicode(document, font, &mapping)?;
     let cid_unicode = collection_unicode(document, metrics_font, &mapping, provider)?;
     Ok(PdfFont {
         kind,
@@ -270,7 +270,7 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
     }
     let encoding = encoding::load(document, Some(encoding), std::array::from_fn(|_| None))?;
     let mapping = Mapping::Simple(Box::new(SimpleMapping::new(encoding, document.limits())?));
-    let to_unicode = to_unicode(document, font, &mapping);
+    let to_unicode = to_unicode(document, font, &mapping)?;
     Ok(PdfFont {
         kind: FontKind::Type3,
         writing_mode: WritingMode::Horizontal,
@@ -293,24 +293,26 @@ pub(crate) fn to_unicode(
     document: &Document,
     font: &Dictionary,
     mapping: &Mapping,
-) -> Option<CMap> {
-    let value = font.get(b"ToUnicode")?;
+) -> Result<Option<CMap>> {
+    let Some(value) = font.get(b"ToUnicode") else {
+        return Ok(None);
+    };
     match to_unicode_map(document, value, mapping) {
-        Ok(map) => Some(map),
+        Ok(map) => Ok(map),
         Err(error) => {
-            crate::repairs::Report::new(document).discarded(&error, value.as_reference());
-            None
+            crate::repairs::Report::new(document).discarded(error, value.as_reference())?;
+            Ok(None)
         }
     }
 }
 
-// This extraction-only operation may fail under Strict. Its caller keeps the
-// drawable font, records the rejection and discards the optional map (9.10.3).
+// ToUnicode does not select glyphs (9.10.3), but its malformed data still
+// requires permission to repair or discard (ADR 0003).
 pub(crate) fn to_unicode_map(
     document: &Document,
     value: &Value,
     mapping: &Mapping,
-) -> Result<CMap> {
+) -> Result<Option<CMap>> {
     to_unicode_inner(document, value, mapping).map_err(|mut error| {
         error
             .repair
@@ -319,7 +321,12 @@ pub(crate) fn to_unicode_map(
     })
 }
 
-fn to_unicode_inner(document: &Document, value: &Value, mapping: &Mapping) -> Result<CMap> {
+fn to_unicode_inner(document: &Document, value: &Value, mapping: &Mapping) -> Result<Option<CMap>> {
+    // Null dictionary values are absent, including indirect or undefined ones
+    // (7.3.9-7.3.10). They require no repair in either recovery mode.
+    if document.resolve(value)?.is_null() {
+        return Ok(None);
+    }
     let id = value
         .as_reference()
         .ok_or_else(|| Error::syntax("ToUnicode must be a stream reference"))?;
@@ -337,7 +344,7 @@ fn to_unicode_inner(document: &Document, value: &Value, mapping: &Mapping) -> Re
         }
     }
     .map_err(|e| e.in_object(id))?;
-    Ok(map)
+    Ok(Some(map))
 }
 
 fn collection_unicode(

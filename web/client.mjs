@@ -1,5 +1,5 @@
 import { HostFailure } from './failure.mjs';
-import { encodeRequest, FrameDecoder, HostError, VERSION_1_3 } from './protocol.mjs';
+import { encodeRequest, FrameDecoder, HostError, VERSION_1_4 } from './protocol.mjs';
 import { createInput, InputWriter } from './transport.mjs';
 
 /** Long-lived serial session. Recreate the client after a trap/terminal failure. */
@@ -70,9 +70,10 @@ export class SessionClient {
     this.tail = result.then(() => {}, () => {}).finally(() => { this.queued--; });
     return result;
   }
-  async hello(version = VERSION_1_3) {
+  async hello(version = VERSION_1_4) {
     const result = await this.request(1, { version });
     if (result.version !== version) { const error = new Error('Unsupported host protocol version'); this.fail(error); throw error; }
+    this.version = version;
     return result;
   }
   open(bytes, recovery = 1, password = new Uint8Array()) { return this.request(2, { bytes, recovery, password }); }
@@ -110,7 +111,7 @@ export class SessionClient {
     const names = { trap: 'trap', memory: 'memory failure', budget: 'budget exceeded', deadline: 'deadline exceeded' };
     this.fail(new HostFailure(names[reason], failures[reason]));
   }
-  diagnostics(document) { return this.request(5, { document }); }
+  diagnostics(document) { return this.request(this.version === VERSION_1_4 ? 17 : 5, { document }); }
   close(document) {
     this.generations.delete(document); this.selectedGenerations.delete(document);
     return this.request(6, { document });

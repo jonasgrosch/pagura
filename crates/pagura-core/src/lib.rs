@@ -16,7 +16,7 @@ mod retained;
 pub mod syntax;
 mod value;
 
-pub use diagnostic::{Diagnostic, Diagnostics, Recovery, Repair};
+pub use diagnostic::{Diagnostic, DiagnosticKind, Diagnostics, Recovery, Repair};
 pub use dictionary::Dictionary;
 pub use error::{Error, ErrorKind, Feature, Position, Result};
 pub use limits::Limits;

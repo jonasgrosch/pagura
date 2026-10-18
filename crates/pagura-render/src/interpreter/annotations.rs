@@ -391,7 +391,10 @@ mod tests {
             );
             let diagnostics = repaired.diagnostics();
             assert_eq!(diagnostics.len(), 1);
-            assert_eq!(diagnostics[0].repair, super::super::tags::APPEARANCE_EMPTY);
+            assert_eq!(
+                diagnostics[0].repair(),
+                Some(super::super::tags::APPEARANCE_EMPTY)
+            );
             assert_eq!(diagnostics[0].object, Some(object));
             assert_eq!(diagnostics[0].position, position);
             compile_page(&repaired, page).unwrap();

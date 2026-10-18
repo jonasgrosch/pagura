@@ -746,7 +746,7 @@ mod tests {
                 } else {
                     result.unwrap();
                     assert_eq!(&bytes[parser.offset()..], next);
-                    assert_eq!(diagnostics.as_slice()[0].repair, tags::OBJECT_END);
+                    assert_eq!(diagnostics.as_slice()[0].repair(), Some(tags::OBJECT_END));
                 }
             }
         }
@@ -815,7 +815,7 @@ mod tests {
                 document
                     .diagnostics()
                     .iter()
-                    .filter(|item| item.repair == tags::LENGTH_CORRECTED)
+                    .filter(|item| item.repair() == Some(tags::LENGTH_CORRECTED))
                     .count(),
                 1
             );
@@ -933,7 +933,11 @@ mod direct_tests {
                 assert_eq!(page.id(), ObjectId::new(5, 0));
             }
             let diagnostics = document.diagnostics();
-            assert!(diagnostics.iter().any(|item| item.repair == DIRECT_STREAM));
+            assert!(
+                diagnostics
+                    .iter()
+                    .any(|item| item.repair() == Some(DIRECT_STREAM))
+            );
             document.content_streams(page).unwrap();
             assert_eq!(document.diagnostics(), diagnostics);
         }

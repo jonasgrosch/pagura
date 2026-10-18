@@ -225,6 +225,18 @@
         "pagura-host session::tests::retention_and_supervisor_cancellation_release_on_close"
       ],
       "gaps": "No engine checkpoints within operators or display-list commands; no WASI bridge to the supervisor flag. Current browser generations skip queued work, and fatal deadlines terminate the execution thread."
+    },
+    {
+      "id": "host-diagnostic-kinds",
+      "reference": "project-policy",
+      "clauses": [],
+      "status": "Protocol 1.4 kinds and repairs-only legacy snapshots with native/WASI parity",
+      "tests": [
+        "pagura-host protocol::tests::diagnostic_kinds_have_independent_wire_oracles_and_legacy_filtering",
+        "tools/host_test.mjs testDiagnosticKinds",
+        "tools/host_test.mjs viewer mixed diagnostic counts"
+      ],
+      "gaps": "Information omitted from older diagnostics responses is available through the negotiated 1.4 typed snapshot."
     }
   ]
 }

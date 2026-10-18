@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { WASI } from 'node:wasi';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
-import { FrameDecoder, encodeRequest, HostError, decodeResponse, MAX_FILE, VERSION_1_1, VERSION_1_2, VERSION_1_3 } from '../web/protocol.mjs';
+import { FrameDecoder, encodeRequest, HostError, decodeResponse, MAX_FILE, VERSION_1_1, VERSION_1_2, VERSION_1_3, VERSION_1_4 } from '../web/protocol.mjs';
 import { HostFailure, failureReason } from '../web/failure.mjs';
 import { SessionClient } from '../web/client.mjs';
 import { createWasi } from '../web/wasi.mjs';
@@ -134,7 +134,7 @@ async function testGenerations(client, root, native, wasiRun) {
 async function main() {
   const root = fileURLToPath(new URL('../', import.meta.url));
   const native = join(root, 'target/debug/pagura-host');
-  const wasm = await WebAssembly.compile(await readFile(join(root, 'target/wasm32-wasip1/release/pagura-host.wasm')));
+  let wasm = await WebAssembly.compile(await readFile(join(root, 'target/wasm32-wasip1/release/pagura-host.wasm')));
   const serverChecks = spawnSync('python3', [join(root, 'web/test_server.py')], { encoding: 'utf8', timeout: 30000 });
   assert.ifError(serverChecks.error); assert.equal(serverChecks.status, 0, serverChecks.stderr);
   const manifest = JSON.parse(await readFile(join(root, 'corpus/manifests/classic.json'), 'utf8'));
@@ -292,7 +292,16 @@ async function main() {
       { name: 'duplicate', url: 'http://localhost:8000/?file=/fixtures/a.pdf&file=/fixtures/b.pdf',
         fetch: async () => assert.fail('Ambiguous startup URL reached fetch'), error: /specified once/ },
     ]) await testViewer(TestWorker, root, manifest, startup);
-    console.log(`Host checks passed: ${tested} classic render cases; native/WASI bytes; browser worker shim/client pixels; ${malformed.length} terminal failures; independent PPM oracles; capability denials; refused repair tags; multi-page navigation; startup fixture loading; viewer DOM harness; v1.2 reading/search/navigation and markup oracles.`);
+    // Opt-in builds use the same font feature on native and WASI. The
+    // default module above remains the reference for data-free parity.
+    wasm = await WebAssembly.compile(await readFile(join(root, 'target/host-bundled/wasm32-wasip1/release/pagura-host.wasm')));
+    const bundled = new SessionClient(new TestWorker());
+    try {
+      await bundled.hello();
+      await testDiagnosticKinds(bundled, root, join(root, 'target/host-bundled/release/pagura-host'), wasiRun);
+    } finally { bundled.destroy(); }
+    await testViewer(TestWorker, root, manifest, null, true);
+    console.log(`Host checks passed: ${tested} classic render cases; native/WASI bytes; browser worker shim/client pixels; ${malformed.length} terminal failures; independent PPM oracles; capability denials; refused repair tags; multi-page navigation; startup fixture loading; viewer DOM harness; v1.2 reading/search/navigation and markup oracles; v1.4 diagnostic kinds and separate viewer counts.`);
   } finally {
     client?.destroy();
     await Promise.all(files.map((file) => file.close())); await rm(scratch, { recursive: true, force: true });
@@ -355,7 +364,12 @@ function testCodecAndCapabilities() {
   const failure = decodeResponse(refused).value;
   assert.equal(failure.category, 1); assert.equal(failure.tag, ''); assert.equal(failure.repair, 'file.trailing-bytes');
   assert.match(String(failure), /recovery would repair it \[file\.trailing-bytes\]/);
-  const wrongCategory = refused.slice(); wrongCategory[5] = 2;
+  for (const category of [2, 5]) {
+    const originalCategory = refused.slice(); originalCategory[5] = category;
+    const preserved = decodeResponse(originalCategory).value;
+    assert.equal(preserved.category, category); assert.equal(preserved.repair, 'file.trailing-bytes');
+  }
+  const wrongCategory = refused.slice(); wrongCategory[5] = 3;
   assert.throws(() => decodeResponse(wrongCategory), /Invalid structured error/);
   const draft = Buffer.from([255, 2, 0, 0, 0, 1, 0, 0, 0, 0, 3, 0, 0, 0, 98, 97, 100, 0, 0]);
   assert.throws(() => decodeResponse(draft), /Truncated protocol response/);
@@ -383,7 +397,7 @@ function testCodecAndCapabilities() {
  * Minimal DOM/Canvas stand-ins expose event and state errors, while all PDF
  * pixels still come from the real WASM command in a worker and the actual shim.
  */
-async function testViewer(TestWorker, root, manifest, startup = null) {
+async function testViewer(TestWorker, root, manifest, startup = null, diagnosticKinds = false) {
   class Element {
     constructor(id) {
       this.id = id; this.tagName = id.toUpperCase(); this.children = []; this.listeners = new Map(); this.style = {}; this.attributes = new Map();
@@ -457,7 +471,7 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
   const view = (index) => elements.get('page-surface').children.find((element) => element.getAttribute('data-page') === String(index));
   const canvases = (index = 0) => view(index)?.children.filter((element) => element.tagName === 'CANVAS') ?? [];
   try {
-    await import(`../web/viewer.mjs?test=${startup?.name ?? 'continuous'}`);
+    await import(`../web/viewer.mjs?test=${diagnosticKinds ? 'diagnostic-kinds' : startup?.name ?? 'continuous'}`);
     if (startup) {
       assert.equal(fakeWindow.paguraDebug, undefined);
       if (startup.error) {
@@ -473,10 +487,17 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
       return;
     }
     assert.equal(elements.get('status').textContent, 'Ready — open a PDF');
+    if (diagnosticKinds) {
+      const mixed = { id: 'paint/bundled-diagnostic-kinds', path: 'corpus/generated/paint/bundled-diagnostic-kinds.pdf' };
+      await pick(mixed); await waitFor(ready);
+      assert.equal(elements.get('diagnostic-count').textContent, 'Repairs: 1 · Information: 1');
+      assert.deepEqual(elements.get('repair-list').children.map((item) => item.textContent.split(' [')[0]), ['Repair', 'Information']);
+      return;
+    }
     for (const entry of manifest.cases.filter((entry) => entry.expected === 'render')) {
       await pick(entry); await waitFor(ready);
       assert.equal(elements.get('error').hidden, true);
-      assert.equal(elements.get('diagnostic-count').textContent, `Repairs: ${entry.repairs.length}`);
+      assert.equal(elements.get('diagnostic-count').textContent, `Repairs: ${entry.repairs.length} · Information: ${(entry.information ?? []).length}`);
       assert.equal(elements.get('page').value, '1');
       const rgb = ppmPixels(await readFile(join(root, entry.oracle)), entry.width, entry.height);
       assert.ok(canvases().length > 0);
@@ -986,4 +1007,46 @@ async function testReading(client, root, native, wasiRun) {
     const frames = await parity(`older-${version}`, [open(simple), ...[10,11,12,13,14,15].map((kind) => [kind, {document:1,page:0,query:'Z',start:0,end:1,offset:0,limit:1,flags:4}]), [3,{document:1,page:0}]], version);
     assert.ok(frames.slice(2,-1).every((f) => f.kind === 255 && f.value.category === 7)); assert.equal(frames.at(-1).kind,131);
   }
+}
+
+async function testDiagnosticKinds(client, root, native, wasiRun) {
+  const bytes = new Uint8Array(await readFile(join(root, 'corpus/generated/paint/bundled-diagnostic-kinds.pdf')));
+  const rect = { x: 0, y: 0, width: 64, height: 64 };
+  const tile = { document: 1, page: 0, scale: 1, ...rect };
+  for (const version of [1, VERSION_1_1, VERSION_1_2, VERSION_1_3, VERSION_1_4]) {
+    const input = Buffer.concat([
+      encodeRequest(1, 1, { version }),
+      encodeRequest(2, 2, { bytes, recovery: 1, password: new Uint8Array() }),
+      encodeRequest(4, 3, tile), encodeRequest(5, 4, { document: 1 }),
+      encodeRequest(17, 5, { document: 1 }), encodeRequest(6, 6, { document: 1 }),
+    ]);
+    const output = spawnSync(native, [], { input, timeout: 30000 });
+    assert.ifError(output.error); assert.equal(output.status, 0);
+    const wasi = await wasiRun(input, `diagnostic-kinds-${version}`);
+    assert.equal(wasi.code, 0); bytesEqual(wasi.bytes, output.stdout, 'diagnostic kinds native/WASI parity');
+    const frames = parse(wasi.bytes);
+    assert.deepEqual(frames[3].value.map(({ kind, tag }) => ({ kind, tag })),
+      [{ kind: 'repair', tag: 'font.descriptor-weight' }]);
+    if (version === VERSION_1_4) {
+      assert.equal(frames[4].kind, 145);
+      assert.deepEqual(frames[4].value.map(({ kind, tag }) => ({ kind, tag })),
+        [{ kind: 'repair', tag: 'font.descriptor-weight' }, { kind: 'information', tag: 'font.substituted' }]);
+    } else { assert.equal(frames[4].kind, 255); assert.equal(frames[4].value.category, 7); }
+    assert.equal(frames[5].kind, 134);
+  }
+  const opened = await client.open(bytes);
+  await client.renderTile(opened.document, 0, 1, rect);
+  assert.deepEqual((await client.diagnostics(opened.document)).map((item) => item.kind), ['repair', 'information']);
+  await client.close(opened.document);
+  const valid = new Uint8Array(await readFile(join(root, 'corpus/generated/paint/bundled-helvetica.pdf')));
+  const strict = await client.open(valid, 0);
+  await client.renderTile(strict.document, 0, 1, rect);
+  const information = await client.diagnostics(strict.document);
+  assert.deepEqual(information.map(({ kind, tag }) => ({ kind, tag })), [{ kind: 'information', tag: 'font.substituted' }]);
+  await client.close(strict.document);
+  // Reject unknown kind bytes and every truncation independently of the encoder.
+  const body = Uint8Array.from([145,1,0,0,0,1,0,0,0,1,3,0,0,0,97,46,98,1,0,0,0,120,0,0]);
+  assert.equal(decodeResponse(body).value[0].kind, 'information');
+  for (let end=0; end<body.length; end++) assert.throws(() => decodeResponse(body.subarray(0,end)));
+  const invalid = body.slice(); invalid[9] = 2; assert.throws(() => decodeResponse(invalid), /Unknown diagnostic kind/);
 }

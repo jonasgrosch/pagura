@@ -807,7 +807,7 @@ mod recovery_tests {
             let mut repair =
                 Parser::new(bytes, Origin::File, Limits::default()).with_recovery(Recovery::Repair);
             repair.parse().unwrap();
-            assert_eq!(repair.take_diagnostics()[0].repair, tag);
+            assert_eq!(repair.take_diagnostics()[0].repair(), Some(tag));
         }
         let mut parser = Parser::new(b"/A# /B#2 /C#23 0 0 R", Origin::File, Limits::default())
             .with_recovery(Recovery::Repair);

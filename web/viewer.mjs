@@ -173,9 +173,10 @@ function failPage(index, error) {
 async function diagnostics(epoch) {
   const items = await client.diagnostics(handle);
   if (epoch !== documentEpoch) return;
-  $('diagnostic-count').textContent = `Repairs: ${items.length}`;
+  const repairs = items.filter((item) => item.kind === 'repair').length;
+  $('diagnostic-count').textContent = `Repairs: ${repairs} · Information: ${items.length - repairs}`;
   $('repair-list').replaceChildren(...items.map((item) => {
-    const li = document.createElement('li'); li.textContent = `[${item.tag}] ${item.message}`; return li;
+    const li = document.createElement('li'); li.textContent = `${item.kind === 'repair' ? 'Repair' : 'Information'} [${item.tag}] ${item.message}`; return li;
   }));
   $('diagnostics').open = items.length > 0;
 }
@@ -282,7 +283,7 @@ async function openFile(file) {
   handle = null; infos.clear(); views.clear(); surface.replaceChildren(); surface.hidden = true;
   layout = new PageLayout(0); page = 0; controls(); errorBox.hidden = true;
   $('filename').textContent = file.name; status.textContent = 'Opening…';
-  $('diagnostic-count').textContent = 'Repairs: 0'; $('repair-list').replaceChildren();
+  $('diagnostic-count').textContent = 'Repairs: 0 · Information: 0'; $('repair-list').replaceChildren();
   try {
     if (file.size > MAX_FILE) throw new Error('PDF exceeds the 512 MiB input budget');
     client?.destroy();

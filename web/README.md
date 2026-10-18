@@ -18,7 +18,9 @@ page elements are discarded. Previous/next and numbered navigation scroll to a
 page without changing documents. Unimplemented content produces a tagged error
 on the affected page and clears partial pixels for that page. Other pages can
 still render. Strict validation rejects repairs and names the refused repair;
-normal viewing lists applied repairs below the document.
+normal viewing lists applied repairs and informational diagnostics separately
+below the document. Information, such as permitted font substitution, is
+available in both recovery modes.
 
 ## Controls
 
@@ -50,7 +52,7 @@ exceeding a budget displays an error rather than silently truncating a document.
 
 ## Session and caching
 
-The browser negotiates protocol v1.2; existing protocol v1 clients remain
+The browser negotiates protocol v1.4 for typed diagnostics; existing protocol v1 clients remain
 supported. See crates/pagura-host/PROTOCOL.md for the byte layouts. A viewport
 change invalidates queued old-generation tiles before transmission. The host
 also skips a stale generation before compilation or painting. The current

@@ -220,7 +220,7 @@ fn font_stream_length_faults_are_reported_repairs() -> Result<()> {
             repaired
                 .diagnostics()
                 .iter()
-                .any(|item| item.repair == STREAM_LENGTHS),
+                .any(|item| item.repair() == Some(STREAM_LENGTHS)),
             "{name}"
         );
     }

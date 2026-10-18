@@ -44,7 +44,7 @@ fn independent_paint_oracles_and_device_tiles() {
                 repaired
                     .diagnostics()
                     .iter()
-                    .map(|d| d.repair)
+                    .filter_map(pagura_core::Diagnostic::repair)
                     .collect::<Vec<_>>(),
                 [pagura_image::tags::CCITT_COLUMNS],
                 "{name}"
@@ -169,7 +169,7 @@ fn malformed_font_programs_report_their_own_stream() {
     let diagnostic = repaired
         .diagnostics()
         .into_iter()
-        .find(|item| item.repair.as_str() == "font.sfnt-version")
+        .find(|item| item.tag() == "font.sfnt-version")
         .unwrap();
     assert_eq!(diagnostic.position, font_stream);
     assert_eq!(diagnostic.object, Some(pagura_core::ObjectId::new(7, 0)));
@@ -218,7 +218,7 @@ fn text_clip_resets_report_positions_and_preserve_accumulated_outlines() {
         let diagnostics = repaired.diagnostics();
         assert_eq!(diagnostics.len(), offsets.len());
         for (diagnostic, &offset) in diagnostics.iter().zip(offsets) {
-            assert_eq!(diagnostic.repair.as_str(), "text.clip-mode-reset");
+            assert_eq!(diagnostic.tag(), "text.clip-mode-reset");
             assert_eq!(diagnostic.object, Some(object));
             assert_eq!(
                 diagnostic.position,

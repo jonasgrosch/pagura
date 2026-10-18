@@ -127,7 +127,7 @@ fn check_result(
         document
             .diagnostics()
             .iter()
-            .any(|d| d.repair == pagura_font::tags::DESCRIPTOR_FLAGS),
+            .any(|d| d.repair() == Some(pagura_font::tags::DESCRIPTOR_FLAGS)),
         repaired,
         "{name}"
     );

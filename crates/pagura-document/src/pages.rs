@@ -151,7 +151,7 @@ pub(crate) fn read(document: &Document) -> Result<Vec<Page>> {
             .diagnostics
             .as_slice()
             .iter()
-            .any(|item| item.repair == tags::PAGE_CYCLE);
+            .any(|item| item.repair() == Some(tags::PAGE_CYCLE));
         return Err(if cyclic {
             Error::cycle("cyclic page tree contains no usable leaves")
         } else {
@@ -728,7 +728,12 @@ mod recovery_tests {
             };
             assert_eq!(pages[0].media_box(), expected, "{name}");
             assert_eq!(pages[0].crop_box(), expected, "{name}");
-            assert!(document.diagnostics().iter().any(|d| d.repair == tag));
+            assert!(
+                document
+                    .diagnostics()
+                    .iter()
+                    .any(|d| d.repair() == Some(tag))
+            );
         }
     }
 

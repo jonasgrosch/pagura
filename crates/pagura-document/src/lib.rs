@@ -159,7 +159,7 @@ impl Document {
         self.slots.keys().copied()
     }
 
-    /// Distinct reported repairs, in discovery order. Identity is the repair tag,
+    /// Distinct diagnostics, in discovery order. Identity is the diagnostic kind/tag,
     /// object and position; the first message is retained. At most 1,024 entries
     /// are retained across opening, lazy decoding and external reports.
     pub fn diagnostics(&self) -> Vec<Diagnostic> {
@@ -181,12 +181,13 @@ impl Document {
             .suppressed
     }
 
-    /// Reports repairs from any document consumer, using the same bounded store
-    /// as document parsing. Deduplicates by repair tag, object and position.
+    /// Reports diagnostics from any document consumer, using the same bounded store
+    /// as document parsing. Deduplicates by kind/tag, object and position.
     ///
     /// Callers must obtain permission to repair through
     /// [`Diagnostics::repair`] with this document's [`Self::recovery`] mode
-    /// before applying a repair. Reporting records evidence; it does not grant
+    /// before applying a repair. Information needs no recovery permission.
+    /// Reporting records evidence; it does not grant
     /// permission to repair in Strict mode. See [`Self::suppressed_diagnostics`].
     pub fn report(&self, diagnostics: impl IntoIterator<Item = Diagnostic>) {
         // Evaluate user iterators outside the lock: they may themselves access

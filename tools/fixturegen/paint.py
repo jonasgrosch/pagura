@@ -419,7 +419,7 @@ def bundled_cases():
         identifier = 'bundled-'+name
         yield Vector(identifier,{'.pdf':page(b'BT /F 24 Tf 3 8 Td (HH) Tj ET',[font],FONT,64),'.rgb':oracle},
                      ('paint-bundled-fonts',), 'Non-embedded '+base+' uses AFM widths and bundled outlines',
-                     extra={'path':f'corpus/generated/paint/{identifier}.pdf','sha256':hashlib.sha256(page(b'BT /F 24 Tf 3 8 Td (HH) Tj ET',[font],FONT,64)).hexdigest(),'kind':'pdf','expected':RENDER,'pages':1,'repairs':['font.substituted'],'strict_valid':True,
+                     extra={'path':f'corpus/generated/paint/{identifier}.pdf','sha256':hashlib.sha256(page(b'BT /F 24 Tf 3 8 Td (HH) Tj ET',[font],FONT,64)).hexdigest(),'kind':'pdf','expected':RENDER,'pages':1,'repairs':[],'information':['font.substituted'],'strict_valid':True,
                             'oracle':f'corpus/generated/paint/{identifier}.rgb','oracle_sha256':hashlib.sha256(oracle).hexdigest(),'tolerance':1,'width':64,'height':64,'dpi':72})
     base, outline = 'Courier-Oblique','Cousine-Italic'
     oracle = bundled_oracle(root/'data/fonts'/f'{outline}.ttf',root/'data/afm'/f'{base}.afm','HH',advance=650)
@@ -428,7 +428,14 @@ def bundled_cases():
     identifier = 'bundled-descriptor-flags'
     yield Vector(identifier,{'.pdf':page(b'BT /F 24 Tf 3 8 Td (HH) Tj ET',[font,descriptor],FONT,64),'.rgb':oracle},
                  ('paint-bundled-fonts',),'FontDescriptor flags select fixed-pitch italic substitute; PDF widths take precedence',
-                 extra={'path':f'corpus/generated/paint/{identifier}.pdf','sha256':hashlib.sha256(page(b'BT /F 24 Tf 3 8 Td (HH) Tj ET',[font,descriptor],FONT,64)).hexdigest(),'kind':'pdf','expected':RENDER,'pages':1,'repairs':['font.substituted'],'strict_valid':True,'oracle':f'corpus/generated/paint/{identifier}.rgb','oracle_sha256':hashlib.sha256(oracle).hexdigest(),'tolerance':1,'width':64,'height':64,'dpi':72})
+                 extra={'path':f'corpus/generated/paint/{identifier}.pdf','sha256':hashlib.sha256(page(b'BT /F 24 Tf 3 8 Td (HH) Tj ET',[font,descriptor],FONT,64)).hexdigest(),'kind':'pdf','expected':RENDER,'pages':1,'repairs':[],'information':['font.substituted'],'strict_valid':True,'oracle':f'corpus/generated/paint/{identifier}.rgb','oracle_sha256':hashlib.sha256(oracle).hexdigest(),'tolerance':1,'width':64,'height':64,'dpi':72})
+    identifier = 'bundled-diagnostic-kinds'
+    damaged_descriptor = descriptor[:-2]+b'/FontWeight 0 >>'
+    pdf = page(b'BT /F 24 Tf 3 8 Td (HH) Tj ET',[font,damaged_descriptor],FONT,64)
+    yield render_vector(identifier,pdf,oracle,'paint-diagnostic-kinds',
+                        'Invalid optional weight is a repair; permitted font substitution is information',
+                        repairs=('font.descriptor-weight',),information=('font.substituted',),
+                        strict_valid=False,tolerance=1,size=64)
     from .paint_cff import oracle as cff_oracle
     for base, outline, names in [('Symbol','FoxitSymbol',('Omega','alpha')),
                                   ('ZapfDingbats','FoxitDingbats',('a2','a1'))]:
@@ -448,7 +455,7 @@ def bundled_cases():
                                 codes,differences=mapping,advances=advances)
             yield render_vector(identifier,pdf,oracle,'paint-bundled-fonts',
                                 'AFM names and advances select bundled CFF outlines; rational cubic area oracle',
-                                repairs=('font.substituted',),tolerance=1,size=64)
+                                information=('font.substituted',),tolerance=1,size=64)
     # H is Adobe-Japan1's predefined two-byte JIS map. Code 0x2422 maps
     # to CID 843 (hiragana A). A licensed bundled H outline is deliberately
     # assigned to that CID in the embedded subset, separating code/CID/glyph
@@ -689,14 +696,14 @@ AREA_TIES_2048 = (
 )
 
 
-def render_vector(name, pdf, oracle, requirement, description, *, repairs=(), strict_valid=True, tolerance=0, size=SIZE):
+def render_vector(name, pdf, oracle, requirement, description, *, repairs=(), information=(), strict_valid=True, tolerance=0, size=SIZE):
     """PDF oracle handled by recovery/provider tests rather than the strict suite."""
     import hashlib
     from .model import Vector
     return Vector(name,{'.pdf':pdf,'.rgb':oracle},(requirement,),description,
                   extra=dict(kind='pdf',expected=RENDER,path=f'corpus/generated/paint/{name}.pdf',
                              sha256=hashlib.sha256(pdf).hexdigest(),pages=1,strict_valid=strict_valid,
-                             repairs=list(repairs),oracle=f'corpus/generated/paint/{name}.rgb',
+                             repairs=list(repairs),**({"information":list(information)} if information else {}),oracle=f'corpus/generated/paint/{name}.rgb',
                              oracle_sha256=hashlib.sha256(oracle).hexdigest(),dpi=72,
                              width=size,height=size,tolerance=tolerance))
 

@@ -10,7 +10,10 @@ pub(crate) fn repair(
     // Each operation has a fresh sink. Retain the first occurrence of each
     // font repair kind, rather than allocating once per damaged point or code.
     if diagnostics.mode() == Recovery::Strict
-        || !diagnostics.as_slice().iter().any(|d| d.repair == tag)
+        || !diagnostics
+            .as_slice()
+            .iter()
+            .any(|d| d.repair() == Some(tag))
     {
         diagnostics.repair(Diagnostic::new(tag, message).at(position))?;
     }

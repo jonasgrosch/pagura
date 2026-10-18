@@ -48,8 +48,18 @@ impl Provider for Outlines {
     fn predefined_cmap(&self, _: &[u8]) -> Result<Option<Arc<PredefinedCMap>>> {
         Ok(None)
     }
+    fn cid_font(&self, _: &[u8], _: &[u8]) -> Result<Option<Arc<FontProgram>>> {
+        Ok(self
+            .standard_font(b"Helvetica")?
+            .and_then(|font| font.program.clone()))
+    }
     fn cid_to_unicode(&self, _: &[u8], _: &[u8]) -> Result<Option<Arc<CidToUnicode>>> {
-        Ok(None)
+        Ok(Some(Arc::new(CidToUnicode::new(
+            [(0, " ".to_owned()), (1, "A".to_owned())]
+                .into_iter()
+                .collect(),
+            &Limits::default(),
+        )?)))
     }
 }
 
@@ -115,13 +125,16 @@ fn invalid_optional_weights_have_exact_repaired_glyphs_and_strict_tags() -> Resu
             }
             let font = result?;
             check_glyphs(name, &font)?;
-            let repairs: Vec<_> = document.diagnostics().iter().map(|d| d.repair).collect();
+            let kinds: Vec<_> = document.diagnostics().iter().map(|d| d.kind).collect();
             assert_eq!(
-                repairs,
+                kinds,
                 if tag.is_empty() {
-                    vec![SUBSTITUTED]
+                    vec![pagura_core::DiagnosticKind::Information(SUBSTITUTED)]
                 } else {
-                    vec![repairs::DESCRIPTOR_WEIGHT, SUBSTITUTED]
+                    vec![
+                        pagura_core::DiagnosticKind::Repair(repairs::DESCRIPTOR_WEIGHT),
+                        pagura_core::DiagnosticKind::Information(SUBSTITUTED),
+                    ]
                 }
             );
         }
@@ -212,7 +225,10 @@ fn descriptor_styles_and_symbol_aliases_preserve_pdf_positions_in_both_modes() -
             }
             assert_eq!(document.diagnostics().len(), 1, "{name}");
             let diagnostic = &document.diagnostics()[0];
-            assert_eq!(diagnostic.repair, SUBSTITUTED);
+            assert_eq!(
+                diagnostic.kind,
+                pagura_core::DiagnosticKind::Information(SUBSTITUTED)
+            );
             let base = fixture("text", &format!("{name}.base"));
             assert_eq!(
                 diagnostic.message,
@@ -245,6 +261,65 @@ fn cyrillic_names_agree_with_all_sixty_six_independent_records() -> Result<()> {
         b"afii10098",
     ] {
         assert!(encoding::unicode(name).is_none());
+    }
+    Ok(())
+}
+
+#[test]
+fn substituted_fonts_reject_malformed_unicode_in_strict_mode() -> Result<()> {
+    for name in ["strict-substitution-simple", "strict-substitution-cid"] {
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            let document = Document::open(
+                fixture("text", &format!("{name}.pdf")),
+                &OpenOptions {
+                    recovery,
+                    ..OpenOptions::default()
+                },
+            )?;
+            let dictionary = document
+                .object(ObjectId::new(4, 0))?
+                .dictionary()
+                .ok_or_else(|| Error::syntax("missing font"))?;
+            let result = PdfFont::load_with(&document, dictionary, &Outlines);
+            if recovery == Recovery::Strict {
+                let error = result.unwrap_err();
+                let tag = fixture("text", &format!("{name}.strict.error"));
+                assert_eq!(
+                    error.repair.map(pagura_core::Repair::as_str),
+                    Some(
+                        std::str::from_utf8(&tag)
+                            .map_err(|_| Error::syntax("invalid tag"))?
+                            .trim()
+                    )
+                );
+                assert_eq!(document.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
+                continue;
+            }
+            let font = result?;
+            let glyphs = font.decode(&fixture("text", &format!("{name}.input")))?;
+            let expected = values(name, "out")?;
+            assert_eq!(glyphs.len(), expected.len());
+            for (glyph, row) in glyphs.iter().zip(expected) {
+                let row = row
+                    .as_array()
+                    .ok_or_else(|| Error::syntax("invalid glyph oracle"))?;
+                assert_eq!(Some(i64::from(glyph.code)), row[0].as_integer());
+                assert_eq!(Some(glyph.advance), row[1].as_number());
+                assert_eq!(
+                    glyph.unicode.as_deref().map(str::as_bytes),
+                    row[2].as_string()
+                );
+                assert!(matches!(glyph.shape, GlyphShape::Outline { .. }));
+            }
+            let diagnostics = document.diagnostics();
+            assert_eq!(
+                diagnostics.iter().map(|item| item.kind).collect::<Vec<_>>(),
+                [
+                    pagura_core::DiagnosticKind::Repair(repairs::TOUNICODE_UTF16),
+                    pagura_core::DiagnosticKind::Information(SUBSTITUTED)
+                ]
+            );
+        }
     }
     Ok(())
 }

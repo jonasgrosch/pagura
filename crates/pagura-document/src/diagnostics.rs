@@ -1,6 +1,6 @@
 //! Bounded document diagnostics, independent of the number of decode attempts.
 
-use pagura_core::{Diagnostic, ObjectId, Position, Repair};
+use pagura_core::{Diagnostic, DiagnosticKind, ObjectId, Position};
 use std::collections::BTreeSet;
 
 pub(crate) const CAPACITY: usize = 1024;
@@ -27,14 +27,14 @@ impl From<Position> for At {
 #[derive(Debug, Default)]
 pub(crate) struct Log {
     pub(crate) items: Vec<Diagnostic>,
-    keys: BTreeSet<(Repair, Option<ObjectId>, At)>,
+    keys: BTreeSet<(DiagnosticKind, Option<ObjectId>, At)>,
     pub(crate) suppressed: usize,
 }
 
 impl Log {
     pub(crate) fn push(&mut self, diagnostic: Diagnostic) {
         let key = (
-            diagnostic.repair,
+            diagnostic.kind,
             diagnostic.object,
             At::from(diagnostic.position),
         );
@@ -146,5 +146,24 @@ mod tests {
             Diagnostic::new(TAG, "outer").at(Position::File(1))
         }));
         assert_eq!(document.diagnostics().len(), 2);
+    }
+    #[test]
+    fn information_and_repairs_share_the_cap_but_have_distinct_identities() {
+        let mut log = super::Log::default();
+        let info = Diagnostic::information(TAG.as_str(), "information").at(Position::File(1));
+        let repair = Diagnostic::new(TAG, "repair").at(Position::File(1));
+        for diagnostic in [info.clone(), repair.clone(), info.clone(), repair.clone()] {
+            log.push(diagnostic);
+        }
+        assert_eq!(log.items, [info, repair]);
+        for offset in 2..CAPACITY {
+            log.push(
+                Diagnostic::information(TAG.as_str(), "more information")
+                    .at(Position::File(offset)),
+            );
+        }
+        assert_eq!(log.items.len(), CAPACITY);
+        log.push(Diagnostic::new(TAG, "omitted repair").at(Position::File(CAPACITY)));
+        assert_eq!(log.suppressed, 1);
     }
 }

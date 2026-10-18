@@ -1,6 +1,6 @@
 # ADR 0003: Malformed input is repaired only when reported
 
-Status: accepted, 2026-10-17.
+Status: accepted, 2026-10-17. Amended 2026-10-18 (diagnostic kinds).
 
 ## Context
 
@@ -19,12 +19,18 @@ explicit, bounded and visible to the caller.
 - Every repair goes through `pagura_core::Diagnostics::repair`, which returns
   the error in strict mode and records a `Diagnostic` otherwise. There is no
   other way to repair input; code review rejects ad-hoc leniency.
-- A `Diagnostic` carries a stable `Repair` tag (`area.item`, e.g.
-  `xref.rebuilt`), a fixed message, a `Position` and the object. Tags are
-  API: published tags do not change, and each crate defines its own in a
-  `tags` module.
-- `Document::diagnostics()` returns repairs made while opening, then repairs
-  made while loading objects lazily, in discovery order.
+- A `Diagnostic` carries `DiagnosticKind::Repair(Repair)` or
+  `DiagnosticKind::Information(&'static str)`, a fixed message, a `Position`
+  and the object. Both kinds have stable `area.item` tags; `tag()` returns
+  either tag and `repair()` returns only a repair tag. Published tag text
+  does not change. Strict rejects repairs only; information is permitted in
+  both modes and never makes a document a repaired document.
+- `font.substituted` and `font.cid-glyph-missing` describe permitted provider
+  behaviour (ADR 0009), not malformed input. They are information. Every
+  other existing diagnostic remains a repair.
+- `Document::diagnostics()` returns diagnostics from opening and lazy loading
+  in discovery order. Diagnostic identity includes kind, tag, object and
+  position; information and repairs share the same bounded sink (ADR 0012).
 - Repairs are bounded by the same `Limits` as normal parsing. Reconstruction
   scans are linear in the file size.
 - Where readers disagree (for example which duplicate key wins), Pagura picks

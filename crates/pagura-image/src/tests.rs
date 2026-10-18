@@ -360,11 +360,7 @@ fn inline_vector(name: &str, params: &BTreeMap<String, String>, expected: &[u8])
         let error = decode_inline(&strict, &resources, dict, &data).unwrap_err();
         assert_eq!(error.repair.unwrap().as_str(), params["repair"], "{name}");
         assert_eq!(doc.diagnostics().len(), 1, "{name}");
-        assert_eq!(
-            doc.diagnostics()[0].repair.as_str(),
-            params["repair"],
-            "{name}"
-        );
+        assert_eq!(doc.diagnostics()[0].tag(), params["repair"], "{name}");
     } else if params["outcome"] != "valid" {
         let error = result.unwrap_err();
         if params["outcome"] == "unsupported" {

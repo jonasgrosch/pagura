@@ -79,7 +79,7 @@ fn repair_vector(name: &str, format: FontFormat) {
     let actual_tags: std::collections::BTreeSet<_> = diagnostics
         .as_slice()
         .iter()
-        .map(|d| d.repair.as_str())
+        .map(pagura_core::Diagnostic::tag)
         .collect();
     assert_eq!(actual_tags, expected_tags, "{name}");
     assert!(

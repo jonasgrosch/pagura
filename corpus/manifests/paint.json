@@ -2033,7 +2033,8 @@
       "sha256": "97ec7cfc1cb04a5f6982cee8548a2c5d8bf5523663abb4b55244ac59fc4ca720",
       "expected": "render",
       "pages": 1,
-      "repairs": [
+      "repairs": [],
+      "information": [
         "font.substituted"
       ],
       "strict_valid": true,
@@ -2065,7 +2066,8 @@
       "sha256": "8e7cadca42212aedb9e9831f41ca9cec2743056f4b3364e58da37910547ddfa8",
       "expected": "render",
       "pages": 1,
-      "repairs": [
+      "repairs": [],
+      "information": [
         "font.substituted"
       ],
       "strict_valid": true,
@@ -2097,7 +2099,8 @@
       "sha256": "31cfd58640cb444e2a2812b7dd418477e347572ba5879fb4f4d7bfef0132b680",
       "expected": "render",
       "pages": 1,
-      "repairs": [
+      "repairs": [],
+      "information": [
         "font.substituted"
       ],
       "strict_valid": true,
@@ -2129,7 +2132,8 @@
       "sha256": "1a66ad04a17334e34057614bce4754b207f2390d6cca74859706f4d1a75fede0",
       "expected": "render",
       "pages": 1,
-      "repairs": [
+      "repairs": [],
+      "information": [
         "font.substituted"
       ],
       "strict_valid": true,
@@ -2139,6 +2143,41 @@
       "width": 64,
       "height": 64,
       "dpi": 72
+    },
+    {
+      "id": "paint/bundled-diagnostic-kinds",
+      "kind": "pdf",
+      "description": "Invalid optional weight is a repair; permitted font substitution is information",
+      "requirements": [
+        "paint-diagnostic-kinds"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/paint/bundled-diagnostic-kinds.pdf",
+          "sha256": "3bfe0040002f8d78cb2aea1ddcb3a7beaad08cde97019804ca981db3dedd5399"
+        },
+        ".rgb": {
+          "path": "corpus/generated/paint/bundled-diagnostic-kinds.rgb",
+          "sha256": "488a89f8f6c2791556e9676dcaa3360dbdfac1256247ae8fc040aadd8234f8f3"
+        }
+      },
+      "expected": "render",
+      "path": "corpus/generated/paint/bundled-diagnostic-kinds.pdf",
+      "sha256": "3bfe0040002f8d78cb2aea1ddcb3a7beaad08cde97019804ca981db3dedd5399",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.descriptor-weight"
+      ],
+      "information": [
+        "font.substituted"
+      ],
+      "oracle": "corpus/generated/paint/bundled-diagnostic-kinds.rgb",
+      "oracle_sha256": "488a89f8f6c2791556e9676dcaa3360dbdfac1256247ae8fc040aadd8234f8f3",
+      "dpi": 72,
+      "width": 64,
+      "height": 64,
+      "tolerance": 1
     },
     {
       "id": "paint/bundled-symbol",
@@ -2162,7 +2201,8 @@
       "sha256": "e8250f5740cb59a838fa1ef6e0540377d3ae43b5658e43c5bf452574fc6fb56d",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [
+      "repairs": [],
+      "information": [
         "font.substituted"
       ],
       "oracle": "corpus/generated/paint/bundled-symbol.rgb",
@@ -2194,7 +2234,8 @@
       "sha256": "98d132505942c7e8a30f7288187e0579da5f5781f52bc66597ede8db99814ab3",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [
+      "repairs": [],
+      "information": [
         "font.substituted"
       ],
       "oracle": "corpus/generated/paint/bundled-symbol-differences.rgb",
@@ -2226,7 +2267,8 @@
       "sha256": "c3b65d66901506fbd0c7a1d82ee813368f806d6cc7f6a385ef509a1dc69eb772",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [
+      "repairs": [],
+      "information": [
         "font.substituted"
       ],
       "oracle": "corpus/generated/paint/bundled-zapfdingbats.rgb",
@@ -2258,7 +2300,8 @@
       "sha256": "a1f204c5d6e1aa7ea1f03fe33821e32ce5ceeed361725a2d7ed21f59d9919e57",
       "pages": 1,
       "strict_valid": true,
-      "repairs": [
+      "repairs": [],
+      "information": [
         "font.substituted"
       ],
       "oracle": "corpus/generated/paint/bundled-zapfdingbats-differences.rgb",

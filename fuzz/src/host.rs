@@ -22,11 +22,18 @@
 //!   must answer every reading request with an operational InvalidArgument
 //!   error and keep serving.
 //!
+//! - bit 5: protocol 1.4 with typed diagnostics;
+//! - bit 6: request typed diagnostics even with an older handshake, which
+//!   must reject that request and keep serving;
+//! - bit 7: protocol 1.3 when bit 5 is clear.
+//!
 //! An invalid query byte becomes U+FFFD, so that the generated frames stay
 //! valid; raw frames reach the terminal protocol errors.
 
 use super::wrapper;
-use pagura_host::protocol::{ERROR_KIND, VERSION, VERSION_1_1, VERSION_1_2};
+use pagura_host::protocol::{
+    ERROR_KIND, VERSION, VERSION_1_1, VERSION_1_2, VERSION_1_3, VERSION_1_4,
+};
 use pagura_host::{Session, SessionEnd};
 use std::io::Cursor;
 
@@ -134,7 +141,11 @@ pub fn run(data: &[u8]) {
         scale: (f64::from(scale) + 1.0) / 16.0,
         rect: [x, y, width, height].map(u32::from),
     };
-    let version = if search.is_some() && flags & 16 == 0 {
+    let version = if flags & 32 != 0 {
+        VERSION_1_4
+    } else if flags & 128 != 0 {
+        VERSION_1_3
+    } else if search.is_some() && flags & 16 == 0 {
         VERSION_1_2
     } else if flags & 1 != 0 {
         VERSION_1_1
@@ -197,7 +208,7 @@ pub fn run(data: &[u8]) {
     check_session(&requests, &responses, &plan, version);
     check_tiles(&responses, &plan, tile);
     if let (Some(reading), Some(search)) = (&plan.reading, &search)
-        && version == VERSION_1_2
+        && matches!(version, VERSION_1_2 | VERSION_1_3 | VERSION_1_4)
     {
         check_reading(&responses, &plan, reading, search);
     }
@@ -244,7 +255,7 @@ fn requests(
         closed_stats: 0,
         closed_text: 0,
     });
-    let diagnostics = frames.push(5, &words(&[1]));
+    let diagnostics = frames.push(if flags & 0x60 != 0 { 17 } else { 5 }, &words(&[1]));
     let close = frames.push(6, &words(&[1]));
     if let Some(reading) = &mut reading {
         reading.closed_stats = frames.push(15, &[]);
@@ -269,7 +280,17 @@ fn check_session(requests: &[u8], responses: &[Response<'_>], plan: &Plan, versi
     if responses.get(plan.open).is_some_and(|r| r.kind == 130) {
         let diagnostics = responses.get(plan.diagnostics);
         assert!(
-            diagnostics.is_some_and(|r| r.kind == 133 || category(r) == Some(LIMIT)),
+            diagnostics.is_some_and(|r| {
+                if requests.get(plan.diagnostics) == Some(&17) {
+                    if version == VERSION_1_4 {
+                        r.kind == 145 || category(r) == Some(LIMIT)
+                    } else {
+                        category(r) == Some(INVALID_ARGUMENT)
+                    }
+                } else {
+                    r.kind == 133 || category(r) == Some(LIMIT)
+                }
+            }),
             "diagnostics failed after a successful open"
         );
         let close = responses.get(plan.close).map(|r| r.kind);
@@ -277,7 +298,8 @@ fn check_session(requests: &[u8], responses: &[Response<'_>], plan: &Plan, versi
     }
     let rejected = |kind: u8| match kind {
         9 => version == VERSION,
-        10..=15 => version != VERSION_1_2,
+        10..=15 => !matches!(version, VERSION_1_2 | VERSION_1_3 | VERSION_1_4),
+        17 => version != VERSION_1_4,
         _ => false,
     };
     for (index, (&kind, response)) in requests.iter().zip(responses).enumerate() {
@@ -687,8 +709,11 @@ fn layout(response: &Response<'_>) -> Option<()> {
             f.u32()?;
         }
         132 => pixels(&mut f)?,
-        133 => {
+        133 | 145 => {
             for _ in 0..f.count()? {
+                if response.kind == 145 {
+                    f.flag()?;
+                }
                 super::is_tag(f.text()?).then_some(())?;
                 (!f.text()?.is_empty()).then_some(())?;
                 context(&mut f)?;
@@ -721,6 +746,13 @@ fn layout(response: &Response<'_>) -> Option<()> {
         143 => {
             f.take(36)?;
         }
+        144 => {
+            if f.flag()? {
+                for _ in 0..4 {
+                    f.f64()?;
+                }
+            }
+        }
         ERROR_KIND => error(&mut f)?,
         _ => return None,
     }
@@ -737,7 +769,7 @@ fn pixels(f: &mut Fields<'_>) -> Option<()> {
 
 /// `u8 category | text feature_tag | text repair_tag | text message |
 /// context`: the feature tag is present exactly for Unsupported, a refused
-/// repair only for Syntax, and both are well-formed tags.
+/// repair preserves the original category, and both tags are well-formed.
 fn error(f: &mut Fields<'_>) -> Option<()> {
     let category = f.u8()?;
     let feature = f.text()?;
@@ -746,7 +778,7 @@ fn error(f: &mut Fields<'_>) -> Option<()> {
     let valid = (1..=7).contains(&category)
         && (category == 3) != feature.is_empty()
         && (feature.is_empty() || super::is_tag(feature))
-        && (repair.is_empty() || (category == 1 && super::is_tag(repair)))
+        && (repair.is_empty() || super::is_tag(repair))
         && !message.is_empty();
     valid.then_some(())?;
     context(f)

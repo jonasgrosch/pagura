@@ -862,7 +862,7 @@ mod authorization_events {
                         document
                             .diagnostics()
                             .iter()
-                            .any(|d| d.repair == crate::tags::CRYPT_EVENT)
+                            .any(|d| d.repair() == Some(crate::tags::CRYPT_EVENT))
                     );
                 }
                 for password in [b"attachment".as_slice(), b"owner"] {
@@ -979,7 +979,7 @@ mod missing_length {
                 document
                     .diagnostics()
                     .iter()
-                    .filter(|d| d.repair == tags::KEY_LENGTH_MISSING)
+                    .filter(|d| d.repair() == Some(tags::KEY_LENGTH_MISSING))
                     .count(),
                 1
             );

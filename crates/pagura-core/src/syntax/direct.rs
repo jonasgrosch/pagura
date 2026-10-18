@@ -91,7 +91,7 @@ mod tests {
                 .as_dictionary()
                 .is_some()
         );
-        assert_eq!(parser.take_diagnostics()[0].repair, DIRECT_STREAM);
+        assert_eq!(parser.take_diagnostics()[0].repair(), Some(DIRECT_STREAM));
     }
     #[test]
     fn descriptor_growth_is_bounded_before_copying_long_source_paths() {

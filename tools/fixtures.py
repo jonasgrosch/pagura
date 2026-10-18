@@ -47,6 +47,8 @@ def render_area(module) -> dict[Path, bytes]:
                      "expected": case.expected, "requirements": list(case.requirements),
                      "path": f"corpus/generated/{area}/{case.name}.pdf", "sha256": sha256(case.pdf),
                      "pages": case.pages, "strict_valid": case.strict_valid, "repairs": list(case.repairs)}
+            if case.information:
+                entry["information"] = list(case.information)
             files[directory / f"{case.name}.pdf"] = case.pdf
             if case.expected == RENDER:
                 if case.oracle is None:

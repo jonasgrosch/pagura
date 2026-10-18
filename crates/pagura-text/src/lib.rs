@@ -194,13 +194,13 @@ impl PdfFont {
     }
     /// Loads the font dictionary `font` (already resolved) of `document`.
     ///
-    /// Faulty ToUnicode interpretations are reported and discarded without
-    /// affecting glyph selection, even in Strict mode (9.10.3). Repair mode
-    /// retains unambiguous values through the documented text repairs.
+    /// Strict mode rejects malformed ToUnicode data (9.10.3; ADR 0003).
+    /// Repair mode reports repairs and retains unambiguous values, or discards
+    /// an unusable map without affecting glyph selection.
     ///
     /// # Errors
     ///
-    /// Returns a syntax error for malformed painting-critical dictionaries, `Unsupported`
+    /// Returns an error for malformed dictionaries or ToUnicode data in Strict mode, `Unsupported`
     /// (for example [`features::NON_EMBEDDED`]) for fonts that cannot be
     /// drawn yet, and errors from loading the font program.
     pub fn load(document: &Document, font: &Dictionary) -> Result<Self> {

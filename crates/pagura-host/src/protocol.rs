@@ -1,6 +1,8 @@
 //! Protocol v1 wire types and bounded serialization (ADR 0005).
 
-use pagura::{Diagnostic, Error, ErrorKind, ObjectId, Position, Recovery, Result, Tile};
+use pagura::{
+    Diagnostic, DiagnosticKind, Error, ErrorKind, ObjectId, Position, Recovery, Result, Tile,
+};
 
 /// The compatible base session version.
 pub const VERSION: u32 = 1;
@@ -10,6 +12,8 @@ pub const VERSION_1_1: u32 = 0x0001_0001;
 pub const VERSION_1_2: u32 = 0x0001_0002;
 /// Protocol 1.3, adding painted content bounds without changing older layouts.
 pub const VERSION_1_3: u32 = 0x0001_0003;
+/// Protocol 1.4, adding typed diagnostic snapshots without changing older layouts.
+pub const VERSION_1_4: u32 = 0x0001_0004;
 /// Kind byte for structured error responses.
 pub const ERROR_KIND: u8 = 255;
 
@@ -65,8 +69,10 @@ pub enum Request<'a> {
         /// Device rectangle.
         tile: Tile,
     },
-    /// Snapshot all repairs discovered so far.
+    /// Snapshot repairs discovered so far (all protocol versions).
     Diagnostics(u32),
+    /// Snapshot repair and informational diagnostics with their kind (v1.4).
+    DiagnosticDetails(u32),
     /// Release a document; handles are never reused.
     Close(u32),
     /// Snapshot session retention accounting (v1.1).
@@ -150,6 +156,8 @@ pub enum Response {
     Reading(crate::reading::Response),
     /// Repairs in discovery order.
     Diagnostics(Vec<Diagnostic>),
+    /// All diagnostics in discovery order, with explicit kinds (v1.4).
+    DiagnosticDetails(Vec<Diagnostic>),
     /// The handle has been released.
     Close,
     /// Structured failure, preserving context from the engine.
@@ -218,6 +226,7 @@ pub fn decode(body: &[u8], limits: pagura::Limits) -> Result<RequestFrame<'_>> {
             },
         },
         9 => Request::Stats,
+        17 => Request::DiagnosticDetails(reader.u32()?),
         10..=16 => Request::Reading(crate::reading::decode(kind, &mut reader, limits)?),
         _ => return Err(Error::syntax("unknown request kind").at(Position::Buffer(0))),
     };
@@ -293,6 +302,7 @@ pub fn encode(id: u32, response: &Response, max_body: usize) -> Result<Vec<u8>> 
         Response::PageInfo { .. } => 131,
         Response::Tile { .. } => 132,
         Response::Diagnostics(_) => 133,
+        Response::DiagnosticDetails(_) => 145,
         Response::Close => 134,
         Response::Generation(_) => 135,
         Response::Skipped(_) | Response::GenerationTile { .. } => 136,
@@ -341,11 +351,20 @@ fn encode_payload(out: &mut Encoder, response: &Response) -> Result<()> {
             encode_tile(out, *width, *height, rgba)?;
         }
         Response::Diagnostics(items) => {
+            let repairs = items.iter().filter(|item| item.repair().is_some());
+            out.count(repairs.clone().count())?;
+            for item in repairs {
+                encode_diagnostic(out, item)?;
+            }
+        }
+        Response::DiagnosticDetails(items) => {
             out.count(items.len())?;
             for item in items {
-                out.string(item.repair.as_str())?;
-                out.string(item.message)?;
-                out.context(item.object, item.position)?;
+                out.push(&[match item.kind {
+                    DiagnosticKind::Repair(_) => 0,
+                    DiagnosticKind::Information(_) => 1,
+                }])?;
+                encode_diagnostic(out, item)?;
             }
         }
         Response::Generation(generation) => out.push(&generation.to_le_bytes())?,
@@ -388,6 +407,12 @@ fn encode_payload(out: &mut Encoder, response: &Response) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn encode_diagnostic(out: &mut Encoder, item: &Diagnostic) -> Result<()> {
+    out.string(item.tag())?;
+    out.string(item.message)?;
+    out.context(item.object, item.position)
 }
 
 fn encode_tile(out: &mut Encoder, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
@@ -526,7 +551,8 @@ mod tests {
         let error = Diagnostic::new(Repair::new("file.trailing-bytes"), "trailing")
             .in_object(ObjectId::new(3, 0))
             .at(Position::File(17))
-            .to_error();
+            .to_error()
+            .unwrap();
         let actual = encode(2, &Response::Error(error), 1024).unwrap();
         // kind/id/category, empty feature tag, refused repair, message, context.
         let mut expected = vec![255, 2, 0, 0, 0, 1, 0, 0, 0, 0, 19, 0, 0, 0];
@@ -651,6 +677,43 @@ mod tests {
         assert_eq!(
             encode(1, &bad_tile, 1024).unwrap_err().kind,
             ErrorKind::InvalidArgument
+        );
+    }
+    #[test]
+    fn diagnostic_kinds_have_independent_wire_oracles_and_legacy_filtering() {
+        let information = Diagnostic::information("test.same", "info");
+        let repair = Diagnostic::new(Repair::new("test.same"), "repair");
+        let records = vec![information, repair];
+        // Typed kind/id/count, then information=1 and repair=0, with Unknown contexts.
+        let mut expected = vec![145, 9, 0, 0, 0, 2, 0, 0, 0, 1, 9, 0, 0, 0];
+        expected.extend(b"test.same");
+        expected.extend([4, 0, 0, 0]);
+        expected.extend(b"info");
+        expected.extend([0, 0]);
+        let mut repair_bytes = vec![9, 0, 0, 0];
+        repair_bytes.extend(b"test.same");
+        repair_bytes.extend([6, 0, 0, 0]);
+        repair_bytes.extend(b"repair");
+        repair_bytes.extend([0, 0]);
+        expected.push(0);
+        expected.extend(&repair_bytes);
+        let actual = encode(9, &Response::DiagnosticDetails(records.clone()), 1024).unwrap();
+        assert_eq!(&actual[4..], expected);
+        assert_eq!(
+            encode(
+                9,
+                &Response::DiagnosticDetails(records.clone()),
+                expected.len() - 1
+            )
+            .unwrap_err()
+            .kind,
+            ErrorKind::Limit
+        );
+        let mut legacy = vec![133, 9, 0, 0, 0, 1, 0, 0, 0];
+        legacy.extend(repair_bytes);
+        assert_eq!(
+            &encode(9, &Response::Diagnostics(records), 1024).unwrap()[4..],
+            legacy
         );
     }
 }

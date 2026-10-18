@@ -94,7 +94,10 @@ fn standard_fonts_aliases_afm_metrics_and_outlines() -> Result<()> {
             );
         } else {
             assert_eq!(document.diagnostics().len(), 1);
-            assert_eq!(document.diagnostics()[0].repair, pagura_text::SUBSTITUTED);
+            assert_eq!(
+                document.diagnostics()[0].kind,
+                pagura_core::DiagnosticKind::Information(pagura_text::SUBSTITUTED)
+            );
             let glyphs = font.decode(&input)?;
             for (glyph, value) in glyphs.iter().zip(expected(&name, "out")?) {
                 let values = row(&value)?;

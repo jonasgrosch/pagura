@@ -5,6 +5,7 @@ export const MAX_FILE = 512 * 1024 * 1024;
 export const VERSION_1_1 = 0x00010001;
 export const VERSION_1_2 = 0x00010002;
 export const VERSION_1_3 = 0x00010003;
+export const VERSION_1_4 = 0x00010004;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 class Reader {
@@ -74,11 +75,15 @@ export function decodeResponse(body) {
       if (!width || !height || !Number.isSafeInteger(size)) throw new Error('Invalid tile dimensions');
       const rgba = r.take(size); value = { width, height, rgba }; break;
     }
-    case 133: {
+    case 133: case 145: {
       const count = r.u32();
-      // Each record needs at least two lengths and two context bytes.
-      if (count > Math.floor((body.length - r.offset) / 10)) throw new Error('Invalid diagnostic count');
-      value = Array.from({ length: count }, () => ({ tag: r.text(), message: r.text(), ...r.context() })); break;
+      // Two lengths, context flags, and a kind byte in typed snapshots.
+      if (count > Math.floor((body.length - r.offset) / (kind === 145 ? 11 : 10))) throw new Error('Invalid diagnostic count');
+      value = Array.from({ length: count }, () => {
+        const diagnosticKind = kind === 145 ? r.u8() : 0;
+        if (diagnosticKind > 1) throw new Error('Unknown diagnostic kind');
+        return { kind: diagnosticKind === 0 ? 'repair' : 'information', tag: r.text(), message: r.text(), ...r.context() };
+      }); break;
     }
     case 134: value = null; break;
     case 135: value = { generation: r.u32() }; break;
@@ -96,7 +101,7 @@ export function decodeResponse(body) {
     case 138: case 139: case 140: case 141: case 142: case 143: case 144: value = decodeReading(kind, r); break;
     case 255: {
       const category = r.u8(), tag = r.text(), repair = r.text(), message = r.text();
-      if (category < 1 || category > 7 || (category === 3) !== (tag.length > 0) || (repair.length > 0 && category !== 1)) throw new Error('Invalid structured error');
+      if (category < 1 || category > 7 || (category === 3) !== (tag.length > 0)) throw new Error('Invalid structured error');
       value = new HostError(category, tag, repair, message, r.context()); break;
     }
     default: throw new Error(`Unknown response kind ${kind}`);
@@ -152,7 +157,7 @@ export function encodeRequest(kind, id, values = {}) {
     case 4: case 8:
       if (!Number.isFinite(values.scale) || values.scale <= 0) throw new Error('Scale must be positive and finite');
       size = kind === 8 ? 41 : 37; break;
-    case 5: case 6: size = 9; break;
+    case 5: case 6: case 17: size = 9; break;
     default: throw new Error('Unknown request kind');
   }
   if (size > MAX_FRAME) throw new Error('Request frame budget exceeded');
@@ -164,7 +169,7 @@ export function encodeRequest(kind, id, values = {}) {
   if (kind === 1) integer(values.version ?? 1);
   if (kind === 2) { bytes[offset++] = values.recovery; blob(values.password); blob(values.bytes); }
   if (kind === 8) integer(values.generation);
-  if (kind >= 3 && kind <= 8) integer(values.document);
+  if ((kind >= 3 && kind <= 8) || kind === 17) integer(values.document);
   if (kind === 7) integer(values.generation);
   if (kind === 3 || kind === 4 || kind === 8) integer(values.page);
   if (kind === 4 || kind === 8) {

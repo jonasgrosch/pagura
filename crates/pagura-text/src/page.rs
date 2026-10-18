@@ -313,7 +313,7 @@ impl TextPage {
                     return Err(error);
                 }
                 crate::repairs::Report::new(document).diagnostic(pagura_core::Diagnostic {
-                    repair: crate::repairs::STRUCTURE_FALLBACK,
+                    kind: pagura_core::DiagnosticKind::Repair(crate::repairs::STRUCTURE_FALLBACK),
                     message: error.message,
                     position: error.position,
                     object: error.object,

@@ -130,6 +130,7 @@ fn content_bounds_are_additive_and_match_independent_rectangle_geometry() {
         protocol::VERSION_1_1,
         protocol::VERSION_1_2,
         protocol::VERSION_1_3,
+        protocol::VERSION_1_4,
     ] {
         let mut input = frame(1, 1, &version.to_le_bytes());
         input.extend(frame(2, 2, &open(&pdf)));
@@ -146,7 +147,7 @@ fn content_bounds_are_additive_and_match_independent_rectangle_geometry() {
             .unwrap();
         let frames = bodies(&out);
         assert_eq!(frames[4][0], 131);
-        if version == protocol::VERSION_1_3 {
+        if matches!(version, protocol::VERSION_1_3 | protocol::VERSION_1_4) {
             assert_eq!(&frames[8][25..29], &2_u32.to_le_bytes());
             for (id, coordinates) in [(3_u32, [8_f64, 8., 24., 24.]), (4, [32., 32., 64., 64.])] {
                 let mut expected = vec![144];

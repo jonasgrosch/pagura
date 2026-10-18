@@ -46,7 +46,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!(
                 "ok\t{}\t{}\t{}\t{}",
                 usize::from(form.has_xfa),
-                document.diagnostics().len() - before,
+                document
+                    .diagnostics()
+                    .iter()
+                    .skip(before)
+                    .filter(|item| item.repair().is_some())
+                    .count(),
                 form.widgets.len(),
                 counts.map(|n| n.to_string()).join(",")
             );
@@ -55,8 +60,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("form-error\t{}\t{}", error.kind.name(), error);
         }
     }
-    for d in document.diagnostics().iter().skip(before) {
-        eprintln!("{}", d.repair.as_str());
+    for d in document
+        .diagnostics()
+        .iter()
+        .skip(before)
+        .filter(|item| item.repair().is_some())
+    {
+        eprintln!("{}", d.tag());
     }
     Ok(())
 }

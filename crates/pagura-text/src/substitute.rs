@@ -7,7 +7,7 @@ use crate::{
     metrics::Metrics,
     objects::{number, optional, required},
 };
-use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Repair, Result, Value};
+use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Result, Value};
 use pagura_document::Document;
 use std::sync::Arc;
 
@@ -16,7 +16,7 @@ use family::Family;
 pub(crate) use family::standard_name;
 
 /// Diagnostic tag for an explicitly provided replacement outline.
-pub const SUBSTITUTED: Repair = Repair::new("font.substituted");
+pub const SUBSTITUTED: &str = "font.substituted";
 
 pub(crate) fn load(
     document: &Document,
@@ -82,7 +82,7 @@ pub(crate) fn load(
         Metrics::simple(document, font, descriptor, 0.001)?
     };
     let mapping = Mapping::Simple(Box::new(SimpleMapping::new(names, document.limits())?));
-    let to_unicode = to_unicode(document, font, &mapping);
+    let to_unicode = to_unicode(document, font, &mapping)?;
     let source = data
         .program
         .as_ref()
@@ -95,7 +95,7 @@ pub(crate) fn load(
     if data.program.is_some() {
         // Substitution is permitted PDF behavior, not a repair of malformed input.
         // Report it in strict mode too; no recovery permission is consumed.
-        let mut diagnostic = Diagnostic::new(SUBSTITUTED, substitution_message(selected));
+        let mut diagnostic = Diagnostic::information(SUBSTITUTED, substitution_message(selected));
         if let Some(id) = font.get(b"FontDescriptor").and_then(Value::as_reference) {
             diagnostic = diagnostic.in_object(id);
         }

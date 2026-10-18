@@ -25,8 +25,8 @@
 //! ```
 
 pub use pagura_core::{
-    Diagnostic, Dictionary, Error, ErrorKind, Feature, Limits, Name, ObjectId, Position, Recovery,
-    Rect, Repair, Result, Value,
+    Diagnostic, DiagnosticKind, Dictionary, Error, ErrorKind, Feature, Limits, Name, ObjectId,
+    Position, Recovery, Rect, Repair, Result, Value,
 };
 /// The interactive form's field model, read-only (12.7). Form actions are inert data.
 pub use pagura_document::forms;

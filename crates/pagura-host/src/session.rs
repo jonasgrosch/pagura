@@ -192,6 +192,7 @@ impl Session {
                             | protocol::VERSION_1_1
                             | protocol::VERSION_1_2
                             | protocol::VERSION_1_3
+                            | protocol::VERSION_1_4
                     ) =>
             {
                 self.version = Some(*version);
@@ -300,6 +301,16 @@ impl Session {
             } => self.render(document, page, scale, tile, None),
             Request::Diagnostics(handle) => {
                 Ok(Response::Diagnostics(self.document(handle)?.diagnostics()))
+            }
+            Request::DiagnosticDetails(handle) => {
+                if self.version != Some(protocol::VERSION_1_4) {
+                    return Err(Error::invalid_argument(
+                        "typed diagnostics require protocol 1.4",
+                    ));
+                }
+                Ok(Response::DiagnosticDetails(
+                    self.document(handle)?.diagnostics(),
+                ))
             }
             Request::Close(handle) => self.close(handle),
         }
@@ -451,14 +462,19 @@ impl Session {
         request: crate::reading::Request<'_>,
     ) -> Result<crate::reading::Response> {
         use crate::reading::{Request, Response, Writer};
-        if matches!(request, Request::Bounds(..)) && self.version != Some(protocol::VERSION_1_3) {
+        if matches!(request, Request::Bounds(..))
+            && !matches!(
+                self.version,
+                Some(protocol::VERSION_1_3 | protocol::VERSION_1_4)
+            )
+        {
             return Err(Error::invalid_argument(
                 "content bounds require protocol 1.3",
             ));
         }
         if !matches!(
             self.version,
-            Some(protocol::VERSION_1_2 | protocol::VERSION_1_3)
+            Some(protocol::VERSION_1_2 | protocol::VERSION_1_3 | protocol::VERSION_1_4)
         ) {
             return Err(Error::invalid_argument(
                 "reading request requires protocol 1.2",
@@ -580,7 +596,12 @@ impl Session {
     fn require_extensions(&self) -> Result<()> {
         if matches!(
             self.version,
-            Some(protocol::VERSION_1_1 | protocol::VERSION_1_2 | protocol::VERSION_1_3)
+            Some(
+                protocol::VERSION_1_1
+                    | protocol::VERSION_1_2
+                    | protocol::VERSION_1_3
+                    | protocol::VERSION_1_4
+            )
         ) {
             Ok(())
         } else {
