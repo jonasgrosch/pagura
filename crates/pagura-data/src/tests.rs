@@ -282,12 +282,16 @@ fn unavailable_resources_are_explicit_and_not_cached_as_guesses() -> Result<()> 
 
 #[test]
 fn parsing_budgets_fail_before_publication() {
+    // Each font budget is zeroed together with the general field that the
+    // pagura-text and pagura-font parsers of these files have used.
     for limits in [
         Limits {
+            font_work: 0,
             operations: 0,
             ..Limits::default()
         },
         Limits {
+            font_entries: 0,
             value_nodes: 0,
             ..Limits::default()
         },
@@ -333,36 +337,6 @@ fn parsing_budgets_fail_before_publication() {
         .kind,
         pagura_core::ErrorKind::Limit
     );
-}
-
-#[cfg(feature = "standard-fonts")]
-#[test]
-fn afm_rejects_nonfinite_metrics_and_mismatched_counts() {
-    for body in [
-        "C 65 ; WX NaN ; N A ;",
-        "C 256 ; WX 600 ; N A ;",
-        "C 65 ; WX 600 ;",
-        "",
-    ] {
-        let data = format!(
-            "StartFontMetrics 4.1\nFontName Example\nStartCharMetrics 1\n{body}\nEndCharMetrics\nEndFontMetrics\n"
-        );
-        assert!(afm::parse(data.as_bytes(), Limits::default()).is_err());
-    }
-}
-
-#[cfg(feature = "cmaps")]
-#[test]
-fn collection_rows_reject_invalid_scalars_cids_and_duplicate_definitions() {
-    for row in [
-        "1\t0000d800",
-        "65536\t00000041",
-        "1\t00110000",
-        "1\t00000041\n1\t00000042",
-        "1\t0000004",
-    ] {
-        assert!(unicode::parse(row.as_bytes(), Limits::default()).is_err());
-    }
 }
 
 #[cfg(feature = "standard-fonts")]

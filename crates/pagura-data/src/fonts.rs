@@ -31,7 +31,7 @@ impl Fonts {
         {
             return Ok(Some(Arc::clone(value)));
         }
-        let metrics = Arc::new(crate::afm::parse(afm, self.limits)?);
+        let metrics = Arc::new(crate::afm::parse(afm, &self.limits)?);
         let format = if matches!(name, b"Symbol" | b"ZapfDingbats") {
             FontFormat::Cff
         } else {

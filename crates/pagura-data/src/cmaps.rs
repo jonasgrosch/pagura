@@ -75,7 +75,7 @@ impl CMaps {
         {
             return Ok(Some(Arc::clone(value)));
         }
-        let value = Arc::new(crate::unicode::parse(data, self.limits)?);
+        let value = Arc::new(crate::unicode::parse(data, &self.limits)?);
         let mut cache = self.unicode.lock().unwrap_or_else(PoisonError::into_inner);
         Ok(Some(Arc::clone(cache.entry(ordering).or_insert(value))))
     }
