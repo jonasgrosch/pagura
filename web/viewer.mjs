@@ -22,7 +22,9 @@ const reader = new ReadingView({
   state: () => ({ client, handle, epoch: documentEpoch, page, count: layout.count, zoom,
     scrollMatch: (index, y) => { viewport.scrollTop = layout.top(index, zoom) + Math.max(0, y - 40); invalidate(); } }),
   navigate, destination: followDestination, report: (error) => { $('reading-status').textContent = String(error); }, controls,
+  notice: readingNotice,
 });
+function readingNotice(message) { $('reading-status').textContent = message; }
 function report(error) { errorBox.textContent = String(error); errorBox.hidden = false; status.textContent = 'Page unavailable'; }
 function controls() {
   const count = layout.count;
@@ -268,6 +270,7 @@ async function followDestination(action) {
   if (plan.y !== null) viewport.scrollTop = layout.top(action.page, zoom) + plan.y;
   if (plan.x !== null) viewport.scrollLeft = Math.max(0, (parseFloat(surface.style.width) - info.width * zoom) / 2 + plan.x);
   invalidate();
+  if (plan.notice) readingNotice(plan.notice);
 }
 async function openFile(file) {
   if (!file) return;

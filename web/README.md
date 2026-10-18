@@ -239,7 +239,10 @@ Link areas are focusable, named links activated by Enter or Space. Internal
 XYZ/Fit/FitH/FitV/FitR destinations preserve fit and coordinate instructions,
 including nullable coordinates and rotation. FitB/FitBH/FitBV are preserved on
 the wire but report that engine content bounds are unavailable; no guessed
-page-box fallback is used. Destination zoom outside 10%–800% is also explicit.
+page-box fallback is used. A dedicated content-fit adapter preserves that
+unavailable result until painted bounds can be requested from the host.
+Destination zoom outside 10%–800% is clamped into that range with a short
+informational notice; destination coordinates use the clamped zoom.
 The host needs `DisplayList::content_bounds() -> Result<Option<Rect>>` in default
 user space to implement those three fits accurately.
 
@@ -249,8 +252,9 @@ mailto are allowed, with a native confirmation showing the resolved target.
 URI credentials are rejected. Links have no href before confirmation, so
 middle-click/context menus cannot bypass policy. IsMap (coordinate-appending)
 URIs, GoToR, Launch, JavaScript, unknown Named actions and multi-action chains
-remain inert with an explanation. Standard NextPage, PrevPage, FirstPage and
-LastPage Named actions navigate. No scripts, remote files or action chains run.
+remain inert with an informational notice, rather than an error. Standard
+NextPage, PrevPage, FirstPage and LastPage Named actions navigate. No scripts,
+remote files or action chains run.
 
 The outline sidebar uses an ARIA tree with levels, sibling positions, initial
 open states, styles and colours. Arrow keys move/expand/collapse; Home/End select
@@ -261,9 +265,12 @@ outline DOM is capped at 20,000 items. Page labels display alongside the numeric
 index; the page field accepts a label or `#index`. Duplicate labels select the
 first occurrence; exact labels take precedence over bare numeric input.
 
-All PDF text, labels, outline titles and URI descriptions enter the DOM through
-textContent. Accessible names derive from these text nodes; focusing or hovering
-a link also shows its target in the reading status. No PDF string is HTML, CSS, a script or an event handler.
+All PDF text, labels, outline titles and URI descriptions enter the DOM as text:
+textContent for content, and inert aria-label/title attributes for link names
+and tooltips. Links describe their target, use the destination's page label,
+and identify external confirmation or inert actions. Focusing or hovering
+a link also shows its target in the polite reading status. No PDF string is
+HTML, CSS, a script or an event handler.
 Tests use markup-bearing titles/text to verify inert nodes. Protocol 1.2 adds
 kinds 10–15; older sessions reject them operationally and retain their layouts.
 See PROTOCOL.md for the complete bounded layouts and cursor semantics.

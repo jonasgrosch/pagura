@@ -10,24 +10,28 @@ export function externalUrl(action) {
   if (url.username || url.password) throw new Error('URI credentials are not allowed');
   return url.href;
 }
-export function targetLabel(target) {
+const namedPages = { NextPage: 'Go to next page', PrevPage: 'Go to previous page', FirstPage: 'Go to first page', LastPage: 'Go to last page' };
+export function targetLabel(target, pageLabel = (page) => String(page + 1)) {
   if (!target.length) return 'Link without a target';
-  if (target.length > 1) return 'Multiple actions: inert in this viewer';
+  if (target.length > 1) return 'Multiple actions (not run)';
   const action = target[0];
-  if (action.kind === 1) return `Go to page ${action.page + 1}`;
-  if (action.kind === 2) { try { return externalUrl(action); } catch (error) { return String(error); } }
-  if (action.kind === 3) return ['NextPage','PrevPage','FirstPage','LastPage'].includes(action.name) ? action.name : `${action.name}: inert; unsupported named action`;
-  return `${({ 4: 'GoToR', 5: 'Launch', 6: 'JavaScript' })[action.kind] ?? action.name}: inert; this viewer never opens files or runs PDF scripts`;
+  if (action.kind === 1) return `Go to page ${pageLabel(action.page)}`;
+  if (action.kind === 2) {
+    if (action.isMap) return 'Coordinate-appending URI action (not run)';
+    try { return `Open ${externalUrl(action)} (external; asks before opening)`; } catch (error) { return error.message; }
+  }
+  if (action.kind === 3) return Object.hasOwn(namedPages, action.name) ? namedPages[action.name] : `${action.name} named action (not run)`;
+  return `${({ 4: 'GoToR', 5: 'Launch', 6: 'JavaScript' })[action.kind] ?? action.name} action (not run)`;
 }
-export async function activateTarget(target, { destination, named, report, confirm = (value) => window.confirm(value), open = (value) => window.open(value, '_blank', 'noopener,noreferrer') }) {
+export async function activateTarget(target, { destination, named, report, notice, confirm = (value) => window.confirm(value), open = (value) => window.open(value, '_blank', 'noopener,noreferrer') }) {
   try {
-    if (target.length !== 1) throw new Error(targetLabel(target));
+    if (target.length !== 1) { notice(targetLabel(target)); return; }
     const action = target[0];
     if (action.kind === 1) await destination(action);
-    else if (action.kind === 2) {
+    else if (action.kind === 2 && !action.isMap) {
       const url = externalUrl(action);
       if (confirm(`Open external link?\n${url}`)) open(url);
-    } else if (action.kind === 3 && ['NextPage', 'PrevPage', 'FirstPage', 'LastPage'].includes(action.name)) await named(action.name);
-    else throw new Error(targetLabel(target));
+    } else if (action.kind === 3 && Object.hasOwn(namedPages, action.name)) await named(action.name);
+    else notice(`${targetLabel(target)}. This viewer does not run scripts, open remote files or perform unsupported actions.`);
   } catch (error) { report(error); }
 }

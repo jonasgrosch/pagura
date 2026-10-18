@@ -159,6 +159,12 @@ pub(crate) fn page_text(page: &pagura::TextPage, cap: usize) -> Result<Response>
     Ok(Response::new(138, out))
 }
 pub(crate) fn text_charge(page: &pagura::TextPage) -> usize {
+    text_retained_bytes(page).saturating_add(512)
+}
+
+fn text_retained_bytes(page: &pagura::TextPage) -> usize {
+    // Replace this estimate with page.retained_bytes() when TextPage exposes it.
+    // Cache bookkeeping is charged separately by text_charge.
     // Fixed target-independent estimates, not allocator telemetry. Source bytes
     // are charged separately. Over-budget pages can be served without retention.
     page.glyphs()
@@ -173,6 +179,5 @@ pub(crate) fn text_charge(page: &pagura::TextPage) -> usize {
         .saturating_add(page.text().len())
         .saturating_add(page.content_text().len())
         .saturating_add(page.marked_content().len().saturating_mul(256))
-        .saturating_add(512)
 }
 pub(crate) use navigation::{labels, links, outlines};

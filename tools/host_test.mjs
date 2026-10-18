@@ -1,9 +1,10 @@
-import { externalUrl, activateTarget } from '../web/link_actions.mjs';
+import { externalUrl, activateTarget, targetLabel } from '../web/link_actions.mjs';
 import { textLayer, selectedText } from '../web/text_layer.mjs';
 import { pagePoint } from '../web/page_geometry.mjs';
 import { destinationView } from '../web/destinations.mjs';
 import { readingWorkload } from '../web/reading_workload.mjs';
 import { OutlineTree } from '../web/outline_tree.mjs';
+import { ReadingView } from '../web/reading_view.mjs';
 /** Offline parity, independent pixel oracles and browser-shim checks.
  * Prerequisites: cargo build --locked --offline -p pagura-host; cargo wasm --offline
  * Usage: node tools/host_test.mjs
@@ -621,7 +622,19 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
     const links = view(0).children.find((n) => n.className === 'link-layer').children;
     assert.equal(links[0].getAttribute('role'), 'link'); assert.equal(links[0].getAttribute('tabindex'), '0');
     assert.equal(links[0].getAttribute('href'), undefined);
-    links[8].dispatch('keydown', { key: 'Enter' }); await waitFor(() => elements.get('reading-status').textContent.includes('Launch: inert'));
+    const linkNames = ['Go to page 2', 'GoToR action (not run)', 'GoToR action (not run)', 'Multiple actions (not run)',
+      'Go to next page', 'Go to previous page', 'Go to first page', 'Go to last page', 'Launch action (not run)',
+      'JavaScript action (not run)', 'JavaScript action (not run)'];
+    assert.equal(links.length, linkNames.length);
+    for (const [i, link] of links.entries()) {
+      assert.equal(link.getAttribute('aria-label'), linkNames[i]); assert.equal(link.getAttribute('title'), linkNames[i]);
+    }
+    for (const index of [1, 3, 8, 9, 10]) {
+      links[index].dispatch('keydown', { key: 'Enter' });
+      assert.ok(elements.get('reading-status').textContent.startsWith(linkNames[index]));
+      assert.ok(!elements.get('reading-status').textContent.includes('Error:'));
+      assert.equal(elements.get('error').hidden, true);
+    }
     links[0].dispatch('keydown', { key: 'Enter' }); await waitFor(() => ready() && elements.get('page').value === '2');
     elements.get('zoom').value = '1';
     const reading = readingWorkload(2, 1), picker = elements.get('file');
@@ -644,6 +657,8 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
     fakeWindow.confirm = (message) => { assert.match(message,/https:\/\/example.invalid\/chapter/); uiConfirmed++; return false; };
     fakeWindow.open = (url, target, features) => { assert.equal(target,'_blank'); assert.equal(features,'noopener,noreferrer'); uiOpened.push(url); };
     const externalLink = () => view(0).children.find((n)=>n.className==='link-layer').children[0];
+    assert.equal(externalLink().getAttribute('aria-label'), 'Open https://example.invalid/chapter (external; asks before opening)');
+    assert.equal(externalLink().getAttribute('title'), externalLink().getAttribute('aria-label'));
     externalLink().dispatch('keydown',{key:'Enter'}); assert.equal(uiConfirmed,1); assert.deepEqual(uiOpened,[]);
     fakeWindow.confirm = () => { uiConfirmed++; return true; };
     externalLink().dispatch('click'); assert.equal(uiConfirmed,2); assert.deepEqual(uiOpened,['https://example.invalid/chapter']);
@@ -652,10 +667,23 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
       assert.match(elements.get('reading-status').textContent,/Blocked URI scheme/);
     }
     assert.equal(uiConfirmed,2); assert.equal(uiOpened.length,1);
+    for (const [requested, expected] of [[0.01, 0.1], [100, 8]]) {
+      picker.files = [new File([readingSecurityPdf('',hostileTitle,hostileCopy,{ zoom: requested, label: hostileTitle })], 'destination.pdf')];
+      picker.dispatch('change'); await waitFor(ready);
+      const link = externalLink(), name = `Go to page ${hostileTitle}`;
+      assert.equal(link.getAttribute('aria-label'), name); assert.equal(link.getAttribute('title'), name);
+      assert.equal(link.children.length, 0, 'PDF markup in an accessible name stays an inert attribute');
+      link.dispatch('keydown', { key: 'Enter' });
+      await waitFor(() => ready() && view(0).style.width === `${64 * expected}px`);
+      assert.equal(elements.get('reading-status').textContent, `Destination zoom limited to ${expected * 100}% (viewer range: 10%–800%).`);
+      assert.equal(elements.get('error').hidden, true);
+      assert.equal(elements.get('page').value, '1');
+      assert.equal(elements.get('viewport').scrollTop, 8 * expected);
+    }
     // Confirm policy and inert markup use the same production UI modules.
-    let confirmed = 0, opened = [], reported = [];
+    let confirmed = 0, opened = [], reported = [], notices = [];
     const action = { kind: 2, uri: '../chapter', base: 'https://example.invalid/docs/', isMap: false };
-    const options = { destination: async () => {}, named: async () => {}, report: (v) => reported.push(String(v)), confirm: () => { confirmed++; return false; }, open: (v) => opened.push(v) };
+    const options = { destination: async () => {}, named: async () => {}, report: (v) => reported.push(String(v)), notice: (v) => notices.push(v), confirm: () => { confirmed++; return false; }, open: (v) => opened.push(v) };
     await activateTarget([action], options); assert.equal(confirmed, 1); assert.deepEqual(opened, []);
     await activateTarget([action], { ...options, confirm: (value) => { assert.match(value, /https:\/\/example.invalid\/chapter/); return true; } });
     assert.deepEqual(opened, ['https://example.invalid/chapter']);
@@ -664,6 +692,14 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
       await activateTarget([{ ...action, uri }], options);
     }
     assert.equal(confirmed, 1); assert.equal(opened.length, 1); assert.equal(reported.length, 3);
+    for (const target of [[], [action, action], [{ ...action, isMap: true }], ...[4,5,6].map((kind) => [{kind}]),
+      ...['Unknown', 'constructor', '__proto__'].map((name) => [{kind:3,name}])]) {
+      await activateTarget(target, { ...options, named: () => assert.fail('Unsupported named action must stay inert') });
+    }
+    assert.equal(notices.length, 9); assert.ok(notices.every((v) => !v.includes('Error:')));
+    assert.equal(reported.length, 3); assert.equal(opened.length, 1); assert.equal(confirmed, 1);
+    assert.equal(targetLabel([{kind:1,page:2}]), 'Go to page 3');
+    assert.equal(targetLabel([{kind:1,page:2}], () => 'iii'), 'Go to page iii');
     const hostile = '<img src=x onerror=alert(1)>';
     const rootElement = new Element('tree'); const tree = new OutlineTree(rootElement, () => {});
     tree.set([{ depth: 0, title: hostile, open: false, style: 0, color: [0,0,0], target: [] }]);
@@ -675,8 +711,44 @@ async function testViewer(TestWorker, root, manifest, startup = null) {
     for (const [rotation, expected] of [[0,[20,80]],[90,[20,20]],[180,[80,20]],[270,[80,80]]]) assert.deepEqual(pagePoint({crop:[10,20,60,70],userUnit:2,rotation}, 1, 20,30),expected);
     const geometry = { crop: [0,0,100,200], width:100,height:200,userUnit:1,rotation:0 };
     assert.deepEqual(destinationView({fit:0,coordinates:[12,150,2,null]},geometry,200,400,1),{zoom:2,x:24,y:100});
+    for (const value of [null, 0]) assert.deepEqual(destinationView({fit:0,coordinates:[null,null,value,null]},geometry,200,400,2),{zoom:2,x:null,y:null});
     assert.deepEqual(destinationView({fit:4,coordinates:[10,20,50,100]},geometry,200,400,1),{zoom:5,x:50,y:500});
-    assert.throws(() => destinationView({fit:5,coordinates:[null,null,null,null]},geometry,200,400,1),/content bounds/);
+    for (const [requested, zoom] of [[0.01, 0.1], [100, 8]]) {
+      const plan = destinationView({fit:0,coordinates:[12,150,requested,null]},geometry,200,400,1);
+      assert.deepEqual(plan, {zoom,x:12*zoom,y:50*zoom,notice:`Destination zoom limited to ${zoom*100}% (viewer range: 10%–800%).`});
+    }
+    for (const fit of [1,2,3,4]) {
+      const plan = destinationView({fit,coordinates:[10,20,50,100]},geometry,10000,20000,1);
+      assert.equal(plan.zoom,8); assert.match(plan.notice,/800%/);
+      if (fit === 4) { assert.equal(plan.x,80); assert.equal(plan.y,800); }
+      const small = destinationView({fit,coordinates:[10,20,50,100]},geometry,1,1,1);
+      assert.equal(small.zoom,0.1); assert.match(small.notice,/10%/);
+    }
+    for (const fit of [5,6,7]) assert.throws(() => destinationView({fit,coordinates:[null,null,null,null]},geometry,200,400,1),/content bounds/);
+    assert.throws(() => destinationView({fit:0,coordinates:[null,null,Infinity,null]},geometry,200,400,1),/Invalid destination zoom/);
+
+    // Labels can arrive after visible links. Refresh names without adding a
+    // second tab stop for a multiline link, and announce the updated name.
+    let resolveLabels;
+    const lateClient = { invalidateSearch() {}, labels: () => new Promise((resolve) => { resolveLabels = resolve; }),
+      outlines: async () => [], pageText: async () => ({text:'',characters:[],quads:[]}),
+      links: async () => [{target:[{kind:1,page:0}],quads:[[1,2,3,2,3,4,1,4],[5,6,7,6,7,8,5,8]]}] };
+    const late = new ReadingView({state:()=>({client:lateClient,handle:1,epoch:1,page:0,count:1,zoom:1}),
+      navigate:async()=>{},destination:async()=>{},report:(error)=>assert.fail(String(error)),
+      notice:(message)=>{elements.get('reading-status').textContent=message;},controls:()=>{}});
+    elements.get('find-query').value = '';
+    const opening = late.open(), latePage = new Element('section');
+    await late.page(0,geometry,latePage);
+    const areas = latePage.children.find((n)=>n.className==='link-layer').children;
+    assert.equal(areas[0].getAttribute('aria-label'),'Go to page 1');
+    resolveLabels(['iii']); await opening;
+    for (const area of areas) {
+      assert.equal(area.getAttribute('aria-label'),'Go to page iii'); assert.equal(area.getAttribute('title'),'Go to page iii');
+    }
+    assert.equal(areas[0].getAttribute('tabindex'),'0'); assert.equal(areas[1].getAttribute('tabindex'),'-1');
+    assert.equal(areas[1].getAttribute('aria-hidden'),'true');
+    areas[0].dispatch('focus'); assert.equal(elements.get('reading-status').textContent,'Go to page iii');
+    late.reset();
 
   } finally {
     fakeWindow.dispatch('pagehide'); assert.equal(disconnected, true);
@@ -729,14 +801,14 @@ async function testFixtureLoading() {
 }
 
 // Minimal independent security PDF (7.5.4, 12.3.3, 12.5.6.5, 14.9.4).
-function readingSecurityPdf(uri, title, text) {
+function readingSecurityPdf(uri, title, text, { zoom = null, label = null } = {}) {
   const hex = (s) => `<${Buffer.from(s,'utf8').toString('hex')}>`;
   const content = `/Span << /ActualText ${hex(text)} >> BDC 0 0 10 10 re f EMC\n`;
   const objects = [null,
-    '<< /Type /Catalog /Pages 2 0 R /Outlines 5 0 R >>',
+    `<< /Type /Catalog /Pages 2 0 R /Outlines 5 0 R ${label === null ? '' : `/PageLabels << /Nums [0 << /P ${hex(label)} >>] >>`} >>`,
     '<< /Type /Pages /Count 1 /Kids [3 0 R] >>',
     '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 64 64] /Resources << >> /Annots [4 0 R] /Contents 7 0 R >>',
-    `<< /Type /Annot /Subtype /Link /Rect [8 8 24 24] /A << /S /URI /URI ${hex(uri)} >> >>`,
+    `<< /Type /Annot /Subtype /Link /Rect [8 8 24 24] ${zoom === null ? `/A << /S /URI /URI ${hex(uri)} >>` : `/Dest [3 0 R /XYZ 8 56 ${zoom}]`} >>`,
     '<< /Type /Outlines /Count 1 /First 6 0 R /Last 6 0 R >>',
     `<< /Title ${hex(title)} /Parent 5 0 R /Dest [3 0 R /Fit] >>`,
     `<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}endstream`,

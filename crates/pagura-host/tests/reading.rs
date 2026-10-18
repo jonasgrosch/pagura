@@ -75,6 +75,10 @@ fn native_binary_and_session_match_literal_text_layout() {
     assert_eq!(frames[2], expected);
     assert_eq!(frames[3][0], 143);
     assert_eq!(frames[3].len(), 41);
+    // Two glyphs, four content/reading characters, two strings of length two,
+    // and the fixed cache-entry charge. The estimator stays conservative.
+    assert_eq!(&frames[3][29..37], &5124_u64.to_le_bytes());
+    assert_eq!(&frames[3][37..41], &1_u32.to_le_bytes());
     assert_eq!(&frames[5][5..], &[0; 36]);
 }
 #[test]

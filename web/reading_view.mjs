@@ -5,8 +5,8 @@ import { OutlineTree } from './outline_tree.mjs';
 
 /** Reading state follows the document epoch, independently of tile generations. */
 export class ReadingView {
-  constructor({ state, navigate, destination, report, controls }) {
-    Object.assign(this, { state, navigate, destination, report, controls });
+  constructor({ state, navigate, destination, report, notice, controls }) {
+    Object.assign(this, { state, navigate, destination, report, notice, controls });
     this.$ = (id) => document.getElementById(id); this.pages = new Map(); this.labels = []; this.labelIndex = new Map();
     this.matches = []; this.current = -1; this.searchId = 0; this.searchNote = '';
     this.tree = new OutlineTree(this.$('outline-tree'), (target) => this.activate(target));
@@ -38,6 +38,7 @@ export class ReadingView {
     if (results[0].status === 'fulfilled') {
       this.labels = results[0].value;
       this.labels.forEach((label, i) => { if (!this.labelIndex.has(label)) this.labelIndex.set(label, i); });
+      for (const record of this.pages.values()) this.nameLinks(record);
     } else this.$('reading-status').textContent = String(results[0].reason);
     if (results[1].status === 'fulfilled') {
       try { this.tree.set(results[1].value); } catch (error) { this.$('reading-status').textContent = String(error); }
@@ -47,6 +48,12 @@ export class ReadingView {
     if (this.$('find-query').value && !this.$('find-panel').hidden) void this.search();
   }
   label(page) { return this.labels[page] ?? String(page + 1); }
+  nameLinks(record) {
+    for (const { area, target } of record.links ?? []) {
+      const name = targetLabel(target, (page) => this.label(page));
+      area.setAttribute('aria-label', name); area.setAttribute('title', name);
+    }
+  }
   pageIndex(value) {
     // Explicit displayed index wins for the default numeric labels. Exact PDF
     // labels, including nonnumeric and duplicated labels, resolve to the first.
@@ -75,20 +82,20 @@ export class ReadingView {
         const areas = results[1].value.reduce((n, link) => n + link.quads.length, 0);
         const total = [...this.pages.values()].reduce((n, p) => n + (p.linkAreas ?? 0), areas);
         if (total > 10000) throw new Error('Visible links exceed the 10000-area DOM budget');
-        record.linkAreas = areas;
+        record.linkAreas = areas; record.links = [];
         const layer = document.createElement('div'); layer.className = 'link-layer';
         for (const link of results[1].value) {
-          const actions = link.target, name = targetLabel(actions);
+          const actions = link.target;
           // A focusable link has no href, so the browser cannot bypass policy
           // with middle click, drag, a context menu or an unconfirmed activation.
           const node = document.createElement('a'); node.setAttribute('role', 'link'); node.setAttribute('tabindex', '0'); node.className = 'pdf-link';
-          const label = document.createElement('span'); label.className = 'sr-only'; label.textContent = name; node.append(label);
-          node.addEventListener('focus', () => { this.$('reading-status').textContent = name; });
+          node.addEventListener('focus', () => { this.notice(node.getAttribute('aria-label')); });
           // Each quad has its own exact hit area; only the first participates in
           // the focus order so a multiline link is announced once.
           for (const [i, quad] of link.quads.entries()) {
             const area = i === 0 ? node : document.createElement('a'); area.className = 'pdf-link';
-            area.addEventListener('mouseenter', () => { this.$('reading-status').textContent = name; });
+            record.links.push({ area, target: actions });
+            area.addEventListener('mouseenter', () => { this.notice(area.getAttribute('aria-label')); });
             if (i) { area.setAttribute('tabindex', '-1'); area.setAttribute('aria-hidden', 'true'); }
             placeQuad(area, pageQuad(info, zoom, quad));
             area.addEventListener('click', (event) => { event.preventDefault(); void this.activate(actions); });
@@ -96,13 +103,13 @@ export class ReadingView {
             layer.append(area);
           }
         }
-        element.append(layer);
+        this.nameLinks(record); element.append(layer);
       } else this.$('reading-status').textContent += ` Page ${index + 1} links: ${results[1].reason}`;
       this.highlight(); this.scrollCurrent();
     } catch (error) { this.$('reading-status').textContent = String(error); }
   }
   activate(target) {
-    return activateTarget(target, { destination: this.destination, report: this.report,
+    return activateTarget(target, { destination: this.destination, report: this.report, notice: this.notice,
       named: (name) => { const s = this.state(); return this.navigate(({ NextPage: s.page + 1, PrevPage: s.page - 1, FirstPage: 0, LastPage: s.count - 1 })[name]); } });
   }
   showSearch() { this.$('find-panel').hidden = false; this.$('find-query').focus(); }
