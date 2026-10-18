@@ -10,12 +10,8 @@ pub(super) struct Huffman {
 }
 impl Huffman {
     pub(super) fn symbol(&self, bits: &mut Bits<'_>) -> Result<u8> {
-        if let Some(prefix) = bits.prefix() {
-            let (symbol, length) = self.short[usize::from(prefix)];
-            if length != 0 {
-                bits.read(length)?;
-                return Ok(symbol);
-            }
+        if let Some(symbol) = bits.short(&self.short) {
+            return Ok(symbol);
         }
         let mut code = 0;
         for length in 0..16 {
@@ -107,21 +103,36 @@ impl<'a> Bits<'a> {
     pub(super) fn error(&self, message: &'static str) -> Error {
         Error::syntax(message).at(Position::Buffer(self.offset))
     }
-    /// Inspect eight bits without fetching beyond a marker or advancing the
-    /// entropy cursor. Short codes at the final byte retain the canonical path.
-    fn prefix(&self) -> Option<u8> {
-        if self.left == 8 {
-            return Some(self.byte);
-        }
-        let next = *self.data.get(self.offset)?;
-        if next == 255 && self.data.get(self.offset + 1) != Some(&0) {
+    /// Inspect and consume a short code with one byte/stuffing check. No
+    /// state changes until the table entry is known to fit before the marker.
+    fn short(&mut self, table: &[(u8, u8); 256]) -> Option<u8> {
+        let next = if self.left == 8 {
+            self.byte
+        } else {
+            let next = *self.data.get(self.offset)?;
+            if next == 255 && self.data.get(self.offset + 1) != Some(&0) {
+                return None;
+            }
+            next
+        };
+        let prefix = if self.left == 8 {
+            self.byte
+        } else if self.left == 0 {
+            next
+        } else {
+            (self.byte << (8 - self.left)) | (next >> self.left)
+        };
+        let (symbol, count) = table[usize::from(prefix)];
+        if count == 0 {
             return None;
         }
-        if self.left == 0 {
-            Some(next)
-        } else {
-            Some((self.byte << (8 - self.left)) | (next >> self.left))
+        if count > self.left {
+            self.byte = next;
+            self.offset += 1 + usize::from(next == 255);
+            self.left += 8;
         }
+        self.left -= count;
+        Some(symbol)
     }
 
     pub(super) fn read(&mut self, mut count: u8) -> Result<u32> {
@@ -247,7 +258,7 @@ mod tests {
             }
         }
         let mut bits = Bits::new(&[255, 217], 0);
-        assert_eq!(bits.prefix(), None);
+        assert_eq!(bits.short(&[(0, 0); 256]), None);
         assert!(bits.read(1).is_err());
         assert_eq!(bits.offset, 0);
     }
