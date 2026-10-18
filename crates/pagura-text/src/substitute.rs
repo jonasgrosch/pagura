@@ -13,6 +13,7 @@ use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result, Val
 use pagura_document::Document;
 use std::sync::Arc;
 
+pub(crate) mod cid;
 mod family;
 use family::Family;
 pub(crate) use family::standard_name;

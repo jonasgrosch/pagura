@@ -2,7 +2,7 @@
 use crate::{
     WritingMode,
     cid::Cid,
-    cidmap::{CidMap, CidRange, Step},
+    cid::map::{CidMap, CidRange, Step},
     features, repairs,
     report::Report,
 };
