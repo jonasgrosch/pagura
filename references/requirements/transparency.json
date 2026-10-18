@@ -1,0 +1,171 @@
+{
+  "schema": 2,
+  "area": "transparency",
+  "scope": "Group colour handling checked against the local ISO 32000-2:2020 sponsored EC3 text. Native component composition, destination ICC fallback, group boundaries, knockout and masks use independent rational/f64 formula expectations. CalGray/CalRGB destinations remain unsupported and Lab is prohibited.",
+  "requirements": [
+    {
+      "id": "transparency-native-components",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "11.3.3",
+        "11.3.4",
+        "11.4.6"
+      ],
+      "status": "Native one/four component f64 composition, including knockout shape and opacity.",
+      "tests": [
+        "transparency/cmyk-knockout-ais-0",
+        "transparency/cmyk-knockout-ais-1"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "transparency-subtractive-blends",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "11.3.4",
+        "11.3.5.2",
+        "11.3.5.3"
+      ],
+      "status": "All standard blend modes in Gray and additive complements of CMYK; non-separable K selection.",
+      "tests": [
+        "transparency/gray-blend-Normal",
+        "transparency/gray-blend-Compatible",
+        "transparency/gray-blend-Multiply",
+        "transparency/gray-blend-Screen",
+        "transparency/gray-blend-Overlay",
+        "transparency/gray-blend-Darken",
+        "transparency/gray-blend-Lighten",
+        "transparency/gray-blend-ColorDodge",
+        "transparency/gray-blend-ColorBurn",
+        "transparency/gray-blend-HardLight",
+        "transparency/gray-blend-SoftLight",
+        "transparency/gray-blend-Difference",
+        "transparency/gray-blend-Exclusion",
+        "transparency/gray-blend-Hue",
+        "transparency/gray-blend-Saturation",
+        "transparency/gray-blend-Color",
+        "transparency/gray-blend-Luminosity",
+        "transparency/cmyk-blend-Normal",
+        "transparency/cmyk-blend-Compatible",
+        "transparency/cmyk-blend-Multiply",
+        "transparency/cmyk-blend-Screen",
+        "transparency/cmyk-blend-Overlay",
+        "transparency/cmyk-blend-Darken",
+        "transparency/cmyk-blend-Lighten",
+        "transparency/cmyk-blend-ColorDodge",
+        "transparency/cmyk-blend-ColorBurn",
+        "transparency/cmyk-blend-HardLight",
+        "transparency/cmyk-blend-SoftLight",
+        "transparency/cmyk-blend-Difference",
+        "transparency/cmyk-blend-Exclusion",
+        "transparency/cmyk-blend-Hue",
+        "transparency/cmyk-blend-Saturation",
+        "transparency/cmyk-blend-Color",
+        "transparency/cmyk-blend-Luminosity"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "transparency-group-boundaries",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "11.4.7",
+        "11.6.6",
+        "11.7.2"
+      ],
+      "status": "Conversion once at isolated group boundaries; non-isolated groups inherit.",
+      "tests": [
+        "transparency/boundary-gray-to-gray",
+        "transparency/boundary-rgb-to-gray",
+        "transparency/boundary-cmyk-to-gray",
+        "transparency/boundary-gray-to-rgb",
+        "transparency/boundary-rgb-to-rgb",
+        "transparency/boundary-cmyk-to-rgb",
+        "transparency/boundary-gray-to-cmyk",
+        "transparency/boundary-rgb-to-cmyk",
+        "transparency/boundary-cmyk-to-cmyk",
+        "transparency/nested-gray-rgb-cmyk",
+        "transparency/nonisolated-inherits-cmyk"
+      ],
+      "gaps": "CIE-based destinations need reversible transforms."
+    },
+    {
+      "id": "transparency-icc-fallback",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "8.6.5.5",
+        "8.6.5.6",
+        "11.3.4",
+        "11.6.6"
+      ],
+      "status": "ICC group destination fallback to its resolved device base; every supported ICC source retains its forward colour transform.",
+      "tests": [
+        "transparency/icc-gray-default",
+        "transparency/icc-gray-alternate",
+        "transparency/icc-rgb-default",
+        "transparency/icc-rgb-alternate",
+        "transparency/icc-cmyk-default",
+        "transparency/icc-cmyk-alternate",
+        "transparency/icc-source-and-group",
+        "transparency/icc-cmyk-resource-alias",
+        "transparency/icc-cmyk-resource-default",
+        "transparency/icc-cmyk-device-boundary",
+        "transparency/icc-cmyk-different-profile-boundary"
+      ],
+      "gaps": "ICC inverse transforms and calibrated alternates are not implemented. Native K and overprint for same-profile ICC CMYK require an AToB group-boundary conversion and remain deferred."
+    },
+    {
+      "id": "transparency-cmyk-masks",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "11.5.2",
+        "11.5.3",
+        "11.6.5.1"
+      ],
+      "status": "Alpha and CMYK luminosity masks inside CMYK groups, BC and TR.",
+      "tests": [
+        "transparency/cmyk-mask-Alpha",
+        "transparency/cmyk-mask-Alpha-transfer",
+        "transparency/cmyk-mask-Luminosity",
+        "transparency/cmyk-mask-Luminosity-transfer"
+      ],
+      "gaps": ""
+    },
+    {
+      "id": "transparency-calibrated-boundary",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "11.3.4",
+        "11.6.6"
+      ],
+      "status": "Explicit rejection of prohibited Lab and unsupported calibrated blending destinations.",
+      "tests": [
+        "transparency/group-CalGray",
+        "transparency/group-CalRGB",
+        "transparency/group-Lab",
+        "transparency/group-icc-Lab"
+      ],
+      "gaps": "CalGray and CalRGB group destinations remain unsupported; Lab group destinations are prohibited."
+    },
+    {
+      "id": "transparency-overprint-boundary",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "11.7.4"
+      ],
+      "status": "ICC-CMYK fallback groups share device overprinting and process/spot composition. Supported ICC sources retain colour management and do not use native zero selection.",
+      "tests": [
+        "transparency/icc-cmyk-overprint-path",
+        "transparency/icc-cmyk-overprint-image",
+        "transparency/icc-cmyk-overprint-shading",
+        "transparency/icc-cmyk-overprint-matching-profile",
+        "transparency/icc-cmyk-overprint-tiny-nonzero",
+        "transparency/icc-cmyk-overprint-clipped-tints",
+        "transparency/icc-cmyk-overprint-default-remap",
+        "transparency/icc-cmyk-overprint-named-process",
+        "transparency/icc-cmyk-overprint-spot"
+      ],
+      "gaps": ""
+    }
+  ]
+}
