@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(unreachable_pub)]
 //! PDF-agnostic, antialiased 2D rasterization (ADR 0004).
 //!
 //! Callers describe geometry in device space through a [`Transform`];
@@ -34,10 +35,3 @@ pub use raster::{
 
 #[cfg(test)]
 mod tests;
-
-/// Stable raster capability tags.
-pub mod features {
-    use pagura_core::Feature;
-    /// Retained capability tag for device stroke fitting policies.
-    pub const STROKE_ADJUSTMENT: Feature = Feature::new("raster.stroke-adjustment-geometry");
-}
