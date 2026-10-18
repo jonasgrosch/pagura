@@ -1,4 +1,5 @@
-//! Eight-bit PNG encoding (PNG Second Edition 5, 6.2, 9, 11.2 and 12.8).
+//! Eight-bit PNG encoding (PNG Second Edition 5, 6.2, 9, 11.2 and 12.8;
+//! cited below as "PNG").
 //!
 //! Rows are tightly packed, top to bottom, without premultiplication. Output
 //! contains only IHDR, contiguous IDAT chunks and IEND, with no color profile.
@@ -12,26 +13,26 @@ use pagura_core::{Error, Limits, Result};
 
 /// The PNG signature (PNG Second Edition 5.2).
 const SIGNATURE: [u8; 8] = *b"\x89PNG\r\n\x1a\n";
-/// Length, type and CRC fields around each chunk's data (5.3).
+/// Length, type and CRC fields around each chunk's data (PNG 5.3).
 const CHUNK_FIELDS: usize = 12;
-/// IHDR data length (11.2.2).
+/// IHDR data length (PNG 11.2.2).
 const IHDR_LENGTH: usize = 13;
 /// Signature, IHDR, one IDAT and IEND without image data.
 const FRAMING: usize = SIGNATURE.len() + 3 * CHUNK_FIELDS + IHDR_LENGTH;
-/// The largest image dimension and chunk length, 2^31 - 1 (5.3, 11.2.2).
+/// The largest image dimension and chunk length, 2^31 - 1 (PNG 5.3, 11.2.2).
 const MAX_FIELD: u32 = 0x7fff_ffff;
 /// Sample depth: this encoder writes eight bits per sample.
 const BIT_DEPTH: u8 = 8;
 /// IDAT data per chunk, an encoder choice below `MAX_FIELD`.
 const IDAT_LENGTH: usize = 65536;
-/// The reflected CRC-32 polynomial of ISO 3309 (5.5, Annex D).
+/// The reflected CRC-32 polynomial of ISO 3309 (PNG 5.5, Annex D).
 const CRC_POLYNOMIAL: u32 = 0xedb8_8320;
 /// The largest absolute signed value of a filtered byte, which bounds the
-/// adaptive heuristic's per-byte score (12.8).
+/// adaptive heuristic's per-byte score (PNG 12.8).
 const MAX_SCORE: u64 = 128;
 
 /// The eight-bit sample layout of tightly packed input pixels; the
-/// discriminant is the PNG color type (11.2.2, Table 11.1).
+/// discriminant is the PNG color type (PNG 11.2.2, Table 11.1).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 #[repr(u8)]
@@ -96,8 +97,8 @@ impl Options {
 /// PNG Second Edition 12.8's adaptive heuristic minimizes the sum of absolute
 /// signed filtered bytes; ties choose the smaller filter tag. All five filters
 /// are considered, including on the first row. Alpha and hidden RGB samples
-/// are preserved exactly (6.2); premultiplied inputs must be converted first.
-/// Dimensions must be nonzero and at most 2^31-1 (11.2.2).
+/// are preserved exactly (PNG 6.2); premultiplied inputs must be converted
+/// first. Dimensions must be nonzero and at most 2^31-1 (PNG 11.2.2).
 ///
 /// Input is bounded by `limits.decoded_bytes` and `limits.pixels`, final PNG
 /// bytes by `limits.stream_bytes`. Scratch comprises a filtered image (one
@@ -160,7 +161,7 @@ pub fn encode(pixels: &[u8], width: u32, height: u32, options: &Options) -> Resu
     let mut ihdr = [0; IHDR_LENGTH];
     ihdr[..4].copy_from_slice(&field(width)?.to_be_bytes());
     ihdr[4..8].copy_from_slice(&field(height)?.to_be_bytes());
-    // Compression, filter and interlace methods stay 0 (11.2.2).
+    // Compression, filter and interlace methods stay 0 (PNG 11.2.2).
     ihdr[8] = BIT_DEPTH;
     ihdr[9] = options.color_type as u8;
     chunk(&mut output, *b"IHDR", &ihdr)?;
