@@ -546,14 +546,14 @@
           "verdict": "agree in Strict mode; reported compatibility choice in Repair mode",
           "implementation_agreement": "Strict refusal and bounded reported recovery agree with the reviewed rule and explicit choice.",
           "expectation_agreement": "The independent Python generator derives exact sample and metadata expectations from the reviewed rule and stated recovery; no product decoder is consulted.",
-          "evidence": "jpx-params-null/array-null/indirect-null/array-indirect-null/dictionary are valid without repairs; jpx-params-boolean/integer/name/string-null/array-wrong-type/preserve-predictor and image-params-string-null/indirect-string-null check Strict tags and exact samples. image-params-null keeps valid fax parameters. Wrong counts, cycles, Crypt and unknown parameter spellings stay rejected. jpx-params-encrypted-null retains ordinary decryption; jpx-params-encrypted-wrong-type confirms ciphertext is never decoded through the fallback."
+          "evidence": "jpx-params-null/array-null/indirect-null/array-indirect-null/dictionary are valid without repairs; jpx-params-boolean/integer/name/string-null/array-wrong-type/preserve-predictor and image-params-string-null/indirect-string-null check Strict tags and exact samples. image-params-null keeps valid fax parameters. Wrong counts, cycles and unknown parameter spellings stay rejected. jpx-params-encrypted-null retains ordinary decryption; jpx-params-encrypted-wrong-type and jpx-params-crypt-not-bypassed now check reported recovery through the document security path."
         }
       ],
       "external_primary_text_review": [],
       "choices": [
         "image.decode-params treats only the exact string null as the intended absent parameter for a parameterized filter, and ignores wrong-typed JPX parameters. All other parameter dictionaries and filter-array positions are preserved. Wrong array lengths, arbitrary wrong-typed parameters of other filters and reference cycles remain errors."
       ],
-      "gaps": "Recovery currently requires an internal unencrypted image stream without Crypt. Document::image_stream has no parameter-override API; encrypted streams retain their error rather than bypassing decryption. A document-layer API accepting normalized parameters while retaining security selection is needed for that extension.",
+      "gaps": "External F streams remain unsupported. Encrypted and Crypt-filtered parameter recovery is covered by image-parameter-override.",
       "verdict": "Reviewed primary-text rule and independently generated expectations agree; recovery is a documented departure."
     },
     {
@@ -639,6 +639,40 @@
       ],
       "gaps": "Excess bytes before non-EOI markers remain rejected even where additional application/table markers might permit a broader recovery. No encoded symbols or coefficients are invented.",
       "verdict": "Reviewed primary-text rule and independently generated expectations agree; recovery is a documented departure."
+    },
+    {
+      "id": "image-parameter-override",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.3.8.1; Table 5",
+        "7.4.1",
+        "7.4.4.3; Table 8",
+        "7.4.4.4; Tables 9-10",
+        "7.4.9",
+        "7.4.10; Table 14",
+        "7.6.3",
+        "7.6.6"
+      ],
+      "status": "implemented",
+      "tests": [
+        "image/params-encrypted-string-null",
+        "image/params-crypt-string-null",
+        "pagura-document stream::tests"
+      ],
+      "review": [
+        {
+          "locator": "7.3.8.1; Table 5; 7.4.1; 7.4.10; Table 14; 7.6.3; 7.6.6",
+          "rule": "Stream parameters remain aligned with filters. Decryption and explicit Crypt selection precede the remaining filters. External F data requires an external source.",
+          "verdict": "agree; malformed null-string replacement is a reported departure under image.decode-params",
+          "implementation_agreement": "Caller-supplied parameters pass through the existing document resolver, security selection and bounded decoder. None explicitly removes the entry; original objects remain immutable.",
+          "expectation_agreement": "Independent Python encryption and PNG Sub encoders wrap a JPX stream with directly chosen gray samples. Both files reject strictly with image.decode-params and recover those samples.",
+          "evidence": "RC4 default stream decryption and AESV2 explicit StdCF decryption overriding default Identity retain a nondefault predictor while replacing only the malformed final entry. Document tests exercise absence, external streams, invalid Crypt selection, decoding limits and repeated retained accounting."
+        }
+      ],
+      "choices": [
+        "Only parameter normalization belongs to the image layer; stream decryption, Crypt validation and filter application remain in pagura-document. Supplied parameters and decoded results are not cached; the usual per-operation budgets apply."
+      ],
+      "gaps": "External stream data remains unsupported; this API does not authorize repairs by itself."
     }
   ]
 }

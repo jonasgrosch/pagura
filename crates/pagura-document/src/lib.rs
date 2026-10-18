@@ -285,7 +285,34 @@ impl Document {
     /// As [`Document::stream_data`]; an image codec that is not the last
     /// filter fails with its `Unsupported` tag.
     pub fn image_stream<'a>(&'a self, object: &IndirectObject) -> Result<ImageStream<'a>> {
-        stream::image(self, object)
+        self.image_stream_with_parameters(
+            object,
+            object
+                .dictionary()
+                .and_then(|dictionary| dictionary.get(b"DecodeParms")),
+        )
+    }
+
+    /// Decodes an image stream using `parameters` in place of its `/DecodeParms`
+    /// (7.3.8.1, Table 5; 7.4.1). `None` means absent parameters. References in
+    /// the supplied value are resolved as for the original entry.
+    ///
+    /// Decryption, explicit Crypt selection (7.4.10), external-stream rules and
+    /// decoding limits are the same as for [`Document::image_stream`]. The
+    /// supplied parameters are not retained. Callers repairing malformed entries
+    /// must authorize the repair through [`pagura_core::Diagnostics::repair`]
+    /// and forward its diagnostics through [`Document::report`].
+    ///
+    /// # Errors
+    ///
+    /// As [`Document::image_stream`], including errors resolving parameters or
+    /// validating their Crypt selection.
+    pub fn image_stream_with_parameters<'a>(
+        &'a self,
+        object: &IndirectObject,
+        parameters: Option<&Value>,
+    ) -> Result<ImageStream<'a>> {
+        stream::image(self, object, parameters)
     }
 
     /// All pages in document order. The page tree is walked once and cached.

@@ -58,8 +58,10 @@ pub struct ImageStream<'a> {
 pub(crate) fn image<'a>(
     document: &'a Document,
     object: &IndirectObject,
+    parameters: Option<&Value>,
 ) -> Result<ImageStream<'a>> {
-    let (data, mut chain) = document.prepare_stream(object, &mut Vec::new())?;
+    let (data, mut chain) =
+        document.prepare_stream_with_parameters(object, parameters, &mut Vec::new())?;
     let codec = chain.split_image();
     let mut diagnostics = Diagnostics::new(document.recovery());
     let decoded = chain
@@ -84,6 +86,21 @@ impl Document {
         object: &IndirectObject,
         path: &mut Vec<ObjectId>,
     ) -> Result<(Cow<'a, [u8]>, FilterChain)> {
+        self.prepare_stream_with_parameters(
+            object,
+            object
+                .dictionary()
+                .and_then(|dictionary| dictionary.get(b"DecodeParms")),
+            path,
+        )
+    }
+
+    fn prepare_stream_with_parameters<'a>(
+        &'a self,
+        object: &IndirectObject,
+        parameters: Option<&Value>,
+        path: &mut Vec<ObjectId>,
+    ) -> Result<(Cow<'a, [u8]>, FilterChain)> {
         let id = object.id();
         let raw = self.raw_stream_data(object)?;
         let dictionary = object
@@ -100,11 +117,10 @@ impl Document {
             .get(b"Filter")
             .map(|value| self.resolve_deep(value, path))
             .transpose()?;
-        let params = dictionary
-            .get(b"DecodeParms")
+        let params = parameters
             .map(|value| self.resolve_deep(value, path))
             .transpose()?;
-        validate_crypt(filter.as_ref(), params.as_ref())?;
+        validate_crypt(filter.as_ref(), params.as_ref()).map_err(|error| error.in_object(id))?;
         let mut chain = FilterChain::from_entries(filter.as_ref(), params.as_ref())
             .map_err(|error| error.in_object(id))?;
         let decrypted = decrypt(self, object, raw, &mut chain)?;
@@ -235,5 +251,112 @@ pub(crate) fn start(
         _ => Err(
             Error::syntax("stream keyword must be followed by LF or CRLF").at(parser.position()),
         ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Document, OpenOptions};
+    use pagura_core::{ErrorKind, Limits, Name, ObjectId, Recovery, Value};
+    use pagura_testkit::fixture;
+
+    fn open(name: &str, decoded_bytes: usize) -> Document {
+        Document::open(
+            fixture("image", &format!("{name}.pdf")),
+            &OpenOptions {
+                recovery: Recovery::Strict,
+                limits: Limits {
+                    decoded_bytes,
+                    ..Limits::default()
+                },
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap()
+    }
+
+    fn parameters(document: &Document, object: &crate::IndirectObject) -> Value {
+        let original = object.dictionary().unwrap().get(b"DecodeParms").unwrap();
+        let Value::Array(mut entries) = document.resolve_deep(original, &mut Vec::new()).unwrap()
+        else {
+            panic!("fixture requires aligned parameters");
+        };
+        *entries.last_mut().unwrap() = Value::Null;
+        Value::Array(entries)
+    }
+
+    #[test]
+    fn parameter_override_preserves_decryption_predictors_and_cache_accounting() {
+        let baseline = open("jpx-params-null", Limits::default().decoded_bytes);
+        let baseline = baseline
+            .image_stream(baseline.object(ObjectId::new(3, 0)).unwrap())
+            .unwrap();
+        for name in ["params-encrypted-string-null", "params-crypt-string-null"] {
+            let document = open(name, Limits::default().decoded_bytes);
+            let object = document.object(ObjectId::new(3, 0)).unwrap();
+            let original = object.dictionary().unwrap().clone();
+            assert_eq!(
+                document.image_stream(object).unwrap_err().kind,
+                ErrorKind::Syntax
+            );
+            let parameters = parameters(&document, object);
+            let retained = document.retained.used();
+            for _ in 0..2 {
+                let stream = document
+                    .image_stream_with_parameters(object, Some(&parameters))
+                    .unwrap();
+                assert_eq!(stream.data, baseline.data);
+                assert_eq!(stream.codec, baseline.codec);
+                assert_eq!(document.retained.used(), retained);
+            }
+            assert_eq!(object.dictionary(), Some(&original));
+            assert!(document.image_stream(object).is_err());
+            assert_eq!(document.diagnostics(), []);
+
+            let limited = open(name, 1);
+            let object = limited.object(ObjectId::new(3, 0)).unwrap();
+            let error = limited
+                .image_stream_with_parameters(object, Some(&parameters))
+                .unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Limit);
+            assert_eq!(error.object, Some(object.id()));
+        }
+    }
+
+    #[test]
+    fn absent_override_and_security_validation_keep_their_meaning() {
+        let document = open("jpx-params-string-null", Limits::default().decoded_bytes);
+        let object = document.object(ObjectId::new(3, 0)).unwrap();
+        assert!(document.image_stream(object).is_err());
+        let absent = document.image_stream_with_parameters(object, None).unwrap();
+        assert_eq!(absent.data, document.raw_stream_data(object).unwrap());
+        let mut external = object.clone();
+        let Value::Dictionary(dictionary) = &mut external.value else {
+            panic!("fixture requires a dictionary");
+        };
+        dictionary.insert(Name::new(b"F"), Value::Null);
+        let error = document
+            .image_stream_with_parameters(&external, None)
+            .unwrap_err();
+        assert_eq!(error.feature(), Some(crate::tags::EXTERNAL_STREAM));
+        assert_eq!(error.object, Some(object.id()));
+
+        let document = open("params-crypt-string-null", Limits::default().decoded_bytes);
+        let object = document.object(ObjectId::new(3, 0)).unwrap();
+        let mut parameters = parameters(&document, object);
+        let Value::Array(entries) = &mut parameters else {
+            panic!("fixture requires an array");
+        };
+        let Value::Dictionary(crypt) = &mut entries[0] else {
+            panic!("fixture requires Crypt parameters");
+        };
+        crypt.insert(Name::new(b"Name"), Value::Integer(1));
+        assert_eq!(
+            document
+                .image_stream_with_parameters(object, Some(&parameters))
+                .unwrap_err()
+                .kind,
+            ErrorKind::Syntax
+        );
     }
 }

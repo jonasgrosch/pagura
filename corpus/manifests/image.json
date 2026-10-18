@@ -3231,11 +3231,11 @@
       "files": {
         ".out": {
           "path": "corpus/generated/image/jpx-params-crypt-not-bypassed.out",
-          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
         },
         ".params": {
           "path": "corpus/generated/image/jpx-params-crypt-not-bypassed.params",
-          "sha256": "8632baac4d6171ee5aec7cb808b6d88d8fd9f8381734a00481fd39432a5db317"
+          "sha256": "e22cc9eb807b66729ca0ee4c09689d904330d8d95ff220e18bf2093967ca17f3"
         },
         ".pdf": {
           "path": "corpus/generated/image/jpx-params-crypt-not-bypassed.pdf",
@@ -3279,11 +3279,55 @@
         },
         ".params": {
           "path": "corpus/generated/image/jpx-params-encrypted-wrong-type.params",
-          "sha256": "d29cdc1f340a18717b58b57fe0d125ab4bf537391f9cec6611370a85d59b73e9"
+          "sha256": "71cce77e7752d1610cd230d86cfa249b5b31670ee79c6f637c819bb2df506968"
         },
         ".pdf": {
           "path": "corpus/generated/image/jpx-params-encrypted-wrong-type.pdf",
           "sha256": "ac2923ad22d28c942422ebe21767652dfa41030f1623518e58ab45d066f141a4"
+        }
+      }
+    },
+    {
+      "id": "image/params-encrypted-string-null",
+      "kind": "vector",
+      "description": "params encrypted string null",
+      "requirements": [
+        "image-parameter-override"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/params-encrypted-string-null.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/params-encrypted-string-null.params",
+          "sha256": "e22cc9eb807b66729ca0ee4c09689d904330d8d95ff220e18bf2093967ca17f3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/params-encrypted-string-null.pdf",
+          "sha256": "0d97c47e37fffeea4ad3aab5c9e4c1039678ab5ac065cba274c92521cc64a2e6"
+        }
+      }
+    },
+    {
+      "id": "image/params-crypt-string-null",
+      "kind": "vector",
+      "description": "params crypt string null",
+      "requirements": [
+        "image-parameter-override"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/params-crypt-string-null.out",
+          "sha256": "e01dd5c9071542ad604350405d7e9d0b02ee7eaf35a2eb7065bc16c55022ef99"
+        },
+        ".params": {
+          "path": "corpus/generated/image/params-crypt-string-null.params",
+          "sha256": "e22cc9eb807b66729ca0ee4c09689d904330d8d95ff220e18bf2093967ca17f3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/params-crypt-string-null.pdf",
+          "sha256": "6f80fa346696ec3820c13365078b8534ce6ea864aae3d2093928b28da9437bb1"
         }
       }
     },

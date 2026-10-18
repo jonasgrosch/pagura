@@ -919,20 +919,44 @@ def dictionary_repair_cases():
             b'/Filter /JPXDecode /DecodeParms '+params,
             requirement='image-decode-params', width=2, height=1,
             outcome='limit' if suffix == 'cyclic' else 'syntax', reject_repair=1)
-    yield image_pdf_vector('jpx-params-crypt-not-bypassed', wrapped, [],
+    yield image_pdf_vector('jpx-params-crypt-not-bypassed', wrapped, list(plain),
         b'/Filter [/Crypt /JPXDecode] /DecodeParms [null false]',
-        requirement='image-decode-params', width=2, height=1, outcome='syntax', reject_repair=1)
-    # The public document API decrypts normally with valid parameters. Until
-    # it accepts an override, malformed parameters must not bypass that step.
+        requirement='image-decode-params', width=2, height=1, outcome='repair',
+        repair='image.decode-params', space='DeviceGray')
+    # Both ordinary and corrected parameters retain document-layer decryption.
     from .crypto import parameters, encrypt, encryption_dictionary, ID, hex_string
     encryption, key = parameters(2, b'', b'owner')
-    for suffix, params, outcome in [('null', b'null', 'valid'), ('wrong-type', b'42', 'syntax')]:
+    for suffix, params, outcome in [('null', b'null', 'valid'), ('wrong-type', b'42', 'repair')]:
         yield image_pdf_vector('jpx-params-encrypted-'+suffix, encrypt(key, 'V2', 3, wrapped), list(plain),
             b'/Filter /JPXDecode /DecodeParms '+params,
             extras=(encryption_dictionary(encryption, 'V2', False),),
             trailer=b'/Encrypt 4 0 R /ID ['+hex_string(ID)+b' '+hex_string(ID)+b']',
             requirement='image-decode-params', width=2, height=1, outcome=outcome,
-            space='DeviceGray', reject_repair=int(outcome == 'syntax'))
+            space='DeviceGray', reject_repair=0,
+            **({'repair': 'image.decode-params'} if outcome == 'repair' else {}))
+
+    # Correcting a literal string requires decrypting that string too. The
+    # samples are chosen directly; encryption uses the independent PDF oracle.
+    for revision, method, explicit in [(2, 'V2', False), (4, 'AESV2', True)]:
+        encryption, key = parameters(revision, b'', b'owner')
+        null = hex_string(encrypt(key, method, 3, b'null'))
+        # Nondefault PNG Sub must survive alongside the corrected JPX entry.
+        encoded = zlib.compress(b'\1'+difference)
+        filters = b'[/Crypt /FlateDecode /JPXDecode]' if explicit else b'[/FlateDecode /JPXDecode]'
+        crypt = b'<< /Type /CryptFilterDecodeParms /Name /StdCF >> ' if explicit else b''
+        params = b'['+crypt+b'<< /Predictor 15 /Columns %d >> ' % len(wrapped)+null+b']'
+        security = encryption_dictionary(encryption, method, False)
+        if explicit:
+            # The explicit cipher must override Identity, not merely agree
+            # with the default. Strings still use StdCF, including (null).
+            security = security.replace(b'/StmF /StdCF', b'/StmF /Identity')
+        yield image_pdf_vector('params-'+('crypt' if explicit else 'encrypted')+'-string-null',
+            encrypt(key, method, 3, encoded), list(plain),
+            b'/Filter '+filters+b' /DecodeParms '+params,
+            extras=(security,),
+            trailer=b'/Encrypt 4 0 R /ID ['+hex_string(ID)+b' '+hex_string(ID)+b']',
+            requirement='image-parameter-override', width=2, height=1,
+            outcome='repair', repair='image.decode-params', space='DeviceGray')
     rows = [[0, 1, 1, 0, 1]]
     fax, _ = ccitt(rows, k=-1)
     for suffix, first, extras, outcome in [

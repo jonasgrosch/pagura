@@ -1,8 +1,9 @@
 kind=pdf-image
-outcome=syntax
+outcome=repair
 width=2
 height=1
 components=1
 bits=8
 space=DeviceGray
-reject_repair=1
+reject_repair=0
+repair=image.decode-params
