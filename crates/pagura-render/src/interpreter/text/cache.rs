@@ -3,6 +3,10 @@ use super::{Arc, Compiler, Dictionary, Error, PdfFont, Result, Value};
 use pagura_raster::Path;
 use std::collections::BTreeMap;
 
+#[expect(
+    unreachable_pub,
+    reason = "the text lane moves this module; its visibility changes there"
+)]
 mod flags;
 
 /// One immutable font and its outlines. Active compilations share this record;

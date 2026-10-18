@@ -11,7 +11,7 @@ pub(super) struct Font {
     pub descent: f64,
 }
 impl Font {
-    pub fn load(
+    pub(super) fn load(
         document: &Document,
         resources: &Dictionary,
         name: &[u8],
@@ -72,7 +72,7 @@ impl Font {
             descent,
         })
     }
-    pub fn encode(&self, c: char) -> Result<(u8, f64)> {
+    pub(super) fn encode(&self, c: char) -> Result<(u8, f64)> {
         self.codes.get(&c).copied().ok_or(Error::unsupported(
             crate::features::APPEARANCE_FONT_ENCODING,
             "field character has no reversible font encoding",

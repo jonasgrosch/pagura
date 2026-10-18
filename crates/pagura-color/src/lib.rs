@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(unreachable_pub)]
 //! Colour management without PDF objects: ICC.1:2010 forward transforms and
 //! the CIE colorimetry that calibrated PDF spaces share (ADR 0028).
 //!

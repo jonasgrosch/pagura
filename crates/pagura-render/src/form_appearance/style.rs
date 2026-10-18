@@ -12,7 +12,7 @@ pub(super) struct Style {
     dash: Vec<f64>,
 }
 impl Style {
-    pub fn read(document: &Document, widget: &Dictionary) -> Result<Self> {
+    pub(super) fn read(document: &Document, widget: &Dictionary) -> Result<Self> {
         let mk = optional_dictionary(document, widget, b"MK")?;
         if let Some(rotation) = mk
             .map(|d| optional(document, d, b"R"))
@@ -104,7 +104,7 @@ impl Style {
             dash,
         })
     }
-    pub fn paint(&self, out: &mut Program, bbox: Rect) -> Result<()> {
+    pub(super) fn paint(&self, out: &mut Program, bbox: Rect) -> Result<()> {
         out.text("q\n")?;
         if let Some(color) = &self.background {
             paint_color(out, color, false)?;

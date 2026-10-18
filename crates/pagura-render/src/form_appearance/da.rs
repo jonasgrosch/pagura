@@ -17,7 +17,7 @@ pub(super) struct DefaultAppearance {
     pub rise: f64,
 }
 impl DefaultAppearance {
-    pub fn parse(bytes: &[u8], limits: Limits) -> Result<Self> {
+    pub(super) fn parse(bytes: &[u8], limits: Limits) -> Result<Self> {
         if bytes.len() > limits.string_bytes {
             return Err(Error::limit("default appearance string budget exceeded"));
         }

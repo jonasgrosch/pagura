@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(unreachable_pub)]
 //! Page rendering: content-stream interpretation into pixels (ADR 0004).
 //!
 //! [`compile_page`] builds an immutable vector [`DisplayList`] with
