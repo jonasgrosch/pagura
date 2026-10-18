@@ -1,0 +1,1488 @@
+{
+  "schema": 2,
+  "area": "transparency",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "transparency/gray-blend-Normal",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-Normal.pdf",
+      "sha256": "26292c64a2df9b15269c591ebbefeff014147a6bb3e8bfa8042753146e823a06",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-Normal.ppm",
+      "oracle_sha256": "928ccf81e20d2f5775b62ee1dd8c843fd8d887aef2b1f652938fea3278dc2f58",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-Compatible",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-Compatible.pdf",
+      "sha256": "33fdb3bbadbb0aeb1008fa28d8c5a5f2932d29e355ebd44fdd953be758f4c78b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-Compatible.ppm",
+      "oracle_sha256": "928ccf81e20d2f5775b62ee1dd8c843fd8d887aef2b1f652938fea3278dc2f58",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-Multiply",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-Multiply.pdf",
+      "sha256": "1af68ab09628aa179b8e488d40cf25bf21f39f23ae4dc54e8ff200c02a8f7598",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-Multiply.ppm",
+      "oracle_sha256": "a9e95ad9ee19231c3a9ff2841fe6b6f4b44a823784a9890b2c7b3efe6991eea4",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-Screen",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-Screen.pdf",
+      "sha256": "db1b9ea81574f315b8a3dfa9a56864b2cead40db77f584a061af71efb5535ca6",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-Screen.ppm",
+      "oracle_sha256": "6c5cbc79db7508ffc95d5c1dbde6768c247aa657069376c3b09c4b2f3e682f87",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-Overlay",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-Overlay.pdf",
+      "sha256": "0847e883e86e024e7aa20c475ad26be0e2bd3ddbb53f83dc65d30f78e3cc1c49",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-Overlay.ppm",
+      "oracle_sha256": "3b099f52761486511d773c7d0debeaa66166dc4a4cb6083d79adefb0fb29ec9d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-Darken",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-Darken.pdf",
+      "sha256": "9ae67bc9e6747bba237c2b0deeb9a11d28c8c73d5fb5b7343a246e0a1a701b90",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-Darken.ppm",
+      "oracle_sha256": "610d8efeb945764f15bb521e2d83fb421175e958f115dfb2d6f988d68fa401ca",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-Lighten",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-Lighten.pdf",
+      "sha256": "6f25f1cce4be50f6d8463e4083c2312d3be6d49126e30c80bd48c27c62147802",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-Lighten.ppm",
+      "oracle_sha256": "e6e5c0dadb1ee2d7669023358d8f0cca653f924ae0692621c8b52f9415347cc6",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-ColorDodge",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-ColorDodge.pdf",
+      "sha256": "d98be8a595d41b11d936a3981d9b1f117a4af2ef970f88ec30710f42b481f4ea",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-ColorDodge.ppm",
+      "oracle_sha256": "5fa19ed3a3f7e06ff7af69bede14683547682ee633c3d04feec156d5c2a10ced",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-ColorBurn",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-ColorBurn.pdf",
+      "sha256": "4b7780b33b259d4b476201ef828891ee95d5d3097697230ec633042984062f1a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-ColorBurn.ppm",
+      "oracle_sha256": "058cee84716c594790538cf247fc32c99284a05b7692509422c1a427ebc1428c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-HardLight",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-HardLight.pdf",
+      "sha256": "22671f29405b5f150162596668100a71797c13f64fcca43489fb5c5db3d2ab7c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-HardLight.ppm",
+      "oracle_sha256": "adbb13ec0fd578d8c0cc0091a2f3102d2d36edf092d3295f844c51da69c182d8",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-SoftLight",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-SoftLight.pdf",
+      "sha256": "7e210c5a5ace4296bff1a98536420cf330f4799c9669f542cbde50fcbcb60009",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-SoftLight.ppm",
+      "oracle_sha256": "7d510390101347faa254c060bf26902c0cfda4d27090cdf254f50e61ec1dd0c7",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-Difference",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-Difference.pdf",
+      "sha256": "f03871b30be01bea80c0555914c277c6d38d1320a61dc5a42fa05b32a4c33398",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-Difference.ppm",
+      "oracle_sha256": "a178859747e491f87a2426b40b898cc53dab01d5a0ffd74590221e48d5471571",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-Exclusion",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-Exclusion.pdf",
+      "sha256": "57cd193235621b8bc83e1c4dc2773054fd878d14abc2fef8d3a99a9ed4016168",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-Exclusion.ppm",
+      "oracle_sha256": "8b1a098d62dea46286fc7420fd1f388d6f993a25b7429601b66ef6a72fe7fffb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-Hue",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-Hue.pdf",
+      "sha256": "ee85d31b2f2ee58f44a3447ed279274be8bb98e5be74f58de178fae21201eae0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-Hue.ppm",
+      "oracle_sha256": "eab8d2c674945a5287de62699ab5bffdfd177297e636d230e6c49f0f36c77ccb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-Saturation",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-Saturation.pdf",
+      "sha256": "d12481add3e880a882b463789790f3f97d9f84ce656089aaeb201ce6789b395f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-Saturation.ppm",
+      "oracle_sha256": "eab8d2c674945a5287de62699ab5bffdfd177297e636d230e6c49f0f36c77ccb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-Color",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-Color.pdf",
+      "sha256": "d2e9d3da0006b23ab7df8f97b194e8b277a4541ff2a7babe20b09925bde3fe00",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-Color.ppm",
+      "oracle_sha256": "eab8d2c674945a5287de62699ab5bffdfd177297e636d230e6c49f0f36c77ccb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/gray-blend-Luminosity",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/gray-blend-Luminosity.pdf",
+      "sha256": "76fdc3665225fd8fec511296a91ab5f15326ad78a64bf79a26aec4b10f18baeb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/gray-blend-Luminosity.ppm",
+      "oracle_sha256": "928ccf81e20d2f5775b62ee1dd8c843fd8d887aef2b1f652938fea3278dc2f58",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-Normal",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-Normal.pdf",
+      "sha256": "a07a6ee8caaf4d26b5efd0faea190c9dc3bfab279c33a4309c2de09ebac32c8e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-Normal.ppm",
+      "oracle_sha256": "2aa2192a834a7da5fa80aae8d7a9ce44adc4c5b1e4938d7db911af5475d55aa9",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-Compatible",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-Compatible.pdf",
+      "sha256": "7fd9886d4c570c2792c9eef6c692d0102bb49fe3c66594ed628c943b85cccd0a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-Compatible.ppm",
+      "oracle_sha256": "2aa2192a834a7da5fa80aae8d7a9ce44adc4c5b1e4938d7db911af5475d55aa9",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-Multiply",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-Multiply.pdf",
+      "sha256": "1cc622ec5c8527c5c3f8dbc24874ea20b1f19cf54324d7c359ae4bf45c2cd234",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-Multiply.ppm",
+      "oracle_sha256": "84ed2bb6e4c888e9111408f9a394611de58c89a18c5fdd9bc45dd4a0d5b7e753",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-Screen",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-Screen.pdf",
+      "sha256": "19f46b0f7b1019ed78367b27286c462f6323f776718dfa2d248661a14b24e14a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-Screen.ppm",
+      "oracle_sha256": "2106d8a73c80bcf8ba19329fddfccabb4bbab4cce4a6521a9e960893fdc6365d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-Overlay",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-Overlay.pdf",
+      "sha256": "ddd801d2a8801696375c11a4b15cb1ef757d84b368b7ef37fc59b814022beb81",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-Overlay.ppm",
+      "oracle_sha256": "be8d588140a4e71a7022b7b0404083ee01f3a3da9d60ad2715eeedaf94df489f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-Darken",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-Darken.pdf",
+      "sha256": "0b81ca98b54696fdffefa71f8f41e2593b2cd6bbbeb4e1572aa8688dac1b891b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-Darken.ppm",
+      "oracle_sha256": "9cba6be6c938dd42ca9467e353632e366c328864aa24019fd05ff0b61f7d4045",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-Lighten",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-Lighten.pdf",
+      "sha256": "9b817c11901884198be550259e1720513145f3018776bf64b3eaedd46480c0fc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-Lighten.ppm",
+      "oracle_sha256": "81f79ce844992326cc833666b9b0faa532f79125c58bf50b61affb0a67e4e669",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-ColorDodge",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-ColorDodge.pdf",
+      "sha256": "fc2dce2220ca975a525865575908e6f2e03c10cf2fb4c8d82459f9d08f01956b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-ColorDodge.ppm",
+      "oracle_sha256": "86bc780c42281a4f69790d32eb9b4f606767f7236021f653479c52019fd0bcc5",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-ColorBurn",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-ColorBurn.pdf",
+      "sha256": "f71df46c5213adcc99a2d98d3fa21b20faba8f4fd9d74eba596380d745a2d025",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-ColorBurn.ppm",
+      "oracle_sha256": "3ce5f0395ed195a340e21b3f739e807164cde330b63562610b25f4be3df92797",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-HardLight",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-HardLight.pdf",
+      "sha256": "897b3ee6710fdbf83a3856118cc007350264ad1f8dbf594231594b010165f26c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-HardLight.ppm",
+      "oracle_sha256": "abde052cb233bdef65fa53e1d55d07ebb8866db363184c7e88cfccc7bc116fa3",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-SoftLight",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-SoftLight.pdf",
+      "sha256": "24cb9040ae2be5ef320f6a0d74f8078cb6bc025c8e3732ebce7841c9bff94361",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-SoftLight.ppm",
+      "oracle_sha256": "4e6db39b52d5a08af49489d23395ea73310336ab28e80a2b09c22d63b4a7449e",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-Difference",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-Difference.pdf",
+      "sha256": "f7bf5d60cd50e6cb60d8f702b70a6da9e178c63b6d52cbee5eb41c138be365b9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-Difference.ppm",
+      "oracle_sha256": "95d3a06be89628cdbd973abfdecfd26373a1b06331f097869343c6a22b72fb81",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-Exclusion",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-Exclusion.pdf",
+      "sha256": "0a6199c28390d48115ad38f1aac27aff49659667359588e0348f57565edf12ab",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-Exclusion.ppm",
+      "oracle_sha256": "0874cb78f5ccb9d880a6d8a42c94d5ad68fe65902485ca005090e6cd06771916",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-Hue",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-Hue.pdf",
+      "sha256": "2a9d5d2f1d67afff1665219f2fbade6830a8c47f62414f97e23479dfd14b336a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-Hue.ppm",
+      "oracle_sha256": "7d894afb0e78cd5159c63fa4eb95e3c588cc7f5ff32fe95e75bb3ef910af4eff",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-Saturation",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-Saturation.pdf",
+      "sha256": "77a8796c4592d30105274df5e6e9c375269168f2c87c551ec8adcc061db5283a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-Saturation.ppm",
+      "oracle_sha256": "dcbd3511f410d1893257e1241a07893ece77f04182fb0a16e93ae1b994faf2f3",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-Color",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-Color.pdf",
+      "sha256": "0db9730870b41fc3dd09ccb4c5a54c0773ab045672fd11f231df422fc4ebf9e1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-Color.ppm",
+      "oracle_sha256": "e3846db548c8f6afe0df2e298dad2027ca5fb7c87e9da9ac606f0ca20ef041d3",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-blend-Luminosity",
+      "kind": "pdf",
+      "description": "11.3.3\u201311.3.5: native components, half opacity, boundary values and independent blend formulas",
+      "expected": "render",
+      "requirements": [
+        "transparency-subtractive-blends"
+      ],
+      "path": "corpus/generated/transparency/cmyk-blend-Luminosity.pdf",
+      "sha256": "f988b81b59e531a2ece7f0c95381c086406566ef608e4548f74d7b15181ae2f4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-blend-Luminosity.ppm",
+      "oracle_sha256": "d3b3b8031c15fa2b5247fe841e6c6334830093494134d06004450b6b1bdc40a1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/boundary-gray-to-gray",
+      "kind": "pdf",
+      "description": "11.4.7/11.6.6: isolated group conversion precedes parent-space composition",
+      "expected": "render",
+      "requirements": [
+        "transparency-group-boundaries"
+      ],
+      "path": "corpus/generated/transparency/boundary-gray-to-gray.pdf",
+      "sha256": "3a9dcbfdab5ec8672269fae578728a36473101f09ae844f44d52293a61d4bc5d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/boundary-gray-to-gray.ppm",
+      "oracle_sha256": "b4589db50eb165329664690a8e3bd0adaa1a944a197eab64489d44985b4d992c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/boundary-rgb-to-gray",
+      "kind": "pdf",
+      "description": "11.4.7/11.6.6: isolated group conversion precedes parent-space composition",
+      "expected": "render",
+      "requirements": [
+        "transparency-group-boundaries"
+      ],
+      "path": "corpus/generated/transparency/boundary-rgb-to-gray.pdf",
+      "sha256": "cb639dba91b71ac2a00c98a0e9afc666761b3cea0cdc12039e0dadfb0efcdbb4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/boundary-rgb-to-gray.ppm",
+      "oracle_sha256": "6fb1dae302315feecbc633cb7b9c9a0c404835263da58d95f0dcb47aadaefae1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/boundary-cmyk-to-gray",
+      "kind": "pdf",
+      "description": "11.4.7/11.6.6: isolated group conversion precedes parent-space composition",
+      "expected": "render",
+      "requirements": [
+        "transparency-group-boundaries"
+      ],
+      "path": "corpus/generated/transparency/boundary-cmyk-to-gray.pdf",
+      "sha256": "20c3014f3237bff314c0dd354ef6eead801e82d6ce4fd44a91b1cf50603c32c7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/boundary-cmyk-to-gray.ppm",
+      "oracle_sha256": "96e7c462e55a4cdd8ee9af67be859046957f1e15983b7b428c66c3b1efe814f6",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/boundary-gray-to-rgb",
+      "kind": "pdf",
+      "description": "11.4.7/11.6.6: isolated group conversion precedes parent-space composition",
+      "expected": "render",
+      "requirements": [
+        "transparency-group-boundaries"
+      ],
+      "path": "corpus/generated/transparency/boundary-gray-to-rgb.pdf",
+      "sha256": "b163612ea8b773ae69919a1ddb0eb6ee25cf6445decfa233818d3b48872c2098",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/boundary-gray-to-rgb.ppm",
+      "oracle_sha256": "ac460048cd5ee54b6b6ca844d60bca2d8d7e9759f0ab2e0cee316d527b89a810",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/boundary-rgb-to-rgb",
+      "kind": "pdf",
+      "description": "11.4.7/11.6.6: isolated group conversion precedes parent-space composition",
+      "expected": "render",
+      "requirements": [
+        "transparency-group-boundaries"
+      ],
+      "path": "corpus/generated/transparency/boundary-rgb-to-rgb.pdf",
+      "sha256": "70b811e319a8ce28062e4f479cafec2c5ef84708003cb8b22fb4c4ff3de84678",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/boundary-rgb-to-rgb.ppm",
+      "oracle_sha256": "8c72c1f5bf1ebe1045545b5b15bc10d7b0b1794ea781a3aeccfb5a216c470369",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/boundary-cmyk-to-rgb",
+      "kind": "pdf",
+      "description": "11.4.7/11.6.6: isolated group conversion precedes parent-space composition",
+      "expected": "render",
+      "requirements": [
+        "transparency-group-boundaries"
+      ],
+      "path": "corpus/generated/transparency/boundary-cmyk-to-rgb.pdf",
+      "sha256": "ac3ebeaef5e0d96de17c948b48a648639df0863c0b2585586bf3f00c561eb474",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/boundary-cmyk-to-rgb.ppm",
+      "oracle_sha256": "dd4c98020399df8b06c4b9f2979b830450bf1b5b39e129ce7b4185c14d60cf27",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/boundary-gray-to-cmyk",
+      "kind": "pdf",
+      "description": "11.4.7/11.6.6: isolated group conversion precedes parent-space composition",
+      "expected": "render",
+      "requirements": [
+        "transparency-group-boundaries"
+      ],
+      "path": "corpus/generated/transparency/boundary-gray-to-cmyk.pdf",
+      "sha256": "0121b94b83e9fa70f12a37366b01853ff34b55cf44b55ce3747e7600e2b40101",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/boundary-gray-to-cmyk.ppm",
+      "oracle_sha256": "e91f397dbe5281d8a551d3320f5a44fb44e65836e67994e9cbd77408d3d51594",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/boundary-rgb-to-cmyk",
+      "kind": "pdf",
+      "description": "11.4.7/11.6.6: isolated group conversion precedes parent-space composition",
+      "expected": "render",
+      "requirements": [
+        "transparency-group-boundaries"
+      ],
+      "path": "corpus/generated/transparency/boundary-rgb-to-cmyk.pdf",
+      "sha256": "d8b824db0381f95a13f2ebd3005a5fb033e4b0ce8e8ff992095f238318c63bce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/boundary-rgb-to-cmyk.ppm",
+      "oracle_sha256": "af2fe70fca2cb4f11d8703835908e29fe601687437581f212e4ce37ebd484339",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/boundary-cmyk-to-cmyk",
+      "kind": "pdf",
+      "description": "11.4.7/11.6.6: isolated group conversion precedes parent-space composition",
+      "expected": "render",
+      "requirements": [
+        "transparency-group-boundaries"
+      ],
+      "path": "corpus/generated/transparency/boundary-cmyk-to-cmyk.pdf",
+      "sha256": "6ebd8d054f711e7ad27d5e51d548a989a4f41d9713d8cdf224f00407f77a915b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/boundary-cmyk-to-cmyk.ppm",
+      "oracle_sha256": "ed73ac077bc74baca0c6cfcbe1616336d95bb784dc0af9de88b1f3afd1e23956",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/nested-gray-rgb-cmyk",
+      "kind": "pdf",
+      "description": "11.6.6: three different nested blending spaces, with opacity at both boundaries",
+      "expected": "render",
+      "requirements": [
+        "transparency-group-boundaries"
+      ],
+      "path": "corpus/generated/transparency/nested-gray-rgb-cmyk.pdf",
+      "sha256": "9c0f118e642ef310d6df14a5993a34627e4d6c5102f1603e71191fba9550f376",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/nested-gray-rgb-cmyk.ppm",
+      "oracle_sha256": "b8a5ab38b9e42303ea497320de0fe379bbe292e8c936011c78742cd8b4e2b975",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/nonisolated-inherits-cmyk",
+      "kind": "pdf",
+      "description": "11.6.6/11.7.2: non-isolated groups use the inherited component space",
+      "expected": "render",
+      "requirements": [
+        "transparency-group-boundaries"
+      ],
+      "path": "corpus/generated/transparency/nonisolated-inherits-cmyk.pdf",
+      "sha256": "9248dd67f28dcd7cae8f4c5861b7ce0ffd66542971a97e4ba5be27c243ae25cd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/nonisolated-inherits-cmyk.ppm",
+      "oracle_sha256": "6dd98a64ebf2aa31dc66b707d822dd2b07cde97eb7c1f742f2e8e36bad822f3b",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-knockout-ais-0",
+      "kind": "pdf",
+      "description": "11.4.6: CMYK knockout replaces by shape; AIS moves constant alpha into shape",
+      "expected": "render",
+      "requirements": [
+        "transparency-native-components"
+      ],
+      "path": "corpus/generated/transparency/cmyk-knockout-ais-0.pdf",
+      "sha256": "dd9debf5ea99da6468e20a097cbab67ca3e144f108b00ca72c9c88a8519486b4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-knockout-ais-0.ppm",
+      "oracle_sha256": "eff868f914503d9bd0a5c0ec2c2e2d0caf767a374f353515f7d6fa50d9dfecfb",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-knockout-ais-1",
+      "kind": "pdf",
+      "description": "11.4.6: CMYK knockout replaces by shape; AIS moves constant alpha into shape",
+      "expected": "render",
+      "requirements": [
+        "transparency-native-components"
+      ],
+      "path": "corpus/generated/transparency/cmyk-knockout-ais-1.pdf",
+      "sha256": "ce2ddb4034171e77fb98bd9f46de92671249522ba886df75becd8ab1912da306",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-knockout-ais-1.ppm",
+      "oracle_sha256": "eaf3a8ce855ac8a0a1cbdb0857c2949878bfcb7a7b008d1e7d1c9709d1b77cb1",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-mask-Alpha",
+      "kind": "pdf",
+      "description": "11.5.2\u201311.5.3/11.6.5.1: masks inside CMYK, CMYK luminosity backdrop and transfer",
+      "expected": "render",
+      "requirements": [
+        "transparency-cmyk-masks"
+      ],
+      "path": "corpus/generated/transparency/cmyk-mask-Alpha.pdf",
+      "sha256": "539529da3b4e25a52d98f6f76157d81882cd831ee2c83b6cbf7127d687db2e81",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-mask-Alpha.ppm",
+      "oracle_sha256": "d3575d5e930a1d4230c8d0a05b851c06b687c96fe291f68cf9a9128278c33fc4",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-mask-Alpha-transfer",
+      "kind": "pdf",
+      "description": "11.5.2\u201311.5.3/11.6.5.1: masks inside CMYK, CMYK luminosity backdrop and transfer",
+      "expected": "render",
+      "requirements": [
+        "transparency-cmyk-masks"
+      ],
+      "path": "corpus/generated/transparency/cmyk-mask-Alpha-transfer.pdf",
+      "sha256": "b839105ad000964e596c514c3e71257faa57a3854d834e99b4a152089c2b433f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-mask-Alpha-transfer.ppm",
+      "oracle_sha256": "cf4144e5976b34a14e60e9aaa462635cf9d1a4db27786cd5e9b5da900d538625",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-mask-Luminosity",
+      "kind": "pdf",
+      "description": "11.5.2\u201311.5.3/11.6.5.1: masks inside CMYK, CMYK luminosity backdrop and transfer",
+      "expected": "render",
+      "requirements": [
+        "transparency-cmyk-masks"
+      ],
+      "path": "corpus/generated/transparency/cmyk-mask-Luminosity.pdf",
+      "sha256": "a55529c5f87d2614d8ce8198581e55a77615706c6bf6985fd7ed8812eb10dc47",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-mask-Luminosity.ppm",
+      "oracle_sha256": "31743a727a1da5d520412b5f8dabf5e29ac47cfda9442fe401645013b1806b35",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/cmyk-mask-Luminosity-transfer",
+      "kind": "pdf",
+      "description": "11.5.2\u201311.5.3/11.6.5.1: masks inside CMYK, CMYK luminosity backdrop and transfer",
+      "expected": "render",
+      "requirements": [
+        "transparency-cmyk-masks"
+      ],
+      "path": "corpus/generated/transparency/cmyk-mask-Luminosity-transfer.pdf",
+      "sha256": "7aff39479172b57211c70679101539a4f88ee5fb85a6e4b3e8d44eb4148b5781",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/cmyk-mask-Luminosity-transfer.ppm",
+      "oracle_sha256": "7694f3d44d454c6332fdefe619982ef6239b64c6c1d7258e9780f7cd3c5ad2aa",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-gray-default",
+      "kind": "pdf",
+      "description": "8.6.5.5 Table 65: unsupported ICC destination falls back before blending; ICC sources keep their forward transforms",
+      "expected": "render",
+      "requirements": [
+        "transparency-icc-fallback"
+      ],
+      "path": "corpus/generated/transparency/icc-gray-default.pdf",
+      "sha256": "0ad23c3086e457170d45ddfd6d53632974ea9591b872051ca3f122c72adc4165",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-gray-default.ppm",
+      "oracle_sha256": "ecf1ed084a51b4e3e17647b0f589881f29f10259f393e7bf7b3bad3b0a9039dd",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-gray-alternate",
+      "kind": "pdf",
+      "description": "8.6.5.5 Table 65: unsupported ICC destination falls back before blending; ICC sources keep their forward transforms",
+      "expected": "render",
+      "requirements": [
+        "transparency-icc-fallback"
+      ],
+      "path": "corpus/generated/transparency/icc-gray-alternate.pdf",
+      "sha256": "3e6db8b8ea6d648008bcce2cc3cbd08aef20961e4044766de93de31a7224fabd",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-gray-alternate.ppm",
+      "oracle_sha256": "ecf1ed084a51b4e3e17647b0f589881f29f10259f393e7bf7b3bad3b0a9039dd",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-rgb-default",
+      "kind": "pdf",
+      "description": "8.6.5.5 Table 65: unsupported ICC destination falls back before blending; ICC sources keep their forward transforms",
+      "expected": "render",
+      "requirements": [
+        "transparency-icc-fallback"
+      ],
+      "path": "corpus/generated/transparency/icc-rgb-default.pdf",
+      "sha256": "3a4f4165b96a8841e32c1818100a3dfd69a209c2c417be6489d368a6712f7c45",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-rgb-default.ppm",
+      "oracle_sha256": "c88b6d8118aa6612c44f5cb45f9fcfa4990a3b35dc6553e62e389fc15572fb32",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-rgb-alternate",
+      "kind": "pdf",
+      "description": "8.6.5.5 Table 65: unsupported ICC destination falls back before blending; ICC sources keep their forward transforms",
+      "expected": "render",
+      "requirements": [
+        "transparency-icc-fallback"
+      ],
+      "path": "corpus/generated/transparency/icc-rgb-alternate.pdf",
+      "sha256": "66e4d33be1c6f0627c1f4edc6134bb93e32c4e6bb46b01ae78451b0ab511abf2",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-rgb-alternate.ppm",
+      "oracle_sha256": "c88b6d8118aa6612c44f5cb45f9fcfa4990a3b35dc6553e62e389fc15572fb32",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-cmyk-default",
+      "kind": "pdf",
+      "description": "8.6.5.5 Table 65: unsupported ICC destination falls back before blending; ICC sources keep their forward transforms",
+      "expected": "render",
+      "requirements": [
+        "transparency-icc-fallback"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-default.pdf",
+      "sha256": "5946234849652f0866eed824d7e830f77f45be4188d2596be13f75103d855b3e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-default.ppm",
+      "oracle_sha256": "0c98941fc0fff3a52c2e4e02058e07084846ac8689a09c722b4628d791fd1ef3",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-cmyk-alternate",
+      "kind": "pdf",
+      "description": "8.6.5.5 Table 65: unsupported ICC destination falls back before blending; ICC sources keep their forward transforms",
+      "expected": "render",
+      "requirements": [
+        "transparency-icc-fallback"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-alternate.pdf",
+      "sha256": "f2ac4e84037eb66ebe5998da344a2bf33a85104784031a9823e102c233a57e7a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-alternate.ppm",
+      "oracle_sha256": "0c98941fc0fff3a52c2e4e02058e07084846ac8689a09c722b4628d791fd1ef3",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-source-and-group",
+      "kind": "pdf",
+      "description": "8.6.5.5: group destination fallback does not disable ordinary ICC source conversion",
+      "expected": "render",
+      "requirements": [
+        "transparency-icc-fallback"
+      ],
+      "path": "corpus/generated/transparency/icc-source-and-group.pdf",
+      "sha256": "d31a89770b5b1e3c9aff85be27fdf07ba3d97bdb2f950357e30d816961c65ca3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-source-and-group.ppm",
+      "oracle_sha256": "5079474cda2f397ac296278196095d7c8cbd8b76d01c4c680a3506dca539fc9d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-cmyk-resource-alias",
+      "kind": "pdf",
+      "description": "8.6.5.5\u20138.6.5.6: resource alias/default selection, without recursively remapping Alternate",
+      "expected": "render",
+      "requirements": [
+        "transparency-icc-fallback"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-resource-alias.pdf",
+      "sha256": "56b621b5b78dbf44fe66cda14d2ca2a17be71eb0160174ff11a780a2bd4ce31c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-resource-alias.ppm",
+      "oracle_sha256": "35ad59af5dd45c4a694937964957f2aa1a8f26c1661a731a9e3a1409280281e3",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-cmyk-resource-default",
+      "kind": "pdf",
+      "description": "8.6.5.5\u20138.6.5.6: resource alias/default selection, without recursively remapping Alternate",
+      "expected": "render",
+      "requirements": [
+        "transparency-icc-fallback"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-resource-default.pdf",
+      "sha256": "0f055d50ab030185919b48bdd5f4c80dc97c476e0104c952a38f2f173a3266e7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-resource-default.ppm",
+      "oracle_sha256": "9bedae3cc22a91643c176e23e2d1c313e3d5f5b8936e296347dfdb83011332db",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-cmyk-device-boundary",
+      "kind": "pdf",
+      "description": "11.6.6: equivalent effective CMYK spaces preserve all four components before a subsequent blend",
+      "expected": "render",
+      "requirements": [
+        "transparency-icc-fallback"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-device-boundary.pdf",
+      "sha256": "4d290e5b5e71cffc7404d93625ef5e4ec1d39c28dfa5a05ab6003d1c20995e0c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-device-boundary.ppm",
+      "oracle_sha256": "39017a6a890f69530bc2988564aa560d52040fb1145bc0676a828465db7a9ab8",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-cmyk-different-profile-boundary",
+      "kind": "pdf",
+      "description": "11.6.6: equivalent effective CMYK spaces preserve all four components before a subsequent blend",
+      "expected": "render",
+      "requirements": [
+        "transparency-icc-fallback"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-different-profile-boundary.pdf",
+      "sha256": "72ea80c423eba0dc67a91397103ac8f3372b20571333ce58c97f44e84e4db340",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-different-profile-boundary.ppm",
+      "oracle_sha256": "39017a6a890f69530bc2988564aa560d52040fb1145bc0676a828465db7a9ab8",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/group-CalGray",
+      "kind": "pdf",
+      "description": "11.3.4: Lab is prohibited; calibrated destinations require reversible component conversion",
+      "expected": "unsupported",
+      "requirements": [
+        "transparency-calibrated-boundary"
+      ],
+      "path": "corpus/generated/transparency/group-CalGray.pdf",
+      "sha256": "b71027ca2ca16dfe5c00348c0c4f5bdf6ea675e67b73a820f35a4401e2d98d6e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.group-colorspace"
+    },
+    {
+      "id": "transparency/group-CalRGB",
+      "kind": "pdf",
+      "description": "11.3.4: Lab is prohibited; calibrated destinations require reversible component conversion",
+      "expected": "unsupported",
+      "requirements": [
+        "transparency-calibrated-boundary"
+      ],
+      "path": "corpus/generated/transparency/group-CalRGB.pdf",
+      "sha256": "5e6893c0cd48189950e61c1d1cb632c0a391f193877fc1ef9a500f7e7f036f39",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.group-colorspace"
+    },
+    {
+      "id": "transparency/group-Lab",
+      "kind": "pdf",
+      "description": "11.3.4: Lab is prohibited; calibrated destinations require reversible component conversion",
+      "expected": "unsupported",
+      "requirements": [
+        "transparency-calibrated-boundary"
+      ],
+      "path": "corpus/generated/transparency/group-Lab.pdf",
+      "sha256": "65bac0dfc86550cb665feaf9e8081245f5fed786a50b6046d8beb211c7e6c3d4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.group-colorspace"
+    },
+    {
+      "id": "transparency/group-icc-Lab",
+      "kind": "pdf",
+      "description": "11.3.4 excludes ICC lightness/chromaticity input even with three components",
+      "expected": "unsupported",
+      "requirements": [
+        "transparency-calibrated-boundary"
+      ],
+      "path": "corpus/generated/transparency/group-icc-Lab.pdf",
+      "sha256": "e84eb4f8f07fd4c05e6a70a8056941940b9c30bf9f414cdfd46db9183788a538",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "transparency.group-colorspace"
+    },
+    {
+      "id": "transparency/icc-cmyk-overprint-path",
+      "kind": "pdf",
+      "description": "11.7.4: ICC fallback shares compatible overprinting; nonzero selection applies to paths, not sampled images or shadings",
+      "expected": "render",
+      "requirements": [
+        "transparency-overprint-boundary"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-overprint-path.pdf",
+      "sha256": "13e709480e935f5019eaff3dd9d0949c100c45745bed10c40c3d6c416d208c3a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-overprint-path.ppm",
+      "oracle_sha256": "e784d3ba959b9089dffda7d744238cb7b25de18d56f9e1c9a081cafce4c0b873",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-cmyk-overprint-image",
+      "kind": "pdf",
+      "description": "11.7.4: ICC fallback shares compatible overprinting; nonzero selection applies to paths, not sampled images or shadings",
+      "expected": "render",
+      "requirements": [
+        "transparency-overprint-boundary"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-overprint-image.pdf",
+      "sha256": "f4b41af0bbf261258fa2be429390dbe3a4d12e915efd367b10507931fe58dcb4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-overprint-image.ppm",
+      "oracle_sha256": "55a2b2f79542847d4a1c580bd398f8e3bac3e0c1a14db00215ffb7be168c3d32",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-cmyk-overprint-shading",
+      "kind": "pdf",
+      "description": "11.7.4: ICC fallback shares compatible overprinting; nonzero selection applies to paths, not sampled images or shadings",
+      "expected": "render",
+      "requirements": [
+        "transparency-overprint-boundary"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-overprint-shading.pdf",
+      "sha256": "77d5e33be7e44331de114101238544ac41115b3c9aa2f236b352e4ae301e60ba",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-overprint-shading.ppm",
+      "oracle_sha256": "55a2b2f79542847d4a1c580bd398f8e3bac3e0c1a14db00215ffb7be168c3d32",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-cmyk-overprint-matching-profile",
+      "kind": "pdf",
+      "description": "8.6.5.5/11.7.4.3: ICC sources stay colour-managed; native zero selection is limited to device CMYK",
+      "expected": "render",
+      "requirements": [
+        "transparency-overprint-boundary"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-overprint-matching-profile.pdf",
+      "sha256": "b4d2c26bff405b44772809a6dd3ca22720b2b5d1a69546d66310a41078c67fc0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-overprint-matching-profile.ppm",
+      "oracle_sha256": "c4d14d35b633a3a5ca091635f366082046cbf9e92e63b91def632ea7efc1c8fe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-cmyk-overprint-tiny-nonzero",
+      "kind": "pdf",
+      "description": "8.6.5.5/11.7.4.3: ICC sources stay colour-managed; native zero selection is limited to device CMYK",
+      "expected": "render",
+      "requirements": [
+        "transparency-overprint-boundary"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-overprint-tiny-nonzero.pdf",
+      "sha256": "49e1ca09e16ceb8bad54821ba80e89b739506d50042995b440b452ed0ca1f22a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-overprint-tiny-nonzero.ppm",
+      "oracle_sha256": "c4d14d35b633a3a5ca091635f366082046cbf9e92e63b91def632ea7efc1c8fe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-cmyk-overprint-clipped-tints",
+      "kind": "pdf",
+      "description": "8.6.5.5/11.7.4.3: ICC sources stay colour-managed; native zero selection is limited to device CMYK",
+      "expected": "render",
+      "requirements": [
+        "transparency-overprint-boundary"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-overprint-clipped-tints.pdf",
+      "sha256": "88be83d4abb072fb1a0b6cc8b8acf99a829bbd3366451c304eed42baa8640909",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-overprint-clipped-tints.ppm",
+      "oracle_sha256": "c4d14d35b633a3a5ca091635f366082046cbf9e92e63b91def632ea7efc1c8fe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-cmyk-overprint-default-remap",
+      "kind": "pdf",
+      "description": "8.6.5.5/11.7.4.3: ICC sources stay colour-managed; native zero selection is limited to device CMYK",
+      "expected": "render",
+      "requirements": [
+        "transparency-overprint-boundary"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-overprint-default-remap.pdf",
+      "sha256": "c522c36670e1c5ca05b92202262679d453bc9ba46ce13377cac4382f7e1be69b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-overprint-default-remap.ppm",
+      "oracle_sha256": "c4d14d35b633a3a5ca091635f366082046cbf9e92e63b91def632ea7efc1c8fe",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-cmyk-overprint-named-process",
+      "kind": "pdf",
+      "description": "11.7.3\u201311.7.4: named process and spot components use the shared group compositor",
+      "expected": "render",
+      "requirements": [
+        "transparency-overprint-boundary"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-overprint-named-process.pdf",
+      "sha256": "959f7a1a91352e8f3260ccc6d2a0e6e263b86e7beb3b0ef53032920900fc004e",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-overprint-named-process.ppm",
+      "oracle_sha256": "f0e1fa1304daad64d4a01155eef1656e19059463127d74a0fb400e66f9cf272d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "transparency/icc-cmyk-overprint-spot",
+      "kind": "pdf",
+      "description": "11.7.3\u201311.7.4: named process and spot components use the shared group compositor",
+      "expected": "render",
+      "requirements": [
+        "transparency-overprint-boundary"
+      ],
+      "path": "corpus/generated/transparency/icc-cmyk-overprint-spot.pdf",
+      "sha256": "b1e30d9cd595dab2a85779ee9cf57ece84b8d217e2b5927ee4c41f0e6827eb7d",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/transparency/icc-cmyk-overprint-spot.ppm",
+      "oracle_sha256": "f0e1fa1304daad64d4a01155eef1656e19059463127d74a0fb400e66f9cf272d",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    }
+  ]
+}

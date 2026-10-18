@@ -1349,6 +1349,25 @@ mod tests {
     }
 
     #[test]
+    fn icc_rgb_fallback_keeps_opaque_groups_eligible() {
+        let list = overprint_list(include_bytes!(
+            "../../../corpus/generated/transparency/icc-source-and-group.pdf"
+        ));
+        assert!(!list.separations().unwrap().enabled);
+        let group = list
+            .commands
+            .iter()
+            .find_map(|command| match command {
+                Command::Group(group) => Some(group),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(group.attributes.model, Some(Model::Rgb));
+        assert!(normal_scene(&list.commands));
+        assert!(group.composite.simple());
+    }
+
+    #[test]
     fn separation_batches_and_masks_preserve_tile_parity() {
         for bytes in [
             include_bytes!("../../../corpus/generated/overprint/spot-batches-6.pdf").as_slice(),
