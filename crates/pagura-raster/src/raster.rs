@@ -3,6 +3,7 @@
 use crate::coverage::Shape;
 
 mod reuse;
+mod spans;
 use crate::{Paint, Path, Pixmap, Transform};
 use pagura_core::{Error, Limits, Result};
 pub use reuse::Rasterizer;
@@ -254,6 +255,17 @@ impl Mask {
         &self.coverage
     }
 
+    /// Nonzero horizontal runs as `(row, column, coverage)` in mask coordinates.
+    /// Each run contains either only 255 or only fractional samples (1..=254).
+    /// Runs stay within a row and borrow the bytes of [`Self::coverage`].
+    pub fn spans(&self) -> impl Iterator<Item = (usize, usize, &[u8])> {
+        // Mask construction checked that its width fits the allocated buffer.
+        spans::rows(
+            &self.coverage,
+            usize::try_from(self.width).unwrap_or(usize::MAX),
+        )
+    }
+
     /// Restricts this mask to the area also covered by `other`.
     ///
     /// # Errors
@@ -491,23 +503,24 @@ pub(super) fn composite(
     let Paint::Solid(color) = paint;
     let stride =
         usize::try_from(target.width()).map_err(|_| Error::limit("surface width exceeds usize"))?;
-    let width =
-        usize::try_from(mask.width).map_err(|_| Error::limit("mask width exceeds usize"))?;
     let x = usize::try_from(offset.0).map_err(|_| Error::limit("column exceeds usize"))?;
     let y = usize::try_from(offset.1).map_err(|_| Error::limit("row exceeds usize"))?;
-    let rows = target.data_mut().chunks_exact_mut(stride * 4).skip(y);
-    for (row, coverage) in rows.zip(mask.coverage.chunks_exact(width)) {
-        let row = row
-            .get_mut(x * 4..(x + width) * 4)
-            .ok_or(Error::invalid_argument("mask extends beyond target"))?;
-        for (pixel, &coverage) in row.as_chunks_mut::<4>().0.iter_mut().zip(coverage) {
-            if coverage == 0 {
-                continue;
-            }
-            if coverage == 255 && color.a == 255 {
-                *pixel = [color.r, color.g, color.b, 255];
-                continue;
-            }
+    for (row, column, coverage) in mask.spans() {
+        if x + column + coverage.len() > stride {
+            return Err(Error::invalid_argument("mask extends beyond target"));
+        }
+        let start = (y + row) * stride + x + column;
+        let pixels = target
+            .data_mut()
+            .get_mut(start * 4..(start + coverage.len()) * 4)
+            .ok_or(Error::invalid_argument("mask extends beyond target"))?
+            .as_chunks_mut::<4>()
+            .0;
+        if coverage[0] == 255 && color.a == 255 {
+            pixels.fill([color.r, color.g, color.b, 255]);
+            continue;
+        }
+        for (pixel, &coverage) in pixels.iter_mut().zip(coverage) {
             let alpha = multiply(color.a, coverage);
             let inverse = 255 - alpha;
             for (channel, source) in pixel.iter_mut().zip([color.r, color.g, color.b, 255]) {

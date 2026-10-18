@@ -41,11 +41,9 @@ impl Context {
             .transpose()?;
         let stencil = self.stencil_color(command, model)?;
         let image = &command.image;
-        let width = usize::try_from(clip.width())
-            .map_err(|_| Error::limit("image clip width exceeds usize"))?;
         let origin = clip.origin();
         self.charge(clip.coverage().len())?;
-        if !clip.coverage().iter().any(|&v| v != 0) {
+        if clip.spans().next().is_none() {
             return Ok(());
         }
         let mut texels = Texels::new(image, model);
@@ -54,10 +52,11 @@ impl Context {
             prepare(image, inverse, origin.0, clip.width(), available)?;
         let sampling_bytes = sampler.bytes() + mask_sampler.as_ref().map_or(0, Prepared::bytes);
         self.allocated += sampling_bytes;
-        for (row, coverage) in clip.coverage().chunks_exact(width).enumerate() {
+        for (row, column, coverage) in clip.spans() {
             let y =
                 origin.1 + u32::try_from(row).map_err(|_| Error::limit("image row exceeds u32"))?;
-            for (column, &coverage) in coverage.iter().enumerate().filter(|(_, v)| **v != 0) {
+            for (offset, &coverage) in coverage.iter().enumerate() {
+                let column = column + offset;
                 let x = origin.0
                     + u32::try_from(column)
                         .map_err(|_| Error::limit("image column exceeds u32"))?;
