@@ -1,25 +1,31 @@
-//! Font descriptor flags (9.8.2, Table 121).
+//! Font descriptors (9.8): flags and embedded font programs.
 use crate::{objects::optional, repairs, report::Report};
 use pagura_core::{Diagnostic, Dictionary, ObjectId, Position, Result, Value};
 use pagura_document::Document;
+
+/// The keys of an embedded font program, in lookup order (Table 124).
+const PROGRAM_KEYS: [&[u8]; 3] = [b"FontFile", b"FontFile2", b"FontFile3"];
 
 /// The `/Flags` bit field of a font descriptor (9.8.2, Table 121).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct FontFlags(u32);
 
 impl FontFlags {
+    /// All glyphs have the same width.
+    pub(crate) const FIXED_PITCH: Self = Self(1 << 0);
+    /// Glyphs have serifs.
+    pub(crate) const SERIF: Self = Self(1 << 1);
     /// The font uses characters outside the Standard Latin character set.
     pub(crate) const SYMBOLIC: Self = Self(1 << 2);
     /// The font uses only the Standard Latin character set.
     pub(crate) const NONSYMBOLIC: Self = Self(1 << 5);
+    /// Glyphs have dominant vertical strokes that are slanted.
+    pub(crate) const ITALIC: Self = Self(1 << 6);
+    /// Bold glyphs are painted with extra pixels at small sizes.
+    pub(crate) const FORCE_BOLD: Self = Self(1 << 18);
 
     pub(crate) const fn new(bits: u32) -> Self {
         Self(bits)
-    }
-
-    /// The bit field as written in the descriptor.
-    pub(crate) const fn bits(self) -> u32 {
-        self.0
     }
 
     pub(crate) const fn contains(self, flag: Self) -> bool {
@@ -95,6 +101,18 @@ impl<'a> Descriptor<'a> {
         )?;
         Ok(flags.unwrap_or(FontFlags::new(0)).with_primary_symbolic())
     }
+
+    /// The key of the embedded font program, if any. A key whose value is
+    /// null or refers to a missing object embeds nothing, so a provider
+    /// substitute can still apply.
+    pub(crate) fn program_key(&self, document: &Document) -> Result<Option<&'static [u8]>> {
+        for key in PROGRAM_KEYS {
+            if optional(document, self.dictionary, key)?.is_some() {
+                return Ok(Some(key));
+            }
+        }
+        Ok(None)
+    }
 }
 
 #[cfg(test)]
@@ -107,7 +125,7 @@ mod tests {
         assert!(FontFlags::new(32 | 64).is_consistent());
         assert!(!FontFlags::new(36).is_consistent());
         assert!(!FontFlags::new(0).is_consistent());
-        assert_eq!(FontFlags::new(1 << 18).bits(), 1 << 18);
+        assert!(FontFlags::new(1 << 18).contains(FontFlags::FORCE_BOLD));
         assert_eq!(
             FontFlags::new(36).with_primary_symbolic(),
             FontFlags::new(4)

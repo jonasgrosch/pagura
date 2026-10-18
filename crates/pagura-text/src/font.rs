@@ -6,7 +6,7 @@ use crate::{
     descriptor::{Descriptor, FontFlags},
     encoding::{self, SimpleMapping},
     features,
-    metrics::Metrics,
+    metrics::{GLYPH_SPACE_UNITS, Metrics},
     objects::{array, optional, required},
 };
 use pagura_core::{Diagnostic, Dictionary, Error, Name, ObjectId, Position, Result, Value};
@@ -78,11 +78,12 @@ pub(crate) fn load_with(
         (font, None, None)
     };
     let descriptor = Descriptor::of(document, metrics_font)?;
-    let embedded = descriptor.is_some_and(|descriptor| {
-        [b"FontFile".as_slice(), b"FontFile2", b"FontFile3"]
-            .iter()
-            .any(|key| descriptor.dictionary.contains_key(key))
-    });
+    // One predicate decides embedding for substitution and program loading,
+    // so a null or dangling FontFile still reaches the provider (7.3.10).
+    let embedded = match descriptor {
+        Some(descriptor) => descriptor.program_key(document)?.is_some(),
+        None => false,
+    };
     if !embedded && let Some(provider) = provider {
         if let Some(mapping) = mapping {
             // CID substitution ignores the flags, but a contradictory pair is
@@ -109,7 +110,7 @@ pub(crate) fn load_with(
         .contains(FontFlags::SYMBOLIC);
     let program = Arc::new(crate::program::load(
         document,
-        descriptor.dictionary,
+        descriptor,
         kind,
         metrics_font,
         rendering,
@@ -117,7 +118,12 @@ pub(crate) fn load_with(
     let metrics = if kind == FontKind::Type0 {
         Metrics::composite(document, metrics_font)?
     } else {
-        Metrics::simple(document, font, Some(descriptor.dictionary), 0.001)?
+        Metrics::simple(
+            document,
+            font,
+            Some(descriptor.dictionary),
+            GLYPH_SPACE_UNITS,
+        )?
     };
     let mapping = if let Some(mapping) = mapping {
         mapping

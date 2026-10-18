@@ -1,32 +1,34 @@
 //! PDF embedding bindings, ISO 32000-2 9.9.1 Tables 124–125.
-use crate::{FontKind, features, objects::optional, repairs, report::Report};
+use crate::{
+    FontKind, descriptor::Descriptor, features, objects::optional, repairs, report::Report,
+};
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ObjectId, Position, Result, Value};
 use pagura_document::Document;
 use pagura_document::Prefix;
 use pagura_font::{FontFormat, FontProgram};
 
+/// Loads the embedded program of `descriptor`. `metrics_font` is the simple
+/// font itself, or the CIDFont of a Type 0 font: its subtype selects the
+/// program format.
 pub(crate) fn load(
     document: &Document,
-    descriptor: &Dictionary,
+    descriptor: Descriptor<'_>,
     kind: FontKind,
-    descendant: &Dictionary,
+    metrics_font: &Dictionary,
     rendering: bool,
 ) -> Result<FontProgram> {
-    for key in [b"FontFile".as_slice(), b"FontFile2", b"FontFile3"] {
-        if optional(document, descriptor, key)?.is_none() {
-            continue;
-        }
-        let id = descriptor
-            .get(key)
-            .and_then(Value::as_reference)
-            .ok_or_else(|| Error::syntax("embedded font must be a stream reference"))?;
-        return load_stream(document, id, key, kind, descendant, rendering)
-            .map_err(|e| e.in_object(id));
-    }
-    Err(Error::unsupported(
-        features::NON_EMBEDDED,
-        "font program is not embedded",
-    ))
+    let Some(key) = descriptor.program_key(document)? else {
+        return Err(Error::unsupported(
+            features::NON_EMBEDDED,
+            "font program is not embedded",
+        ));
+    };
+    let id = descriptor
+        .dictionary
+        .get(key)
+        .and_then(Value::as_reference)
+        .ok_or_else(|| Error::syntax("embedded font must be a stream reference"))?;
+    load_stream(document, id, key, kind, metrics_font, rendering).map_err(|e| e.in_object(id))
 }
 
 fn load_stream(
@@ -34,14 +36,14 @@ fn load_stream(
     id: ObjectId,
     key: &[u8],
     kind: FontKind,
-    descendant: &Dictionary,
+    metrics_font: &Dictionary,
     rendering: bool,
 ) -> Result<FontProgram> {
     let object = document.object(id)?;
     let dictionary = object
         .dictionary()
         .ok_or_else(|| Error::syntax("embedded font is not a stream"))?;
-    let format = format(document, dictionary, key, kind, descendant)?;
+    let format = format(document, dictionary, key, kind, metrics_font)?;
     let prefix = if rendering && key == b"FontFile2" && format == FontFormat::TrueType {
         drawn_tables(document, object, dictionary)?
     } else {
@@ -262,11 +264,11 @@ fn format(
     dictionary: &Dictionary,
     key: &[u8],
     kind: FontKind,
-    descendant: &Dictionary,
+    metrics_font: &Dictionary,
 ) -> Result<FontFormat> {
     let type1 = matches!(kind, FontKind::Type1 | FontKind::MmType1);
-    let cid0 = descendant.is_name(b"Subtype", b"CIDFontType0");
-    let cid2 = descendant.is_name(b"Subtype", b"CIDFontType2");
+    let cid0 = metrics_font.is_name(b"Subtype", b"CIDFontType0");
+    let cid2 = metrics_font.is_name(b"Subtype", b"CIDFontType2");
     let result = match key {
         b"FontFile" if type1 => Some(FontFormat::Type1),
         b"FontFile2" if kind == FontKind::TrueType || cid2 => Some(FontFormat::TrueType),

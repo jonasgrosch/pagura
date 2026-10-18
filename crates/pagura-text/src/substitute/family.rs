@@ -1,102 +1,194 @@
-//! Bounded reader policy for bundled face selection (9.8.1–9.8.2).
+//! Bounded reader policy for bundled face selection (9.6.2.2, 9.8.1–9.8.2).
+use crate::descriptor::FontFlags;
 
-#[derive(Clone, Copy)]
+macro_rules! standard14 {
+    ($($variant:ident => $name:literal),* $(,)?) => {
+        /// The standard 14 fonts (9.6.2.2), by PostScript name.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        pub(crate) enum Standard14 {
+            $($variant),*
+        }
+
+        impl Standard14 {
+            /// The canonical PostScript name a provider looks up.
+            pub(crate) const fn name(self) -> &'static str {
+                match self {
+                    $(Self::$variant => $name),*
+                }
+            }
+
+            /// The informational message of a substitution by this face.
+            pub(crate) const fn substitution_message(self) -> &'static str {
+                match self {
+                    $(Self::$variant => concat!("substitute outlines for ", $name)),*
+                }
+            }
+        }
+    };
+}
+
+standard14! {
+    Courier => "Courier",
+    CourierBold => "Courier-Bold",
+    CourierOblique => "Courier-Oblique",
+    CourierBoldOblique => "Courier-BoldOblique",
+    TimesRoman => "Times-Roman",
+    TimesBold => "Times-Bold",
+    TimesItalic => "Times-Italic",
+    TimesBoldItalic => "Times-BoldItalic",
+    Helvetica => "Helvetica",
+    HelveticaBold => "Helvetica-Bold",
+    HelveticaOblique => "Helvetica-Oblique",
+    HelveticaBoldOblique => "Helvetica-BoldOblique",
+    Symbol => "Symbol",
+    ZapfDingbats => "ZapfDingbats",
+}
+
+impl Standard14 {
+    /// Symbol and ZapfDingbats use their own built-in encodings (9.6.5.1).
+    pub(crate) const fn is_symbolic(self) -> bool {
+        matches!(self, Self::Symbol | Self::ZapfDingbats)
+    }
+}
+
+/// The Latin family a face is substituted from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Family {
-    Fixed,
-    Serif,
-    Sans,
+    Courier,
+    Times,
+    Helvetica,
+}
+
+/// Weight and slant of a face.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Style {
+    Regular,
+    Bold,
+    Italic,
+    BoldItalic,
 }
 
 impl Family {
-    pub(super) fn from_flags(flags: u32) -> Self {
-        if flags & 1 != 0 {
-            return Self::Fixed;
+    /// FixedPitch selects Courier, Serif selects Times, otherwise Helvetica.
+    pub(super) const fn from_flags(flags: FontFlags) -> Self {
+        if flags.contains(FontFlags::FIXED_PITCH) {
+            Self::Courier
+        } else if flags.contains(FontFlags::SERIF) {
+            Self::Times
+        } else {
+            Self::Helvetica
         }
-        if flags & 2 != 0 {
-            return Self::Serif;
-        }
-        Self::Sans
     }
 
-    pub(super) fn canonical(self, bold: bool, italic: bool) -> &'static [u8] {
-        match (self, bold, italic) {
-            (Self::Fixed, false, false) => b"Courier",
-            (Self::Fixed, true, false) => b"Courier-Bold",
-            (Self::Fixed, false, true) => b"Courier-Oblique",
-            (Self::Fixed, true, true) => b"Courier-BoldOblique",
-            (Self::Serif, false, false) => b"Times-Roman",
-            (Self::Serif, true, false) => b"Times-Bold",
-            (Self::Serif, false, true) => b"Times-Italic",
-            (Self::Serif, true, true) => b"Times-BoldItalic",
-            (Self::Sans, false, false) => b"Helvetica",
-            (Self::Sans, true, false) => b"Helvetica-Bold",
-            (Self::Sans, false, true) => b"Helvetica-Oblique",
-            (Self::Sans, true, true) => b"Helvetica-BoldOblique",
+    pub(super) const fn face(self, style: Style) -> Standard14 {
+        match (self, style) {
+            (Self::Courier, Style::Regular) => Standard14::Courier,
+            (Self::Courier, Style::Bold) => Standard14::CourierBold,
+            (Self::Courier, Style::Italic) => Standard14::CourierOblique,
+            (Self::Courier, Style::BoldItalic) => Standard14::CourierBoldOblique,
+            (Self::Times, Style::Regular) => Standard14::TimesRoman,
+            (Self::Times, Style::Bold) => Standard14::TimesBold,
+            (Self::Times, Style::Italic) => Standard14::TimesItalic,
+            (Self::Times, Style::BoldItalic) => Standard14::TimesBoldItalic,
+            (Self::Helvetica, Style::Regular) => Standard14::Helvetica,
+            (Self::Helvetica, Style::Bold) => Standard14::HelveticaBold,
+            (Self::Helvetica, Style::Italic) => Standard14::HelveticaOblique,
+            (Self::Helvetica, Style::BoldItalic) => Standard14::HelveticaBoldOblique,
         }
     }
 }
 
+/// The longest base font name the alias policy inspects. Longer names are
+/// not standard spellings, and the cap keeps the comparison buffer small.
+const MAX_NAME: usize = 80;
+
 /// Recognizes known family/style spellings. A subset tag is exactly six
 /// uppercase ASCII letters followed by `+` (9.9.2); aliases are reader policy.
-pub(crate) fn standard_name(name: &[u8]) -> Option<&'static [u8]> {
-    let normalized = normalized(name)?;
-    let normalized = normalized.strip_suffix(b"mt").unwrap_or(&normalized);
+pub(crate) fn standard_name(name: &[u8]) -> Option<Standard14> {
+    let mut buffer = [0; MAX_NAME];
+    let normalized = normalized(name, &mut buffer)?;
+    let normalized = normalized.strip_suffix(b"mt").unwrap_or(normalized);
     for (prefix, family) in [
-        (b"timesnewromanps".as_slice(), Family::Serif),
-        (b"timesnewroman", Family::Serif),
-        (b"couriernewps", Family::Fixed),
-        (b"couriernew", Family::Fixed),
-        (b"helvetica", Family::Sans),
-        (b"arial", Family::Sans),
-        (b"courier", Family::Fixed),
-        (b"times", Family::Serif),
+        (b"timesnewromanps".as_slice(), Family::Times),
+        (b"timesnewroman", Family::Times),
+        (b"couriernewps", Family::Courier),
+        (b"couriernew", Family::Courier),
+        (b"helvetica", Family::Helvetica),
+        (b"arial", Family::Helvetica),
+        (b"courier", Family::Courier),
+        (b"times", Family::Times),
     ] {
-        if let Some(style) = normalized.strip_prefix(prefix)
-            && let Some((bold, italic)) = style_flags(style)
-        {
-            return Some(family.canonical(bold, italic));
+        if let Some(style) = normalized.strip_prefix(prefix).and_then(style) {
+            return Some(family.face(style));
         }
     }
     // The bundled symbol programs have only regular outlines. Known style
     // suffixes keep the family's encoding and metrics without synthesizing
     // a different face; the substitution diagnostic names that regular face.
-    for (prefix, canonical) in [
-        (b"symbol".as_slice(), b"Symbol".as_slice()),
-        (b"zapfdingbats", b"ZapfDingbats"),
-        (b"dingbats", b"ZapfDingbats"),
+    for (prefix, face) in [
+        (b"symbol".as_slice(), Standard14::Symbol),
+        (b"zapfdingbats", Standard14::ZapfDingbats),
+        (b"dingbats", Standard14::ZapfDingbats),
     ] {
-        if normalized
-            .strip_prefix(prefix)
-            .and_then(style_flags)
-            .is_some()
-        {
-            return Some(canonical);
+        if normalized.strip_prefix(prefix).and_then(style).is_some() {
+            return Some(face);
         }
     }
     None
 }
 
-fn style_flags(style: &[u8]) -> Option<(bool, bool)> {
-    Some(match style {
-        b"" | b"roman" | b"regular" => (false, false),
-        b"bold" | b"b" | b"bb" => (true, false),
-        b"italic" | b"oblique" | b"i" => (false, true),
-        b"bolditalic" | b"boldoblique" | b"bi" | b"ib" => (true, true),
+fn style(suffix: &[u8]) -> Option<Style> {
+    Some(match suffix {
+        b"" | b"roman" | b"regular" => Style::Regular,
+        b"bold" | b"b" | b"bb" => Style::Bold,
+        b"italic" | b"oblique" | b"i" => Style::Italic,
+        b"bolditalic" | b"boldoblique" | b"bi" | b"ib" => Style::BoldItalic,
         _ => return None,
     })
 }
 
-fn normalized(name: &[u8]) -> Option<Vec<u8>> {
+/// Lowercases `name` without its subset tag, hyphens, commas and spaces.
+fn normalized<'a>(name: &[u8], buffer: &'a mut [u8; MAX_NAME]) -> Option<&'a [u8]> {
     let name = if name.get(6) == Some(&b'+') && name.get(..6)?.iter().all(u8::is_ascii_uppercase) {
         name.get(7..)?
     } else {
         name
     };
-    // Never allocate in proportion to an arbitrarily large PDF name/string.
-    (name.len() <= 80).then(|| {
-        name.iter()
-            .filter(|b| !matches!(b, b'-' | b',' | b' '))
-            .map(u8::to_ascii_lowercase)
-            .collect()
-    })
+    if name.len() > MAX_NAME {
+        return None;
+    }
+    let mut len = 0;
+    for byte in name.iter().filter(|b| !matches!(b, b'-' | b',' | b' ')) {
+        buffer[len] = byte.to_ascii_lowercase();
+        len += 1;
+    }
+    Some(&buffer[..len])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn aliases_and_messages() {
+        assert_eq!(
+            standard_name(b"Arial,BoldItalic"),
+            Some(Standard14::HelveticaBoldOblique)
+        );
+        assert_eq!(
+            standard_name(b"ABCDEF+TimesNewRomanPSMT"),
+            Some(Standard14::TimesRoman)
+        );
+        assert_eq!(standard_name(b"Symbol,Italic"), Some(Standard14::Symbol));
+        assert_eq!(standard_name(b"Unknown"), None);
+        assert_eq!(standard_name(&[b'A'; MAX_NAME + 1]), None);
+        assert_eq!(
+            Standard14::CourierBold.substitution_message(),
+            "substitute outlines for Courier-Bold"
+        );
+        assert_eq!(
+            Family::from_flags(FontFlags::new(2)).face(Style::BoldItalic),
+            Standard14::TimesBoldItalic
+        );
+    }
 }
