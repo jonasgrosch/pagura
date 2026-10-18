@@ -1,0 +1,20 @@
+form|true|3|true|/F1 10 Tf|1|1|true
+field|0|_|Personal|Personal|Group|1|_|_|/F1 9 Tf|2|_|_|_
+field|1|0|Personal.Address|Address|Group|1|_|_|/F1 9 Tf|0|_|_|_
+field|2|1|Personal.Address.City €|City €|Tx:32:true:false:false:false:false|4096|inherited|default|/F1 9 Tf|0|Accessible|export-city|_
+field|3|_|submit|submit|Btn:Push:|65536|_|_|/F1 10 Tf|1|_|_|_
+field|4|_|check|check|Btn:CheckBox:export-yes|0|/Yes|/Off|/F1 10 Tf|1|_|_|_
+field|5|_|radio|radio|Btn:Radio:first,second|33587200|/Shared|_|/F1 10 Tf|1|_|_|_
+field|6|_|password|password|Tx:_:false:true:false:false:false|8192|_|_|/F1 10 Tf|1|_|_|_
+field|7|_|comb|comb|Tx:8:false:false:true:false:false|16777216|123|_|/F1 10 Tf|1|_|_|_
+field|8|_|rich|rich|Tx:_:false:false:false:true:true|33554432|plain|_|/F1 10 Tf|1|_|_|K:JavaScript,C:Named
+field|9|_|combo|combo|Ch:true:true:false:Red>Red,b>Blue|393216|Blue|_|/F1 10 Tf|1|_|_|_
+field|10|_|list|list|Ch:false:false:true:Red>Red,b>Blue|2097152|[Red,Blue]|[Blue]|/F1 10 Tf|1|_|_|_
+field|11|_|signatures|signatures|Group|0|_|_|/F1 10 Tf|1|_|_|_
+field|12|11|signatures.empty|empty|Sig:false|0|_|_|/F1 10 Tf|1|_|_|_
+field|13|11|signatures.signed|signed|Sig:true|0|signature|_|/F1 10 Tf|1|_|_|_
+widget|2|false|1,2,9,12|_|_|_|Fo:JavaScript
+widget|3|true|0,0,5,5|_|_|Named,JavaScript|_
+widget|4|true|0,0,5,5|Yes|Yes|_|_
+widget|5|false|0,0,5,5|Shared|Shared|_|_
+widget|5|false|0,0,5,5|Shared|Shared|_|_

@@ -413,6 +413,8 @@ def cases():
     yield from legacy_selector_cases()
     yield from catalog_identity_cases()
     yield from navigation_cases()
+    from .document_forms import cases as form_cases
+    yield from form_cases()
 
 
 def replace_startxref(data, offset):

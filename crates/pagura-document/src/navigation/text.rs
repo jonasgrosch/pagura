@@ -3,7 +3,7 @@ use super::context::{Context, Source};
 use crate::tags;
 use pagura_core::{Error, Result};
 
-pub(super) fn decode(ctx: &mut Context<'_>, bytes: &[u8], source: Source) -> Result<String> {
+pub(crate) fn decode(ctx: &mut Context<'_>, bytes: &[u8], source: Source) -> Result<String> {
     let text = if let Some(bytes) = bytes.strip_prefix(&[0xef, 0xbb, 0xbf]) {
         collect(ctx, source, || {
             bytes.utf8_chunks().flat_map(|chunk| {

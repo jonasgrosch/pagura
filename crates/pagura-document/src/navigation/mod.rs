@@ -6,13 +6,13 @@
 //! `Limits::value_nodes` and `Limits::objects` for traversal, and
 //! `Limits::document_bytes` for estimated temporary/result storage. Results
 //! are caller-owned and uncached; source objects use the usual retained budget.
-mod actions;
-mod context;
+pub(crate) mod actions;
+pub(crate) mod context;
 mod destinations;
 mod labels;
 mod links;
 mod outlines;
-mod text;
+pub(crate) mod text;
 mod trees;
 
 pub use actions::{Action, ActionKind, ActionSequence, NamedAction, Script};

@@ -4005,6 +4005,755 @@
           "sha256": "4345eae4cf812fcaf5c5ab3331df80d074fa554991bdf2f81fcaa0f494e1706d"
         }
       }
+    },
+    {
+      "id": "document/forms-types-inheritance",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-types-inheritance.expected",
+          "sha256": "f843f87abce5ec17972a11fd206b828a187bb234c79aa76949f354f6a8e61a58"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-types-inheritance.params",
+          "sha256": "2040bc99a88faf74a660047d53e0dfce65ca0efdf846fe108e23878d04a60da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-types-inheritance.pdf",
+          "sha256": "d259b7d09bee5e1cb9d84e996f275a0ec3e80ebf24d7dad3fec820704770d194"
+        }
+      }
+    },
+    {
+      "id": "document/forms-duplicate-equivalent",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-duplicate-equivalent.expected",
+          "sha256": "f20460dc0413e4fc3e944c0a1bcdf2071a2c65cff59fb82997a1d5f4eb1816d4"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-duplicate-equivalent.params",
+          "sha256": "2040bc99a88faf74a660047d53e0dfce65ca0efdf846fe108e23878d04a60da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-duplicate-equivalent.pdf",
+          "sha256": "64ac0a2b6e19f52d9edb96dac0b27234d8a046f013fa459fad7ed3dc3702787b"
+        }
+      }
+    },
+    {
+      "id": "document/forms-duplicate-conflict",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-duplicate-conflict.expected",
+          "sha256": "c59520184bb3390fd0c34abc93b62275f89052bceb9592f570b23a64bd9acdbf"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-duplicate-conflict.params",
+          "sha256": "f27267c2e4208cb9b9adebb41350ddd84e3c047c476a9636c80f7c37d2ac6614"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-duplicate-conflict.pdf",
+          "sha256": "4dae25454ee962510ffb6db85f2c59de684e19d4bb81bac5683605a50bef75e7"
+        }
+      }
+    },
+    {
+      "id": "document/forms-name-period",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-name-period.expected",
+          "sha256": "06cc28766e7b6fef61707d20b126385c750a7fb7f3975c9d9ff9e3671b978d5a"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-name-period.params",
+          "sha256": "05e31b81a50cbaf50fa9333dcb7b11f50de5b947ac245dea28f2765f148d9493"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-name-period.pdf",
+          "sha256": "8bf67fa95d681a360bc775526af14662f477a22a9695205c46d74a4f1cda911f"
+        }
+      }
+    },
+    {
+      "id": "document/forms-name-absent",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-name-absent.expected",
+          "sha256": "4ba532f1d7cde1f152c0977e623e70843a7c243e70cb7e39b3bb08df57cc1c60"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-name-absent.params",
+          "sha256": "05e31b81a50cbaf50fa9333dcb7b11f50de5b947ac245dea28f2765f148d9493"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-name-absent.pdf",
+          "sha256": "e9634866995979d178084b808e2450c22de8dd1664762aa10ae988f530e94530"
+        }
+      }
+    },
+    {
+      "id": "document/forms-parent-missing",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-parent-missing.expected",
+          "sha256": "a7086e310bf1895671372e3a9d8c16dfe778c44144e975676be2bdfbd3acf72f"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-parent-missing.params",
+          "sha256": "eed4ccb1a16826c5b92e029237b439b6e34b7e32cf289ef2ed9b8395ef0e87eb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-parent-missing.pdf",
+          "sha256": "8ec4102ef0834d4197a3b9b892d9ffc7c5585189c595caee49be7576b9a4d625"
+        }
+      }
+    },
+    {
+      "id": "document/forms-cycle",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-cycle.expected",
+          "sha256": "1fda1d54b255db126948fbd6be0cfe781959bad13ae53207b8df6b9ad5a48d99"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-cycle.params",
+          "sha256": "01fd64bc8c6dc60dd0033bc1441000b81f7c093789c87964ca45935852fa2fcc"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-cycle.pdf",
+          "sha256": "c08e5c4a07a201da9ef29eebe65d61cc609263b23aa953afb90c6e441b613087"
+        }
+      }
+    },
+    {
+      "id": "document/forms-cycle-mutual",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-cycle-mutual.expected",
+          "sha256": "2a3934dc4857eb1dfd524744574149a20c199930a2fac5eaee50cd78e6a80fbb"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-cycle-mutual.params",
+          "sha256": "01fd64bc8c6dc60dd0033bc1441000b81f7c093789c87964ca45935852fa2fcc"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-cycle-mutual.pdf",
+          "sha256": "673521e328b1df9fd0e5d1feed472ad8ccb45069a8ed46610a38301348aca5cd"
+        }
+      }
+    },
+    {
+      "id": "document/forms-direct-field",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-direct-field.expected",
+          "sha256": "b41b1993ad52887fc0ac7fe948a3a5963ee3e4f190930028bf22e1ef641dc728"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-direct-field.params",
+          "sha256": "09b35fba03e1aa73454f71a281a7e091fb58170bb7a32e57b287974f5b857992"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-direct-field.pdf",
+          "sha256": "98be3499126f115d300d9c419bfb14f95ff472f93ab17a7a47f134fa51fe1cb1"
+        }
+      }
+    },
+    {
+      "id": "document/forms-mixed-children",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-mixed-children.expected",
+          "sha256": "0cb524748ae1f18935c57604f0c2c1351f3b7270adae03b3f713825bcfa8331f"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-mixed-children.params",
+          "sha256": "09b35fba03e1aa73454f71a281a7e091fb58170bb7a32e57b287974f5b857992"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-mixed-children.pdf",
+          "sha256": "801d1a2633cb60a815d22190feb58eff25bcfca7e83238222ccd4fed14aebe1d"
+        }
+      }
+    },
+    {
+      "id": "document/forms-widget-subtype",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-widget-subtype.expected",
+          "sha256": "038a81ae5519060b575c99a14fcf469089119c52afeace88dd6b28ca83ffdbcb"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-widget-subtype.params",
+          "sha256": "09b35fba03e1aa73454f71a281a7e091fb58170bb7a32e57b287974f5b857992"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-widget-subtype.pdf",
+          "sha256": "cf73ea86efa94f8326a3ad0f5add86c5036ed7eb51e85df170b7cdf6d4359fae"
+        }
+      }
+    },
+    {
+      "id": "document/forms-action-cycle",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-action-cycle.expected",
+          "sha256": "a053e0665f88976e242100279ca98e840d34909bd11e2234101dbb2f9ecd4c31"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-action-cycle.params",
+          "sha256": "e3043bdc7fc3903bee0a3861b4218e5f7e8e7965fa6d942e7319f799d76de584"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-action-cycle.pdf",
+          "sha256": "d9831435e51f9e5f5e5aedc0c8f56166ce6e87716f16933fb63af2afca438222"
+        }
+      }
+    },
+    {
+      "id": "document/forms-text-encodings",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-text-encodings.expected",
+          "sha256": "3db219ea495120245300bb3d241f0bb1014f143e20b0830db10b43cbb64da8cf"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-text-encodings.params",
+          "sha256": "2040bc99a88faf74a660047d53e0dfce65ca0efdf846fe108e23878d04a60da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-text-encodings.pdf",
+          "sha256": "3586b061a005c35cea91e782e92051d7f5d8fdb75da0efe194ac70ca7bb5a934"
+        }
+      }
+    },
+    {
+      "id": "document/forms-text-stream",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-text-stream.expected",
+          "sha256": "22d651a9092f211bcf504ed24d86ac65407e5d897f44bcb1dee13274618a1951"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-text-stream.params",
+          "sha256": "2040bc99a88faf74a660047d53e0dfce65ca0efdf846fe108e23878d04a60da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-text-stream.pdf",
+          "sha256": "45b709411682ac34c24bf7c43be39e316f638b32caa7a02472ae2668f5c11113"
+        }
+      }
+    },
+    {
+      "id": "document/forms-optional-null",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-optional-null.expected",
+          "sha256": "bff23a881a1b967fca5d2116be7beba367232e47a679b7f2b1c4611e203b6e40"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-optional-null.params",
+          "sha256": "2040bc99a88faf74a660047d53e0dfce65ca0efdf846fe108e23878d04a60da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-optional-null.pdf",
+          "sha256": "6040ce81155b947a9cb9e4745f36c22bdbd446e9285c14555a32f0010898f551"
+        }
+      }
+    },
+    {
+      "id": "document/forms-invalid-field-type",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-invalid-field-type.expected",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-invalid-field-type.params",
+          "sha256": "10065a19cf4bac67863664eee2de17e0d39ee8c95df17d427c8fdc75f7cccfe9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-invalid-field-type.pdf",
+          "sha256": "53501b75312acc0e7474c1e023b02bea799e931fd4bd644c3de607879ba48889"
+        }
+      }
+    },
+    {
+      "id": "document/forms-invalid-choice-option",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-invalid-choice-option.expected",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-invalid-choice-option.params",
+          "sha256": "10065a19cf4bac67863664eee2de17e0d39ee8c95df17d427c8fdc75f7cccfe9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-invalid-choice-option.pdf",
+          "sha256": "522672dff50ef73553cb1d114209a226599c5ed8e59d07aefc96998f6f99ec44"
+        }
+      }
+    },
+    {
+      "id": "document/forms-invalid-value-type",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-invalid-value-type.expected",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-invalid-value-type.params",
+          "sha256": "10065a19cf4bac67863664eee2de17e0d39ee8c95df17d427c8fdc75f7cccfe9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-invalid-value-type.pdf",
+          "sha256": "6141f3fc8451e21a814c1a810c867f38536b2379b77c54f6363c8e7aeef68d5c"
+        }
+      }
+    },
+    {
+      "id": "document/forms-invalid-kids-type",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-invalid-kids-type.expected",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-invalid-kids-type.params",
+          "sha256": "10065a19cf4bac67863664eee2de17e0d39ee8c95df17d427c8fdc75f7cccfe9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-invalid-kids-type.pdf",
+          "sha256": "10ff4079a19637aaf481d76cf0b2c2481c28cd80d629040e8bb3f00e11590785"
+        }
+      }
+    },
+    {
+      "id": "document/forms-shared-field",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-shared-field.expected",
+          "sha256": "b41b1993ad52887fc0ac7fe948a3a5963ee3e4f190930028bf22e1ef641dc728"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-shared-field.params",
+          "sha256": "01fd64bc8c6dc60dd0033bc1441000b81f7c093789c87964ca45935852fa2fcc"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-shared-field.pdf",
+          "sha256": "8803fd9e68c55fb3ce718ec5fb535ece228286dc7d3be3d06b5721683d17d07d"
+        }
+      }
+    },
+    {
+      "id": "document/forms-deep",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-deep.expected",
+          "sha256": "8a1058bd164af14ee43dabb182243ee54828c03bc9a05faa7a4863405e5b174a"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-deep.params",
+          "sha256": "2040bc99a88faf74a660047d53e0dfce65ca0efdf846fe108e23878d04a60da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-deep.pdf",
+          "sha256": "803f21e8e7ba79f87482225c2fc34ac4bf2937aebe079d9dfe8b6048ca0c82af"
+        }
+      }
+    },
+    {
+      "id": "document/forms-fields-absent",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-fields-absent.expected",
+          "sha256": "4b83a83ceb6a31683fe11b5f45703a831db17ba52ddc0aec76363addc825ed06"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-fields-absent.params",
+          "sha256": "72fd811e3c034263b6d6c2e1529159c4f7407c626f1dbe5af76a1a7805b7da80"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-fields-absent.pdf",
+          "sha256": "dcfad6285d442967f7eb14e5837968cad130104a6721eef1a32ef2416353cd99"
+        }
+      }
+    },
+    {
+      "id": "document/forms-name-type",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-name-type.expected",
+          "sha256": "4ba532f1d7cde1f152c0977e623e70843a7c243e70cb7e39b3bb08df57cc1c60"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-name-type.params",
+          "sha256": "05e31b81a50cbaf50fa9333dcb7b11f50de5b947ac245dea28f2765f148d9493"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-name-type.pdf",
+          "sha256": "e8e037fc04159c7b10ef7d4d1773e2b0e32b9782bddbbd225d46aea796c4bfd9"
+        }
+      }
+    },
+    {
+      "id": "document/forms-widget-redundant-type",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-widget-redundant-type.expected",
+          "sha256": "038a81ae5519060b575c99a14fcf469089119c52afeace88dd6b28ca83ffdbcb"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-widget-redundant-type.params",
+          "sha256": "2040bc99a88faf74a660047d53e0dfce65ca0efdf846fe108e23878d04a60da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-widget-redundant-type.pdf",
+          "sha256": "5e38645d59b0ddd729c02a4b44ecd0ea593e75d4750110f822437f885420462b"
+        }
+      }
+    },
+    {
+      "id": "document/forms-choice-inheritance",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-choice-inheritance.expected",
+          "sha256": "95fa7bde5ac524d51939b94720fde332fbc1e733d4645aeac40c12bd31f30783"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-choice-inheritance.params",
+          "sha256": "2040bc99a88faf74a660047d53e0dfce65ca0efdf846fe108e23878d04a60da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-choice-inheritance.pdf",
+          "sha256": "9910fa7ddf9a3e0084c3d7f80d123e8ad0e20847bc86eb6c5a5cce80da095be5"
+        }
+      }
+    },
+    {
+      "id": "document/forms-actions",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model",
+        "forms-actions"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-actions.expected",
+          "sha256": "6d92e5ba2523d4a8dc2e5789b11e6cad97ad3ef33749a54feb5108ad3e8bc77f"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-actions.params",
+          "sha256": "2040bc99a88faf74a660047d53e0dfce65ca0efdf846fe108e23878d04a60da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-actions.pdf",
+          "sha256": "06c8b9e1cc043f3203d54153c754e75ea741bc6c79ab9c867027d26059d0d063"
+        }
+      }
+    },
+    {
+      "id": "document/forms-wide",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-wide.expected",
+          "sha256": "a9119156870d7a380239c325ab640af5c28b1b873d7d4deb8ea543940af06a7a"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-wide.params",
+          "sha256": "2040bc99a88faf74a660047d53e0dfce65ca0efdf846fe108e23878d04a60da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-wide.pdf",
+          "sha256": "5863656e5093d8da3e03ec55d8da83624d0e96fc070d0ad97933ff03b3b5f441"
+        }
+      }
+    },
+    {
+      "id": "document/forms-duplicate-default-conflict",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-duplicate-default-conflict.expected",
+          "sha256": "c20e94bdc488281bf295ba3488d7568729ed18d9ee2cef12e53a12def31833d1"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-duplicate-default-conflict.params",
+          "sha256": "f27267c2e4208cb9b9adebb41350ddd84e3c047c476a9636c80f7c37d2ac6614"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-duplicate-default-conflict.pdf",
+          "sha256": "f2cdc9a44479012d5803892eb278d9786ab788d9c1e73ed912ad25d18fd78456"
+        }
+      }
+    },
+    {
+      "id": "document/forms-parent-wrong",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-parent-wrong.expected",
+          "sha256": "a7086e310bf1895671372e3a9d8c16dfe778c44144e975676be2bdfbd3acf72f"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-parent-wrong.params",
+          "sha256": "eed4ccb1a16826c5b92e029237b439b6e34b7e32cf289ef2ed9b8395ef0e87eb"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-parent-wrong.pdf",
+          "sha256": "2a0f08d9613e642e8a1de47ac020a45a86f28a426a1278aece96035b219e636c"
+        }
+      }
+    },
+    {
+      "id": "document/forms-invalid-action-target",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-invalid-action-target.expected",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-invalid-action-target.params",
+          "sha256": "10065a19cf4bac67863664eee2de17e0d39ee8c95df17d427c8fdc75f7cccfe9"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-invalid-action-target.pdf",
+          "sha256": "be68355764f2027e62be4aa22802d23436dcd270bb4feb181ca21e1e642d22a2"
+        }
+      }
+    },
+    {
+      "id": "document/forms-text-invalid",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-text-invalid.expected",
+          "sha256": "b5d38721261139295d88663d165c9348bcd6a9c1a369d22db12cae271758a565"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-text-invalid.params",
+          "sha256": "d29cf0219341b78d78463d8995ccd73d3b44689d8bcc83dba183328fe6522485"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-text-invalid.pdf",
+          "sha256": "978b662cd1f65ab14bf11a8122f28d4f4e8919f38b20198b03665f995baf0bce"
+        }
+      }
+    },
+    {
+      "id": "document/forms-duplicate-text-encodings",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-duplicate-text-encodings.expected",
+          "sha256": "f20460dc0413e4fc3e944c0a1bcdf2071a2c65cff59fb82997a1d5f4eb1816d4"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-duplicate-text-encodings.params",
+          "sha256": "2040bc99a88faf74a660047d53e0dfce65ca0efdf846fe108e23878d04a60da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-duplicate-text-encodings.pdf",
+          "sha256": "7ef49c02358b16d2499a4e988f7cfd45160e417a461cb379f7292017757d8238"
+        }
+      }
+    },
+    {
+      "id": "document/forms-name-empty",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-name-empty.expected",
+          "sha256": "5188ff7ddce2086387d42478bf727fa2662f01cf5cd3ae1e6e7331deabe62d7b"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-name-empty.params",
+          "sha256": "2040bc99a88faf74a660047d53e0dfce65ca0efdf846fe108e23878d04a60da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-name-empty.pdf",
+          "sha256": "e04bc3f059dec533af30ed2bbd299bcf492497d97432fb015df970b90062d5c5"
+        }
+      }
+    },
+    {
+      "id": "document/forms-name-empty-parent",
+      "kind": "vector",
+      "description": "Independent read-only interactive form model, ISO 32000-2 12.7.",
+      "requirements": [
+        "forms-model"
+      ],
+      "files": {
+        ".expected": {
+          "path": "corpus/generated/document/forms-name-empty-parent.expected",
+          "sha256": "0f50e610da7a7f028ca460ef3ec04ac09efa8adcf30e46b2d026326dd31741e9"
+        },
+        ".params": {
+          "path": "corpus/generated/document/forms-name-empty-parent.params",
+          "sha256": "2040bc99a88faf74a660047d53e0dfce65ca0efdf846fe108e23878d04a60da3"
+        },
+        ".pdf": {
+          "path": "corpus/generated/document/forms-name-empty-parent.pdf",
+          "sha256": "09523e4321ea6092660b3bf2252bbd19017ff78a18f84daa5b6055a64170f48e"
+        }
+      }
     }
   ]
 }

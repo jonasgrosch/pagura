@@ -200,10 +200,10 @@ fn kind<'a>(ctx: &mut Context<'a>, d: &'a Dictionary, source: Source) -> Result<
         _ => ActionKind::Other(name),
     })
 }
-pub(super) fn read<'a>(doc: &'a Document, value: &'a Value) -> Result<ActionSequence<'a>> {
+pub(crate) fn read<'a>(doc: &'a Document, value: &'a Value) -> Result<ActionSequence<'a>> {
     read_with(&mut Context::new(doc), value, Source::default())
 }
-pub(super) fn read_with<'a>(
+pub(crate) fn read_with<'a>(
     ctx: &mut Context<'a>,
     value: &'a Value,
     source: Source,

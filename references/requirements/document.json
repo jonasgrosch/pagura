@@ -730,6 +730,47 @@
           "evidence": "Generated document/navigation-* vectors verify complete typed snapshots, strict repair tags, source context, cycles and resource limits."
         }
       ]
+    },
+    {
+      "id": "forms-model",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.9.2.2",
+        "12.5.6.19",
+        "12.6.3",
+        "12.7.3",
+        "12.7.4.1",
+        "12.7.4.2",
+        "12.7.4.3",
+        "12.7.5.2",
+        "12.7.5.3",
+        "12.7.5.4",
+        "12.7.5.5"
+      ],
+      "status": "implemented",
+      "tests": [
+        "pagura-document/src/forms/tests.rs",
+        "document/forms-types-inheritance",
+        "document/forms-cycle",
+        "document/forms-duplicate-conflict"
+      ],
+      "gaps": "Read-only; no filling, appearance generation, signature validation or XFA interpretation."
+    },
+    {
+      "id": "forms-actions",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.6.2",
+        "12.6.3",
+        "12.7.4.1"
+      ],
+      "status": "implemented",
+      "tests": [
+        "document/forms-actions",
+        "document/forms-action-cycle",
+        "document/forms-invalid-action-target"
+      ],
+      "gaps": "Actions are inert data; no JavaScript or calculation execution."
     }
   ]
 }

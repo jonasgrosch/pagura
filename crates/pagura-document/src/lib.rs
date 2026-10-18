@@ -11,6 +11,7 @@
 mod catalog;
 mod contents;
 mod diagnostics;
+pub mod forms;
 mod load;
 mod memory;
 pub mod navigation;

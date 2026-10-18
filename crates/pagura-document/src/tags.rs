@@ -149,3 +149,17 @@ pub const DESTINATION_PAGE_NUMBER: Repair = Repair::new("destination.page-number
 
 /// Incorrect optional outline root Type ignored in Outlines context (12.3.3).
 pub const OUTLINE_TYPE: Repair = Repair::new("outline.type");
+
+/// Malformed or anonymous field name retained verbatim, without inventing identity (12.7.4.2).
+pub const FORM_NAME: Repair = Repair::new("form.name");
+/// Conflicting same-named fields retained separately; names are not identities (12.7.4.2).
+pub const FORM_DUPLICATE_NAME: Repair = Repair::new("form.duplicate-name");
+/// Fields/Kids membership prevails over inconsistent Parent (12.7.4.1).
+pub const FORM_PARENT: Repair = Repair::new("form.parent");
+/// Repeated field/widget edges omitted, keeping the first traversal (12.7.4.1).
+pub const FORM_CYCLE: Repair = Repair::new("form.cycle");
+/// Direct dictionaries and mixed widget/field children read in source order (12.7.4.1).
+pub const FORM_STRUCTURE: Repair = Repair::new("form.structure");
+
+/// Missing required Fields interpreted as an empty tree (12.7.3, Table 224).
+pub const FORM_FIELDS: Repair = Repair::new("form.fields");

@@ -5,7 +5,7 @@ use pagura_core::{
 };
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(super) struct Source {
+pub(crate) struct Source {
     pub object: Option<ObjectId>,
     pub position: Position,
 }
@@ -21,7 +21,7 @@ impl Source {
     }
 }
 
-pub(super) struct Context<'a> {
+pub(crate) struct Context<'a> {
     pub doc: &'a Document,
     steps: usize,
     bytes: usize,
@@ -198,10 +198,10 @@ impl<'a> Context<'a> {
         Ok(())
     }
 }
-pub(super) fn identity(value: &Value) -> usize {
+pub(crate) fn identity(value: &Value) -> usize {
     std::ptr::from_ref(value).addr()
 }
-pub(super) fn number(value: &Value, source: Source) -> Result<f64> {
+pub(crate) fn number(value: &Value, source: Source) -> Result<f64> {
     value
         .as_number()
         .filter(|n| n.is_finite())
