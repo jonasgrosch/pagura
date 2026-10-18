@@ -6,9 +6,9 @@ pub(super) mod extract;
 mod type3;
 
 use super::{
-    Arc, Compiler, Dictionary, Error, FillRule, PathBuilder, Result, Transform, Value, matrix,
-    number, resource,
+    Arc, Compiler, Dictionary, Error, FillRule, PathBuilder, Result, Transform, Value, resource,
 };
+use crate::operators::{Painting, TextOperation};
 use pagura_core::Position;
 use pagura_raster::{Path, Segment};
 use pagura_text::{Glyph, GlyphShape, PdfFont, WritingMode};
@@ -28,7 +28,7 @@ pub(super) struct TextState {
     leading: f64,
     rise: f64,
     mode: u8,
-    knockout: bool,
+    pub(super) knockout: bool,
     pub(super) object: Option<TextObject>,
     pub(super) procedure: Option<type3::Procedure>,
     pub(super) cache: Rc<RefCell<cache::Cache>>,
@@ -124,31 +124,24 @@ impl Compiler<'_> {
 
     pub(super) fn text_operator<const EXTRACT: bool>(
         &mut self,
-        word: &[u8],
-        v: &[Value],
+        operation: TextOperation<'_>,
         resources: &Dictionary,
     ) -> Result<()> {
-        match word {
-            b"BT" => self.begin_text()?,
-            b"ET" => self.end_text()?,
-            b"Tc" => self.state.text.character = number(v, 0)?,
-            b"Tw" => self.state.text.word = number(v, 0)?,
-            b"Tz" => self.state.text.horizontal = number(v, 0)? / 100.0,
-            b"TL" => self.state.text.leading = number(v, 0)?,
-            b"Ts" => self.state.text.rise = number(v, 0)?,
-            b"Tf" => {
-                let name = v
-                    .first()
-                    .and_then(Value::as_name)
-                    .ok_or(Error::syntax("font name expected"))?;
+        match operation {
+            TextOperation::Begin => self.begin_text()?,
+            TextOperation::End => self.end_text()?,
+            TextOperation::CharacterSpacing(spacing) => self.state.text.character = spacing,
+            TextOperation::WordSpacing(spacing) => self.state.text.word = spacing,
+            TextOperation::HorizontalScaling(scale) => self.state.text.horizontal = scale / 100.0,
+            TextOperation::Leading(leading) => self.state.text.leading = leading,
+            TextOperation::Rise(rise) => self.state.text.rise = rise,
+            TextOperation::Font { name, size } => {
                 let value = resource(self.document, resources, b"Font", name.as_bytes())?;
-                self.select_font_mode::<EXTRACT>(value, number(v, 1)?)?;
+                self.select_font_mode::<EXTRACT>(value, size)?;
             }
-            b"Tr" => {
-                let mode = v
-                    .first()
-                    .and_then(Value::as_integer)
-                    .and_then(|v| u8::try_from(v).ok())
+            TextOperation::RenderMode(mode) => {
+                let mode = u8::try_from(mode)
+                    .ok()
                     .filter(|&v| v < 8)
                     .ok_or(Error::syntax("text render mode outside 0..7"))?;
                 self.check_text_mode(mode)?;
@@ -157,45 +150,47 @@ impl Compiler<'_> {
                 }
                 self.state.text.mode = mode;
             }
-            b"Tm" => {
-                let m = matrix(v)?;
+            TextOperation::Matrix(m) => {
                 let object = self.text_object()?;
                 object.matrix = m;
                 object.line = m;
             }
-            b"Td" | b"TD" => {
-                let (x, y) = (number(v, 0)?, number(v, 1)?);
-                if word == b"TD" {
+            TextOperation::Move { x, y, set_leading } => {
+                if set_leading {
                     self.state.text.leading = -y;
                 }
                 self.text_line(x, y)?;
             }
-            b"T*" => self.text_line(0.0, -self.state.text.leading)?,
-            b"Tj" => self.show_value::<EXTRACT>(&v[0], resources)?,
-            b"TJ" => {
+            TextOperation::NextLine => self.text_line(0.0, -self.state.text.leading)?,
+            TextOperation::Show(text) => self.show_text::<EXTRACT>(text, resources)?,
+            TextOperation::ShowArray(array) => {
                 self.text_object()?;
-                let array = v[0].as_array().ok_or(Error::syntax("TJ array expected"))?;
                 for value in array {
-                    if let Some(adjustment) = value.as_number() {
-                        self.text_adjust(adjustment)?;
-                    } else {
-                        self.show_value::<EXTRACT>(value, resources)?;
+                    match value {
+                        Value::String(text) => self.show_text::<EXTRACT>(text, resources)?,
+                        adjustment => {
+                            let adjustment = adjustment
+                                .as_number()
+                                .ok_or(Error::syntax("TJ array requires numbers or strings"))?;
+                            self.text_adjust(adjustment)?;
+                        }
                     }
                 }
             }
-            b"'" | b"\"" => {
-                let string = if word == b"\"" {
-                    self.state.text.word = number(v, 0)?;
-                    self.state.text.character = number(v, 1)?;
-                    &v[2]
-                } else {
-                    &v[0]
-                };
+            TextOperation::NextLineShow(text) => {
                 self.text_line(0.0, -self.state.text.leading)?;
-                self.show_value::<EXTRACT>(string, resources)?;
+                self.show_text::<EXTRACT>(text, resources)?;
             }
-            b"d0" | b"d1" => self.glyph_metrics(word, v)?,
-            _ => return Err(Error::syntax("invalid text operator")),
+            TextOperation::NextLineShowSpaced {
+                word,
+                character,
+                text,
+            } => {
+                self.state.text.word = word;
+                self.state.text.character = character;
+                self.text_line(0.0, -self.state.text.leading)?;
+                self.show_text::<EXTRACT>(text, resources)?;
+            }
         }
         Ok(())
     }
@@ -294,15 +289,12 @@ impl Compiler<'_> {
         }
     }
 
-    fn show_value<const EXTRACT: bool>(
+    fn show_text<const EXTRACT: bool>(
         &mut self,
-        value: &Value,
+        bytes: &[u8],
         resources: &Dictionary,
     ) -> Result<()> {
         self.text_object()?;
-        let bytes = value
-            .as_string()
-            .ok_or(Error::syntax("text string expected"))?;
         let font = self
             .state
             .text
@@ -383,7 +375,10 @@ impl Compiler<'_> {
                         procedure,
                         checked(matrix.then(transform))?,
                         resources,
-                        (glyph.advance, matrix.a),
+                        type3::Advance {
+                            advance: glyph.advance,
+                            scale: matrix.a,
+                        },
                     )?;
                 }
                 _ => {}
@@ -422,15 +417,15 @@ impl Compiler<'_> {
             append(clip, &path, limit)?;
         }
         let paint = match mode % 4 {
-            0 => Some(b"f".as_slice()),
-            1 => Some(b"S".as_slice()),
-            2 => Some(b"B".as_slice()),
+            0 => Some(Painting::FILL),
+            1 => Some(Painting::STROKE),
+            2 => Some(Painting::FILL_STROKE),
             _ => None,
         };
-        if let Some(operator) = paint {
+        if let Some(painting) = paint {
             let old = std::mem::take(&mut self.path);
             append(&mut self.path, &path, self.document.limits().path_segments)?;
-            self.paint(operator)?;
+            self.paint(painting)?;
             self.path = old;
         }
         Ok(())

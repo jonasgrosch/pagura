@@ -2,7 +2,7 @@
 
 use super::{
     Arc, Compiler, Dictionary, DisplayList, Error, FillRule, ObjectId, PathBuilder, Rect, Result,
-    Transform, Value, features, matrix, resource, unsupported,
+    Transform, Value, features, resource, unsupported,
 };
 
 /// A source program or caller-owned appearance data, with document-relative resources.
@@ -33,11 +33,7 @@ impl<'a> FormBody<'a> {
 }
 
 impl Compiler<'_> {
-    pub(super) fn form(&mut self, v: &[Value], resources: &Dictionary) -> Result<()> {
-        let name = v
-            .first()
-            .and_then(Value::as_name)
-            .ok_or(Error::syntax("XObject name expected"))?;
+    pub(super) fn form(&mut self, name: &pagura_core::Name, resources: &Dictionary) -> Result<()> {
         let value = resource(self.document, resources, b"XObject", name.as_bytes())?;
         let id = value
             .as_reference()
@@ -144,14 +140,7 @@ impl Compiler<'_> {
             .ok_or(Error::syntax("form has invalid BBox"))?;
         let matrix = dictionary
             .get(b"Matrix")
-            .map(|v| {
-                let values = self
-                    .document
-                    .resolve(v)?
-                    .as_array()
-                    .ok_or(Error::syntax("form Matrix must be an array"))?;
-                matrix(values)
-            })
+            .map(|v| crate::numbers::matrix(self.document, v))
             .transpose()?
             .unwrap_or(Transform::IDENTITY);
         Ok((bbox, matrix))

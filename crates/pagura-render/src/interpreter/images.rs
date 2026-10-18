@@ -20,11 +20,7 @@ pub(crate) struct Image {
     pub(crate) intent: Option<crate::icc::Intent>,
 }
 impl Compiler<'_> {
-    pub(super) fn xobject(&mut self, values: &[Value], resources: &Dictionary) -> Result<()> {
-        let name = values
-            .first()
-            .and_then(Value::as_name)
-            .ok_or(Error::syntax("XObject name expected"))?;
+    pub(super) fn xobject(&mut self, name: &Name, resources: &Dictionary) -> Result<()> {
         let value = resource(self.document, resources, b"XObject", name.as_bytes())?;
         let id = value
             .as_reference()
@@ -56,7 +52,7 @@ impl Compiler<'_> {
             }
             Ok(())
         } else {
-            self.form(values, resources)
+            self.form(name, resources)
         }
     }
 
@@ -328,7 +324,7 @@ impl Compiler<'_> {
         if !self.operands.is_empty() {
             return Err(Error::syntax("operands before BI"));
         }
-        self.glyph_operator(b"BI")?;
+        self.glyph_ignores(crate::operators::Operator::BeginImage)?;
         let mut dictionary = Dictionary::new();
         loop {
             self.operations = self

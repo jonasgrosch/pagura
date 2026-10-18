@@ -309,39 +309,23 @@ impl Compiler<'_> {
     }
     pub(in crate::interpreter) fn extract_begin(
         &mut self,
-        word: &[u8],
-        v: &[Value],
+        tag: &Name,
+        properties: Option<&Value>,
         resources: &Dictionary,
     ) -> Result<()> {
         let Some(extract) = &mut self.extraction else {
             return Ok(());
         };
-        let tag = v
-            .first()
-            .and_then(Value::as_name)
-            .cloned()
-            .ok_or(Error::syntax("marked content tag expected"))?;
-        let dictionary = if word == b"BDC" {
-            let properties = v
-                .get(1)
-                .ok_or(Error::syntax("marked content properties expected"))?;
-            let result = (|| {
-                let properties = if let Some(name) = properties.as_name() {
-                    resource(self.document, resources, b"Properties", name.as_bytes())?
-                } else {
-                    properties
-                };
-                self.document.resolve_dictionary(properties)
-            })();
-            match result {
-                Ok(dictionary) => Some(dictionary),
-                Err(error) => {
-                    ignore_metadata_fault(self.document, error, self.position)?;
-                    None
-                }
+        let tag = tag.clone();
+        let dictionary = match properties
+            .map(|properties| marked_properties(self.document, resources, properties))
+            .transpose()
+        {
+            Ok(dictionary) => dictionary,
+            Err(error) => {
+                ignore_metadata_fault(self.document, error, self.position)?;
+                None
             }
-        } else {
-            None
         };
         let actual_text = property(self.document, dictionary, b"ActualText", self.position)?;
         let alt = property(self.document, dictionary, b"Alt", self.position)?;
@@ -452,6 +436,20 @@ fn font_box(
         .as_array()
         .and_then(Rect::from_array)
 }
+/// The property list of `BDC` (14.6.2): inline or a `Properties` resource.
+fn marked_properties<'a>(
+    document: &'a pagura_document::Document,
+    resources: &'a Dictionary,
+    properties: &'a Value,
+) -> Result<&'a Dictionary> {
+    let properties = if let Some(name) = properties.as_name() {
+        resource(document, resources, b"Properties", name.as_bytes())?
+    } else {
+        properties
+    };
+    document.resolve_dictionary(properties)
+}
+
 fn property(
     document: &pagura_document::Document,
     dictionary: Option<&Dictionary>,

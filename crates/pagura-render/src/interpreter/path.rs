@@ -1,94 +1,91 @@
 //! Path construction, painting and deferred clipping (8.5).
 
 use super::{
-    Arc, Clip, Command, Compiler, Error, FillRule, Mark, PathCommand, Point, Result, Value, finite,
-    nested, number, point,
+    Arc, Clip, Command, Compiler, Error, FillRule, Mark, PathCommand, Point, Result, finite, nested,
 };
+use crate::operators::{Construct, Painting};
 
 impl Compiler<'_> {
-    pub(super) fn construct(&mut self, word: &[u8], v: &[Value]) -> Result<()> {
+    pub(super) fn construct(&mut self, construct: Construct) -> Result<()> {
         if self.pending_clip.is_some() {
             return Err(Error::syntax("construction follows clipping operator"));
         }
-        let p = |i| point(v, i).map(|p| p * self.state.ctm);
-        match word {
-            b"m" => {
-                let point = p(0)?;
-                finite(point)?;
-                self.path.move_to(point);
+        let ctm = self.state.ctm;
+        let device = |p: Point| {
+            let p = p * ctm;
+            finite(p).map(|()| p)
+        };
+        match construct {
+            Construct::MoveTo(point) => {
+                self.path.move_to(device(point)?);
             }
-            b"l" => {
-                let point = p(0)?;
-                finite(point)?;
+            Construct::LineTo(point) => {
                 self.path
-                    .line_to(point)
+                    .line_to(device(point)?)
                     .ok_or(Error::syntax("line has no current point"))?;
             }
-            b"c" | b"v" | b"y" => {
+            Construct::CurveTo([a, b, end]) => {
+                self.curve([device(a)?, device(b)?, device(end)?])?;
+            }
+            Construct::CurveToInitial([b, end]) => {
                 let current = self
                     .path
                     .current_point()
                     .ok_or(Error::syntax("curve has no current point"))?;
-                let (a, b, end) = match word {
-                    b"c" => (p(0)?, p(2)?, p(4)?),
-                    b"v" => (current, p(0)?, p(2)?),
-                    _ => (p(0)?, p(2)?, p(2)?),
-                };
-                for point in [a, b, end] {
-                    finite(point)?;
-                }
-                self.path
-                    .cubic_to(a, b, end)
-                    .ok_or(Error::syntax("curve has no current point"))?;
+                self.curve([current, device(b)?, device(end)?])?;
             }
-            b"h" => {
+            Construct::CurveToFinal([a, end]) => {
+                let end = device(end)?;
+                self.curve([device(a)?, end, end])?;
+            }
+            Construct::Close => {
                 if self.path.current_point().is_none() {
                     return Err(Error::syntax("close has no current point"));
                 }
                 self.path.close();
             }
-            b"re" => {
-                let x = number(v, 0)?;
-                let y = number(v, 1)?;
-                let w = number(v, 2)?;
-                let h = number(v, 3)?;
-                let points = [
-                    Point::new(x, y),
-                    Point::new(x + w, y),
-                    Point::new(x + w, y + h),
-                    Point::new(x, y + h),
-                ]
-                .map(|p| p * self.state.ctm);
-                for (i, point) in points.into_iter().enumerate() {
-                    finite(point)?;
-                    if i == 0 {
-                        self.path.move_to(point);
-                    } else {
-                        self.path.line_to(point);
-                    }
+            Construct::Rectangle {
+                origin,
+                width,
+                height,
+            } => {
+                let corners = [
+                    origin,
+                    Point::new(origin.x + width, origin.y),
+                    Point::new(origin.x + width, origin.y + height),
+                    Point::new(origin.x, origin.y + height),
+                ];
+                let [first, rest @ ..] = corners;
+                self.path.move_to(device(first)?);
+                for corner in rest {
+                    self.path
+                        .line_to(device(corner)?)
+                        .ok_or(Error::syntax("line has no current point"))?;
                 }
                 self.path.close();
             }
-            _ => return Err(Error::syntax("invalid path operator")),
         }
         Ok(())
     }
 
-    pub(super) fn paint(&mut self, word: &[u8]) -> Result<()> {
+    fn curve(&mut self, [a, b, end]: [Point; 3]) -> Result<()> {
+        self.path
+            .cubic_to(a, b, end)
+            .map(|_| ())
+            .ok_or(Error::syntax("curve has no current point"))
+    }
+
+    pub(super) fn paint(&mut self, painting: Painting) -> Result<()> {
         if self.path.is_empty() {
             return Err(Error::syntax("painting requires a current path"));
         }
-        if matches!(word, b"s" | b"b" | b"b*") {
+        if painting.close {
             self.path.close();
         }
         let mut path = self.path.finish();
-        let rule = if matches!(word, b"f*" | b"B*" | b"b*") {
-            FillRule::EvenOdd
-        } else {
-            FillRule::NonZero
-        };
-        let fill = matches!(word, b"f" | b"F" | b"f*" | b"B" | b"B*" | b"b" | b"b*");
-        let stroke = matches!(word, b"S" | b"s" | b"B" | b"B*" | b"b" | b"b*");
+        let rule = painting.fill.unwrap_or(FillRule::NonZero);
+        let fill = painting.fill.is_some();
+        let stroke = painting.stroke;
         if fill && self.visible {
             self.prepare_fill(&mut path, rule)?;
         }

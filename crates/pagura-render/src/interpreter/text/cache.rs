@@ -264,7 +264,7 @@ impl Compiler<'_> {
         Ok(key)
     }
 
-    pub(super) fn select_font(&mut self, value: &Value, size: f64) -> Result<()> {
+    pub(in crate::interpreter) fn select_font(&mut self, value: &Value, size: f64) -> Result<()> {
         if self.extraction.is_some() {
             self.select_font_mode::<true>(value, size)
         } else {
@@ -374,62 +374,6 @@ impl Compiler<'_> {
         }
         Ok(path)
     }
-
-    // Text entries are separated before delegating the remaining ExtGState to
-    // the existing implementation, preserving its precedence and validation.
-    pub(in crate::interpreter) fn paint_gstate(
-        &mut self,
-        values: &[Value],
-        resources: &Dictionary,
-    ) -> Result<()> {
-        let name = values
-            .first()
-            .and_then(Value::as_name)
-            .ok_or(Error::syntax("ExtGState name expected"))?;
-        let value = super::resource(self.document, resources, b"ExtGState", name.as_bytes())?;
-        let dict = self.document.resolve_dictionary(value)?;
-        let uncolored = self.uncolored_glyph();
-        if let Some(font) = dict.get(b"Font") {
-            let array = self
-                .document
-                .resolve(font)?
-                .as_array()
-                .filter(|a| a.len() == 2)
-                .ok_or(Error::syntax("ExtGState Font requires font and size"))?;
-            let size = self
-                .document
-                .resolve(&array[1])?
-                .as_number()
-                .ok_or(Error::syntax("invalid ExtGState font size"))?;
-            self.select_font(&array[0], size)?;
-        }
-        if let Some(knockout) = dict.get(b"TK") {
-            let knockout = self
-                .document
-                .resolve(knockout)?
-                .as_bool()
-                .ok_or(Error::syntax("TK must be boolean"))?;
-            if self.state.text.object.is_none() && !uncolored {
-                self.state.text.knockout = knockout;
-            }
-        }
-        if !dict.contains_key(b"Font") && !uncolored {
-            return self.extgstate(values, resources);
-        }
-        let filtered: Dictionary = dict
-            .iter()
-            .filter(|(k, _)| *k != b"Font" && !(uncolored && color_parameter(k.as_bytes())))
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
-        let mut states = Dictionary::new();
-        states.insert(name.clone(), Value::Dictionary(filtered));
-        let mut local = resources.clone();
-        local.insert(
-            pagura_core::Name::new(b"ExtGState"),
-            Value::Dictionary(states),
-        );
-        self.extgstate(values, &local)
-    }
 }
 
 /// Resolve the same document-bound font entry used by painting.
@@ -491,30 +435,6 @@ fn cached_font(
             .remember(key, dictionary, font),
         None => Arc::new(CachedFont::new(font, key, false)),
     })
-}
-
-fn color_parameter(key: &[u8]) -> bool {
-    matches!(
-        key,
-        b"RI"
-            | b"BG"
-            | b"BG2"
-            | b"UCR"
-            | b"UCR2"
-            | b"TR"
-            | b"TR2"
-            | b"HT"
-            | b"UseBlackPtComp"
-            | b"CA"
-            | b"ca"
-            | b"BM"
-            | b"SMask"
-            | b"AIS"
-            | b"OP"
-            | b"op"
-            | b"OPM"
-            | b"TK"
-    )
 }
 
 // PdfFont includes its own representation and owned data. Only renderer-owned

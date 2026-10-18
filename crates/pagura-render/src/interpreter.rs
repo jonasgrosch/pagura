@@ -17,8 +17,9 @@ pub(crate) mod text;
 use crate::color::{self, Color};
 use crate::display::{Clip, Command, DisplayList, Mark, PathCommand};
 use crate::features;
+use crate::operators::{ColorOperation, MAX_OPERANDS, Operation, Operator};
 use pagura_core::syntax::{Origin, Parser};
-use pagura_core::{Dictionary, Error, Feature, ObjectId, Position, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, Feature, Name, ObjectId, Position, Rect, Result, Value};
 use pagura_document::{Document, IndirectObject, Page};
 use pagura_raster::{FillRule, LineCap, LineJoin, PathBuilder, Point, Stroke, Transform};
 use std::sync::Arc;
@@ -306,7 +307,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn operand(&mut self, value: Value) -> Result<()> {
-        if self.operands.len() >= 32 {
+        if self.operands.len() >= MAX_OPERANDS {
             return Err(Error::limit("content operand budget exceeded"));
         }
         no_references(&value)?;
@@ -315,27 +316,13 @@ impl<'a> Compiler<'a> {
     }
 
     fn operator(&mut self, word: &[u8], resources: &Dictionary) -> Result<()> {
-        if !matches!(
-            word,
-            b"Tj"
-                | b"TJ"
-                | b"'"
-                | b"\""
-                | b"Tc"
-                | b"Tw"
-                | b"Tz"
-                | b"TL"
-                | b"Ts"
-                | b"Tf"
-                | b"Tm"
-                | b"Td"
-                | b"TD"
-                | b"T*"
-        ) {
+        let parsed = Operator::parse(word);
+        // A glyph run continues only across text-showing and text-state
+        // operators; any other operator ends it.
+        if !parsed.is_some_and(Operator::keeps_text_run) {
             self.state.text.run = None;
         }
-        let tag = crate::operators::validate(word, &self.operands)?;
-        let Some(_) = tag else {
+        let Some(operator) = parsed else {
             if self.compatibility > 0 {
                 self.operands.clear();
                 return Ok(());
@@ -343,11 +330,13 @@ impl<'a> Compiler<'a> {
             return Err(Error::syntax("unknown content operator"));
         };
         let operands = std::mem::take(&mut self.operands);
-        let result = self.glyph_operator(word).and_then(|ignore| {
-            if ignore || self.pattern_ignores(word, &operands, resources)? {
+        let result = operator.decode(&operands).and_then(|operation| {
+            if self.glyph_ignores(operator)?
+                || self.pattern_ignores(operator, operation, resources)?
+            {
                 Ok(())
             } else {
-                self.execute(word, &operands, resources)
+                self.execute(operation, resources)
             }
         });
         self.operands = operands;
@@ -360,26 +349,27 @@ impl<'a> Compiler<'a> {
     }
 
     fn repair(&self, tag: pagura_core::Repair, message: &'static str) -> Result<()> {
-        let mut diagnostic = pagura_core::Diagnostic::new(tag, message).at(self.position);
-        if let Position::Stream { object, .. } = self.position {
-            diagnostic = diagnostic.in_object(object);
-        }
-        repair(self.document, diagnostic)
+        repair(
+            self.document,
+            pagura_core::Diagnostic::new(tag, message)
+                .at(self.position)
+                .in_object_opt(self.position.object()),
+        )
     }
 
-    fn execute(&mut self, word: &[u8], v: &[Value], resources: &Dictionary) -> Result<()> {
-        match word {
-            b"q" => self.save_graphics()?,
-            b"Q" => self.restore_graphics()?,
-            b"cm" => {
-                let matrix = matrix(v)?.then(self.state.ctm);
+    fn execute(&mut self, operation: Operation<'_>, resources: &Dictionary) -> Result<()> {
+        match operation {
+            Operation::Save => self.save_graphics()?,
+            Operation::Restore => self.restore_graphics()?,
+            Operation::Concat(matrix) => {
+                let matrix = matrix.then(self.state.ctm);
                 if !matrix.is_finite() {
                     return Err(Error::syntax("CTM arithmetic overflow"));
                 }
                 self.state.ctm = matrix;
             }
-            b"w" | b"J" | b"j" | b"M" | b"d" | b"i" | b"ri" => self.parameter(word, v)?,
-            b"m" | b"l" | b"c" | b"v" | b"y" | b"h" | b"re" => {
+            Operation::Parameter(parameter) => self.parameter(parameter)?,
+            Operation::Construct(construct) => {
                 if self.pending_clip.is_some() {
                     self.repair(
                         crate::repairs::CLIP_ORDER,
@@ -387,11 +377,11 @@ impl<'a> Compiler<'a> {
                     )?;
                 }
                 let pending = self.pending_clip.take();
-                let result = self.construct(word, v);
+                let result = self.construct(construct);
                 self.pending_clip = pending;
                 result?;
             }
-            b"S" | b"s" | b"f" | b"F" | b"f*" | b"B" | b"B*" | b"b" | b"b*" | b"n" => {
+            Operation::Paint(painting) => {
                 if self.path.is_empty() {
                     self.repair(
                         crate::repairs::EMPTY_PATH,
@@ -399,45 +389,44 @@ impl<'a> Compiler<'a> {
                     )?;
                     self.pending_clip = None;
                 } else {
-                    self.paint(word)?;
+                    self.paint(painting)?;
                 }
             }
-            b"W" | b"W*" => {
+            Operation::Clip(rule) => {
                 if self.pending_clip.is_some() {
                     return Err(Error::syntax("multiple clipping operators for one path"));
                 }
-                self.pending_clip = Some(if word == b"W" {
-                    FillRule::NonZero
-                } else {
-                    FillRule::EvenOdd
-                });
+                self.pending_clip = Some(rule);
             }
-            b"g" | b"G" | b"rg" | b"RG" | b"k" | b"K" | b"CS" | b"cs" | b"SC" | b"SCN" | b"sc"
-            | b"scn" => {
-                self.color(word, v, resources)?;
-                self.compile_pattern(word)?;
-            }
-            b"gs" => self.paint_gstate(v, resources)?,
-            b"Do" => self.xobject(v, resources)?,
-            b"BT" | b"ET" | b"Tc" | b"Tw" | b"Tz" | b"TL" | b"Tf" | b"Tr" | b"Ts" | b"Td"
-            | b"TD" | b"Tm" | b"T*" | b"Tj" | b"TJ" | b"'" | b"\"" | b"d0" | b"d1" => {
-                if self.extraction.is_some() {
-                    self.text_operator::<true>(word, v, resources)?;
-                } else {
-                    self.text_operator::<false>(word, v, resources)?;
+            Operation::Color(target, color) => {
+                self.color(target, color, resources)?;
+                if matches!(color, ColorOperation::ComponentsOrPattern(_)) {
+                    self.compile_pattern(target)?;
                 }
             }
-            b"BX" => {
+            Operation::GraphicsState(name) => self.graphics_state(name, resources)?,
+            Operation::XObject(name) => self.xobject(name, resources)?,
+            Operation::Text(text) => {
+                if self.extraction.is_some() {
+                    self.text_operator::<true>(text, resources)?;
+                } else {
+                    self.text_operator::<false>(text, resources)?;
+                }
+            }
+            Operation::Glyph(metrics) => self.glyph_metrics(metrics)?,
+            Operation::BeginCompatibility => {
                 self.compatibility = nested(self.compatibility, self.document.limits().depth)?;
             }
-            b"EX" => {
+            Operation::EndCompatibility => {
                 self.compatibility = self
                     .compatibility
                     .checked_sub(1)
                     .ok_or(Error::syntax("EX without BX"))?;
             }
-            b"BMC" | b"BDC" => self.begin_marked(word, v, resources)?,
-            b"EMC" => {
+            Operation::BeginMarked { tag, properties } => {
+                self.begin_marked(tag, properties, resources)?;
+            }
+            Operation::EndMarked => {
                 self.visible = self
                     .marked
                     .pop()
@@ -446,31 +435,27 @@ impl<'a> Compiler<'a> {
                     self.extract_end()?;
                 }
             }
-            b"MP" | b"DP" => {}
-            b"ID" | b"EI" => return Err(Error::syntax("inline image delimiter outside image")),
-            b"sh" => self.shading(v, resources)?,
-            _ => {
-                return Err(Error::unsupported(
-                    features::operator_tag(word),
-                    "content operator is not implemented",
-                ));
+            Operation::MarkPoint => {}
+            Operation::ImageDelimiter => {
+                return Err(Error::syntax("inline image delimiter outside image"));
             }
+            Operation::Shade(name) => self.shading(name, resources)?,
         }
         Ok(())
     }
-    fn begin_marked(&mut self, word: &[u8], v: &[Value], resources: &Dictionary) -> Result<()> {
+    fn begin_marked(
+        &mut self,
+        tag: &Name,
+        properties: Option<&Value>,
+        resources: &Dictionary,
+    ) -> Result<()> {
         if self.marked.len() >= self.document.limits().depth {
             return Err(Error::limit("marked content nesting exceeded"));
         }
         let mut visible = true;
-        if word == b"BDC"
-            && v.first()
-                .and_then(Value::as_name)
-                .is_some_and(|n| n == b"OC")
+        if tag == b"OC"
+            && let Some(properties) = properties
         {
-            let properties = v
-                .get(1)
-                .ok_or(Error::syntax("missing optional content properties"))?;
             let properties = if let Some(name) = properties.as_name() {
                 resource(self.document, resources, b"Properties", name.as_bytes())?
             } else {
@@ -481,40 +466,10 @@ impl<'a> Compiler<'a> {
         self.marked.push(self.visible);
         self.visible &= visible;
         if self.extraction.is_some() {
-            self.extract_begin(word, v, resources)?;
+            self.extract_begin(tag, properties, resources)?;
         }
         Ok(())
     }
-}
-
-fn number(v: &[Value], index: usize) -> Result<f64> {
-    v.get(index)
-        .and_then(Value::as_number)
-        .ok_or(Error::syntax("numeric operand expected"))
-}
-
-fn integer(v: &[Value], index: usize) -> Result<i64> {
-    v.get(index)
-        .and_then(Value::as_integer)
-        .ok_or(Error::syntax("integer operand expected"))
-}
-
-fn point(v: &[Value], index: usize) -> Result<Point> {
-    Ok(Point::new(number(v, index)?, number(v, index + 1)?))
-}
-
-fn matrix(v: &[Value]) -> Result<Transform> {
-    if v.len() != 6 {
-        return Err(Error::syntax("matrix must have six numbers"));
-    }
-    Ok(Transform::new(
-        number(v, 0)?,
-        number(v, 1)?,
-        number(v, 2)?,
-        number(v, 3)?,
-        number(v, 4)?,
-        number(v, 5)?,
-    ))
 }
 
 fn nested(current: usize, maximum: usize) -> Result<usize> {
@@ -549,21 +504,16 @@ fn finite(point: Point) -> Result<()> {
     Ok(())
 }
 
-fn rendering_intent(value: &Value) -> Result<Vec<u8>> {
-    let name = value
-        .as_name()
-        .ok_or(Error::syntax("rendering intent must be a name"))?;
+fn rendering_intent(name: &Name) -> Vec<u8> {
     // ISO 8.6.5.8 Table 69 permits RelativeColorimetric for unknown intents.
-    Ok(
-        if matches!(
-            name.as_bytes(),
-            b"RelativeColorimetric" | b"AbsoluteColorimetric" | b"Perceptual" | b"Saturation"
-        ) {
-            name.as_bytes().to_vec()
-        } else {
-            b"RelativeColorimetric".to_vec()
-        },
-    )
+    if matches!(
+        name.as_bytes(),
+        b"RelativeColorimetric" | b"AbsoluteColorimetric" | b"Perceptual" | b"Saturation"
+    ) {
+        name.as_bytes().to_vec()
+    } else {
+        b"RelativeColorimetric".to_vec()
+    }
 }
 
 fn resource<'a>(

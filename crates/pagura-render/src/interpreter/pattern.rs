@@ -4,17 +4,14 @@
 use super::{
     Arc, Color, Compiler, Dictionary, Error, FillRule, PathBuilder, Result, Transform, Value,
 };
+use crate::operators::{Operation, Operator, Target};
 use crate::pattern::Kind;
 
 impl Compiler<'_> {
-    pub(super) fn compile_pattern(&mut self, word: &[u8]) -> Result<()> {
-        if !matches!(word, b"SCN" | b"scn") {
-            return Ok(());
-        }
-        let color = if word == b"SCN" {
-            &mut self.state.stroke_color
-        } else {
-            &mut self.state.fill
+    pub(super) fn compile_pattern(&mut self, target: Target) -> Result<()> {
+        let color = match target {
+            Target::Stroke => &mut self.state.stroke_color,
+            Target::Fill => &mut self.state.fill,
         };
         let Color::Pattern { selected, .. } = color else {
             return Ok(());
@@ -74,10 +71,9 @@ impl Compiler<'_> {
             self.marks = child.marks;
             t.commands = child.list.commands;
         }
-        let color = if word == b"SCN" {
-            &mut self.state.stroke_color
-        } else {
-            &mut self.state.fill
+        let color = match target {
+            Target::Stroke => &mut self.state.stroke_color,
+            Target::Fill => &mut self.state.fill,
         };
         if let Color::Pattern { selected, .. } = color {
             *selected = Some(pattern);
@@ -87,8 +83,8 @@ impl Compiler<'_> {
 
     pub(super) fn pattern_ignores(
         &self,
-        word: &[u8],
-        v: &[Value],
+        operator: Operator,
+        operation: Operation<'_>,
         resources: &Dictionary,
     ) -> Result<bool> {
         if !self.stencil_pattern {
@@ -96,29 +92,10 @@ impl Compiler<'_> {
         }
         // 8.6.8: restrictions propagate through nested forms. Operand validation
         // precedes this decision; ignored setters cannot change the stencil ink.
-        if matches!(
-            word,
-            b"g" | b"G"
-                | b"rg"
-                | b"RG"
-                | b"k"
-                | b"K"
-                | b"CS"
-                | b"cs"
-                | b"SC"
-                | b"SCN"
-                | b"sc"
-                | b"scn"
-                | b"ri"
-                | b"sh"
-        ) {
+        if operator.uses_color() {
             return Ok(true);
         }
-        if word == b"Do" {
-            let name = v
-                .first()
-                .and_then(Value::as_name)
-                .ok_or(Error::syntax("XObject name expected"))?;
+        if let Operation::XObject(name) = operation {
             let value = super::resource(self.document, resources, b"XObject", name.as_bytes())?;
             let d = self.document.resolve_dictionary(value)?;
             return Ok(d.is_name(b"Subtype", b"Image")

@@ -1,16 +1,16 @@
 //! Shading invocation leaves the current path and colour unchanged (8.7.4.2).
 
 use super::{
-    Arc, Clip, Command, Compiler, Dictionary, Error, FillRule, PathBuilder, Result, Value, resource,
+    Arc, Clip, Command, Compiler, Dictionary, Error, FillRule, PathBuilder, Result, resource,
 };
 use crate::display::ShadingCommand;
 
 impl Compiler<'_> {
-    pub(super) fn shading(&mut self, values: &[Value], resources: &Dictionary) -> Result<()> {
-        let name = values
-            .first()
-            .and_then(Value::as_name)
-            .ok_or(Error::syntax("shading name expected"))?;
+    pub(super) fn shading(
+        &mut self,
+        name: &pagura_core::Name,
+        resources: &Dictionary,
+    ) -> Result<()> {
         let value = resource(self.document, resources, b"Shading", name.as_bytes())?;
         let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
         let mut shading = crate::shading::Shading::parse(&context, resources, value)?;

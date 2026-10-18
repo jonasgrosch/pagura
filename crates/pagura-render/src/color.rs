@@ -5,6 +5,11 @@ use pagura_core::{Dictionary, Error, Result, Value};
 use pagura_raster::Rgba8;
 use std::sync::Arc;
 
+/// The most components a colour space may have: this renderer's
+/// implementation limit for DeviceN colourants, not a format maximum
+/// (Annex C, Table C.1 discusses practical processor limits).
+pub(crate) const MAX_COMPONENTS: usize = 32;
+
 #[derive(Debug, Clone)]
 pub(crate) enum Space {
     Pattern(Option<Arc<Self>>),
@@ -544,9 +549,7 @@ fn device_n_components(document: &ColorContext<'_>, names: &Value) -> Result<usi
         .as_array()
         .filter(|n| !n.is_empty())
         .ok_or(Error::syntax("DeviceN requires colourant names"))?;
-    // 32 is this renderer's implementation budget, not a format maximum;
-    // Annex C / Table C.1 discusses practical processor limits.
-    if names.len() > 32 {
+    if names.len() > MAX_COMPONENTS {
         return Err(Error::limit(
             "DeviceN component count exceeds implementation limit (Annex C)",
         ));

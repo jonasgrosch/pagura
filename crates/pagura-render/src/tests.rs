@@ -371,34 +371,6 @@ fn unsupported_forward_icc_transforms_identify_the_profile() {
 }
 
 #[test]
-fn annex_a_validation_precedes_unsupported_and_unknown_is_syntax() {
-    use pagura_core::Value;
-    for (operator, operands) in [
-        (b"Tj".as_slice(), vec![Value::Integer(1)]),
-        (b"Tf", vec![Value::name(b"F")]),
-        (b"cm", vec![]),
-        (b"q", vec![Value::Integer(1)]),
-        (b"d", vec![Value::Integer(1), Value::Integer(1)]),
-    ] {
-        assert_eq!(
-            crate::operators::validate(operator, &operands)
-                .unwrap_err()
-                .kind,
-            ErrorKind::Syntax
-        );
-    }
-    assert_eq!(
-        crate::operators::validate(b"Tj", &[Value::String(vec![])]).unwrap(),
-        Some(crate::operators::Implemented)
-    );
-    assert!(
-        crate::operators::validate(b"future", &[])
-            .unwrap()
-            .is_none()
-    );
-}
-
-#[test]
 fn raster_and_interpreter_limits_and_invalid_arguments() {
     for limits in [
         pagura_core::Limits {

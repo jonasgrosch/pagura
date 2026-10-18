@@ -1,5 +1,6 @@
 //! Type 3 procedure isolation, metrics and colour restrictions (9.6.4).
-use super::{Compiler, Dictionary, Error, PdfFont, Result, Transform, Value, number};
+use super::{Compiler, Dictionary, Error, PdfFont, Result, Transform};
+use crate::operators::{GlyphMetrics, Operator};
 use pagura_core::ObjectId;
 
 #[derive(Debug, Clone)]
@@ -7,7 +8,14 @@ pub(in crate::interpreter) struct Procedure {
     phase: Phase,
     pub(in crate::interpreter) uncolored: bool,
     inherited_uncolored: bool,
-    expected: (f64, f64),
+    expected: Advance,
+}
+/// The glyph width the font's `Widths` require: `wx` times the font
+/// matrix's horizontal scale must equal `advance` (9.6.4).
+#[derive(Debug, Clone, Copy)]
+pub(in crate::interpreter) struct Advance {
+    pub(in crate::interpreter) advance: f64,
+    pub(in crate::interpreter) scale: f64,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Phase {
@@ -24,34 +32,21 @@ impl Compiler<'_> {
             .is_some_and(|p| p.uncolored)
     }
 
-    pub(in crate::interpreter) fn glyph_operator(&mut self, word: &[u8]) -> Result<bool> {
+    /// Whether an uncoloured glyph ignores `operator` (9.6.4, Table 111),
+    /// after normal operand validation; this also applies in nested form
+    /// content. A procedure must start with `d0` or `d1`.
+    pub(in crate::interpreter) fn glyph_ignores(&mut self, operator: Operator) -> Result<bool> {
         let Some(procedure) = &mut self.state.text.procedure else {
             return Ok(false);
         };
-        if procedure.phase == Phase::AwaitMetrics && !matches!(word, b"d0" | b"d1") {
+        if procedure.phase == Phase::AwaitMetrics
+            && !matches!(operator, Operator::GlyphWidth | Operator::GlyphBox)
+        {
             return Err(Error::syntax("Type3 procedure must start with d0 or d1"));
         }
-        // 9.6.4, Table 111: colour-related setters in d1 are ignored, after
-        // normal operand validation. This also applies in nested form content.
-        Ok(procedure.uncolored
-            && matches!(
-                word,
-                b"g" | b"G"
-                    | b"rg"
-                    | b"RG"
-                    | b"k"
-                    | b"K"
-                    | b"CS"
-                    | b"cs"
-                    | b"SC"
-                    | b"SCN"
-                    | b"sc"
-                    | b"scn"
-                    | b"ri"
-                    | b"sh"
-            ))
+        Ok(procedure.uncolored && operator.uses_color())
     }
-    pub(super) fn glyph_metrics(&mut self, word: &[u8], values: &[Value]) -> Result<()> {
+    pub(in crate::interpreter) fn glyph_metrics(&mut self, metrics: GlyphMetrics) -> Result<()> {
         let procedure = self
             .state
             .text
@@ -61,9 +56,19 @@ impl Compiler<'_> {
         if procedure.phase == Phase::Ready {
             return Err(Error::syntax("duplicate Type3 metrics"));
         }
-        if number(values, 0)? * procedure.expected.1 != procedure.expected.0
-            || number(values, 1)? != 0.0
-        {
+        let ([wx, wy], uncolored) = match metrics {
+            GlyphMetrics::Width(width) => (width, false),
+            GlyphMetrics::Box {
+                width,
+                bbox: [x0, y0, x1, y1],
+            } => {
+                if x0 > x1 || y0 > y1 {
+                    return Err(Error::syntax("invalid Type3 glyph bounding box"));
+                }
+                (width, true)
+            }
+        };
+        if wx * procedure.expected.scale != procedure.expected.advance || wy != 0.0 {
             super::super::repair(
                 self.document,
                 pagura_core::Diagnostic::new(
@@ -77,13 +82,8 @@ impl Compiler<'_> {
                 }),
             )?;
         }
-        if word == b"d1"
-            && (number(values, 2)? > number(values, 4)? || number(values, 3)? > number(values, 5)?)
-        {
-            return Err(Error::syntax("invalid Type3 glyph bounding box"));
-        }
         procedure.phase = Phase::Ready;
-        procedure.uncolored = procedure.inherited_uncolored || word == b"d1";
+        procedure.uncolored = procedure.inherited_uncolored || uncolored;
         Ok(())
     }
     pub(super) fn type3_glyph(
@@ -92,7 +92,7 @@ impl Compiler<'_> {
         id: ObjectId,
         transform: Transform,
         resources: &Dictionary,
-        expected: (f64, f64),
+        expected: Advance,
     ) -> Result<()> {
         if self.forms.contains(&id) {
             return Err(Error::cycle("recursive Type3 glyph"));

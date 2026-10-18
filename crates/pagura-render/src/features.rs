@@ -2,7 +2,8 @@
 //!
 //! This crate owns the `graphics.`, `annotation.`, `appearance.`,
 //! `extgstate.`, `optionalcontent.`, `pattern.`, `shading.`,
-//! `transparency.`, `xobject.`, `function.` and `operator.` areas.
+//! `transparency.`, `xobject.` and `function.` areas. Every Annex A
+//! operator is implemented, so no `operator.` tag is produced.
 //! Colour-space tags (`colorspace.`) belong to `pagura-color`.
 
 use pagura_core::Feature;
@@ -80,29 +81,7 @@ pub const APPEARANCE_WIDGET_ROTATION: Feature = Feature::new("appearance.widget-
 /// in an appearance being updated.
 pub const APPEARANCE_UPDATE: Feature = Feature::new("appearance.update");
 
-macro_rules! operator_tags {
-    ($($name:literal),* $(,)?) => {
-        /// All recognized Annex A operator tags, in PDF spelling.
-        pub const OPERATORS: &[Feature] = &[$(Feature::new(concat!("operator.", $name))),*];
-        pub(crate) fn operator_tag(operator: &[u8]) -> Feature {
-            match std::str::from_utf8(operator) {
-                $(Ok($name) => { const TAG: Feature = Feature::new(concat!("operator.", $name)); TAG }),*
-                _ => OPERATOR_INVALID,
-            }
-        }
-    }
-}
-/// A defensive tag for an operator outside the recognized table.
-pub const OPERATOR_INVALID: Feature = Feature::new("operator.invalid");
-operator_tags!(
-    "b", "B", "b*", "B*", "BDC", "BI", "BMC", "BT", "BX", "c", "cm", "CS", "cs", "d", "d0", "d1",
-    "Do", "DP", "EI", "EMC", "ET", "EX", "f", "F", "f*", "G", "g", "gs", "h", "i", "ID", "j", "J",
-    "K", "k", "l", "m", "M", "MP", "n", "q", "Q", "re", "RG", "rg", "ri", "s", "S", "SC", "SCN",
-    "sc", "scn", "sh", "T*", "Tc", "Td", "TD", "Tf", "Tj", "TJ", "TL", "Tm", "Tr", "Ts", "Tw",
-    "Tz", "v", "w", "W", "W*", "y", "'", "\""
-);
-
-/// Every tag above except [`OPERATORS`].
+/// Every tag above.
 pub const ALL: &[Feature] = &[
     SINGULAR_STROKE,
     ANNOTATION_APPEARANCE,
