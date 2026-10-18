@@ -16,17 +16,17 @@
 //! guarantee is made. Local document processing does not remove the possibility
 //! of timing or cache observations in a shared execution environment.
 
-pub mod aes;
+mod aes;
 mod bigint;
 mod ec;
 pub mod ecdsa;
 mod hash;
 mod rc4;
 pub mod rsa;
+mod secret;
 pub mod standard;
 mod verification;
 
-pub use aes::Aes;
 pub use bigint::MAX_MODULUS_BITS;
 pub use hash::{
     Md5, Sha1, Sha224, Sha256, Sha384, Sha512, md5, sha1, sha224, sha256, sha384, sha512,
