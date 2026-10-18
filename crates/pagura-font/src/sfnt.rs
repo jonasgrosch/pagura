@@ -1,7 +1,7 @@
 //! sfnt directory and horizontal metrics (ISO 32000-2, 9.9).
 use crate::read::{Read, bad, cap};
 use crate::{CmapSubtable, GlyphId};
-use crate::{recovery::repair, tags};
+use crate::{recovery::repair, repairs};
 use pagura_core::{Diagnostics, Limits, Name, Position, Result};
 use pagura_raster::{Path, Transform};
 use std::collections::BTreeMap;
@@ -95,7 +95,12 @@ impl Sfnt {
             match cmap::parse(table(b"cmap")?, glyph_count, limits, diagnostics) {
                 Ok(cmaps) => cmaps,
                 Err(error) if crate::recovery::glyph_error(&error) => {
-                    repair(diagnostics, tags::CMAP_DATA, error.message, error.position)?;
+                    repair(
+                        diagnostics,
+                        repairs::CMAP_DATA,
+                        error.message,
+                        error.position,
+                    )?;
                     Vec::new()
                 }
                 Err(error) => return Err(error),
@@ -216,7 +221,7 @@ fn locations(
         if r.data.len() - r.pos < word {
             repair(
                 diagnostics,
-                tags::TABLE_BOUNDS,
+                repairs::TABLE_BOUNDS,
                 "truncated glyph-location table",
                 Position::Buffer(r.at()),
             )?;
@@ -234,7 +239,7 @@ fn locations(
         if offset > glyph_bytes {
             repair(
                 diagnostics,
-                tags::TABLE_BOUNDS,
+                repairs::TABLE_BOUNDS,
                 "glyph location exceeds available outlines",
                 Position::Buffer(r.at() - word),
             )?;
@@ -271,7 +276,7 @@ fn metrics(
     if hmtx.data.len() < metrics * 4 + (glyph_count - metrics) * 2 {
         repair(
             diagnostics,
-            tags::TABLE_BOUNDS,
+            repairs::TABLE_BOUNDS,
             "truncated unused horizontal side bearings",
             Position::Buffer(hmtx.base + hmtx.data.len()),
         )?;

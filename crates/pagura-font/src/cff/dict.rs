@@ -185,7 +185,7 @@ fn parse_inner(
             if !cff2 && reserved(op) {
                 crate::recovery::repair(
                     diagnostics,
-                    crate::tags::CFF_DICT_OPERATOR,
+                    crate::repairs::CFF_DICT_OPERATOR,
                     "reserved CFF DICT operator ignored",
                     Position::Buffer(at),
                 )?;

@@ -1,7 +1,7 @@
 //! Bounded sfnt directory recovery; ISO 32000-2 9.9.1/Table 124.
 use super::Tables;
 use crate::read::{Read, bad, cap};
-use crate::{recovery::repair, tags};
+use crate::{recovery::repair, repairs};
 use pagura_core::{Diagnostics, Limits, Position, Result};
 
 pub(super) fn directory(
@@ -39,7 +39,7 @@ pub(super) fn directory(
         if len != 0 && start % 4 != 0 {
             repair(
                 diagnostics,
-                tags::TABLE_ALIGNMENT,
+                repairs::TABLE_ALIGNMENT,
                 "unaligned sfnt table offset",
                 Position::Buffer(r.at() - 8),
             )?;
@@ -51,7 +51,7 @@ pub(super) fn directory(
             clipped_post |= &tag == b"post";
             repair(
                 diagnostics,
-                tags::TABLE_BOUNDS,
+                repairs::TABLE_BOUNDS,
                 "sfnt table exceeds available data",
                 Position::Buffer(r.at() - 8),
             )?;
@@ -91,7 +91,7 @@ fn flavor(signature: u32, tables: &Tables, diagnostics: &mut Diagnostics) -> Res
     }
     repair(
         diagnostics,
-        tags::SFNT_VERSION,
+        repairs::SFNT_VERSION,
         "unknown sfnt version inferred from required tables",
         Position::Buffer(0),
     )?;

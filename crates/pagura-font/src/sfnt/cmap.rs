@@ -1,7 +1,7 @@
 //! Validated cmap formats 0, 2, 4, 6, 10, 12 and 13; selection never expands code ranges.
 use crate::read::{Read, bad, cap};
 use crate::{CmapSubtable, GlyphId};
-use crate::{recovery::repair, tags};
+use crate::{recovery::repair, repairs};
 use pagura_core::{Diagnostics, Limits, Position, Result};
 use std::ops::Range;
 
@@ -31,7 +31,7 @@ pub(super) fn parse(
         if r.data.len() - r.pos < 8 {
             repair(
                 diagnostics,
-                tags::CMAP_TRUNCATED,
+                repairs::CMAP_TRUNCATED,
                 "incomplete cmap directory",
                 Position::Buffer(r.at()),
             )?;
@@ -45,7 +45,7 @@ pub(super) fn parse(
             Err(error) => {
                 repair(
                     diagnostics,
-                    tags::CMAP_TRUNCATED,
+                    repairs::CMAP_TRUNCATED,
                     error.message,
                     Position::Buffer(r.base.saturating_add(offset)),
                 )?;
@@ -57,7 +57,7 @@ pub(super) fn parse(
             Err(error) => {
                 repair(
                     diagnostics,
-                    tags::CMAP_TRUNCATED,
+                    repairs::CMAP_TRUNCATED,
                     error.message,
                     error.position,
                 )?;
@@ -70,7 +70,12 @@ pub(super) fn parse(
         let length = match validate(r.tail(offset)?, glyphs, limits, &mut work, diagnostics) {
             Ok(length) => length,
             Err(error) if malformed(&error) => {
-                repair(diagnostics, tags::CMAP_DATA, error.message, error.position)?;
+                repair(
+                    diagnostics,
+                    repairs::CMAP_DATA,
+                    error.message,
+                    error.position,
+                )?;
                 continue;
             }
             Err(error) => return Err(error),
@@ -126,7 +131,7 @@ fn validate(
     let length = if length > r.data.len() {
         repair(
             diagnostics,
-            tags::CMAP_TRUNCATED,
+            repairs::CMAP_TRUNCATED,
             "cmap length exceeds available data",
             Position::Buffer(r.base),
         )?;
@@ -145,7 +150,7 @@ fn validate(
     if length < header {
         repair(
             diagnostics,
-            tags::CMAP_TRUNCATED,
+            repairs::CMAP_TRUNCATED,
             "incomplete cmap subtable header",
             Position::Buffer(r.base),
         )?;
@@ -252,7 +257,7 @@ fn validate_four(
         if offset % 2 != 0 {
             repair(
                 diagnostics,
-                tags::CMAP_ALIGNMENT,
+                repairs::CMAP_ALIGNMENT,
                 "unaligned cmap glyph array",
                 Position::Buffer(r.base + range_pos + 2 * i),
             )?;
@@ -267,7 +272,7 @@ fn validate_four(
                 Err(error) if malformed(&error) => {
                     repair(
                         diagnostics,
-                        tags::CMAP_TRUNCATED,
+                        repairs::CMAP_TRUNCATED,
                         error.message,
                         Position::Buffer(r.base + range_pos + 2 * i),
                     )?;
@@ -422,7 +427,7 @@ pub(super) fn available(
     if count > available {
         repair(
             diagnostics,
-            tags::CMAP_TRUNCATED,
+            repairs::CMAP_TRUNCATED,
             "cmap entries exceed available data",
             Position::Buffer(r.at()),
         )?;

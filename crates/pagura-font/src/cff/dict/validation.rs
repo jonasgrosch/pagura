@@ -42,7 +42,7 @@ impl Dict {
                 if private && matches!(op, 6..=11 | 0x0c09..=0x0c0e | 0x0c11..=0x0c12) {
                     crate::recovery::repair(
                         diagnostics,
-                        crate::tags::CFF_DICT_OPERANDS,
+                        crate::repairs::CFF_DICT_OPERANDS,
                         "unused CFF hint operator with invalid operands ignored",
                         Position::Buffer(at),
                     )?;
