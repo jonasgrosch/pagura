@@ -67,8 +67,4 @@ pub use font::{FontKind, PdfFont, WritingMode};
 pub use glyph::{Glyph, GlyphShape, VerticalMetrics};
 
 #[cfg(test)]
-mod substitution_tests;
-#[cfg(test)]
-mod tests;
-#[cfg(test)]
-mod tolerance_tests;
+mod test_support;

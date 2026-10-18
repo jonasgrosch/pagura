@@ -1,101 +1,14 @@
 //! Independent strict/repair oracles for extraction faults and font tolerance.
-use super::*;
-use pagura_core::{Dictionary, Error, Limits, ObjectId, Result};
-use pagura_core::{
-    ErrorKind, Recovery, Value,
-    syntax::{Origin, Parser},
-};
-use pagura_document::Document;
-use pagura_document::OpenOptions;
+use crate::support::{check_glyphs, dictionary, lines, open, rejected, row, uint, values};
+use pagura_core::{Error, ErrorKind, Limits, Recovery, Result};
+use pagura_document::{Document, OpenOptions};
 use pagura_testkit::fixture;
+use pagura_text::{PdfFont, repairs};
 
-fn open(name: &str, recovery: Recovery) -> Result<Document> {
-    Document::open(
-        fixture("text", &format!("{name}.pdf")),
-        &OpenOptions {
-            recovery,
-            ..OpenOptions::default()
-        },
-    )
-}
-fn dictionary(document: &Document) -> Result<&Dictionary> {
-    document
-        .object(ObjectId::new(4, 0))?
-        .dictionary()
-        .ok_or_else(|| Error::syntax("missing fixture font"))
-}
-fn array(value: &Value) -> Result<&[Value]> {
-    value
-        .as_array()
-        .ok_or_else(|| Error::syntax("expected oracle array"))
-}
-fn number(value: &Value) -> Result<f64> {
-    value
-        .as_number()
-        .ok_or_else(|| Error::syntax("expected oracle number"))
-}
-fn uint(value: &Value) -> Result<u32> {
-    value
-        .as_integer()
-        .and_then(|n| u32::try_from(n).ok())
-        .ok_or_else(|| Error::syntax("expected oracle integer"))
-}
-fn parse(name: &str, suffix: &str) -> Result<Value> {
-    let bytes = fixture("text", &format!("{name}.{suffix}"));
-    Parser::new(&bytes, Origin::Buffer, Limits::default()).parse()
-}
-fn near(actual: f64, expected: f64) {
-    assert!((actual - expected).abs() < 1e-12, "{actual} != {expected}");
-}
 fn tags(name: &str) -> Result<Vec<String>> {
-    let bytes = fixture("text", &format!("{name}.repair"));
-    Ok(std::str::from_utf8(&bytes)
-        .map_err(|_| Error::syntax("invalid tag oracle"))?
-        .lines()
-        .map(str::to_owned)
-        .collect())
+    lines(name, "repair")
 }
-fn check_glyphs(font: &PdfFont, name: &str, suffix: &str) -> Result<()> {
-    let glyphs = font.decode(&fixture("text", &format!("{name}.input")))?;
-    let expected = parse(name, suffix)?;
-    assert_eq!(glyphs.len(), array(&expected)?.len(), "{name}");
-    for (glyph, row) in glyphs.iter().zip(array(&expected)?) {
-        let row = array(row)?;
-        assert_eq!(glyph.code, uint(&row[0])?, "{name}");
-        assert_eq!(u32::from(glyph.byte_len), uint(&row[1])?, "{name}");
-        near(glyph.advance, number(&row[2])?);
-        assert_eq!(Some(glyph.word_space), row[3].as_bool());
-        assert_eq!(
-            glyph.unicode.as_deref().map(str::as_bytes),
-            row[4].as_string(),
-            "{name}: {}",
-            glyph.code
-        );
-        assert!(glyph.vertical.is_none());
-        if row[5].is_null() {
-            assert!(matches!(glyph.shape, GlyphShape::Blank));
-        } else {
-            let GlyphShape::Outline {
-                program,
-                glyph: id,
-                matrix,
-            } = &glyph.shape
-            else {
-                return Err(Error::syntax("expected drawable outline"));
-            };
-            assert_eq!(id.0, uint(&row[5])?, "{name}");
-            let values = parse(name, "matrix")?;
-            for (actual, expected) in [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f]
-                .into_iter()
-                .zip(array(&array(&values)?[0])?)
-            {
-                near(actual, number(expected)?);
-            }
-            program.outline(*id)?;
-        }
-    }
-    Ok(())
-}
+
 fn check_strict_rejection(document: &Document, error: &Error, name: &str) -> Result<()> {
     let expected = fixture("text", &format!("{name}.strict.error"));
     let expected = std::str::from_utf8(&expected)
@@ -157,10 +70,10 @@ fn extraction_repairs_reject_font_loading_in_strict_mode() -> Result<()> {
         "unicode-simple-source-length",
     ] {
         let strict = open(name, Recovery::Strict)?;
-        let error = PdfFont::load(&strict, dictionary(&strict)?).unwrap_err();
+        let error = rejected(PdfFont::load(&strict, dictionary(&strict)?))?;
         check_strict_rejection(&strict, &error, name)?;
         // A cached nested parser failure must keep its original tag and context.
-        let repeated = PdfFont::load(&strict, dictionary(&strict)?).unwrap_err();
+        let repeated = rejected(PdfFont::load(&strict, dictionary(&strict)?))?;
         assert_eq!(error, repeated, "{name}");
         assert!(strict.diagnostics().is_empty(), "{name}");
         let repaired = open(name, Recovery::Repair)?;
@@ -185,7 +98,7 @@ fn painting_critical_repairs_require_permission_and_preserve_exact_glyphs() -> R
         "repair-cid-to-gid-identity",
     ] {
         let strict = open(name, Recovery::Strict)?;
-        let error = PdfFont::load(&strict, dictionary(&strict)?).unwrap_err();
+        let error = rejected(PdfFont::load(&strict, dictionary(&strict)?))?;
         assert_eq!(error.kind, ErrorKind::Syntax);
         check_strict_rejection(&strict, &error, name)?;
         let repaired = open(name, Recovery::Repair)?;
@@ -214,7 +127,7 @@ fn oversized_cmap_blocks_remain_bounded() -> Result<()> {
             ..OpenOptions::default()
         },
     )?;
-    let error = PdfFont::load(&document, dictionary(&document)?).unwrap_err();
+    let error = rejected(PdfFont::load(&document, dictionary(&document)?))?;
     assert_eq!(error.kind, ErrorKind::Limit);
     Ok(())
 }
@@ -226,8 +139,8 @@ fn repeated_unicode_faults_use_bounded_document_diagnostics() -> Result<()> {
     let font = PdfFont::load(&document, dictionary(&document)?)?;
     let glyphs = font.decode(b"A")?;
     assert_eq!(glyphs[0].unicode.as_deref(), Some("A"));
-    let expected = parse(name, "out")?;
-    let row = array(&array(&expected)?[0])?;
+    let expected = values(name, "out")?;
+    let row = row(&expected[0])?;
     assert_eq!(
         document.diagnostics().len(),
         usize::try_from(uint(&row[0])?).map_err(|_| Error::syntax("invalid cap oracle"))?
@@ -266,9 +179,7 @@ fn simple_font_dictionary_faults_are_reported_repairs() -> Result<()> {
         ("repair-encoding-base", repairs::ENCODING_NAME),
     ] {
         let strict = open(name, Recovery::Strict)?;
-        let error = PdfFont::load(&strict, dictionary(&strict)?)
-            .err()
-            .ok_or_else(|| Error::syntax("expected a strict rejection"))?;
+        let error = rejected(PdfFont::load(&strict, dictionary(&strict)?))?;
         assert_eq!(error.repair, Some(tag), "{name}: {error}");
         assert!(strict.diagnostics().is_empty(), "{name}");
         let repaired = open(name, Recovery::Repair)?;

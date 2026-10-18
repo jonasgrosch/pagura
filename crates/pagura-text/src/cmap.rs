@@ -683,6 +683,11 @@ fn load_inner(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::test_support::{document, expected, integer, rows, text};
+    use pagura_core::ObjectId;
+    use pagura_testkit::fixture;
+
     #[test]
     fn malformed_blocks_and_utf16_are_rejected() {
         for data in [
@@ -742,6 +747,91 @@ mod tests {
         let (code, valid) = map.next(b"\0", &mut 0, Limits::default())?;
         assert!(!valid);
         assert_eq!(code.len, 1);
+        Ok(())
+    }
+
+    #[test]
+    fn cmap_vectors() -> Result<()> {
+        for name in [
+            "cmap-mixed",
+            "cmap-bytewise",
+            "cmap-usecmap",
+            "cmap-parent-stream",
+            "cmap-indirect-name",
+            "unicode-parent",
+            "unicode-ignored-stream-metadata",
+            "unicode-inherited-ignored-name",
+        ] {
+            let document = document(name)?;
+            let map = load(
+                &document,
+                &Value::Reference(ObjectId::new(4, 0)),
+                name.starts_with("unicode-"),
+            )?;
+            let input = fixture("text", &format!("{name}.input"));
+            let mut offset = 0;
+            let mut work = 0;
+            for value in expected(name)? {
+                let row = rows(&value)?;
+                let (code, valid) = map.next(&input[offset..], &mut work, document.limits())?;
+                assert_eq!(code.value, integer(&row[0])?, "{name}");
+                assert_eq!(u32::from(code.len), integer(&row[1])?, "{name}");
+                let cid = if valid {
+                    map.cid(code, &mut work, document.limits())?.map(u32::from)
+                } else {
+                    None
+                };
+                assert_eq!(
+                    cid,
+                    if row[2].is_null() {
+                        None
+                    } else {
+                        Some(integer(&row[2])?)
+                    },
+                    "{name}"
+                );
+                assert_eq!(
+                    u32::from(map.notdef(code, &mut work, document.limits())?),
+                    integer(&row[3])?
+                );
+                assert_eq!(map.text(code), text(&row[4]));
+                offset += usize::from(code.len);
+            }
+            assert_eq!(offset, input.len());
+            assert_eq!(
+                map.mode,
+                if matches!(name, "cmap-mixed" | "cmap-usecmap" | "cmap-indirect-name") {
+                    WritingMode::Vertical
+                } else {
+                    WritingMode::Horizontal
+                }
+            );
+        }
+        Ok(())
+    }
+    #[test]
+    fn embedded_usecmap_chains_stop_at_the_depth_limit() -> Result<()> {
+        // Stream 4 inherits stream 5: a chain of two needs a depth of two.
+        for (depth, limited) in [(1, true), (2, false)] {
+            let document = Document::open(
+                fixture("text", "cmap-parent-stream.pdf"),
+                &pagura_document::OpenOptions {
+                    limits: Limits {
+                        depth,
+                        ..Limits::default()
+                    },
+                    ..pagura_document::OpenOptions::default()
+                },
+            )?;
+            let result = load(&document, &Value::Reference(ObjectId::new(4, 0)), false);
+            match result {
+                Err(error) if limited => {
+                    assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
+                }
+                Ok(_) if !limited => {}
+                other => panic!("depth {depth}: {other:?}"),
+            }
+        }
         Ok(())
     }
 }
