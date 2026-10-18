@@ -1939,6 +1939,1286 @@
           "sha256": "38164fbd17603d73f696b8b4d72664d735bb6a7c88577687fd2ae33fd6964153"
         }
       }
+    },
+    {
+      "id": "forms/render-text",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text.pdf",
+          "sha256": "c5d73f362104ad113c097eb9403b0d2cfd87060d7e42a34bb6108b8e8ef181df"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text.rgb",
+          "sha256": "2e25c1baec0fdacf0e3f4cb8fc58b02cc6c5c69e8354d3239a3c3242ee4f6cec"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-placement",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-placement"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-placement.pdf",
+          "sha256": "346ed969e470c75ac7f768a9e66198cdde3b14304930267f37468371024d2929"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-placement.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-placement.rgb",
+          "sha256": "870859f6f11b013fbac71958d81d0817f6324e858d905b9ee152e0817756fa81"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-multiple-widgets",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-multiple-widgets.pdf",
+          "sha256": "4814b9cd29489688ba8bcf46441199f485dbe9df55645dc0ddb9b5fd51001b9e"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-multiple-widgets.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-multiple-widgets.rgb",
+          "sha256": "4591d918ef5e3b59afe1e5fcf32485aa66f54ee2d9f735fb9bad143c5cbd70eb"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-update",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-update.pdf",
+          "sha256": "e09048ddd036e8590bb1d67dd96142f817b51452f40bf65593a07be813be9b2c"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-update.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-update.rgb",
+          "sha256": "815c9e138fe948a356e458cbc988f10ea9ccd4e385ad0a3de0a46a88bad3cf6b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-need-appearances",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-need-appearances"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-need-appearances.pdf",
+          "sha256": "e95a694fae3faedd8e46c37246bd27a956422422006ee57e3223a577d1060a73"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-need-appearances.render",
+          "sha256": "4e5bd32aa77ab2355f1655ef72bacd56d9e8cfdb354e849189637e414fe55eb6"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-need-appearances.rgb",
+          "sha256": "815c9e138fe948a356e458cbc988f10ea9ccd4e385ad0a3de0a46a88bad3cf6b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-unchanged",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-unchanged.pdf",
+          "sha256": "e09048ddd036e8590bb1d67dd96142f817b51452f40bf65593a07be813be9b2c"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-unchanged.render",
+          "sha256": "4e5bd32aa77ab2355f1655ef72bacd56d9e8cfdb354e849189637e414fe55eb6"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-unchanged.rgb",
+          "sha256": "78c082e480fb53646e060f7b7bc08bd5b7e61a503966b272cbf5f80000b7c027"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-comb",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-comb.pdf",
+          "sha256": "c9abc61b6b5ba78155c4efbf0617a1c7588e4a76ada3bc0ebb67066c5f9f6f4f"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-comb.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-comb.rgb",
+          "sha256": "cd9e801f314a310d1e0f8353a3a37f8f2dd0cdb5daaf401029af28001a065896"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-multiline",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-multiline.pdf",
+          "sha256": "6fdd16569a5f26c15b2f9f1181e155c51269d99badfa39696655f34fb90d92b4"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-multiline.render",
+          "sha256": "9112a30bcdbaca6a9f41c68f28b5818ece0f5b1ecbabfc4b304ec3af9236ce36"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-multiline.rgb",
+          "sha256": "0b6822d36c8749841ee51894288f070549b796ac7ed1cebcea602ff1df8fb52b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-da-state",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-da-state.pdf",
+          "sha256": "8f0e674d800247678dafef0ec1a7f5cedd895543f67337c6be2f867e54e641ce"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-da-state.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-da-state.rgb",
+          "sha256": "e6e2c0134e94c0d811b95c497cac03f59bec8bf43f0480e5302eff153813213e"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-auto-size",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-auto-size.pdf",
+          "sha256": "fc778c1015beeb5a59ba282ea6d0275db41c3333ea26ab60c97874fa2215436a"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-auto-size.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-auto-size.rgb",
+          "sha256": "71b792915239eab436b842456f6d97e0b1788425c183c4add1b842d6751aa4d2"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-bbox-matrix",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-placement"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-bbox-matrix.pdf",
+          "sha256": "ecf2c2b27022c787d381b191466a8ebfc8b59e8257e5872733787ea070210c72"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-bbox-matrix.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-bbox-matrix.rgb",
+          "sha256": "55f52cd6b59d606ec78dca2c1114968c42f7eb252475e53764f413d60f3eb95d"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-oblique-envelope",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-placement"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-oblique-envelope.pdf",
+          "sha256": "9eb6b1fe8ec691ec4bc2b1f29da65ccd0ef409af28d08dd6d8a2053bedff50c9"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-oblique-envelope.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-oblique-envelope.rgb",
+          "sha256": "374c78f597f3f362ac9ea813d99d78fe597547e5c494171f59da73d29ac15d74"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-fractional-area",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-placement"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-fractional-area.pdf",
+          "sha256": "063f498ef7350b2f9275acebe9aed2f1ed00f3ce4cf08a53d3a02e3b37a1cace"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-fractional-area.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-fractional-area.rgb",
+          "sha256": "3af9178d06e27b6f8a874c94570b2d248e14a5eeeee28ab2fd690e9c09d26333"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-bbox-clip",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-placement"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-bbox-clip.pdf",
+          "sha256": "a18d7e38d1b680d0bb1ec00e71902ab552f2dcf49bd2d015f621c3bb98101e4c"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-bbox-clip.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-bbox-clip.rgb",
+          "sha256": "6ca90920e912d799225050207c6f6329355c44f83385d338c7d77ec3c4375bee"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-page-state-isolation",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-placement"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-page-state-isolation.pdf",
+          "sha256": "b91481be759fd7ee4daddb4cc461bd716aec82bbf8a0387dbb9eba5328502875"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-page-state-isolation.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-page-state-isolation.rgb",
+          "sha256": "b60927ce201533346eb5afa15462f7db9b912d8040cd979362acf7d9494953cb"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-existing-resources",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-existing-resources.pdf",
+          "sha256": "6d8b52d403c9abc6bf2f468592c2faa3cf26d80240c161ee0909c88023514077"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-existing-resources.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-existing-resources.rgb",
+          "sha256": "f46fd3082f3852d107038e6bba3cd7a792155c1135e256c33337e0c6f4ba979f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-transparency-group",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-placement"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-transparency-group.pdf",
+          "sha256": "75b86f1d610c9289989ba61fc53091b89870429bfcf246391e0c4c03cbfe2e5c"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-transparency-group.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-transparency-group.rgb",
+          "sha256": "2e25c1baec0fdacf0e3f4cb8fc58b02cc6c5c69e8354d3239a3c3242ee4f6cec"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-choice-combo",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-choice-combo.pdf",
+          "sha256": "15107bf539360a4181bd4abf3e0d8c5fb8bd821bf7ccd5059456f33ddc1ed0a4"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-choice-combo.render",
+          "sha256": "a870887a8b0b2ed2f46a3d0b67ed647e3724bb42734395e32fbbe705e5d74c4b"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-choice-combo.rgb",
+          "sha256": "2e25c1baec0fdacf0e3f4cb8fc58b02cc6c5c69e8354d3239a3c3242ee4f6cec"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-choice-need-appearances",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-need-appearances"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-choice-need-appearances.pdf",
+          "sha256": "a65950d1056610761c1110a65fed418a2b1f4f9abb92ed5f807baa55ec515c53"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-choice-need-appearances.render",
+          "sha256": "4e5bd32aa77ab2355f1655ef72bacd56d9e8cfdb354e849189637e414fe55eb6"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-choice-need-appearances.rgb",
+          "sha256": "815c9e138fe948a356e458cbc988f10ea9ccd4e385ad0a3de0a46a88bad3cf6b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-choice-list-multi",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-choice-list-multi.pdf",
+          "sha256": "149496fcd6ec7d598462bba9600606a5083b8fea1d4a804b5a707f2c077a29e8"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-choice-list-multi.render",
+          "sha256": "be86b275953a77f4f63706b0d65e50fd178c35480114e858f5776cc6be2ffdc6"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-choice-list-multi.rgb",
+          "sha256": "99b3e89d74f2a9bff5e4372b07c4e4f30d6fe99aa567a0e0350068e1e111034a"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-choice-list-need-appearances",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-need-appearances"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-choice-list-need-appearances.pdf",
+          "sha256": "6af4fb43e2d2e6d5d783618556300e89d85420c48cebb95cabe1c43fea167874"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-choice-list-need-appearances.render",
+          "sha256": "4e5bd32aa77ab2355f1655ef72bacd56d9e8cfdb354e849189637e414fe55eb6"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-choice-list-need-appearances.rgb",
+          "sha256": "99b3e89d74f2a9bff5e4372b07c4e4f30d6fe99aa567a0e0350068e1e111034a"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-choice-list-top",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-choice-list-top.pdf",
+          "sha256": "7804408f4f75cb9052c23569d8ecebbe09eb308c4d8b674ad054c127de16eef4"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-choice-list-top.render",
+          "sha256": "a870887a8b0b2ed2f46a3d0b67ed647e3724bb42734395e32fbbe705e5d74c4b"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-choice-list-top.rgb",
+          "sha256": "ed14ae0ab05f5b64f758d82f319cf1f29d7e0cb4778afd2361bb3c2be9ebd038"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-checkbox",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-checkbox.pdf",
+          "sha256": "04173f41298b2e5c3d92caffb4926cb10b73309dbf543f2c8bc4996337163dc5"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-checkbox.render",
+          "sha256": "18e6a6c0e4a9d1f0260d30272b1ff28ffaa391bc3a350c98f4b4fd6dc7947037"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-checkbox.rgb",
+          "sha256": "57425f157cdd70441409ead97deaf1d34d5f996c5ed8d3663ea37013d2a1e01b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-checkbox-off",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-checkbox-off.pdf",
+          "sha256": "04173f41298b2e5c3d92caffb4926cb10b73309dbf543f2c8bc4996337163dc5"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-checkbox-off.render",
+          "sha256": "9fdf8ec62ddcca415c2638789ac14fd22fe36c31212880d5a4456a940b62129e"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-checkbox-off.rgb",
+          "sha256": "2c1a6007a77aa69029c68f8f406b2a053ea7ae988f4328339e08e6593e28f77f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-checkbox-need-preserves-state",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-need-appearances"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-checkbox-need-preserves-state.pdf",
+          "sha256": "83a5d749bef976136bbf5a3c54c5c722dda2c1658be1456ec147f9e413a2eea7"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-checkbox-need-preserves-state.render",
+          "sha256": "4e5bd32aa77ab2355f1655ef72bacd56d9e8cfdb354e849189637e414fe55eb6"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-checkbox-need-preserves-state.rgb",
+          "sha256": "efffa54a628fae3e53db96de88a1cdda73da0c41d9f9452951a097a47a656810"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-radio",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-radio.pdf",
+          "sha256": "8de2b0e2962edacfe8cab6e30d059351ff66c2cde5a9d7757b64c842807b2c0e"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-radio.render",
+          "sha256": "18e6a6c0e4a9d1f0260d30272b1ff28ffaa391bc3a350c98f4b4fd6dc7947037"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-radio.rgb",
+          "sha256": "36617586b985a7ba46b1506bd01f2e8efd04bb6a726eae8194546ea7eabc86fd"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-radio-off",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-radio-off.pdf",
+          "sha256": "8de2b0e2962edacfe8cab6e30d059351ff66c2cde5a9d7757b64c842807b2c0e"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-radio-off.render",
+          "sha256": "9fdf8ec62ddcca415c2638789ac14fd22fe36c31212880d5a4456a940b62129e"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-radio-off.rgb",
+          "sha256": "2c1a6007a77aa69029c68f8f406b2a053ea7ae988f4328339e08e6593e28f77f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-radio-need-preserves-state",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-need-appearances"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-radio-need-preserves-state.pdf",
+          "sha256": "67da549df863a1e1e287de41fd25455473bcee3de0a749071c0b4ef1a1c6eba3"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-radio-need-preserves-state.render",
+          "sha256": "4e5bd32aa77ab2355f1655ef72bacd56d9e8cfdb354e849189637e414fe55eb6"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-radio-need-preserves-state.rgb",
+          "sha256": "efffa54a628fae3e53db96de88a1cdda73da0c41d9f9452951a097a47a656810"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-checkbox-generated",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/forms/render-checkbox-generated.font",
+          "sha256": "9eb376036fbd1f0a80303ae3d3d834a520763c8dcf834f918ccaaa27882ca519"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/render-checkbox-generated.pdf",
+          "sha256": "398f32c127ee18c3f5d02a2c30831b7800f5ff43a243f4cc7931c8ecd82b45a9"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-checkbox-generated.render",
+          "sha256": "853a6c0027d94ffa49157f8e3be10ee358657cd34b36de05b2db0cdc721f2e7d"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-checkbox-generated.rgb",
+          "sha256": "a5647ab3060ff4024194635a831cadf776a1c420068290cd2d2151ef4cf1e109"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-checkbox-generated-off",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-checkbox-generated-off.pdf",
+          "sha256": "398f32c127ee18c3f5d02a2c30831b7800f5ff43a243f4cc7931c8ecd82b45a9"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-checkbox-generated-off.render",
+          "sha256": "9fdf8ec62ddcca415c2638789ac14fd22fe36c31212880d5a4456a940b62129e"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-checkbox-generated-off.rgb",
+          "sha256": "2c1a6007a77aa69029c68f8f406b2a053ea7ae988f4328339e08e6593e28f77f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-radio-generated",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/forms/render-radio-generated.font",
+          "sha256": "9eb376036fbd1f0a80303ae3d3d834a520763c8dcf834f918ccaaa27882ca519"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/render-radio-generated.pdf",
+          "sha256": "ea096718502c5e75dbb2cb00941987788baa8ab19b24931771bb7f28bfaf815c"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-radio-generated.render",
+          "sha256": "853a6c0027d94ffa49157f8e3be10ee358657cd34b36de05b2db0cdc721f2e7d"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-radio-generated.rgb",
+          "sha256": "a5647ab3060ff4024194635a831cadf776a1c420068290cd2d2151ef4cf1e109"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-radio-generated-off",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-radio-generated-off.pdf",
+          "sha256": "ea096718502c5e75dbb2cb00941987788baa8ab19b24931771bb7f28bfaf815c"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-radio-generated-off.render",
+          "sha256": "9fdf8ec62ddcca415c2638789ac14fd22fe36c31212880d5a4456a940b62129e"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-radio-generated-off.rgb",
+          "sha256": "2c1a6007a77aa69029c68f8f406b2a053ea7ae988f4328339e08e6593e28f77f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-checkbox-undefined-off",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-checkbox-undefined-off.pdf",
+          "sha256": "9e06697438d37ad381bb838430b36b0221beb2f58192839f7ec34c0db15e0f12"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-checkbox-undefined-off.render",
+          "sha256": "9fdf8ec62ddcca415c2638789ac14fd22fe36c31212880d5a4456a940b62129e"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-checkbox-undefined-off.rgb",
+          "sha256": "2c1a6007a77aa69029c68f8f406b2a053ea7ae988f4328339e08e6593e28f77f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-hidden",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-visibility"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-hidden.pdf",
+          "sha256": "a4ed730d0d7ad907e0577cd3efadbe0daac2c9e35c8b25c460d5d74a268e3a14"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-hidden.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-hidden.rgb",
+          "sha256": "2c1a6007a77aa69029c68f8f406b2a053ea7ae988f4328339e08e6593e28f77f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-no-view",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-visibility"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-no-view.pdf",
+          "sha256": "2c9d02522992cad888e2b678e65da19d667fd8407e9f22b45a33a7bfe0f83997"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-no-view.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-no-view.rgb",
+          "sha256": "2c1a6007a77aa69029c68f8f406b2a053ea7ae988f4328339e08e6593e28f77f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-optional-content",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-visibility"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-optional-content.pdf",
+          "sha256": "081fb450e9f21876c7a478723e12b3d1d63b0d35c396298df8bbd9e3bd0660cd"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-optional-content.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-optional-content.rgb",
+          "sha256": "2c1a6007a77aa69029c68f8f406b2a053ea7ae988f4328339e08e6593e28f77f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-appearance-optional-content",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-visibility"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-appearance-optional-content.pdf",
+          "sha256": "565fc402b4aabfa874462b5114ea6508284941c7e003c12d7a2ea7e6bb6e6cae"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-appearance-optional-content.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-appearance-optional-content.rgb",
+          "sha256": "2c1a6007a77aa69029c68f8f406b2a053ea7ae988f4328339e08e6593e28f77f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-invisible-appearance-is-lazy",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-visibility"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-invisible-appearance-is-lazy.pdf",
+          "sha256": "6f230009d9d42d8446e30923b4b187466475464c319893ae176109987b45c6c5"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-invisible-appearance-is-lazy.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-invisible-appearance-is-lazy.rgb",
+          "sha256": "2c1a6007a77aa69029c68f8f406b2a053ea7ae988f4328339e08e6593e28f77f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-page-rotation",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-placement"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-page-rotation.pdf",
+          "sha256": "babe260ab6386e59482dca33b959ec65fb5649f6d525de9b34ff460e385030dd"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-page-rotation.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-page-rotation.rgb",
+          "sha256": "f029841937a9870d336e7c067a1cd855f20f39a1a78017ff69742ad1ee8bad9e"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-no-rotate",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-visibility"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-no-rotate.pdf",
+          "sha256": "bbbd2081019f130712307703474baff7cbf1d8382393fc64b8c3f4cc5dd9972d"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-no-rotate.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-no-rotate.rgb",
+          "sha256": "f2755374a378d4add443d97fcb515b1475ae996af0e1c312d70162614869b65f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-text-no-zoom",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-visibility"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-text-no-zoom.pdf",
+          "sha256": "f35d9b198aa57ac12b9dfd2c9ce4ad85b26c27a15b6ddd704d47d99887c46acf"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-text-no-zoom.render",
+          "sha256": "daffe8ce5c203bfffa377eb94f55d7db765cc37d058adb6bb951f193e6ca3aac"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-text-no-zoom.rgb",
+          "sha256": "8fdd000916bf603a22f6ff6a0caf635f768dee4b177c51c4fedcb2edf7d9362b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-need-all-variable-fields",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-need-appearances"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-need-all-variable-fields.pdf",
+          "sha256": "c5b6716e6e0d58c83688577d37fbf677a052aae1b1d033a507d6bc61e86055e6"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-need-all-variable-fields.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-need-all-variable-fields.rgb",
+          "sha256": "3094eb7e03a460a2ce13eb2a69822b28eee197ace658763f5e18e9f57ed34f0d"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-other-page-is-lazy",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-visibility"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-other-page-is-lazy.pdf",
+          "sha256": "e3331643b8c879733e3e956a388da3a034c547f4a53dde638750e3ab97e63534"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-other-page-is-lazy.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-other-page-is-lazy.rgb",
+          "sha256": "2e25c1baec0fdacf0e3f4cb8fc58b02cc6c5c69e8354d3239a3c3242ee4f6cec"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-annotation-identity",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-annotation-identity.pdf",
+          "sha256": "cf3cf7f328eeb592cddd9af447d2c524ad19f2073f0cb837e3d7e44cb3e7a0db"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-annotation-identity.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-annotation-identity.rgb",
+          "sha256": "b3dbe9a90be6a0f61aebd7805653fcb6974e4ae7331a2bce366a4f5041ca301f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-empty-bbox",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-placement"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-empty-bbox.pdf",
+          "sha256": "ca3ea4ddd845f75e82d40919f0f744b7dbab70240057d9008bff35809cf8a837"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-empty-bbox.render",
+          "sha256": "52bafe455f77d32063a33e8caae080e7a1c960eea48634519ca8f56d3d447a4b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-generation-error",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-generation-error.pdf",
+          "sha256": "886026f64f28a2494bd23ae86d8aac32d75b4ca5a55e125fdfe6a8f6219cc858"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-generation-error.render",
+          "sha256": "52bafe455f77d32063a33e8caae080e7a1c960eea48634519ca8f56d3d447a4b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-content-error-position",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-content-error-position.pdf",
+          "sha256": "cb65734d1c711506620fa10d96b430caac00d0cfe73f1650fa0cf14ba61e7329"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-content-error-position.render",
+          "sha256": "52bafe455f77d32063a33e8caae080e7a1c960eea48634519ca8f56d3d447a4b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-fallback-type0",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-fallback"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-fallback-type0.pdf",
+          "sha256": "d7745559676f3a671d0b0489c0617fc4de521ac54d1905ee779d689af3cd160d"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-fallback-type0.render",
+          "sha256": "d80931bd99a33ff41e6739ab965823a419bfefa6b9c8b51129f920d7d5103d98"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-fallback-type0.rgb",
+          "sha256": "78c082e480fb53646e060f7b7bc08bd5b7e61a503966b272cbf5f80000b7c027"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-fallback-hybrid-xfa",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-fallback"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-fallback-hybrid-xfa.pdf",
+          "sha256": "4c99f4f1641630451e29b1d5351c183a009eaaf8a3d3787c25eaf846b0bab821"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-fallback-hybrid-xfa.render",
+          "sha256": "d80931bd99a33ff41e6739ab965823a419bfefa6b9c8b51129f920d7d5103d98"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-fallback-hybrid-xfa.rgb",
+          "sha256": "78c082e480fb53646e060f7b7bc08bd5b7e61a503966b272cbf5f80000b7c027"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-fallback-oblique-tm",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-fallback"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-fallback-oblique-tm.pdf",
+          "sha256": "531be4507557bddd0766780994c426ae501cdb53d89f1e64ec520eb3661dafdf"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-fallback-oblique-tm.render",
+          "sha256": "d80931bd99a33ff41e6739ab965823a419bfefa6b9c8b51129f920d7d5103d98"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-fallback-oblique-tm.rgb",
+          "sha256": "78c082e480fb53646e060f7b7bc08bd5b7e61a503966b272cbf5f80000b7c027"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-signature-without-ap",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-visibility"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-signature-without-ap.pdf",
+          "sha256": "34495cb46ab6ae4097703d6a86ba45ad50de0fdfd5578e28d58745edd57e01b6"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-signature-without-ap.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-signature-without-ap.rgb",
+          "sha256": "2e25c1baec0fdacf0e3f4cb8fc58b02cc6c5c69e8354d3239a3c3242ee4f6cec"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-zero-area-without-ap",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-visibility"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-zero-area-without-ap.pdf",
+          "sha256": "51f3bf1e00d009b2a1c3264674b9cdebaa417d028526302cdb0fa6a41a2df5f5"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-zero-area-without-ap.render",
+          "sha256": "ff297610a2583c74e8543a4a1e1c0bc8b7a74acd7d6a753063b9e8cf5f9ad75f"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-zero-area-without-ap.rgb",
+          "sha256": "2c1a6007a77aa69029c68f8f406b2a053ea7ae988f4328339e08e6593e28f77f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-degenerate-matrix",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-placement"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-degenerate-matrix.pdf",
+          "sha256": "856e54c0bc391965f06c8dc6e45faff4f1d6202d857e93c3a432afa1d3f0320b"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-degenerate-matrix.render",
+          "sha256": "52bafe455f77d32063a33e8caae080e7a1c960eea48634519ca8f56d3d447a4b"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-shared-font-cache",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".font": {
+          "path": "corpus/generated/forms/render-shared-font-cache.font",
+          "sha256": "9eb376036fbd1f0a80303ae3d3d834a520763c8dcf834f918ccaaa27882ca519"
+        },
+        ".pdf": {
+          "path": "corpus/generated/forms/render-shared-font-cache.pdf",
+          "sha256": "eb189975f0f54e36a4968da57cbd32bd0701bf9b319527db3968f7be858eac18"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-shared-font-cache.render",
+          "sha256": "753b161353cc1e03e28522323d059f33c6d142a916c34be578f1c7304eb670d1"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-shared-font-cache.rgb",
+          "sha256": "18d49afbe71b3b32cd34dc82b23d8145ead5062336220832e553ef7ae422793f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-shared-embedded-font",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-filled"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-shared-embedded-font.pdf",
+          "sha256": "2c353a5f2bbc27b17dd802c0886d787efe9bcf26dfd85f686267e804379f82a7"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-shared-embedded-font.render",
+          "sha256": "52b28c5752ee34fc0b6d6752877b6c8f5a081a80906dd0776fbe373d6eeea858"
+        },
+        ".rgb": {
+          "path": "corpus/generated/forms/render-shared-embedded-font.rgb",
+          "sha256": "18d49afbe71b3b32cd34dc82b23d8145ead5062336220832e553ef7ae422793f"
+        }
+      },
+      "tolerance": 1
+    },
+    {
+      "id": "forms/render-malformed-da-with-stored-ap",
+      "kind": "vector",
+      "description": "Independent rational polygon coverage of filled widget appearances, ISO 32000-2 12.5.5 and 12.7.4.3.",
+      "requirements": [
+        "forms-render-fallback"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/forms/render-malformed-da-with-stored-ap.pdf",
+          "sha256": "23bc29ab49553b2ea4feb9ea48b3d1b154b2c437efddf02c83989a44fe1adf86"
+        },
+        ".render": {
+          "path": "corpus/generated/forms/render-malformed-da-with-stored-ap.render",
+          "sha256": "ff98b48cee41f00ed67e8be179ea1aabf3c9e662d906df060abf9fd1168af08d"
+        }
+      },
+      "tolerance": 1
     }
   ]
 }

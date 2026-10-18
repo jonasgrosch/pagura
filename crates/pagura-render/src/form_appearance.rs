@@ -100,6 +100,9 @@ pub fn prepare(
     filler: &FormFiller<'_>,
     provider: Option<&dyn Provider>,
 ) -> Result<Vec<WidgetAppearance>> {
+    let fonts = std::sync::Mutex::new(crate::interpreter::text::cache::FontCache::new(
+        filler.document().limits(),
+    ));
     let count = filler.form().widgets.len();
     let mut bytes = count
         .checked_mul(size_of::<WidgetAppearance>())
@@ -109,7 +112,7 @@ pub fn prepare(
         ))?;
     let mut result = Vec::with_capacity(count);
     for index in 0..count {
-        let appearance = prepare_widget(filler, index, provider)?;
+        let appearance = prepare_widget_cached(filler, index, provider, Some(&fonts))?;
         bytes = bytes.saturating_add(match &appearance {
             Appearance::Generated(s) => s.retained_bytes(),
             _ => 0,
@@ -135,13 +138,21 @@ pub fn prepare_widget(
     index: usize,
     provider: Option<&dyn Provider>,
 ) -> Result<Appearance> {
+    prepare_widget_cached(filler, index, provider, None)
+}
+pub(crate) fn prepare_widget_cached(
+    filler: &FormFiller<'_>,
+    index: usize,
+    provider: Option<&dyn Provider>,
+    fonts: Option<&std::sync::Mutex<crate::interpreter::text::cache::FontCache>>,
+) -> Result<Appearance> {
     let widget = filler
         .form()
         .widgets
         .get(index)
         .ok_or(Error::invalid_argument("widget index is outside the form"))?;
     let field = &filler.form().fields[widget.field];
-    prepare_inner(filler, index, widget, field, provider).map_err(|mut e| {
+    prepare_inner(filler, index, widget, field, provider, fonts).map_err(|mut e| {
         e = e.at(widget.position);
         if let Some(id) = widget.object {
             e = e.in_object(id);
@@ -155,13 +166,10 @@ fn prepare_inner(
     widget: &Widget<'_>,
     field: &Field<'_>,
     provider: Option<&dyn Provider>,
+    fonts: Option<&std::sync::Mutex<crate::interpreter::text::cache::FontCache>>,
 ) -> Result<Appearance> {
     let document = filler.document();
-    let state = filler
-        .get(widget.field)
-        .and_then(|c| c.widget_states().iter().find(|s| s.widget() == index))
-        .map(WidgetState::state)
-        .or(widget.appearance_state);
+    let state = selected_state(filler, index, widget);
     let original = normal(document, widget, state)?;
     let button = matches!(field.kind, FieldKind::Button { .. });
     let variable = matches!(
@@ -212,7 +220,7 @@ fn prepare_inner(
             .ok_or(Error::syntax("variable text field has no DA"))?,
         document.limits(),
     )?;
-    let font = Font::load(document, &resources, da.font.as_bytes(), provider)?;
+    let font = Font::load(document, &resources, da.font.as_bytes(), provider, fonts)?;
     let style = Style::read(document, widget.dictionary)?;
     let mut text = Program::new(document.limits());
     let area = inset(bbox, style.inset)?;
@@ -249,6 +257,31 @@ fn prepare_inner(
     }
     dictionary.insert(Name::new(b"Resources"), Value::Dictionary(resources));
     finish(document, dictionary, content)
+}
+// Shared selection lets rendering cull an invisible or empty source AP before
+// variable-text layout, just as ordinary annotation rendering does (12.5.5).
+pub(crate) fn original(filler: &FormFiller<'_>, index: usize) -> Result<Option<Appearance>> {
+    let widget = filler
+        .form()
+        .widgets
+        .get(index)
+        .ok_or(Error::invalid_argument("widget index is outside the form"))?;
+    normal(
+        filler.document(),
+        widget,
+        selected_state(filler, index, widget),
+    )
+}
+fn selected_state<'a>(
+    filler: &'a FormFiller<'_>,
+    index: usize,
+    widget: &'a Widget<'_>,
+) -> Option<&'a Name> {
+    filler
+        .get(widget.field)
+        .and_then(|c| c.widget_states().iter().find(|s| s.widget() == index))
+        .map(WidgetState::state)
+        .or(widget.appearance_state)
 }
 fn normal(
     document: &Document,

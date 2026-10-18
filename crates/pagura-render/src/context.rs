@@ -70,6 +70,25 @@ impl RenderContext {
         interpreter::compile_cached(&self.document, page, self.provider.as_deref(), &self.fonts)
     }
 
+    /// Compiles a page with in-memory form values, sharing fonts and outlines.
+    /// As [`crate::compile_filled_page`], including NeedAppearances handling.
+    ///
+    /// # Errors
+    /// As [`Self::compile_page`] and [`crate::compile_filled_page`]. The filler
+    /// and page must belong to this context's immutable source document.
+    pub fn compile_filled_page(
+        &self,
+        filler: &pagura_document::forms::FormFiller<'_>,
+        page: &Page,
+    ) -> Result<DisplayList> {
+        if !std::ptr::eq(filler.document(), self.document()) {
+            return Err(pagura_core::Error::invalid_argument(
+                "form does not belong to rendering context",
+            ));
+        }
+        interpreter::compile_filled_cached(filler, page, self.provider.as_deref(), &self.fonts)
+    }
+
     /// Compiles a page and extracts its positioned text, reusing this
     /// document's fonts. Conventions as [`crate::compile_page_with_text`].
     ///

@@ -328,36 +328,16 @@ impl Compiler<'_> {
         key: Option<pagura_core::ObjectId>,
         dictionary: &Dictionary,
     ) -> Result<Arc<CachedFont>> {
-        let loaded = flags::load(
+        let font = cached_font(
             self.document,
+            key,
             dictionary,
             self.compilation.provider,
+            self.compilation.fonts,
             self.position,
-        );
-        let font = Arc::new(loaded.map_err(|mut error| {
-            if matches!(
-                error.position,
-                pagura_core::Position::Unknown | pagura_core::Position::Buffer(_)
-            ) {
-                error.position = self.position;
-            }
-            if error.repair == Some(pagura_font::tags::DESCRIPTOR_FLAGS) {
-                error
-            } else if let Some(id) = key {
-                error.in_object(id)
-            } else {
-                error
-            }
-        })?);
-        self.paint_charge(font_bytes(&font, key, dictionary), 1)?;
-        Ok(if let Some(fonts) = self.compilation.fonts {
-            fonts
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .remember(key, dictionary, font)
-        } else {
-            Arc::new(CachedFont::new(font, key, false))
-        })
+        )?;
+        self.paint_charge(font_bytes(&font.font, key, dictionary), 1)?;
+        Ok(font)
     }
 
     pub(super) fn glyph_outline(
@@ -450,6 +430,67 @@ impl Compiler<'_> {
         );
         self.extgstate(values, &local)
     }
+}
+
+/// Resolve the same document-bound font entry used by painting.
+pub(crate) fn pdf_font(
+    document: &pagura_document::Document,
+    value: &Value,
+    provider: Option<&dyn pagura_text::Provider>,
+    fonts: Option<&std::sync::Mutex<FontCache>>,
+) -> Result<Arc<PdfFont>> {
+    let dictionary = document.resolve_dictionary(value)?;
+    let entry = cached_font(
+        document,
+        value.as_reference(),
+        dictionary,
+        provider,
+        fonts,
+        pagura_core::Position::Unknown,
+    )?;
+    Ok(Arc::clone(&entry.font))
+}
+
+fn cached_font(
+    document: &pagura_document::Document,
+    key: Option<pagura_core::ObjectId>,
+    dictionary: &Dictionary,
+    provider: Option<&dyn pagura_text::Provider>,
+    fonts: Option<&std::sync::Mutex<FontCache>>,
+    position: pagura_core::Position,
+) -> Result<Arc<CachedFont>> {
+    if let Some(entry) = fonts.and_then(|cache| {
+        cache
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(key, dictionary)
+    }) {
+        return Ok(entry);
+    }
+    // Parsing and provider calls happen outside the shared cache lock.
+    let loaded = flags::load(document, dictionary, provider, position);
+    let font = Arc::new(loaded.map_err(|mut error| {
+        if matches!(
+            error.position,
+            pagura_core::Position::Unknown | pagura_core::Position::Buffer(_)
+        ) {
+            error.position = position;
+        }
+        if error.repair == Some(pagura_font::tags::DESCRIPTOR_FLAGS) {
+            error
+        } else if let Some(id) = key {
+            error.in_object(id)
+        } else {
+            error
+        }
+    })?);
+    Ok(match fonts {
+        Some(cache) => cache
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .remember(key, dictionary, font),
+        None => Arc::new(CachedFont::new(font, key, false)),
+    })
 }
 
 fn color_parameter(key: &[u8]) -> bool {
