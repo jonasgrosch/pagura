@@ -1,5 +1,8 @@
 //! Normal annotation appearances and screen visibility (12.5.2–12.5.5).
 
+mod shapes;
+mod widgets;
+
 use super::{
     Compiler, Dictionary, Error, Graphics, Page, Point, Rect, Result, Transform, Value,
     forms::FormBody,

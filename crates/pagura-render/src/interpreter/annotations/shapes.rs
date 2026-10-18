@@ -1,11 +1,11 @@
 //! Generated link/square borders and note icons (12.5.4, 12.5.6.4–12.5.6.8).
 //! Note icon outlines are device policy; no document font is required.
-use super::{
-    Arc, Clip, Color, Command, Compiler, Dictionary, Error, FillRule, Mark, PathBuilder,
-    PathCommand, Point, Rect, Result, Transform, Value,
-};
-use crate::color::Space;
-use pagura_raster::{Path, Stroke};
+use crate::color::{Color, Space};
+use crate::display::{Clip, Command, Mark, PathCommand};
+use crate::interpreter::Compiler;
+use pagura_core::{Dictionary, Error, Rect, Result, Value};
+use pagura_raster::{FillRule, Path, PathBuilder, Point, Stroke, Transform};
+use std::sync::Arc;
 
 impl Compiler<'_> {
     pub(super) fn generated_annotation(
