@@ -14,7 +14,7 @@
 //! repair reported through [`Diagnostics`], never a silent success (ADR 0003).
 
 mod ascii;
-mod encoding;
+mod bounded;
 mod filter;
 pub mod flate;
 mod lzw;
@@ -22,6 +22,7 @@ mod output;
 pub mod png;
 mod predictor;
 mod report;
+mod run_length;
 
 pub use filter::{Filter, FilterChain, ImageCodec};
 pub use predictor::{Predictor, PredictorKind};

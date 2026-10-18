@@ -4,7 +4,7 @@ use super::{
     huffman::Book,
     matcher::{Matcher, Token},
 };
-use crate::encoding::{Bytes, limit};
+use crate::bounded::{Bytes, limit};
 use pagura_core::{Limits, Result};
 
 const BLOCK: usize = 65535;
