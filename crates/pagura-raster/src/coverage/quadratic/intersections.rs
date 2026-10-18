@@ -250,8 +250,9 @@ fn polynomial_roots(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coverage::Edge;
+    use crate::coverage::{Edge, RASTER_WORK};
     use crate::{FillRule, Point};
+    use pagura_core::Meter;
 
     #[test]
     fn two_crossings_with_identical_endpoint_order_are_found() {
@@ -277,7 +278,7 @@ mod tests {
             Point::new(1.1875, 1.0),
         ]);
         let mut row = Row {
-            maximum: 10000,
+            work: Meter::new(10000, RASTER_WORK),
             ..Row::default()
         };
         let mut roots = Vec::new();
@@ -293,7 +294,7 @@ mod tests {
     #[test]
     fn quartic_isolation_keeps_all_four_simple_roots() {
         let mut row = Row {
-            maximum: 10000,
+            work: Meter::new(10000, RASTER_WORK),
             ..Row::default()
         };
         let mut roots = Vec::new();

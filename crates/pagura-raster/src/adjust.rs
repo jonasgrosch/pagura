@@ -9,7 +9,7 @@
 //! diameter change in every direction by half a pixel (except the required
 //! minimum one-pixel pen), without introducing corners into flattened curves.
 
-use crate::flatten::{TOLERANCE, flatten};
+use crate::flatten::{MAX_COORDINATE, TOLERANCE, flatten};
 use crate::{LineCap, Path, PathBuilder, Point, Stroke, Transform};
 use pagura_core::{Error, Limits, Result};
 
@@ -48,7 +48,7 @@ pub(crate) fn outline(
     };
     let wx = width(transform.a.hypot(transform.c));
     let wy = width(transform.b.hypot(transform.d));
-    if !wx.is_finite() || !wy.is_finite() || wx.max(wy) > 1e12 {
+    if !wx.is_finite() || !wy.is_finite() || wx.max(wy) > MAX_COORDINATE {
         return Err(Error::limit("adjusted pen exceeds numeric working range"));
     }
     let pen = Transform::scale(wx, wy);
@@ -152,7 +152,7 @@ fn fitted_pen(t: Transform, width: f64) -> Result<Transform> {
     // The determinant avoids cancellation for a narrow ellipse.
     let minor = (a * d - b * c).abs() / major;
     let [major, minor] = [major, minor].map(|v| (v * scale * width).round().max(1.0));
-    if !major.is_finite() || major > 1e12 || !minor.is_finite() {
+    if !major.is_finite() || major > MAX_COORDINATE || !minor.is_finite() {
         return Err(Error::limit("adjusted pen exceeds numeric working range"));
     }
     Ok(Transform::new(

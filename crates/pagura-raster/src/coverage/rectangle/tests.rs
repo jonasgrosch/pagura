@@ -1,5 +1,6 @@
 use super::*;
 use crate::{FillRule, LineCap, Mask, PathBuilder, Point, Stroke, Transform, stroke_outline};
+use pagura_core::Limits;
 use std::sync::Arc;
 
 fn shape(points: &[Point], close: bool) -> Shape {

@@ -164,7 +164,7 @@ fn integration_orders_the_parameters_of_nearly_equal_heights() {
     let (lo, hi) = (0.433_209_056_223_925_47, 0.433_209_056_223_925_7);
     assert!(curve.parameter(lo, false) > curve.parameter(hi, false));
     let mut row = Row {
-        maximum: 1000,
+        work: pagura_core::Meter::new(1000, crate::coverage::RASTER_WORK),
         ..Row::default()
     };
     row.reset(8, 0).unwrap();
