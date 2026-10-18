@@ -1,5 +1,6 @@
 //! ASCII and run-length filters (ISO 32000-2 7.4.2, 7.4.3, 7.4.5).
-use crate::{Predictor, output::Output, repair, syntax, tags, trailing};
+use crate::report::{repair, syntax, trailing};
+use crate::{Predictor, output::Output, tags};
 use pagura_core::syntax::is_whitespace;
 use pagura_core::{Diagnostics, Result};
 

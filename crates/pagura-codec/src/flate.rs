@@ -3,7 +3,8 @@
 //! Canonical Huffman codes are expanded into direct lookup tables. Backrefs
 //! read predictor-free output directly; predictors retain a bounded circular
 //! window of pre-predictor bytes (at most 32 KiB).
-use crate::{Predictor, output::Output, repair, syntax, tags, trailing};
+use crate::report::{repair, syntax, trailing};
+use crate::{Predictor, output::Output, tags};
 use pagura_core::{Diagnostics, Error, Result};
 
 mod adler;
@@ -329,7 +330,7 @@ impl Huffman {
         let mut entries = Vec::new();
         entries
             .try_reserve_exact(size)
-            .map_err(|_| crate::limit(offset))?;
+            .map_err(|_| crate::report::limit(offset))?;
         entries.resize(size, Entry::default());
         for (symbol, &length) in lengths.iter().enumerate() {
             if length == 0 {
@@ -387,7 +388,9 @@ struct History {
 impl History {
     fn new(size: usize) -> Result<Self> {
         let mut bytes = Vec::new();
-        bytes.try_reserve_exact(size).map_err(|_| crate::limit(0))?;
+        bytes
+            .try_reserve_exact(size)
+            .map_err(|_| crate::report::limit(0))?;
         bytes.resize(size, 0);
         Ok(Self {
             bytes,
@@ -499,7 +502,7 @@ impl Inflater {
         let end = bits
             .offset
             .checked_add(count)
-            .ok_or_else(|| crate::limit(bits.offset))?;
+            .ok_or_else(|| crate::report::limit(bits.offset))?;
         let bytes = bits.input.get(bits.offset..end).ok_or(Fault::End)?;
         self.emit(bytes, bits.offset)?;
         bits.offset = end;
