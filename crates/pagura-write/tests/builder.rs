@@ -118,3 +118,40 @@ fn the_file_budget_admits_exactly_the_written_size() {
     assert_eq!(finish(size).unwrap().len(), size);
     assert_eq!(finish(size - 1).unwrap_err().kind, ErrorKind::Limit);
 }
+#[test]
+fn the_value_budget_applies_per_object() {
+    // An array of 999 nulls is 1000 values, exactly the budget.
+    let limits = Limits {
+        value_nodes: 1000,
+        ..Limits::default()
+    };
+    let mut output = builder(limits);
+    for number in 2..=11 {
+        let array = Value::Array(vec![Value::Null; 999]);
+        output
+            .insert(ObjectId::new(number, 0), NewObject::value(array))
+            .unwrap();
+    }
+    assert!(output.finish(ObjectId::new(1, 0)).is_ok());
+    let over = ObjectId::new(12, 0);
+    let array = Value::Array(vec![Value::Null; 1000]);
+    output.insert(over, NewObject::value(array)).unwrap();
+    let error = output.finish(ObjectId::new(1, 0)).unwrap_err();
+    assert_eq!((error.kind, error.object), (ErrorKind::Limit, Some(over)));
+}
+#[test]
+fn nesting_beyond_the_depth_limit_fails() {
+    let limits = Limits {
+        depth: 2,
+        ..Limits::default()
+    };
+    let nested = |levels| (0..levels).fold(Value::Null, |inner, _| Value::Array(vec![inner]));
+    for (levels, fits) in [(2, true), (3, false)] {
+        let mut output = builder(limits);
+        output
+            .insert(ObjectId::new(2, 0), NewObject::value(nested(levels)))
+            .unwrap();
+        let result = output.finish(ObjectId::new(1, 0));
+        assert_eq!(result.is_ok(), fits, "{levels} levels");
+    }
+}

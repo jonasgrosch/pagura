@@ -2,8 +2,11 @@
 
 use crate::NewObject;
 use crate::writer::Writer;
-use pagura_core::{Error, Limits, Name, ObjectId, Result, ResultExt, Value};
+use pagura_core::{Error, Limits, Meter, Name, ObjectId, Result, ResultExt, Value};
 use std::collections::BTreeMap;
+
+/// The `Limit` message of the per-object value budget.
+const VALUE_BUDGET: &str = "writer value budget exceeded";
 
 /// Collects objects and writes them as one new document.
 #[derive(Debug, Default)]
@@ -68,11 +71,11 @@ impl Builder {
         if !is_catalog || catalog.1.stream.is_some() {
             return Err(Error::invalid_argument("Root must be a Catalog dictionary"));
         }
-        let mut nodes = 0;
         for (&number, (generation, object)) in &self.objects {
             let id = ObjectId::new(number, *generation);
-            self.validate(&object.value, 0, &mut nodes)
-                .map_err(|error| error.in_object(id))?;
+            // Each object has its own value budget, as when it is parsed.
+            let mut nodes = Meter::new(self.limits.value_nodes, VALUE_BUDGET);
+            self.validate(&object.value, 0, &mut nodes).in_object(id)?;
             if let Some(data) = &object.stream {
                 if object.value.as_dictionary().is_none() {
                     return Err(
@@ -116,11 +119,11 @@ impl Builder {
         Ok(writer.into_bytes())
     }
 
-    fn validate(&self, value: &Value, depth: usize, nodes: &mut usize) -> Result<()> {
-        if depth > self.limits.depth || *nodes >= self.limits.value_nodes {
-            return Err(Error::limit("writer value budget exceeded"));
+    fn validate(&self, value: &Value, depth: usize, nodes: &mut Meter) -> Result<()> {
+        if depth > self.limits.depth {
+            return Err(Error::limit("writer nesting depth exceeded"));
         }
-        *nodes += 1;
+        nodes.charge(1)?;
         match value {
             Value::Real(value) if !value.is_finite() => {
                 Err(Error::invalid_argument("PDF reals must be finite"))
