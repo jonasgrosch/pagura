@@ -1,6 +1,6 @@
 //! Simple encodings and the glyph-name algorithm (9.6.5, 9.10.2, Annex D).
-use crate::tables;
-use pagura_core::{Dictionary, Error, Limits, Name, Result, Value};
+use crate::{repairs, report::Report, tables};
+use pagura_core::{Diagnostic, Dictionary, Error, Limits, Name, Result, Value};
 use pagura_document::Document;
 
 pub(crate) type Encoding = [Option<Name>; 256];
@@ -45,31 +45,90 @@ pub(crate) fn font_name<'a>(document: &'a Document, font: &'a Dictionary) -> Res
         .map_or(b"", Name::as_bytes))
 }
 
-pub(crate) fn base(name: &[u8]) -> Result<Encoding> {
-    let table = match name {
-        b"StandardEncoding" => tables::STANDARD,
-        b"MacRomanEncoding" => tables::MAC_ROMAN,
-        b"WinAnsiEncoding" => tables::WIN_ANSI,
-        b"MacExpertEncoding" => tables::MAC_EXPERT,
-        b"PDFDocEncoding" => tables::PDF_DOC,
-        b"Symbol" => tables::SYMBOL,
-        b"ZapfDingbats" => tables::ZAPF_DINGBATS,
-        _ => return Err(Error::syntax("unknown simple font encoding")),
-    };
-    let mut encoding = std::array::from_fn(|_| None);
-    for &(code, name) in table {
-        encoding[usize::from(code)] = Some(Name::new(name.as_bytes()));
-    }
-    Ok(encoding)
+/// The predefined simple-font encodings of Annex D (Tables D.2, D.4–D.6).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "PDFDoc, Symbol and ZapfDingbats are Annex D reference tables checked by tests; \\
+                  fonts take those encodings from their programs or providers"
+    )
+)]
+pub(crate) enum BaseEncoding {
+    Standard,
+    MacRoman,
+    WinAnsi,
+    MacExpert,
+    PdfDoc,
+    Symbol,
+    ZapfDingbats,
 }
 
-fn predefined(name: &[u8]) -> Result<Encoding> {
-    match name {
-        b"MacRomanEncoding" | b"MacExpertEncoding" | b"WinAnsiEncoding" => base(name),
-        _ => Err(Error::syntax("invalid PDF predefined simple encoding")),
+impl BaseEncoding {
+    /// The encodings an `/Encoding` or `/BaseEncoding` name may select (Table 112).
+    fn from_pdf_name(name: &[u8]) -> Option<Self> {
+        Some(match name {
+            b"MacRomanEncoding" => Self::MacRoman,
+            b"MacExpertEncoding" => Self::MacExpert,
+            b"WinAnsiEncoding" => Self::WinAnsi,
+            _ => return None,
+        })
+    }
+
+    /// Any Annex D encoding by its table name.
+    #[cfg(test)]
+    pub(crate) fn from_table_name(name: &[u8]) -> Option<Self> {
+        Some(match name {
+            b"StandardEncoding" => Self::Standard,
+            b"MacRomanEncoding" => Self::MacRoman,
+            b"WinAnsiEncoding" => Self::WinAnsi,
+            b"MacExpertEncoding" => Self::MacExpert,
+            b"PDFDocEncoding" => Self::PdfDoc,
+            b"Symbol" => Self::Symbol,
+            b"ZapfDingbats" => Self::ZapfDingbats,
+            _ => return None,
+        })
+    }
+
+    const fn table(self) -> &'static [(u8, &'static str)] {
+        match self {
+            Self::Standard => tables::STANDARD,
+            Self::MacRoman => tables::MAC_ROMAN,
+            Self::WinAnsi => tables::WIN_ANSI,
+            Self::MacExpert => tables::MAC_EXPERT,
+            Self::PdfDoc => tables::PDF_DOC,
+            Self::Symbol => tables::SYMBOL,
+            Self::ZapfDingbats => tables::ZAPF_DINGBATS,
+        }
+    }
+
+    /// The code-to-name table, undefined codes absent.
+    pub(crate) fn names(self) -> Encoding {
+        let mut encoding = std::array::from_fn(|_| None);
+        for &(code, name) in self.table() {
+            encoding[usize::from(code)] = Some(Name::new(name.as_bytes()));
+        }
+        encoding
     }
 }
 
+/// The predefined encoding a name selects. An unknown name is the reported
+/// repair `font.encoding-name`: the font's default encoding applies.
+fn predefined(document: &Document, name: &Name) -> Result<Option<BaseEncoding>> {
+    if let Some(encoding) = BaseEncoding::from_pdf_name(name.as_bytes()) {
+        return Ok(Some(encoding));
+    }
+    Report::new(document).diagnostic(Diagnostic::new(
+        repairs::ENCODING_NAME,
+        "unknown simple-font encoding name; using the font's default encoding (Table 112)",
+    ))?;
+    Ok(None)
+}
+
+/// A simple font's `/Encoding` over `default`, the encoding that applies
+/// without one: a predefined name, or a dictionary with an optional
+/// `/BaseEncoding` and `/Differences` (9.6.5.1).
 pub(crate) fn load(
     document: &Document,
     value: Option<&Value>,
@@ -80,7 +139,7 @@ pub(crate) fn load(
     };
     let value = document.resolve(value)?;
     if let Some(name) = value.as_name() {
-        return predefined(name.as_bytes());
+        return Ok(predefined(document, name)?.map_or(default, BaseEncoding::names));
     }
     let dict = value
         .as_dictionary()
@@ -90,7 +149,7 @@ pub(crate) fn load(
             .resolve(value)?
             .as_name()
             .ok_or_else(|| Error::syntax("invalid BaseEncoding"))?;
-        predefined(name.as_bytes())?
+        predefined(document, name)?.map_or(default, BaseEncoding::names)
     } else {
         default
     };
@@ -255,14 +314,14 @@ mod tests {
     }
 
     #[test]
-    fn names_and_encoding_exceptions() -> Result<()> {
+    fn names_and_encoding_exceptions() {
         assert_eq!(unicode(b"uni00410042_u1F600.alt").as_deref(), Some("AB😀"));
         assert_eq!(unicode(b"Euro_uni0041D800_B").as_deref(), Some("€B"));
         for name in [b"uniD800".as_slice(), b"u110000", b"uni00e9", b"unknown"] {
             assert_eq!(unicode(name), None);
         }
         assert_eq!(unicode(b"A__B").as_deref(), Some("AB"));
-        let win = base(b"WinAnsiEncoding")?;
+        let win = BaseEncoding::WinAnsi.names();
         assert_eq!(
             win[160].as_ref().map(Name::as_bytes),
             Some(b"space".as_slice())
@@ -275,11 +334,10 @@ mod tests {
             win[129].as_ref().map(Name::as_bytes),
             Some(b"bullet".as_slice())
         );
-        let mac = base(b"MacRomanEncoding")?;
+        let mac = BaseEncoding::MacRoman.names();
         assert_eq!(
             mac[219].as_ref().map(Name::as_bytes),
             Some(b"currency".as_slice())
         );
-        Ok(())
     }
 }

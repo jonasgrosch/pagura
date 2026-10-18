@@ -329,7 +329,9 @@ fn base_encoding_vectors() -> Result<()> {
     ] {
         let name = format!("encoding-{name}");
         let base = fixture("text", &format!("{name}.base"));
-        let encoding = encoding::base(&base)?;
+        let encoding = encoding::BaseEncoding::from_table_name(&base)
+            .ok_or_else(|| Error::syntax("unknown base encoding"))?
+            .names();
         for value in expected(&name)? {
             let row = rows(&value)?;
             let code =
@@ -389,7 +391,9 @@ fn annex_code_name_vectors() -> Result<()> {
         "Symbol",
         "ZapfDingbats",
     ] {
-        let encoding = encoding::base(name.as_bytes())?;
+        let encoding = encoding::BaseEncoding::from_table_name(name.as_bytes())
+            .ok_or_else(|| Error::syntax("unknown base encoding"))?
+            .names();
         for value in expected(&format!("annex-{name}"))? {
             let row = rows(&value)?;
             let code =

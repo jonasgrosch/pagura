@@ -257,31 +257,29 @@ fn null_unicode_entries_are_absent_without_repairs() -> Result<()> {
 }
 
 #[test]
-fn widths_length_mismatches_are_reported_repairs() -> Result<()> {
-    for name in [
-        "repair-widths-short",
-        "repair-widths-long",
-        "repair-widths-reversed",
+fn simple_font_dictionary_faults_are_reported_repairs() -> Result<()> {
+    for (name, tag) in [
+        ("repair-widths-short", repairs::WIDTHS_LENGTH),
+        ("repair-widths-long", repairs::WIDTHS_LENGTH),
+        ("repair-widths-reversed", repairs::WIDTHS_LENGTH),
+        ("repair-encoding-name", repairs::ENCODING_NAME),
+        ("repair-encoding-base", repairs::ENCODING_NAME),
     ] {
         let strict = open(name, Recovery::Strict)?;
         let error = PdfFont::load(&strict, dictionary(&strict)?)
             .err()
             .ok_or_else(|| Error::syntax("expected a strict rejection"))?;
-        assert_eq!(
-            error.repair,
-            Some(repairs::WIDTHS_LENGTH),
-            "{name}: {error}"
-        );
+        assert_eq!(error.repair, Some(tag), "{name}: {error}");
         assert!(strict.diagnostics().is_empty(), "{name}");
         let repaired = open(name, Recovery::Repair)?;
         let font = PdfFont::load(&repaired, dictionary(&repaired)?)?;
         check_glyphs(&font, name, "out")?;
-        assert_eq!(tags(name)?, [repairs::WIDTHS_LENGTH.as_str()], "{name}");
+        assert_eq!(tags(name)?, [tag.as_str()], "{name}");
         assert!(
             repaired
                 .diagnostics()
                 .iter()
-                .any(|item| item.repair() == Some(repairs::WIDTHS_LENGTH)),
+                .any(|item| item.repair() == Some(tag)),
             "{name}"
         );
     }
