@@ -8,8 +8,8 @@ use pagura_core::{Error, Result};
 struct Span {
     first: u32,
     end: u32,
-    low: f64,
-    high: f64,
+    first_weight: f64,
+    last_weight: f64,
     normalization: f64,
 }
 
@@ -22,17 +22,27 @@ impl Span {
         }
         let low = a.min(b).clamp(0.0, f64::from(maximum));
         let high = a.max(b).clamp(0.0, f64::from(maximum));
+        let first = coordinate(low.floor(), maximum);
+        let end = coordinate(if high > low { high.ceil() } else { low.floor() }, maximum);
+        let weight =
+            |cell: u32| (high.min(f64::from(cell) + 1.0) - low.max(f64::from(cell))).max(0.0);
         Ok(Self {
-            first: coordinate(low.floor(), maximum),
-            end: coordinate(if high > low { high.ceil() } else { low.floor() }, maximum),
-            low,
-            high,
+            first,
+            end,
+            first_weight: weight(first),
+            last_weight: weight(end.saturating_sub(1)),
             normalization: if high > low { 1.0 / (high - low) } else { 0.0 },
         })
     }
 
     fn weight(self, cell: u32) -> f64 {
-        (self.high.min(f64::from(cell) + 1.0) - self.low.max(f64::from(cell))).max(0.0)
+        if cell == self.first {
+            self.first_weight
+        } else if cell + 1 == self.end {
+            self.last_weight
+        } else {
+            1.0
+        }
     }
 
     fn normalize(self, value: Texel) -> Texel {
@@ -142,10 +152,13 @@ impl Prepared {
             .vertical
             .ok_or(Error::invalid_argument("missing image row"))?
             .1;
-        let column = x
+        let index = x
             .checked_sub(self.origin)
             .and_then(|n| usize::try_from(n).ok())
-            .and_then(|n| self.columns.get_mut(n))
+            .ok_or(Error::invalid_argument("pixel outside image reduction"))?;
+        let column = self
+            .columns
+            .get_mut(index)
             .ok_or(Error::invalid_argument("pixel outside image reduction"))?;
         charge(
             work,
@@ -196,6 +209,59 @@ impl Prepared {
 mod tests {
     use super::*;
     use pagura_raster::Transform;
+
+    #[test]
+    fn streamed_rows_preserve_exact_samples_across_chunks_and_flips() {
+        for inverse in [
+            Transform::new(2.0, 0.0, 0.0, 0.25, 0.0, 0.0),
+            Transform::new(-2.0, 0.0, 0.0, -0.25, 8.0, 8.0),
+            Transform::new(0.0, -2.0, 0.25, 0.0, 0.0, 8.0),
+            Transform::new(2.25, 0.0, 0.0, 0.3, -0.5, -0.25),
+        ] {
+            let make = || Sampler {
+                width: 8,
+                height: 8,
+                interpolate: true,
+                inverse,
+            };
+            let mut sampler = make().prepare(0, 4, usize::MAX).unwrap();
+            let mut visits = [0; 64];
+            let texel = |index: usize| Texel {
+                color: [f64::from(u32::try_from(index).unwrap()).powi(2) / 4096.0; 4],
+                alpha: 0.5,
+                shape: 1.0,
+            };
+            for y0 in (0..32).step_by(3) {
+                for x0 in [0, 2] {
+                    let mut chunk = make().prepare(x0, 2, usize::MAX).unwrap();
+                    for y in y0..(y0 + 3).min(32) {
+                        for x in x0..x0 + 2 {
+                            let actual = sampler
+                                .sample(x, y, &mut 0, usize::MAX, |index| {
+                                    visits[index] += 1;
+                                    Ok(texel(index))
+                                })
+                                .unwrap();
+                            let expected = chunk
+                                .sample(x, y, &mut 0, usize::MAX, |index| Ok(texel(index)))
+                                .unwrap();
+                            assert_eq!(
+                                actual.color.map(f64::to_bits),
+                                expected.color.map(f64::to_bits)
+                            );
+                            assert_eq!(actual.alpha.to_bits(), expected.alpha.to_bits());
+                            assert_eq!(actual.shape.to_bits(), expected.shape.to_bits());
+                        }
+                    }
+                }
+            }
+            if inverse.a.abs() == 2.0 || inverse.b.abs() == 2.0 {
+                // Two source columns contribute to each destination column;
+                // each horizontal integral is evaluated only once per row.
+                assert_eq!(visits, [1; 64]);
+            }
+        }
+    }
 
     #[test]
     fn large_area_half_ties_match_independent_rational_vectors() {
