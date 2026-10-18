@@ -94,3 +94,25 @@ The 8-bit surface is not the final imaging model: transparency groups, soft
 masks and blend modes need group surfaces with higher precision. That change
 is local to composition and does not affect the display list or rasterizer
 interfaces. GPU backends are out of scope until the CPU reference is complete.
+
+## Amendment: overprint preview (2026-10-18)
+
+Overprint preview is controlled by `OverprintPreview`. Auto is the default:
+simulate only when PDF/X print intent is declared by an OutputIntents
+dictionary with `S /GTS_PDFX`, or a `GTS_PDFXVersion` string in Info. Catalog
+and page output intents are recognized, including indirect entries. This
+detects declarations, not PDF/X conformance; malformed advisory metadata is
+treated as absent. Always simulates wherever overprinting affects the result.
+Never ignores overprint and paints ordinary composite content, including
+within groups and soft masks.
+
+When page simulation is needed, a CMYK default process device is used while
+explicit group blending spaces are retained. Named plates are preserved
+through groups; soft masks use alternates. At output, each name's first
+painted alternate definition is used and CMYK ink equivalents are added with
+saturation before RGB conversion. At most 32 spot plates are supported, with
+`Limit` above that. This is a display approximation: physical ink interaction
+and destination ICC output transforms are not modelled.
+
+An ICC-based transparency group composites in its N-component device base
+without inverse ICC transforms; its sources keep their forward transforms.

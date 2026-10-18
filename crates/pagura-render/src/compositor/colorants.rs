@@ -277,7 +277,8 @@ impl Context {
                 }
             }
         }
-        if model == Model::Cmyk
+        if self.overprint == crate::overprint::Policy::Simulate
+            && model == Model::Cmyk
             && !result.spot
             && direct
             && state.overprint

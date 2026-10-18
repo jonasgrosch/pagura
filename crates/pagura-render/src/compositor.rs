@@ -220,6 +220,7 @@ impl Backdrop<'_> {
 }
 
 struct Context {
+    overprint: crate::overprint::Policy,
     elide_opaque_groups: bool,
     separations: Arc<Separations>,
     preview: colorants::Preview,
@@ -496,7 +497,8 @@ impl Context {
                 && p.composite.simple()
                 && !knockout
                 && let Some(color) = color
-                && target.fill_solid(start, coverage.len(), color)?
+                && color.preserve == [false; 4]
+                && target.fill_solid(start, coverage.len(), color.color)?
             {
                 continue;
             }
@@ -1024,7 +1026,8 @@ pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) ->
         list.crop.height(),
     );
     let mut context = Context {
-        separations: list.separations()?,
+        overprint: options.overprint.resolve(list.print_intent),
+        separations: list.preview_separations(options)?,
         preview: colorants::Preview::default(),
         spot_batch: None,
         mask_colors: false,
@@ -1386,6 +1389,7 @@ mod tests {
                 let options = RenderOptions {
                     scale: 1.375,
                     background,
+                    ..RenderOptions::default()
                 };
                 let full = list.render(&options).unwrap();
                 let (width, height) = list.device_size(&options).unwrap();
@@ -1445,11 +1449,7 @@ mod tests {
                 [p.alpha, p.group, p.shape].map(f64::to_bits),
             )
         };
-        let source = Source {
-            color,
-            alpha: 1.0,
-            shape: 1.0,
-        };
+        let source = Source::new(color, 1.0, 1.0);
         for (pixel, mut expected) in surface.pixels.iter().zip(backdrops) {
             expected.paint(
                 source,
@@ -1478,6 +1478,7 @@ mod tests {
         let path = Arc::new(path.finish());
         let clip = Mask::from_path(2, 2, &path, Transform::IDENTITY, FillRule::NonZero, 4).unwrap();
         let mut context = Context {
+            overprint: crate::overprint::Policy::Ignore,
             elide_opaque_groups: false,
             separations: Arc::new(Separations::default()),
             preview: colorants::Preview::default(),

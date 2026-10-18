@@ -5,6 +5,346 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "overprint/preview-pdfx-intent",
+      "kind": "pdf",
+      "description": "preview-pdfx-intent",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-pdfx-intent.pdf",
+      "sha256": "55fe8185147bff032c0092df0cde5a3311e196a0419d1f7028aa03a8216ae73b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-pdfx-intent.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-cmyk-group",
+      "kind": "pdf",
+      "description": "preview-cmyk-group",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-cmyk-group.pdf",
+      "sha256": "7116f6c1792882e10e7bbac7480fd5bd949634574f0ba6d2e6617e2818ef2f82",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-cmyk-group.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-no-intent",
+      "kind": "pdf",
+      "description": "preview-no-intent",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-no-intent.pdf",
+      "sha256": "4b93cb3afbacc0387a616b1b3169222fa7fbbf282513e92fa270b7043b761cd1",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-no-intent.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-pdfx-info",
+      "kind": "pdf",
+      "description": "preview-pdfx-info",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-pdfx-info.pdf",
+      "sha256": "817f1a924427f6aa56c4a4ea2cdcb851a6eadf21ea3ff53edc03a14382610b39",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-pdfx-info.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-other-intent",
+      "kind": "pdf",
+      "description": "preview-other-intent",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-other-intent.pdf",
+      "sha256": "f3464b157f88c6b23681297ce7a42b23a4a3acdfb27b43531113861d2da70bba",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-other-intent.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-indirect-intent",
+      "kind": "pdf",
+      "description": "preview-indirect-intent",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-indirect-intent.pdf",
+      "sha256": "d43b24ce84e3b3ef8a32c897f1f0f6f4a6a87e2f7e284a66db913303a0d67c33",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-indirect-intent.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-page-intent",
+      "kind": "pdf",
+      "description": "preview-page-intent",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-page-intent.pdf",
+      "sha256": "962b78285f10757088b5028f02a43e0092675de1da1a4cf50dd2cc5a0a3fe8b8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-page-intent.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-page-overrides-catalog",
+      "kind": "pdf",
+      "description": "preview-page-overrides-catalog",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-page-overrides-catalog.pdf",
+      "sha256": "1b4c5f15ad3a9f7100ddfa203a3c915dd615f5fd1f9b46e66262d2e7f2ebc7bf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-page-overrides-catalog.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-empty-page-intents",
+      "kind": "pdf",
+      "description": "preview-empty-page-intents",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-empty-page-intents.pdf",
+      "sha256": "a9a4ce2c6e3dad73c199ae106bfeb9a1f146ca3efe4dbb3b26af7985558e4992",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-empty-page-intents.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-indirect-page-intents",
+      "kind": "pdf",
+      "description": "preview-indirect-page-intents",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-indirect-page-intents.pdf",
+      "sha256": "f84c84a32a120519bb79cf3bc3b1188e8de99b4fe8eb1d53419f635d0d530681",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-indirect-page-intents.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-invalid-page-intents",
+      "kind": "pdf",
+      "description": "preview-invalid-page-intents",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-invalid-page-intents.pdf",
+      "sha256": "2667213dc2beecef04dc83a07b1e391765d58dde306028bd766325f98f4e902c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-invalid-page-intents.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-unresolved-page-intents",
+      "kind": "pdf",
+      "description": "preview-unresolved-page-intents",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-unresolved-page-intents.pdf",
+      "sha256": "b580bc9bde3fa89ecede2130bc311c3b2792821f2473104a9c9953a49a09ebbb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-unresolved-page-intents.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-page-intent-with-pdfx-info",
+      "kind": "pdf",
+      "description": "preview-page-intent-with-pdfx-info",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-page-intent-with-pdfx-info.pdf",
+      "sha256": "0038e6506697515806d6bf7216fec950c27335f4a13e862e4314162ab87a1b7c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-page-intent-with-pdfx-info.ppm",
+      "oracle_sha256": "635a40e275633f5348fc7668fa4f16ca063a16877b111d3166a933d2e506b176",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-malformed-intent",
+      "kind": "pdf",
+      "description": "preview-malformed-intent",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-malformed-intent.pdf",
+      "sha256": "b8c35399a2ef24b8f5cd73bab675582fb86e5f29f12aa7cda87ef457c042843b",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-malformed-intent.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-malformed-info",
+      "kind": "pdf",
+      "description": "preview-malformed-info",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-malformed-info.pdf",
+      "sha256": "55fa4b3ecfb7032c09c36fb1f08f02272cba0a1dbf0d0d86d45fb98bd061be03",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-malformed-info.ppm",
+      "oracle_sha256": "3b793ae1253f13bc3259a1897494c3a78d9fe71b771287c4be5d16069759f92f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 0
+    },
+    {
+      "id": "overprint/preview-cmyk-mask",
+      "kind": "pdf",
+      "description": "Preview policy also controls compatible overprinting inside luminosity masks",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-cmyk-mask.pdf",
+      "sha256": "6820c1e3434dce584ffbcdd973ee38235d93b21c9cb0a7c95343d218023e1702",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-cmyk-mask.ppm",
+      "oracle_sha256": "7bf24d9bd74ce4c29c61c9ca27073330728de9315e1f13e761b399c63f19fc1f",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
+      "id": "overprint/preview-cmyk-mask-no-intent",
+      "kind": "pdf",
+      "description": "Preview policy also controls compatible overprinting inside luminosity masks",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/preview-cmyk-mask-no-intent.pdf",
+      "sha256": "58eda1ed0234c7c5ae42b72765b68c3606ca9937420fb0bec2e52b2e73f6e360",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/preview-cmyk-mask-no-intent.ppm",
+      "oracle_sha256": "a915a0ceb9bf6db12e47b30c55033bfee77b3a1a13937ca6006feef2f55dbbf2",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
       "id": "overprint/noop-rgb-multiply-off",
       "kind": "pdf",
       "description": "RGB Multiply is independent of no-op overprint flags",
@@ -13,7 +353,7 @@
         "overprint-flags"
       ],
       "path": "corpus/generated/overprint/noop-rgb-multiply-off.pdf",
-      "sha256": "b05789b5bf39568350c8a5fc8ccf5c8a5297fb7782542304e08f7c252592f16d",
+      "sha256": "9e24c7745045ebefe4bfc7c9baab32e5a6138913f38bc8945ac90a7079509d56",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -32,7 +372,7 @@
         "overprint-flags"
       ],
       "path": "corpus/generated/overprint/noop-rgb-multiply-on.pdf",
-      "sha256": "d9b1e500f9b69991a54a74d34aab3e6d3074f85b811040c9c0c37dba308ab44b",
+      "sha256": "055d911991cc8c9deaa3128aa45e441a08d0cd2147ce2500132a81f27d02e0bb",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -52,7 +392,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/fill-on.pdf",
-      "sha256": "d9103d2b82548911dcadcdc0f833221baf2abdc2024c27cfdc8c40de0bffc94b",
+      "sha256": "55fe8185147bff032c0092df0cde5a3311e196a0419d1f7028aa03a8216ae73b",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -73,7 +413,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/fill-zero.pdf",
-      "sha256": "c53932e77e0be593c471a9e4fba99becc872d38fd3d5fe380a68e7ee52a8f69a",
+      "sha256": "da72b36eca354017b4e8244d3aac7facf9ba437d46a139a46213f6d66f9131ac",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -94,7 +434,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/fill-off.pdf",
-      "sha256": "156a84f36ddba8674552d275948a99f319a210f99f484966f3dae9eeca6e8515",
+      "sha256": "436741529c7b7f7680c1421dae8170ad2a54b0c1d10b365d832feed7d72cef17",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -115,7 +455,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/fill-fill.pdf",
-      "sha256": "a3d202f2184220298068b19f53b19a0096b0128b79574c7898bad5b69b650468",
+      "sha256": "5a8eb321c8f85dc0b49b43aa83aad6aff258e5741a6a62f455dc4aaae4428770",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -136,7 +476,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/fill-stroke.pdf",
-      "sha256": "1b7a6f5bbc07128d410c3a04fe6592a769bbf6644660a6d4dbf6670f5b6c8437",
+      "sha256": "29fd509dd3d22c60f2e18d31e0d3f68f567350fc22ff9752b66eefbfb99ef4ad",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -157,7 +497,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/stroke-on.pdf",
-      "sha256": "d243ca8f1cb99d8d02ec5700a110b17d68401291b95bec54e3f436fde20b5d6d",
+      "sha256": "a2abc711a45c276587fb7cd80c57d280bc601546b8612c30dde03f51a619461a",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -178,7 +518,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/stroke-off.pdf",
-      "sha256": "6192831ea8af48f6fc54c42bd9efb5057454ad09d06a984430259b8c5a459769",
+      "sha256": "6747756e04cb090140ae5ad4da51485472068f3ba38e1849c9596f50bc6b289a",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -199,7 +539,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/stroke-fill.pdf",
-      "sha256": "5425124d085a31fa5164ca861403a516dcbe140d5e0f1e82db36230afc03c9c3",
+      "sha256": "2ff797c9df3aabbaea168e4392d8bdb55df94efc26b13403aab7ffa0eae696d0",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -220,7 +560,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/stroke-stroke.pdf",
-      "sha256": "76099f2d7b23bc453d13a5579b1d9a9206baf32cc318c98048f682a84d5e6395",
+      "sha256": "eaa4ff284dbe7f19caa74d5b2c782a94a30c03caba972c470647ca66cb8275c1",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -241,7 +581,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/mode-default-zero.pdf",
-      "sha256": "9d6ebb3415804badad007842f6b788ba9f0e9ab3fd69bc9e7a72d537e197232d",
+      "sha256": "6a4dbdb63fa5b88dc56a52b4341361e19e0c265ddfe313d05fd3e9d2f59d8d55",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -262,7 +602,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/state-restored.pdf",
-      "sha256": "81da18abf806c05a115e95f2f09f6913a97c6ff2eef534fe939b858e7a1fce07",
+      "sha256": "cb3836432e9bb784d1509a3d169e025e009be00bc25d4640678449484f2bc8db",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -283,7 +623,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/explicit-op-precedes-OP.pdf",
-      "sha256": "48d7dafe1a025b83be502e46e2d2198f233424ec003560a40d87d28de75e6a41",
+      "sha256": "e3fe86e9c3d8d6bcdff9491135f3a9feaf8106ae1fbb5c563b452f4a30a752ab",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -304,7 +644,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/opm-inherited.pdf",
-      "sha256": "6908c73d85b1778be2d37171acf9ffb17c36f54150b6a2375bfd92b32040b635",
+      "sha256": "e151cb3da6175598e9681d39ac520ce0b5c2e336c3c2acebeae21ca59dac51a5",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -324,7 +664,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/zero-tint-is-not-quantized.pdf",
-      "sha256": "93e3c996c576a5d800f6465363c53b63cf8b54dddc0c440f5d94ca00ca482175",
+      "sha256": "19a4445131a598fab101089c7258550db865b0a72859b5dff1ddd513abffc758",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -344,7 +684,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/indexed-base-cmyk.pdf",
-      "sha256": "cb3edd986216019d5ba376733f04239998a3459a295b91f3a984d35328413cd7",
+      "sha256": "d14dfe8c218ca42ef2c6824dd1b43bb1d80088437b854b92e5033e935540aaf7",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -364,7 +704,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/partial-opacity.pdf",
-      "sha256": "ca9fa84714eeece9b51374421dc5f994f51eeada5a3aa7039c4c3ae236ca731c",
+      "sha256": "e0779d7c8f59be456d3c8d1beb4787d8a0fac6484f7742f6023a080891f5649e",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -384,7 +724,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/screen-implicit-group.pdf",
-      "sha256": "93cea5af24daf9f0c22c8308e03e6e8c2763e8f9c1652ccc89110be7ccf9fcfc",
+      "sha256": "0120fb280bff9b2c9fba67109b873786e5278e677df59c0cb0bbb8ecdbb9925a",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -404,7 +744,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/separation-on.pdf",
-      "sha256": "ae76a63e0b6a0336850948f82936e031e3fa84663d997f8afd35c0217d0d3287",
+      "sha256": "b605fbde24d68164fb23265c09369be69799d38f4692792107d23f7219ad5d67",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -424,7 +764,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/devicen-on.pdf",
-      "sha256": "03383e3fd27ebcea310950226e8d5cc9c6709e4344e50419aaaae351a5cd26ed",
+      "sha256": "4e4a720f1ec574da6f720a8c647fd7366724117888282f54e9f882f2979b83cd",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -444,7 +784,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/separation-off.pdf",
-      "sha256": "c740bbf8d7e91b01cf2417a47576b03867709332fa13d7ef7cca3acf481afc48",
+      "sha256": "0e668875e9693c7cb7ff550a8f33aa94db18a03436b73111cc83207d9ecedf5c",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -464,7 +804,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/devicen-off.pdf",
-      "sha256": "c9696b7ab81eec3e78fe39778b3241ba602cb471ee4c73ba94a82da96846259e",
+      "sha256": "3901c29a0c626c4a5021e9c5933bdfef756cde375f4da0a28217cbe0b68544e4",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -484,7 +824,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/process-preserves-spot.pdf",
-      "sha256": "e71ac15e96c6a558285d250f54a29b208a84dc3b8fb5e7ef69b7e07c4dd76a6c",
+      "sha256": "0fe134b41939e4a5200cdc56753d1e4f2b66aac7c5b5968b32e861d666a687b7",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -504,7 +844,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/process-erases-spot.pdf",
-      "sha256": "5a415fdad5e6e5924052dc76a57a7c4c1f754e3f983984daa80af68144308073",
+      "sha256": "b91efa178b6d769a4dc8452b457058b1400d2616b62bba4ba795a122fdb7c27c",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -524,7 +864,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/spot-replaces-same-name.pdf",
-      "sha256": "aab1664f6c11e78456ebf63a152ef05e86bef953b49ebfdb9ade9b4d1df2e4d7",
+      "sha256": "9d54aeabd6bf4b07b1b03dd898de21d37833adc611ff3d22dd8bafe6abd52f63",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -544,7 +884,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/devicen-reuses-separation-name.pdf",
-      "sha256": "479d1c53a654944e1b507b9f686498deb7a6dcbe5f0d4cd03cb67343b37fe6a4",
+      "sha256": "4f7924b7442d681853a4156e452594035b309b8f952888dc105e9151e6a28ec7",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -564,7 +904,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/spot-over-spot.pdf",
-      "sha256": "a261650062795490d8e80ad2d2c361c1173712ed345353b20cc57f354f67a047",
+      "sha256": "1aad6bd9f674806e8fbc70518f95e8748e75c792eb260ceb599edea38bc8f628",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -584,7 +924,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/spot-difference-uses-normal.pdf",
-      "sha256": "5fefa0587dbc4b0341350a9e05a25a34cdbf72cea81870676d558a21312fb57b",
+      "sha256": "667c0bc57eb14aa4f664502eeb3978766c7b29cace48f82f778552b4f901954f",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -605,7 +945,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/named-process-separation.pdf",
-      "sha256": "9175e2ef48ba8f79c641abe0a463b63962dbe93e248a60f8e5dd0736f39a711c",
+      "sha256": "fb7d43b3b17d16af88900c76b289a24cc0970fa4d8df58e77f9e223957f52e1e",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -626,7 +966,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/named-process-devicen.pdf",
-      "sha256": "380826fed70cc232c9308ee966a851a71773f03e75437f0e7580458f91de7b78",
+      "sha256": "f366879e2e2e6877b89403868d98a12be5cac73bfe33673b1f9581bb281eab1e",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -646,7 +986,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/named-zero-tint-erases.pdf",
-      "sha256": "2f9cb50e72b3f3f4c49ea5d0037fc66aa6373393924af9a9daecc6389254fb3d",
+      "sha256": "d9f2b21d7a051478f47bfbc2ab9631fff8e594d35369a08086c604a3512c9b9b",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -667,7 +1007,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/combined-fill-stroke-on.pdf",
-      "sha256": "942336ec04a801ab577ce48a6169ea5f09ef6f0889f4b749ad98b7c291f5364f",
+      "sha256": "da8223ba7f4828ff927cc69b7e0d6c73e266a3859ece3685c280aa24eec2eb9b",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -688,7 +1028,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/combined-fill-stroke-half.pdf",
-      "sha256": "8bd0b477e71699b2389b98a70808d7812d1e9d7c0734015ae3c10532f5bb16b9",
+      "sha256": "ff668649f6906128ca5e3beb625a346034e0e26311428108f015e2087b2dae0e",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -709,7 +1049,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/combined-fill-stroke-off.pdf",
-      "sha256": "03d60bb004838d39ab2dff8170849a5fb33302772ef81feb4fcc20834f7939f1",
+      "sha256": "a36d0cc8a9373bad1819d033160a60dea824ff38d3da14ed606bbeef4c96b88f",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -729,7 +1069,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/fractional-coverage.pdf",
-      "sha256": "7aab7ad49146055e089508cd333f43de574c355bd36bd354f497b19c9e600594",
+      "sha256": "412b3bca2adb20c7d54108201dee983a4f7cd72b6d5e3184d2ffb7ea31549832",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -750,7 +1090,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/group-process-inherited.pdf",
-      "sha256": "ab515d810d480d0a029d37bd816ecc5d608980ec1530b8aa4f752e5eaa5e836b",
+      "sha256": "cf39f6b270dc52c69451ea938f346330811b80794a9e22146012ab2f4ee2d9d2",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -771,7 +1111,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/group-spot-inherited.pdf",
-      "sha256": "e2efe747ff42bb546e801a8c5242e4d23c3be61dabbe82da50c2669c99633f3f",
+      "sha256": "9407cc1ca0ff2da95d23155f70682e25751be1da874fc3835e1c4eab25b3eab6",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -792,7 +1132,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/group-process-isolated.pdf",
-      "sha256": "f423383aba1db473236a08159f7c76297ab9281102bedc681410d69f038fb6e3",
+      "sha256": "f0188a9044f577dbde7d90bb132d5bc4ac99491ed077965f84ef99714294d266",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -813,7 +1153,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/group-spot-isolated.pdf",
-      "sha256": "35c2a74f1262d108adba625855581a589aa6e74e179436962486e681c62e181e",
+      "sha256": "9cffd379f822bdec5c85f51a33c28256511b6ba4a7e5f00d8dcb266bea673a6a",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -833,7 +1173,7 @@
         "overprint-groups"
       ],
       "path": "corpus/generated/overprint/group-invocation-does-not-overprint.pdf",
-      "sha256": "9f498fdef9f963ae2946d9e884de7e41c394d3df1e0c485b4d20b1eb2f5735b0",
+      "sha256": "69ea74ec647fc4160c8da1900a935d2ae475a9839af1888205d87a041ae20dd8",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -854,7 +1194,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/group-opacity.pdf",
-      "sha256": "78a958a08a60e930fd32ba29c27fd0206ea1016cf412247331f3e0b9bde80e07",
+      "sha256": "2bbc7f3f204ae774e59b08734f532c16d1adc9fdd4bf8d9e0aa0b507066b9306",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -874,7 +1214,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/image-ignores-nonzero-mode.pdf",
-      "sha256": "534a8d5c810850907d0ed3ad4d21f6646ca34a75f2dfd197a7b9a6eca0cc8eae",
+      "sha256": "e5deb3fa1cea92fa249830b530d225b7bfc8ef695a6415fb416de7f27496f3cd",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -894,7 +1234,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/shading-ignores-nonzero-mode.pdf",
-      "sha256": "b075905fb80c9cb520f8294ebcb1169589ae93266733beb6930dcae6d5a4d427",
+      "sha256": "0e49b258b2faaf040cf82731fcfa93421c7f17e8ef3f446d6399fe9963742ac7",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -914,7 +1254,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/stencil-uses-current-nonzero-mode.pdf",
-      "sha256": "f73236b5eaa93d13b84ac856561b158ba7360b4e2c38bbed132d4fd16c9efd17",
+      "sha256": "a20b251155defb1aaf8e4ae29ff1aff990b301ee2108458738c0b5f5da3e89cb",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -935,7 +1275,7 @@
         "overprint-flags"
       ],
       "path": "corpus/generated/overprint/spot-mode-zero.pdf",
-      "sha256": "5014337565f8966a6dd60fe4224a5b7e74034d828dde513dd46aaf4285aac4d9",
+      "sha256": "eedcf4c3c5cc6ee72845a9d8abb93a50fb82c7aa3d3b79f242a866aa3ca2ad30",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -956,7 +1296,7 @@
         "overprint-flags"
       ],
       "path": "corpus/generated/overprint/spot-mode-on.pdf",
-      "sha256": "ae76a63e0b6a0336850948f82936e031e3fa84663d997f8afd35c0217d0d3287",
+      "sha256": "b605fbde24d68164fb23265c09369be69799d38f4692792107d23f7219ad5d67",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -976,7 +1316,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/spot-inline-image.pdf",
-      "sha256": "ccd978781bc3f407526d1999fbed291ec73443d2812a7d7ffe0fe899fb0bc273",
+      "sha256": "639355ee5a95a25e6df9d259c290877f0a5e5a6c369eca59d14efcb6dc1b0e16",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -996,7 +1336,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/spot-shading.pdf",
-      "sha256": "0772f08ab55e71dcb7e7f1112ecda611d7341c51fc8d178da18ebcb79ea08de4",
+      "sha256": "ea205d2ac93be1eea109056778eeb3418351f776c8d48bbf04db8d0eb4512ff3",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1017,7 +1357,7 @@
         "overprint-flags"
       ],
       "path": "corpus/generated/overprint/text-glyph-overprint.pdf",
-      "sha256": "c21297c9f7e15391d2d80f2393d32a16bea1f7cd82c546398cc3206a25ee00d5",
+      "sha256": "380c78dad5b7202d7238e84e1f210d2f945d14a8b9efb8940bebff2947b18f93",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1038,7 +1378,7 @@
         "overprint-groups"
       ],
       "path": "corpus/generated/overprint/spot-luminosity-mask-uses-alternate.pdf",
-      "sha256": "46a7e8ab6e2d8e380778e8ab1f224ddf4077db70ab5fc801e7cff3711797d06d",
+      "sha256": "08e6f18167930845b60db4be085df63b3ada6b4cd1a3d902a5c145c781f26b32",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1059,7 +1399,7 @@
         "overprint-groups"
       ],
       "path": "corpus/generated/overprint/spot-passes-rgb-group.pdf",
-      "sha256": "569390d6f74e963b525eb52fed7b57db3d78fc47a99ae11a118937c85cdafb0f",
+      "sha256": "ed6f399e055e85d6dcfa40cecd9ba346212b199bce39b5488cbb9f7524e26a6d",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1080,7 +1420,7 @@
         "overprint-groups"
       ],
       "path": "corpus/generated/overprint/named-process-in-rgb-group-uses-alternate.pdf",
-      "sha256": "bcf94ab02483ef2feecd1833d328318eddf0fb094ab5adbf15700a5b8dc24ba0",
+      "sha256": "5cbc38515870f950fc4f7aeda9c675faf860483459121045172c23b2efa3b54e",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1100,7 +1440,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/all-paints-process-and-spot.pdf",
-      "sha256": "5ef6869b5fa3304ff899dcd89b82303744af331df342627f8893a8ef8bdeade2",
+      "sha256": "ac64ade5f78f3435cedc56c7d23348dbfdaf9304edea3347fa017d70728c3d67",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1120,7 +1460,7 @@
         "overprint-process"
       ],
       "path": "corpus/generated/overprint/sampled-tint-evaluates-only-pixels.pdf",
-      "sha256": "237f9711c295a87f22b42fb0c9cc8012e00a6ef4d3ebdfb07a7ccd9c373c4381",
+      "sha256": "55621e4f70089b06f933bc68686bcd436af5f48c8989bc36aeffff2531493904",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1140,7 +1480,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/spot-batches-6.pdf",
-      "sha256": "fd9de2064af0ae8282a3947a1f1da6cb289686ec0de43309a89126c4d0ba145e",
+      "sha256": "23320f77e542ed6c3cbeae1425bf164f3a20f072850b2eb48d763ef1abb7c65a",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1159,7 +1499,7 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/spot-batches-32.pdf",
-      "sha256": "6b476fbec0d75022a15021f5f1e5f77851493bcdfdd59d5391d098a67136c29d",
+      "sha256": "06a0b0171da23c135350631c86b0b5e2350cd0a18aee59ae5d414161fb3c9070",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
@@ -1178,11 +1518,30 @@
         "overprint-spot"
       ],
       "path": "corpus/generated/overprint/spot-budget.pdf",
-      "sha256": "0b7232fa4003d9d4118ddef13c2bb88b598293d6ad25e8f29d51b5448291d696",
+      "sha256": "acf83327e6dd6a0446a5cc83b70e64719e2d1de04c4c83ac1b20cf705e8e836d",
       "pages": 1,
       "strict_valid": true,
       "repairs": [],
       "render_error": "Limit"
+    },
+    {
+      "id": "overprint/spot-budget-no-intent",
+      "kind": "pdf",
+      "description": "Auto without print intent bypasses the simulated plate limit and paints ordinary content",
+      "expected": "render",
+      "requirements": [
+        "overprint-preview"
+      ],
+      "path": "corpus/generated/overprint/spot-budget-no-intent.pdf",
+      "sha256": "68d6047cf0c584861f0d3b4f291a7d80c2e897f8ae9571fb479cc3f2359e949a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/overprint/spot-budget-no-intent.ppm",
+      "oracle_sha256": "9b9b204d70951762f9ed30152642282a2fd08c14be5e7c8058ca4854b3982781",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
     }
   ]
 }

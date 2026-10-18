@@ -28,12 +28,27 @@ primary standards.
 
 ## Overprint display policy
 
-Overprint simulation (8.6.7, 11.7.3–11.7.4) uses a CMYK process device when
+`RenderOptions::overprint` selects `OverprintPreview::{Auto, Always, Never}`;
+Auto is the default. Auto simulates only when the document declares PDF/X print
+intent: an `OutputIntents` entry with `S /GTS_PDFX` (14.11.5, ISO 15930), or a
+`GTS_PDFXVersion` string in Info. Catalog and PDF 2.0 page output intents are
+recognized, including indirect entries. A resolved page array takes precedence
+over the catalog, even when empty; the Info declaration remains independent.
+This detects a declaration, not PDF/X conformance; malformed advisory metadata
+is treated as absent. Always enables
+simulation wherever it can affect painted colourants. Never ignores overprint
+and paints ordinary composite content, including in CMYK transparency groups
+and soft-mask sources.
+The CLI exposes `--overprint auto|always|never` for rendering and scanning.
+The host protocol and viewer use Auto; a versioned render option and viewer
+toggle are the next host step.
+
+When enabled, simulation (8.6.7, 11.7.3–11.7.4) uses a CMYK process device if
 an overprinting paint coexists with painted Separation or DeviceN colour, or
-when direct DeviceCMYK painting uses overprint mode 1. No-op overprint flags
-keep the ordinary rendering path and blending space. Explicit group blending
-spaces still apply to process colour; spot plates pass through groups without
-colour conversion, and soft masks always use their alternate spaces.
+if an overprinting direct DeviceCMYK paint uses OPM 1. No-op flags keep the
+ordinary rendering path and blending space. Explicit group blending spaces
+still apply to process colour; spot plates pass through groups without colour
+conversion, and soft masks always use their alternate spaces.
 
 At page output, spot alternates supply CMYK ink equivalents, which are added
 with saturation before RGB conversion. The first painted definition of a
