@@ -169,7 +169,7 @@ impl Function {
         })
     }
     /// The identity function `[0 1] → [0 1]`, for `/Identity` transfers.
-    fn identity(limits: Limits) -> Self {
+    pub(crate) fn identity(limits: Limits) -> Self {
         Self {
             domain: vec![[0.0, 1.0]],
             range: None,
