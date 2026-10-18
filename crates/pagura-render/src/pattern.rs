@@ -1,7 +1,8 @@
 //! Shading patterns anchored to their parent stream's initial user space (8.7.2).
 
 use crate::icc::ColorContext;
-use crate::shading::{Shading, numbers};
+use crate::numbers::{self, GEOMETRY};
+use crate::shading::Shading;
 use pagura_core::{Dictionary, Error, ObjectId, Rect, Result, Value};
 use pagura_raster::Transform;
 use std::sync::Arc;
@@ -61,7 +62,7 @@ impl Pattern {
         let transform = d
             .get(b"Matrix")
             .map(|v| {
-                let m = numbers::<6>(document, v)?;
+                let m = numbers::array::<6>(document, v, GEOMETRY)?;
                 Ok(Transform::new(m[0], m[1], m[2], m[3], m[4], m[5]))
             })
             .transpose()?
@@ -108,10 +109,11 @@ impl Tiling {
         if !matches!(spacing, 1..=3) {
             return Err(Error::syntax("invalid TilingType"));
         }
-        let b = numbers::<4>(
+        let b = numbers::array::<4>(
             document,
             d.get(b"BBox")
                 .ok_or(Error::syntax("pattern requires BBox"))?,
+            GEOMETRY,
         )?;
         let bbox = Rect::from_corners(b[0], b[1], b[2], b[3])
             .ok_or(Error::syntax("invalid pattern BBox"))?;
