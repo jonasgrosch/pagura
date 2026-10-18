@@ -25,7 +25,7 @@
         "pagura-host session::tests::malformed_and_out_of_order_frames_are_terminal",
         "pagura-host session::tests::deterministic_fuzz_frames_never_panic",
         "pagura-host protocol::tests::decoding_rejects_every_truncation_and_trailing_bytes",
-        "tools/host_test.ts malformed native/WASI parity",
+        "tools/host_test.ts malformed frames are terminal on both targets",
         "pagura-host session::tests::bad_render_arguments_are_operational_and_never_return_pixels"
       ],
       "gaps": "The host fuzz target has bounded smoke runs only; no long campaigns, transport deadlines, engine-side cancellation, or OS memory-limit evidence."
@@ -72,8 +72,7 @@
       "status": "verified for all classic render cases and page 2 of two-pages",
       "tests": [
         "pagura-host session::tests::classic_tiles_match_independent_ppm_and_page_geometry",
-        "tools/host_test.ts native/WASI complete response identity",
-        "tools/host_test.ts browser-shim pixels and partial tile rows",
+        "tools/host_test.ts classic render cases: response identity, PPM oracles and partial tile rows",
         "classic/blank",
         "classic/rectangle",
         "classic/graphics-state",
@@ -98,7 +97,7 @@
       "status": "implemented and exercised through the actual shim",
       "tests": [
         "tools/host_test.ts testCodecAndCapabilities",
-        "tools/host_test.ts runHost worker_threads bridge"
+        "tools/host_test.ts native/WASI parity and the browser worker shim"
       ],
       "gaps": "Native and WASI parity plus empty args/env/preopens are exercised offline; actual touch and modal interaction require browser checks."
     },
@@ -135,7 +134,7 @@
       "tests": [
         "web/test_server.py",
         "tools/host_test.ts testFixtureLoading",
-        "tools/host_test.ts testViewer startup cases"
+        "tools/host_test.ts viewer DOM harness (testViewer) > startup: *"
       ],
       "gaps": "Serving remains loopback-only and disabled unless --fixtures is supplied; only corpus/generated is exposed."
     },
@@ -200,7 +199,7 @@
       "status": "additive v1.1 session stats and separate linear-memory sideband",
       "tests": [
         "pagura-host session::tests::retention_and_supervisor_cancellation_release_on_close",
-        "tools/host_test.ts retention native/WASI parity",
+        "tools/host_test.ts retention stats and native/WASI parity",
         "web/host_benchmark.ts"
       ],
       "gaps": "Source and compiled-list estimates exclude document internals, transient allocations, transport and JS. Document retained counter has no public accessor. Linear memory is a high-water capacity, not live heap or RSS."
