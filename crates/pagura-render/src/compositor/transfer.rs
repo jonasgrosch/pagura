@@ -319,7 +319,10 @@ impl Context {
     }
 }
 
-pub(super) fn validate(command: &Command) -> Result<()> {
+/// Rejects marks whose transfer selection is not implemented: pattern fills,
+/// and overprinting marks when overprint is simulated. Under an ignoring
+/// policy an overprint flag has no effect, so it cannot matter (8.6.7).
+pub(super) fn validate(command: &Command, overprint: crate::overprint::Policy) -> Result<()> {
     let (composite, pattern) = match command {
         Command::Path(p) => (
             &p.composite,
@@ -333,7 +336,8 @@ pub(super) fn validate(command: &Command) -> Result<()> {
         Command::Shading(s) => (&s.composite, false),
         Command::Group(_) => return Ok(()),
     };
-    if composite.overprint || pattern {
+    let overprints = composite.overprint && overprint == crate::overprint::Policy::Simulate;
+    if overprints || pattern {
         return Err(Error::unsupported(
             crate::features::TRANSPARENCY_TRANSFER,
             "per-colourant and pattern transfer-region selection is not implemented",
@@ -476,6 +480,30 @@ mod tests {
         assert_eq!(
             Regions::new(&commands, small).err().map(|e| e.kind),
             Some(ErrorKind::Limit)
+        );
+    }
+
+    #[test]
+    fn overprint_flags_matter_for_transfers_only_when_simulated() {
+        use crate::overprint::Policy;
+        let mut square = pagura_raster::PathBuilder::new();
+        square.rect(0.0, 0.0, 1.0, 1.0);
+        let command = Command::Path(PathCommand {
+            path: Arc::new(square.finish()),
+            mark: crate::display::Mark::Fill(pagura_raster::FillRule::NonZero),
+            clip: None,
+            color: crate::color::Color::default(),
+            position: pagura_core::Position::Unknown,
+            transfer: None,
+            composite: Composite {
+                overprint: true,
+                ..Composite::default()
+            },
+        });
+        validate(&command, Policy::Ignore).unwrap();
+        assert_eq!(
+            validate(&command, Policy::Simulate).unwrap_err().kind,
+            ErrorKind::Unsupported(crate::features::TRANSPARENCY_TRANSFER)
         );
     }
 }
