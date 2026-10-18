@@ -1,8 +1,9 @@
 //! Deterministic block selection and RFC 1950/1951 serialization.
 use super::{
-    DIST_BASE, DIST_EXTRA, LENGTH_BASE, LENGTH_EXTRA, Level,
+    Level,
     huffman::Book,
     matcher::{Matcher, Token},
+    tables::{DIST_BASE, DIST_EXTRA, LENGTH_BASE, LENGTH_EXTRA},
 };
 use crate::bounded::{Bytes, limit};
 use pagura_core::{Limits, Result};
