@@ -1,5 +1,6 @@
 //! Blend functions in additive coordinates (11.3.5, Tables 134–135).
 
+use crate::transparency::Model;
 use pagura_core::{Error, Result, Value};
 use pagura_document::Document;
 
@@ -12,10 +13,10 @@ pub(crate) enum BlendMode {
     Overlay,
     Darken,
     Lighten,
-    Dodge,
-    Burn,
-    Hard,
-    Soft,
+    ColorDodge,
+    ColorBurn,
+    HardLight,
+    SoftLight,
     Difference,
     Exclusion,
     Hue,
@@ -56,10 +57,10 @@ impl BlendMode {
             b"Overlay" => Self::Overlay,
             b"Darken" => Self::Darken,
             b"Lighten" => Self::Lighten,
-            b"ColorDodge" => Self::Dodge,
-            b"ColorBurn" => Self::Burn,
-            b"HardLight" => Self::Hard,
-            b"SoftLight" => Self::Soft,
+            b"ColorDodge" => Self::ColorDodge,
+            b"ColorBurn" => Self::ColorBurn,
+            b"HardLight" => Self::HardLight,
+            b"SoftLight" => Self::SoftLight,
             b"Difference" => Self::Difference,
             b"Exclusion" => Self::Exclusion,
             b"Hue" => Self::Hue,
@@ -69,17 +70,16 @@ impl BlendMode {
             _ => return None,
         })
     }
-    pub(crate) fn apply(self, back: [f64; 4], source: [f64; 4], components: usize) -> [f64; 4] {
+    /// The blended colour of backdrop `back` and `source` in the group's
+    /// colour model (11.3.5).
+    pub(crate) fn apply(self, back: [f64; 4], source: [f64; 4], model: Model) -> [f64; 4] {
         if matches!(
             self,
             Self::Hue | Self::Saturation | Self::Color | Self::Luminosity
         ) {
+            let gray = model == Model::Gray;
             let rgb = |c: [f64; 4]| {
-                if components == 1 {
-                    [c[0]; 3]
-                } else {
-                    [c[0], c[1], c[2]]
-                }
+                if gray { [c[0]; 3] } else { [c[0], c[1], c[2]] }
             };
             let (b, s) = (rgb(back), rgb(source));
             let result = match self {
@@ -88,7 +88,7 @@ impl BlendMode {
                 Self::Color => set_lum(s, lum(b)),
                 _ => set_lum(b, lum(s)),
             };
-            return if components == 1 {
+            return if gray {
                 [lum(result), 0.0, 0.0, 0.0]
             } else {
                 [
@@ -113,7 +113,7 @@ impl BlendMode {
             Self::Darken => b.min(s),
             Self::Lighten => b.max(s),
             // PDF 2.0 defines these boundary cases before testing the divisor.
-            Self::Dodge => {
+            Self::ColorDodge => {
                 if b == 0.0 {
                     0.0
                 } else if b >= 1.0 - s {
@@ -122,7 +122,7 @@ impl BlendMode {
                     b / (1.0 - s)
                 }
             }
-            Self::Burn => {
+            Self::ColorBurn => {
                 if b == 1.0 {
                     1.0
                 } else if 1.0 - b >= s {
@@ -131,8 +131,8 @@ impl BlendMode {
                     1.0 - (1.0 - b) / s
                 }
             }
-            Self::Hard => hard(b, s),
-            Self::Soft => {
+            Self::HardLight => hard(b, s),
+            Self::SoftLight => {
                 if s <= 0.5 {
                     b - (1.0 - 2.0 * s) * b * (1.0 - b)
                 } else {

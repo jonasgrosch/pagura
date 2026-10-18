@@ -110,10 +110,7 @@ impl Pixel {
                     color[i]
                 }
             });
-            (
-                color,
-                blend_mode.apply(base.straight(), color, model.components()),
-            )
+            (color, blend_mode.apply(base.straight(), color, model))
         };
         let value = [0, 1, 2, 3].map(|i| {
             (1.0 - opacity) * base.color[i]
@@ -1969,7 +1966,7 @@ mod tests {
         for blend in [
             crate::blend::BlendMode::Normal,
             crate::blend::BlendMode::Multiply,
-            crate::blend::BlendMode::Dodge,
+            crate::blend::BlendMode::ColorDodge,
         ] {
             run.paint.composite.blend = blend;
             for knockout in [false, true] {

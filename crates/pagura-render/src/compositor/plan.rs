@@ -270,7 +270,7 @@ mod tests {
         let Command::Path(mut p) = path(1.0) else {
             unreachable!()
         };
-        p.composite.blend = crate::blend::BlendMode::Dodge;
+        p.composite.blend = crate::blend::BlendMode::ColorDodge;
         assert_eq!(
             page(&list(vec![Command::Path(p)])).unwrap().reason,
             Some(Reason::Blend)
