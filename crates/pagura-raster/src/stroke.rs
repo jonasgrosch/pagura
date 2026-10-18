@@ -4,9 +4,10 @@
 //! Flattening is measured after the CTM; constructing the pen before the CTM
 //! preserves elliptical pens under nonuniform transforms.
 
+use crate::coverage::RASTER_WORK;
 use crate::flatten::{TOLERANCE, bounded, flatten};
 use crate::{LineCap, LineJoin, Path, PathBuilder, Point, Stroke, Transform};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 
 /// A dash retains its tangent even when its length is zero (8.5.3.2).
 pub(crate) struct Run {
@@ -47,12 +48,6 @@ pub(crate) fn outline(
     limits: &Limits,
 ) -> Result<(Path, Transform)> {
     validate(stroke, limits)?;
-    if path.segments().len() > limits.path_segments {
-        return Err(Error::limit("path segment budget exceeded"));
-    }
-    if !transform.is_finite() {
-        return Err(Error::invalid_argument("path transform is not finite"));
-    }
     // Dash distances belong to user space even for a device-width hairline
     // (8.4.3.6). Flatten with a device-space error bound, split there, and only
     // then transform each run before constructing the hairline pen.
@@ -147,7 +142,7 @@ pub(crate) fn dash(
     let mut remaining = dash_length(stroke, index) - phase;
     let mut result = Vec::new();
     let mut run = Vec::new();
-    let mut work = 0;
+    let mut work = Meter::new(limits.raster_work, RASTER_WORK);
     let mut tangent = Point::new(1.0, 0.0);
     for pair in points.windows(2) {
         let [a, b] = [pair[0], pair[1]];
@@ -161,7 +156,7 @@ pub(crate) fn dash(
         tangent = (b - a) / distance;
         let mut offset = 0.0;
         while offset < distance || remaining == 0.0 {
-            crate::coverage::charge(&mut work, 1, limits.raster_work)?;
+            work.charge(1)?;
             if result.len() + run.len() > limits.path_segments {
                 return Err(Error::limit("dashed segment budget exceeded"));
             }

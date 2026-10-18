@@ -278,7 +278,7 @@ mod tests {
     }
 
     #[test]
-    fn segment_depth_and_numeric_limits_are_checked_before_admission() {
+    fn segment_and_numeric_limits_are_checked_before_admission() {
         let path = tiny_curve();
         let limits = Limits {
             path_segments: 1,
@@ -290,8 +290,9 @@ mod tests {
                 .kind,
             pagura_core::ErrorKind::Limit
         );
+        // Scaled up, the same curve needs more than eight flattened segments.
         let limits = Limits {
-            depth: 0,
+            path_segments: 8,
             ..Limits::default()
         };
         assert_eq!(

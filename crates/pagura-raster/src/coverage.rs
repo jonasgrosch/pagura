@@ -9,7 +9,7 @@
 
 use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
 use crate::{FillRule, Path, Point, Transform, quantize_unit};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
 
 mod accumulation;
@@ -80,10 +80,9 @@ impl Windings {
     // Closing a span contributes +area; opening contributes -area.
     fn step(&mut self, edge: Edge) -> Result<i32> {
         let was_inside = self.outside == 0;
-        let value = self
-            .values
-            .get_mut(edge.group)
-            .ok_or(Error::invalid_argument("invalid winding group"))?;
+        // Groups number the non-rectangle shapes, and coverage() sizes the
+        // winding values to their count before building any edge.
+        let value = &mut self.values[edge.group];
         let before = inside(*value, edge.rule);
         *value = value
             .checked_add(edge.winding)
@@ -108,15 +107,29 @@ struct Sweep {
     winding: Windings,
 }
 
-#[derive(Debug, Default)]
+/// The message of every raster work budget error.
+pub(crate) const RASTER_WORK: &str = "raster work budget exceeded";
+
+#[derive(Debug)]
 struct Row {
     areas: Vec<f64>,
     covers: Vec<f64>,
     touched: Vec<u64>,
     origin: f64,
-    work: usize,
-    maximum: usize,
+    work: Meter,
     maximum_events: usize,
+}
+impl Default for Row {
+    fn default() -> Self {
+        Self {
+            areas: Vec::new(),
+            covers: Vec::new(),
+            touched: Vec::new(),
+            origin: 0.0,
+            work: Meter::new(0, RASTER_WORK),
+            maximum_events: 0,
+        }
+    }
 }
 impl Row {
     fn reset(&mut self, width: usize, origin: u32) -> Result<()> {
@@ -140,7 +153,7 @@ impl Row {
         Ok(())
     }
     fn charge(&mut self, amount: usize) -> Result<()> {
-        charge(&mut self.work, amount, self.maximum)
+        self.work.charge(amount)
     }
     fn sorted(&mut self, count: usize) -> Result<()> {
         self.charge(sort_work(count)?)
@@ -318,7 +331,7 @@ pub(crate) fn coverage(
         scratch.exact_bytes = scratch.exact.retained_bytes();
         result
     } else {
-        let work = scratch.exact.row.work;
+        let work = scratch.exact.row.work.used();
         let result =
             scratch
                 .accumulator()?
@@ -374,10 +387,9 @@ impl Exact {
         size: (u32, u32),
         limits: &Limits,
     ) -> Result<(Rectangle, usize)> {
-        self.row.work = 0;
-        self.row.maximum = limits.raster_work;
+        self.row.work = Meter::new(limits.raster_work, RASTER_WORK);
         self.row.maximum_events = limits.path_segments;
-        Rectangle::intersection(shapes, origin, size, &mut self.row, limits)
+        Rectangle::intersection(shapes, origin, size, &mut self.row)
     }
 
     fn render(
@@ -941,11 +953,13 @@ fn sort_work(count: usize) -> Result<usize> {
         .ok_or(Error::limit("sort work overflow"))
 }
 
+/// The integer-cell backend's own work counter, until it charges a [`Meter`]
+/// like the sweep.
 pub(crate) fn charge(work: &mut usize, amount: usize, maximum: usize) -> Result<()> {
     *work = work
         .checked_add(amount)
         .filter(|&n| n <= maximum)
-        .ok_or(Error::limit("raster work budget exceeded"))?;
+        .ok_or(Error::limit(RASTER_WORK))?;
     Ok(())
 }
 

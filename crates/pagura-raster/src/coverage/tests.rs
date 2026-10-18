@@ -40,7 +40,7 @@ fn sparse_finish_matches_dense_across_word_boundaries_and_reuse() {
     for width in [0, 1, 2, 63, 64, 65, 127, 128, 129, 4097, 7] {
         for _ in 0..20 {
             row.reset(width, 100).unwrap();
-            row.maximum = Limits::default().raster_work;
+            row.work = Meter::new(Limits::default().raster_work, RASTER_WORK);
             for n in 0..32 {
                 let mut coordinate = || {
                     seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
@@ -62,7 +62,7 @@ fn sparse_finish_matches_dense_across_word_boundaries_and_reuse() {
 fn prefix_cover_is_recorded_at_zero_even_for_an_outside_edge() {
     let mut row = Row::default();
     row.reset(129, 7).unwrap();
-    row.maximum = Limits::default().raster_work;
+    row.work = Meter::new(Limits::default().raster_work, RASTER_WORK);
     row.edge(edge(200.0, 200.0), 0.0, 0.25, 1).unwrap();
     assert_eq!(row.touched, [1, 0, 0]);
     assert_eq!(compare_dense(&mut row), vec![64; 129]);
@@ -78,7 +78,7 @@ fn prefix_cover_is_recorded_at_zero_even_for_an_outside_edge() {
 fn cancellation_and_quantization_thresholds_match_dense() {
     let mut row = Row::default();
     row.reset(193, 0).unwrap();
-    row.maximum = Limits::default().raster_work;
+    row.work = Meter::new(Limits::default().raster_work, RASTER_WORK);
     for width in [0.0, 0.5 / 255.0, 0.5, 1.0 - 0.5 / 255.0, 1.0] {
         for x in [0.0, 63.0, 64.0, 128.0, 192.0] {
             for (lo, hi, sign) in [(0.0, 0.5, 1), (0.0, 0.5, -1), (0.0, 1.0, 1)] {
@@ -93,23 +93,23 @@ fn cancellation_and_quantization_thresholds_match_dense() {
 fn finish_budget_failure_preserves_state_for_a_smaller_reset() {
     let mut row = Row::default();
     row.reset(257, 0).unwrap();
-    row.maximum = Limits::default().raster_work;
+    row.work = Meter::new(Limits::default().raster_work, RASTER_WORK);
     row.edge(edge(256.25, 256.25), 0.0, 1.0, 1).unwrap();
     let cells: usize = row.touched.iter().map(|w| w.count_ones() as usize).sum();
     let cost = cells + 2 * row.touched.len() + 1;
-    row.maximum = row.work + cost - 1;
+    // One unit short: finish must fail before draining any state.
+    row.work = Meter::new(cost - 1, RASTER_WORK);
     assert_eq!(
         row.finish(&mut [0; 257]).unwrap_err().kind,
         pagura_core::ErrorKind::Limit
     );
-    row.maximum += 1;
-    let previous = row.work;
+    row.work = Meter::new(cost, RASTER_WORK);
     compare_dense(&mut row);
-    assert_eq!(row.work - previous, cost);
-    row.maximum = Limits::default().raster_work;
+    assert_eq!(row.work.used(), cost);
+    row.work = Meter::new(Limits::default().raster_work, RASTER_WORK);
     row.edge(edge(256.5, 256.5), 0.0, 1.0, 1).unwrap();
     row.reset(1, 17).unwrap();
-    row.maximum = Limits::default().raster_work;
+    row.work = Meter::new(Limits::default().raster_work, RASTER_WORK);
     assert_eq!(compare_dense(&mut row), [0]);
 }
 

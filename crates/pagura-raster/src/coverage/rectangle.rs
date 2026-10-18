@@ -4,7 +4,7 @@ use super::{Geometry, Row, Shape, index};
 use crate::Segment;
 use crate::flatten::bounded;
 use crate::quantize_unit;
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Result};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct Rectangle {
@@ -79,14 +79,11 @@ impl Rectangle {
         origin: (u32, u32),
         size: (u32, u32),
         row: &mut Row,
-        limits: &Limits,
     ) -> Result<(Self, usize)> {
         let mut bounds = Self::viewport(origin, size);
         let mut groups = 0;
+        // Paths that are not rectangles are validated when they are flattened.
         for shape in shapes {
-            if shape.segments() > limits.path_segments {
-                return Err(Error::limit("path segment budget exceeded"));
-            }
             row.charge(1)?;
             if let Some(rectangle) = shape.rectangle() {
                 row.charge(shape.segments())?;

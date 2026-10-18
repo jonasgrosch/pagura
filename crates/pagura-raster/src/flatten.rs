@@ -7,6 +7,17 @@ use pagura_core::{Error, Limits, Result};
 /// The convex-hull property bounds the whole curve by this tolerance.
 pub(crate) const TOLERANCE: f64 = 1.0 / 256.0;
 
+/// Largest coordinate magnitude, in user or device space, that geometry may
+/// have. It keeps intermediate products and intersections finite; larger
+/// finite coordinates are a resource limit, not malformed geometry.
+pub(crate) const MAX_COORDINATE: f64 = 1e12;
+
+/// Subdivision depth at which a curve counts as non-converging. Each
+/// halving at least quarters a cubic's control-point distance from its
+/// chord, so curves within [`MAX_COORDINATE`] reach [`TOLERANCE`] after
+/// about 25 levels; this bound is reached only through rounding.
+const MAX_SUBDIVISION_DEPTH: usize = 64;
+
 pub(crate) type CurveStack = Vec<([Point; 4], usize)>;
 
 /// A flattened contour with source closure and geometric-point metadata.
@@ -26,20 +37,27 @@ impl Polyline {
     }
 }
 
-pub(crate) fn valid(point: Point) -> bool {
-    // Bounds keep intermediate products and intersections finite. Large finite
-    // coordinates are a resource limitation, not malformed geometry.
-    point.x.is_finite() && point.y.is_finite()
-}
-
+/// Checks a point against the working range ([`MAX_COORDINATE`]).
 pub(crate) fn bounded(point: Point) -> Result<()> {
-    if !valid(point) {
+    if !point.is_finite() {
         Err(Error::invalid_argument("path geometry is not finite"))
-    } else if point.x.abs().max(point.y.abs()) > 1e12 {
+    } else if point.x.abs().max(point.y.abs()) > MAX_COORDINATE {
         Err(Error::limit("geometry exceeds numeric working range"))
     } else {
         Ok(())
     }
+}
+
+/// The checks every entry point applies to a caller's path and transform
+/// before any work: a finite transform and the segment budget.
+pub(crate) fn validate(path: &Path, transform: Transform, limits: &Limits) -> Result<()> {
+    if !transform.is_finite() {
+        return Err(Error::invalid_argument("path transform is not finite"));
+    }
+    if path.segments().len() > limits.path_segments {
+        return Err(Error::limit("path segment budget exceeded"));
+    }
+    Ok(())
 }
 
 pub(crate) fn flatten(path: &Path, transform: Transform, limits: &Limits) -> Result<Vec<Polyline>> {
@@ -57,23 +75,22 @@ pub(crate) fn flatten_into(
     pending: &mut CurveStack,
 ) -> Result<usize> {
     pending.clear();
-    if !transform.is_finite() {
-        return Err(Error::invalid_argument("path transform is not finite"));
-    }
-    if path.segments().len() > limits.path_segments {
-        return Err(Error::limit("path segment budget exceeded"));
-    }
+    validate(path, transform, limits)?;
     let mut contour = 0;
     let mut count = 0;
     let mut current = prepare(result, contour);
+    // A path opens every subpath with MoveTo, so the current point and the
+    // subpath start are set before any line or curve reads them.
+    let mut start = Point::default();
+    let mut position = Point::default();
     for segment in path.segments() {
         // A line or curve following Close reopens at the subpath start.
         // Preserve the closed contour separately, including its point buffer.
         if current.closed && matches!(segment, Segment::LineTo(_) | Segment::CubicTo { .. }) {
-            let start = current.points.first().copied();
+            let first = current.points.first().copied();
             contour += 1;
             current = prepare(result, contour);
-            current.points.extend(start);
+            current.points.extend(first);
         }
         match *segment {
             Segment::MoveTo(point) => {
@@ -86,34 +103,36 @@ pub(crate) fn flatten_into(
                 append(&mut current.points, point, &mut count, limits)?;
                 current.closed = false;
                 current.degenerate = true;
+                start = point;
+                position = point;
             }
             Segment::LineTo(point) => {
                 bounded(point)?;
                 bounded(point * transform)?;
                 current.degenerate &= current.points.first().is_none_or(|p| *p == point);
                 append(&mut current.points, point, &mut count, limits)?;
+                position = point;
             }
             Segment::CubicTo { c1, c2, end } => {
-                let start = current
-                    .points
-                    .last()
-                    .copied()
-                    .ok_or(Error::invalid_argument("curve has no current point"))?;
-                current.degenerate &= [c1, c2, end].iter().all(|p| *p == start);
+                current.degenerate &= [c1, c2, end].iter().all(|p| *p == position);
                 for point in [c1, c2, end] {
                     bounded(point)?;
                     bounded(point * transform)?;
                 }
                 curve(
-                    [start, c1, c2, end],
+                    [position, c1, c2, end],
                     transform,
                     pending,
                     &mut current.points,
                     &mut count,
                     limits,
                 )?;
+                position = end;
             }
-            Segment::Close => current.closed = true,
+            Segment::Close => {
+                current.closed = true;
+                position = start;
+            }
         }
     }
     Ok(contour + usize::from(!current.points.is_empty()))
@@ -165,7 +184,7 @@ fn curve(
             };
             (points, depth) = next;
         } else {
-            if depth >= limits.depth {
+            if depth >= MAX_SUBDIVISION_DEPTH {
                 return Err(Error::limit("curve subdivision depth exceeded"));
             }
             let [a, b, c, d] = points;
