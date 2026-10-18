@@ -331,7 +331,7 @@ impl Functions {
         outputs: usize,
     ) -> Result<Self> {
         let read = |v, outputs| {
-            let f = Function::parse(document, v, domain.len(), outputs)?;
+            let f = Function::parse(document.document(), v, domain.len(), outputs)?;
             if !f.covers_domain(domain) {
                 return Err(Error::syntax("function domain does not cover shading"));
             }
@@ -387,7 +387,7 @@ fn roots(a: f64, b: f64, c: f64) -> [f64; 2] {
     }
 }
 fn numbers<const N: usize>(document: &ColorContext<'_>, value: &Value) -> Result<[f64; N]> {
-    crate::numbers::array(document, value, crate::numbers::GEOMETRY)
+    crate::numbers::array(document.document(), value, crate::numbers::GEOMETRY)
 }
 fn optional_numbers<const N: usize>(
     document: &ColorContext<'_>,
