@@ -79,9 +79,30 @@ pub struct Parser<'a> {
     data: &'a [u8],
     position: usize,
     origin: Origin,
-    limits: Limits,
+    limits: Budgets,
     nodes: usize,
     diagnostics: Diagnostics,
+}
+
+/// The [`Limits`] fields the parser reads. A parser is created per object,
+/// so it copies these rather than the whole set.
+#[derive(Debug, Clone, Copy)]
+struct Budgets {
+    depth: usize,
+    value_nodes: usize,
+    string_bytes: usize,
+    document_bytes: usize,
+}
+
+impl From<Limits> for Budgets {
+    fn from(limits: Limits) -> Self {
+        Self {
+            depth: limits.depth,
+            value_nodes: limits.value_nodes,
+            string_bytes: limits.string_bytes,
+            document_bytes: limits.document_bytes,
+        }
+    }
 }
 
 impl<'a> Parser<'a> {
@@ -91,7 +112,7 @@ impl<'a> Parser<'a> {
             data,
             position: 0,
             origin,
-            limits,
+            limits: Budgets::from(limits),
             nodes: 0,
             diagnostics: Diagnostics::new(Recovery::Strict),
         }
@@ -289,7 +310,7 @@ impl<'a> Parser<'a> {
         handler: &mut DirectStreamHandler<'a, '_>,
     ) -> Result<(Value, Vec<DirectStream>)> {
         self.nodes = 0;
-        let mut context = Some(Context::new(handler, &self.limits));
+        let mut context = Some(Context::new(handler, self.limits.document_bytes));
         let value = self.value(0, &mut context)?;
         Ok((
             value,

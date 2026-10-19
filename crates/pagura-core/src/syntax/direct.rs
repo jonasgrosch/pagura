@@ -1,7 +1,7 @@
 //! Source-backed recovery of direct streams (7.3.8.1).
 
 use super::Parser;
-use crate::{Dictionary, Error, Limits, Meter, Name, Result};
+use crate::{Dictionary, Error, Meter, Name, Result};
 use std::ops::Range;
 
 /// One step from a parsed value to a nested dictionary or array element.
@@ -53,22 +53,19 @@ pub(super) struct Context<'a, 'b, 'h> {
 }
 
 impl<'a, 'b, 'h> Context<'a, 'b, 'h> {
-    pub(super) fn new(handler: &'b mut DirectStreamHandler<'a, 'h>, limits: &Limits) -> Self {
+    pub(super) fn new(handler: &'b mut DirectStreamHandler<'a, 'h>, budget: usize) -> Self {
         Self {
             handler,
             path: Vec::new(),
             found: Vec::new(),
             count: 0,
-            metadata: Meter::new(
-                limits.document_bytes,
-                "direct stream metadata budget exceeded",
-            ),
+            metadata: Meter::new(budget, "direct stream metadata budget exceeded"),
         }
     }
 
     /// Retains a descriptor for the stream whose dictionary is at the current
     /// path. Descriptor growth and the copied path are charged to
-    /// [`Limits::document_bytes`] before anything is copied.
+    /// [`Limits::document_bytes`](crate::Limits::document_bytes) before anything is copied.
     pub(super) fn record(&mut self, source: Range<usize>, data: Range<usize>) -> Result<()> {
         let capacity = if self.found.len() == self.found.capacity() {
             self.found.capacity().saturating_mul(2).max(1)
