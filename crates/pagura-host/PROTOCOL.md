@@ -29,6 +29,13 @@ responses and keep the session alive. A failed open consumes no handle.
 
 `blob` is `u32 byte_length | bytes`; `text` is a UTF-8 blob.
 
+Every code space below (versions, kinds, categories, position and diagnostic
+codes, open flags, tile status, fits, actions and option bits) is an enum in
+`pagura_host::protocol` (ADR 0031). `web/protocol_constants.mjs` is generated
+from those enums and the default session budgets with
+`cargo run -p pagura-host --features codegen --example protocol_constants`; a
+pagura-host test fails when the checked-in file is stale.
+
 | Request kind | Request payload | Success kind | Success payload |
 |---|---|---|---|
 | 1 hello | `u32 version` | 129 | `u32 version` (echoes the negotiated version) |
