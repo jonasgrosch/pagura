@@ -151,10 +151,9 @@ impl<'a, 'w, 'd> Tokens<'a, 'w, 'd> {
             return Err(bad(self.pos, "Type 1 RD needs a delimiter"));
         }
         self.pos += 1;
-        let end = self
-            .pos
-            .checked_add(size)
-            .ok_or_else(|| crate::read::limit(self.pos, "Type 1 binary size overflow"))?;
+        let end = self.pos.checked_add(size).ok_or_else(|| {
+            crate::read::limit(Position::Buffer(self.pos), "Type 1 binary size overflow")
+        })?;
         let bytes = self
             .data
             .get(self.pos..end)

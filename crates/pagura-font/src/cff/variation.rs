@@ -26,9 +26,12 @@ pub(super) fn parse(mut r: Cursor<'_>, work: &mut Work<'_>) -> Result<Vec<Vec<f6
     let axes = usize::from(regions.u16()?);
     let region_count = usize::from(regions.u16()?);
     work.entries(region_count, Position::Buffer(here(&regions)))?;
-    let cells = axes
-        .checked_mul(region_count)
-        .ok_or_else(|| crate::read::limit(here(&regions), "variation region count overflow"))?;
+    let cells = axes.checked_mul(region_count).ok_or_else(|| {
+        crate::read::limit(
+            Position::Buffer(here(&regions)),
+            "variation region count overflow",
+        )
+    })?;
     work.work(cells, Position::Buffer(here(&regions)))?;
     let mut scalars = Vec::with_capacity(region_count);
     for _ in 0..region_count {
@@ -77,12 +80,18 @@ pub(super) fn parse(mut r: Cursor<'_>, work: &mut Work<'_>) -> Result<Vec<Vec<f6
         let row = words
             .checked_mul(if long { 4 } else { 2 })
             .and_then(|bytes| bytes.checked_add((regions - words) * if long { 2 } else { 1 }))
-            .ok_or_else(|| crate::read::limit(here(&item), "variation delta size overflow"))?;
-        item.skip(
-            items
-                .checked_mul(row)
-                .ok_or_else(|| crate::read::limit(here(&item), "variation delta size overflow"))?,
-        )?;
+            .ok_or_else(|| {
+                crate::read::limit(
+                    Position::Buffer(here(&item)),
+                    "variation delta size overflow",
+                )
+            })?;
+        item.skip(items.checked_mul(row).ok_or_else(|| {
+            crate::read::limit(
+                Position::Buffer(here(&item)),
+                "variation delta size overflow",
+            )
+        })?)?;
         result.push(coefficients);
     }
     Ok(result)
