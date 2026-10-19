@@ -1,8 +1,9 @@
-//! CFF containers, DICTs and INDEXes (Adobe Technical Note 5176).
-use crate::GlyphId;
+//! CFF and CFF2 containers: header, INDEXes, DICTs, charsets, FDArray and
+//! FDSelect (TN 5176; OpenType CFF2).
 use crate::budget::Work;
 use crate::memory::{encoding, names, nested, tree, vector};
-use crate::read::{bad, here, slice};
+use crate::read::{self, glyph_id, limit, syntax, unsupported};
+use crate::{GlyphId, features};
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Name, Position, Result};
@@ -11,15 +12,50 @@ use std::collections::BTreeMap;
 use std::ops::Range;
 
 mod dict;
+mod index;
 mod predefined;
 mod select;
 pub(crate) mod strings;
 mod type2;
 mod variation;
 
+use dict::{Dict, Domain, Kind, Operator};
+use index::{Index, OFFSET_SIZES};
+
+/// The CFF major version (TN 5176 Table 1; the OpenType CFF2 header).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Version {
+    Cff1,
+    Cff2,
+}
+
+/// The smallest header sizes (TN 5176 Table 1; CFF2 adds a Top DICT length).
+const CFF1_HEADER: usize = 4;
+const CFF2_HEADER: usize = 5;
+/// Predefined charsets, named by small Top DICT charset offsets
+/// (TN 5176 section 13 and Appendix C).
+const ISO_ADOBE_CHARSET: usize = 0;
+const EXPERT_CHARSET: usize = 1;
+const EXPERT_SUBSET_CHARSET: usize = 2;
+/// The ISOAdobe charset names SIDs 0-228 in order.
+const ISO_ADOBE_GLYPHS: usize = 229;
+/// Explicit charset formats (TN 5176 Tables 17-21).
+const CHARSET_SIDS: u8 = 0;
+const CHARSET_SHORT_RANGES: u8 = 1;
+const CHARSET_RANGES: u8 = 2;
+/// Top DICT defaults (TN 5176 Table 9): Type 2 charstrings, a 1/1000 em
+/// FontMatrix scale and 8720 CIDs.
+const TYPE2_CHARSTRINGS: f64 = 2.0;
+const DEFAULT_SCALE: f64 = 0.001;
+const DEFAULT_CID_COUNT: f64 = 8720.0;
+/// FDArray sizes that FDSelect can address: 8-bit indices in CFF, 16-bit in
+/// CFF2 (TN 5176 section 19).
+const MAX_FONT_DICTS: usize = 256;
+const MAX_CFF2_FONT_DICTS: usize = 65536;
+
 #[derive(Debug)]
 struct Private {
-    subrs: Vec<Range<usize>>,
+    subrs: Index,
     default_width: f64,
     nominal_width: f64,
     matrix: Transform,
@@ -29,165 +65,118 @@ struct Private {
 
 #[derive(Debug)]
 pub(crate) struct Cff {
-    glyphs: Vec<Range<usize>>,
-    global: Vec<Range<usize>>,
+    glyphs: Index,
+    glyph_count: u32,
+    global: Index,
     private: Vec<Private>,
-    select: Vec<usize>,
+    /// The Private DICT of each glyph; empty when every glyph uses the first.
+    select: Vec<u16>,
     names: BTreeMap<Name, GlyphId>,
     glyph_names: Vec<Option<Name>>,
     cids: Option<BTreeMap<u32, GlyphId>>,
     encoding: Option<Box<[Option<Name>; 256]>>,
     matrix: Transform,
-    cff2: bool,
+    version: Version,
     variations: Vec<Vec<f64>>,
 }
 
-pub(super) fn index(
-    r: &mut Cursor<'_>,
-    work: &mut Work<'_>,
-    cff2: bool,
-) -> Result<Vec<Range<usize>>> {
-    let count = if cff2 {
-        u32_to_usize(r.u32()?)
-    } else {
-        usize::from(r.u16()?)
-    };
-    work.entries(count, Position::Buffer(here(r)))?;
-    if count == 0 {
-        return Ok(Vec::new());
-    }
-    let size = r.u8()?;
-    if !(1..=4).contains(&size) {
-        return Err(bad(here(r), "invalid CFF offset size"));
-    }
-    let mut offsets = Vec::with_capacity(count + 1);
-    let mut previous = 1;
-    for i in 0..=count {
-        let mut n = 0_usize;
-        for _ in 0..size {
-            n = n
-                .checked_mul(256)
-                .and_then(|n| n.checked_add(usize::from(r.u8().ok()?)))
-                .ok_or_else(|| bad(here(r), "invalid CFF offset"))?;
-        }
-        if n < previous || (i == 0 && n != 1) {
-            return Err(bad(here(r), "invalid CFF INDEX offsets"));
-        }
-        offsets.push(n - 1);
-        previous = n;
-    }
-    let start = here(r);
-    let len = *offsets
-        .last()
-        .ok_or_else(|| bad(here(r), "missing CFF offset"))?;
-    r.skip(len)?;
-    Ok(offsets
-        .windows(2)
-        .map(|w| start + w[0]..start + w[1])
-        .collect())
-}
-
+/// Glyphs by name, and by CID for a CID-keyed font.
 type CharsetMaps = (BTreeMap<Name, GlyphId>, Option<BTreeMap<u32, GlyphId>>);
 
-fn charset_maps(
-    charset: &[u16],
-    top: &dict::Dict,
-    string_ranges: &[Range<usize>],
-    data: &[u8],
-    work: &mut Work<'_>,
-    at: usize,
-) -> Result<CharsetMaps> {
-    let mut names = BTreeMap::new();
-    let mut cids = top.has(0x0c1e).then(BTreeMap::new);
-    for (i, sid) in charset.iter().copied().enumerate() {
-        let glyph = GlyphId(
-            u32::try_from(i)
-                .map_err(|_| crate::read::limit(Position::Buffer(at), "glyph count overflow"))?,
-        );
-        if let Some(cids) = &mut cids {
-            if f64::from(sid) >= top.number(0x0c22, 8720.0)? {
-                return Err(bad(at, "CID outside CFF CIDCount"));
-            }
-            if cids.insert(u32::from(sid), glyph).is_some() {
-                return Err(bad(at, "duplicate CFF CID"));
-            }
-        } else {
-            let name = strings::sid(sid, string_ranges, data, work)?;
-            if names.insert(name, glyph).is_some() {
-                return Err(bad(at, "duplicate CFF glyph name"));
-            }
-        }
-    }
-    Ok((names, cids))
+/// The parts of a CFF program that its Top DICT locates.
+struct Context<'a> {
+    data: &'a [u8],
+    table: Cursor<'a>,
+    version: Version,
+    strings: Index,
+    variations: Vec<Vec<f64>>,
 }
 
 impl Cff {
     pub(crate) fn parse(data: &[u8], range: Range<usize>, work: &mut Work<'_>) -> Result<Self> {
+        let start = Position::Buffer(range.start);
+        let table = read::slice(data, range, "invalid CFF table")?;
         let Header {
             mut top,
-            strings: string_ranges,
+            strings,
             global,
-            cff2,
-        } = header(data, range.clone(), work)?;
-        let table = slice(data, range.clone(), "invalid CFF table")?;
-        if !cff2 {
-            top.validate(false, string_ranges.len(), work)?;
+            version,
+        } = header(table.clone(), data, work)?;
+        if version == Version::Cff1 {
+            top.validate(
+                Domain::Top {
+                    strings: strings.len(),
+                },
+                work,
+            )?;
         }
-        if top.has(0x0c14) {
-            return Err(format_error(
-                range.start,
+        if top.has(Operator::SYNTHETIC_BASE) {
+            return Err(unsupported(
+                features::FORMAT,
+                start,
                 "synthetic CFF font is not supported",
             ));
         }
-        let mut charstrings = table.cursor_at(top.offset(17, None)?)?;
-        let glyphs = index(&mut charstrings, work, cff2)?;
+        let mut charstrings = table.cursor_at(top.offset(Operator::CHAR_STRINGS, None)?)?;
+        let glyphs = Index::parse(&mut charstrings, version, work)?;
         if glyphs.is_empty() {
-            return Err(bad(here(&charstrings), "CFF has no glyphs"));
+            return Err(charstrings.error("CFF has no glyphs"));
         }
-        if !cff2 && top.number(0x0c06, 2.0)? != 2.0 {
-            return Err(format_error(
-                range.start,
+        if version == Version::Cff1
+            && top.number(Operator::CHARSTRING_TYPE, TYPE2_CHARSTRINGS)? != TYPE2_CHARSTRINGS
+        {
+            return Err(unsupported(
+                features::FORMAT,
+                start,
                 "CFF CharstringType is not Type 2",
             ));
         }
-        let variations = if cff2 && top.has(24) {
-            variation::parse(table.cursor_at(top.offset(24, None)?)?, work)?
+        let variations = if version == Version::Cff2 && top.has(Operator::VSTORE) {
+            variation::parse(table.cursor_at(top.offset(Operator::VSTORE, None)?)?, work)?
         } else {
             Vec::new()
         };
-        let matrix = top.matrix(Transform::scale(0.001, 0.001))?;
-        let cid = top.has(0x0c1e);
-        let charset = if cff2 {
-            Vec::new()
-        } else {
-            charset(&table, top.offset(15, Some(0))?, glyphs.len(), work)?
+        let matrix = top.matrix(Transform::scale(DEFAULT_SCALE, DEFAULT_SCALE))?;
+        let cid = top.has(Operator::ROS);
+        let charset = match version {
+            Version::Cff1 => charset(
+                &table,
+                top.offset(Operator::CHARSET, Some(ISO_ADOBE_CHARSET))?,
+                glyphs.len(),
+                work,
+            )?,
+            Version::Cff2 => Vec::new(),
         };
-        let (names, cids) = charset_maps(&charset, &top, &string_ranges, data, work, range.start)?;
-        let encoding = if cid || cff2 {
+        let context = Context {
+            data,
+            table,
+            version,
+            strings,
+            variations,
+        };
+        let (names, cids) = context.charset_maps(&top, &charset, work, start)?;
+        let glyph_names = crate::names::indexed(
+            glyphs.len(),
+            names.iter().map(|(name, &glyph)| Ok((glyph, name))),
+            work,
+            start,
+        )?;
+        let encoding = if cid || version == Version::Cff2 {
             None
         } else {
             Some(strings::encoding(
-                &table,
-                top.offset(16, Some(0))?,
+                &context.table,
+                top.offset(Operator::ENCODING, Some(0))?,
                 &charset,
-                &string_ranges,
+                &context.strings,
                 data,
                 work,
             )?)
         };
-        let context = Context {
-            cff2,
-            variations: &variations,
-            strings: string_ranges.len(),
-        };
-        let (private, select) = dictionaries(&table, &top, data, glyphs.len(), context, work)?;
-        let glyph_names = crate::names::indexed(
-            glyphs.len(),
-            names.iter().map(|(name, glyph)| Ok((*glyph, name))),
-            work,
-            Position::Buffer(range.start),
-        )?;
+        let (private, select) = context.dictionaries(&top, glyphs.len(), work)?;
         Ok(Self {
+            glyph_count: u32::try_from(glyphs.len())
+                .map_err(|_| limit(start, "glyph count overflow"))?,
             glyphs,
             global,
             private,
@@ -197,57 +186,70 @@ impl Cff {
             cids,
             encoding,
             matrix,
-            cff2,
-            variations,
+            version,
+            variations: context.variations,
         })
     }
-    pub(crate) fn glyph_count(&self) -> u32 {
-        u32::try_from(self.glyphs.len()).unwrap_or(0)
+
+    pub(crate) const fn glyph_count(&self) -> u32 {
+        self.glyph_count
     }
-    pub(crate) fn matrix(&self) -> Transform {
+
+    pub(crate) const fn matrix(&self) -> Transform {
         self.matrix
     }
-    pub(crate) fn is_cid(&self) -> bool {
+
+    pub(crate) const fn is_cid(&self) -> bool {
         self.cids.is_some()
     }
+
     pub(crate) fn cid(&self, cid: u32) -> Option<GlyphId> {
         self.cids.as_ref()?.get(&cid).copied()
     }
+
     pub(crate) fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
-        self.glyph_names.get(u32_to_usize(glyph.0))?.as_ref()
+        crate::names::get(&self.glyph_names, glyph)
     }
+
     pub(crate) fn name(&self, name: &[u8]) -> Option<GlyphId> {
         self.names.get(name).copied()
     }
+
     pub(crate) fn encoding(&self) -> Option<&[Option<Name>; 256]> {
         self.encoding.as_deref()
     }
+
     pub(crate) fn outline(&self, data: &[u8], glyph: GlyphId, work: &mut Work<'_>) -> Result<Path> {
-        Ok(type2::glyph(self, data, glyph, work)?.0)
+        type2::outline(self, data, glyph, work)
     }
+
+    /// The charstring width, if the glyph interprets; CFF2 charstrings
+    /// carry none.
     pub(crate) fn advance(&self, data: &[u8], glyph: GlyphId, work: &mut Work<'_>) -> Option<f64> {
-        if self.cff2 {
-            None
-        } else {
-            type2::glyph(self, data, glyph, work).ok().map(|g| g.1)
+        match self.version {
+            Version::Cff1 => type2::advance(self, data, glyph, work).ok(),
+            Version::Cff2 => None,
         }
     }
 
     /// The Private DICT that selects `glyph`'s subroutines and widths.
     fn private(&self, glyph: GlyphId) -> Option<&Private> {
-        self.private.get(*self.select.get(u32_to_usize(glyph.0))?)
+        let fd = if self.select.is_empty() {
+            0
+        } else {
+            usize::from(*self.select.get(u32_to_usize(glyph.0))?)
+        };
+        self.private.get(fd)
     }
 
-    /// Heap reachable through CFF metadata; INDEX ranges borrow the
-    /// original bytes.
     pub(crate) fn heap_bytes(&self) -> usize {
         self.private
             .iter()
             .fold(vector(&self.private), |sum, p| {
-                sum.saturating_add(vector(&p.subrs))
+                sum.saturating_add(p.subrs.heap_bytes())
             })
-            .saturating_add(vector(&self.glyphs))
-            .saturating_add(vector(&self.global))
+            .saturating_add(self.glyphs.heap_bytes())
+            .saturating_add(self.global.heap_bytes())
             .saturating_add(vector(&self.select))
             .saturating_add(names(&self.names))
             .saturating_add(crate::names::heap_bytes(&self.glyph_names))
@@ -257,247 +259,258 @@ impl Cff {
     }
 }
 
-fn private_dict(
-    table: &Cursor<'_>,
-    top: &dict::Dict,
-    context: Context<'_>,
-    matrix: Transform,
-    work: &mut Work<'_>,
-) -> Result<Private> {
-    let pair = match top.values(18) {
-        Some(pair) => pair,
-        None if context.cff2 => &[0.0, 0.0],
-        None => return Err(bad(here(table), "missing CFF Private DICT")),
-    };
-    if pair.len() != 2 {
-        return Err(bad(here(table), "invalid CFF Private operands"));
-    }
-    let size = dict::integer(pair[0], here(table))?;
-    let offset = dict::integer(pair[1], here(table))?;
-    let mut r = table.cursor_at(offset)?;
-    let at = here(&r);
-    let bytes = r.take_cursor(size)?;
-    let mut private = if context.cff2 {
-        dict::parse_private(bytes, work, context.variations)?
-    } else {
-        dict::parse(bytes, work)?
-    };
-    if !context.cff2 {
-        private.validate(true, 0, work)?;
-    }
-    private.check_blues(work)?;
-    let subrs = if private.has(19) {
-        index(
-            &mut table.cursor_at(offset.checked_add(private.offset(19, None)?).ok_or_else(
-                || crate::read::limit(Position::Buffer(at), "private offset overflow"),
-            )?)?,
-            work,
-            context.cff2,
-        )?
-    } else {
-        Vec::new()
-    };
-    Ok(Private {
-        subrs,
-        default_width: private.number(20, 0.0)?,
-        nominal_width: private.number(21, 0.0)?,
-        matrix,
-        vsindex: private.offset(22, Some(0))?,
-        random_seed: random_seed(private.number(0x0c13, 0.0)?),
-    })
+struct Header {
+    top: Dict,
+    strings: Index,
+    global: Index,
+    version: Version,
 }
 
+fn header(mut r: Cursor<'_>, data: &[u8], work: &mut Work<'_>) -> Result<Header> {
+    let version = match r.u8()? {
+        1 => Version::Cff1,
+        2 => Version::Cff2,
+        _ => return Err(r.error("invalid CFF version")),
+    };
+    r.u8()?; // minor version
+    let header = usize::from(r.u8()?);
+    match version {
+        Version::Cff2 => {
+            let size = usize::from(r.u16()?);
+            if header < CFF2_HEADER {
+                return Err(r.error("invalid CFF2 header"));
+            }
+            r.seek(header)?;
+            let top = Dict::parse(r.take_cursor(size)?, Kind::Cff2, work)?;
+            let global = Index::parse(&mut r, version, work)?;
+            Ok(Header {
+                top,
+                strings: Index::default(),
+                global,
+                version,
+            })
+        }
+        Version::Cff1 => {
+            let offset_size = r.u8()?;
+            if header < CFF1_HEADER || !OFFSET_SIZES.contains(&offset_size) {
+                return Err(r.error("invalid CFF header"));
+            }
+            r.seek(header)?;
+            if Index::parse(&mut r, version, work)?.len() != 1 {
+                return Err(r.error("embedded CFF must contain one font"));
+            }
+            let tops = Index::parse(&mut r, version, work)?;
+            let (1, Some(top)) = (tops.len(), tops.get(data, 0)) else {
+                return Err(r.error("CFF Top DICT count mismatch"));
+            };
+            let top = Dict::parse(top, Kind::Cff, work)?;
+            let strings = Index::parse(&mut r, version, work)?;
+            let global = Index::parse(&mut r, version, work)?;
+            Ok(Header {
+                top,
+                strings,
+                global,
+                version,
+            })
+        }
+    }
+}
+
+/// The SID (or CID) of each glyph (TN 5176 section 13).
 fn charset(
     table: &Cursor<'_>,
     offset: usize,
     glyphs: usize,
     work: &mut Work<'_>,
 ) -> Result<Vec<u16>> {
-    if offset == 0 {
-        if glyphs > 229 {
-            return Err(bad(here(table), "ISOAdobe charset glyph count exceeded"));
+    match offset {
+        ISO_ADOBE_CHARSET => {
+            let count = u16::try_from(glyphs)
+                .ok()
+                .filter(|&n| usize::from(n) <= ISO_ADOBE_GLYPHS)
+                .ok_or_else(|| syntax(table.position(), "ISOAdobe charset glyph count exceeded"))?;
+            return Ok((0..count).collect());
         }
-        return (0..glyphs)
-            .map(|i| {
-                u16::try_from(i).map_err(|_| {
-                    crate::read::limit(Position::Buffer(here(table)), "charset overflow")
-                })
-            })
-            .collect();
-    }
-    if offset <= 2 {
-        let predefined = if offset == 1 {
-            predefined::EXPERT
-        } else {
-            predefined::EXPERT_SUBSET
-        };
-        return predefined
-            .get(..glyphs)
-            .map(<[u16]>::to_vec)
-            .ok_or_else(|| bad(here(table), "predefined CFF charset glyph count exceeded"));
+        EXPERT_CHARSET | EXPERT_SUBSET_CHARSET => {
+            let predefined = if offset == EXPERT_CHARSET {
+                predefined::EXPERT
+            } else {
+                predefined::EXPERT_SUBSET
+            };
+            return predefined
+                .get(..glyphs)
+                .map(<[u16]>::to_vec)
+                .ok_or_else(|| {
+                    syntax(
+                        table.position(),
+                        "predefined CFF charset glyph count exceeded",
+                    )
+                });
+        }
+        _ => {}
     }
     let mut r = table.cursor_at(offset)?;
     let format = r.u8()?;
-    work.entries(glyphs, Position::Buffer(here(&r)))?;
+    work.entries(glyphs, r.position())?;
     let mut result = Vec::with_capacity(glyphs);
-    result.push(0);
+    result.push(0); // .notdef is implicit.
     while result.len() < glyphs {
         let first = r.u16()?;
         let left = match format {
-            0 => 0,
-            1 => u16::from(r.u8()?),
-            2 => r.u16()?,
-            _ => return Err(bad(here(&r), "invalid CFF charset format")),
+            CHARSET_SIDS => 0,
+            CHARSET_SHORT_RANGES => u16::from(r.u8()?),
+            CHARSET_RANGES => r.u16()?,
+            _ => return Err(r.error("invalid CFF charset format")),
         };
-        if usize::from(left) + 1 > glyphs - result.len() || first.checked_add(left).is_none() {
-            return Err(bad(here(&r), "CFF charset range exceeds glyph count"));
-        }
-        result.extend(first..=first + left);
+        let last = first
+            .checked_add(left)
+            .filter(|_| usize::from(left) < glyphs - result.len())
+            .ok_or_else(|| r.error("CFF charset range exceeds glyph count"))?;
+        result.extend(first..=last);
     }
     Ok(result)
 }
 
-struct Header {
-    top: dict::Dict,
-    strings: Vec<Range<usize>>,
-    global: Vec<Range<usize>>,
-    cff2: bool,
-}
-fn header(data: &[u8], range: Range<usize>, work: &mut Work<'_>) -> Result<Header> {
-    let mut r = slice(data, range, "invalid CFF table")?;
-    let major = r.u8()?;
-    if !matches!(major, 1 | 2) {
-        return Err(bad(here(&r), "invalid CFF version"));
+impl Context<'_> {
+    /// Glyph names, or CIDs for a CID-keyed font, from the charset.
+    fn charset_maps(
+        &self,
+        top: &Dict,
+        charset: &[u16],
+        work: &mut Work<'_>,
+        at: Position,
+    ) -> Result<CharsetMaps> {
+        let mut names = BTreeMap::new();
+        if !top.has(Operator::ROS) {
+            for (i, &sid) in charset.iter().enumerate() {
+                let name = strings::sid(sid, &self.strings, self.data, work, at)?;
+                if names.insert(name, glyph_id(i, at)?).is_some() {
+                    return Err(syntax(at, "duplicate CFF glyph name"));
+                }
+            }
+            return Ok((names, None));
+        }
+        let count = top.number(Operator::CID_COUNT, DEFAULT_CID_COUNT)?;
+        let mut cids = BTreeMap::new();
+        for (i, &cid) in charset.iter().enumerate() {
+            if f64::from(cid) >= count {
+                return Err(syntax(at, "CID outside CFF CIDCount"));
+            }
+            if cids.insert(u32::from(cid), glyph_id(i, at)?).is_some() {
+                return Err(syntax(at, "duplicate CFF CID"));
+            }
+        }
+        Ok((names, Some(cids)))
     }
-    let cff2 = major == 2;
-    r.u8()?;
-    let header = usize::from(r.u8()?);
-    let (top, strings, global) = if cff2 {
-        let size = usize::from(r.u16()?);
-        if header < 5 {
-            return Err(bad(here(&r), "invalid CFF2 header"));
-        }
-        r = r.cursor_at(header)?;
-        let top = dict::parse_cff2(r.take_cursor(size)?, work)?;
-        (top, Vec::new(), index(&mut r, work, true)?)
-    } else {
-        let offset_size = r.u8()?;
-        if header < 4 || !(1..=4).contains(&offset_size) {
-            return Err(bad(here(&r), "invalid CFF header"));
-        }
-        r = r.cursor_at(header)?;
-        if index(&mut r, work, false)?.len() != 1 {
-            return Err(bad(here(&r), "embedded CFF must contain one font"));
-        }
-        let tops = index(&mut r, work, false)?;
-        let top = tops
-            .first()
-            .filter(|_| tops.len() == 1)
-            .ok_or_else(|| bad(here(&r), "CFF Top DICT count mismatch"))?;
-        let top = dict::parse(slice(data, top.clone(), "CFF Top DICT outside font")?, work)?;
-        let strings = index(&mut r, work, false)?;
-        let global = index(&mut r, work, false)?;
-        (top, strings, global)
-    };
-    Ok(Header {
-        top,
-        strings,
-        global,
-        cff2,
-    })
-}
 
-fn dictionaries(
-    table: &Cursor<'_>,
-    top: &dict::Dict,
-    data: &[u8],
-    glyphs: usize,
-    context: Context<'_>,
-    work: &mut Work<'_>,
-) -> Result<(Vec<Private>, Vec<usize>)> {
-    let cff2 = context.cff2;
-    let (private, select) = if top.has(0x0c1e) || cff2 && top.has(0x0c24) {
-        let mut array = table.cursor_at(top.offset(0x0c24, None)?)?;
-        let fonts = index(&mut array, work, cff2)?;
-        if fonts.is_empty() || fonts.len() > if cff2 { 65536 } else { 256 } {
-            return Err(bad(here(&array), "invalid CFF FDArray count"));
+    /// The Private DICTs and the FD of each glyph (TN 5176 section 19).
+    fn dictionaries(
+        &self,
+        top: &Dict,
+        glyphs: usize,
+        work: &mut Work<'_>,
+    ) -> Result<(Vec<Private>, Vec<u16>)> {
+        let cff2 = self.version == Version::Cff2;
+        let font_dicts = top.has(Operator::ROS) || cff2 && top.has(Operator::FD_ARRAY);
+        if !font_dicts {
+            let private = self.private_dict(top, Transform::IDENTITY, work)?;
+            return Ok((vec![private], Vec::new()));
+        }
+        let mut array = self
+            .table
+            .cursor_at(top.offset(Operator::FD_ARRAY, None)?)?;
+        let fonts = Index::parse(&mut array, self.version, work)?;
+        let max = if cff2 {
+            MAX_CFF2_FONT_DICTS
+        } else {
+            MAX_FONT_DICTS
+        };
+        if fonts.is_empty() || fonts.len() > max {
+            return Err(array.error("invalid CFF FDArray count"));
         }
         let mut private = Vec::with_capacity(fonts.len());
-        for font in fonts {
-            work.work(font.len(), Position::Buffer(font.start))?;
-            let bytes = slice(data, font.clone(), "CFF Font DICT outside font")?;
-            let mut dict = if cff2 {
-                dict::parse_cff2(bytes, work)?
+        for font in fonts.ranges() {
+            let at = Position::Buffer(font.start);
+            work.work(font.len(), at)?;
+            let bytes = read::slice(self.data, font, "CFF Font DICT outside font")?;
+            let mut dict = Dict::parse(bytes, if cff2 { Kind::Cff2 } else { Kind::Cff }, work)?;
+            if cff2 {
+                if dict.has(Operator::FONT_MATRIX) {
+                    // Secondary outline readers disagree for this unreviewed
+                    // CFF2 combination. Keep it explicit until primary review.
+                    return Err(unsupported(
+                        features::FORMAT,
+                        at,
+                        "CFF2 Font DICT matrices are not supported",
+                    ));
+                }
             } else {
-                dict::parse(bytes, work)?
-            };
-            if !cff2 {
-                dict.validate(false, context.strings, work)?;
+                dict.validate(
+                    Domain::Top {
+                        strings: self.strings.len(),
+                    },
+                    work,
+                )?;
             }
-            if cff2 && dict.has(0x0c07) {
-                // Secondary outline readers disagree for this unreviewed
-                // CFF2 combination. Keep it explicit until primary review.
-                return Err(pagura_core::Error::unsupported(
-                    crate::features::FORMAT,
-                    "CFF2 Font DICT matrices are not supported",
-                )
-                .at(Position::Buffer(font.start)));
-            }
-            let parsed = private_dict(
-                table,
-                &dict,
-                context,
-                dict.matrix(Transform::IDENTITY)?,
-                work,
-            )?;
-            private.push(parsed);
+            private.push(self.private_dict(&dict, dict.matrix(Transform::IDENTITY)?, work)?);
         }
-        let select = if cff2 && !top.has(0x0c25) && private.len() == 1 {
-            vec![0; glyphs]
+        let select = if cff2 && !top.has(Operator::FD_SELECT) && private.len() == 1 {
+            Vec::new()
         } else {
             select::parse(
-                table.cursor_at(top.offset(0x0c25, None)?)?,
+                self.table
+                    .cursor_at(top.offset(Operator::FD_SELECT, None)?)?,
                 glyphs,
                 private.len(),
+                self.version,
                 work,
-                cff2,
             )?
         };
-        (private, select)
-    } else {
-        (
-            vec![private_dict(
-                table,
-                top,
-                context,
-                Transform::IDENTITY,
-                work,
-            )?],
-            vec![0; glyphs],
-        )
-    };
-    Ok((private, select))
-}
+        Ok((private, select))
+    }
 
-#[derive(Clone, Copy)]
-struct Context<'a> {
-    cff2: bool,
-    variations: &'a [Vec<f64>],
-    strings: usize,
+    /// The Private DICT that `dict` (a Top or Font DICT) locates.
+    fn private_dict(&self, dict: &Dict, matrix: Transform, work: &mut Work<'_>) -> Result<Private> {
+        let at = self.table.position();
+        let (size, offset) = match (dict.values(Operator::PRIVATE), self.version) {
+            (Some(&[size, offset]), _) => (dict::integer(size, at)?, dict::integer(offset, at)?),
+            (Some(_), _) => return Err(syntax(at, "invalid CFF Private operands")),
+            // A CFF2 Font DICT without a Private DICT uses all defaults.
+            (None, Version::Cff2) => (0, 0),
+            (None, Version::Cff1) => return Err(syntax(at, "missing CFF Private DICT")),
+        };
+        let bytes = self.table.cursor_at(offset)?.take_cursor(size)?;
+        let private_at = bytes.position();
+        let mut private = match self.version {
+            Version::Cff1 => Dict::parse(bytes, Kind::Cff, work)?,
+            Version::Cff2 => Dict::parse(bytes, Kind::Cff2Private(&self.variations), work)?,
+        };
+        if self.version == Version::Cff1 {
+            private.validate(Domain::Private, work)?;
+        }
+        private.check_blues(work)?;
+        let subrs = if private.has(Operator::SUBRS) {
+            let subrs_offset = offset
+                .checked_add(private.offset(Operator::SUBRS, None)?)
+                .ok_or_else(|| limit(private_at, "private offset overflow"))?;
+            Index::parse(&mut self.table.cursor_at(subrs_offset)?, self.version, work)?
+        } else {
+            Index::default()
+        };
+        Ok(Private {
+            subrs,
+            default_width: private.number(Operator::DEFAULT_WIDTH_X, 0.0)?,
+            nominal_width: private.number(Operator::NOMINAL_WIDTH_X, 0.0)?,
+            matrix,
+            vsindex: private.offset(Operator::VSINDEX, Some(0))?,
+            random_seed: random_seed(private.number(Operator::INITIAL_RANDOM_SEED, 0.0)?),
+        })
+    }
 }
 
 // TN 5176 defines an initial seed, not a generator algorithm. Fold the numeric
 // representation so arbitrary finite DICT numbers have reproducible seeds.
 fn random_seed(value: f64) -> u32 {
-    let bits = value.to_bits().to_be_bytes();
-    u32::from_be_bytes([
-        bits[0] ^ bits[4],
-        bits[1] ^ bits[5],
-        bits[2] ^ bits[6],
-        bits[3] ^ bits[7],
-    ])
-}
-
-fn format_error(at: usize, message: &'static str) -> pagura_core::Error {
-    pagura_core::Error::unsupported(crate::features::FORMAT, message).at(Position::Buffer(at))
+    let [a, b, c, d, e, f, g, h] = value.to_bits().to_be_bytes();
+    u32::from_be_bytes([a ^ e, b ^ f, c ^ g, d ^ h])
 }
