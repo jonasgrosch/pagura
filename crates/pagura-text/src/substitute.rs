@@ -96,7 +96,7 @@ pub(crate) fn load(
     };
     let mapping = Mapping::Simple(Box::new(SimpleMapping::new(
         names,
-        document.limits(),
+        &document.limits(),
         base.as_bytes(),
     )?));
     let to_unicode = to_unicode(document, font, &mapping)?;

@@ -1,6 +1,6 @@
 //! Loaded PDF fonts (9.6–9.7): the public font type and string decoding.
 use crate::{
-    CidToUnicode, Glyph, Provider,
+    CidToUnicode, Glyph, GlyphText, Provider,
     cid::{self, CidToGidMap},
     cmap::{self, CMap},
     encoding::SimpleMapping,
@@ -326,7 +326,7 @@ impl PdfFont {
                     },
                     u32::from(byte),
                     encoding.names[usize::from(byte)].as_ref(),
-                    encoding.unicode[usize::from(byte)].as_deref(),
+                    encoding.unicode[usize::from(byte)].as_ref(),
                 )
             }
             Mapping::Composite { map, .. } => {
@@ -336,7 +336,7 @@ impl PdfFont {
                 } else {
                     None
                 };
-                let unicode = cid.and_then(|cid| self.cid_unicode.as_ref()?.get(u32::from(cid)));
+                let unicode = cid.and_then(|cid| self.cid_unicode.as_ref()?.text(cid));
                 if cid.is_some_and(|cid| self.lacks_gid_entry(cid)) {
                     cid = Some(cid::Cid::NOTDEF);
                 } else if cid.is_none_or(|cid| !self.has_cid(cid)) {
@@ -352,9 +352,9 @@ impl PdfFont {
             .to_unicode
             .as_ref()
             .and_then(|map| map.text(code))
-            .or(fallback);
-        let length = text.map_or(0, str::len);
-        let unicode = text.filter(|_| unicode).map(str::to_owned);
+            .or_else(|| fallback.cloned());
+        let length = text.as_deref().map_or(0, str::len);
+        let unicode = text.filter(|_| unicode);
         let glyph = Glyph {
             code: code.value,
             byte_len: code.len,
@@ -363,7 +363,7 @@ impl PdfFont {
                 .then(|| self.metrics.vertical(selector)),
             word_space: code.len == 1 && code.value == 32,
             unicode,
-            shape: self.shape(code, selector, name, fallback),
+            shape: self.shape(code, selector, name, fallback.map(GlyphText::as_str)),
         };
         Ok((glyph, length))
     }

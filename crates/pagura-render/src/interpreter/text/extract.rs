@@ -333,7 +333,7 @@ impl Compiler<'_> {
             return Err(Error::syntax("text selection geometry overflow"));
         }
         let record = PositionedGlyph {
-            unicode: unicode.map(std::borrow::Cow::into_owned),
+            unicode,
             font: info.index,
             size: text.size,
             writing_mode: font.font.writing_mode(),
@@ -440,12 +440,12 @@ impl Compiler<'_> {
     }
 }
 impl Output {
-    fn unicode<'a>(
+    fn unicode(
         &mut self,
         font: usize,
-        glyph: &'a Glyph,
+        glyph: &Glyph,
         limits: pagura_core::Limits,
-    ) -> Result<Option<std::borrow::Cow<'a, str>>> {
+    ) -> Result<Option<pagura_text::GlyphText>> {
         let info = self
             .fonts
             .get(&font)

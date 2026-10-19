@@ -198,7 +198,7 @@ fn simple_mapping(
     builtin: Option<&encoding::Encoding>,
 ) -> Result<SimpleMapping> {
     if kind == FontKind::TrueType && route == Route::Raw {
-        return SimpleMapping::new(std::array::from_fn(|_| None), document.limits(), b"");
+        return SimpleMapping::new(std::array::from_fn(|_| None), &document.limits(), b"");
     }
     let default = match builtin {
         Some(builtin) if kind != FontKind::TrueType => builtin.clone(),
@@ -217,7 +217,7 @@ fn simple_mapping(
     }
     SimpleMapping::new(
         names,
-        document.limits(),
+        &document.limits(),
         encoding::font_name(document, font)?,
     )
 }
@@ -259,7 +259,7 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
     let encoding = encoding::load(document, Some(encoding), std::array::from_fn(|_| None))?;
     let mapping = Mapping::Simple(Box::new(SimpleMapping::new(
         encoding,
-        document.limits(),
+        &document.limits(),
         encoding::font_name(document, font)?,
     )?));
     let to_unicode = to_unicode(document, font, &mapping)?;

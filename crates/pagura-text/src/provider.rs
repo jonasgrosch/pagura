@@ -1,6 +1,6 @@
 //! Host-supplied data absent from a PDF (ADR 0009).
-use crate::{WritingMode, cmap::CMap};
-use pagura_core::{Error, Limits, Name, Result, syntax::Origin};
+use crate::{GlyphText, WritingMode, cid::Cid, cmap::CMap};
+use pagura_core::{Error, Limits, Meter, Name, Result, syntax::Origin};
 use pagura_font::FontProgram;
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -205,9 +205,10 @@ impl PredefinedCMap {
     }
 }
 
-/// Shared CID-to-Unicode values for one character collection.
+/// Shared CID-to-Unicode values for one character collection, indexed
+/// directly by CID up to the largest one present.
 #[derive(Debug, Clone)]
-pub struct CidToUnicode(BTreeMap<u32, String>);
+pub struct CidToUnicode(Box<[Option<GlyphText>]>);
 
 impl CidToUnicode {
     /// Validates bounded, single-collection mapping data.
@@ -216,40 +217,55 @@ impl CidToUnicode {
     /// Returns a limit error for excessive entries/output or syntax errors for
     /// CIDs outside the 16-bit PDF character-identifier range.
     pub fn new(values: BTreeMap<u32, String>, limits: &Limits) -> Result<Self> {
-        let mut bytes = 0;
-        if values.len() > limits.value_nodes {
+        if values.len() > limits.font_entries {
             return Err(Error::limit("CID Unicode entry budget exceeded"));
         }
-        for (&cid, text) in &values {
-            crate::cid::Cid::try_from(cid)?;
-            crate::cmap::charge(&mut bytes, text.len(), limits.decoded_bytes)?;
+        let mut bytes = Meter::new(limits.decoded_bytes, "CID Unicode byte budget exceeded");
+        let last = values
+            .last_key_value()
+            .map_or(Ok(None), |(&cid, _)| Cid::try_from(cid).map(Some))?;
+        let mut table = vec![None; last.map_or(0, |cid| usize::from(cid.get()) + 1)];
+        for (cid, text) in values {
+            bytes.charge(text.len())?;
+            table[usize::from(Cid::try_from(cid)?.get())] = Some(GlyphText::from(text));
         }
-        Ok(Self(values))
+        Ok(Self(table.into()))
     }
 
     /// One Unicode scalar per CID, the shape of most collection data.
     ///
     /// # Errors
-    /// As [`Self::new`], plus a syntax error for a repeated CID.
+    /// Returns a limit error for more than `font_entries` entries or a syntax
+    /// error for a repeated CID.
     pub fn from_scalars(
         values: impl IntoIterator<Item = (u16, char)>,
         limits: &Limits,
     ) -> Result<Self> {
-        let mut map = BTreeMap::new();
+        let mut entries = Meter::new(limits.font_entries, "CID Unicode entry budget exceeded");
+        let mut table = Vec::new();
         for (cid, scalar) in values {
-            if map.len() >= limits.value_nodes {
-                return Err(Error::limit("CID Unicode entry budget exceeded"));
+            entries.charge(1)?;
+            let index = usize::from(cid);
+            if table.len() <= index {
+                table.resize(index + 1, None);
             }
-            if map.insert(u32::from(cid), scalar.to_string()).is_some() {
+            if table[index].replace(GlyphText::from(scalar)).is_some() {
                 return Err(Error::syntax("duplicate CID Unicode entry"));
             }
         }
-        Self::new(map, limits)
+        Ok(Self(table.into()))
     }
 
     /// Unicode for a CID. Absence remains unknown rather than guessed.
     pub fn get(&self, cid: u32) -> Option<&str> {
-        self.0.get(&cid).map(String::as_str)
+        Cid::try_from(cid)
+            .ok()
+            .and_then(|cid| self.text(cid))
+            .map(GlyphText::as_str)
+    }
+
+    pub(crate) fn text(&self, cid: Cid) -> Option<&GlyphText> {
+        self.0.get(usize::from(cid.get()))?.as_ref()
     }
 }
 
@@ -270,7 +286,7 @@ mod tests {
         }
         assert!(CidToUnicode::from_scalars([(1, 'A'), (1, 'B')], &limits).is_err());
         let small = Limits {
-            value_nodes: 1,
+            font_entries: 1,
             ..Limits::default()
         };
         assert!(CidToUnicode::from_scalars([(1, 'A'), (2, 'B')], &small).is_err());
