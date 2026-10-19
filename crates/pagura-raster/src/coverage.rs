@@ -527,11 +527,15 @@ fn strip(
     sweep.sorted = true;
     // Equal x may meet at hi without crossing inside this strip. The complete
     // endpoint key also certifies the next strip's top order after departures.
-    if top.windows(2).all(|pair| {
-        let (a, b) = (pair[0], pair[1]);
-        let (ax, bx) = (a.x(hi), b.x(hi));
-        sweep.sorted &= cached(a, ax, b, bx, false).is_le();
-        ax.total_cmp(&bx).is_le()
+    let mut previous = None;
+    if top.iter().all(|&b| {
+        let bx = b.x(hi);
+        let ordered = previous.is_none_or(|(a, ax)| {
+            sweep.sorted &= cached(a, ax, b, bx, false).is_le();
+            ax.total_cmp(&bx).is_le()
+        });
+        previous = Some((b, bx));
+        ordered
     }) {
         for &edge in top.iter() {
             row.edge(edge, lo, hi, winding.step(edge)?)?;

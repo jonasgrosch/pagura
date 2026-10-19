@@ -1,9 +1,11 @@
-//! Keep small closed component contours on the strip sweep.
+//! Select the strip sweep from geometry, independently of the viewport.
 
 use super::{Geometry, Shape};
 use crate::{Point, Segment};
 
 const SWEEP_RANGE: f64 = 65_536.0;
+// Construction commands in a small component path, not per-cell density.
+const SMALL_COMPONENT_SEGMENTS: usize = 512;
 
 // The strip sweep integrates primitive polygons once per strip. Scattering a
 // union of short component polygons creates repeated local sweeps at overlaps.
@@ -32,7 +34,7 @@ pub(super) fn sweep_anchor(shapes: &[Shape], maximum: usize) -> Option<Point> {
     (anchor.x.is_finite()
         && anchor.y.is_finite()
         && shape.segments() <= maximum
-        && small_shape(shape)
+        && prefers_sweep(shape)
         && within_frame(shape, anchor)
         && shapes[1..].iter().all(|clip| {
             clip.segments() <= maximum && (clip.rectangle().is_some() || within_frame(clip, anchor))
@@ -40,9 +42,16 @@ pub(super) fn sweep_anchor(shapes: &[Shape], maximum: usize) -> Option<Point> {
     .then_some(anchor)
 }
 
-fn small_shape(shape: &Shape) -> bool {
+fn prefers_sweep(shape: &Shape) -> bool {
     match &shape.geometry {
-        Geometry::Path(path) => small_first_contour(path.segments()),
+        Geometry::Path(path) => {
+            // Long slanted quadrilateral bands create many vertex events in
+            // the strip sweep. Cell accumulation localizes their intersections.
+            // Keep short, axis-aligned and mixed component paths on the sweep.
+            small_first_contour(path.segments())
+                && (path.segments().len() <= SMALL_COMPONENT_SEGMENTS
+                    || !diagonal_quadrilateral_components(path.segments(), shape.transform))
+        }
         Geometry::Glyph(glyph) => glyph.contours().first().is_none_or(|c| {
             // The vertex count includes MoveTo; Close costs one more.
             if c.is_closed() {
@@ -52,6 +61,26 @@ fn small_shape(shape: &Shape) -> bool {
             }
         }),
     }
+}
+
+fn diagonal_quadrilateral_components(segments: &[Segment], transform: crate::Transform) -> bool {
+    use Segment::{Close, LineTo, MoveTo};
+    // Device translation cannot change edge orientation or backend selection.
+    let transform = crate::Transform {
+        e: 0.0,
+        f: 0.0,
+        ..transform
+    };
+    let (components, rest) = segments.as_chunks::<5>();
+    rest.is_empty()
+        && components.iter().all(|c| {
+            let [MoveTo(a), LineTo(b), LineTo(c), LineTo(d), Close] = c else {
+                return false;
+            };
+            let [a, b, c, d] = [*a, *b, *c, *d].map(|p| p * transform);
+            !((a.x == b.x && b.y == c.y && c.x == d.x && d.y == a.y)
+                || (a.y == b.y && b.x == c.x && c.y == d.y && d.x == a.x))
+        })
 }
 
 fn small_first_contour(segments: &[Segment]) -> bool {
@@ -99,6 +128,56 @@ mod tests {
     use super::*;
     use crate::{FillRule, PathBuilder, Point, Transform};
     use std::sync::Arc;
+
+    #[test]
+    fn quadrilateral_admission_is_global_and_keeps_other_components_on_sweep() {
+        let limits = pagura_core::Limits::default();
+        let band = |count: usize, mixed: bool| {
+            let mut builder = PathBuilder::new();
+            for i in 0..count {
+                builder.move_to(Point::new(0.0, 0.0));
+                builder.line_to(Point::new(1.0, 0.25)).unwrap();
+                builder.line_to(Point::new(1.0, 1.25)).unwrap();
+                if !mixed || i != 1 {
+                    builder.line_to(Point::new(0.0, 1.0)).unwrap();
+                }
+                builder.close();
+            }
+            Arc::new(builder.finish())
+        };
+        for origin in [(0, 0), (17, 29), (1 << 30, 1 << 30)] {
+            let transform = Transform::translate(f64::from(origin.0), f64::from(origin.1));
+            for (path, sweep) in [
+                (band(102, false), true),
+                (band(128, false), false),
+                (band(128, true), true),
+            ] {
+                let shape = Shape {
+                    geometry: Geometry::Path(path),
+                    transform,
+                    rule: FillRule::NonZero,
+                };
+                assert_eq!(
+                    sweep_anchor(&[shape], limits.path_segments).is_some(),
+                    sweep
+                );
+            }
+            let path = band(128, false);
+            let image =
+                crate::Mask::from_path_at(2, 2, &path, transform, FillRule::NonZero, 4, origin)
+                    .unwrap();
+            // Integral of 1-x/4 and x/4 over one unit-wide pixel column.
+            assert_eq!(image.coverage(), [223, 0, 32, 0]);
+            let glyph =
+                Arc::new(crate::GlyphGeometry::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+            let shape = Shape {
+                geometry: Geometry::Glyph(glyph),
+                transform,
+                rule: FillRule::NonZero,
+            };
+            assert!(sweep_anchor(&[shape], limits.path_segments).is_some());
+        }
+    }
 
     #[test]
     fn glyph_polygons_share_path_admission_counts_and_anchor() {

@@ -5,6 +5,82 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "raster/quad-union-128-nonzero",
+      "kind": "vector",
+      "description": "Rational union/parity of coincident slanted quadrilaterals",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/quad-union-128-nonzero.path",
+          "sha256": "d9b45b2ea377112663cc5685fdfae8ff074337d6ad60889e5c2719a1c98df792"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/quad-union-128-nonzero.pgm",
+          "sha256": "d5cdb040e43e29d55569b00b1c17e5810f612e05221ecded49e89fd42c38fabc"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/quad-union-128-evenodd",
+      "kind": "vector",
+      "description": "Rational union/parity of coincident slanted quadrilaterals",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/quad-union-128-evenodd.path",
+          "sha256": "b45cfed27c5bab4140a015554b89813fa3c908dcea31762ec8c4a281e08ae909"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/quad-union-128-evenodd.pgm",
+          "sha256": "5daedf5fc0412fac6e65ad94a37a6d255f0dd5cbd0613469bb8eeefd20021791"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/quad-union-129-nonzero",
+      "kind": "vector",
+      "description": "Rational union/parity of coincident slanted quadrilaterals",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/quad-union-129-nonzero.path",
+          "sha256": "761c7e8492a74538f593acbae37fd36081b97f777d5b1ec94e42ec71b59c4075"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/quad-union-129-nonzero.pgm",
+          "sha256": "d5cdb040e43e29d55569b00b1c17e5810f612e05221ecded49e89fd42c38fabc"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/quad-union-129-evenodd",
+      "kind": "vector",
+      "description": "Rational union/parity of coincident slanted quadrilaterals",
+      "requirements": [
+        "raster-exact-area"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/quad-union-129-evenodd.path",
+          "sha256": "b5ef48b40021b326e41571cb3aecb23cd72b4a347e99aaaf52d20ab9d1d6d4d0"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/quad-union-129-evenodd.pgm",
+          "sha256": "d5cdb040e43e29d55569b00b1c17e5810f612e05221ecded49e89fd42c38fabc"
+        }
+      },
+      "tolerance": 0
+    },
+    {
       "id": "raster/triangle",
       "kind": "vector",
       "description": "Project-policy rational polygon/pixel intersection area",

@@ -9,10 +9,13 @@ mod colorants;
 pub(crate) use colorants::Separations;
 mod images;
 mod opaque_image;
+mod output;
 mod patterns;
 mod reduced;
 mod regions;
 mod sampled;
+mod surface;
+use surface::Surface;
 mod transfer;
 mod view;
 pub(crate) use regions::content_bounds;
@@ -156,52 +159,6 @@ impl Source {
     }
 }
 
-struct Surface {
-    tile: Tile,
-    pixels: Vec<Pixel>,
-}
-impl Surface {
-    fn pixel(&self, x: u32, y: u32) -> Pixel {
-        self.index(x, y)
-            .and_then(|i| self.pixels.get(i))
-            .copied()
-            .unwrap_or_default()
-    }
-    fn index(&self, x: u32, y: u32) -> Option<usize> {
-        let (x, y) = (x.checked_sub(self.tile.x)?, y.checked_sub(self.tile.y)?);
-        if x >= self.tile.width || y >= self.tile.height {
-            return None;
-        }
-        usize::try_from(u64::from(y) * u64::from(self.tile.width) + u64::from(x)).ok()
-    }
-    /// Index of the first of `len` pixels from (x, y), when all lie in one tile row.
-    fn span(&self, x: u32, y: u32, len: usize) -> Option<usize> {
-        let last = x.checked_add(u32::try_from(len.checked_sub(1)?).ok()?)?;
-        self.index(last, y)?;
-        self.index(x, y)
-    }
-    fn fill_solid(&mut self, start: usize, count: usize, color: [f64; 4]) -> Result<bool> {
-        let pixels = self
-            .pixels
-            .get_mut(start..start + count)
-            .ok_or(Error::invalid_argument("mask outside group"))?;
-        // The Normal formula returns the source exactly at zero or unit backdrop
-        // alpha (11.3.3). Other alphas take the general f64 evaluation.
-        if !pixels.iter().all(|p| p.alpha == 0.0 || p.alpha == 1.0) {
-            return Ok(false);
-        }
-        pixels.fill(Pixel {
-            color,
-            alpha: 1.0,
-            group: 1.0,
-            shape: 1.0,
-        });
-        Ok(true)
-    }
-    fn bytes(&self) -> usize {
-        self.pixels.len() * size_of::<Pixel>()
-    }
-}
 #[derive(Clone, Copy)]
 enum Backdrop<'a> {
     Transparent,
@@ -321,7 +278,7 @@ impl Context {
                 }
             }
         }
-        Ok(Surface { tile, pixels })
+        Ok(Surface::new(tile, pixels))
     }
     fn clip(&mut self, clip: Option<&Arc<Clip>>, tile: Tile) -> Result<Arc<Mask>> {
         let id = clip.map_or(0, |c| Arc::as_ptr(c) as usize);
@@ -676,7 +633,7 @@ impl Context {
                 self.transfer_mark(p.transfer.as_ref(), &p.composite, (x, y), source, true)?;
                 let source = source.apply(&p.composite, mask_value);
                 let pixel = target
-                    .pixels
+                    .pixels_mut()
                     .get_mut(index)
                     .ok_or(Error::invalid_argument("invalid group index"))?;
                 pixel.paint(source, &p.composite, initial.pixel(x, y), knockout, model);
@@ -842,12 +799,12 @@ impl Context {
             .as_ref()
             .map(|m| self.soft_mask(m, parent.tile, parent_model, depth + 1))
             .transpose()?;
-        self.charge(surface.pixels.len())?;
+        self.charge(surface.pixels().len())?;
         let width =
             usize::try_from(tile.width).map_err(|_| Error::limit("group width exceeds usize"))?;
         // Remove the initial backdrop before mutating the parent surface. This
         // also prevents a prior result from becoming a later pixel's backdrop.
-        for (row, pixels) in surface.pixels.chunks_exact_mut(width).enumerate() {
+        for (row, pixels) in surface.pixels_mut().chunks_exact_mut(width).enumerate() {
             let y =
                 tile.y + u32::try_from(row).map_err(|_| Error::limit("group row exceeds u32"))?;
             for (column, pixel) in pixels.iter_mut().enumerate().filter(|(_, p)| p.shape > 0.0) {
@@ -874,7 +831,7 @@ impl Context {
                 };
             }
         }
-        for (row, pixels) in surface.pixels.chunks_exact(width).enumerate() {
+        for (row, pixels) in surface.pixels().chunks_exact(width).enumerate() {
             let y =
                 tile.y + u32::try_from(row).map_err(|_| Error::limit("group row exceeds u32"))?;
             for (column, pixel) in pixels.iter().enumerate().filter(|(_, p)| p.shape > 0.0) {
@@ -895,7 +852,7 @@ impl Context {
                 }
                 .apply(&group.composite, mask);
                 parent
-                    .pixels
+                    .pixels_mut()
                     .get_mut(index)
                     .ok_or(Error::invalid_argument("invalid parent index"))?
                     .paint(
@@ -977,7 +934,7 @@ impl Context {
                     true,
                 )?;
                 target
-                    .pixels
+                    .pixels_mut()
                     .get_mut(index)
                     .ok_or(Error::invalid_argument("shading index outside surface"))?
                     .paint(
@@ -1158,7 +1115,7 @@ impl Context {
             for x in tile.x..tile.x + tile.width {
                 let p = surface
                     .as_ref()
-                    .and_then(|s| s.index(x, y).and_then(|i| s.pixels.get(i)))
+                    .and_then(|s| s.index(x, y).and_then(|i| s.pixels().get(i)))
                     .copied()
                     .unwrap_or_else(|| initial.pixel(x, y));
                 let value = mask_value(mask, p, model).clamp(0.0, 1.0);
@@ -1285,7 +1242,6 @@ impl Context {
         {
             return Ok(());
         }
-        let Tile { x, y, width, .. } = region;
         self.clip = None;
         self.discard_mask();
         self.begin_transfers(region)?;
@@ -1322,62 +1278,7 @@ impl Context {
         if let Some(regions) = &mut self.transfers {
             regions.suspended = false;
         }
-        let stride =
-            usize::try_from(tile.width).map_err(|_| Error::limit("output width exceeds usize"))?;
-        for (row, pixels) in page
-            .pixels
-            .chunks_exact(
-                usize::try_from(width).map_err(|_| Error::limit("chunk width exceeds usize"))?,
-            )
-            .enumerate()
-        {
-            let start = (usize::try_from(y - tile.y)
-                .map_err(|_| Error::limit("output row exceeds usize"))?
-                + row)
-                * stride
-                + usize::try_from(x - tile.x)
-                    .map_err(|_| Error::limit("output column exceeds usize"))?;
-            for (column, (target, pixel)) in output.data_mut()
-                [start * 4..(start + pixels.len()) * 4]
-                .as_chunks_mut::<4>()
-                .0
-                .iter_mut()
-                .zip(pixels)
-                .enumerate()
-            {
-                let alpha = pixel.alpha;
-                if alpha == 0.0 {
-                    continue;
-                }
-                let color = if spots.is_empty() {
-                    model.rgb(pixel.straight())
-                } else {
-                    let index = row
-                        * usize::try_from(width)
-                            .map_err(|_| Error::limit("chunk width exceeds usize"))?
-                        + column;
-                    let mut tints = [0.0; 32];
-                    for (batch, surface) in spots.iter().enumerate() {
-                        for (i, value) in surface.pixels[index].straight().into_iter().enumerate() {
-                            tints[batch * 4 + i] = 1.0 - value;
-                        }
-                    }
-                    self.charge(self.separations.len())?;
-                    self.preview.rgb(
-                        &self.separations,
-                        model,
-                        pixel.straight(),
-                        &tints,
-                        &mut self.function_work,
-                    )?
-                };
-                let color = self.transfer_color(row * pixels.len() + column, color)?;
-                for (i, out) in target.iter_mut().enumerate().take(3) {
-                    *out = quantize(color[i] * alpha + f64::from(*out) / 255.0 * (1.0 - alpha));
-                }
-                target[3] = quantize(alpha + f64::from(target[3]) / 255.0 * (1.0 - alpha));
-            }
-        }
+        self.write_output(&page, &spots, model, output, tile)?;
         self.allocated -= page.bytes() + spots.iter().map(Surface::bytes).sum::<usize>();
         Ok(())
     }
@@ -1737,10 +1638,7 @@ mod tests {
         };
         let color = [79.0 / 255.0, 0.125, 0.5, 0.0];
         let backdrops = [Pixel::default(), Pixel::source([0.25; 4], 1.0)];
-        let mut surface = Surface {
-            tile,
-            pixels: backdrops.to_vec(),
-        };
+        let mut surface = Surface::new(tile, backdrops.to_vec());
         assert!(surface.fill_solid(0, 2, color).unwrap());
         let bits = |p: Pixel| {
             (
@@ -1749,7 +1647,7 @@ mod tests {
             )
         };
         let source = Source::new(color, 1.0, 1.0);
-        for (pixel, mut expected) in surface.pixels.iter().zip(backdrops) {
+        for (pixel, mut expected) in surface.pixels().iter().zip(backdrops) {
             expected.paint(
                 source,
                 &Composite::opaque(),
@@ -1759,12 +1657,12 @@ mod tests {
             );
             assert_eq!(bits(*pixel), bits(expected));
         }
-        surface.pixels[1].alpha = 0.5;
-        let before = surface.pixels[0].color;
+        surface.pixels_mut()[1].alpha = 0.5;
+        let before = surface.pixels()[0].color;
         // Fractional backdrops take the general f64 compositing expression.
         assert!(!surface.fill_solid(0, 2, [0.75; 4]).unwrap());
         assert_eq!(
-            surface.pixels[0].color.map(f64::to_bits),
+            surface.pixels()[0].color.map(f64::to_bits),
             before.map(f64::to_bits)
         );
     }
@@ -1902,15 +1800,15 @@ mod tests {
         run
     }
     fn glyph_surface() -> Surface {
-        Surface {
-            tile: Tile {
+        Surface::new(
+            Tile {
                 x: 0,
                 y: 0,
                 width: 4,
                 height: 4,
             },
-            pixels: vec![Pixel::source([0.3, 0.6, 0.9, 0.0], 1.0); 16],
-        }
+            vec![Pixel::source([0.3, 0.6, 0.9, 0.0], 1.0); 16],
+        )
     }
     #[test]
     fn batched_spans_preserve_the_f64_fold_and_cache_blind_limits() {
@@ -1966,7 +1864,7 @@ mod tests {
                             0,
                         )
                         .unwrap();
-                    for (a, b) in actual.pixels.iter().zip(&reference.pixels) {
+                    for (a, b) in actual.pixels().iter().zip(reference.pixels()) {
                         assert_eq!(a.color.map(f64::to_bits), b.color.map(f64::to_bits));
                         assert_eq!(
                             [a.alpha, a.group, a.shape].map(f64::to_bits),
