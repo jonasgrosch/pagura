@@ -456,6 +456,7 @@ fn sample_vector(name: &str, p: &BTreeMap<String, String>, expected: &[u8]) {
         u8::try_from(p["bits"].parse::<i64>().unwrap()).unwrap()
     );
     let bytes = match decoded.samples {
+        Samples::Planar(_) | Samples::Packed(_) => unreachable!("interleaved layout"),
         Samples::Bytes(v) => v,
         Samples::Words(v) | Samples::Mixed { values: v, .. } => {
             v.iter().flat_map(|v| v.to_be_bytes()).collect()

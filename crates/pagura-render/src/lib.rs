@@ -11,6 +11,7 @@ mod cie;
 mod color;
 mod compositor;
 mod context;
+mod direct_image;
 mod display;
 mod functions;
 mod icc;
@@ -50,6 +51,8 @@ pub struct RenderOptions {
     pub background: Rgba8,
     /// Whether to simulate overprinting (8.6.7; 11.7.4).
     pub overprint: OverprintPreview,
+    /// How images are decoded and sampled.
+    pub images: ImageReconstruction,
 }
 
 impl Default for RenderOptions {
@@ -58,8 +61,29 @@ impl Default for RenderOptions {
             scale: 1.0,
             background: Rgba8::WHITE,
             overprint: OverprintPreview::Auto,
+            images: ImageReconstruction::Exact,
         }
     }
+}
+
+/// How images are decoded and sampled (ADR 0004).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum ImageReconstruction {
+    /// Each pixel is the exact-area mean of the decoders' samples, rounded
+    /// once, as the image sampling reference defines it.
+    #[default]
+    Exact,
+    /// A page whose only mark is one opaque DeviceGray or DeviceRGB image,
+    /// upright or turned by a quarter, is decoded, converted and filtered in
+    /// one pass on the original sample grid, and painted straight into the
+    /// output. Every pixel is within one level of [`Self::Exact`]. Other
+    /// pages render as [`Self::Exact`], after a second compilation when the
+    /// page's first mark was an image.
+    ///
+    /// This applies where a page is compiled and rendered in one call
+    /// ([`render_page`], [`render_tile`] and their [`RenderContext`]
+    /// versions). A list from [`compile_page`] always holds exact samples.
+    Fused,
 }
 
 impl RenderOptions {
@@ -140,7 +164,12 @@ fn pixels(extent: f64) -> Result<u32> {
 /// error for budget violations, and syntax errors for malformed content.
 /// No partial page is ever returned.
 pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
-    compile_page(document, page)?.render(options)
+    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
+    direct_image::render(
+        |layout| interpreter::compile_cached_with(document, page, None, &fonts, layout),
+        options,
+        None,
+    )
 }
 
 /// Renders a whole page using explicitly supplied external font resources.
@@ -153,7 +182,12 @@ pub fn render_page_with(
     options: &RenderOptions,
     provider: &dyn Provider,
 ) -> Result<Pixmap> {
-    compile_page_with(document, page, provider)?.render(options)
+    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
+    direct_image::render(
+        |layout| interpreter::compile_cached_with(document, page, Some(provider), &fonts, layout),
+        options,
+        None,
+    )
 }
 
 /// Renders one tile of a page. Tiles of one page with the same options
@@ -170,7 +204,12 @@ pub fn render_tile(
     options: &RenderOptions,
     tile: Tile,
 ) -> Result<Pixmap> {
-    compile_page(document, page)?.render_tile(options, tile)
+    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
+    direct_image::render(
+        |layout| interpreter::compile_cached_with(document, page, None, &fonts, layout),
+        options,
+        Some(tile),
+    )
 }
 
 /// Renders a tile using explicitly supplied external font resources.
@@ -184,7 +223,12 @@ pub fn render_tile_with(
     tile: Tile,
     provider: &dyn Provider,
 ) -> Result<Pixmap> {
-    compile_page_with(document, page, provider)?.render_tile(options, tile)
+    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
+    direct_image::render(
+        |layout| interpreter::compile_cached_with(document, page, Some(provider), &fonts, layout),
+        options,
+        Some(tile),
+    )
 }
 
 #[cfg(test)]

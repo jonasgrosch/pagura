@@ -1,4 +1,5 @@
 //! Image codec dispatch and cross-checking of dictionary and stream metadata.
+use crate::deferred::SampleLayout;
 use crate::{DecodedImage, ImageKind, MaskKind, Samples, dct, jbig2, parameters as p};
 use pagura_codec::ImageCodec;
 use pagura_core::{Diagnostics, Dictionary, Error, Result, Value};
@@ -13,6 +14,25 @@ pub(crate) fn decode(
     codec: Option<&Codec>,
     diagnostics: &mut Diagnostics,
 ) -> Result<DecodedImage> {
+    decode_with(
+        document,
+        dict,
+        data,
+        codec,
+        SampleLayout::Interleaved,
+        diagnostics,
+    )
+}
+
+pub(crate) fn decode_with(
+    document: &Document,
+    dict: &Dictionary,
+    data: &[u8],
+    codec: Option<&Codec>,
+    layout: SampleLayout,
+    diagnostics: &mut Diagnostics,
+) -> Result<DecodedImage> {
+    let deferred = layout == SampleLayout::Deferred;
     let (width, height) = p::dimensions(dict)?;
     let limits = document.limits();
     p::budget(width, height, 1, 1, &limits)?;
@@ -55,6 +75,10 @@ pub(crate) fn decode(
     };
     let params = codec.and_then(|(_, params)| params.as_ref());
     match codec.map(|(codec, _)| codec) {
+        None if deferred && bits == 1 && components == 1 => {
+            image.bits_per_component = 1;
+            image.samples = p::packed(data, width, height, &limits, diagnostics)?;
+        }
         None => {
             image.bits_per_component = bits;
             image.samples = p::unpack_with_diagnostics(
@@ -72,6 +96,7 @@ pub(crate) fn decode(
                 data,
                 params,
                 (width, height, components, bits),
+                deferred,
                 &limits,
                 diagnostics,
             )?;
@@ -81,8 +106,13 @@ pub(crate) fn decode(
             if bits != 1 || components != 1 {
                 return Err(Error::syntax("CCITT requires one-bit components"));
             }
-            image.samples =
-                crate::fax_image::decode(data, params, width, height, &limits, diagnostics)?;
+            image.samples = crate::fax_image::decode(
+                data,
+                params,
+                (width, height, deferred),
+                &limits,
+                diagnostics,
+            )?;
         }
         Some(ImageCodec::Jbig2) => {
             if bits != 1 || components != 1 {
@@ -170,11 +200,39 @@ fn decode_dct(
     data: &[u8],
     params: Option<&Dictionary>,
     dimensions: (u32, u32, u8, u8),
+    deferred: bool,
     limits: &pagura_core::Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<Samples> {
     let (width, height, components, bits) = dimensions;
     let transform = color_transform(params)?;
+    // A deferred decode that fails or does not apply leaves no trace: the
+    // ordinary decoder below then reports its own errors and repairs.
+    if deferred
+        && bits == 8
+        && let Some(decoded) = dct::decode_deferred(data, transform, limits, diagnostics)
+    {
+        let (size, samples) = match decoded {
+            dct::Deferred::Planar(planar) => (
+                (planar.width(), planar.height(), 3),
+                Samples::Planar(planar),
+            ),
+            dct::Deferred::Gray(image) => (
+                (
+                    image.width as usize,
+                    image.height as usize,
+                    image.components,
+                ),
+                Samples::Bytes(image.samples),
+            ),
+        };
+        if size != (width as usize, height as usize, components) {
+            return Err(Error::syntax(
+                "JPEG metadata disagrees with image dictionary",
+            ));
+        }
+        return Ok(samples);
+    }
     let decoded = match dct::decode_with_diagnostics(data, transform, limits, diagnostics) {
         Ok(decoded) => decoded,
         Err(error) => {

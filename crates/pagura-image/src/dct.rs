@@ -2,6 +2,7 @@
 //! used by ISO 32000-2 clause 7.4.8. Samples use a separable floating-point
 //! IDCT; independently encoded fixtures allow an absolute error of one level.
 mod arithmetic;
+mod deferred;
 mod entropy;
 mod frame;
 mod scan;
@@ -43,7 +44,11 @@ pub struct DctImage {
     pub samples: Vec<u8>,
 }
 
+pub(crate) use deferred::{Deferred, decode_deferred};
+
 struct Decoder {
+    /// `Some(precise_luma)` when baseline frames use native planes.
+    native: Option<bool>,
     frame: Option<Frame>,
     quant: [Option<[u16; 64]>; 4],
     huffman: [Option<Huffman>; 8],
@@ -102,10 +107,28 @@ fn decode_inner(
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<DctImage> {
+    let mut decoder = run(data, color_transform, limits, diagnostics, None)?;
+    let mut frame = decoder
+        .frame
+        .take()
+        .ok_or(Error::syntax("JPEG has no frame"))?;
+    transform::output(&mut frame, decoder.adobe, color_transform, limits)
+}
+
+/// Parses and decodes every segment through EOI. With `native`, baseline
+/// frames decode into native planes (see [`deferred`]).
+fn run(
+    data: &[u8],
+    color_transform: Option<i64>,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+    native: Option<bool>,
+) -> Result<Decoder> {
     if data.get(..2) != Some(&[255, 216]) {
         return Err(Error::syntax("missing JPEG SOI"));
     }
     let mut decoder = Decoder {
+        native,
         frame: None,
         quant: [None; 4],
         huffman: std::array::from_fn(|_| None),
@@ -121,8 +144,10 @@ fn decode_inner(
         let at = offset;
         let marker = marker(data, &mut offset)?;
         if marker == 0xd9 {
-            let mut frame = decoder.frame.ok_or(Error::syntax("JPEG has no frame"))?;
-            return transform::output(&mut frame, decoder.adobe, color_transform, limits);
+            if decoder.frame.is_none() {
+                return Err(Error::syntax("JPEG has no frame"));
+            }
+            return Ok(decoder);
         }
         if matches!(marker, 0xd0..=0xd8 | 0x01) {
             return Err(Error::syntax("unexpected JPEG standalone marker").at(Position::Buffer(at)));
@@ -134,7 +159,17 @@ fn decode_inner(
                     if decoder.frame.is_some() {
                         return Err(Error::syntax("multiple JPEG frames").at(Position::Buffer(at)));
                     }
-                    decoder.frame = Some(Frame::parse(payload, marker, limits)?);
+                    let mut frame = Frame::parse(payload, marker, limits)?;
+                    if let Some(precise_luma) = decoder.native {
+                        deferred::prepare(
+                            &mut frame,
+                            decoder.adobe,
+                            color_transform,
+                            precise_luma,
+                            limits,
+                        )?;
+                    }
+                    decoder.frame = Some(frame);
                     Ok(())
                 }
                 0xcb | 0xcd..=0xcf => Err(Error::unsupported(
@@ -146,7 +181,7 @@ fn decode_inner(
                     "JPEG lossless or hierarchical process is unsupported",
                 )),
                 0xdb => quant_tables(payload, &mut decoder.quant),
-                0xc4 => entropy::tables(payload, &mut decoder.huffman),
+                0xc4 => entropy::tables(payload, &mut decoder.huffman, decoder.native.is_some()),
                 0xcc => decoder.conditioning.define(payload),
                 0xdd if payload.len() == 2 => {
                     decoder.restart = usize::from(u16::from_be_bytes([payload[0], payload[1]]));

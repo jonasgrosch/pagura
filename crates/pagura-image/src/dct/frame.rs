@@ -8,6 +8,20 @@ pub(super) enum Storage {
     Coefficients(Vec<[i32; 64]>),
     Bytes(Vec<u8>),
     Words(Vec<u16>),
+    /// Baseline samples decoded straight into a native plane.
+    Native(Box<super::deferred::Plane>),
+}
+
+impl Storage {
+    /// Heap bytes held for the component's samples or coefficients.
+    pub(super) fn bytes(&self) -> usize {
+        match self {
+            Self::Coefficients(blocks) => blocks.capacity() * size_of::<[i32; 64]>(),
+            Self::Bytes(samples) => samples.capacity(),
+            Self::Words(samples) => samples.capacity() * 2,
+            Self::Native(plane) => plane.bytes(),
+        }
+    }
 }
 
 impl Storage {

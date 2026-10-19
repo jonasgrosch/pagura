@@ -22,7 +22,7 @@
 use super::wrapper::{self, FIRST_OBJECT, Pdf};
 use pagura::{Document, ObjectId, OpenOptions, Recovery};
 use pagura_core::{Diagnostics, Limits};
-use pagura_image::{DecodedImage, Samples, ccitt, dct, jbig2, jpx};
+use pagura_image::{DecodedImage, Samples, ccitt, dct, deferred::SampleLayout, jbig2, jpx};
 
 /// Named colour spaces the inline image dictionary can select (8.9.7).
 const RESOURCES: &[u8] = b"<< /ColorSpace << /G2 /DeviceGray /RGB2 /DeviceRGB \
@@ -170,12 +170,49 @@ fn xobject(data: &[u8], root: u32, recovery: Recovery) {
     let Some(document) = open(pdf, recovery) else {
         return;
     };
-    if let Some(object) = super::checked(document.object(ObjectId::new(FIRST_OBJECT + root, 0)))
-        && let Some(image) = super::checked(pagura_image::decode_xobject(&document, object))
-    {
-        assert_decoded(&image);
+    if let Some(object) = super::checked(document.object(ObjectId::new(FIRST_OBJECT + root, 0))) {
+        let image = super::checked(pagura_image::decode_xobject(&document, object));
+        if let Some(image) = &image {
+            assert_decoded(image);
+        }
+        let deferred = super::checked(pagura_image::decode_xobject_with(
+            &document,
+            object,
+            SampleLayout::Deferred,
+        ));
+        // A deferred decode that fails is repeated exactly, so it never loses
+        // an image (it may keep one whose interleaved samples exceed a limit).
+        assert!(
+            image.is_none() || deferred.is_some(),
+            "deferred decoding loses an image"
+        );
+        if let (Some(image), Some(deferred)) = (image, deferred) {
+            assert_deferred(&image, &deferred);
+        }
     }
     super::assert_diagnostics(&document.diagnostics(), recovery);
+}
+
+/// Deferred samples are the exact samples, except that converted planar
+/// RGB may differ by one level where luma kept an interval.
+fn assert_deferred(image: &DecodedImage, deferred: &DecodedImage) {
+    assert_decoded(deferred);
+    assert_eq!(
+        (image.width, image.height, image.components),
+        (deferred.width, deferred.height, deferred.components),
+        "deferred decoding changes the image geometry"
+    );
+    let tolerance = u16::from(matches!(deferred.samples, Samples::Planar(_)));
+    for index in 0..image.samples.len() {
+        let exact = image.samples.get(index);
+        let value = deferred.samples.get(index);
+        assert!(
+            exact
+                .zip(value)
+                .is_some_and(|(exact, value)| exact.abs_diff(value) <= tolerance),
+            "deferred sample {index} is {value:?}, exact {exact:?}"
+        );
+    }
 }
 
 fn inline(data: &[u8], recovery: Recovery) {
@@ -239,6 +276,8 @@ fn assert_decoded(image: &DecodedImage) {
             (9..=16).contains(&bits),
             "16-bit storage for {bits}-bit samples"
         ),
+        Samples::Planar(_) => assert_eq!(bits, 8, "planar samples are bytes"),
+        Samples::Packed(_) => assert_eq!(bits, 1, "packed samples are bits"),
         // Mixed JPX precisions: each colour component's values fit its own depth.
         Samples::Mixed { values, bits } => {
             assert!(

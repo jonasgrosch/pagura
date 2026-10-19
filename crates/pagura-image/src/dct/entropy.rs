@@ -1,8 +1,13 @@
 //! T.81 canonical Huffman codes and entropy byte stuffing.
+mod fused;
+
 use pagura_core::{Diagnostic, Diagnostics, Error, Position, Result};
 
 pub(super) struct Huffman {
     short: [(u8, u8); 256],
+    /// Twelve-bit prefixes with fused magnitudes for native planes; empty
+    /// unless requested.
+    wide: Vec<u32>,
     first: [u32; 16],
     count: [u8; 16],
     offset: [usize; 16],
@@ -27,7 +32,11 @@ impl Huffman {
     }
 }
 
-pub(super) fn tables(mut payload: &[u8], tables: &mut [Option<Huffman>; 8]) -> Result<()> {
+pub(super) fn tables(
+    mut payload: &[u8],
+    tables: &mut [Option<Huffman>; 8],
+    wide: bool,
+) -> Result<()> {
     while let Some((&info, rest)) = payload.split_first() {
         if info >> 4 > 1 || info & 15 > 3 {
             return Err(Error::syntax("invalid JPEG Huffman table selector"));
@@ -73,8 +82,14 @@ pub(super) fn tables(mut payload: &[u8], tables: &mut [Option<Huffman>; 8]) -> R
             }
             code *= 2;
         }
+        let prefixes = if wide {
+            fused::wide_table(&first, &count_by_length, &offsets, symbols, info >> 4 == 1).to_vec()
+        } else {
+            Vec::new()
+        };
         tables[usize::from(info >> 4) * 4 + usize::from(info & 15)] = Some(Huffman {
             short,
+            wide: prefixes,
             first,
             count: count_by_length,
             offset: offsets,
@@ -90,6 +105,8 @@ pub(super) struct Bits<'a> {
     pub(super) offset: usize,
     byte: u8,
     left: u8,
+    /// The unstuffed segment used by native-plane decoding.
+    stream: fused::Stream,
 }
 impl<'a> Bits<'a> {
     pub(super) fn new(data: &'a [u8], offset: usize) -> Self {
@@ -98,10 +115,20 @@ impl<'a> Bits<'a> {
             offset,
             byte: 0,
             left: 0,
+            stream: fused::Stream::default(),
         }
     }
+    /// Bounds the unstuffed segment copies of native-plane decoding by
+    /// `storage` bytes and `work` operations.
+    pub(super) fn limit_stream(&mut self, storage: usize, work: usize) {
+        self.stream = fused::Stream::new(storage, work);
+    }
+    /// Operations charged by native-plane decoding in this scan.
+    pub(super) fn stream_work(&self) -> usize {
+        self.stream.work()
+    }
     pub(super) fn error(&self, message: &'static str) -> Error {
-        Error::syntax(message).at(Position::Buffer(self.offset))
+        Error::syntax(message).at(Position::Buffer(fused::position(self)))
     }
     /// Inspect and consume a short code with one byte/stuffing check. No
     /// state changes until the table entry is known to fit before the marker.
@@ -164,6 +191,7 @@ impl<'a> Bits<'a> {
         diagnostics: &mut Diagnostics,
         reported: &mut bool,
     ) -> Result<()> {
+        fused::sync(self);
         if self.left > 0
             && self.byte & (255 >> (8 - self.left)) != (255 >> (8 - self.left))
             && !*reported
@@ -190,7 +218,41 @@ impl<'a> Bits<'a> {
         if super::marker(self.data, &mut self.offset)? != 0xd0 + sequence {
             return Err(self.error("wrong JPEG restart marker"));
         }
+        fused::restart(self);
         Ok(())
+    }
+    /// Joins a zero DC difference with the following end of block.
+    pub(super) fn native_shortcut(&mut self, dc: &Huffman, ac: &Huffman) -> Result<[u32; 4096]> {
+        if dc.wide.len() != 4096 || ac.wide.len() != 4096 {
+            return Err(self.error("missing JPEG Huffman prefixes"));
+        }
+        fused::shortcut(dc, ac, self)
+    }
+    /// Consumes a zero DC difference and end of block, if they come next.
+    #[expect(
+        clippy::inline_always,
+        reason = "the background block test runs once per block"
+    )]
+    #[inline(always)]
+    pub(super) fn native_zero(&mut self, shortcut: &[u32]) -> Result<bool> {
+        fused::native_zero(self, shortcut)
+    }
+    /// Decodes one baseline block into dequantized natural-order
+    /// coefficients; returns whether any AC is nonzero and the L1 norm.
+    pub(super) fn native_coefficients(
+        &mut self,
+        dc: &Huffman,
+        ac: &Huffman,
+        predictor: &mut i32,
+        output: &mut [i32; 64],
+        quant: &[u16; 64],
+        shortcut: &[u32],
+    ) -> Result<(bool, u64)> {
+        fused::native(dc, ac, self, predictor, output, quant, shortcut)
+    }
+    /// Charges reference refinement work against this scan's stream budget.
+    pub(super) fn charge_refinement(&mut self, work: usize) -> Result<()> {
+        fused::charge(self, work)
     }
     pub(super) fn signed(&mut self, count: u8) -> Result<i32> {
         let value =
@@ -215,7 +277,7 @@ mod tests {
             payload[usize::from(length)] = 1;
             payload.push(122);
             let mut books = std::array::from_fn(|_| None);
-            tables(&payload, &mut books).unwrap();
+            tables(&payload, &mut books, false).unwrap();
             let book = books[0].as_ref().unwrap();
             for leading in 0..8usize {
                 let size = (leading + usize::from(length)).div_ceil(8);

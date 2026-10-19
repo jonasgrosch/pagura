@@ -125,7 +125,8 @@ impl RenderContext {
     /// # Errors
     /// As [`Self::compile_page`] and [`DisplayList::render`].
     pub fn render_page(&self, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
-        self.compile_page(page)?.render(options)
+        self.check_owned(page)?;
+        crate::direct_image::render(|layout| self.compile_with(page, layout), options, None)
     }
 
     /// Compiles and renders a tile with shared resources.
@@ -133,6 +134,25 @@ impl RenderContext {
     /// # Errors
     /// As [`Self::compile_page`] and [`DisplayList::render_tile`].
     pub fn render_tile(&self, page: &Page, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
-        self.compile_page(page)?.render_tile(options, tile)
+        self.check_owned(page)?;
+        crate::direct_image::render(
+            |layout| self.compile_with(page, layout),
+            options,
+            Some(tile),
+        )
+    }
+
+    fn compile_with(
+        &self,
+        page: &Page,
+        layout: pagura_image::deferred::SampleLayout,
+    ) -> Result<DisplayList> {
+        interpreter::compile_cached_with(
+            &self.document,
+            page,
+            self.provider.as_deref(),
+            &self.fonts,
+            layout,
+        )
     }
 }
