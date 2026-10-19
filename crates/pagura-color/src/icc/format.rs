@@ -173,8 +173,8 @@ pub(super) fn zeros(data: &Cursor<'_>, offset: usize, length: usize) -> Result<(
     Ok(())
 }
 
-pub(super) fn required<'t, 'a>(tags: &'t Tags<'a>, name: &[u8; 4]) -> Result<&'t Cursor<'a>> {
-    tags.get(name)
+pub(super) fn required<'t, 'a>(tags: &'t Tags<'a>, name: [u8; 4]) -> Result<&'t Cursor<'a>> {
+    tags.get(&name)
         .ok_or(Error::syntax("missing required ICC tag"))
 }
 
@@ -183,12 +183,12 @@ pub(super) fn model_tags(
     tags: &Tags<'_>,
     budget: &mut Budget,
 ) -> Result<[f64; 3]> {
-    let white = xyz(required(tags, b"wtpt")?)?;
+    let white = xyz(required(tags, *b"wtpt")?)?;
     let class = profile.bytes(12, 4)?;
     let space = profile.bytes(16, 4)?;
     if profile.u8_at(8)? == 4 {
-        required(tags, b"desc")?;
-        required(tags, b"cprt")?;
+        required(tags, *b"desc")?;
+        required(tags, *b"cprt")?;
         if class == b"mntr" && white != D50.map(|v| (v * 65536.0).round() / 65536.0) {
             return Err(Error::syntax("ICC display media white is not PCS D50"));
         }
@@ -200,22 +200,22 @@ pub(super) fn model_tags(
                 .all(|v| tags.contains_key(*v));
         match class {
             b"scnr" if !gray && !matrix => {
-                required(tags, b"A2B0")?;
+                required(tags, *b"A2B0")?;
             }
             b"mntr" if !gray && !matrix => {
-                required(tags, b"A2B0")?;
-                required(tags, b"B2A0")?;
+                required(tags, *b"A2B0")?;
+                required(tags, *b"B2A0")?;
             }
             b"prtr" if !gray => {
                 for tag in [
                     b"A2B0", b"A2B1", b"A2B2", b"B2A0", b"B2A1", b"B2A2", b"gamt",
                 ] {
-                    required(tags, tag)?;
+                    required(tags, *tag)?;
                 }
             }
             b"spac" => {
-                required(tags, b"A2B0")?;
-                required(tags, b"B2A0")?;
+                required(tags, *b"A2B0")?;
+                required(tags, *b"B2A0")?;
             }
             _ => {}
         }

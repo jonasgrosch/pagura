@@ -312,14 +312,14 @@ fn matrix_model(
         return Ok(None);
     }
     let [r, g, b] = [
-        xyz(format::required(tags, b"rXYZ")?)?,
-        xyz(format::required(tags, b"gXYZ")?)?,
-        xyz(format::required(tags, b"bXYZ")?)?,
+        xyz(format::required(tags, *b"rXYZ")?)?,
+        xyz(format::required(tags, *b"gXYZ")?)?,
+        xyz(format::required(tags, *b"bXYZ")?)?,
     ];
     let curves = [
-        Curve::parse(format::required(tags, b"rTRC")?, budget)?,
-        Curve::parse(format::required(tags, b"gTRC")?, budget)?,
-        Curve::parse(format::required(tags, b"bTRC")?, budget)?,
+        Curve::parse(format::required(tags, *b"rTRC")?, budget)?,
+        Curve::parse(format::required(tags, *b"gTRC")?, budget)?,
+        Curve::parse(format::required(tags, *b"bTRC")?, budget)?,
     ];
     Ok(Some(Forward::Matrix {
         matrix: [[r[0], g[0], b[0]], [r[1], g[1], b[1]], [r[2], g[2], b[2]]],
