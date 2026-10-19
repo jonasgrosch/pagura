@@ -9,6 +9,7 @@
 //! malformed input follow ADR 0003 and are reported by
 //! [`Document::diagnostics`].
 
+mod access;
 mod catalog;
 mod diagnostics;
 pub mod features;
@@ -196,6 +197,20 @@ impl Document {
                 .unwrap_or_else(PoisonError::into_inner)
                 .push(diagnostic);
         }
+    }
+
+    /// Applies a repair under this document's recovery mode (ADR 0003): in
+    /// repair mode `diagnostic` is reported as for [`Self::report`]; in strict
+    /// mode it is the error, and the caller must not apply the repair.
+    ///
+    /// # Errors
+    ///
+    /// Under [`Recovery::Strict`], the error of `diagnostic`'s repair.
+    pub fn repair(&self, diagnostic: Diagnostic) -> Result<()> {
+        let mut diagnostics = Diagnostics::new(self.recovery());
+        diagnostics.repair(diagnostic)?;
+        self.report(diagnostics.take());
+        Ok(())
     }
 
     /// Loads and caches an indirect object.
