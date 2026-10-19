@@ -3,14 +3,25 @@ use crate::tables;
 use pagura_core::Name;
 use pagura_font::{CmapSubtable, FontProgram, GlyphId};
 
+/// How a TrueType font's codes reach its cmap (9.6.5.4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Route {
+    /// Symbolic fonts and fonts without `/Encoding`: the byte itself is the
+    /// character code, looked up in the (3,0) or (1,0) subtable.
+    Raw,
+    /// Nonsymbolic fonts with `/Encoding`: the code's glyph name, through
+    /// Unicode in (3,1) or Mac Roman in (1,0), then the post table.
+    Named,
+}
+
 pub(crate) fn truetype(
     program: &FontProgram,
     code: u32,
     name: Option<&Name>,
     unicode: Option<&str>,
-    raw: bool,
+    route: Route,
 ) -> Option<GlyphId> {
-    if raw {
+    if route == Route::Raw {
         return symbol(program, code)
             .or_else(|| mapped(program, CmapSubtable::MacRoman, code))
             .or_else(|| raw_unicode(program, code));

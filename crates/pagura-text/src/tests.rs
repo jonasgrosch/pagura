@@ -267,7 +267,11 @@ fn font_error_vectors() -> Result<()> {
 #[test]
 fn only_outline_fonts_expose_their_program() -> Result<()> {
     let type3 = document("type3-differences")?;
-    assert!(PdfFont::load(&type3, dictionary(&type3)?)?.program().is_none());
+    assert!(
+        PdfFont::load(&type3, dictionary(&type3)?)?
+            .program()
+            .is_none()
+    );
     let embedded = document("embedded-cid-cff")?;
     let font = PdfFont::load(&embedded, dictionary(&embedded)?)?;
     let program = font
