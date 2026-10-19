@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 mod accumulation;
 mod admission;
+pub(crate) mod quadratic;
 mod rectangle;
 use rectangle::Rectangle;
 
@@ -47,7 +48,7 @@ impl Shape {
 // Successfully constructed masks contain finite geometry only.
 impl Eq for Shape {}
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct Edge {
     a: Point,
     b: Point,
@@ -270,8 +271,10 @@ fn bytes<T>(values: &Vec<T>) -> usize {
 pub(crate) struct Scratch {
     exact: Exact,
     accumulation: Vec<accumulation::Accumulator>,
+    curves: Vec<quadratic::Sweep>,
     exact_bytes: usize,
     accumulation_bytes: usize,
+    curve_bytes: usize,
 }
 
 impl Scratch {
@@ -285,8 +288,20 @@ impl Scratch {
         Ok(&mut self.accumulation[0])
     }
 
+    fn curves(&mut self) -> Result<&mut quadratic::Sweep> {
+        if self.curves.is_empty() {
+            self.curves
+                .try_reserve_exact(1)
+                .map_err(|_| Error::limit("curve sweep allocation failed"))?;
+            self.curves.push(quadratic::Sweep::default());
+        }
+        Ok(&mut self.curves[0])
+    }
+
     pub(crate) fn retained_bytes(&self) -> usize {
-        self.exact_bytes.saturating_add(self.accumulation_bytes)
+        self.exact_bytes
+            .saturating_add(self.accumulation_bytes)
+            .saturating_add(self.curve_bytes)
     }
 }
 
@@ -299,6 +314,16 @@ pub(crate) fn coverage(
     limits: &Limits,
     scratch: &mut Scratch,
 ) -> Result<()> {
+    // Admitted glyphs take the curve sweep. Everything else runs the line
+    // sweep or accumulation below, which never see a curve.
+    if let Some(anchor) = quadratic::anchor(shapes) {
+        let result = scratch
+            .curves()?
+            .render((width, height), shapes, out, origin, limits, anchor);
+        scratch.curve_bytes =
+            bytes(&scratch.curves).saturating_add(scratch.curves[0].retained_bytes());
+        return result;
+    }
     let prepared = scratch
         .exact
         .prepare(shapes, origin, (width, height), limits)?;

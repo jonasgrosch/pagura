@@ -252,3 +252,39 @@ tile assembly, changed-channel exact oracles, native/WASM parity and paired
 per-cell timing/RSS measurements whenever admission or kernel arithmetic
 changes. New optimizations must retain these bounds; CMYK and spot narrowing
 require a separate proof.
+
+## Amendment: direct glyph curves (2026-10-19)
+
+Status: accepted, 2026-10-19.
+
+For admitted glyphs, the coverage reference is the original outline's true
+curve at its exact device position, rather than the polygon produced by
+flattening it (8.5.2.2, 9.3.6; ADR 0013). All other glyphs keep the placed
+canonical polygon as their reference and oracle (amendment of 2026-10-18).
+The geometric flattening tolerance alone does not establish a one-level area
+bound against the true curve, so independent high-precision quadrature of the
+true outline must check admitted pixel areas. When a new result differs from
+the polygon renderer by more than one level, compare both with that oracle;
+accept an accuracy improvement only if the new result satisfies the one-level
+contract and is closer to the oracle at every such pixel. The old renderer is
+a differential reference, not the accuracy oracle.
+
+Admitted glyphs are covered by analytically integrating monotone quadratic
+pieces in f64. Only exactly quadratic outlines qualify: TrueType quadratics,
+or cubics whose third difference -P0 + 3P1 - 3P2 + P3 is at most 2^-24 device
+pixels per coordinate, as degree elevation leaves it after rounding. Their
+midpoint quadratics move the curve by less than 2^-27 pixels, so 32 monotone
+pieces change no pixel by more than 2^-21 of its area. A general cubic's
+midpoint quadratic is not an area certificate: displacements below 1/1024
+pixel on several edges sharing a pixel exceed one level. Cubic outlines
+therefore keep certified polygons.
+
+Canonical pieces are cached by outline and linear device map beside the
+fallback glyph polygon. Coverage is evaluated afresh at each exact placement.
+Admission uses the complete glyph and retained clip stack, independently of
+tiles and cache hits: at most 32 source segments and monotone pieces, more
+than four polygon vertices per piece, a curved piece, only quadratic curves,
+no point contour, glyph paint and rectangular clips only. Other fills,
+strokes, cubic or complex glyphs and nonrectangular clips keep the existing
+rasterization path. The curve sweep is separate from the line sweep, so fills
+without curves run the line sweep unchanged.

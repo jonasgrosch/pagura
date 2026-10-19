@@ -116,7 +116,15 @@ impl Rasterizer {
         self.trim();
         let result = (|| {
             crate::flatten::bounded(origin)?;
-            let Some(bounds) = glyph.bounds() else {
+            // The curve sweep may reach beyond the polygon; the fallback may not.
+            let bounds = if glyph.curves().is_some()
+                && crate::coverage::quadratic::rectangular_clips(&clip.shapes)
+            {
+                glyph.bounds()
+            } else {
+                glyph.polygon_bounds()
+            };
+            let Some(bounds) = bounds else {
                 return Ok(None);
             };
             let transform = Transform::translate(origin.x, origin.y);

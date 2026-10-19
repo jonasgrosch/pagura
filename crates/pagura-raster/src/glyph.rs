@@ -6,6 +6,7 @@
 //! a small curved contour can collapse to a point without becoming the
 //! geometric point of ISO 32000-2, 8.5.3.3.1.
 
+use crate::coverage::quadratic::{self, Piece};
 use crate::flatten::{bounded, flatten};
 use crate::{Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Result};
@@ -31,7 +32,7 @@ impl GlyphContour {
     }
 }
 
-/// A glyph polygon determined solely by its outline and device linear map.
+/// Glyph geometry determined solely by its outline and device linear map.
 ///
 /// No coverage is retained. Each placement still needs its own rasterization
 /// and mark in content order (9.3.6, 9.3.8; ADR 0013).
@@ -40,12 +41,16 @@ pub struct GlyphGeometry {
     contours: Vec<GlyphContour>,
     vertices: usize,
     bounds: Option<[Point; 2]>,
+    polygon_bounds: Option<[Point; 2]>,
+    curves: Option<Vec<Piece>>,
 }
 
 impl GlyphGeometry {
     /// Subdivides an outline under the translation-free map `[a, b, c, d]`.
     ///
     /// Uses the shared flattener at the unchanged 1/256-device-pixel tolerance.
+    /// Small quadratic outlines additionally retain monotone quadratic pieces;
+    /// the polygon remains available for clips the curve sweep does not admit.
     /// The instance translation never participates in subdivision.
     /// Limits apply equally when this computation precedes cache admission.
     ///
@@ -73,21 +78,43 @@ impl GlyphGeometry {
         if vertices > limits.path_segments {
             return Err(Error::limit("flattened segment budget exceeded"));
         }
+        let curves = curves(outline, transform, &contours, vertices, limits)?;
         let mut result = Self {
             contours,
             vertices,
             bounds: None,
+            polygon_bounds: None,
+            curves,
         };
         if result.retained_bytes() > limits.decoded_bytes {
             return Err(Error::limit("glyph geometry byte budget exceeded"));
         }
-        result.bounds = bounds(&result.contours);
+        result.polygon_bounds = bounds(&result.contours);
+        result.bounds = result.polygon_bounds;
+        if let (Some(pieces), Some([lo, hi])) = (&result.curves, &mut result.bounds) {
+            for p in pieces.iter().flat_map(|piece| piece.endpoints()) {
+                lo.x = lo.x.min(p.x);
+                lo.y = lo.y.min(p.y);
+                hi.x = hi.x.max(p.x);
+                hi.y = hi.y.max(p.y);
+            }
+        }
         Ok(result)
     }
 
-    /// Relative device bounds, including point contours.
+    /// Relative device bounds, including point contours and retained curves.
     pub fn bounds(&self) -> Option<[Point; 2]> {
         self.bounds
+    }
+
+    /// Relative device bounds of the polygon alone.
+    pub(crate) fn polygon_bounds(&self) -> Option<[Point; 2]> {
+        self.polygon_bounds
+    }
+
+    /// Monotone pieces for the curve sweep, if this outline was admitted.
+    pub(crate) fn curves(&self) -> Option<&[Piece]> {
+        self.curves.as_deref()
     }
 
     /// Contours in source order, including trailing open point contours.
@@ -104,17 +131,50 @@ impl GlyphGeometry {
     /// Capacity-based estimate of owned storage, with saturating arithmetic.
     /// Shared outline ownership and a cache index need separate accounting.
     pub fn retained_bytes(&self) -> usize {
+        let curves = self.curves.as_ref().map_or(0, |pieces| {
+            pieces.capacity().saturating_mul(size_of::<Piece>())
+        });
         self.contours.iter().fold(
-            size_of::<Self>().saturating_add(
-                self.contours
-                    .capacity()
-                    .saturating_mul(size_of::<GlyphContour>()),
-            ),
+            size_of::<Self>()
+                .saturating_add(
+                    self.contours
+                        .capacity()
+                        .saturating_mul(size_of::<GlyphContour>()),
+                )
+                .saturating_add(curves),
             |bytes, contour| {
                 bytes.saturating_add(contour.points.capacity().saturating_mul(size_of::<Point>()))
             },
         )
     }
+}
+
+// Admission depends on the complete outline, never a viewport, cache capacity
+// or the observed time of a placement. Screening against certified
+// accumulation rejected complex contours and weak piece reductions. Only
+// quadratic curves have an area certificate, so general cubics stay polygons.
+// Admitted outlines have more than eight polygon vertices, so they are never
+// rectangles.
+fn curves(
+    outline: &Path,
+    transform: Transform,
+    contours: &[GlyphContour],
+    vertices: usize,
+    limits: &Limits,
+) -> Result<Option<Vec<Piece>>> {
+    if outline.segments().len() > 32
+        || contours.iter().any(GlyphContour::is_degenerate)
+        || !outline
+            .segments()
+            .iter()
+            .any(|s| matches!(s, Segment::CubicTo(..)))
+    {
+        return Ok(None);
+    }
+    // At most 32 pieces, and fewer than a quarter of the polygon's vertices.
+    let cap = (vertices.saturating_sub(1) / 4).min(32);
+    let pieces = quadratic::build::prepare(outline, transform, limits, cap)?;
+    Ok(pieces.filter(|pieces| pieces.iter().any(|piece| piece.is_curved())))
 }
 
 fn bounds(contours: &[GlyphContour]) -> Option<[Point; 2]> {
