@@ -2,10 +2,13 @@
 mod idct;
 mod rgb;
 
-use super::{DctImage, frame::Frame};
-use idct::Idct;
+use super::{
+    DctImage,
+    frame::{Frame, Storage},
+};
+pub(super) use idct::Idct;
 use pagura_core::{Error, Limits, Result};
-use rgb::Rgb;
+use rgb::{Offsets, Rgb};
 
 // T.81 Figure A.6 diagonal coefficient order, independent of any encoder.
 const ORDER: [usize; 64] = [
@@ -23,8 +26,10 @@ fn sample(value: f64) -> u8 {
     value.round().clamp(0.0, 255.0) as u8
 }
 
-trait Sample: Copy + Default {
+pub(super) trait Sample: Copy + Default {
     fn from_idct(value: f64) -> Self;
+    /// The samples of a sequential component, reconstructed during its scan.
+    fn plane(storage: &mut Storage) -> Option<&mut Vec<Self>>;
     fn fused(_frame: &Frame, _planes: &[Vec<Self>], _samples: &mut [Self]) -> bool {
         false
     }
@@ -37,6 +42,12 @@ impl Sample for u8 {
     }
     fn from_idct(value: f64) -> Self {
         sample(value + 128.0)
+    }
+    fn plane(storage: &mut Storage) -> Option<&mut Vec<Self>> {
+        match storage {
+            Storage::Bytes(plane) => Some(plane),
+            _ => None,
+        }
     }
 
     fn finish(mut samples: Vec<Self>, components: usize, convert: bool) -> Vec<u8> {
@@ -63,6 +74,12 @@ impl Sample for u16 {
     )]
     fn from_idct(value: f64) -> Self {
         (value + 2048.0).round().clamp(0.0, 4095.0) as Self
+    }
+    fn plane(storage: &mut Storage) -> Option<&mut Vec<Self>> {
+        match storage {
+            Storage::Words(plane) => Some(plane),
+            _ => None,
+        }
     }
 
     fn finish(samples: Vec<Self>, components: usize, convert: bool) -> Vec<u8> {
@@ -108,7 +125,7 @@ fn ycbcr(y: f64, cb: f64, cr: f64) -> [f64; 3] {
 }
 
 pub(super) fn output(
-    frame: &Frame,
+    frame: &mut Frame,
     adobe: Option<u8>,
     transform: Option<i64>,
     limits: &Limits,
@@ -120,8 +137,38 @@ pub(super) fn output(
     }
 }
 
+/// Reconstructs one dequantized block of zigzag coefficients into its eight
+/// rows of a component plane (T.81 A.3.3, F.2.1.5).
+pub(super) fn reconstruct<T: Sample>(
+    idct: &Idct,
+    quant: &[u16; 64],
+    coefficients: &[i32; 64],
+    plane: &mut [T],
+    stride: usize,
+    index: usize,
+) -> Option<()> {
+    let pitch = stride * 8;
+    let start = (index / stride * 8 * pitch).checked_add(index % stride * 8)?;
+    let rows = plane.get_mut(start..start.checked_add(7 * pitch + 8)?)?;
+    if coefficients[1..].iter().all(|&v| v == 0) {
+        let value = idct.constant::<T>(f64::from(coefficients[0]) * f64::from(quant[0]));
+        for row in rows.chunks_mut(pitch) {
+            row.get_mut(..8)?.fill(value);
+        }
+        return Some(());
+    }
+    let mut natural = [0.0; 64];
+    for ((&coefficient, &q), &position) in coefficients.iter().zip(quant).zip(&ORDER) {
+        natural[position] = f64::from(coefficient) * f64::from(q);
+    }
+    for (row, samples) in rows.chunks_mut(pitch).zip(&idct.block::<T>(&natural)) {
+        row.get_mut(..8)?.copy_from_slice(samples);
+    }
+    Some(())
+}
+
 fn output_native<T: Sample>(
-    frame: &Frame,
+    frame: &mut Frame,
     adobe: Option<u8>,
     transform: Option<i64>,
     limits: &Limits,
@@ -131,29 +178,23 @@ fn output_native<T: Sample>(
     let count = crate::parameters::budget(frame.width, frame.height, n, 8, limits)?;
     let idct = Idct::new();
     let mut planes = Vec::with_capacity(usize::from(n));
-    for c in &frame.components {
+    for c in &mut frame.components {
         if c.approximation[0] < 0 || (!frame.progressive && c.approximation.iter().any(|&v| v < 0))
         {
             return Err(Error::syntax("JPEG component has no complete scan"));
         }
         let quant = c.quant.ok_or(Error::syntax("missing JPEG quantizer"))?;
+        if let Some(plane) = T::plane(&mut c.storage) {
+            planes.push(std::mem::take(plane));
+            continue;
+        }
+        let Storage::Coefficients(blocks) = &c.storage else {
+            return Err(Error::syntax("JPEG component precision mismatch"));
+        };
         let mut plane = vec![T::default(); c.stride * c.rows * 64];
-        let pitch = c.stride * 8;
-        for (blocks, rows) in c
-            .blocks
-            .chunks_exact(c.stride)
-            .zip(plane.chunks_exact_mut(pitch * 8))
-        {
-            for (column, coefficients) in blocks.iter().enumerate() {
-                let mut natural = [0.0; 64];
-                for ((&coefficient, &q), &position) in coefficients.iter().zip(&quant).zip(&ORDER) {
-                    natural[position] = f64::from(coefficient) * f64::from(q);
-                }
-                let block = idct.block::<T>(&natural);
-                for (row, samples) in rows.chunks_exact_mut(pitch).zip(&block) {
-                    row[column * 8..column * 8 + 8].copy_from_slice(samples);
-                }
-            }
+        for (index, coefficients) in blocks.iter().enumerate() {
+            reconstruct(&idct, &quant, coefficients, &mut plane, c.stride, index)
+                .ok_or(Error::syntax("JPEG block outside component"))?;
         }
         planes.push(plane);
     }
@@ -216,22 +257,19 @@ fn fused_rgb(frame: &Frame, planes: &[Vec<u8>], samples: &mut [u8]) -> bool {
     let width = frame.width as usize;
     let pitch = y.stride * 8;
     let chroma_pitch = cb.stride * 8;
+    let mut offsets = Offsets::default();
+    let mut filled = None;
     for (line, output) in samples.chunks_exact_mut(width * 3).enumerate() {
         let luminance = &planes[0][line * pitch..line * pitch + width];
-        let start = line * cb.v / frame.max_v * chroma_pitch;
-        let blue = &planes[1][start..start + chroma_pitch];
-        let red = &planes[2][start..start + chroma_pitch];
-        for (((run, yy), &cb), &cr) in output
-            .chunks_mut(repeat * 3)
-            .zip(luminance.chunks(repeat))
-            .zip(blue)
-            .zip(red)
-        {
-            let rgb = Rgb::new(cb, cr);
-            for (pixel, &y) in run.as_chunks_mut::<3>().0.iter_mut().zip(yy) {
-                *pixel = rgb.pixel(y);
-            }
+        let chroma = line * cb.v / frame.max_v;
+        if filled != Some(chroma) {
+            let start = chroma * chroma_pitch;
+            let blue = &planes[1][start..start + chroma_pitch];
+            let red = &planes[2][start..start + chroma_pitch];
+            offsets.fill(blue, red, repeat, width);
+            filled = Some(chroma);
         }
+        offsets.convert(luminance, output);
     }
     true
 }
@@ -439,20 +477,46 @@ mod tests {
     #[test]
     fn block_rows_and_padding_preserve_component_coordinates() {
         let limits = pagura_core::Limits::default();
+        // Progressive coefficients and sequential samples share block placement.
         let mut frame = super::Frame::parse(
+            &[8, 0, 9, 0, 29, 3, 1, 0x31, 0, 2, 0x21, 0, 3, 0x11, 0],
+            0xc2,
+            &limits,
+        )
+        .unwrap();
+        let mut sequential = super::Frame::parse(
             &[8, 0, 9, 0, 29, 3, 1, 0x31, 0, 2, 0x21, 0, 3, 0x11, 0],
             0xc0,
             &limits,
         )
         .unwrap();
-        for (i, component) in frame.components.iter_mut().enumerate() {
+        let idct = super::Idct::new();
+        for (i, (component, twin)) in frame
+            .components
+            .iter_mut()
+            .zip(&mut sequential.components)
+            .enumerate()
+        {
             component.quant = Some([1; 64]);
             component.approximation = [0; 64];
-            for (index, block) in component.blocks.iter_mut().enumerate() {
+            twin.quant = Some([1; 64]);
+            twin.approximation = [0; 64];
+            let super::Storage::Coefficients(blocks) = &mut component.storage else {
+                panic!("progressive frames keep coefficients");
+            };
+            let super::Storage::Bytes(plane) = &mut twin.storage else {
+                panic!("sequential frames keep samples");
+            };
+            for (index, block) in blocks.iter_mut().enumerate() {
                 block[0] = i32::try_from(8 * (16 * i + index)).unwrap();
+                super::reconstruct(&idct, &[1; 64], block, plane, twin.stride, index).unwrap();
             }
         }
-        let image = super::output(&frame, None, Some(0), &limits).unwrap();
+        let image = super::output(&mut frame, None, Some(0), &limits).unwrap();
+        assert_eq!(
+            super::output(&mut sequential, None, Some(0), &limits).unwrap(),
+            image
+        );
         assert_eq!(image.samples.len(), 29 * 9 * 3);
         for (y, row) in image.samples.as_chunks::<87>().0.iter().enumerate() {
             for (x, pixel) in row.as_chunks::<3>().0.iter().enumerate() {
