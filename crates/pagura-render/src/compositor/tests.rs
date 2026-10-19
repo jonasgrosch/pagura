@@ -4,19 +4,19 @@ use crate::display::DisplayList;
 use crate::transparency::{Composite, MaskMethod, SoftMask};
 use pagura_raster::{Pixmap, Point};
 
-fn overprint_list(bytes: &[u8]) -> DisplayList {
-    let document =
-        pagura_document::Document::open(bytes.to_vec(), &pagura_document::OpenOptions::default())
-            .unwrap();
+fn compiled(area: &str, file: &str) -> DisplayList {
+    let document = pagura_document::Document::open(
+        pagura_testkit::fixture(area, file),
+        &pagura_document::OpenOptions::default(),
+    )
+    .unwrap();
     crate::compile_page(&document, document.page(0).unwrap()).unwrap()
 }
 
 #[test]
 fn rendering_enforces_its_own_work_budget() {
     // Compiling within budget does not exempt the render from its own.
-    let mut list = overprint_list(include_bytes!(
-        "../../../../corpus/generated/content/group-i1-k0.pdf"
-    ));
+    let mut list = compiled("content", "group-i1-k0.pdf");
     list.limits.raster_work = 1;
     assert_eq!(
         list.render(&RenderOptions::default()).unwrap_err().kind,
@@ -26,36 +26,15 @@ fn rendering_enforces_its_own_work_budget() {
 
 #[test]
 fn simulation_requires_painted_colorants_and_is_shared_across_tiles() {
-    for (bytes, needed) in [
-        (
-            include_bytes!("../../../../corpus/generated/overprint/noop-rgb-multiply-on.pdf")
-                .as_slice(),
-            false,
-        ),
-        (
-            include_bytes!("../../../../corpus/generated/overprint/fill-zero.pdf"),
-            false,
-        ),
-        (
-            include_bytes!("../../../../corpus/generated/overprint/image-ignores-nonzero-mode.pdf"),
-            false,
-        ),
-        (
-            include_bytes!(
-                "../../../../corpus/generated/overprint/shading-ignores-nonzero-mode.pdf"
-            ),
-            false,
-        ),
-        (
-            include_bytes!("../../../../corpus/generated/overprint/indexed-base-cmyk.pdf"),
-            true,
-        ),
-        (
-            include_bytes!("../../../../corpus/generated/overprint/separation-on.pdf"),
-            true,
-        ),
+    for ((area, file), needed) in [
+        (("overprint", "noop-rgb-multiply-on.pdf"), false),
+        (("overprint", "fill-zero.pdf"), false),
+        (("overprint", "image-ignores-nonzero-mode.pdf"), false),
+        (("overprint", "shading-ignores-nonzero-mode.pdf"), false),
+        (("overprint", "indexed-base-cmyk.pdf"), true),
+        (("overprint", "separation-on.pdf"), true),
     ] {
-        let list = overprint_list(bytes);
+        let list = compiled(area, file);
         let plan = list.separations().unwrap();
         assert_eq!(plan.enabled, needed);
         let options = RenderOptions::default();
@@ -77,9 +56,7 @@ fn simulation_requires_painted_colorants_and_is_shared_across_tiles() {
 
 #[test]
 fn icc_rgb_fallback_keeps_opaque_groups_eligible() {
-    let list = overprint_list(include_bytes!(
-        "../../../../corpus/generated/transparency/icc-source-and-group.pdf"
-    ));
+    let list = compiled("transparency", "icc-source-and-group.pdf");
     assert!(!list.separations().unwrap().enabled);
     let group = list
         .commands
@@ -96,16 +73,14 @@ fn icc_rgb_fallback_keeps_opaque_groups_eligible() {
 
 #[test]
 fn separation_batches_and_masks_preserve_tile_parity() {
-    for bytes in [
-        include_bytes!("../../../../corpus/generated/overprint/spot-batches-6.pdf").as_slice(),
-        include_bytes!("../../../../corpus/generated/overprint/spot-passes-rgb-group.pdf"),
-        include_bytes!(
-            "../../../../corpus/generated/overprint/spot-luminosity-mask-uses-alternate.pdf"
-        ),
-        include_bytes!("../../../../corpus/generated/overprint/fractional-coverage.pdf"),
-        include_bytes!("../../../../corpus/generated/overprint/combined-fill-stroke-half.pdf"),
+    for (area, file) in [
+        ("overprint", "spot-batches-6.pdf"),
+        ("overprint", "spot-passes-rgb-group.pdf"),
+        ("overprint", "spot-luminosity-mask-uses-alternate.pdf"),
+        ("overprint", "fractional-coverage.pdf"),
+        ("overprint", "combined-fill-stroke-half.pdf"),
     ] {
-        let list = overprint_list(bytes);
+        let list = compiled(area, file);
         for background in [
             pagura_raster::Rgba8::WHITE,
             pagura_raster::Rgba8::TRANSPARENT,
@@ -142,9 +117,7 @@ fn separation_batches_and_masks_preserve_tile_parity() {
 
 #[test]
 fn spot_surfaces_share_the_process_memory_allowance() {
-    let mut list = overprint_list(include_bytes!(
-        "../../../../corpus/generated/overprint/spot-batches-6.pdf"
-    ));
+    let mut list = compiled("overprint", "spot-batches-6.pdf");
     list.limits.decoded_bytes = 4096;
     assert_eq!(
         list.render(&RenderOptions::default()).unwrap_err().kind,
@@ -182,9 +155,7 @@ fn full_normal_stores_preserve_the_f64_evaluation() {
 
 #[test]
 fn sole_rgb_images_preserve_work_and_surface_admission() {
-    let mut list = overprint_list(include_bytes!(
-        "../../../../corpus/generated/paint/image-page-rgb.pdf"
-    ));
+    let mut list = compiled("paint", "image-page-rgb.pdf");
     let options = RenderOptions::default();
     let expected = list.render(&options).unwrap();
     // One surface visit, one clip visit, one sample per pixel, and one mark.
@@ -220,9 +191,7 @@ fn only_sole_opaque_rgb_images_copy_straight_into_the_output() {
     use crate::display::ImageCommand;
     use crate::interpreter::images::Image;
     fn copies(edit: impl FnOnce(&mut ImageCommand)) -> bool {
-        let mut list = overprint_list(include_bytes!(
-            "../../../../corpus/generated/paint/image-page-rgb.pdf"
-        ));
+        let mut list = compiled("paint", "image-page-rgb.pdf");
         let [Command::Image(image)] = list.commands.as_mut_slice() else {
             panic!("the fixture paints one image");
         };
@@ -250,16 +219,14 @@ fn only_sole_opaque_rgb_images_copy_straight_into_the_output() {
     fn image(edit: impl FnOnce(&mut Image)) -> impl FnOnce(&mut ImageCommand) {
         |command| edit(Arc::get_mut(&mut command.image).expect("the image is unshared"))
     }
-    let transfer = overprint_list(include_bytes!(
-        "../../../../corpus/generated/recovery/transfer-image.pdf"
-    ))
-    .commands
-    .iter()
-    .find_map(|command| match command {
-        Command::Image(image) => image.transfer.clone(),
-        _ => None,
-    })
-    .expect("the fixture paints its image through a transfer");
+    let transfer = compiled("recovery", "transfer-image.pdf")
+        .commands
+        .iter()
+        .find_map(|command| match command {
+            Command::Image(image) => image.transfer.clone(),
+            _ => None,
+        })
+        .expect("the fixture paints its image through a transfer");
     assert!(copies(|_| {}));
     assert!(!copies(image(|i| i.decode = vec![(1.0, 0.0); 3])));
     assert!(!copies(image(|i| i.decoded.interpolate = true)));

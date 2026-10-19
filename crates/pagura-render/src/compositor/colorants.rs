@@ -416,7 +416,7 @@ mod tests {
     #[test]
     fn repeated_display_tints_do_not_spend_calculator_work() {
         let document = pagura_document::Document::open(
-            include_bytes!("../../../../corpus/generated/overprint/devicen-on.pdf").to_vec(),
+            pagura_testkit::fixture("overprint", "devicen-on.pdf"),
             &pagura_document::OpenOptions::default(),
         )
         .unwrap();
