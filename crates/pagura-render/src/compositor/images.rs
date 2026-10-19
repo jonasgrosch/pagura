@@ -47,7 +47,7 @@ impl Context {
         if runs(&clip).next().is_none() {
             return Ok(());
         }
-        let mut texels = Texels::new(image, model);
+        let mut texels = Texels::new(image, model, self);
         let available = self.memory.remaining();
         let (mut sampler, mut mask_sampler) =
             prepare(image, inverse, origin.0, clip.width(), available)?;
@@ -312,11 +312,14 @@ enum Texels<'a> {
     },
 }
 impl<'a> Texels<'a> {
-    fn new(image: &'a Image, model: Model) -> Self {
+    fn new(image: &'a Image, model: Model, context: &Context) -> Self {
         // Decode and clipping apply per sample before any weighted sum (8.9.5.2).
         // For DeviceGray, and DeviceRGB into RGB, each channel depends on one
-        // sample, so a 256-entry table equals the scalar result.
-        if matches!(model, Model::Gray | Model::Rgb)
+        // sample, so a 256-entry table equals the scalar result. A spot pass
+        // paints process colours as no ink, which only the scalar path knows.
+        let process = context.spot_batch.is_none();
+        if process
+            && matches!(model, Model::Gray | Model::Rgb)
             && matches!(image.space, Some(crate::color::Space::Gray))
             && (1..=8).contains(&image.decoded.bits_per_component)
             && image.decoded.components == 1
@@ -339,7 +342,8 @@ impl<'a> Texels<'a> {
             });
             return Self::Gray { pixels, colors };
         }
-        if model == Model::Rgb
+        if process
+            && model == Model::Rgb
             && matches!(image.space, Some(crate::color::Space::Rgb))
             && image.decoded.bits_per_component == 8
             && image.decoded.components == 3
@@ -613,7 +617,7 @@ mod tests {
         });
         image.decode[0] = (0.0, 255.0);
         let command = command(image);
-        let mut tables = Texels::new(&command.image, Model::Rgb);
+        let mut tables = Texels::new(&command.image, Model::Rgb, &context());
         assert!(matches!(tables, Texels::Cached(_)));
         let mut context = context();
         for raw in (0..=255_u8).rev().chain(0..=255) {
@@ -647,7 +651,7 @@ mod tests {
                 let mut image = byte_image(components, 8);
                 image.decoded.mask = mask.clone();
                 let command = command(image);
-                let mut tables = Texels::new(&command.image, Model::Rgb);
+                let mut tables = Texels::new(&command.image, Model::Rgb, &context());
                 assert!(matches!(tables, Texels::Gray { .. } | Texels::Rgb { .. }));
                 let mut context = context();
                 for pixel in 0..256 {
@@ -691,7 +695,7 @@ mod tests {
                     image.decode[1] = (range.1, range.0);
                 }
                 let command = command(image);
-                let mut texels = Texels::new(&command.image, model);
+                let mut texels = Texels::new(&command.image, model, &context());
                 assert!(matches!(texels, Texels::Rgb { .. } | Texels::Gray { .. }));
                 let mut context = context();
                 for pixel in 0..256 {
@@ -722,13 +726,19 @@ mod tests {
     fn byte_tables_exclude_masks_matte_and_nonmatching_spaces() {
         let mut image = byte_image(3, 8);
         image.decoded.mask = MaskKind::ColorKey(vec![(0, 0); 3]);
-        assert!(matches!(Texels::new(&image, Model::Rgb), Texels::Cached(_)));
+        assert!(matches!(
+            Texels::new(&image, Model::Rgb, &context()),
+            Texels::Cached(_)
+        ));
         image.decoded.mask = MaskKind::None;
         image.matte = Some(vec![0.0; 3]);
-        assert!(matches!(Texels::new(&image, Model::Rgb), Texels::Uncached));
+        assert!(matches!(
+            Texels::new(&image, Model::Rgb, &context()),
+            Texels::Uncached
+        ));
         image.matte = None;
         assert!(matches!(
-            Texels::new(&image, Model::Cmyk),
+            Texels::new(&image, Model::Cmyk, &context()),
             Texels::Cached(_)
         ));
         image.space = Some(crate::color::Space::Icc {
@@ -736,7 +746,10 @@ mod tests {
             profile: None,
             range: [[0.0, 1.0]; 4],
         });
-        assert!(matches!(Texels::new(&image, Model::Rgb), Texels::Cached(_)));
+        assert!(matches!(
+            Texels::new(&image, Model::Rgb, &context()),
+            Texels::Cached(_)
+        ));
     }
 
     #[test]
@@ -773,7 +786,7 @@ mod tests {
             transfer: None,
             position: pagura_core::Position::Unknown,
         };
-        let mut texels = Texels::new(&command.image, Model::Rgb);
+        let mut texels = Texels::new(&command.image, Model::Rgb, &context());
         let mut context = context();
         let sample = texels
             .sample(&mut context, &command, 0, Model::Rgb, None)
@@ -783,5 +796,28 @@ mod tests {
             [32768.0 / 65535.0, 32768.0 / 65535.0, 32768.0 / 65535.0, 0.0]
         );
         assert_eq!(sample.alpha, 1.0);
+    }
+
+    #[test]
+    fn spot_passes_paint_process_images_as_no_ink() {
+        // A spot pass replays process-colour marks as "no ink" (all planes 1)
+        // whatever the blending space, so the per-sample tables must agree
+        // with the scalar path there too.
+        for components in [1, 3] {
+            let command = command(byte_image(components, 8));
+            let mut context = context();
+            context.spot_batch = Some(0);
+            let mut texels = Texels::new(&command.image, Model::Rgb, &context);
+            for pixel in [0, 64, 255] {
+                let actual = texels
+                    .sample(&mut context, &command, pixel, Model::Rgb, None)
+                    .unwrap();
+                let scalar = context
+                    .image_texel(&command, pixel, Model::Rgb, None)
+                    .unwrap();
+                assert_eq!(actual.color, scalar.color, "{components} components");
+                assert_eq!(scalar.color, [1.0; 4]);
+            }
+        }
     }
 }
