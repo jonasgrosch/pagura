@@ -3,7 +3,7 @@ use super::*;
 
 fn source(text: Option<&str>) -> PositionedText {
     let glyph = PositionedGlyph {
-        unicode: text.map(str::to_owned),
+        unicode: text.map(GlyphText::from),
         font: 0,
         size: 10.0,
         writing_mode: WritingMode::Horizontal,
@@ -193,7 +193,7 @@ fn retained_bytes_follow_capacity_arithmetic_and_shared_paths_once() -> Result<(
         + text.content_text.capacity()
         + p.glyphs
             .iter()
-            .map(|g| g.unicode.as_ref().map_or(0, String::capacity))
+            .map(|g| g.unicode.as_ref().map_or(0, GlyphText::heap_bytes))
             .sum::<usize>()
         + 2 * size_of::<usize>()
         + size_of::<Arc<MarkedContent>>()
@@ -211,15 +211,22 @@ fn retained_bytes_follow_capacity_arithmetic_and_shared_paths_once() -> Result<(
 }
 
 #[test]
-fn retained_bytes_include_long_names_empty_arc_paths_and_string_spare_capacity() -> Result<()> {
+fn retained_bytes_include_long_names_empty_arc_paths_and_shared_glyph_text() -> Result<()> {
     let mut input = source(Some("X"));
     input.fonts[0].base_name = Some(Name::new(&[b'A'; 43]));
-    let mut unicode = String::with_capacity(101);
-    unicode.push('X');
-    input.glyphs[0].unicode = Some(unicode);
     let text = TextPage::from_positioned(input, LayoutOptions::default(), Limits::default())?;
     let base = page("X")?;
-    assert_eq!(text.retained_bytes() - base.retained_bytes(), 43 + 100);
+    assert_eq!(text.retained_bytes() - base.retained_bytes(), 43);
+    let long = "X".repeat(40);
+    let shared = source(Some(&long));
+    let mut unknown = shared.clone();
+    unknown.glyphs[0].unicode = None;
+    let heap = GlyphText::from(long.as_str()).heap_bytes();
+    assert_ne!(heap, 0);
+    assert_eq!(
+        memory::source_bytes(&shared) - memory::source_bytes(&unknown),
+        heap
+    );
     let empty = TextPage::from_positioned(
         PositionedText::default(),
         LayoutOptions::default(),

@@ -4,6 +4,9 @@ use pagura_font::{FontProgram, GlyphId};
 use pagura_raster::Transform;
 use std::sync::Arc;
 
+mod text;
+pub use text::GlyphText;
+
 /// Vertical metrics of one glyph (clause 9.7.4.3, `/W2`, `/DW2`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
@@ -56,7 +59,7 @@ pub struct Glyph {
     pub word_space: bool,
     /// Unicode text for extraction (`/ToUnicode`, then encoding glyph
     /// names), if known.
-    pub unicode: Option<String>,
+    pub unicode: Option<GlyphText>,
     /// How to draw it.
     pub shape: GlyphShape,
 }

@@ -68,7 +68,7 @@ pub fn glyph_name_unicode_for_font(name: &[u8], base_font: &[u8]) -> Option<Stri
 }
 
 pub use font::{FontKind, PdfFont, WritingMode};
-pub use glyph::{Glyph, GlyphShape, VerticalMetrics};
+pub use glyph::{Glyph, GlyphShape, GlyphText, VerticalMetrics};
 
 #[cfg(test)]
 mod test_support;

@@ -1,6 +1,7 @@
 //! Capacity accounting, with each reachable Arc allocation counted once.
 use super::{LogicalText, MarkedContent, PositionedText, TextPage};
 use pagura_core::{Name, Value};
+use pagura_text::GlyphText;
 use std::{collections::BTreeSet, sync::Arc};
 
 pub(super) fn name_bytes(name: &Name) -> usize {
@@ -61,7 +62,7 @@ pub(super) fn source_bytes(source: &PositionedText) -> usize {
     }
     for glyph in &source.glyphs {
         bytes = bytes
-            .saturating_add(glyph.unicode.as_ref().map_or(0, String::capacity))
+            .saturating_add(glyph.unicode.as_ref().map_or(0, GlyphText::heap_bytes))
             .saturating_add(shared.path(&glyph.marked_content));
     }
     for object in &source.objects {
