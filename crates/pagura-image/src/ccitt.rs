@@ -83,6 +83,34 @@ impl Bits<'_> {
     fn error(&self, message: &'static str) -> Error {
         Error::syntax(message).at(Position::Buffer(self.at / 8))
     }
+    /// The next `width` bits (at most 17), MSB first, without consuming them.
+    /// `None` unless all of them are present.
+    fn peek(&self, width: usize) -> Option<usize> {
+        if self.data.len().saturating_mul(8).saturating_sub(self.at) < width {
+            return None;
+        }
+        let offset = self.at / 8;
+        let byte = |i| usize::from(self.data.get(offset + i).copied().unwrap_or(0));
+        let word = (byte(0) << 16) | (byte(1) << 8) | byte(2);
+        Some((word >> (24 - self.at % 8 - width)) & ((1 << width) - 1))
+    }
+    /// Consumes `count` peeked bits and charges them as `count` calls to
+    /// [`Self::bit`] would. Returns false, consuming nothing, when that would
+    /// exceed the work budget; the bitwise path then reports the exact error.
+    fn advance(&mut self, count: usize) -> bool {
+        match self
+            .work
+            .checked_add(count)
+            .filter(|&work| work <= self.cap)
+        {
+            Some(work) => {
+                self.work = work;
+                self.at += count;
+                true
+            }
+            None => false,
+        }
+    }
     fn bit(&mut self) -> Result<u8> {
         self.work += 1;
         if self.work > self.cap {
@@ -321,12 +349,21 @@ fn workspace(width: usize, stride: usize, limits: &Limits) -> Result<usize> {
         .ok_or(Error::limit("CCITT row workspace budget exceeded"))
 }
 
+/// Sets the one bits of each run `from..to` a byte range at a time. Changing
+/// elements are nondecreasing and at most `width`.
 fn pack_row(row: &mut [u8], changes: &[usize], width: usize, black_is_1: bool) {
     let (mut black, mut from) = (false, 0);
     for to in changes.iter().copied().chain(std::iter::once(width)) {
-        if black == black_is_1 {
-            for x in from..to {
-                row[x / 8] |= 128 >> (x % 8);
+        if black == black_is_1 && to > from {
+            let (first, last) = (from / 8, (to - 1) / 8);
+            let left = 255_u8 >> (from % 8);
+            let right = 255_u8 << (7 - (to - 1) % 8);
+            if first == last {
+                row[first] |= left & right;
+            } else {
+                row[first] |= left;
+                row[first + 1..last].fill(255);
+                row[last] |= right;
             }
         }
         from = to;

@@ -197,7 +197,49 @@ const fn tree(black: bool) -> [Node; 416] {
 static WHITE_TREE: [Node; 416] = tree(false);
 static BLACK_TREE: [Node; 416] = tree(true);
 
+/// Every 13-bit prefix mapped to `run << 4 | length` for the code it starts
+/// with, or zero when it starts no complete code.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "runs are at most 2560 and code lengths at most 13, so both fit 16 bits"
+)]
+const fn prefixes(tree: &[Node; 416]) -> [u16; 8192] {
+    let mut result = [0; 8192];
+    let mut prefix = 0;
+    while prefix < 8192 {
+        let (mut node, mut length) = (0, 0_usize);
+        while length < 13 {
+            node = tree[node].children[(prefix >> (12 - length)) & 1];
+            length += 1;
+            if node == 0 {
+                break;
+            }
+            if let Some(value) = tree[node].value {
+                result[prefix] = ((value as u16) << 4) | length as u16;
+                break;
+            }
+        }
+        prefix += 1;
+    }
+    result
+}
+static WHITE_PREFIXES: [u16; 8192] = prefixes(&WHITE_TREE);
+static BLACK_PREFIXES: [u16; 8192] = prefixes(&BLACK_TREE);
+
 pub(super) fn run(bits: &mut Bits<'_>, black: bool) -> Result<usize> {
+    // One lookup when 13 bits remain. Truncated, invalid and over-budget
+    // codes take the bitwise walk below, which positions their errors.
+    if let Some(prefix) = bits.peek(13) {
+        let table = if black {
+            &BLACK_PREFIXES
+        } else {
+            &WHITE_PREFIXES
+        };
+        let entry = table[prefix];
+        if entry != 0 && bits.advance(usize::from(entry & 15)) {
+            return Ok(usize::from(entry >> 4));
+        }
+    }
     let tree = if black { &BLACK_TREE } else { &WHITE_TREE };
     let mut node = 0;
     for _ in 0..13 {
@@ -212,12 +254,35 @@ pub(super) fn run(bits: &mut Bits<'_>, black: bool) -> Result<usize> {
     Err(bits.error("invalid CCITT run code"))
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Mode {
     Pass,
     Horizontal,
     Vertical(i8),
 }
+/// The mode code a 7-bit prefix starts with, and its length (T.6 Table 1).
+/// Extension and invalid prefixes yield `None`.
+const fn prefix_mode(prefix: usize) -> Option<(usize, Mode)> {
+    Some(match prefix {
+        64..=127 => (1, Mode::Vertical(0)),
+        16..=31 => (3, Mode::Horizontal),
+        32..=47 => (3, Mode::Vertical(-1)),
+        48..=63 => (3, Mode::Vertical(1)),
+        8..=15 => (4, Mode::Pass),
+        4 | 5 => (6, Mode::Vertical(-2)),
+        6 | 7 => (6, Mode::Vertical(2)),
+        2 => (7, Mode::Vertical(-3)),
+        3 => (7, Mode::Vertical(3)),
+        _ => return None,
+    })
+}
+
 pub(super) fn mode(bits: &mut Bits<'_>) -> Result<Mode> {
+    if let Some((length, mode)) = bits.peek(7).and_then(prefix_mode)
+        && bits.advance(length)
+    {
+        return Ok(mode);
+    }
     let mut code = 0u8;
     for length in 1..=7 {
         code = (code << 1) | bits.bit()?;
@@ -241,4 +306,87 @@ pub(super) fn mode(bits: &mut Bits<'_>) -> Result<Mode> {
         }
     }
     Err(bits.error("invalid CCITT two-dimensional mode"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        BLACK, BLACK_MAKEUP, BLACK_PREFIXES, Bits, COMMON, Mode, WHITE, WHITE_MAKEUP,
+        WHITE_PREFIXES, prefix_mode, run,
+    };
+    use pagura_core::{ErrorKind, Position};
+
+    fn code(bits: &str) -> usize {
+        usize::from_str_radix(bits, 2).unwrap()
+    }
+
+    #[test]
+    fn run_prefixes_are_exactly_the_extensions_of_tables_1_to_3() {
+        for (black, table) in [(false, &WHITE_PREFIXES), (true, &BLACK_PREFIXES)] {
+            let lists: [(&[&str], usize, usize); 3] = [
+                (if black { &BLACK } else { &WHITE }, 0, 1),
+                (if black { &BLACK_MAKEUP } else { &WHITE_MAKEUP }, 64, 64),
+                (&COMMON, 1792, 64),
+            ];
+            let mut expected = [0_u16; 8192];
+            for (codes, base, step) in lists {
+                for (symbol, bits) in codes.iter().enumerate() {
+                    let first = code(bits) << (13 - bits.len());
+                    for entry in &mut expected[first..first + (1 << (13 - bits.len()))] {
+                        assert_eq!(*entry, 0, "run codes are prefix-free");
+                        *entry = u16::try_from((base + symbol * step) << 4 | bits.len()).unwrap();
+                    }
+                }
+            }
+            assert_eq!(table, &expected);
+        }
+    }
+
+    #[test]
+    fn mode_prefixes_are_exactly_the_extensions_of_t6_table_1() {
+        let modes = [
+            ("1", Mode::Vertical(0)),
+            ("001", Mode::Horizontal),
+            ("010", Mode::Vertical(-1)),
+            ("011", Mode::Vertical(1)),
+            ("0001", Mode::Pass),
+            ("000010", Mode::Vertical(-2)),
+            ("000011", Mode::Vertical(2)),
+            ("0000010", Mode::Vertical(-3)),
+            ("0000011", Mode::Vertical(3)),
+        ];
+        for prefix in 0..128 {
+            let expected = modes
+                .iter()
+                .find(|(bits, _)| prefix >> (7 - bits.len()) == code(bits))
+                .map(|&(bits, mode)| (bits.len(), mode));
+            assert_eq!(prefix_mode(prefix), expected, "{prefix:07b}");
+        }
+    }
+
+    #[test]
+    fn exhausted_work_inside_a_looked_up_code_fails_at_the_same_bit() {
+        // White make-up 1792 is 00000001000; the remaining bits are padding.
+        let data = [0b0000_0001, 0b0000_0000, 0];
+        for cap in 0..=11 {
+            let mut bits = Bits {
+                data: &data,
+                at: 0,
+                work: 0,
+                cap,
+            };
+            let result = run(&mut bits, false);
+            if cap == 11 {
+                assert_eq!(result.unwrap(), 1792);
+                assert_eq!((bits.at, bits.work), (11, 11));
+                continue;
+            }
+            let error = result.unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Limit);
+            assert_eq!(error.message, "CCITT work budget exceeded");
+            // Every affordable bit is read before the walk stops.
+            assert_eq!(error.position, Position::Buffer(cap / 8));
+            assert_eq!((bits.at, bits.work), (cap, cap + 1));
+        }
+    }
 }
