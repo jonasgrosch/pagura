@@ -1,3 +1,27 @@
+//! Crate-level tests and the one fixture opener the modules share.
+
+use crate::{Document, OpenOptions};
+use pagura_core::{Limits, Recovery};
+
+/// Opens fixture `area/name.pdf`, panicking with its name if it fails.
+pub(crate) fn open(area: &str, name: &str, recovery: Recovery, limits: Limits) -> Document {
+    pagura_testkit::open_fixture(area, &format!("{name}.pdf"), |bytes| {
+        Document::open(
+            bytes,
+            &OpenOptions {
+                limits,
+                recovery,
+                ..OpenOptions::default()
+            },
+        )
+    })
+}
+
+/// [`open`] for the `document` fixture area.
+pub(crate) fn document(name: &str, recovery: Recovery, limits: Limits) -> Document {
+    open("document", name, recovery, limits)
+}
+
 #[cfg(test)]
 mod shareability {
     use crate::Document;

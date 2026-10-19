@@ -181,7 +181,7 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   `tree.order`, `tree.cycle` and `tree.structure` read malformed name and
   number trees in their best-defined order; `outline.links`, `outline.cycle`,
   `outline.count` and `outline.type` rebuild a consistent outline tree;
-  `destination.page-number`, `navigation.text`, `navigation.target-conflict`,
+  `destination.page-number`, `string.invalid-text`, `navigation.target-conflict`,
   `link.quad-points` and `action.cycle` cover the remaining navigation faults.
 - `font.cff-dict-operands`, `font.cff-dict-operator` (CFF section 4 and
   Appendix H): unused hint arrays with no operands are dropped, and reserved

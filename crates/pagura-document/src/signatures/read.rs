@@ -119,7 +119,7 @@ pub(super) fn read<'a>(doc: &'a Document, ctx: &Context<'_>) -> Result<Signature
 }
 
 fn origin<'a>(ctx: &mut Context<'a>, fields: &[Field<'a>], mut index: usize) -> Result<Source> {
-    for depth in 0..=ctx.doc.limits().depth {
+    for depth in 0..=ctx.document.limits().depth {
         let field = &fields[index];
         let source = Source {
             object: field.object,

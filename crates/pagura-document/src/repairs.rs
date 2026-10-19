@@ -108,8 +108,6 @@ pub const OUTLINE_COUNT: Repair = Repair::new("outline.count");
 pub const ACTION_CYCLE: Repair = Repair::new("action.cycle");
 /// An A entry takes precedence over a conflicting Dest (12.3.3, 12.5.6.5).
 pub const TARGET_CONFLICT: Repair = Repair::new("navigation.target-conflict");
-/// Invalid Unicode or undefined PDFDocEncoding bytes become U+FFFD (7.9.2.2).
-pub const NAVIGATION_TEXT: Repair = Repair::new("navigation.text");
 /// Malformed QuadPoints ignored in favour of Rect (12.5.6.5, Table 176).
 pub const LINK_QUADS: Repair = Repair::new("link.quad-points");
 /// A local destination uses a valid zero-based page number (12.3.2.2).
@@ -180,7 +178,6 @@ pub const ALL: &[Repair] = &[
     OUTLINE_COUNT,
     ACTION_CYCLE,
     TARGET_CONFLICT,
-    NAVIGATION_TEXT,
     LINK_QUADS,
     DESTINATION_PAGE_NUMBER,
     OUTLINE_TYPE,

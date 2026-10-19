@@ -76,7 +76,7 @@ pub(super) fn write(
         let cell = area.width() / cells as f64;
         let offset = match layout.quadding {
             Justification::Left => 0.0,
-            Justification::Centre => ((cells - chars.len()) / 2) as f64,
+            Justification::Center => ((cells - chars.len()) / 2) as f64,
             Justification::Right => (cells - chars.len()) as f64,
         };
         for (i, c) in chars.iter().enumerate() {
@@ -90,7 +90,7 @@ pub(super) fn write(
             let x = area.x0()
                 + match layout.quadding {
                     Justification::Left => 0.0,
-                    Justification::Centre => (area.width() - line.width) / 2.0,
+                    Justification::Center => (area.width() - line.width) / 2.0,
                     Justification::Right => area.width() - line.width,
                 };
             matrix(out, da, x, baseline - i as f64 * leading * da.matrix[3])?;
