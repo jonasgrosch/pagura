@@ -25,9 +25,9 @@ pub use paint::{Paint, Rgba8};
 pub use path::{FillRegion, Path, PathBuilder, Segment};
 pub use pixmap::Pixmap;
 pub use raster::{
-    FillRule, LineCap, LineJoin, Mask, Rasterizer, Stroke, adjusted_stroke_outline,
-    empty_fill_outline, fill_path, fill_path_at, stroke_outline, stroke_path,
-    stroke_path_adjusted_at, stroke_path_at,
+    Coverage, FillRule, LineCap, LineJoin, Mask, Rasterizer, Rectangle, Stroke,
+    adjusted_stroke_outline, empty_fill_outline, fill_path, fill_path_at, stroke_outline,
+    stroke_path, stroke_path_adjusted_at, stroke_path_at,
 };
 
 #[cfg(test)]

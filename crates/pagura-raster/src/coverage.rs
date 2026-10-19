@@ -17,6 +17,7 @@ mod admission;
 pub(crate) mod quadratic;
 mod rectangle;
 use rectangle::Rectangle;
+pub(crate) use rectangle::Rows;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Geometry {
@@ -363,6 +364,35 @@ pub(crate) fn coverage(
             bytes(&scratch.accumulation).saturating_add(scratch.accumulation[0].retained_bytes());
         result
     }
+}
+
+/// The closed-form rows [`coverage`] would write: every shape is an
+/// axis-aligned rectangle, and neither the stroke boundary nor the curve sweep
+/// claims them. Validation and work charges equal [`coverage`]'s, including the
+/// charge for all `count` mask samples. Other shapes return `None` without
+/// charges. The rows take their storage from `samples`.
+pub(crate) fn rectangle(
+    (width, height): (u32, u32),
+    count: usize,
+    shapes: &[Shape],
+    origin: (u32, u32),
+    limits: &Limits,
+    scratch: &mut Scratch,
+    samples: &mut Vec<u8>,
+) -> Result<Option<Rows>> {
+    if shapes.is_empty()
+        || !shapes.iter().all(|shape| shape.rectangle().is_some())
+        || admission::stroke_boundary(shapes, limits.path_segments).is_some()
+        || quadratic::anchor(shapes).is_some()
+    {
+        return Ok(None);
+    }
+    let (bounds, groups) = scratch
+        .exact
+        .prepare(shapes, origin, (width, height), limits)?;
+    debug_assert_eq!(groups, 0);
+    scratch.exact.row.charge(count)?;
+    Rows::new(bounds, (width, height), origin, std::mem::take(samples)).map(Some)
 }
 
 #[cfg(test)]

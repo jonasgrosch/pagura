@@ -4,12 +4,18 @@ pub(super) fn rows(coverage: &[u8], width: usize) -> impl Iterator<Item = (usize
     coverage
         .chunks_exact(width)
         .enumerate()
-        .flat_map(|(y, row)| Runs { row, x: 0 }.map(move |(x, samples)| (y, x, samples)))
+        .flat_map(|(y, row)| Runs::new(row).map(move |(x, samples)| (y, x, samples)))
 }
 
-struct Runs<'a> {
+/// One row's nonzero runs as `(column, samples)`.
+pub(crate) struct Runs<'a> {
     row: &'a [u8],
     x: usize,
+}
+impl<'a> Runs<'a> {
+    pub(crate) fn new(row: &'a [u8]) -> Self {
+        Self { row, x: 0 }
+    }
 }
 impl<'a> Iterator for Runs<'a> {
     type Item = (usize, &'a [u8]);
