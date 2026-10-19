@@ -1,9 +1,16 @@
 //! Counting-sorted row admission and integer pieces with shared grid crossings.
 
-use super::super::{capacity_bytes, charge, index, sort_work};
-use super::dda::{Dda, ordinate, quotient};
+use super::super::{capacity_bytes, index, sort_work};
+use super::dda::{Axis, Dda, ordinate, quotient};
 use super::geometry::{GRID, Geometry, reserve};
-use pagura_core::{Error, Limits, Result};
+use crate::IntRect;
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Error, Meter, Result};
+
+/// The count of source segments meeting a cell above which accumulation
+/// leaves it to the exact sweep: dense cells are cheaper to sweep than to
+/// certify.
+pub(super) const DENSE: u32 = 512;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct Piece {
@@ -89,17 +96,16 @@ impl Scatter {
     pub(super) fn prepare(
         &mut self,
         geometry: &Geometry,
-        origin: (u32, u32),
-        height: u32,
-        limits: &Limits,
-        work: &mut usize,
+        area: IntRect,
+        work: &mut Meter,
     ) -> Result<()> {
+        let height = area.height();
         self.active.clear();
         self.order.clear();
         self.offsets.clear();
         self.seen.clear();
         self.carry.clear();
-        let rows = usize::try_from(height).map_err(|_| Error::limit("row count exceeds usize"))?;
+        let rows = u32_to_usize(height);
         let count = rows
             .checked_add(1)
             .ok_or(Error::limit("row count overflow"))?;
@@ -109,10 +115,10 @@ impl Scatter {
         self.seen.resize(geometry.contours.len(), 0);
         reserve(&mut self.carry, geometry.rules.len())?;
         self.carry.resize(geometry.rules.len(), 0);
-        charge(work, geometry.segments.len() + count, limits.raster_work)?;
+        work.charge(geometry.segments.len() + count)?;
         for segment in 0..geometry.segments.len() {
-            if let Some((first, _)) = rows_for(geometry, segment, origin.1, height) {
-                self.offsets[first as usize + 1] += 1;
+            if let Some((first, _)) = rows_for(geometry, segment, area.y(), height) {
+                self.offsets[u32_to_usize(first) + 1] += 1;
             }
         }
         for row in 0..rows {
@@ -122,9 +128,10 @@ impl Scatter {
         reserve(&mut self.order, total)?;
         self.order.resize(total, Admission::default());
         for segment in 0..geometry.segments.len() {
-            if let Some((first, last)) = rows_for(geometry, segment, origin.1, height) {
-                self.offsets[first as usize + 1] -= 1;
-                self.order[self.offsets[first as usize + 1]] = Admission {
+            if let Some((first, last)) = rows_for(geometry, segment, area.y(), height) {
+                let first = u32_to_usize(first);
+                self.offsets[first + 1] -= 1;
+                self.order[self.offsets[first + 1]] = Admission {
                     segment: u32::try_from(segment)
                         .map_err(|_| Error::limit("segment index exceeds u32"))?,
                     last,
@@ -139,9 +146,9 @@ impl Scatter {
     }
 
     // At most this many original segments can meet any cell in the row.
-    // A bound at or below 512 proves that no spatial density scan is needed.
+    // A bound at or below DENSE proves that no spatial density scan is needed.
     pub(super) fn sparse_bound(&self) -> Option<i64> {
-        if self.active.len() <= 512 {
+        if self.active.len() <= u32_to_usize(DENSE) {
             i64::try_from(self.active.len()).ok()
         } else {
             None
@@ -151,27 +158,25 @@ impl Scatter {
     pub(super) fn row(
         &mut self,
         geometry: &Geometry,
-        origin: (u32, u32),
-        width: u32,
+        area: IntRect,
         row: u32,
-        limits: &Limits,
-        work: &mut usize,
+        work: &mut Meter,
     ) -> Result<()> {
         self.pieces.clear();
         self.risks.clear();
         self.spans.clear();
         self.carry.fill(0);
-        charge(work, self.active.len(), limits.raster_work)?;
+        work.charge(self.active.len())?;
         self.active.retain(|a| a.last >= row);
-        let r = row as usize;
-        let top = (i64::from(origin.1) + i64::from(row)) * GRID;
+        let r = u32_to_usize(row);
+        let top = (i64::from(area.y()) + i64::from(row)) * GRID;
         reserve(&mut self.active, self.offsets[r + 1] - self.offsets[r])?;
         for admission in &self.order[self.offsets[r]..self.offsets[r + 1]] {
-            let segment = admission.segment as usize;
+            let segment = u32_to_usize(admission.segment);
             let a = geometry.points[segment];
             let b = geometry.points[geometry.next(segment)];
             let (a, b) = if a[1] <= b[1] { (a, b) } else { (b, a) };
-            let x = interpolate(a, b, top.clamp(a[1], b[1]), 1);
+            let x = interpolate(a, b, top.clamp(a[1], b[1]), Axis::Y);
             self.active.push(Active {
                 segment: admission.segment,
                 last: admission.last,
@@ -179,22 +184,16 @@ impl Scatter {
             });
         }
         let grid = GridRow {
-            left: i64::from(origin.0) * GRID,
-            right: (i64::from(origin.0) + i64::from(width)) * GRID,
+            left: i64::from(area.x()) * GRID,
+            right: i64::from(area.right()) * GRID,
             top,
         };
         for i in 0..self.active.len() {
-            charge(work, 1, limits.raster_work)?;
-            self.original(
-                geometry,
-                self.active[i].segment as usize,
-                origin,
-                width,
-                row,
-            )?;
-            self.segment(geometry, i, grid, limits, work)?;
+            work.charge(1)?;
+            self.original(geometry, u32_to_usize(self.active[i].segment), area, row)?;
+            self.segment(geometry, i, grid, work)?;
         }
-        self.sort(limits, work)
+        self.sort(work)
     }
 
     fn segment(
@@ -202,15 +201,14 @@ impl Scatter {
         geometry: &Geometry,
         active: usize,
         grid: GridRow,
-        limits: &Limits,
-        work: &mut usize,
+        work: &mut Meter,
     ) -> Result<()> {
         let GridRow {
             left,
             right,
             top: y,
         } = grid;
-        let segment = self.active[active].segment as usize;
+        let segment = u32_to_usize(self.active[active].segment);
         let next = geometry.next(segment);
         let (a, b) = (geometry.points[segment], geometry.points[next]);
         if a == b {
@@ -237,7 +235,7 @@ impl Scatter {
         } else {
             self.active[active].x
         };
-        let bx = interpolate(a, b, hi, 1);
+        let bx = interpolate(a, b, hi, Axis::Y);
         self.active[active].x = bx;
         a = [ax, lo];
         b = [bx, hi];
@@ -267,14 +265,14 @@ impl Scatter {
             (l[0].div_euclid(GRID) + 1) * GRID
         };
         let mut columns = if last - first >= 3 {
-            Dda::new(l, r, first_cut, 0)?
+            Dda::new(l, r, first_cut, Axis::X)?
         } else {
             None
         };
         let previous = if columns.is_some() {
-            ordinate(l, r, start, 0, &mut columns)?
+            ordinate(l, r, start, Axis::X, &mut columns)?
         } else {
-            interpolate(l, r, start, 0)
+            interpolate(l, r, start, Axis::X)
         };
         if a[0].min(b[0]) < left {
             let dy = if a[0] < b[0] {
@@ -286,7 +284,7 @@ impl Scatter {
         }
         let count = usize::try_from(last - first + 1)
             .map_err(|_| Error::limit("piece count exceeds usize"))?;
-        charge(work, count, limits.raster_work)?;
+        work.charge(count)?;
         reserve(&mut self.pieces, count)?;
         self.cells(
             RowPiece {
@@ -325,9 +323,9 @@ impl Scatter {
                 let x0 = l[0].max(column * GRID);
                 let x1 = r[0].min((column + 1) * GRID);
                 let next = if columns.is_some() {
-                    ordinate(l, r, x1, 0, columns)?
+                    ordinate(l, r, x1, Axis::X, columns)?
                 } else {
-                    interpolate(l, r, x1, 0)
+                    interpolate(l, r, x1, Axis::X)
                 };
                 let p = [x0, previous];
                 let q = [x1, next];
@@ -342,9 +340,9 @@ impl Scatter {
         Ok(())
     }
 
-    fn sort(&mut self, limits: &Limits, work: &mut usize) -> Result<()> {
+    fn sort(&mut self, work: &mut Meter) -> Result<()> {
         for count in [self.pieces.len(), self.risks.len(), self.spans.len()] {
-            charge(work, sort_work(count)?, limits.raster_work)?;
+            work.charge(sort_work(count)?)?;
         }
         self.pieces.sort_unstable_by_key(|p| p.column);
         self.risks.sort_unstable_by_key(|p| p.column);
@@ -356,25 +354,27 @@ impl Scatter {
         &mut self,
         geometry: &Geometry,
         segment: usize,
-        origin: (u32, u32),
-        width: u32,
+        area: IntRect,
         row: u32,
     ) -> Result<()> {
         let next = geometry.next(segment);
-        let contour = &geometry.contours[geometry.segments[segment].contour as usize];
-        if contour.collapsed && self.seen[geometry.segments[segment].contour as usize] != row + 1 {
-            self.seen[geometry.segments[segment].contour as usize] = row + 1;
+        let width = u32_to_usize(area.width());
+        let left = f64::from(area.x());
+        let index_of = u32_to_usize(geometry.segments[segment].contour);
+        let contour = &geometry.contours[index_of];
+        if contour.collapsed && self.seen[index_of] != row + 1 {
+            self.seen[index_of] = row + 1;
             let [lo, _, hi, _] = contour.bounds;
-            let start = index((lo - f64::from(origin.0)).ceil() - 1.0, width as usize);
-            let end = index((hi - f64::from(origin.0)).floor() + 1.0, width as usize);
+            let start = index((lo - left).ceil() - 1.0, width);
+            let end = index((hi - left).floor() + 1.0, width);
             self.risk(start, end, 0, 1)?;
         }
-        let count_density = self.active.len() > 512;
+        let count_density = self.active.len() > u32_to_usize(DENSE);
         if !count_density && !geometry.segments[segment].ghost {
             return Ok(());
         }
         let (a, b) = (geometry.exact[segment], geometry.exact[next]);
-        let top = f64::from(origin.1) + f64::from(row);
+        let top = f64::from(area.y()) + f64::from(row);
         let extent = if a.y == b.y {
             (a.y >= top && a.y < top + 1.0).then_some((a.x, b.x))
         } else {
@@ -389,14 +389,8 @@ impl Scatter {
             // One-column enclosure absorbs floating intersection uncertainty
             // at the 10^12 coordinate limit. Overcounting only selects the
             // unsnapped fallback earlier; it never weakens the area bound.
-            let start = index(
-                (a.min(b) - f64::from(origin.0)).floor() - 1.0,
-                width as usize,
-            );
-            let end = index(
-                (a.max(b) - f64::from(origin.0)).floor() + 2.0,
-                width as usize,
-            );
+            let start = index((a.min(b) - left).floor() - 1.0, width);
+            let end = index((a.max(b) - left).floor() + 2.0, width);
             self.risk(
                 start,
                 end,
@@ -508,11 +502,11 @@ fn piece(
     clippy::cast_possible_truncation,
     reason = "closed-form interpolation stays between bounded endpoints, within 2^60"
 )]
-pub(super) fn interpolate(mut a: [i64; 2], mut b: [i64; 2], at: i64, axis: usize) -> i64 {
+pub(super) fn interpolate(mut a: [i64; 2], mut b: [i64; 2], at: i64, axis: Axis) -> i64 {
+    let (other, axis) = (axis.other(), axis.index());
     if a[axis] > b[axis] {
         std::mem::swap(&mut a, &mut b);
     }
-    let other = 1 - axis;
     if at == a[axis] {
         return a[other];
     }
@@ -546,7 +540,7 @@ fn rows_for(g: &Geometry, segment: usize, origin: u32, height: u32) -> Option<(u
         .min(g.points[segment][1].min(g.points[next][1]).div_euclid(GRID));
     let hi = floor(g.exact[segment].y.max(g.exact[next].y))
         .max(g.points[segment][1].max(g.points[next][1]).div_euclid(GRID));
-    let contour = &g.contours[g.segments[segment].contour as usize];
+    let contour = &g.contours[u32_to_usize(g.segments[segment].contour)];
     let original_min = g.exact[segment].y.min(g.exact[next].y);
     let lo = if contour.collapsed && original_min == original_min.floor() {
         lo.min(floor(original_min) - 1)

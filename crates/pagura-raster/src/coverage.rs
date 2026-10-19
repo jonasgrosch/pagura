@@ -358,11 +358,9 @@ pub(crate) fn coverage(
         scratch.exact_bytes = scratch.exact.retained_bytes();
         result
     } else {
-        let work = scratch.exact.row.work.used();
+        let work = scratch.exact.row.work.clone();
         let accumulator = scratch.accumulator()?;
-        let origin = (area.x(), area.y());
-        let size = (area.width(), area.height());
-        let result = accumulator.render(shapes, out, origin, size, limits, work);
+        let result = accumulator.render(shapes, out, area, limits, work);
         let retained = accumulator.retained_bytes();
         scratch.accumulation_bytes = capacity_bytes(&scratch.accumulation).saturating_add(retained);
         result
@@ -378,11 +376,10 @@ pub(crate) fn coverage_accumulated(
     scratch: &mut Scratch,
 ) -> Result<()> {
     // Exercise accumulation even for rectangles and short component contours.
-    let origin = (area.x(), area.y());
-    let size = (area.width(), area.height());
+    let work = Meter::new(limits.raster_work, RASTER_WORK);
     scratch
         .accumulator()?
-        .render(shapes, out, origin, size, limits, 0)
+        .render(shapes, out, area, limits, work)
 }
 
 #[cfg(test)]
@@ -984,16 +981,6 @@ fn sort_work(count: usize) -> Result<usize> {
     count
         .checked_mul(count.max(1).ilog2() as usize + 1)
         .ok_or(Error::limit("sort work overflow"))
-}
-
-/// The integer-cell backend's own work counter, until it charges a [`Meter`]
-/// like the sweep.
-pub(crate) fn charge(work: &mut usize, amount: usize, maximum: usize) -> Result<()> {
-    *work = work
-        .checked_add(amount)
-        .filter(|&n| n <= maximum)
-        .ok_or(Error::limit(RASTER_WORK))?;
-    Ok(())
 }
 
 #[cfg(test)]

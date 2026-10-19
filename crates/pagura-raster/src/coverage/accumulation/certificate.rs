@@ -1,9 +1,10 @@
 //! Sufficient winding certificates and exact integration of horizontal runs.
 
-use super::super::{capacity_bytes, charge, inside, sort_work};
+use super::super::{capacity_bytes, inside, sort_work};
 use super::geometry::{GRID, Geometry, reserve};
 use super::scatter::{Piece, SpanEvent, add};
-use pagura_core::{Limits, Result};
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Meter, Result};
 
 const AREA: i128 = 1_i128 << 41;
 
@@ -34,8 +35,7 @@ impl Certificates {
         pieces: &[Piece],
         prefix: &[i64],
         cell: [i64; 2],
-        limits: &Limits,
-        work: &mut usize,
+        work: &mut Meter,
     ) -> Result<Option<u8>> {
         let mut fractional = None;
         let mut unknown = false;
@@ -47,11 +47,11 @@ impl Certificates {
             let mut count = 0;
             for piece in pieces
                 .iter()
-                .filter(|p| g.group(p.segment as usize) == group)
+                .filter(|p| g.group(u32_to_usize(p.segment)) == group)
             {
-                charge(work, 1, limits.raster_work)?;
+                work.charge(1)?;
                 count += 1;
-                let chain = g.segments[piece.segment as usize].chain;
+                let chain = g.segments[u32_to_usize(piece.segment)].chain;
                 if let Some(previous) = first {
                     one &= previous == chain;
                 } else {
@@ -88,7 +88,6 @@ impl Certificates {
                         position: cell,
                     },
                     &mut pairs,
-                    limits,
                     work,
                 )?
                 .and_then(|(lo, hi, parity)| {
@@ -123,8 +122,7 @@ impl Certificates {
         pieces: &[Piece],
         context: GroupCell,
         pairs: &mut usize,
-        limits: &Limits,
-        work: &mut usize,
+        work: &mut Meter,
     ) -> Result<Option<(i64, i64, Option<bool>)>> {
         let GroupCell {
             group,
@@ -134,18 +132,19 @@ impl Certificates {
         self.hits.clear();
         let mut left = prefix;
         for (i, p) in pieces.iter().enumerate() {
-            charge(work, 1, limits.raster_work)?;
-            if g.group(p.segment as usize) != group {
+            work.charge(1)?;
+            if g.group(u32_to_usize(p.segment)) != group {
                 continue;
             }
-            let contour = &g.contours[g.segments[p.segment as usize].contour as usize];
+            let contour = &g.contours[u32_to_usize(g.segments[u32_to_usize(p.segment)].contour)];
             if contour.enclosed == Some(cell) {
                 return Ok(None);
             }
             for q in &pieces[..i] {
-                charge(work, 1, limits.raster_work)?;
-                if g.group(q.segment as usize) != group
-                    || g.segments[p.segment as usize].chain == g.segments[q.segment as usize].chain
+                work.charge(1)?;
+                if g.group(u32_to_usize(q.segment)) != group
+                    || g.segments[u32_to_usize(p.segment)].chain
+                        == g.segments[u32_to_usize(q.segment)].chain
                 {
                     continue;
                 }
@@ -174,7 +173,7 @@ impl Certificates {
             return Ok(None);
         }
         let n = self.hits.len();
-        charge(work, sort_work(n)?, limits.raster_work)?;
+        work.charge(sort_work(n)?)?;
         self.hits.sort_unstable_by_key(|h| h.0);
         let mut index = 0;
         let mut previous = 0;
@@ -221,8 +220,7 @@ impl Certificates {
         g: &Geometry,
         spans: &[SpanEvent],
         prefix: &[i64],
-        limits: &Limits,
-        work: &mut usize,
+        work: &mut Meter,
     ) -> Result<Option<u8>> {
         self.levels.clear();
         self.winding.clear();
@@ -230,7 +228,7 @@ impl Certificates {
         self.winding.extend_from_slice(prefix);
         reserve(&mut self.levels, spans.len())?;
         for span in spans {
-            let segment = span.segment as usize;
+            let segment = u32_to_usize(span.segment);
             let next = g.next(segment);
             let group = g.group(segment);
             let delta = if g.points[next][0] > g.points[segment][0] {
@@ -251,12 +249,10 @@ impl Certificates {
             *value /= GRID;
         }
         let n = spans.len();
-        charge(
-            work,
+        work.charge(
             sort_work(n)?
                 .checked_add(g.rules.len())
                 .ok_or_else(|| pagura_core::Error::limit("run work overflow"))?,
-            limits.raster_work,
         )?;
         self.levels.sort_unstable_by_key(|p| p.0);
         let mut previous = 0;
@@ -354,7 +350,7 @@ fn intersects(a: [i32; 2], b: [i32; 2], c: [i32; 2], d: [i32; 2]) -> bool {
 }
 
 fn shared_neighbour(g: &Geometry, p: Piece, q: Piece, cell: [i64; 2]) -> bool {
-    let (a, b) = (p.segment as usize, q.segment as usize);
+    let (a, b) = (u32_to_usize(p.segment), u32_to_usize(q.segment));
     if !g.neighbours(a, b) {
         return false;
     }

@@ -3,6 +3,28 @@
 use super::geometry::GRID;
 use pagura_core::{Error, Result};
 
+/// The coordinate along which grid crossings are taken.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Axis {
+    X,
+    Y,
+}
+
+impl Axis {
+    /// This coordinate's index in a point.
+    pub(super) const fn index(self) -> usize {
+        match self {
+            Self::X => 0,
+            Self::Y => 1,
+        }
+    }
+
+    /// The other coordinate's index in a point.
+    pub(super) const fn other(self) -> usize {
+        1 - self.index()
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(super) struct Dda {
     boundary: i64,
@@ -18,18 +40,15 @@ impl Dda {
         mut a: [i64; 2],
         mut b: [i64; 2],
         first: i64,
-        axis: usize,
+        axis: Axis,
     ) -> Result<Option<Self>> {
-        if axis > 1 {
-            return Err(Error::invalid_argument("invalid crossing axis"));
-        }
+        let (other, axis) = (axis.other(), axis.index());
         if a[axis] > b[axis] {
             std::mem::swap(&mut a, &mut b);
         }
         if first <= a[axis] || first >= b[axis] {
             return Ok(None);
         }
-        let other = 1 - axis;
         let extent = i128::from(b[axis]) - i128::from(a[axis]);
         let divisor = 2 * extent;
         let delta = i128::from(b[other]) - i128::from(a[other]);
@@ -92,17 +111,15 @@ pub(super) fn ordinate(
     a: [i64; 2],
     b: [i64; 2],
     at: i64,
-    axis: usize,
+    axis: Axis,
     state: &mut Option<Dda>,
 ) -> Result<i64> {
-    if axis > 1 {
-        return Err(Error::invalid_argument("invalid crossing axis"));
+    let (other, index) = (axis.other(), axis.index());
+    if at == a[index] {
+        return Ok(a[other]);
     }
-    if at == a[axis] {
-        return Ok(a[1 - axis]);
-    }
-    if at == b[axis] {
-        return Ok(b[1 - axis]);
+    if at == b[index] {
+        return Ok(b[other]);
     }
     state
         .as_mut()
@@ -117,7 +134,8 @@ mod tests {
     #[test]
     fn incremental_crossings_equal_independent_closed_form_at_every_grid_line() {
         let mut seed = 76_723_u64;
-        for axis in [0, 1] {
+        for axis in [Axis::X, Axis::Y] {
+            let (other, index) = (axis.other(), axis.index());
             for offset in [0, 1_i64 << 50, -(1_i64 << 50)] {
                 for _ in 0..1000 {
                     let mut coordinate = || {
@@ -126,20 +144,20 @@ mod tests {
                     };
                     let mut a = [coordinate() + offset, coordinate() + offset];
                     let mut b = [coordinate() + offset, coordinate() + offset];
-                    if a[axis] > b[axis] {
+                    if a[index] > b[index] {
                         std::mem::swap(&mut a, &mut b);
                     }
-                    let first = (a[axis].div_euclid(GRID) + 1) * GRID;
+                    let first = (a[index].div_euclid(GRID) + 1) * GRID;
                     let Some(mut dda) = Dda::new(a, b, first, axis).unwrap() else {
                         continue;
                     };
-                    for at in (first..b[axis]).step_by(usize::try_from(GRID).unwrap()) {
-                        let extent = i128::from(b[axis]) - i128::from(a[axis]);
+                    for at in (first..b[index]).step_by(usize::try_from(GRID).unwrap()) {
+                        let extent = i128::from(b[index]) - i128::from(a[index]);
                         let num = 2
-                            * (i128::from(at) - i128::from(a[axis]))
-                            * (i128::from(b[1 - axis]) - i128::from(a[1 - axis]))
+                            * (i128::from(at) - i128::from(a[index]))
+                            * (i128::from(b[other]) - i128::from(a[other]))
                             + extent;
-                        let expected = i128::from(a[1 - axis]) + num.div_euclid(2 * extent);
+                        let expected = i128::from(a[other]) + num.div_euclid(2 * extent);
                         assert_eq!(i128::from(dda.at(at).unwrap()), expected);
                     }
                 }

@@ -6,12 +6,14 @@ mod geometry;
 mod resolver;
 mod scatter;
 
-use super::{Shape, capacity_bytes, charge, sort_work};
+use super::{Shape, capacity_bytes, sort_work};
+use crate::IntRect;
 use certificate::Certificates;
-use geometry::{Geometry, reserve};
-use pagura_core::{Error, Limits, Result};
+use geometry::{CELL, Geometry, reserve};
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Error, Limits, Meter, Result};
 use resolver::Resolver;
-use scatter::{Piece, Scatter, SpanEvent, add};
+use scatter::{DENSE, Piece, Scatter, SpanEvent, add};
 
 #[derive(Debug, Default)]
 pub(super) struct Accumulator {
@@ -50,40 +52,35 @@ impl Accumulator {
         .fold(0, usize::saturating_add)
     }
 
+    /// Integrates `shapes` over `area` into `output`, continuing `work`.
     pub(super) fn render(
         &mut self,
         shapes: &[Shape],
         output: &mut [u8],
-        origin: (u32, u32),
-        size: (u32, u32),
+        area: IntRect,
         limits: &Limits,
-        initial_work: usize,
+        mut work: Meter,
     ) -> Result<()> {
-        let (width, height) = size;
-        if width == 0 || height == 0 || shapes.is_empty() {
+        if shapes.is_empty() {
             output.fill(0);
             return Ok(());
         }
-        let stride =
-            usize::try_from(width).map_err(|_| Error::limit("mask width exceeds usize"))?;
-        if output.len()
-            != stride
-                .checked_mul(height as usize)
-                .ok_or(Error::limit("mask size overflow"))?
-        {
+        let stride = u32_to_usize(area.width());
+        let pixels = stride
+            .checked_mul(u32_to_usize(area.height()))
+            .ok_or(Error::limit("mask size overflow"))?;
+        if output.len() != pixels {
             return Err(Error::invalid_argument("mask output size mismatch"));
         }
-        let mut work = initial_work;
         self.geometry.build(shapes, limits, &mut work)?;
-        self.scatter
-            .prepare(&self.geometry, origin, height, limits, &mut work)?;
+        self.scatter.prepare(&self.geometry, area, &mut work)?;
         self.prefix.clear();
         reserve(&mut self.prefix, self.geometry.rules.len())?;
         self.prefix.resize(self.geometry.rules.len(), 0);
         output.fill(0);
         for (row, out) in output.chunks_exact_mut(stride).enumerate() {
             let row = u32::try_from(row).map_err(|_| Error::limit("row exceeds u32"))?;
-            self.row(out, origin, row, limits, &mut work)?;
+            self.row(out, area, row, limits, &mut work)?;
         }
         Ok(())
     }
@@ -91,14 +88,13 @@ impl Accumulator {
     fn row(
         &mut self,
         out: &mut [u8],
-        origin: (u32, u32),
+        area: IntRect,
         row: u32,
         limits: &Limits,
-        work: &mut usize,
+        work: &mut Meter,
     ) -> Result<()> {
-        let width = u32::try_from(out.len()).map_err(|_| Error::limit("row width exceeds u32"))?;
-        self.scatter
-            .row(&self.geometry, origin, width, row, limits, work)?;
+        let width = area.width();
+        self.scatter.row(&self.geometry, area, row, work)?;
         self.prefix.copy_from_slice(&self.scatter.carry);
         self.spans.clear();
         let mut cursor = Cursor {
@@ -117,18 +113,18 @@ impl Accumulator {
                 end += 1;
             }
             if end == cursor.piece {
-                self.run(&mut cursor, out, origin, row, limits, work)?;
+                self.run(&mut cursor, out, area, row, limits, work)?;
                 continue;
             }
             self.collect(cursor.piece..end, cursor.column)?;
             let cell = [
-                i64::from(origin.0) + i64::from(cursor.column),
-                i64::from(origin.1) + i64::from(row),
+                i64::from(area.x()) + i64::from(cursor.column),
+                i64::from(area.y()) + i64::from(row),
             ];
-            out[cursor.column as usize] = self.value(&mut cursor, cell, limits, work)?;
+            out[u32_to_usize(cursor.column)] = self.value(&mut cursor, cell, limits, work)?;
             for piece in &self.scatter.pieces[cursor.piece..end] {
                 add(
-                    &mut self.prefix[self.geometry.group(piece.segment as usize)],
+                    &mut self.prefix[self.geometry.group(u32_to_usize(piece.segment))],
                     i64::from(piece.b[1]) - i64::from(piece.a[1]),
                 )?;
             }
@@ -179,8 +175,8 @@ impl Accumulator {
         reserve(&mut self.cell, range.len() + self.spans.len())?;
         self.cell.extend_from_slice(&self.scatter.pieces[range]);
         for span in &self.spans {
-            let segment = span.segment as usize;
-            let (a, b) = ([0, span.height], [1 << 20, span.height]);
+            let segment = u32_to_usize(span.segment);
+            let (a, b) = ([0, span.height], [CELL, span.height]);
             let (a, b) = if self.geometry.points[self.geometry.next(segment)][0]
                 > self.geometry.points[segment][0]
             {
@@ -203,18 +199,16 @@ impl Accumulator {
         cursor: &mut Cursor,
         cell: [i64; 2],
         limits: &Limits,
-        work: &mut usize,
+        work: &mut Meter,
     ) -> Result<u8> {
-        let unsnapped = cursor.ghosts > 0 || cursor.originals > 512 || self.cell.len() > 512;
+        let unsnapped = cursor.ghosts > 0
+            || cursor.originals > i64::from(DENSE)
+            || self.cell.len() > u32_to_usize(DENSE);
         if !unsnapped {
-            if let Some(value) = self.certificates.cell(
-                &self.geometry,
-                &self.cell,
-                &self.prefix,
-                cell,
-                limits,
-                work,
-            )? {
+            if let Some(value) =
+                self.certificates
+                    .cell(&self.geometry, &self.cell, &self.prefix, cell, work)?
+            {
                 #[cfg(debug_assertions)]
                 if (cell[0] ^ cell[1]).trailing_zeros() >= 7
                     && let Some(reference) = self.resolver.snapped(
@@ -239,7 +233,7 @@ impl Accumulator {
                 return Ok(value);
             }
         }
-        self.prepare_resolver(&mut cursor.prepared, limits, work)?;
+        self.prepare_resolver(&mut cursor.prepared, work)?;
         self.resolver.original(&self.geometry, cell, limits, work)
     }
 
@@ -247,12 +241,12 @@ impl Accumulator {
         &mut self,
         cursor: &mut Cursor,
         out: &mut [u8],
-        origin: (u32, u32),
+        area: IntRect,
         row: u32,
         limits: &Limits,
-        work: &mut usize,
+        work: &mut Meter,
     ) -> Result<()> {
-        let width = u32::try_from(out.len()).map_err(|_| Error::limit("row width exceeds u32"))?;
+        let width = area.width();
         let next = [
             self.scatter.pieces.get(cursor.piece).map(|p| p.column),
             self.scatter.risks.get(cursor.risk).map(|r| r.column),
@@ -263,22 +257,22 @@ impl Accumulator {
         .min()
         .unwrap_or(width)
         .min(width);
-        let value = if cursor.ghosts > 0 || cursor.originals > 512 {
+        let value = if cursor.ghosts > 0 || cursor.originals > i64::from(DENSE) {
             None
         } else {
             self.certificates
-                .run(&self.geometry, &self.spans, &self.prefix, limits, work)?
+                .run(&self.geometry, &self.spans, &self.prefix, work)?
         };
         if let Some(value) = value {
-            out[cursor.column as usize..next as usize].fill(value);
+            out[u32_to_usize(cursor.column)..u32_to_usize(next)].fill(value);
         } else {
-            self.prepare_resolver(&mut cursor.prepared, limits, work)?;
+            self.prepare_resolver(&mut cursor.prepared, work)?;
             for column in cursor.column..next {
-                out[column as usize] = self.resolver.original(
+                out[u32_to_usize(column)] = self.resolver.original(
                     &self.geometry,
                     [
-                        i64::from(origin.0) + i64::from(column),
-                        i64::from(origin.1) + i64::from(row),
+                        i64::from(area.x()) + i64::from(column),
+                        i64::from(area.y()) + i64::from(row),
                     ],
                     limits,
                     work,
@@ -289,15 +283,9 @@ impl Accumulator {
         Ok(())
     }
 
-    fn prepare_resolver(
-        &mut self,
-        prepared: &mut bool,
-        limits: &Limits,
-        work: &mut usize,
-    ) -> Result<()> {
+    fn prepare_resolver(&mut self, prepared: &mut bool, work: &mut Meter) -> Result<()> {
         if !*prepared {
-            let n = self.scatter.active.len();
-            charge(work, sort_work(n)?, limits.raster_work)?;
+            work.charge(sort_work(self.scatter.active.len())?)?;
             self.resolver.prepare_row(&self.scatter.active)?;
             *prepared = true;
         }

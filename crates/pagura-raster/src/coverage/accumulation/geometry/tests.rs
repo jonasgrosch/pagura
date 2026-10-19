@@ -1,6 +1,11 @@
 use super::*;
+use crate::coverage::RASTER_WORK;
 use crate::{PathBuilder, Transform};
 use std::sync::Arc;
+
+fn meter(maximum: usize) -> Meter {
+    Meter::new(maximum, RASTER_WORK)
+}
 
 fn build(points: &[Point]) -> Geometry {
     let mut path = PathBuilder::new();
@@ -18,7 +23,7 @@ fn build(points: &[Point]) -> Geometry {
                 rule: FillRule::NonZero,
             }],
             &Limits::default(),
-            &mut 0,
+            &mut meter(usize::MAX),
         )
         .unwrap();
     geometry
@@ -115,14 +120,7 @@ fn huge_coordinates_and_budget_failures_are_explicit() {
     let mut geometry = Geometry::default();
     assert!(
         geometry
-            .build(
-                &shapes,
-                &Limits {
-                    raster_work: 0,
-                    ..Limits::default()
-                },
-                &mut 0
-            )
+            .build(&shapes, &Limits::default(), &mut meter(0))
             .is_err()
     );
     assert!(
@@ -133,10 +131,12 @@ fn huge_coordinates_and_budget_failures_are_explicit() {
                     mask_sources: 0,
                     ..Limits::default()
                 },
-                &mut 0
+                &mut meter(usize::MAX)
             )
             .is_err()
     );
-    geometry.build(&shapes, &Limits::default(), &mut 0).unwrap();
+    geometry
+        .build(&shapes, &Limits::default(), &mut meter(usize::MAX))
+        .unwrap();
     assert_eq!(geometry.points.len(), 4);
 }
