@@ -33,6 +33,9 @@ impl Buffer {
             Self::F32(v) => v.len() * 16,
         }
     }
+    /// Stores one run of `Mask::spans`, which holds only full or only
+    /// fractional coverage. A full run of an opaque source stores the source
+    /// itself, so it is written as one slice fill.
     pub(super) fn path(
         &mut self,
         offset: usize,
@@ -40,12 +43,18 @@ impl Buffer {
         color: [f64; 4],
         alpha: f64,
     ) -> Result<()> {
+        let full = coverage.first() == Some(&255);
+        debug_assert!(!full || coverage.iter().all(|&c| c == 255));
         match self {
             Self::N16(pixels) => {
                 let color = [word(color[0]), word(color[1]), word(color[2]), 65535];
                 let row = pixels
                     .get_mut(offset..offset + coverage.len())
                     .ok_or(Error::invalid_argument("mask outside colour buffer"))?;
+                if full {
+                    row.fill(color);
+                    return Ok(());
+                }
                 for (pixel, &c) in row.iter_mut().zip(coverage) {
                     match c {
                         0 => {}
@@ -64,6 +73,11 @@ impl Buffer {
                 let row = pixels
                     .get_mut(offset..offset + coverage.len())
                     .ok_or(Error::invalid_argument("mask outside colour buffer"))?;
+                // `lerp` stores the target itself at a unit weight.
+                if full && 255.0 * k == 1.0 {
+                    row.fill(color);
+                    return Ok(());
+                }
                 for (pixel, &c) in row.iter_mut().zip(coverage) {
                     let a = f32::from(c) * k;
                     if c != 0 {
@@ -275,6 +289,34 @@ mod tests {
             assert_eq!(value(&buffer), 42);
             buffer.path(0, &[255], [1.0; 4], 1.0).unwrap();
             assert_eq!(value(&buffer), 255);
+        }
+    }
+    #[test]
+    fn full_runs_store_what_single_samples_store() {
+        let backdrop = [200, 100, 50, 255];
+        for format in [Format::N16, Format::F32] {
+            for alpha in [1.0, 0.5, 1.0 - 1.0 / 1024.0] {
+                let mut run = Buffer::new(format, 5, backdrop).unwrap();
+                let mut single = Buffer::new(format, 5, backdrop).unwrap();
+                let color = [0.3, 0.6, 0.9, 1.0];
+                run.path(1, &[255; 3], color, alpha).unwrap();
+                for offset in 1..4 {
+                    single.path(offset, &[255], color, alpha).unwrap();
+                }
+                let (mut a, mut b) = ([0; 20], [0; 20]);
+                run.output(0, &mut a);
+                single.output(0, &mut b);
+                assert_eq!(a, b, "{format:?} {alpha}");
+                assert_eq!(a[..4], backdrop);
+                assert_eq!(a[16..], backdrop);
+                if alpha == 1.0 {
+                    // An opaque source replaces the backdrop: 76.5, 153, 229.5.
+                    assert_eq!(a[4..8], [77, 153, 230, 255]);
+                } else if format == Format::F32 && alpha == 0.5 {
+                    // 200 + (76.5 − 200) / 2 = 138.25, then 126.5 and 139.75.
+                    assert_eq!(a[4..8], [138, 127, 140, 255]);
+                }
+            }
         }
     }
     #[test]
