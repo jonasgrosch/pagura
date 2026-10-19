@@ -1,7 +1,12 @@
 //! Inline image abbreviations and data boundaries (8.9.7, Tables 91–92).
-use crate::{DecodedImage, dispatch, parameters as p};
+use crate::dispatch::{self, Codec};
+use crate::filter_rules::{self, Source};
+use crate::{DecodedImage, parameters as p};
 use pagura_codec::{Filter, FilterChain, ImageCodec};
-use pagura_core::{Diagnostics, Dictionary, Error, Name, Result, Value, syntax::is_whitespace};
+use pagura_core::convert::usize_to_u64;
+use pagura_core::{
+    Diagnostics, Dictionary, Error, ErrorKind, Limits, Name, Result, Value, syntax::is_whitespace,
+};
 use pagura_document::Document;
 
 pub(crate) fn expanded(dictionary: &Dictionary) -> Result<Dictionary> {
@@ -54,14 +59,14 @@ pub(crate) fn decode(
     data: &[u8],
 ) -> Result<DecodedImage> {
     let mut diagnostics = Diagnostics::new(document.recovery());
-    let result = decode_inner(document, resources, dictionary, data, &mut diagnostics);
-    // The caller supplies the containing stream position; these positions are
-    // relative to the inline data, including dictionary faults at offset zero.
+    let result = decode_data(document, resources, dictionary, data, &mut diagnostics);
+    // Positions are offsets in the inline data, or unknown for faults of the
+    // dictionary; the caller places them in its content stream.
     document.report(diagnostics.take());
     result
 }
 
-fn decode_inner(
+fn decode_data(
     document: &Document,
     resources: &Dictionary,
     dictionary: &Dictionary,
@@ -72,8 +77,8 @@ fn decode_inner(
     if p::stencil_space(document, &dict, diagnostics)? {
         dict.remove(b"ColorSpace");
     }
-    super::filter_rules::inline_space(dict.get(b"ColorSpace"))?;
-    super::filter_rules::validate(document, &dict, true, diagnostics)?;
+    filter_rules::inline_space(dict.get(b"ColorSpace"))?;
+    filter_rules::validate(document, &dict, Source::Inline, diagnostics)?;
     if let Some(Value::Name(name)) = dict.get(b"ColorSpace")
         && !matches!(
             name.as_bytes(),
@@ -106,10 +111,18 @@ fn decode_inner(
     }
     let codec = chain.split_image();
     let decoded = chain.decode(data, document.limits().decoded_bytes, diagnostics)?;
-    dispatch::decode(document, &dict, &decoded, codec.as_ref(), diagnostics)
+    let codec = codec.as_ref().map(|(codec, params)| Codec {
+        codec: *codec,
+        params: params.as_ref(),
+    });
+    dispatch::decode(document, &dict, &decoded, codec, diagnostics)
 }
 
-pub(crate) fn data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usize> {
+pub(crate) fn data_length(
+    dictionary: &Dictionary,
+    content: &[u8],
+    limits: &Limits,
+) -> Result<usize> {
     let dict = expanded(dictionary)?;
     if let Some(value) = dict.get(b"Length") {
         let last_filter = match dict.get(b"Filter") {
@@ -183,10 +196,10 @@ pub(crate) fn data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usi
     if let Some(length) = filter_boundary(&dict, content)? {
         return Ok(length);
     }
-    filtered_length(&dict, content)
+    filtered_length(&dict, content, limits)
 }
 
-fn filtered_length(dict: &Dictionary, content: &[u8]) -> Result<usize> {
+fn filtered_length(dict: &Dictionary, content: &[u8], limits: &Limits) -> Result<usize> {
     let mut chain = FilterChain::from_entries(dict.get(b"Filter"), dict.get(b"DecodeParms"))?;
     let codec = chain.split_image();
     if chain.take_crypt().is_some()
@@ -209,7 +222,7 @@ fn filtered_length(dict: &Dictionary, content: &[u8]) -> Result<usize> {
             if attempts > 16 {
                 return Err(Error::limit("inline image boundary search budget exceeded"));
             }
-            if valid_prefix(&chain, codec.as_ref(), dict, &content[..index]) {
+            if valid_prefix(&chain, codec.as_ref(), dict, &content[..index], limits)? {
                 return Ok(index);
             }
         }
@@ -217,41 +230,53 @@ fn filtered_length(dict: &Dictionary, content: &[u8]) -> Result<usize> {
     Err(Error::syntax("missing or invalid inline image terminator"))
 }
 
+/// Whether `data` decodes completely as the inline image: a strict decode
+/// that fails means the candidate boundary is wrong, but exceeding a budget
+/// is reported, not taken as an answer.
 fn valid_prefix(
     chain: &FilterChain,
     codec: Option<&(ImageCodec, Option<Dictionary>)>,
     dict: &Dictionary,
     data: &[u8],
-) -> bool {
-    let limits = pagura_core::Limits::default();
+    limits: &Limits,
+) -> Result<bool> {
+    let candidate = |result: Result<bool>| match result {
+        Err(error) if error.kind == ErrorKind::Limit => Err(error),
+        result => Ok(result.unwrap_or(false)),
+    };
     let mut diagnostics = Diagnostics::new(pagura_core::Recovery::Strict);
-    let Ok(decoded) = chain.decode(data, limits.decoded_bytes, &mut diagnostics) else {
-        return false;
+    let decoded = match chain.decode(data, limits.decoded_bytes, &mut diagnostics) {
+        Ok(decoded) => decoded,
+        Err(error) => return candidate(Err(error)),
     };
     match codec {
-        None => true,
+        None => Ok(true),
         Some((ImageCodec::Dct, params)) => {
             let transform = params
                 .as_ref()
                 .and_then(|p| p.get(b"ColorTransform"))
                 .and_then(Value::as_integer);
-            pagura_imagecodec::dct::decode(&decoded, transform, &limits)
-                .is_ok_and(|image| p::dimensions(dict) == Ok((image.width, image.height)))
+            candidate(
+                pagura_imagecodec::dct::decode(&decoded, transform, limits)
+                    .map(|image| p::dimensions(dict) == Ok((image.width, image.height))),
+            )
         }
         Some((ImageCodec::CcittFax, params)) => {
-            let Ok(params) = crate::adapter::fax::params(params.as_ref()) else {
-                return false;
-            };
-            let Ok((_, height)) = p::dimensions(dict) else {
-                return false;
+            let (Ok(params), Ok((_, height))) = (
+                crate::adapter::fax::params(params.as_ref()),
+                p::dimensions(dict),
+            ) else {
+                return Ok(false);
             };
             // Framing follows the encoded fax rows, not the eventual image
             // grid. decode_inline reports any Columns/Width repair later.
-            pagura_imagecodec::ccitt::decode(&decoded, &params, &limits).is_ok_and(|bytes| {
-                bytes.len() as u64 == u64::from(params.columns).div_ceil(8) * u64::from(height)
-            })
+            let row = u64::from(params.columns).div_ceil(8);
+            candidate(
+                pagura_imagecodec::ccitt::decode(&decoded, &params, limits)
+                    .map(|bytes| usize_to_u64(bytes.len()) == row * u64::from(height)),
+            )
         }
-        _ => false,
+        _ => Ok(false),
     }
 }
 

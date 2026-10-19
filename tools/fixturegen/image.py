@@ -607,7 +607,8 @@ def image_codec_cases():
         ("jpx-dimensions-mismatch", b"/Filter /JPXDecode", "syntax", "", ""),
     ]:
         yield image_pdf_vector(name,wrapped,gray,dictionary,requirement="image-jpx",width=width,height=height+(name == "jpx-dimensions-mismatch"),outcome=outcome,space=space,decode=decode)
-    yield image_pdf_vector("jpx-raw-codestream-rejected",raw,[],b"/Filter /JPXDecode /ColorSpace /DeviceGray",requirement="image-jpx",width=width,height=height,outcome="syntax")
+    # 7.4.9 requires a JP2 file; a bare codestream decodes as a reported repair.
+    yield image_pdf_vector("jpx-raw-codestream",raw,gray,b"/Filter /JPXDecode /ColorSpace /DeviceGray",requirement="image-jpx",width=width,height=height,outcome="repair",repair="image.JPX-codestream",space="DeviceGray")
     icc = jp2(raw,width,height,1,method=2)
     yield image_pdf_vector("jpx-container-icc",icc,gray,b"/Filter /JPXDecode",requirement="image-jpx",width=width,height=height,space="icc")
     rgb = [[(i*13+c*31)%256 for i in range(width*height)] for c in range(3)]

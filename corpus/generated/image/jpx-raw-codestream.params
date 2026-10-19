@@ -1,0 +1,8 @@
+kind=pdf-image
+outcome=repair
+width=8
+height=4
+components=1
+bits=8
+repair=image.JPX-codestream
+space=DeviceGray

@@ -1,11 +1,20 @@
 //! Dictionary/filter consistency (8.9.5.1 Table 87 and 8.9.7 Table 92).
-use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Position, Result, Value};
+use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Result, Value};
 use pagura_document::Document;
+
+/// Where an image dictionary comes from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Source {
+    /// An image XObject stream (8.9.5).
+    XObject,
+    /// An inline image (8.9.7), where Table 92 abbreviations are valid.
+    Inline,
+}
 
 pub(crate) fn validate(
     document: &Document,
     dict: &Dictionary,
-    inline: bool,
+    source: Source,
     diagnostics: &mut Diagnostics,
 ) -> Result<()> {
     let filter = dict
@@ -23,7 +32,7 @@ pub(crate) fn validate(
             .resolve(value)?
             .as_name()
             .ok_or(Error::syntax("invalid image Filter"))?;
-        if !inline
+        if source == Source::XObject
             && matches!(
                 name.as_bytes(),
                 b"AHx" | b"A85" | b"LZW" | b"Fl" | b"RL" | b"CCF" | b"DCT"
@@ -33,13 +42,10 @@ pub(crate) fn validate(
         }
     }
     if abbreviated {
-        diagnostics.repair(
-            Diagnostic::new(
-                crate::repairs::FILTER_ABBREVIATION,
-                "recognized inline filter abbreviation used on an image XObject (8.9.7, Table 92)",
-            )
-            .at(Position::Buffer(0)),
-        )?;
+        diagnostics.repair(Diagnostic::new(
+            crate::repairs::FILTER_ABBREVIATION,
+            "recognized inline filter abbreviation used on an image XObject (8.9.7, Table 92)",
+        ))?;
     }
     if filters
         .last()
@@ -47,7 +53,7 @@ pub(crate) fn validate(
         .transpose()?
         .and_then(Value::as_name)
         .is_some_and(|n| matches!(n.as_bytes(), b"RunLengthDecode" | b"RL"))
-        && super::parameters::integer(dict, b"BitsPerComponent", 0)? != 8
+        && crate::parameters::integer(dict, b"BitsPerComponent", 0)? != 8
     {
         return Err(Error::syntax(
             "RunLength images require eight-bit components",

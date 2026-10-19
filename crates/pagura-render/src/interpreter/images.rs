@@ -8,9 +8,8 @@ use pagura_core::{
     Feature, Name,
     syntax::{Parser, is_whitespace},
 };
-use pagura_image::{DecodedImage, ImageKind, MaskKind, Samples};
+use pagura_image::{DecodedImage, ImageKind, JpxColor, MaskKind, Samples};
 
-pub(crate) const ALPHA_DATA: Feature = Feature::new("image.alpha-data");
 pub(crate) const STENCIL_PATTERN: Feature = Feature::new("image.stencil-pattern");
 pub(crate) const EMBEDDED_COLOR: Feature = Feature::new("image.embedded-color");
 
@@ -110,7 +109,7 @@ impl Compiler<'_> {
         resources: &Dictionary,
         stack: &mut Vec<ObjectId>,
     ) -> Result<Arc<Image>> {
-        if decoded.components == 0 || decoded.components > 32 {
+        if decoded.components() == 0 || decoded.components() > 32 {
             return Err(Error::limit(
                 "image component count exceeds painter capacity",
             ));
@@ -118,25 +117,19 @@ impl Compiler<'_> {
         let space = self.image_space(&decoded, resources)?;
         if let Some(space) = &space
             && (matches!(space, Space::Pattern(_))
-                || space.components() != usize::from(decoded.components))
+                || space.components() != usize::from(decoded.components()))
         {
             return Err(Error::syntax("image colour space component mismatch"));
         }
-        let count = usize::try_from(u64::from(decoded.width) * u64::from(decoded.height))
+        let count = usize::try_from(u64::from(decoded.width()) * u64::from(decoded.height()))
             .map_err(|_| Error::limit("image pixel count exceeds usize"))?;
-        let mask = match decoded.mask {
+        let mask = match *decoded.mask() {
             MaskKind::Soft(id) | MaskKind::Stencil(id) => {
                 Some(self.image_resource(id, resources, stack)?)
             }
-            MaskKind::InData => {
-                return Err(Error::unsupported(
-                    ALPHA_DATA,
-                    "image opacity plane is unavailable",
-                ));
-            }
             _ => None,
         };
-        let matte = if let MaskKind::Soft(id) = decoded.mask {
+        let matte = if let MaskKind::Soft(id) = *decoded.mask() {
             self.document
                 .object(id)?
                 .dictionary()
@@ -155,7 +148,8 @@ impl Compiler<'_> {
                         })
                         .ok_or(Error::syntax("invalid image Matte"))?;
                     if mask.as_ref().is_none_or(|m| {
-                        m.decoded.width != decoded.width || m.decoded.height != decoded.height
+                        m.decoded.width() != decoded.width()
+                            || m.decoded.height() != decoded.height()
                     }) {
                         return Err(Error::syntax("Matte mask dimensions differ from image"));
                     }
@@ -175,19 +169,19 @@ impl Compiler<'_> {
         };
         let decode = decode_ranges(&decoded, space.as_ref())?;
         let intent = self.image_intent(dictionary, space.as_ref())?;
-        if decoded.samples.len()
+        if decoded.samples().len()
             != count
-                .checked_mul(usize::from(decoded.components))
+                .checked_mul(usize::from(decoded.components()))
                 .ok_or(Error::limit("image sample count overflow"))?
         {
             return Err(Error::syntax("image sample count mismatch"));
         }
-        let mut bytes = sample_bytes(&decoded.samples).saturating_add(size_of::<Image>());
-        if let MaskKind::Embedded(alpha) = &decoded.mask {
-            if alpha.samples.len() != count {
+        let mut bytes = sample_bytes(decoded.samples()).saturating_add(size_of::<Image>());
+        if let MaskKind::Embedded(alpha) = decoded.mask() {
+            if alpha.samples().len() != count {
                 return Err(Error::syntax("image opacity sample count mismatch"));
             }
-            bytes = bytes.saturating_add(sample_bytes(&alpha.samples));
+            bytes = bytes.saturating_add(sample_bytes(alpha.samples()));
         }
         self.paint_charge(bytes, 1)?;
         Ok(Arc::new(Image {
@@ -225,14 +219,14 @@ impl Compiler<'_> {
 
     fn image_space(&self, decoded: &DecodedImage, resources: &Dictionary) -> Result<Option<Space>> {
         let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
-        let space = match &decoded.kind {
-            ImageKind::Color {
-                color_space: Some(value),
-            } => Some(color::blending(&context, resources, value)?),
+        let space = match decoded.kind() {
+            ImageKind::Color { color_space } => {
+                Some(color::blending(&context, resources, color_space)?)
+            }
             ImageKind::EmbeddedColor { color } => {
-                let name: &[u8] = match (color, decoded.components) {
-                    (pagura_image::JpxColor::Enumerated(16), 3) => b"DeviceRGB",
-                    (pagura_image::JpxColor::Enumerated(17), 1) => b"DeviceGray",
+                let name: &[u8] = match (color, decoded.components()) {
+                    (JpxColor::Enumerated(16), 3) => b"DeviceRGB",
+                    (JpxColor::Enumerated(17), 1) => b"DeviceGray",
                     _ => {
                         return Err(Error::unsupported(
                             EMBEDDED_COLOR,
@@ -243,9 +237,7 @@ impl Compiler<'_> {
                 Some(color::named(&context, resources, name)?)
             }
             ImageKind::Stencil { .. } => None,
-            ImageKind::Color { color_space: None } => {
-                return Err(Error::syntax("image has no colour space"));
-            }
+            _ => return Err(Error::syntax("image has no colour space")),
         };
         Ok(space)
     }
@@ -264,7 +256,7 @@ impl Compiler<'_> {
             composite.conversion.intent = intent;
         }
         // Image-local masks override the graphics-state soft mask (11.6.4.3).
-        if !matches!(image.decoded.mask, MaskKind::None) {
+        if !matches!(image.decoded.mask(), MaskKind::None) {
             composite.mask = None;
         }
         self.list.commands.push(Command::Image(ImageCommand {
@@ -375,7 +367,7 @@ impl Compiler<'_> {
             .get(offset..)
             .ok_or(Error::syntax("missing inline image data"))?;
         let framing = self.inline_framing(&dictionary, resources)?;
-        let length = pagura_image::inline_data_length(&framing, data)?;
+        let length = pagura_image::inline_data_length(&framing, data, &self.document.limits())?;
         parser.seek(
             offset
                 .checked_add(length)
@@ -429,11 +421,11 @@ pub(crate) fn max_sample(image: &DecodedImage, component: usize) -> Result<u16> 
 }
 impl Image {
     pub(crate) fn components(&self, pixel: usize, values: &mut [f64; 32]) -> Result<()> {
-        let n = usize::from(self.decoded.components);
+        let n = usize::from(self.decoded.components());
         for (component, out) in values.iter_mut().enumerate().take(n) {
             let sample = self
                 .decoded
-                .samples
+                .samples()
                 .get(
                     pixel
                         .checked_mul(n)
@@ -454,9 +446,9 @@ impl Image {
 }
 
 fn decode_ranges(decoded: &DecodedImage, space: Option<&Space>) -> Result<Vec<(f64, f64)>> {
-    let mut decode = Vec::with_capacity(usize::from(decoded.components));
-    for component in 0..usize::from(decoded.components) {
-        let range = if let Some(values) = &decoded.decode {
+    let mut decode = Vec::with_capacity(usize::from(decoded.components()));
+    for component in 0..usize::from(decoded.components()) {
+        let range = if let Some(values) = decoded.decode() {
             (
                 *values
                     .get(2 * component)
@@ -468,8 +460,8 @@ fn decode_ranges(decoded: &DecodedImage, space: Option<&Space>) -> Result<Vec<(f
         } else if matches!(space, Some(Space::Indexed { .. })) {
             (0.0, f64::from(max_sample(decoded, component)?))
         } else if let Some(space @ (Space::Cie(_) | Space::Icc { .. })) = space {
-            let low = space.decode_lookup(&vec![0; usize::from(decoded.components)]);
-            let high = space.decode_lookup(&vec![255; usize::from(decoded.components)]);
+            let low = space.decode_lookup(&vec![0; usize::from(decoded.components())]);
+            let high = space.decode_lookup(&vec![255; usize::from(decoded.components())]);
             (
                 *low.get(component)
                     .ok_or(Error::syntax("missing CIE Decode"))?,

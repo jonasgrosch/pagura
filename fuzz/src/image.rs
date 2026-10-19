@@ -22,7 +22,7 @@
 use super::wrapper::{self, FIRST_OBJECT, Pdf};
 use pagura::{Document, ObjectId, OpenOptions, Recovery};
 use pagura_core::{Diagnostics, Limits};
-use pagura_image::{DecodedImage, Samples};
+use pagura_image::{DecodedImage, Precision, Samples};
 use pagura_imagecodec::{ccitt, dct, jbig2, jpx};
 
 /// Named colour spaces the inline image dictionary can select (8.9.7).
@@ -194,8 +194,11 @@ fn inline(data: &[u8], recovery: Recovery) {
         wrapper::dictionary(RESOURCES, limits),
         wrapper::dictionary(dictionary, limits),
     ) {
-        if let Some(length) = super::checked(pagura_image::inline_data_length(&dictionary, samples))
-        {
+        if let Some(length) = super::checked(pagura_image::inline_data_length(
+            &dictionary,
+            samples,
+            &limits,
+        )) {
             assert!(
                 length <= samples.len(),
                 "inline image data runs past its content"
@@ -225,28 +228,33 @@ fn open(pdf: Pdf, recovery: Recovery) -> Option<Document> {
 /// One value per component and sample, each within its bit depth.
 fn assert_decoded(image: &DecodedImage) {
     assert_eq!(
-        Some(image.samples.len()),
-        count(image.width, image.height, image.components),
+        Some(image.samples().len()),
+        count(image.width(), image.height(), image.components()),
         "decoded samples disagree with the image size"
     );
-    let bits = image.bits_per_component;
-    match &image.samples {
+    let representable = match (image.precision(), image.samples()) {
         // Bytes hold 1- to 8-bit values (JPX permits any depth in that range).
-        Samples::Bytes(values) => assert!(
-            (1..=8).contains(&bits) && values.iter().all(|&v| u16::from(v) < 1 << bits),
-            "{bits}-bit samples out of range"
-        ),
-        Samples::Words(_) => assert!(
-            (9..=16).contains(&bits),
-            "16-bit storage for {bits}-bit samples"
-        ),
+        (&Precision::Uniform(bits), Samples::Bytes(values)) => {
+            assert!(
+                (1..=8).contains(&bits) && values.iter().all(|&v| u16::from(v) < 1 << bits),
+                "{bits}-bit samples out of range"
+            );
+            true
+        }
+        (&Precision::Uniform(bits), Samples::Words(_)) => {
+            assert!(
+                (9..=16).contains(&bits),
+                "16-bit storage for {bits}-bit samples"
+            );
+            true
+        }
         // Mixed JPX precisions: each colour component's values fit its own depth.
-        Samples::Mixed { values, bits } => {
+        (Precision::Mixed(bits), Samples::Words(values)) => {
             assert!(
                 !bits.is_empty() && bits.iter().all(|b| (1..=16).contains(b)),
                 "mixed precisions out of range: {bits:?}"
             );
-            let components = usize::from(image.components).max(1);
+            let components = usize::from(image.components()).max(1);
             for (index, &value) in values.iter().enumerate() {
                 if let Some(&depth) = bits.get(index % components) {
                     assert!(
@@ -255,8 +263,15 @@ fn assert_decoded(image: &DecodedImage) {
                     );
                 }
             }
+            true
         }
-    }
+        _ => false,
+    };
+    assert!(
+        representable,
+        "{:?} samples in the wrong representation",
+        image.precision()
+    );
 }
 
 fn count(width: u32, height: u32, components: u8) -> Option<usize> {

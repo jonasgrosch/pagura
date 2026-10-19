@@ -3128,23 +3128,23 @@
       }
     },
     {
-      "id": "image/jpx-raw-codestream-rejected",
+      "id": "image/jpx-raw-codestream",
       "kind": "vector",
-      "description": "jpx raw codestream rejected",
+      "description": "jpx raw codestream",
       "requirements": [
         "image-jpx"
       ],
       "files": {
         ".out": {
-          "path": "corpus/generated/image/jpx-raw-codestream-rejected.out",
-          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          "path": "corpus/generated/image/jpx-raw-codestream.out",
+          "sha256": "df3b1409c534bb064ee8ab236b9f59b2a9cae2c8a95ce6b230a3eafb56ae9a35"
         },
         ".params": {
-          "path": "corpus/generated/image/jpx-raw-codestream-rejected.params",
-          "sha256": "24dd07b5b74f9b7a4c28a788c96d8e34782cf759e0d1a4361a11f9a500d5310c"
+          "path": "corpus/generated/image/jpx-raw-codestream.params",
+          "sha256": "6c0c84c527a84b62ad90ff06079dd947cff19d2b244202d3444233582b69af29"
         },
         ".pdf": {
-          "path": "corpus/generated/image/jpx-raw-codestream-rejected.pdf",
+          "path": "corpus/generated/image/jpx-raw-codestream.pdf",
           "sha256": "4f1fe27c8645b831e6d909a3a2a7f522fd893b5c0546328a469094e40e7df184"
         }
       }

@@ -261,10 +261,8 @@ impl Context {
             point,
             source,
             !matches!(
-                command.image.decoded.mask,
-                pagura_image::MaskKind::Soft(_)
-                    | pagura_image::MaskKind::Embedded(_)
-                    | pagura_image::MaskKind::InData
+                command.image.decoded.mask(),
+                pagura_image::MaskKind::Soft(_) | pagura_image::MaskKind::Embedded(_)
             ),
         )
     }

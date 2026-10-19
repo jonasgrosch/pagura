@@ -1,7 +1,7 @@
 //! Strict/repaired boundaries and tile invariance for recovery and transfers.
 use crate::{RenderOptions, Tile, compile_page};
 use pagura_core::{ErrorKind, ObjectId, Position, Recovery};
-use pagura_document::{Document, OpenOptions};
+use pagura_document::{Document, ObjectSource, OpenOptions};
 use pagura_testkit::fixture;
 
 #[test]
@@ -34,30 +34,80 @@ fn coloured_patterns_and_soft_mask_artwork_are_strictly_valid() {
     }
 }
 
+/// Where a repair is placed: in the object's stream data, or, for a fault of
+/// an image dictionary, at the image object itself.
+#[derive(Clone, Copy, Debug)]
+enum Placement {
+    Stream,
+    Object,
+}
+
+impl Placement {
+    /// Checks that `position`, reported for case `name`, is this placement
+    /// in object `id` of `document`.
+    fn check(self, document: &Document, id: ObjectId, position: Position, name: &str) {
+        match self {
+            Self::Stream => assert!(
+                matches!(position, Position::Stream { object, .. } if object == id),
+                "{name}: {position:?}"
+            ),
+            Self::Object => {
+                let ObjectSource::File(range) = document.object(id).unwrap().source() else {
+                    panic!("{name}: object {id:?} is not at a file offset");
+                };
+                assert_eq!(position, Position::File(range.start), "{name}");
+            }
+        }
+    }
+}
+
 #[test]
-fn reported_repairs_reject_strictly_and_keep_stream_context() {
-    for (name, tag, object) in [
-        ("unclosed-graphics", "content.graphics-unclosed", 4),
-        ("type3-width-advance", "font.type3-width", 6),
-        ("type3-vertical-metric", "font.type3-width", 6),
+fn reported_repairs_reject_strictly_and_keep_their_context() {
+    use Placement::{Object, Stream};
+    for (name, tag, object, placement) in [
+        ("unclosed-graphics", "content.graphics-unclosed", 4, Stream),
+        ("type3-width-advance", "font.type3-width", 6, Stream),
+        ("type3-vertical-metric", "font.type3-width", 6, Stream),
         (
             "pattern-coloured-underlying",
             "content.pattern-underlying",
             4,
+            Stream,
         ),
         (
             "pattern-underlying-retained",
             "content.pattern-underlying",
             4,
+            Stream,
         ),
-        ("lzw-no-initial-clear", "filter.lzw-initial-clear", 5),
-        ("jpeg-trailing-restart", "jpeg.trailing-restart", 5),
-        ("ccitt-cropped-columns", "image.ccitt-columns", 5),
-        ("predictor-image-precision", "image.predictor-precision", 5),
-        ("jpx-part-count", "jpx.tile-part-count", 5),
-        ("jpx-misplaced-mapping", "jpx.mapping-box-location", 5),
-        ("image-xobject-type", "image.xobject-type", 5),
-        ("image-flate-mislabeled-dct", "image.filter-mismatch", 5),
+        (
+            "lzw-no-initial-clear",
+            "filter.lzw-initial-clear",
+            5,
+            Stream,
+        ),
+        ("jpeg-trailing-restart", "jpeg.trailing-restart", 5, Stream),
+        ("ccitt-cropped-columns", "image.ccitt-columns", 5, Object),
+        (
+            "predictor-image-precision",
+            "image.predictor-precision",
+            5,
+            Object,
+        ),
+        ("jpx-part-count", "jpx.tile-part-count", 5, Stream),
+        (
+            "jpx-misplaced-mapping",
+            "jpx.mapping-box-location",
+            5,
+            Stream,
+        ),
+        ("image-xobject-type", "image.xobject-type", 5, Object),
+        (
+            "image-flate-mislabeled-dct",
+            "image.filter-mismatch",
+            5,
+            Stream,
+        ),
     ] {
         let id = ObjectId::new(object, 0);
         let strict = Document::open(
@@ -76,10 +126,7 @@ fn reported_repairs_reject_strictly_and_keep_stream_context() {
             "{name}"
         );
         assert_eq!(error.object, Some(id), "{name}");
-        assert!(
-            matches!(error.position, Position::Stream { object, .. } if object == id),
-            "{name}: {error}"
-        );
+        placement.check(&strict, id, error.position, name);
         assert!(strict.diagnostics().is_empty(), "{name}");
         let repaired = Document::open(
             fixture("recovery", &format!("{name}.pdf")),

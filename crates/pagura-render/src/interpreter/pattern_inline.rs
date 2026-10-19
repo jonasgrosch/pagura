@@ -83,6 +83,7 @@ impl Compiler<'_> {
                 .data()
                 .get(offset..)
                 .ok_or(Error::syntax("missing inline image data"))?,
+            &self.document.limits(),
         )?;
         probe.seek(
             offset

@@ -1,80 +1,136 @@
-//! PDF JPEG 2000 adaptation: ISO 32000-2 7.4.9 and Table 87.
+//! PDF JPEG 2000 adaptation: 7.4.9 and Table 87.
 mod channels;
+#[cfg(test)]
+mod tests;
 
-use crate::{DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples, features, parameters};
-use pagura_core::{Dictionary, Error, Limits, Result, Value};
+use super::Pixels;
+use crate::image::Association;
+use crate::{ImageAlpha, ImageKind, Precision, Samples, features, parameters};
+use pagura_core::convert::{u32_to_usize, usize_to_u64};
+use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Limits, Position, Result, Value};
 use pagura_imagecodec::jpx;
+
+/// The enumerated color spaces of JP2 color specification boxes that PDF
+/// tells apart (T.800 I.5.3.3, Table I.10).
+mod space {
+    pub(super) const CMYK: u32 = 12;
+    pub(super) const SRGB: u32 = 16;
+    pub(super) const GRAYSCALE: u32 = 17;
+    pub(super) const SYCC: u32 = 18;
+    pub(super) const CIEJAB: u32 = 19;
+}
+
+/// `/SMaskInData` (Table 87): what an opacity channel in the data means.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SMaskInData {
+    /// 0: ignore it.
+    Ignore,
+    /// 1: a separate soft mask.
+    Separate,
+    /// 2: a soft mask already multiplied into the color samples.
+    Premultiplied,
+}
+
+impl SMaskInData {
+    fn read(dictionary: &Dictionary) -> Result<Self> {
+        let mode = match parameters::integer(dictionary, b"SMaskInData", 0)? {
+            0 => Self::Ignore,
+            1 => Self::Separate,
+            2 => Self::Premultiplied,
+            _ => return Err(Error::syntax("invalid SMaskInData or simultaneous SMask")),
+        };
+        if mode != Self::Ignore && dictionary.get(b"SMask").is_some_and(|v| !v.is_null()) {
+            return Err(Error::syntax("invalid SMaskInData or simultaneous SMask"));
+        }
+        Ok(mode)
+    }
+
+    const fn opacity(self) -> bool {
+        !matches!(self, Self::Ignore)
+    }
+}
+
+/// The image a dictionary declares: its size and, when it has a
+/// `/ColorSpace`, that space's component count.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Declared {
+    pub(crate) width: u32,
+    pub(crate) height: u32,
+    pub(crate) components: Option<u8>,
+    /// Whether the space is `/Indexed`, which interprets the stored samples
+    /// itself: a container palette would expand them a second time (7.4.9).
+    pub(crate) indexed: bool,
+}
+
+/// A decoded JPEG 2000 image in PDF terms.
+#[derive(Debug)]
+pub(crate) struct Adapted {
+    pub(crate) pixels: Pixels,
+    /// The opacity plane, when `/SMaskInData` asks for it.
+    pub(crate) alpha: Option<ImageAlpha>,
+    /// The container's color, when the dictionary has no `/ColorSpace`.
+    pub(crate) kind: Option<ImageKind>,
+}
 
 pub(crate) fn decode(
     data: &[u8],
     dictionary: &Dictionary,
-    image: &mut DecodedImage,
+    declared: Declared,
     limits: &Limits,
-    diagnostics: &mut pagura_core::Diagnostics,
-) -> Result<()> {
-    let mode = parameters::integer(dictionary, b"SMaskInData", 0)?;
-    if !(0..=2).contains(&mode)
-        || (mode != 0 && dictionary.get(b"SMask").is_some_and(|v| !v.is_null()))
-    {
-        return Err(Error::syntax("invalid SMaskInData or simultaneous SMask"));
+    diagnostics: &mut Diagnostics,
+) -> Result<Adapted> {
+    let mode = SMaskInData::read(dictionary)?;
+    // A raw codestream starts with the SOC marker (T.800 A.4.1), a JP2 file
+    // with its signature box (T.800 I.5.1).
+    let codestream = data.starts_with(&[0xff, 0x4f]);
+    if codestream {
+        diagnostics.repair(
+            Diagnostic::new(
+                crate::repairs::JPX_CODESTREAM,
+                "bare JPEG 2000 codestream decoded without a JP2 container (7.4.9)",
+            )
+            .at(Position::Buffer(0)),
+        )?;
     }
-    if data.starts_with(&[255, 79]) {
-        return Err(Error::syntax(
-            "PDF JPXDecode requires a full JPEG 2000 container",
-        ));
-    }
-    let indexed = matches!(&image.kind, ImageKind::Color { color_space: Some(Value::Array(space)) }
-        if space.first().and_then(Value::as_name).is_some_and(|name| name == b"Indexed"));
-    if indexed && mode != 0 {
+    if declared.indexed && mode.opacity() {
         return Err(Error::unsupported(
             features::JPX_SAMPLE_LAYOUT,
             "Indexed JPX opacity requires channel mapping",
         ));
     }
     let options = jpx::Options {
-        ignore_color: !matches!(image.kind, ImageKind::Color { color_space: None }),
-        ignore_opacity: mode == 0,
-        ignore_palette: indexed,
+        ignore_color: declared.components.is_some(),
+        ignore_opacity: !mode.opacity(),
+        ignore_palette: declared.indexed,
     };
     let mut decoded = jpx::decode_with_diagnostics(data, limits, &options, diagnostics)?;
-    if mode == 0 {
+    // A bare codestream has no channel definitions to discard.
+    if !mode.opacity() && !codestream {
         channels::discard_opacity(data, &mut decoded, limits)?;
     }
-    adapt(decoded, mode, image, limits)
+    adapt(decoded, mode, declared, limits)
 }
 
 pub(crate) fn adapt(
     placement: jpx::Decoded,
-    mode: i64,
-    image: &mut DecodedImage,
+    mode: SMaskInData,
+    declared: Declared,
     limits: &Limits,
-) -> Result<()> {
+) -> Result<Adapted> {
     let jpx::Decoded {
         image: decoded,
         reference_origin,
         component_geometry,
         ..
     } = placement;
-    if component_geometry.len() != decoded.components.len() {
-        return Err(Error::syntax("invalid JPX component geometry count"));
-    }
-    if decoded.width != image.width || decoded.height != image.height {
-        return Err(Error::syntax(
-            "JPX dimensions disagree with image dictionary",
-        ));
-    }
-    if decoded
-        .alpha
-        .is_some_and(|index| index >= decoded.components.len())
-    {
-        return Err(Error::syntax("invalid JPX alpha component index"));
-    }
-    if mode != 0 && decoded.alpha.is_none() {
-        return Err(Error::syntax("SMaskInData requires an opacity channel"));
-    }
-    if storage_bytes(&decoded, component_geometry.capacity(), 0, 8, 0)? > limits.decoded_bytes {
-        return Err(Error::limit("JPX component adapter budget exceeded"));
-    }
+    check_layout(
+        &decoded,
+        &component_geometry,
+        component_geometry.capacity(),
+        mode,
+        declared,
+        limits,
+    )?;
     let mut components = Vec::with_capacity(decoded.components.len());
     components.extend(
         decoded
@@ -87,19 +143,19 @@ pub(crate) fn adapt(
     );
     let first = components
         .first()
-        .ok_or(Error::syntax("JPX has no colour components"))?;
+        .ok_or(Error::syntax("JPX has no color components"))?;
     let count =
         u8::try_from(components.len()).map_err(|_| Error::limit("too many JPX components"))?;
-    if image.components != 0 && image.components != count {
+    if declared.components.is_some_and(|n| n != count) {
         return Err(Error::syntax(
-            "JPX component count disagrees with colour space",
+            "JPX component count disagrees with color space",
         ));
     }
-    let pixels = parameters::budget(image.width, image.height, 1, 1, limits)?;
+    let pixels = parameters::budget(declared.width, declared.height, 1, 1, limits)?;
     validate_planes(&decoded, &component_geometry, reference_origin, mode)?;
     let mixed = components.iter().any(|c| c.0.bits != first.0.bits);
     let precision = if mixed { 16 } else { first.0.bits };
-    let values = parameters::budget(image.width, image.height, count, precision, limits)?;
+    let values = parameters::budget(declared.width, declared.height, count, precision, limits)?;
     let storage = storage_bytes(
         &decoded,
         component_geometry.capacity(),
@@ -110,40 +166,107 @@ pub(crate) fn adapt(
     if storage > limits.decoded_bytes {
         return Err(Error::limit("JPX adapter sample budget exceeded"));
     }
-    image.components = count;
-    image.bits_per_component = if mixed { 0 } else { first.0.bits };
-    image.samples = interleave(&components, values, mixed, image.width, reference_origin)?;
-    if mode != 0 {
-        let opacity = decoded
-            .alpha
-            .and_then(|index| decoded.components.get(index))
-            .ok_or(Error::syntax("missing JPX opacity channel"))?;
-        image.mask = MaskKind::Embedded(ImageAlpha {
-            bits_per_component: opacity.bits,
-            samples: interleave(
-                &[(opacity, &component_geometry[decoded.alpha.unwrap_or(0)])],
-                pixels,
-                false,
-                image.width,
-                reference_origin,
-            )?,
-            premultiplied: mode == 2,
-        });
+    let samples = interleave(&components, values, declared.width, reference_origin)?;
+    let precision = if mixed {
+        Precision::Mixed(components.iter().map(|c| c.0.bits).collect())
+    } else {
+        Precision::Uniform(first.0.bits)
+    };
+    let alpha = if mode.opacity() {
+        Some(opacity_plane(
+            &decoded,
+            &component_geometry,
+            mode,
+            declared.width,
+            reference_origin,
+            pixels,
+        )?)
+    } else {
+        None
+    };
+    let kind = if declared.components.is_none() {
+        Some(embedded_space(decoded.color, count)?)
+    } else {
+        None
+    };
+    Ok(Adapted {
+        pixels: Pixels {
+            components: count,
+            precision,
+            samples,
+        },
+        alpha,
+        kind,
+    })
+}
+
+/// Checks the decoded layout against the dictionary before any sample is
+/// copied: geometry, dimensions, the opacity channel and the storage of the
+/// component lists, whose retained capacity counts too.
+fn check_layout(
+    decoded: &jpx::JpxImage,
+    geometry: &[jpx::ComponentGeometry],
+    geometry_capacity: usize,
+    mode: SMaskInData,
+    declared: Declared,
+    limits: &Limits,
+) -> Result<()> {
+    if geometry.len() != decoded.components.len() {
+        return Err(Error::syntax("invalid JPX component geometry count"));
     }
-    if matches!(image.kind, ImageKind::Color { color_space: None }) {
-        image.kind = embedded_space(decoded.color, count)?;
+    if decoded.width != declared.width || decoded.height != declared.height {
+        return Err(Error::syntax(
+            "JPX dimensions disagree with image dictionary",
+        ));
+    }
+    if decoded
+        .alpha
+        .is_some_and(|index| index >= decoded.components.len())
+    {
+        return Err(Error::syntax("invalid JPX alpha component index"));
+    }
+    if mode.opacity() && decoded.alpha.is_none() {
+        return Err(Error::syntax("SMaskInData requires an opacity channel"));
+    }
+    if storage_bytes(decoded, geometry_capacity, 0, 8, SMaskInData::Ignore)? > limits.decoded_bytes
+    {
+        return Err(Error::limit("JPX component adapter budget exceeded"));
     }
     Ok(())
+}
+
+/// The opacity channel as a plane with one sample per image pixel.
+fn opacity_plane(
+    decoded: &jpx::JpxImage,
+    geometry: &[jpx::ComponentGeometry],
+    mode: SMaskInData,
+    width: u32,
+    reference_origin: [u32; 2],
+    pixels: usize,
+) -> Result<ImageAlpha> {
+    let opacity = decoded
+        .alpha
+        .and_then(|index| decoded.components.get(index).zip(geometry.get(index)))
+        .ok_or(Error::syntax("missing JPX opacity channel"))?;
+    Ok(ImageAlpha::new(
+        opacity.0.bits,
+        interleave(&[opacity], pixels, width, reference_origin)?,
+        if mode == SMaskInData::Premultiplied {
+            Association::Premultiplied
+        } else {
+            Association::Straight
+        },
+    ))
 }
 
 fn validate_planes(
     decoded: &jpx::JpxImage,
     geometries: &[jpx::ComponentGeometry],
     reference_origin: [u32; 2],
-    mode: i64,
+    mode: SMaskInData,
 ) -> Result<()> {
     for (index, (component, geometry)) in decoded.components.iter().zip(geometries).enumerate() {
-        if mode != 0 || Some(index) != decoded.alpha {
+        if mode.opacity() || Some(index) != decoded.alpha {
             validate_component(
                 component,
                 geometry,
@@ -197,7 +320,7 @@ fn storage_bytes(
     geometry_capacity: usize,
     values: usize,
     bits: u8,
-    mode: i64,
+    mode: SMaskInData,
 ) -> Result<usize> {
     let add = |a: usize, b: usize| a.checked_add(b).ok_or(Error::limit("JPX storage overflow"));
     let mut bytes = 0usize;
@@ -216,7 +339,7 @@ fn storage_bytes(
             .checked_mul(if bits <= 8 { 1 } else { 2 })
             .ok_or(Error::limit("JPX storage overflow"))?,
     )?;
-    if mode != 0
+    if mode.opacity()
         && let Some(alpha) = decoded.alpha.and_then(|i| decoded.components.get(i))
     {
         bytes = add(
@@ -251,10 +374,11 @@ fn storage_bytes(
     )
 }
 
+/// Interleaves `count` values of `components`, one byte each when they share
+/// one precision of at most 8 bits, else two.
 fn interleave(
     components: &[(&jpx::JpxComponent, &jpx::ComponentGeometry)],
     count: usize,
-    mixed: bool,
     width: u32,
     reference_origin: [u32; 2],
 ) -> Result<Samples> {
@@ -267,8 +391,9 @@ fn interleave(
         // T.800 B.2/G.4 fix the sample positions. Piecewise-constant expansion
         // with border replication is the chosen resampling policy; no phase
         // reset occurs at a nonzero reference-grid origin.
-        let x = u64::from(reference_origin[0]) + (pixel % width as usize) as u64;
-        let y = u64::from(reference_origin[1]) + (pixel / width as usize) as u64;
+        let columns = u32_to_usize(width);
+        let x = u64::from(reference_origin[0]) + usize_to_u64(pixel % columns);
+        let y = u64::from(reference_origin[1]) + usize_to_u64(pixel / columns);
         let x = (x.saturating_sub(u64::from(g.origin[0])) / u64::from(g.step[0]))
             .min(u64::from(c.width - 1));
         let y = (y.saturating_sub(u64::from(g.origin[1])) / u64::from(g.step[1]))
@@ -280,7 +405,7 @@ fn interleave(
             .copied()
             .ok_or(Error::syntax("invalid JPX sample index"))
     };
-    if !mixed && first.bits <= 8 {
+    if first.bits <= 8 && components.iter().all(|c| c.0.bits == first.bits) {
         let mut values = Vec::with_capacity(count);
         for i in 0..pixels {
             for &(c, g) in components {
@@ -298,31 +423,24 @@ fn interleave(
             values.push(sample(i, c, g)?);
         }
     }
-    if mixed {
-        Ok(Samples::Mixed {
-            values,
-            bits: components.iter().map(|c| c.0.bits).collect(),
-        })
-    } else {
-        Ok(Samples::Words(values))
-    }
+    Ok(Samples::Words(values))
 }
 
 fn embedded_space(color: jpx::JpxColor, count: u8) -> Result<ImageKind> {
     let space = match (&color, count) {
-        (jpx::JpxColor::Enumerated(17), 1) => Some(b"DeviceGray".as_slice()),
-        (jpx::JpxColor::Enumerated(16), 3) => Some(b"DeviceRGB".as_slice()),
-        (jpx::JpxColor::Enumerated(12), 4) => Some(b"DeviceCMYK".as_slice()),
-        (jpx::JpxColor::Enumerated(12 | 16 | 17), _) => {
+        (jpx::JpxColor::Enumerated(space::GRAYSCALE), 1) => Some(b"DeviceGray".as_slice()),
+        (jpx::JpxColor::Enumerated(space::SRGB), 3) => Some(b"DeviceRGB".as_slice()),
+        (jpx::JpxColor::Enumerated(space::CMYK), 4) => Some(b"DeviceCMYK".as_slice()),
+        (jpx::JpxColor::Enumerated(space::CMYK | space::SRGB | space::GRAYSCALE), _) => {
             return Err(Error::syntax(
                 "JPX colour space disagrees with channel count",
             ));
         }
-        (jpx::JpxColor::Enumerated(19), _) => {
+        (jpx::JpxColor::Enumerated(space::CIEJAB), _) => {
             return Err(Error::syntax("CIEJab is forbidden for PDF JPX images"));
         }
-        (jpx::JpxColor::Enumerated(18), 3) | (jpx::JpxColor::Icc(_), _) => None,
-        (jpx::JpxColor::Enumerated(18), _) => {
+        (jpx::JpxColor::Enumerated(space::SYCC), 3) | (jpx::JpxColor::Icc(_), _) => None,
+        (jpx::JpxColor::Enumerated(space::SYCC), _) => {
             return Err(Error::syntax("JPX sYCC requires three colour channels"));
         }
         (jpx::JpxColor::Enumerated(_), _) => {
@@ -340,7 +458,7 @@ fn embedded_space(color: jpx::JpxColor, count: u8) -> Result<ImageKind> {
     Ok(space.map_or_else(
         || ImageKind::EmbeddedColor { color },
         |space| ImageKind::Color {
-            color_space: Some(Value::name(space)),
+            color_space: Value::name(space),
         },
     ))
 }

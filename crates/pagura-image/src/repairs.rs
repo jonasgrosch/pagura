@@ -30,6 +30,10 @@ pub const XOBJECT_TYPE: Repair = Repair::new("image.xobject-type");
 /// strict framing, checksum and predictor validation and an exact match to
 /// the declared eight-bit image sample count (7.4.4, 7.4.8).
 pub const FILTER_MISMATCH: Repair = Repair::new("image.filter-mismatch");
+/// Decode `JPXDecode` data that is a bare JPEG 2000 codestream rather than
+/// the JP2 file 7.4.9 requires, as if it had a JP2 wrapper without color or
+/// channel boxes.
+pub const JPX_CODESTREAM: Repair = Repair::new("image.JPX-codestream");
 
 /// Every repair tag of this crate.
 pub const ALL: &[Repair] = &[
@@ -42,4 +46,5 @@ pub const ALL: &[Repair] = &[
     PREDICTOR_PRECISION,
     XOBJECT_TYPE,
     FILTER_MISMATCH,
+    JPX_CODESTREAM,
 ];
