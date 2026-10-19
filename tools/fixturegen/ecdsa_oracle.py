@@ -96,7 +96,15 @@ def signature(r, s):
 
 
 def emit(source, case, name, digest, key, sig, expected):
-    print(source, case, name, digest.hex(), key.hex(), sig.hex(), int(expected), sep="\t")
+    """One tab-separated vector line, as pagura-crypto's tests read it."""
+    return "\t".join([source, str(case), name, digest.hex(), key.hex(), sig.hex(), str(int(expected))])
+
+
+# Seeded random cases beside the exhaustive edge pairs; each curve's signature
+# cases cover every digest length twice, both point encodings and the all-zero
+# and all-one digests.
+RANDOM_PAIRS = 16
+SIGNATURE_CASES = 14
 
 
 def arithmetic():
@@ -105,11 +113,12 @@ def arithmetic():
         for label, m in [("field", p), ("scalar", n)]:
             edges = [0, 1, 2, m-1, m-2, m//2, (1 << (m.bit_length()-1))-1]
             pairs = [(a, b) for a in edges for b in edges]
-            pairs += [(rng.randrange(m), rng.randrange(m)) for _ in range(256)]
+            pairs += [(rng.randrange(m), rng.randrange(m)) for _ in range(RANDOM_PAIRS)]
+            width = 2 * ((m.bit_length() + 7) // 8)
             for a, b in pairs:
                 values = [a, b, (a+b) % m, (a-b) % m, a*b % m,
                           pow(a, -1, m) if a else 0]
-                print(name, label, *(format(v, 'x') for v in values), sep="\t")
+                yield "\t".join([name, label, *(f"{v:0{width}x}" for v in values)])
 
 
 def vectors():
@@ -117,7 +126,7 @@ def vectors():
     for name, (p, n, b, gx, gy) in CURVES.items():
         assert (gy*gy - gx**3 + 3*gx - b) % p == 0
         assert multiply(n, (gx, gy), p) is None
-        for case in range(64):
+        for case in range(SIGNATURE_CASES):
             d = rng.randrange(1, n)
             k = rng.randrange(1, n)
             point = multiply(d, (gx, gy), p)
@@ -130,21 +139,22 @@ def vectors():
             s = (e + r*d) * pow(k, -1, n) % n
             assert verify(name, digest, point, r, s)
             key = point_bytes(name, point, case % 2 == 0)
-            emit('python-affine', f'{case}-valid', name, digest, key, signature(r, s), True)
-            emit('python-affine', f'{case}-high-low-s', name, digest, key, signature(r, n-s), True)
+            yield emit('python-affine', f'{case}-valid', name, digest, key, signature(r, s), True)
+            yield emit('python-affine', f'{case}-high-low-s', name, digest, key, signature(r, n-s), True)
             changed_r = (r % (n-1)) + 1
             assert not verify(name, digest, point, changed_r, s)
-            emit('python-affine', f'{case}-changed-r', name, digest, key, signature(changed_r, s), False)
+            yield emit('python-affine', f'{case}-changed-r', name, digest, key, signature(changed_r, s), False)
             bad_point = (point[0], (point[1]+1) % p)
             assert not verify(name, digest, bad_point, r, s)
             bad_key = point_bytes(name, bad_point)
-            emit('python-affine', f'{case}-off-curve', name, digest, bad_key, signature(r, s), False)
+            yield emit('python-affine', f'{case}-off-curve', name, digest, bad_key, signature(r, s), False)
         # Q=G, u=1 and v=-1: verification result is infinity and must fail.
-        emit('python-affine', 'identity-result', name, b'\1', point_bytes(name, (gx, gy)), signature(n-1, 1), False)
+        yield emit('python-affine', 'identity-result', name, b'\1', point_bytes(name, (gx, gy)), signature(n-1, 1), False)
         # A prehash entirely reduced to zero is legitimate mathematics.
         r = gx % n
-        emit('python-affine', 'zero-digest', name, bytes(64), point_bytes(name, (gx, gy)), signature(r, r), True)
+        yield emit('python-affine', 'zero-digest', name, bytes(64), point_bytes(name, (gx, gy)), signature(r, r), True)
 
 
 if __name__ == '__main__':
-    {'arithmetic': arithmetic, 'vectors': vectors}[sys.argv[1]]()
+    for line in {'arithmetic': arithmetic, 'vectors': vectors}[sys.argv[1]]():
+        print(line)

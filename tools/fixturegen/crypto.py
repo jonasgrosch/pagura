@@ -797,9 +797,35 @@ def saslprep_generated_examples():
                      case.requirements+("security-saslprep",), "Independent R6 encryptor authenticates non-ASCII user and owner after complete Unicode 3.2 SASLprep and byte truncation")
 
 
+def signature_oracles():
+    """Independent Python-integer oracles for RSA and ECDSA verification.
+
+    The vectors are deterministic (seeded); pagura-crypto's tests read them
+    as fixtures instead of running the oracles.
+    """
+    from . import ecdsa_oracle, rsa_oracle
+
+    def lines(rows):
+        return ("\n".join(rows) + "\n").encode()
+
+    yield Vector("rsa-encodings", {".vectors": lines(rsa_oracle.encodings())},
+                 ("crypto-rsa-pkcs1v15-verification", "crypto-rsa-pss-verification"),
+                 "RFC 8017 9.1/9.2 encodings and targeted mutations, signed with Python integers")
+    yield Vector("modular-power", {".vectors": lines(rsa_oracle.powers())},
+                 ("crypto-rsa-public-arithmetic",),
+                 "Python pow() over seeded random and boundary moduli, bases and exponents")
+    yield Vector("ecdsa-arithmetic", {".vectors": lines(ecdsa_oracle.arithmetic())},
+                 ("crypto-ecdsa-public-key-validation",),
+                 "Python modular add, sub, mul and inverse over each curve's field and scalar primes")
+    yield Vector("ecdsa-signatures", {".vectors": lines(ecdsa_oracle.vectors())},
+                 ("crypto-ecdsa-verification",),
+                 "Seeded keys, nonces and digests signed and checked with affine Python arithmetic")
+
+
 def cases():
     self_check()
     yield from primitive_examples()
+    yield from signature_oracles()
     yield from mode_examples()
     yield from saslprep_examples()
     yield from saslprep_normalization_examples()
