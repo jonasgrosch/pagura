@@ -4352,6 +4352,26 @@
       "tolerance": 1
     },
     {
+      "id": "content/shading-axial-clip-path",
+      "kind": "pdf",
+      "description": "Independent analytic function at device sample locations",
+      "expected": "render",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-axial-clip-path.pdf",
+      "sha256": "02eb22921da76cf61962d7b2585a24b5da51cef256ae00c4a840aa0333f0fa3f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/shading-axial-clip-path.ppm",
+      "oracle_sha256": "dbf5f20a940e05f47769b05a5e68114f8c917c091101f1149801906b39b56e59",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "tolerance": 1
+    },
+    {
       "id": "content/shading-background-ignored",
       "kind": "pdf",
       "description": "Independent analytic function at device sample locations",

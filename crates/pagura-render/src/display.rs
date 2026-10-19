@@ -5,7 +5,7 @@ use crate::{RenderOptions, Tile};
 use pagura_core::{Error, Limits, Rect, Result};
 use pagura_document::{Page, Rotation};
 use pagura_raster::{
-    FillRule, Mask, Paint, Path, PathBuilder, Pixmap, Rasterizer, Stroke, Transform,
+    ClipRegion, FillRule, Paint, Path, PathBuilder, Pixmap, Rasterizer, Stroke, Transform,
     adjusted_stroke_outline, stroke_outline,
 };
 use std::sync::{Arc, OnceLock};
@@ -282,7 +282,7 @@ impl GlyphRun {
         &self,
         target: &mut Pixmap,
         device: Transform,
-        mask: &Mask,
+        clip: &ClipRegion,
         raster: &mut Rasterizer,
         cache: &mut GlyphCache,
         limits: Limits,
@@ -305,7 +305,7 @@ impl GlyphRun {
                 raster.clear();
             }
             raster
-                .fill_glyph(target, geometry, placement.origin * device, &paint, mask)
+                .fill_glyph(target, geometry, placement.origin * device, &paint, clip)
                 .map_err(|e| contextual(e, self.position(index)))?;
             if cache
                 .retained_bytes()
@@ -622,7 +622,7 @@ impl DisplayList {
             self.crop.width(),
             self.crop.height(),
         );
-        let crop = Mask::from_path_with_limits(
+        let crop = ClipRegion::from_path(
             tile.width,
             tile.height,
             &crop.finish(),
@@ -634,7 +634,7 @@ impl DisplayList {
         let mut raster = Rasterizer::default();
         let mut glyph_cache = GlyphCache::new(self.limits.decoded_bytes);
         let mut last_clip = None;
-        let mut mask = crop.clone();
+        let mut clip_region = crop.clone();
         let mut stack = vec![self.commands.iter()];
         while let Some(iter) = stack.last_mut() {
             let Some(command) = iter.next() else {
@@ -658,7 +658,7 @@ impl DisplayList {
             };
             let identity = command.clip.as_ref().map(Arc::as_ptr);
             if identity != last_clip {
-                mask = crop.clone();
+                clip_region = crop.clone();
                 let mut clip = command.clip.as_deref();
                 let mut chain = Vec::new();
                 while let Some(node) = clip {
@@ -666,7 +666,7 @@ impl DisplayList {
                     clip = node.parent.as_deref();
                 }
                 for node in chain.into_iter().rev() {
-                    let next = Mask::from_path_with_limits(
+                    let next = ClipRegion::from_path(
                         tile.width,
                         tile.height,
                         &node.path,
@@ -675,7 +675,7 @@ impl DisplayList {
                         self.limits,
                         (tile.x, tile.y),
                     )?;
-                    mask.intersect(&next)?;
+                    clip_region.intersect(&next)?;
                 }
                 last_clip = identity;
             }
@@ -683,13 +683,13 @@ impl DisplayList {
                 run.rasterize(
                     &mut target,
                     device,
-                    &mask,
+                    &clip_region,
                     &mut raster,
                     &mut glyph_cache,
                     self.limits,
                 )
             } else {
-                command.rasterize(&mut target, device, &mask, &mut raster, self.limits)
+                command.rasterize(&mut target, device, &clip_region, &mut raster, self.limits)
             };
             result.map_err(|e| contextual(e, command.position))?;
         }
@@ -727,7 +727,7 @@ impl PathCommand {
         &self,
         target: &mut Pixmap,
         device: Transform,
-        mask: &Mask,
+        clip: &ClipRegion,
         raster: &mut Rasterizer,
         limits: Limits,
     ) -> Result<()> {
@@ -737,7 +737,7 @@ impl PathCommand {
         );
         match &self.mark {
             Mark::Fill(rule) => {
-                raster.fill_path(target, Arc::clone(&self.path), device, *rule, &paint, mask)?;
+                raster.fill_path(target, Arc::clone(&self.path), device, *rule, &paint, clip)?;
             }
             Mark::Stroke(stroke, ctm, adjust) => {
                 let inverse = ctm.inverse().ok_or(Error::unsupported(
@@ -757,7 +757,7 @@ impl PathCommand {
                     transform,
                     FillRule::NonZero,
                     &paint,
-                    mask,
+                    clip,
                 )?;
             }
         }

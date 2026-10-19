@@ -1,6 +1,6 @@
 //! Reusable working storage for a sequence of independent path fills.
 
-use super::{Coverage, FillRule, Mask, Rectangle};
+use super::{ClipRegion, Coverage, FillRule, Mask, Rectangle};
 use crate::coverage::{Geometry, Scratch, Shape};
 use crate::{Paint, Path, Pixmap, Transform};
 use pagura_core::{Error, Limits, Result};
@@ -62,10 +62,13 @@ impl Rasterizer {
     /// retained byte budget.
     pub fn recycle(&mut self, coverage: impl Into<Coverage>) {
         match coverage.into() {
-            Coverage::Mask(mut mask) => {
-                mask.shapes.clear();
-                self.coverage = mask.coverage;
-                self.shapes = mask.shapes;
+            Coverage::Mask(Mask {
+                mut region,
+                coverage,
+            }) => {
+                region.shapes.clear();
+                self.coverage = coverage;
+                self.shapes = region.shapes;
             }
             Coverage::Rectangle(rectangle) => self.coverage = rectangle.rows.into_samples(),
         }
@@ -90,7 +93,7 @@ impl Rasterizer {
     /// the rasterizer remains usable after an error.
     pub fn clipped_path(
         &mut self,
-        clip: &Mask,
+        clip: &ClipRegion,
         path: Arc<Path>,
         transform: Transform,
         rule: FillRule,
@@ -114,7 +117,7 @@ impl Rasterizer {
     /// As [`Self::clipped_path`].
     pub fn clipped_coverage(
         &mut self,
-        clip: &Mask,
+        clip: &ClipRegion,
         path: Arc<Path>,
         transform: Transform,
         rule: FillRule,
@@ -164,7 +167,7 @@ impl Rasterizer {
     /// Returns geometry, work, source-count and allocation limit errors.
     pub fn clipped_glyph(
         &mut self,
-        clip: &Mask,
+        clip: &ClipRegion,
         glyph: Arc<crate::GlyphGeometry>,
         origin: crate::Point,
         limits: Limits,
@@ -227,11 +230,14 @@ impl Rasterizer {
         glyph: Arc<crate::GlyphGeometry>,
         origin: crate::Point,
         paint: &Paint,
-        clip: &Mask,
+        clip: &ClipRegion,
     ) -> Result<()> {
         super::check_clip(target, Some(clip))?;
         if let Some(mask) = self.clipped_glyph(clip, glyph, origin, *target.limits())? {
-            let offset = (mask.origin.0 - clip.origin.0, mask.origin.1 - clip.origin.1);
+            let offset = (
+                mask.origin().0 - clip.origin.0,
+                mask.origin().1 - clip.origin.1,
+            );
             let result = super::composite(target, &mask, *paint, offset);
             self.recycle(mask);
             result?;
@@ -245,7 +251,7 @@ impl Rasterizer {
         transform: Transform,
         rule: FillRule,
         limits: Limits,
-        viewport: ((u32, u32), (u32, u32), Option<&Mask>),
+        viewport: ((u32, u32), (u32, u32), Option<&ClipRegion>),
     ) -> Result<Option<Mask>> {
         self.maximum = limits.decoded_bytes;
         self.trim();
@@ -265,7 +271,7 @@ impl Rasterizer {
         shape: Shape,
         region: Region,
         limits: Limits,
-        clip: Option<&Mask>,
+        clip: Option<&ClipRegion>,
     ) -> Result<Option<Mask>> {
         let count = self.sources(shape, region, limits, clip)?;
         self.integrate(region, count, limits).map(Some)
@@ -278,7 +284,7 @@ impl Rasterizer {
         shape: Shape,
         (x, y, width, height): Region,
         limits: Limits,
-        clip: Option<&Mask>,
+        clip: Option<&ClipRegion>,
     ) -> Result<usize> {
         self.shapes.clear();
         if limits.mask_sources == 0 {
@@ -320,12 +326,14 @@ impl Rasterizer {
         )?;
         self.scratch_bytes = self.scratch.retained_bytes();
         Ok(Mask {
-            width,
-            height,
-            origin: (x, y),
-            limits,
+            region: ClipRegion {
+                width,
+                height,
+                origin: (x, y),
+                shapes: std::mem::take(&mut self.shapes),
+                limits,
+            },
             coverage: std::mem::take(&mut self.coverage),
-            shapes: std::mem::take(&mut self.shapes),
         })
     }
 
@@ -340,14 +348,14 @@ impl Rasterizer {
         transform: Transform,
         rule: FillRule,
         paint: &Paint,
-        clip: &Mask,
+        clip: &ClipRegion,
     ) -> Result<()> {
         super::check_clip(target, Some(clip))?;
         let origin = clip.origin;
         if let Some(mask) = self.clipped_path(clip, path, transform, rule, *target.limits())? {
             let offset = (
-                mask.origin.0.checked_sub(origin.0),
-                mask.origin.1.checked_sub(origin.1),
+                mask.origin().0.checked_sub(origin.0),
+                mask.origin().1.checked_sub(origin.1),
             );
             let result = match offset {
                 (Some(x), Some(y)) => super::composite(target, &mask, *paint, (x, y)),
@@ -425,7 +433,7 @@ mod tests {
         for _ in 0..3 {
             let mask = raster
                 .clipped_path(
-                    &clip,
+                    clip.region(),
                     Arc::clone(&path),
                     Transform::IDENTITY,
                     FillRule::NonZero,
@@ -459,7 +467,13 @@ mod tests {
         };
         let mut raster = Rasterizer::default();
         let direct = raster
-            .clipped_coverage(clip, Arc::clone(path), transform, FillRule::NonZero, limits)
+            .clipped_coverage(
+                clip.region(),
+                Arc::clone(path),
+                transform,
+                FillRule::NonZero,
+                limits,
+            )
             .map(|coverage| {
                 coverage.map(|coverage| match &coverage {
                     Coverage::Rectangle(rectangle) => {
@@ -469,7 +483,13 @@ mod tests {
                 })
             });
         let dense = raster
-            .clipped_path(clip, Arc::clone(path), transform, FillRule::NonZero, limits)
+            .clipped_path(
+                clip.region(),
+                Arc::clone(path),
+                transform,
+                FillRule::NonZero,
+                limits,
+            )
             .map(|mask| mask.map(|mask| (mask.origin(), runs(&mut mask.spans()))));
         (direct, dense)
     }
@@ -581,7 +601,7 @@ mod tests {
         for (clip, path) in [(&clip, &triangle), (&round, &path)] {
             let coverage = raster
                 .clipped_coverage(
-                    clip,
+                    clip.region(),
                     Arc::clone(path),
                     Transform::IDENTITY,
                     FillRule::NonZero,
@@ -614,7 +634,7 @@ mod tests {
         assert!(
             raster
                 .clipped_path(
-                    &clip,
+                    clip.region(),
                     Arc::clone(&path),
                     Transform::IDENTITY,
                     FillRule::NonZero,
@@ -629,7 +649,7 @@ mod tests {
         };
         let mask = raster
             .clipped_path(
-                &clip,
+                clip.region(),
                 path,
                 Transform::IDENTITY,
                 FillRule::EvenOdd,
@@ -643,7 +663,7 @@ mod tests {
         assert_eq!(raster.retained_bytes(), 0);
         let full = raster
             .clipped_path(
-                &clip,
+                clip.region(),
                 rectangle(0.0, 0.0, 2.0, 2.0),
                 Transform::IDENTITY,
                 FillRule::NonZero,

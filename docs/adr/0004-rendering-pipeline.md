@@ -20,8 +20,10 @@ Rendering has three stages with one-directional dependencies:
    accumulation** (signed area per pixel cell, accumulated along scanlines),
    for nonzero and even-odd rules. Strokes are converted to fill outlines in
    user space and then transformed, so non-uniform CTMs distort the pen as PDF
-   requires; zero-width lines render one device pixel wide. Clipping uses
-   coverage masks intersected along the clip stack.
+   requires; zero-width lines render one device pixel wide. The paths of the
+   clip stack stay geometry: each mark integrates them together with its own
+   outline, and a clip region's own coverage is integrated only for a shading
+   without a bounding box (amended 2026-10-20).
 3. **Composition** into a premultiplied RGBA8 `Pixmap`, source-over, onto
    the requested background.
 
