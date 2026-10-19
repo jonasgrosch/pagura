@@ -53,10 +53,11 @@ fn decrypted_subroutines_are_counted_even_with_the_same_glyph_count() {
     let large = program("type1-large", FontFormat::Type1);
     assert_eq!(small.glyph_count(), large.glyph_count());
     // The independent writer adds 64 return-only subroutines. Each retains
-    // one decrypted byte and its Vec descriptor, with all other state equal.
+    // one decrypted byte, its Vec descriptor and the offset that positions
+    // its errors, with all other state equal.
     assert_eq!(
         (large.retained_bytes() - large.data().len())
             - (small.retained_bytes() - small.data().len()),
-        64 * (size_of::<Vec<u8>>() + 1)
+        64 * (size_of::<Vec<u8>>() + size_of::<usize>() + 1)
     );
 }
