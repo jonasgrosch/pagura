@@ -22,6 +22,8 @@ const PHASES: u16 = 128;
 #[derive(Debug, Default)]
 pub(crate) struct GlyphCache {
     masks: FastMap<Key, Mask>,
+    /// The mask built last, when the cache could not retain it.
+    built: Coverage,
     rows: FastMap<Key, Rows>,
     geometries: FastMap<Key, Prepared>,
     outlines: FastSet<usize>,
@@ -56,7 +58,7 @@ impl Key {
 struct Mask {
     // Retaining the outline prevents its address from being reused as a key.
     _outline: Arc<Path>,
-    coverage: Arc<Coverage>,
+    coverage: Coverage,
 }
 
 impl GlyphCache {
@@ -77,12 +79,12 @@ impl GlyphCache {
         (transform, resolution): (Transform, Resolution),
         limits: Limits,
         scratch: &mut Accumulator,
-    ) -> Result<(Arc<Coverage>, (i32, i32))> {
+    ) -> Result<(&Coverage, (i32, i32))> {
         let (px, x) = phase(transform.e, PHASES)?;
         let (py, y) = phase(transform.f, resolution.vertical_phases())?;
         let key = Key::new(outline, resolution, transform, px, py);
-        if let Some(mask) = self.masks.get(&key) {
-            return Ok((Arc::clone(&mask.coverage), (x, y)));
+        if self.masks.contains_key(&key) {
+            return Ok((&self.masks[&key].coverage, (x, y)));
         }
         let row_key = Key::new(outline, resolution, transform, 0.0, py);
         let coverage = if let Some(rows) = self.rows.get(&row_key) {
@@ -105,21 +107,19 @@ impl GlyphCache {
             }
             coverage
         };
-        let coverage = Arc::new(coverage);
         if self.reserve(
             outline,
             entry_bytes(outline, coverage.data.len()),
             limits.document_bytes,
         ) {
-            self.masks.insert(
-                key,
-                Mask {
-                    _outline: Arc::clone(outline),
-                    coverage: Arc::clone(&coverage),
-                },
-            );
+            let mask = self.masks.entry(key).or_insert(Mask {
+                _outline: Arc::clone(outline),
+                coverage,
+            });
+            return Ok((&mask.coverage, (x, y)));
         }
-        Ok((coverage, (x, y)))
+        self.built = coverage;
+        Ok((&self.built, (x, y)))
     }
 
     fn clear(&mut self) {
@@ -781,22 +781,26 @@ mod tests {
             let (first, offset) = cached
                 .coverage(&path, placement, limits, &mut scratch)
                 .unwrap();
+            let first = first.data.clone();
+            let retained = cached.masks.len();
             let (again, _) = cached
                 .coverage(&path, placement, limits, &mut scratch)
                 .unwrap();
-            assert!(Arc::ptr_eq(&first, &again));
+            assert_eq!(again.data, first);
+            assert_eq!(cached.masks.len(), retained);
             let (fresh, fresh_offset) = uncached
                 .coverage(&path, placement, limits, &mut scratch)
                 .unwrap();
             assert_eq!(
-                (first.data.as_slice(), offset),
+                (first.as_slice(), offset),
                 (fresh.data.as_slice(), fresh_offset)
             );
         }
         // Resolutions snap 4.7 to different vertical lattices: a key per resolution.
         let low = cached.coverage(&path, (transform, Resolution::Low), limits, &mut scratch);
+        let low = low.unwrap().0.data.clone();
         let high = cached.coverage(&path, (transform, Resolution::High), limits, &mut scratch);
-        assert_ne!(low.unwrap().0.data, high.unwrap().0.data);
+        assert_ne!(low, high.unwrap().0.data);
         assert_eq!(uncached.retained_bytes(), 0);
         assert!(cached.retained_bytes() <= 1 << 20);
     }

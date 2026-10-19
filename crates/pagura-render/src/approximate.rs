@@ -170,7 +170,7 @@ pub(crate) fn render(
                         list.limits,
                         &mut scratch,
                     )?;
-                    paint::blit(&mut target, &coverage, offset, color, clip);
+                    paint::blit(&mut target, coverage, offset, color, clip);
                 }
             }
             Command::Image(image) if images::eligible(image, device) => {

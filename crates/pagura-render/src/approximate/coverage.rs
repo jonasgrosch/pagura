@@ -8,7 +8,7 @@ use pagura_core::{Error, Limits, Result};
 use pagura_raster::{FillRule, Path, Point, Segment, Transform};
 
 /// Byte coverage at a device-pixel offset.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(super) struct Coverage {
     pub(super) x: i32,
     pub(super) y: i32,
