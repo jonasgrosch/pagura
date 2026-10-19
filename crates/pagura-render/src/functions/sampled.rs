@@ -275,7 +275,7 @@ mod tests {
                 .unwrap();
         let mut output = [0.0];
         function
-            .evaluate_into(&[0.0; 32], &mut output, &mut 0)
+            .evaluate_into(&[0.0; MAX_COMPONENTS], &mut output, &mut 0)
             .unwrap();
         assert_eq!(output, [128.0 / 255.0]);
         let limited = Document::open(
@@ -294,7 +294,7 @@ mod tests {
                 .unwrap();
         assert_eq!(
             function
-                .evaluate_into(&[0.0; 32], &mut output, &mut 0)
+                .evaluate_into(&[0.0; MAX_COMPONENTS], &mut output, &mut 0)
                 .unwrap_err()
                 .kind,
             ErrorKind::Limit

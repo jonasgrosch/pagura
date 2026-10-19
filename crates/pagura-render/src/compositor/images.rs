@@ -156,7 +156,7 @@ impl Context {
             value.color = color.color.map(|v| v * value.alpha);
             return Ok(value);
         }
-        let mut components = [0.0; 32];
+        let mut components = [0.0; crate::color::MAX_COMPONENTS];
         image.components(pixel, &mut components)?;
         let (space, count) = expand_indexed(image, &mut components)?;
         let mut shape = 1.0;
@@ -261,7 +261,7 @@ fn mask_texel(image: &Image, pixel: usize) -> Result<Texel> {
     let alpha = if let ImageKind::Stencil { inverted } = image.decoded.kind {
         f64::from(u8::from((sample == 1) == inverted))
     } else {
-        let mut values = [0.0; 32];
+        let mut values = [0.0; crate::color::MAX_COMPONENTS];
         image.components(pixel, &mut values)?;
         values[0].clamp(0.0, 1.0)
     };
@@ -280,7 +280,7 @@ fn precision_max(bits: u8) -> Result<f64> {
 
 fn expand_indexed<'a>(
     image: &'a Image,
-    values: &mut [f64; 32],
+    values: &mut [f64; crate::color::MAX_COMPONENTS],
 ) -> Result<(&'a crate::color::Space, usize)> {
     use crate::color::Space;
     let space = image

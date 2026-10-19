@@ -415,7 +415,11 @@ pub(crate) fn max_sample(image: &DecodedImage, component: usize) -> Result<u16> 
     Ok(u16::MAX >> (16 - bits))
 }
 impl Image {
-    pub(crate) fn components(&self, pixel: usize, values: &mut [f64; 32]) -> Result<()> {
+    pub(crate) fn components(
+        &self,
+        pixel: usize,
+        values: &mut [f64; color::MAX_COMPONENTS],
+    ) -> Result<()> {
         let n = usize::from(self.decoded.components);
         for (component, out) in values.iter_mut().enumerate().take(n) {
             let sample = self
