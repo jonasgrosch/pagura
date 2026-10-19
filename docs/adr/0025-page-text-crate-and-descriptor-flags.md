@@ -48,6 +48,9 @@ workspace review found two places where the code had drifted from that:
    substitutes. `PdfFont::load_at` locates the repair at the operator that
    selected the font. Source objects are never rewritten and the font is
    loaded once.
+4. **`PdfFont::program()`** returns the embedded or substituted outline
+   program, so callers never probe glyph decoding or error kinds to learn
+   whether one exists.
 
 ## Consequences
 
