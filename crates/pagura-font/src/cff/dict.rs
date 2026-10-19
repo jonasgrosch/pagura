@@ -17,35 +17,27 @@ struct Entry {
     at: usize,
 }
 impl Dict {
-    pub(super) fn check(
-        &mut self,
-        private: bool,
-        strings: usize,
-        diagnostics: &mut Diagnostics,
-    ) -> Result<()> {
-        self.validate(private, strings, diagnostics)
-    }
-    pub fn values(&self, op: u16) -> Option<&[f64]> {
+    pub(super) fn values(&self, op: u16) -> Option<&[f64]> {
         self.entries.get(&op).map(|entry| entry.values.as_slice())
     }
-    pub fn has(&self, op: u16) -> bool {
+    pub(super) fn has(&self, op: u16) -> bool {
         self.entries.contains_key(&op)
     }
-    pub fn number(&self, op: u16, default: f64) -> Result<f64> {
+    pub(super) fn number(&self, op: u16, default: f64) -> Result<f64> {
         match self.values(op) {
             None => Ok(default),
             Some([n]) => Ok(*n),
             _ => Err(bad(self.at, "invalid CFF DICT operand count")),
         }
     }
-    pub fn offset(&self, op: u16, default: Option<usize>) -> Result<usize> {
+    pub(super) fn offset(&self, op: u16, default: Option<usize>) -> Result<usize> {
         match self.values(op) {
             None => default.ok_or_else(|| bad(self.at, "missing CFF DICT offset")),
             Some([n]) => integer(*n, self.at),
             _ => Err(bad(self.at, "invalid CFF offset operands")),
         }
     }
-    pub fn matrix(&self, default: Transform) -> Result<Transform> {
+    pub(super) fn matrix(&self, default: Transform) -> Result<Transform> {
         match self.values(0x0c07) {
             None => Ok(default),
             Some([a, b, c, d, e, f]) => {

@@ -3,6 +3,7 @@
 //! Follows Adobe Type 1 Font Format, referenced by ISO 32000-2, 9.9.
 //! This is a font reader, without a PostScript execution environment.
 use crate::GlyphId;
+use crate::memory::{encoding, names, nested};
 use crate::read::{bad, cap};
 use pagura_core::{Diagnostics, Limits, Name, Position, Recovery, Result};
 use pagura_raster::{Path, Transform};
@@ -12,7 +13,6 @@ mod aliases;
 mod charstring;
 mod charstrings;
 use charstrings::CharStrings;
-mod memory;
 mod tokens;
 use tokens::Tokens;
 
@@ -46,7 +46,11 @@ pub(super) fn decrypt(data: &[u8], seed: u16, discard: usize, at: usize) -> Resu
 }
 
 impl Type1 {
-    pub fn parse(data: &[u8], limits: &Limits, diagnostics: &mut Diagnostics) -> Result<Self> {
+    pub(crate) fn parse(
+        data: &[u8],
+        limits: &Limits,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Self> {
         let (flat, binary) = flatten(data, limits)?;
         let Clear {
             matrix,
@@ -132,24 +136,24 @@ impl Type1 {
             matrix,
         })
     }
-    pub fn glyph_count(&self) -> u32 {
+    pub(crate) fn glyph_count(&self) -> u32 {
         u32::try_from(self.glyphs.len()).unwrap_or(0)
     }
-    pub fn matrix(&self) -> Transform {
+    pub(crate) fn matrix(&self) -> Transform {
         self.matrix
     }
-    pub fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
+    pub(crate) fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
         self.glyph_names
             .get(usize::try_from(glyph.0).ok()?)?
             .as_ref()
     }
-    pub fn name(&self, name: &[u8]) -> Option<GlyphId> {
+    pub(crate) fn name(&self, name: &[u8]) -> Option<GlyphId> {
         self.names.get(name).copied()
     }
-    pub fn encoding(&self) -> &[Option<Name>; 256] {
+    pub(crate) fn encoding(&self) -> &[Option<Name>; 256] {
         &self.encoding
     }
-    pub fn outline(
+    pub(crate) fn outline(
         &self,
         glyph: GlyphId,
         limits: &Limits,
@@ -157,10 +161,20 @@ impl Type1 {
     ) -> Result<Path> {
         Ok(charstring::glyph(self, glyph, limits, diagnostics)?.0)
     }
-    pub fn advance(&self, glyph: GlyphId, limits: &Limits) -> Option<f64> {
+    pub(crate) fn advance(&self, glyph: GlyphId, limits: &Limits) -> Option<f64> {
         charstring::glyph(self, glyph, limits, &mut Diagnostics::new(Recovery::Strict))
             .ok()
             .map(|g| g.1)
+    }
+
+    /// Type 1 keeps decrypted charstrings and subroutines, not decrypted
+    /// dictionaries.
+    pub(crate) fn heap_bytes(&self) -> usize {
+        nested(&self.glyphs)
+            .saturating_add(nested(&self.subrs))
+            .saturating_add(names(&self.names))
+            .saturating_add(crate::names::heap_bytes(&self.glyph_names))
+            .saturating_add(encoding(&self.encoding))
     }
 }
 
