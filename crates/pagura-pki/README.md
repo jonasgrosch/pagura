@@ -18,6 +18,11 @@ fn inspect(bytes: &[u8]) -> pagura_core::Result<()> {
     let certificate = x509::Certificate::parse(encoding.root())?;
     let signed_bytes = certificate.tbs.encoded();
     assert_eq!(signed_bytes, &bytes[certificate.tbs_range()]);
+    if let Some(extension) = certificate.extension(x509::extensions::KEY_USAGE) {
+        let value = extension.value_der()?;
+        let usage = x509::extensions::KeyUsage::parse(value.root())?;
+        let _signs_certificates = usage.contains(x509::extensions::KeyUsage::KEY_CERT_SIGN);
+    }
     Ok(())
 }
 ```
@@ -26,38 +31,51 @@ The document owns a flat element index and borrows immutable input. Typed views
 borrow the document, so signed bytes and algorithm parameters retain their
 original encoding. `Element::{range,content_offset}` refer to the original
 buffer, including when an extension value is parsed with `Extension::value_der`.
+Parsed views are plain, `#[non_exhaustive]` records with public fields. Types
+with an invariant keep private fields behind accessors: `Time` (checked calendar
+values), `Extension` (its value and its OCTET STRING), `SignedAttributes`' DER
+signature input, and the primitive views.
 
-- `der::{Document,Element,Tag,Class}`: strict DER, identifiers, exact ranges,
-  direct-child and preorder iterators, schema-directed SET OF ordering.
-  `Fields` and `single` share positional schema checks with verification callers.
-  `Document::{parse_prefix,parse_ber_prefix}` return the consumed length without
-  trimming legitimate zero octets; PDF callers separately check zero padding.
+- `der::{Document,Element,Tag,Class,Form}`: strict DER, identifiers, exact
+  ranges, direct-child and preorder iterators, schema-directed SET OF ordering.
+  Named universal tags (`der::INTEGER`, `der::SEQUENCE`, `der::UTC_TIME` …)
+  replace tag numbers. `der::Fields` and `der::single` are the schema cursor
+  the typed views use, public for other schemas such as the facade's
+  algorithm and ESS checks. `Document::{parse_prefix,parse_ber_prefix}` return
+  the value and its length without trimming legitimate zero octets; PDF
+  callers check the `/Contents` zero padding after it themselves.
 - `oids`: named digest, signature, curve and ESS/CMS attribute identifiers.
 - `types::{Integer,ObjectIdentifier,BitString,StringValue,Time}` and
   `types::{boolean,octets}`: borrowed primitive views. INTEGER preserves
   minimal signed big-endian bytes; `unsigned()` removes only a positive sign
-  octet. OIDs retain arbitrary-width base-128 arcs without machine-integer
-  conversion. Legacy character sets stay encoded, without guessed decoding.
+  octet and `to_u64()` is `None` for a negative or wider value. OIDs retain
+  arbitrary-width base-128 arcs without machine-integer conversion; the named
+  OIDs are `ObjectIdentifier<'static>` constants checked at compile time.
+  Legacy character sets stay encoded, without guessed decoding. `Time::from_utc`
+  is the checked constructor for host-supplied times.
 - `types::EcdsaSignature`: the DER pair of nonnegative INTEGERs. Zero and
   values outside the curve order remain unverified data for the verifier.
-- `x509::{Certificate,Name,SubjectPublicKeyInfo,AlgorithmIdentifier}`: v1–v3
-  certificates, original TBS bytes, names, public keys, algorithms, validity,
-  unique identifiers and extension envelopes.
-- `x509::{Extension,CertificateList,RevokedCertificate}`: extension contents,
-  exact CRL TBS bytes, update times, entries and entry/CRL extensions.
-- `x509::extensions`: basic constraints, key usage, authority key identifier,
-  GeneralNames, OID lists (including EKU), certificate policies and qualifiers,
-  policy mappings, policy constraints, name constraints and AIA descriptions.
-  SKI and inhibitAnyPolicy use the primitive OCTET STRING and INTEGER views.
-  Other extension values remain available as DER trees. Recognition by a caller
-  must be explicit; an unknown critical extension is never marked understood.
+- `x509::{Certificate,Version,Name,SubjectPublicKeyInfo,AlgorithmIdentifier}`:
+  v1–v3 certificates, original TBS bytes, names, public keys, algorithms,
+  validity, unique identifiers and extension envelopes.
+- `x509::{Extension,CertificateList,CrlVersion,RevokedCertificate}`: extension
+  contents, exact CRL TBS bytes, update times, entries and entry/CRL extensions.
+- `x509::extensions`: basic constraints, the `KeyUsage` bit set, authority key
+  identifier, GeneralNames, OID lists (including EKU), certificate policies and
+  qualifiers, policy mappings, policy constraints, name constraints and AIA
+  descriptions. SKI and inhibitAnyPolicy use the primitive OCTET STRING and
+  INTEGER views. Other extension values remain available as DER trees.
+  Recognition by a caller must be explicit; an unknown critical extension is
+  never marked understood.
 - `cms::SignedData::{from_content_info,parse}`: outer ContentInfo or bare
   SignedData; detached/encapsulated content, digest algorithms, certificate
-  choices, CRLs/other revocation evidence and signer infos. Certificate and
-  revocation choices not interpreted here remain explicit variants. Malformed
-  certificate schemas are retained as `CertificateChoice::Malformed`, including
-  the original element and error; a limit failure still aborts. The reported
-  entry points route BER set ordering through the caller's diagnostics.
+  choices, CRLs/other revocation evidence and signer infos, with the
+  `CmsVersion` RFC 5652 5.1 derives from them. Certificate and revocation
+  choices not interpreted here remain explicit variants. A certificate whose
+  X.509 schema is malformed is kept as `CertificateChoice::Malformed` with its
+  element and error; a budget failure still aborts. The `*_with_diagnostics`
+  entry points report a BER container's set order through the caller's
+  diagnostics.
 - `cms::SignedAttributes`: DER-only attributes, exact SET signature input,
   unique attribute lookup and required content-type/message-digest shapes.
   Signature input replaces only the original IMPLICIT [0] identifier with the
@@ -104,7 +122,7 @@ an invalid-signature assertion or a successful verification. The callback must
 bound its own arithmetic; the engine bounds calls and supplies `Limits`.
 Within one search, results are memoized by all signed inputs and the effective
 issuer key, including inherited parameters and BIT STRING padding counts.
-The shared call cap is `Limits.operations / 500_000`: 100 distinct host
+The shared call cap is `Limits::signatures.path_verifications`: 100 distinct host
 verifications at default limits. Memo hits do not call the host. Input processing,
 memo storage and comparisons also consume the ordinary shared budgets.
 
@@ -123,13 +141,16 @@ CRL semantics until the CRL stage processes them.
 
 `ValidationOptions` specifies the initial policy set and three inhibition flags,
 optional initial name constraints, empty permitted name-form sets, intended EKU
-and required target KU bits.
+and the required target `KeyUsage` set. Its evaluation `Time` comes from
+`Time::from_utc` (optionally `with_fraction`), so it is always a checked
+calendar value. Hosts build anchors with `TrustAnchor::new(name, key)` or
+`TrustAnchor::from_certificate`.
 CA basic constraints, keyCertSign, non-self-issued path length, inclusive validity
 and all policy counters follow RFC 5280 6.1. Self-issued intermediates skip name
 checks and counter decrements; the final certificate does not. EKU restrictions
 are applied throughout the path. A requested common purpose additionally requires
 a compatible target KU (4.2.1.12); a private purpose needs a caller-specified KU
-mask when the target asserts KU. No hostname, mailbox identity, timestamp-token
+set when the target asserts KU. No hostname, mailbox identity, timestamp-token
 or CMS application policy is inferred from basic-path success.
 
 `build_paths(target_index, certificates, anchors, options, verifier, limits)`
@@ -184,15 +205,19 @@ handled within string budgets (RFC 5280 4.2.1.4), rather than imposing the CA's
 
 A single budget covers an entire path search, including CRL signing paths,
 CRL signatures and every candidate's validation; it does not reset per branch. Standalone `validate_path` gets one
-budget. The existing core fields are used without changing `Limits`:
+budget. Five fields of `Limits::signatures` (`SignatureLimits`, ADR 0016) bound
+it, each charged through a `Meter`:
 
 | Limit | Validation meaning |
 |---|---|
-| `depth` (64 by default) | Maximum certificates per path; reparsed DER nesting |
-| `value_nodes` (1,000,000) | Prepared values, inner DER nodes, queued branches, result paths, policy nodes/expected entries/parent edges, CRLs and entry processing |
-| `operations` (50,000,000) | Scanning, comparisons, graph work and verifier inputs; at most `operations / 500_000` distinct verifier calls (100 by default) |
-| `document_bytes` (128 MiB) | Conservative cumulative allocation estimates, including temporary extension indexes, copied names, policy storage, signature memo and results |
-| `string_bytes` (32 MiB) | Names, OIDs, CRL numbers and opaque matching values |
+| `path_certificates` (64 by default) | Maximum certificates per path, anchor excluded; the ceiling for path-length and skip counters |
+| `path_nodes` (1,000,000) | Prepared values, reparsed DER elements, queued branches, result paths, policy nodes/expected entries/parent edges, CRLs and entry processing |
+| `path_work` (50,000,000) | Scanning, comparisons, graph work and the bytes of each signature input |
+| `path_bytes` (128 MiB) | Conservative cumulative allocation estimates, including temporary extension indexes, copied names and strings, policy storage, signature memo and results |
+| `path_verifications` (100) | Distinct host signature verifications; repeated inputs are answered from the memo |
+
+`Uncertainty::Limit` names the exhausted field (`pki.path-work`, `pki.path-nodes`,
+`pki.path-bytes`, `pki.path-certificates`, `pki.path-verifications`).
 
 The allocation accounting is conservative and cumulative, not a claim about
 peak RSS or an allocator sandbox. Input certificate documents retain their own
@@ -203,7 +228,7 @@ metadata and caller-owned inputs are outside the cumulative allocation estimate.
 
 ### PKITS path tests
 
-`tools/fixturegen/pki/pkits.py` reads **all 224** test descriptions from the cached NIST PDF,
+`fixturegen.pki.pkits`, run by `tools/pki_vectors.py`, reads **all 224** test descriptions from the cached NIST PDF,
 resolves their certificate lists in the ZIP, and emits the default inputs plus
 all 39 additional policy procedures. Tests check both the specified prospective
 paths and path discovery for basic cases, plus policy output sets when the PDF
@@ -293,7 +318,7 @@ whose own paths lack Good status are removed to a fixed point, permitting the
 self-covering CRL signer cases while excluding revoked signing keys. Every
 changing pass removes an authorisation and consumes the same budget.
 
-`tools/fixturegen/pki/revocation.py` obtains the selected CRLs and auxiliary
+`fixturegen.pki.revocation`, run by `tools/pki_vectors.py`, obtains the selected CRLs and auxiliary
 certificates from the PKITS PDF object lists. It verifies their signatures using
 the same independent integer arithmetic and exact recorded-input callback.
 
@@ -314,7 +339,8 @@ revocation evidence; this implementation preserves that state rather than
 claiming an authenticated revocation. The other three negative cases fail basic
 constraints/key usage.
 
-Independent synthetic fixtures in `tools/fixturegen/pki/paths.py` and `tools/fixturegen/pki/graphs.py` cover
+Independent synthetic fixtures from `tools/fixturegen/pki/paths.py` and `graphs.py`, stored as
+`corpus/generated/pki/{paths,graphs}.txt`, cover
 updated email/domain constraints, IPv4/IPv6 masks, unknown extensions, arbitrary
 width counters, host-only trust, cycles, branching bounds, mixed path outcomes,
 KU/EKU consistency and policy-graph sharing. `path_inputs.py` adds conservative
@@ -345,6 +371,7 @@ RFC 9618 5. Shared fixture/requirement catalogs are not changed by this crate.
 | Canonical UTC times | X.690 11.7–11.8 | Reader; calendar dates and UTC suffix |
 | PKIX whole-second time profile and pivot | RFC 5280 4.1.2.5 | `Time::parse`; fractions rejected |
 | Timestamp fractional time profile | RFC 3161 2.4.2 | `Time::generalized`; exact decimal fraction |
+| Unique certificate policies | RFC 5280 4.2.1.4 | `extensions::certificate_policies` |
 | DER signed attributes and SET signature input | RFC 5652 5.3–5.4 | `SignedAttributes::parse`, including BER outer containers |
 | Required signed-attribute shapes/content type | RFC 5652 11.1–11.2 | SignedData parsing; no digest computation |
 
@@ -352,57 +379,74 @@ A generic ASN.1 reader cannot infer whether universal tag 17 denotes SET or
 SET OF, or identify an IMPLICIT primitive or a DEFAULT field. It validates the
 encoding tree; the typed schema supplies those additional checks. It does not
 claim to validate arbitrary ASN.1 schemas. Unknown universal types fail with
-an explicit `asn1.universal-type` or `asn1.constructed-type` feature.
+an explicit `asn1.universal-type` or `asn1.constructed-type` feature
+(`pagura_pki::features`). A schema integer outside its range, such as a
+version wider than 64 bits, is a `Syntax` error, never a `Limit`.
 
 `Document::parse_ber` is an explicit CMS compatibility subset. Its deviations
-pass through `Diagnostics::repair`, so a strict sink rejects them:
+pass through `Diagnostics::repair`, so a strict sink rejects them; in DER the
+same deviation is a `Syntax` error carrying the repair BER would apply. The
+tags are in `pagura_pki::repairs`:
 
 | Repair | Tolerance |
 |---|---|
 | `asn1.ber-indefinite` | Constructed indefinite length, bounded and EOC-terminated |
 | `asn1.ber-length` | Redundant definite-length octets, including long form below 128 |
 | `asn1.ber-octets` | Constructed OCTET STRING, with octet-string children only |
-| `asn1.ber-set-order` | SET OF members retained in noncanonical source order, through `set_of_reported` |
+| `asn1.ber-set-order` | SET OF members kept in noncanonical source order, through `Element::set_of_with_diagnostics` |
 
-Primitive canonicality remains strict. `set_of` always checks DER order;
-`set_of_reported` admits BER misordering only with a reported repair.
-Certificates, CRLs, TSTInfo and ECDSA
-signature envelopes are DER even in a BER tree. Signed attributes are always
-rechecked as DER. This entry point is not a complete BER decoder.
+Primitive canonicality remains strict. `Element::set_of` always checks DER
+order; `set_of_with_diagnostics` admits BER misordering only as a reported
+repair, and signed attributes always use the strict check.
+Certificates, CRLs, TSTInfo and ECDSA signature envelopes are DER even in a BER
+tree. Signed attributes are always rechecked as DER. This entry point is not a
+complete BER decoder.
 
 ## Bounds
 
-`Limits::file_bytes` bounds the original encoding; `depth` bounds its nesting;
-`value_nodes` bounds the element count; `document_bytes` bounds the element
-index, including admitted spare capacity; `string_bytes` bounds each primitive
-content; and `decoded_bytes` bounds concatenated CMS octets and copied signed
-attributes. Each schema traverses only admitted elements, with no recursive
-ASN.1 parse or recursive tree destruction. This is a per-operation accounting
-model, not an allocator or operating-system sandbox. Typed view collections
-and reparsed extension indexes are bounded by the admitted source tree rather
-than charged to a shared document cache counter.
+Three fields of `Limits::signatures` bound ASN.1 (ADR 0016; ADR 0015 decision
+6): `asn1_depth` bounds one encoding's nesting,
+`asn1_elements` its element count, and `asn1_bytes` the memory one operation
+allocates: the element index and traversal stack of one encoding, or one value
+copied out of it (concatenated CMS octets, the signature input of signed
+attributes). Every allocation is charged to a `Meter` before it is made and is
+fallible. The reader reads identifiers and lengths through
+`pagura_core::bytes::Cursor`, traverses only admitted elements, and neither
+parses nor drops a tree recursively. Work is linear in the input, whose size
+the caller already holds. This is a per-operation accounting model, not an
+allocator or operating-system sandbox. Typed view collections hold at most one
+entry per admitted element, so they stay proportional to the index.
 
 ## Tests and references
 
-`cargo test -p pagura-pki` runs the independent standard-library generator
-`tools/fixturegen/pki/fixtures.py`, malformed byte cases, bounded/deep inputs, exact signed
-ranges, signed-attribute byte equality and extension views. Fixture identifiers
-are emitted by the generator; no reference full text or external vector bytes
-are stored in the repository.
+`tools/fixturegen/pki/` generates the independent `pki` fixtures
+(`corpus/generated/pki/`, `corpus/manifests/pki.json`, requirements in
+`references/requirements/pki.json`). `fixtures.py` writes accepted and rejected
+certificates, CRLs, extension values, CMS, timestamps and ECDSA envelopes, each
+with the rule that decides it. The path generators' tab-separated records
+(`paths`, `graphs`, `path-inputs`, `crls`, `path-security`) are stored as `.txt`
+fixtures that the validation unit tests read. The tests in `crates/pagura-pki/tests/` read them through
+`pagura-testkit` and also cover malformed byte cases, budgets, deep inputs,
+exact signed ranges, signed-attribute byte equality and the typed views. No
+interpreter runs from the cargo tests.
 
-When available, `tools/fixturegen/pki/vectors.py` reads NIST's `pkits/PKITS_data.zip` and the
-six ECDSA files in `wycheproof/testvectors_v1`. The cache defaults to
-`~/.cache/pagura-references/signatures`; `PAGURA_REFERENCES_DIR` changes the
+`tools/pki_vectors.py`, run by `tools/check.py`, reads NIST's
+`pkits/PKITS_data.zip` and the Wycheproof `ecdsa*test.json` files from the
+signature reference cache, checks them against the cache's `MANIFEST.tsv`, and
+exports the encoding cases into the cache's `export/pki/`, together with the
+PKITS path and revocation records (`pkits.txt`, `revocation.txt`). The cache defaults
+to `~/.cache/pagura-references/signatures`; `PAGURA_REFERENCES_DIR` changes the
 reference root and `PAGURA_SIGNATURE_REFERENCES_DIR` overrides the signatures
-folder directly. Absent external suites are reported; generated tests still
-run. Wycheproof's valid signatures and its InvalidEncoding,
-InvalidTypesInSignature, BerEncodedSignature and MissingZero cases exercise
-encoding acceptance, not mathematical verification. No upstream vectors are
-redistributed, so no third-party product data or dependency is introduced.
+folder directly. Without an export the cached-suite test reports the suites as
+absent; the generated tests still run. Wycheproof's valid signatures and its
+InvalidEncoding, InvalidTypesInSignature, BerEncodedSignature and MissingZero
+cases exercise encoding acceptance, not mathematical verification. No upstream
+vectors are redistributed, so no third-party product data or dependency is
+introduced.
 
 The normative sources are ITU-T X.690 (02/2021), RFC 5280, RFC 5652, RFC 3161
-and the ECDSA envelope in RFC 3279 2.2.3. Exact source hashes are supplied by the
-external reference cache's `MANIFEST.tsv`.
+and the ECDSA envelope in RFC 3279 2.2.3. Exact source hashes are supplied by
+the external reference cache's `MANIFEST.tsv`.
 
 ## Remaining validation work
 
