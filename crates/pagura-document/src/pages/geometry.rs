@@ -28,10 +28,13 @@ pub(crate) fn boxes(
         media
     } else {
         diagnostics.repair(
-                Diagnostic::new(repairs::PAGE_MEDIA_BOX,
-                    "missing or invalid MediaBox replaced by valid CropBox or Letter viewing convention")
-                    .in_object(id),
-            )?;
+            Diagnostic::new(
+                repairs::PAGE_MEDIA_BOX,
+                "missing or invalid MediaBox replaced by valid CropBox or Letter viewing \
+                 convention",
+            )
+            .in_object(id),
+        )?;
         crop_rectangle.unwrap_or(LETTER)
     };
     let crop = if let Some(crop) = crop_rectangle.and_then(|crop| crop.intersection(&media)) {
@@ -55,22 +58,20 @@ pub(crate) fn boxes(
     Ok((media, crop))
 }
 
+/// A usable rectangle, or `None` when the entry is absent or malformed and
+/// the caller repairs it; resolution errors propagate.
 fn rectangle(document: &Document, value: Option<&Value>) -> Result<Option<Rect>> {
     let Some(value) = value else { return Ok(None) };
-    let Some(values) = document
-        .resolve(value)?
-        .as_array()
-        .filter(|values| values.len() == 4)
-    else {
+    let Some(values @ [_, _, _, _]) = document.resolve(value)?.as_array() else {
         return Ok(None);
     };
-    // Four scalar resolutions, without cloning arbitrary subtrees.
-    let mut elements = [Value::Null, Value::Null, Value::Null, Value::Null];
-    for (target, value) in elements.iter_mut().zip(values) {
+    let mut corners = [0.0; 4];
+    for (target, value) in corners.iter_mut().zip(values) {
         let Some(number) = document.resolve(value)?.as_number() else {
             return Ok(None);
         };
-        *target = Value::Real(number);
+        *target = number;
     }
-    Ok(Rect::from_array(&elements).filter(|rect| !rect.is_empty()))
+    let [x0, y0, x1, y1] = corners;
+    Ok(Rect::from_corners(x0, y0, x1, y1).filter(|rect| !rect.is_empty()))
 }

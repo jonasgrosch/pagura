@@ -2,26 +2,31 @@
 //!
 //! The scanner advances monotonically and skips strings and stream payloads.
 //! Heuristics follow the ADR 0003 repair catalogue and the damage classes seen
-//! in the real-world corpus.
+//! in the real-world corpus. Object streams and the catalog of a rebuilt table
+//! are read through a scratch document; what they establish is returned as a
+//! plan that the document builder applies before any cache is kept.
 
-use crate::object::recovery::{self, header};
-use crate::repairs;
-use crate::xref::{Location, XrefEntry, XrefTable};
+use super::{Location, XrefEntry, XrefOrigin, XrefTable, entry_budget, structural};
+use crate::object::recovery::{self, StreamContext, TERMINATOR_SLACK, header};
+use crate::object::stream::headers;
+use crate::{Document, ObjectSource, repairs};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{
-    Diagnostic, Diagnostics, Dictionary, Error, Limits, Name, ObjectId, Position, Result, Value,
+    Diagnostic, Diagnostics, Dictionary, Error, Limits, Meter, Name, ObjectId, Position, Result,
+    Value,
 };
+use std::collections::{BTreeMap, BTreeSet};
 
-#[derive(Debug, Default)]
 struct Scan {
     table: XrefTable,
-    objects: usize,
-    trailers: usize,
+    streams: Vec<ObjectId>,
+    objects: Meter,
+    trailers: Meter,
 }
 
 pub(crate) fn read(
     bytes: &[u8],
-    limits: Limits,
+    limits: &Limits,
     diagnostics: &mut Diagnostics,
     position: Position,
 ) -> Result<XrefTable> {
@@ -32,13 +37,21 @@ pub(crate) fn read(
         )
         .at(position),
     )?;
-    let mut scan = Scan::default();
-    let mut parser = Parser::new(bytes, Origin::File, limits).with_recovery(diagnostics.mode());
+    let mut scan = Scan {
+        table: XrefTable::default(),
+        streams: Vec::new(),
+        objects: Meter::new(
+            entry_budget(limits),
+            "reconstruction object budget exceeded",
+        ),
+        trailers: Meter::new(limits.revisions, "reconstruction trailer budget exceeded"),
+    };
+    let mut parser = Parser::new(bytes, Origin::File, *limits).with_recovery(diagnostics.mode());
     while !parser.at_end() {
         let offset = parser.offset();
         let result = if parser.keyword(b"trailer") {
             parser.parse().and_then(|value| match value {
-                Value::Dictionary(dictionary) => remember(&mut scan, dictionary, limits),
+                Value::Dictionary(dictionary) => remember(&mut scan, dictionary),
                 _ => Err(Error::syntax("trailer must be a dictionary").at(parser.position())),
             })
         } else if let Some(id) = header(bytes, offset, limits) {
@@ -50,7 +63,7 @@ pub(crate) fn read(
             }
         };
         if let Err(error) = result
-            && !crate::xref::structural(&error)
+            && !structural(&error)
         {
             return Err(error);
         }
@@ -66,16 +79,15 @@ pub(crate) fn read(
             Error::syntax("reconstruction found no complete indirect objects").at(position),
         );
     }
-    scan.table.rebuild_remaining = Some(limits.objects.saturating_sub(scan.objects));
+    scan.table.origin = XrefOrigin::Rebuilt {
+        streams: scan.streams,
+        remaining: scan.objects.remaining(),
+    };
     Ok(scan.table)
 }
 
-fn remember(scan: &mut Scan, mut dictionary: Dictionary, limits: Limits) -> Result<()> {
-    scan.trailers = scan
-        .trailers
-        .checked_add(1)
-        .filter(|&n| n <= limits.revisions)
-        .ok_or(Error::limit("reconstruction trailer budget exceeded"))?;
+fn remember(scan: &mut Scan, mut dictionary: Dictionary) -> Result<()> {
+    scan.trailers.charge(1)?;
     // Incremental trailers can omit unchanged entries. Preserve the newest
     // explicit value and inherit only absent document-identification fields.
     for key in [b"Root".as_slice(), b"Info", b"Encrypt", b"ID"] {
@@ -93,15 +105,13 @@ fn object(
     scan: &mut Scan,
     parser: &mut Parser<'_>,
     id: ObjectId,
-    limits: Limits,
+    limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<()> {
     let offset = parser.offset();
-    scan.objects = scan
-        .objects
-        .checked_add(1)
-        .filter(|&n| n <= limits.objects)
-        .ok_or(Error::limit("reconstruction object budget exceeded").at(parser.position()))?;
+    scan.objects
+        .charge(1)
+        .map_err(|error| error.at(parser.position()))?;
     parser.unsigned()?;
     parser.unsigned()?;
     if !parser.keyword(b"obj") {
@@ -120,7 +130,7 @@ fn object(
     if let Some(dictionary) = value.as_dictionary() {
         // Even an xref stream with a damaged body can have a usable trailer.
         if dictionary.is_name(b"Type", b"XRef") {
-            remember(scan, dictionary.clone(), limits)?;
+            remember(scan, dictionary.clone())?;
         }
         let before = parser.offset();
         if parser.keyword(b"stream") {
@@ -135,7 +145,7 @@ fn object(
         .as_dictionary()
         .is_some_and(|dictionary| dictionary.is_name(b"Type", b"ObjStm"))
     {
-        scan.table.rebuild_streams.push(id);
+        scan.streams.push(id);
     }
     scan.table.entries.insert(
         id.number,
@@ -155,7 +165,7 @@ fn skip_direct(
     parser: &mut Parser<'_>,
     dictionary: &Dictionary,
     id: ObjectId,
-    limits: Limits,
+    limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<()> {
     if !parser.keyword(b"stream") {
@@ -176,8 +186,13 @@ fn skip_direct(
             return Ok(());
         }
     }
-    let (marker, _) =
-        recovery::terminator_in(parser.data(), limits, id, start, parser.data().len(), true)?;
+    let (marker, _) = recovery::terminator_in(
+        parser.data(),
+        limits,
+        id,
+        start..parser.data().len(),
+        StreamContext::Direct,
+    )?;
     if let Some(end) = declared {
         diagnostics.repair(
             Diagnostic::new(
@@ -199,28 +214,29 @@ fn skip_direct(
 fn skip_stream(
     parser: &mut Parser<'_>,
     dictionary: &Dictionary,
-    limits: Limits,
+    limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<bool> {
     let before = parser.offset();
-    let mut exact = Parser::with_offset(parser.data(), before, Origin::File, limits)?;
+    let mut exact = Parser::with_offset(parser.data(), before, Origin::File, *limits)?;
     let mut attempt = Diagnostics::new(diagnostics.mode());
-    match crate::xref::stream::direct_stream(&mut exact, dictionary, limits, &mut attempt) {
+    match super::stream::bootstrap_stream_data(&mut exact, dictionary, limits, &mut attempt) {
         Ok(_) => {
             diagnostics.absorb(attempt.take())?;
             parser.seek(exact.offset())?;
             return Ok(true);
         }
-        Err(error) if crate::xref::structural(&error) => {}
+        Err(error) if structural(&error) => {}
         Err(error) => return Err(error),
     }
     if !parser.keyword(b"stream") {
         return Err(Error::syntax("missing stream keyword").at(parser.position()));
     }
     let start = parser.offset();
+    // The EOL after the stream keyword is still unread here.
     let end = start
         .saturating_add(limits.stream_bytes)
-        .saturating_add(12)
+        .saturating_add(TERMINATOR_SLACK + 1)
         .min(parser.data().len());
     let bytes = parser
         .data()
@@ -232,8 +248,10 @@ fn skip_stream(
         .filter(|(_, part)| *part == b"endstream")
     {
         let at = start + relative;
-        let line_boundary = relative == 0 || matches!(bytes.get(relative - 1), Some(b'\n' | b'\r'));
-        let mut probe = Parser::with_offset(parser.data(), at, Origin::File, limits)?;
+        let line_boundary = relative
+            .checked_sub(1)
+            .is_none_or(|before| matches!(bytes.get(before), Some(b'\n' | b'\r')));
+        let mut probe = Parser::with_offset(parser.data(), at, Origin::File, *limits)?;
         if probe.keyword(b"endstream") {
             let after = probe.offset();
             if probe.keyword(b"endobj") {
@@ -247,7 +265,14 @@ fn skip_stream(
                     {
                         continue;
                     }
-                    diagnostics.repair(Diagnostic::new(repairs::STREAM_BOUNDARY, "stream resynchronized at endstream/endobj without a preceding EOL during xref reconstruction").at(Position::File(at)))?;
+                    diagnostics.repair(
+                        Diagnostic::new(
+                            repairs::STREAM_BOUNDARY,
+                            "stream resynchronized at endstream/endobj without a preceding EOL \
+                             during xref reconstruction",
+                        )
+                        .at(Position::File(at)),
+                    )?;
                 }
                 parser.seek(after)?;
                 return Ok(true);
@@ -263,172 +288,180 @@ fn skip_stream(
     Ok(false)
 }
 
-/// Object-stream payloads are decoded after the recovered Encrypt/ID fields
-/// have authenticated, so encrypted rebuilt files use the same loading path.
-pub(crate) fn load_streams(
-    document: &mut crate::Document,
-    streams: Vec<ObjectId>,
-    mut remaining: usize,
-) -> Result<()> {
-    let mut visited = std::collections::BTreeSet::new();
-    for id in streams {
-        if !visited.insert(id) || !document.slots.contains_key(&id) {
-            continue;
+/// The object-table changes that reconstructed object streams establish.
+#[derive(Debug, Default)]
+pub(crate) struct StreamSlots {
+    /// Compressed definitions by object number.
+    pub(crate) slots: BTreeMap<u32, Replacement>,
+    /// Object numbers of the object streams read.
+    pub(crate) streams: Vec<u32>,
+}
+
+/// A compressed definition and the physical slot it supersedes, if any.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Replacement {
+    pub(crate) replaced: Option<ObjectId>,
+    pub(crate) location: Location,
+}
+
+impl StreamSlots {
+    /// The slot holding object `number` once these changes apply.
+    fn slot(&self, document: &Document, number: u32) -> Option<ObjectId> {
+        if self.slots.contains_key(&number) {
+            return Some(ObjectId::new(number, 0));
         }
-        if !document
-            .object(id)?
-            .dictionary()
-            .is_some_and(|dictionary| dictionary.is_name(b"Type", b"ObjStm"))
+        document
+            .slots
+            .range(ObjectId::new(number, 0)..=ObjectId::new(number, u16::MAX))
+            .next()
+            .map(|(&id, _)| id)
+    }
+
+    fn location(&self, document: &Document, id: ObjectId) -> Option<Location> {
+        match self.slots.get(&id.number) {
+            Some(replacement) => (id.generation == 0).then_some(replacement.location),
+            None => document.slots.get(&id).map(|slot| slot.location),
+        }
+    }
+
+    /// Where `id` is physically defined: its own offset, or its stream's.
+    fn physical_offset(&self, document: &Document, id: ObjectId) -> Result<usize> {
+        match self.location(document, id) {
+            Some(Location::Offset(offset)) => Ok(offset),
+            Some(Location::Compressed { stream, .. }) => {
+                match self.location(document, ObjectId::new(stream, 0)) {
+                    Some(Location::Offset(offset)) => Ok(offset),
+                    _ => Err(Error::syntax("invalid reconstructed object stream").in_object(id)),
+                }
+            }
+            _ => Err(Error::missing_object("missing reconstructed object").in_object(id)),
+        }
+    }
+}
+
+/// Reads the headers of reconstructed object streams. The last physical
+/// definition of an object wins, including definitions in object streams;
+/// generations remain document-relative identities. Object-stream payloads
+/// are decoded after the recovered Encrypt/ID fields have authenticated, so
+/// encrypted rebuilt files use the same loading path.
+pub(crate) fn object_streams(
+    document: &Document,
+    streams: Vec<ObjectId>,
+    remaining: usize,
+) -> Result<StreamSlots> {
+    let mut plan = StreamSlots::default();
+    let mut budget = Meter::new(remaining, "reconstruction object budget exceeded");
+    let encrypt = document
+        .trailer()
+        .get(b"Encrypt")
+        .and_then(Value::as_reference);
+    let mut visited = BTreeSet::new();
+    for id in streams {
+        // A stream superseded by a later compressed definition is no stream.
+        if !visited.insert(id)
+            || plan.slots.contains_key(&id.number)
+            || !document.slots.contains_key(&id)
         {
             continue;
         }
-        let had_cache = document.object_streams.contains_key(&id.number);
-        let cached = document
-            .object_streams
-            .remove(&id.number)
-            .and_then(std::sync::OnceLock::into_inner)
-            .transpose()?;
-        let already_charged = cached.is_some();
-        let mut header_diagnostics = Diagnostics::new(document.recovery());
-        let contents = if let Some(contents) = cached {
-            contents
-        } else {
-            let object = document.object(id)?;
-            let dictionary = object
-                .dictionary()
-                .ok_or_else(|| Error::syntax("object stream must be a dictionary").in_object(id))?;
-            crate::object::stream::headers(
-                document.stream_data(object)?.into_owned(),
-                dictionary,
-                Limits {
-                    objects: remaining,
-                    ..document.limits()
-                },
-                id,
-                &mut header_diagnostics,
-            )?
+        let object = document.object(id)?;
+        let Some(dictionary) = object
+            .dictionary()
+            .filter(|dictionary| dictionary.is_name(b"Type", b"ObjStm"))
+        else {
+            continue;
         };
-        document.report(header_diagnostics.take());
-        let mut reservation = document.retained.reservation();
-        if !already_charged {
-            reservation.charge(contents.retained_bytes(), id)?;
-        }
-        if !had_cache {
-            reservation.charge(crate::memory::stream_slot_bytes(), id)?;
-        }
-        remaining = remaining
-            .checked_sub(contents.len())
-            .ok_or(Error::limit("reconstruction object budget exceeded").in_object(id))?;
-        let physical = physical_offset(document, id)?;
+        let mut diagnostics = Diagnostics::new(document.recovery());
+        let contents = headers(
+            document.stream_data(object)?.into_owned(),
+            dictionary,
+            &Limits {
+                objects: budget.remaining(),
+                ..document.limits()
+            },
+            id,
+            &mut diagnostics,
+        )?;
+        document.report(diagnostics.take());
+        budget
+            .charge(contents.len())
+            .map_err(|error| error.in_object(id))?;
+        let physical = plan.physical_offset(document, id)?;
         for (number, index) in contents.identities() {
-            // The last physical definition wins, including definitions in
-            // object streams; generations remain document-relative identities.
-            if number == id.number
-                || document
-                    .trailer()
-                    .get(b"Encrypt")
-                    .and_then(Value::as_reference)
-                    .is_some_and(|encrypt| encrypt.number == number)
-            {
+            if number == id.number || encrypt.is_some_and(|encrypt| encrypt.number == number) {
                 return Err(Error::syntax(
                     "object stream cannot contain itself or the encryption dictionary",
                 )
                 .in_object(id));
             }
-            let old = document
-                .slots
-                .range(ObjectId::new(number, 0)..=ObjectId::new(number, u16::MAX))
-                .next()
-                .map(|(&id, _)| id);
-            if let Some(old) = old {
-                if physical_offset(document, old)? > physical {
-                    continue;
-                }
-                if let Some(slot) = document.slots.remove(&old)
-                    && let Some(Ok(object)) = slot.object.get()
-                {
-                    document.retained.release(object.retained_bytes());
-                }
-            } else {
-                reservation.charge(crate::memory::slot_bytes(), ObjectId::new(number, 0))?;
+            let old = plan.slot(document, number);
+            if let Some(old) = old
+                && plan.physical_offset(document, old)? > physical
+            {
+                continue;
             }
-            document.slots.insert(
-                ObjectId::new(number, 0),
-                crate::Slot {
+            let replaced = match plan.slots.get(&number) {
+                Some(earlier) => earlier.replaced,
+                None => old,
+            };
+            plan.slots.insert(
+                number,
+                Replacement {
+                    replaced,
                     location: Location::Compressed {
                         stream: id.number,
                         index,
                     },
-                    object: std::sync::OnceLock::new(),
                 },
             );
         }
-        document
-            .object_streams
-            .insert(id.number, std::sync::OnceLock::from(Ok(contents)));
-        reservation.commit();
+        plan.streams.push(id.number);
     }
-    Ok(())
+    Ok(plan)
 }
 
-fn physical_offset(document: &crate::Document, id: ObjectId) -> Result<usize> {
-    match document.slots.get(&id).map(|slot| slot.location) {
-        Some(Location::Offset(offset)) => Ok(offset),
-        Some(Location::Compressed { stream, .. }) => match document
-            .slots
-            .get(&ObjectId::new(stream, 0))
-            .map(|slot| slot.location)
-        {
-            Some(Location::Offset(offset)) => Ok(offset),
-            _ => Err(Error::syntax("invalid reconstructed object stream").in_object(id)),
-        },
-        _ => Err(Error::missing_object("missing reconstructed object").in_object(id)),
+/// The Root of a reconstructed document: `None` keeps the trailer's when it
+/// names a usable catalog; otherwise the last physical catalog candidate,
+/// reported as a repair.
+pub(crate) fn root(document: &Document) -> Result<Option<ObjectId>> {
+    match document.catalog() {
+        Ok(catalog) if crate::catalog::candidate(document, catalog)? => return Ok(None),
+        Err(error) if !structural(&error) => return Err(error),
+        _ => {}
     }
-}
-
-pub(crate) fn catalog(document: &mut crate::Document) -> Result<()> {
     let mut candidate = None;
     for id in document.object_ids() {
-        match document.object(id) {
-            Ok(object) => {
-                let Some(dictionary) = object.dictionary() else {
-                    continue;
-                };
-                if !crate::catalog::candidate(document, dictionary)? {
-                    continue;
-                }
-                let index = match object.source() {
-                    crate::ObjectSource::Compressed { index, .. } => u64::from(*index) + 1,
-                    crate::ObjectSource::File(_) => 0,
-                };
-                let order = (physical_offset(document, id)?, index);
-                if candidate.is_none_or(|(previous, _)| order > previous) {
-                    candidate = Some((order, id));
-                }
-            }
-            Err(error) if !crate::xref::structural(&error) => return Err(error),
-            _ => {}
+        let object = match document.object(id) {
+            Ok(object) => object,
+            Err(error) if !structural(&error) => return Err(error),
+            Err(_) => continue,
+        };
+        let Some(dictionary) = object.dictionary() else {
+            continue;
+        };
+        if !crate::catalog::candidate(document, dictionary)? {
+            continue;
+        }
+        let index = match object.source() {
+            ObjectSource::Compressed { index, .. } => u64::from(*index) + 1,
+            _ => 0,
+        };
+        let order = (physical_offset(document, id)?, index);
+        if candidate.is_none_or(|(previous, _)| order > previous) {
+            candidate = Some((order, id));
         }
     }
     let (_, id) = candidate.ok_or(Error::syntax("reconstruction found no Catalog"))?;
-    let mut diagnostics = Diagnostics::new(document.recovery());
-    diagnostics.repair(
+    document.repair(
         Diagnostic::new(
             repairs::TRAILER_RECONSTRUCTED,
             "unusable trailer Root reconstructed from the last Catalog",
         )
         .in_object(id),
     )?;
-    document.report(diagnostics.take());
-    let before = document.trailer.retained_bytes();
-    document
-        .trailer
-        .insert(Name::new(b"Root"), Value::Reference(id));
-    let after = document.trailer.retained_bytes();
-    if after >= before {
-        document.retained.charge(after - before, id)?;
-    } else {
-        document.retained.release(before - after);
-    }
-    Ok(())
+    Ok(Some(id))
+}
+
+fn physical_offset(document: &Document, id: ObjectId) -> Result<usize> {
+    StreamSlots::default().physical_offset(document, id)
 }

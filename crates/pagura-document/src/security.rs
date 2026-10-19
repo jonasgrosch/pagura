@@ -4,8 +4,8 @@ mod padding;
 mod policy;
 mod repair;
 
-use crate::{Document, IndirectObject, ObjectSource, features, repairs};
-use pagura_core::{Dictionary, Error, Name, ObjectId, Result, Value};
+use crate::{Document, IndirectObject, Location, ObjectSource, features, repairs};
+use pagura_core::{Dictionary, Error, ErrorKind, Name, ObjectId, Result, ResultExt, Value};
 use pagura_crypto::standard::{CryptMethod, FileKey, SecurityParams};
 use policy::Policy;
 use std::collections::BTreeMap;
@@ -32,7 +32,11 @@ struct CryptFilter {
     embedded_only: bool,
 }
 
-pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
+/// Table 22 bits 9, 11 and 12, which only revision 3 and later define.
+const REVISION_3_PERMISSIONS: u32 = 0x0d00;
+
+/// Reads the encryption dictionary and authenticates `password` (7.6.4).
+pub(crate) fn read(document: &Document, password: &[u8]) -> Result<Option<Security>> {
     let Some(encrypt) = document
         .trailer()
         .get(b"Encrypt")
@@ -41,6 +45,18 @@ pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
         return Ok(None);
     };
     let id = encrypt.as_reference();
+    handler(document, encrypt, id, password)
+        .in_object_opt(id)
+        .map(Some)
+}
+
+/// The Standard handler of the encryption dictionary `encrypt`, object `id`.
+fn handler(
+    document: &Document,
+    encrypt: &Value,
+    id: Option<ObjectId>,
+    password: &[u8],
+) -> Result<Security> {
     uncompressed(document, encrypt, "Encrypt dictionary cannot be compressed")?;
     let dictionary = document.resolve_dictionary(encrypt)?;
     let filter = dictionary
@@ -63,7 +79,7 @@ pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
     let mut params = parameters(dictionary, document.trailer(), permissions)?;
     policy.identifiers(document.trailer())?;
     repair::hashes(document, id, &mut params, &mut policy.diagnostics)?;
-    let (filters, strings, streams, embedded) = methods(
+    let methods = methods(
         dictionary,
         &params,
         |value| {
@@ -76,28 +92,29 @@ pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
         },
         &mut policy,
     )?;
+    let length = repair::KeyLength::of(dictionary);
     let key = authenticate_document(
         document,
         id,
         &params,
-        !dictionary.contains_key(b"Length"),
-        &filters,
-        (strings, streams),
+        length,
+        password,
+        &methods,
         &mut policy,
     )?;
-    let derivation = padding::select(
-        document,
-        key.as_ref(),
-        params.version == 4 && params.revision == 4 && params.key_length != 16,
-        (strings, streams),
-        &mut policy,
-    )?;
+    let derivation = padding::select(document, key.as_ref(), &params, &methods, &mut policy)?;
+    let Methods {
+        filters,
+        strings,
+        streams,
+        embedded,
+    } = methods;
     document.report(policy.diagnostics.take());
     let embedded_authorization = dictionary
         .get_name(b"EFF")
         .and_then(|name| filters.get(name.as_bytes()))
         .is_some_and(|filter| filter.embedded_only);
-    Ok(Some(Security {
+    Ok(Security {
         key,
         encrypt: id,
         filters,
@@ -108,19 +125,24 @@ pub(crate) fn read(document: &Document) -> Result<Option<Security>> {
         encrypt_metadata: params.encrypt_metadata,
         crypt_filters: params.version >= 4,
         derivation,
-    }))
+    })
+}
+
+/// A V=4 RC4 key shorter than 128 bits, which Table 20 does not allow.
+fn short_rc4_key(params: &SecurityParams) -> bool {
+    params.version == 4 && params.revision == 4 && params.key_length != 16
 }
 
 fn authenticate_document(
     document: &Document,
     id: Option<ObjectId>,
     params: &SecurityParams,
-    missing_length: bool,
-    filters: &BTreeMap<Vec<u8>, CryptFilter>,
-    (strings, streams): (CryptMethod, CryptMethod),
+    length: repair::KeyLength,
+    password: &[u8],
+    methods: &Methods,
     policy: &mut Policy,
 ) -> Result<Option<FileKey>> {
-    let short_key = params.version == 4 && params.revision == 4 && params.key_length != 16;
+    let short_key = short_rc4_key(params);
     if short_key {
         policy.repair(
             repairs::SHORT_KEY,
@@ -128,12 +150,12 @@ fn authenticate_document(
         )?;
     }
     let deferred = params.version >= 4
-        && strings == CryptMethod::Identity
-        && streams == CryptMethod::Identity
-        && filters.values().all(|filter| filter.embedded_only);
+        && methods.strings == CryptMethod::Identity
+        && methods.streams == CryptMethod::Identity
+        && methods.filters.values().all(|filter| filter.embedded_only);
     let selector = params.version == 1
         && params.revision == 2
-        && u32::from_le_bytes(params.permissions.to_le_bytes()) & 0x0d00 != 0x0d00;
+        && params.permissions.cast_unsigned() & REVISION_3_PERMISSIONS != REVISION_3_PERMISSIONS;
     if selector {
         policy.repair(
             repairs::PERMISSION_SELECTOR,
@@ -141,22 +163,20 @@ fn authenticate_document(
         )?;
     }
     let authentication = if short_key || selector {
-        pagura_crypto::standard::authenticate_legacy_compatibility(
-            params,
-            &document.options.password,
-        )
+        pagura_crypto::standard::authenticate_legacy_compatibility(params, password)
     } else {
         repair::authenticate(
             document,
             id,
             params,
-            missing_length,
+            length,
+            password,
             &mut policy.diagnostics,
         )
     };
     let key = match authentication {
         Ok(key) => Some(key),
-        Err(error) if deferred && error.kind == pagura_core::ErrorKind::Password => None,
+        Err(error) if deferred && error.kind == ErrorKind::Password => None,
         Err(error) => return Err(error),
     };
     if let Some(key) = &key {
@@ -171,9 +191,10 @@ fn authenticate_document(
 fn uncompressed(document: &Document, value: &Value, message: &'static str) -> Result<()> {
     match value.as_reference() {
         Some(id)
-            if document.slots.get(&id).is_some_and(|slot| {
-                matches!(slot.location, crate::Location::Compressed { .. })
-            }) =>
+            if document
+                .slots
+                .get(&id)
+                .is_some_and(|slot| matches!(slot.location, Location::Compressed { .. })) =>
         {
             Err(Error::syntax(message).in_object(id))
         }
@@ -271,12 +292,17 @@ fn parameters(
     })
 }
 
-type Methods = (
-    BTreeMap<Vec<u8>, CryptFilter>,
-    CryptMethod,
-    CryptMethod,
-    CryptMethod,
-);
+/// The crypt filters of a dictionary and the methods it selects (7.6.5).
+#[derive(Debug)]
+struct Methods {
+    filters: BTreeMap<Vec<u8>, CryptFilter>,
+    /// `StrF`: strings.
+    strings: CryptMethod,
+    /// `StmF`: streams.
+    streams: CryptMethod,
+    /// `EFF`: embedded file streams.
+    embedded: CryptMethod,
+}
 
 // CF and its entries are not encrypted and may be indirect (7.6.2, Table 20).
 // Resolve dependencies before any authentication or cache initialization lock.
@@ -287,12 +313,12 @@ fn methods<'a>(
     policy: &mut Policy,
 ) -> Result<Methods> {
     if params.version < 4 {
-        return Ok((
-            BTreeMap::new(),
-            CryptMethod::Rc4,
-            CryptMethod::Rc4,
-            CryptMethod::Rc4,
-        ));
+        return Ok(Methods {
+            filters: BTreeMap::new(),
+            strings: CryptMethod::Rc4,
+            streams: CryptMethod::Rc4,
+            embedded: CryptMethod::Rc4,
+        });
     }
     let mut filters = BTreeMap::new();
     let defaults = [dictionary.get_name(b"StrF"), dictionary.get_name(b"StmF")];
@@ -350,7 +376,12 @@ fn methods<'a>(
     let strings = select(b"StrF", CryptMethod::Identity)?;
     let streams = select(b"StmF", CryptMethod::Identity)?;
     let embedded = select(b"EFF", streams)?;
-    Ok((filters, strings, streams, embedded))
+    Ok(Methods {
+        filters,
+        strings,
+        streams,
+        embedded,
+    })
 }
 
 fn crypt_method(
@@ -388,9 +419,6 @@ fn crypt_method(
             ));
         }
     };
-    if filter.contains_key(b"CFM") && filter.get_name(b"CFM").is_none() {
-        return Err(Error::syntax("CFM must be a name"));
-    }
     if let Some(length) = filter.get(b"Length").filter(|value| !value.is_null()) {
         let length = length
             .as_integer()

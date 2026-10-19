@@ -3,11 +3,18 @@
 pub(crate) mod contents;
 pub(crate) mod geometry;
 
+use crate::memory::{Reservation, path_bytes};
+use crate::view::ValueIdentity;
 use crate::{Document, repairs};
 use pagura_core::syntax::PathComponent;
-use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ObjectId, Rect, Result, Value};
+use pagura_core::{
+    Diagnostic, Diagnostics, Dictionary, Error, Meter, Name, ObjectId, Rect, Result, Value,
+};
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
+
+/// Heap bytes of an `Arc` beyond its value: the strong and weak counts.
+const ARC_COUNTS: usize = 2 * size_of::<usize>();
 
 /// A branch missing its required Type is identifiable by reference-only Kids
 /// (7.7.3.2). The traversal reports the inference before following any children.
@@ -27,7 +34,10 @@ pub(crate) fn branch(document: &Document, dictionary: &Dictionary) -> Result<boo
         .is_some_and(|kids| kids.iter().all(|kid| matches!(kid, Value::Reference(_)))))
 }
 
-/// Clockwise page rotation for display (`/Rotate`).
+/// Clockwise page rotation for display (`/Rotate`, Table 31).
+///
+/// The set is closed: `/Rotate` is a multiple of 90, so these four values are
+/// every rotation a page can have.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Rotation {
     /// Upright.
@@ -42,18 +52,6 @@ pub enum Rotation {
 }
 
 impl Rotation {
-    /// Interprets a `/Rotate` value, which must be a multiple of 90 and
-    /// may be negative or exceed 360.
-    pub fn from_degrees(degrees: i64) -> Option<Self> {
-        match degrees.rem_euclid(360) {
-            0 => Some(Self::None),
-            90 => Some(Self::Clockwise90),
-            180 => Some(Self::Clockwise180),
-            270 => Some(Self::Clockwise270),
-            _ => None,
-        }
-    }
-
     /// The rotation in degrees, 0–270.
     pub fn degrees(self) -> u16 {
         match self {
@@ -65,9 +63,26 @@ impl Rotation {
     }
 }
 
+impl TryFrom<i64> for Rotation {
+    type Error = Error;
+
+    /// Interprets a `/Rotate` value, which must be a multiple of 90 and
+    /// may be negative or exceed 360.
+    fn try_from(degrees: i64) -> Result<Self> {
+        match degrees.rem_euclid(360) {
+            0 => Ok(Self::None),
+            90 => Ok(Self::Clockwise90),
+            180 => Ok(Self::Clockwise180),
+            270 => Ok(Self::Clockwise270),
+            _ => Err(Error::syntax("Rotate must be a multiple of 90")),
+        }
+    }
+}
+
 /// A page with inherited attributes applied and boxes validated.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Page {
+    document: Weak<()>,
     id: ObjectId,
     index: usize,
     media_box: Rect,
@@ -122,6 +137,11 @@ impl Page {
         &self.source_path
     }
 
+    /// The token of the document this page came from.
+    pub(crate) const fn document(&self) -> &Weak<()> {
+        &self.document
+    }
+
     /// The page object's own dictionary. Inherited attributes (Table 31) are
     /// not copied in; the typed accessors above resolve them.
     pub fn dictionary(&self) -> &Dictionary {
@@ -129,8 +149,25 @@ impl Page {
     }
 }
 
-/// Walks the page tree from the catalog's `/Pages` root.
-pub(crate) fn read(document: &Document) -> Result<Vec<Page>> {
+impl PartialEq for Page {
+    /// The same page of the same document.
+    fn eq(&self, other: &Self) -> bool {
+        Weak::ptr_eq(&self.document, &other.document)
+            && self.id == other.id
+            && self.index == other.index
+            && self.media_box == other.media_box
+            && self.crop_box == other.crop_box
+            && self.rotation == other.rotation
+            && self.user_unit == other.user_unit
+            && self.resources == other.resources
+            && self.dictionary == other.dictionary
+            && self.source_path == other.source_path
+    }
+}
+
+/// Walks the page tree from the catalog's `/Pages` root. The reservation
+/// holds the pages' retained bytes until the caller publishes them.
+pub(crate) fn read(document: &Document) -> Result<(Vec<Page>, Reservation<'_>)> {
     let root = document
         .catalog()?
         .get(b"Pages")
@@ -142,7 +179,10 @@ pub(crate) fn read(document: &Document) -> Result<Vec<Page>> {
         active: BTreeSet::new(),
         parents: None,
         omitted: false,
-        steps: 0,
+        work: Meter::new(
+            document.limits().traversal_work,
+            "page-tree traversal work budget exceeded",
+        ),
         pages: Vec::new(),
         shared: BTreeMap::new(),
         diagnostics: Diagnostics::new(document.recovery()),
@@ -163,16 +203,15 @@ pub(crate) fn read(document: &Document) -> Result<Vec<Page>> {
         .in_object(root));
     }
     document.report(walk.diagnostics.take());
-    walk.reservation.commit();
-    Ok(walk.pages)
+    Ok((walk.pages, walk.reservation))
 }
 
 /// Attributes a page inherits from the nearest ancestor defining them
 /// (Table 31), borrowed from the document's object cache.
 #[derive(Clone, Copy, Default)]
 struct Inherited<'a> {
-    /// The defining node and its Resources entry, resolved lazily per page.
-    resources: Option<(ObjectId, &'a Value)>,
+    /// The nearest Resources entry, resolved lazily per page.
+    resources: Option<&'a Value>,
     media_box: Option<&'a Value>,
     crop_box: Option<&'a Value>,
     rotate: Option<&'a Value>,
@@ -184,7 +223,14 @@ struct Inherited<'a> {
 enum ResourceKey {
     Empty,
     Object(ObjectId),
-    DirectIn(usize),
+    Direct(ValueIdentity),
+}
+
+/// What a page-tree node is (7.7.3.2, 7.7.3.3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum NodeKind {
+    Branch,
+    Leaf,
 }
 
 struct Walk<'a> {
@@ -193,12 +239,12 @@ struct Walk<'a> {
     active: BTreeSet<ObjectId>,
     parents: Option<BTreeMap<ObjectId, Vec<ObjectId>>>,
     omitted: bool,
-    steps: usize,
+    work: Meter,
     pages: Vec<Page>,
     /// One resolved copy per resource dictionary, shared by every page using it.
     shared: BTreeMap<ResourceKey, Arc<Dictionary>>,
     diagnostics: Diagnostics,
-    reservation: crate::memory::Reservation<'a>,
+    reservation: Reservation<'a>,
 }
 
 impl<'a> Walk<'a> {
@@ -209,10 +255,6 @@ impl<'a> Walk<'a> {
         parent: Option<ObjectId>,
         depth: usize,
     ) -> Result<()> {
-        let limits = self.document.limits();
-        if depth > limits.depth {
-            return Err(Error::limit("page tree depth budget exceeded").in_object(id));
-        }
         if self.active.contains(&id) {
             self.diagnostics.repair(
                 Diagnostic::new(repairs::PAGE_CYCLE, "cyclic page-tree child edge omitted")
@@ -250,14 +292,10 @@ impl<'a> Walk<'a> {
         depth: usize,
         source_path: &[PathComponent],
     ) -> Result<()> {
-        let limits = self.document.limits();
-        if self.steps >= limits.value_nodes {
-            return Err(Error::limit("page-tree traversal work budget exceeded").in_object(id));
-        }
-        self.steps += 1;
-        if depth > limits.depth {
+        if depth > self.document.limits().depth {
             return Err(Error::limit("page tree depth budget exceeded").in_object(id));
         }
+        self.work.charge(1).map_err(|error| error.in_object(id))?;
         if dictionary
             .get(b"Parent")
             .is_some_and(|value| value.as_reference() != parent)
@@ -271,19 +309,38 @@ impl<'a> Walk<'a> {
             )?;
         }
         let inherited = Inherited {
-            resources: dictionary
-                .get(b"Resources")
-                .map(|value| (id, value))
-                .or(inherited.resources),
+            resources: dictionary.get(b"Resources").or(inherited.resources),
             media_box: dictionary.get(b"MediaBox").or(inherited.media_box),
             crop_box: dictionary.get(b"CropBox").or(inherited.crop_box),
             rotate: dictionary.get(b"Rotate").or(inherited.rotate),
         };
-        let branch = if dictionary.is_name(b"Type", b"Pages") {
-            true
-        } else if dictionary.is_name(b"Type", b"Page") {
-            false
-        } else if dictionary.is_name(b"Type", b"Template")
+        match self.classify(id, dictionary, parent)? {
+            NodeKind::Branch => self.intermediate(id, dictionary, inherited, depth, source_path),
+            NodeKind::Leaf => {
+                if self.pages.len() >= self.document.limits().pages {
+                    return Err(Error::limit("page count budget exceeded").in_object(id));
+                }
+                let page = self.leaf(id, dictionary, inherited, source_path)?;
+                self.pages.push(page);
+                Ok(())
+            }
+        }
+    }
+
+    /// Decides from its Type, or reports how it was inferred (7.7.3.2).
+    fn classify(
+        &mut self,
+        id: ObjectId,
+        dictionary: &Dictionary,
+        parent: Option<ObjectId>,
+    ) -> Result<NodeKind> {
+        if dictionary.is_name(b"Type", b"Pages") {
+            return Ok(NodeKind::Branch);
+        }
+        if dictionary.is_name(b"Type", b"Page") {
+            return Ok(NodeKind::Leaf);
+        }
+        if dictionary.is_name(b"Type", b"Template")
             && parent.is_some()
             && (dictionary.contains_key(b"Contents") || dictionary.contains_key(b"MediaBox"))
         {
@@ -294,39 +351,34 @@ impl<'a> Walk<'a> {
                 )
                 .in_object(id),
             )?;
-            false
-        } else if dictionary.contains_key(b"Type") {
-            return Err(Error::syntax("page tree node Type must be Pages or Page").in_object(id));
-        } else {
-            // Leaf evidence comes from the node itself: an inherited MediaBox
-            // would make every untyped, childless node look like a page.
-            let leaf = !dictionary.contains_key(b"Kids")
-                && (dictionary.contains_key(b"Contents") || dictionary.contains_key(b"MediaBox"));
-            let branch = branch(self.document, dictionary)?
-                || (!leaf && !dictionary.contains_key(b"Kids") && !self.backlinks(id)?.is_empty());
-            if !branch && !leaf {
-                return Err(Error::syntax("page tree node has no identifiable Type").in_object(id));
-            }
-            self.diagnostics.repair(
-                Diagnostic::new(
-                    repairs::PAGE_TYPE,
-                    "missing page-tree Type inferred from Kids or leaf attributes",
-                )
-                .at(self.document.object(id)?.source().position())
-                .in_object(id),
-            )?;
-            branch
-        };
-        if branch {
-            self.intermediate(id, dictionary, inherited, depth, source_path)
-        } else {
-            if self.pages.len() >= limits.pages {
-                return Err(Error::limit("page count budget exceeded").in_object(id));
-            }
-            let page = self.leaf(id, dictionary, inherited, source_path)?;
-            self.pages.push(page);
-            Ok(())
+            return Ok(NodeKind::Leaf);
         }
+        if dictionary.contains_key(b"Type") {
+            return Err(Error::syntax("page tree node Type must be Pages or Page").in_object(id));
+        }
+        // Leaf evidence comes from the node itself: an inherited MediaBox
+        // would make every untyped, childless node look like a page.
+        let has_kids = dictionary.contains_key(b"Kids");
+        let leaf = !has_kids
+            && (dictionary.contains_key(b"Contents") || dictionary.contains_key(b"MediaBox"));
+        let kind = if branch(self.document, dictionary)?
+            || (!leaf && !has_kids && !self.backlinks(id)?.is_empty())
+        {
+            NodeKind::Branch
+        } else if leaf {
+            NodeKind::Leaf
+        } else {
+            return Err(Error::syntax("page tree node has no identifiable Type").in_object(id));
+        };
+        self.diagnostics.repair(
+            Diagnostic::new(
+                repairs::PAGE_TYPE,
+                "missing page-tree Type inferred from Kids or leaf attributes",
+            )
+            .at(self.document.object(id)?.source().position())
+            .in_object(id),
+        )?;
+        Ok(kind)
     }
 
     fn intermediate(
@@ -365,7 +417,7 @@ impl<'a> Walk<'a> {
                             source_path.to_vec()
                         };
                         if !indirect {
-                            path.push(PathComponent::Key(pagura_core::Name::new(b"Kids")));
+                            path.push(PathComponent::Key(Name::new(b"Kids")));
                         }
                         path.push(PathComponent::Index(index));
                         self.dictionary_node(
@@ -504,15 +556,15 @@ impl<'a> Walk<'a> {
     fn resources(&mut self, page: ObjectId, inherited: Inherited<'a>) -> Result<Arc<Dictionary>> {
         let key = match inherited.resources {
             None => ResourceKey::Empty,
-            Some((_, Value::Reference(reference))) => ResourceKey::Object(*reference),
-            Some((_, value)) => ResourceKey::DirectIn(std::ptr::from_ref(value) as usize),
+            Some(Value::Reference(reference)) => ResourceKey::Object(*reference),
+            Some(value) => ResourceKey::Direct(ValueIdentity::of(value)),
         };
         if let Some(shared) = self.shared.get(&key) {
             return Ok(Arc::clone(shared));
         }
         let value = inherited
             .resources
-            .map(|(_, value)| self.document.resolve(value))
+            .map(|value| self.document.resolve(value))
             .transpose()?;
         let dictionary = match value {
             Some(Value::Dictionary(resources)) => Some(resources),
@@ -521,10 +573,8 @@ impl<'a> Walk<'a> {
         };
         let resources =
             dictionary.map_or_else(Arc::default, |dictionary| Arc::new(dictionary.clone()));
-        let bytes = resources
-            .retained_bytes()
-            .saturating_add(2 * size_of::<usize>());
-        self.reservation.charge(bytes, page)?;
+        self.reservation
+            .charge(resources.retained_bytes().saturating_add(ARC_COUNTS), page)?;
         self.shared.insert(key, Arc::clone(&resources));
         Ok(resources)
     }
@@ -547,43 +597,35 @@ impl<'a> Walk<'a> {
         let rotation = match inherited.rotate {
             None => Rotation::None,
             Some(value) => document
-                .resolve(value)?
-                .as_integer()
-                .and_then(Rotation::from_degrees)
-                .ok_or_else(|| Error::syntax("Rotate must be a multiple of 90").in_object(id))?,
+                .integer(value)
+                .and_then(Rotation::try_from)
+                .map_err(|error| error.in_object(id))?,
         };
         let user_unit = match dictionary.get(b"UserUnit") {
             None => 1.0,
-            Some(value) => document
-                .resolve(value)?
-                .as_number()
-                .filter(|&unit| unit > 0.0)
-                .ok_or_else(|| Error::syntax("UserUnit must be a positive number").in_object(id))?,
+            Some(value) => {
+                let unit = document
+                    .number(value)
+                    .map_err(|error| error.in_object(id))?;
+                if unit <= 0.0 {
+                    return Err(Error::syntax("UserUnit must be a positive number").in_object(id));
+                }
+                unit
+            }
         };
         let resources = self.resources(id, inherited)?;
         let dictionary = dictionary.clone();
-        let bytes = size_of::<Page>().saturating_add(
-            dictionary
-                .retained_bytes()
-                .saturating_sub(size_of::<Dictionary>()),
-        );
         let source_path = source_path.to_vec();
-        let bytes = source_path.iter().fold(
-            bytes.saturating_add(
-                source_path
-                    .capacity()
-                    .saturating_mul(size_of::<PathComponent>()),
-            ),
-            |sum, part| {
-                sum.saturating_add(
-                    part.retained_bytes()
-                        .saturating_sub(size_of::<PathComponent>()),
-                )
-            },
-        );
-
+        let bytes = size_of::<Page>()
+            .saturating_add(
+                dictionary
+                    .retained_bytes()
+                    .saturating_sub(size_of::<Dictionary>()),
+            )
+            .saturating_add(path_bytes(&source_path, source_path.capacity()));
         self.reservation.charge(bytes, id)?;
         Ok(Page {
+            document: Arc::downgrade(&document.token),
             id,
             index: self.pages.len(),
             media_box,

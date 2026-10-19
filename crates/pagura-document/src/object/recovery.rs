@@ -1,52 +1,74 @@
 //! Recovery of object boundaries, stream extents and offsets (7.3.8.1, 7.3.10, 7.5.4).
 
-use crate::Document;
-use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Result, Value};
+use crate::{Document, Location, repairs};
+use pagura_core::syntax::{Origin, Parser, is_whitespace};
+use pagura_core::{
+    Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, Limits, ObjectId, Position, Result,
+    Value,
+};
 use std::ops::Range;
+
+const ENDOBJ: &[u8] = b"endobj";
+const ENDSTREAM: &[u8] = b"endstream";
+/// How far past `start + Length` a terminator scan reads: a CRLF before
+/// `endstream`, then the keyword itself.
+pub(crate) const TERMINATOR_SLACK: usize = 2 + ENDSTREAM.len();
+
+/// Where a stream's dictionary sits, which decides what may follow its
+/// `endstream` (7.3.8.1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum StreamContext {
+    /// An indirect object: `endstream` ends a line and `endobj` follows.
+    Indirect,
+    /// A repaired stream inside a dictionary or array: the containing value
+    /// continues after `endstream`.
+    Direct,
+}
 
 /// A complete value can end before a following object/xref token (7.3.10).
 /// Do not infer closure from EOF or skip arbitrary intervening tokens.
 pub(crate) fn end(
-    parser: &mut pagura_core::syntax::Parser<'_>,
-    limits: pagura_core::Limits,
+    parser: &mut Parser<'_>,
+    limits: &Limits,
     id: ObjectId,
-    diagnostics: &mut pagura_core::Diagnostics,
+    diagnostics: &mut Diagnostics,
 ) -> Result<()> {
-    if parser.keyword(b"endobj") {
+    if parser.keyword(ENDOBJ) {
         return Ok(());
     }
     // A missing separator is provable when endobj is immediately followed by
     // the next complete object header; EOF or arbitrary regular text is not.
     let at = parser.offset();
+    let after = at.saturating_add(ENDOBJ.len());
     if parser
         .data()
         .get(at..)
-        .is_some_and(|tail| tail.starts_with(b"endobj"))
-        && header(parser.data(), at.saturating_add(6), limits).is_some()
+        .is_some_and(|tail| tail.starts_with(ENDOBJ))
+        && header(parser.data(), after, limits).is_some()
     {
         diagnostics.repair(
             Diagnostic::new(
-                crate::repairs::OBJECT_SEPARATOR,
+                repairs::OBJECT_SEPARATOR,
                 "missing separator after endobj before the next object header",
             )
             .at(parser.position())
             .in_object(id),
         )?;
-        return parser.seek(at + 6);
+        return parser.seek(after);
     }
-    let mut probe = pagura_core::syntax::Parser::with_offset(
-        parser.data(),
-        parser.offset(),
-        pagura_core::syntax::Origin::File,
-        limits,
-    )?;
+    let mut probe = Parser::with_offset(parser.data(), parser.offset(), Origin::File, *limits)?;
     if header(parser.data(), parser.offset(), limits).is_some()
         || probe.keyword(b"xref")
         || probe.keyword(b"trailer")
     {
         return diagnostics.repair(
-            Diagnostic::new(crate::repairs::OBJECT_END, "complete indirect value has no endobj before the next object or cross-reference section")
-                .at(parser.position()).in_object(id),
+            Diagnostic::new(
+                repairs::OBJECT_END,
+                "complete indirect value has no endobj before the next object or \
+                 cross-reference section",
+            )
+            .at(parser.position())
+            .in_object(id),
         );
     }
     Err(Error::syntax("missing endobj")
@@ -55,17 +77,11 @@ pub(crate) fn end(
 }
 
 /// Recognize a positive indirect-object identity at a token boundary (7.3.10).
-pub(crate) fn header(bytes: &[u8], offset: usize, limits: pagura_core::Limits) -> Option<ObjectId> {
+pub(crate) fn header(bytes: &[u8], offset: usize, limits: &Limits) -> Option<ObjectId> {
     if !bytes.get(offset).is_some_and(u8::is_ascii_digit) {
         return None;
     }
-    let mut parser = pagura_core::syntax::Parser::with_offset(
-        bytes,
-        offset,
-        pagura_core::syntax::Origin::File,
-        limits,
-    )
-    .ok()?;
+    let mut parser = Parser::with_offset(bytes, offset, Origin::File, *limits).ok()?;
     let number = u32::try_from(parser.unsigned().ok()?).ok()?;
     let generation = u16::try_from(parser.unsigned().ok()?).ok()?;
     (number != 0 && parser.keyword(b"obj")).then_some(ObjectId::new(number, generation))
@@ -76,84 +92,61 @@ pub(super) fn stream_extent(
     document: &Document,
     id: ObjectId,
     dictionary: &Dictionary,
-    parser: &mut pagura_core::syntax::Parser<'_>,
+    parser: &mut Parser<'_>,
     path: &mut Vec<ObjectId>,
-    repairs: &mut pagura_core::Diagnostics,
-    direct: bool,
+    repairs: &mut Diagnostics,
+    context: StreamContext,
 ) -> Result<Range<usize>> {
-    // ObjStm Length is explicitly excluded from compressed objects (7.5.7).
-    // It must never become a recoverable scalar-resolution failure.
-    if (dictionary.is_name(b"Type", b"ObjStm") || document.object_streams.contains_key(&id.number))
-        && dictionary
-            .get(b"Length")
-            .and_then(Value::as_reference)
-            .is_some_and(|length_id| {
-                document
-                    .slots
-                    .get(&length_id)
-                    .is_some_and(|slot| matches!(slot.location, crate::Location::Compressed { .. }))
-            })
-    {
-        return Err(Error::syntax("object stream Length cannot be compressed").in_object(id));
-    }
     let start = crate::stream::start(parser, repairs, Some(id))?;
-    let declared = stream_length(document, id, dictionary, path);
-    let length = match declared {
-        Ok(length) => Some(length),
-        // A strict-mode repair needed by the Length object itself keeps its tag.
-        Err(error)
-            if error.repair.is_none()
-                && matches!(
-                    error.kind,
-                    pagura_core::ErrorKind::Syntax | pagura_core::ErrorKind::MissingObject
-                ) =>
-        {
-            None
-        }
-        Err(error) => return Err(error),
-    };
+    let length = stream_length(document, id, dictionary, path)?;
     let bytes = parser.data();
     let end = length.and_then(|length| start.checked_add(length).filter(|&end| end <= bytes.len()));
     if let Some(end) = end {
         parser.seek(end).map_err(|error| error.in_object(id))?;
-        if parser.keyword(b"endstream") {
+        if parser.keyword(ENDSTREAM) {
             return Ok(start..end);
         }
         // A wrong length cannot swallow another complete physical object.
         if bytes
             .get(start..end)
-            .is_some_and(|data| data.windows(6).any(|part| part == b"endobj"))
+            .is_some_and(|data| data.windows(ENDOBJ.len()).any(|part| part == ENDOBJ))
         {
             return Err(Error::syntax("stream Length crosses an object boundary")
                 .at(parser.position())
                 .in_object(id));
         }
     }
-    let (marker, actual) = terminator(document, id, start, direct)?;
+    let (marker, actual) = terminator(document, id, start, context)?;
     repairs.repair(
         Diagnostic::new(
-            crate::repairs::LENGTH_CORRECTED,
+            repairs::LENGTH_CORRECTED,
             "unusable stream Length corrected to the unambiguous endstream terminator",
         )
-        .at(pagura_core::Position::File(end.unwrap_or(start)))
+        .at(Position::File(end.unwrap_or(start)))
         .in_object(id),
     )?;
     parser.seek(marker)?;
-    if !parser.keyword(b"endstream") {
+    if !parser.keyword(ENDSTREAM) {
         return Err(Error::syntax("missing endstream").in_object(id));
     }
     Ok(start..actual)
 }
 
+/// The declared `/Length`, or `None` when it is unusable and the terminator
+/// decides the extent. Resource limits, cycles, strict-mode repairs of the
+/// Length object and a compressed object-stream Length stay errors.
 fn stream_length(
     document: &Document,
     id: ObjectId,
     dictionary: &Dictionary,
     path: &mut Vec<ObjectId>,
-) -> Result<usize> {
-    let mut value = dictionary
-        .get(b"Length")
-        .ok_or_else(|| Error::syntax("stream Length must be an integer").in_object(id))?;
+) -> Result<Option<usize>> {
+    let Some(mut value) = dictionary.get(b"Length") else {
+        return Ok(None);
+    };
+    // ObjStm Length is explicitly excluded from compressed objects (7.5.7).
+    let object_stream =
+        dictionary.is_name(b"Type", b"ObjStm") || document.object_streams.contains_key(&id.number);
     let mut visited = Vec::new();
     let length = loop {
         match value {
@@ -167,108 +160,121 @@ fn stream_length(
                         Error::limit("indirect stream Length depth exceeded").in_object(*reference)
                     );
                 }
-                if dictionary.is_name(b"Type", b"ObjStm")
-                    && document.slots.get(reference).is_some_and(|slot| {
-                        matches!(slot.location, crate::Location::Compressed { .. })
-                    })
+                if object_stream
+                    && document
+                        .slots
+                        .get(reference)
+                        .is_some_and(|slot| matches!(slot.location, Location::Compressed { .. }))
                 {
                     return Err(
                         Error::syntax("object stream Length cannot be compressed").in_object(id)
                     );
                 }
                 visited.push(*reference);
-                value = document.object_inner(*reference, path)?.value();
+                value = match document.object_inner(*reference, path) {
+                    Ok(object) => object.value(),
+                    Err(error)
+                        if error.repair.is_none()
+                            && matches!(
+                                error.kind,
+                                ErrorKind::Syntax | ErrorKind::MissingObject
+                            ) =>
+                    {
+                        return Ok(None);
+                    }
+                    Err(error) => return Err(error),
+                };
             }
-            _ => {
-                return Err(
-                    Error::syntax("indirect stream Length must be an integer").in_object(id)
-                );
-            }
+            _ => return Ok(None),
         }
     };
-    let length = usize::try_from(length)
-        .map_err(|_| Error::syntax("stream Length is negative").in_object(id))?;
+    let Ok(length) = usize::try_from(length) else {
+        return Ok(None);
+    };
     if length > document.limits().stream_bytes {
         return Err(Error::limit("stream size budget exceeded").in_object(id));
     }
-    Ok(length)
+    Ok(Some(length))
 }
 
+/// Finds the terminator before the next object or revision boundary.
 fn terminator(
     document: &Document,
     id: ObjectId,
     start: usize,
-    direct: bool,
+    context: StreamContext,
 ) -> Result<(usize, usize)> {
     let bytes = document.original_bytes();
-    let boundary = document
+    let boundaries = document.boundaries()?;
+    let boundary = boundaries
+        .get(boundaries.partition_point(|&at| at <= start))
+        .copied()
+        .unwrap_or(bytes.len());
+    terminator_in(bytes, &document.limits(), id, start..boundary, context)
+}
+
+/// Every offset where a physical object or a revision's cross-reference data
+/// starts, sorted, for [`terminator`].
+pub(crate) fn boundaries(document: &Document) -> Vec<usize> {
+    let mut boundaries: Vec<usize> = document
         .slots
         .values()
         .filter_map(|slot| match slot.location {
-            crate::Location::Offset(at) if at > start => Some(at),
+            Location::Offset(at) => Some(at),
             _ => None,
         })
-        .chain(
-            document
-                .revisions()
-                .iter()
-                .map(crate::Revision::offset)
-                .filter(|&at| at > start),
-        )
-        .min()
-        .unwrap_or(bytes.len());
-    terminator_in(bytes, document.limits(), id, start, boundary, direct)
+        .chain(document.revisions().iter().map(crate::Revision::offset))
+        .collect();
+    boundaries.sort_unstable();
+    boundaries.dedup();
+    boundaries
 }
 
+/// Finds the one `endstream` that can end data starting at `range.start`,
+/// before `range.end`. Returns the keyword's offset and the end of the data.
 pub(crate) fn terminator_in(
     bytes: &[u8],
-    limits: pagura_core::Limits,
+    limits: &Limits,
     id: ObjectId,
-    start: usize,
-    boundary: usize,
-    direct: bool,
+    range: Range<usize>,
+    context: StreamContext,
 ) -> Result<(usize, usize)> {
+    let start = range.start;
     let scan_end = start
         .saturating_add(limits.stream_bytes)
-        .saturating_add(11)
-        .min(boundary)
+        .saturating_add(TERMINATOR_SLACK)
+        .min(range.end)
         .min(bytes.len());
     let candidates = bytes
         .get(start..scan_end)
         .ok_or(Error::syntax("invalid stream bounds"))?;
     let mut found = None;
     for (relative, _) in candidates
-        .windows(9)
+        .windows(ENDSTREAM.len())
         .enumerate()
-        .filter(|(_, part)| *part == b"endstream")
+        .filter(|(_, part)| *part == ENDSTREAM)
     {
         let marker = start + relative;
         let separated = marker == start
-            || bytes.get(marker - 1).is_some_and(|&byte| {
-                if direct {
-                    pagura_core::syntax::is_whitespace(byte)
-                } else {
-                    matches!(byte, b'\n' | b'\r')
-                }
+            || bytes.get(marker - 1).is_some_and(|&byte| match context {
+                StreamContext::Direct => is_whitespace(byte),
+                StreamContext::Indirect => matches!(byte, b'\n' | b'\r'),
             });
         if !separated {
             continue;
         }
-        let mut probe = pagura_core::syntax::Parser::with_offset(
-            bytes,
-            marker,
-            pagura_core::syntax::Origin::File,
-            limits,
-        )?;
-        if !probe.keyword(b"endstream") {
+        let mut probe = Parser::with_offset(bytes, marker, Origin::File, *limits)?;
+        if !probe.keyword(ENDSTREAM) {
             continue;
         }
-        if direct {
-            probe.peek();
-            if !direct_continuation(&mut probe) {
-                continue;
+        let closed = match context {
+            StreamContext::Direct => {
+                probe.peek();
+                direct_continuation(&mut probe)
             }
-        } else if !probe.keyword(b"endobj") {
+            StreamContext::Indirect => probe.keyword(ENDOBJ),
+        };
+        if !closed {
             continue;
         }
         if found.is_some() {
@@ -290,16 +296,19 @@ pub(crate) fn terminator_in(
     }
     found.ok_or_else(|| {
         Error::syntax("stream Length does not end at endstream")
-            .at(pagura_core::Position::File(start))
+            .at(Position::File(start))
             .in_object(id)
     })
 }
 
-fn direct_continuation(parser: &mut pagura_core::syntax::Parser<'_>) -> bool {
+fn direct_continuation(parser: &mut Parser<'_>) -> bool {
     matches!(
         parser.peek(),
         Some(b'/' | b']' | b'[' | b'(' | b'<' | b'+' | b'-' | b'.' | b'0'..=b'9')
-    ) || parser.data()[parser.offset()..].starts_with(b">>")
+    ) || parser
+        .data()
+        .get(parser.offset()..)
+        .is_some_and(|rest| rest.starts_with(b">>"))
         || parser.keyword(b"true")
         || parser.keyword(b"false")
         || parser.keyword(b"null")
@@ -334,7 +343,7 @@ pub(super) fn corrected_offset(
     document: &Document,
     id: ObjectId,
     offset: usize,
-    diagnostics: &mut pagura_core::Diagnostics,
+    diagnostics: &mut Diagnostics,
 ) -> Result<usize> {
     let matches = |at| -> bool {
         if !document
@@ -354,36 +363,29 @@ pub(super) fn corrected_offset(
     if matches(offset) {
         return Ok(offset);
     }
-    let bytes = document.original_bytes();
     let mut found = None;
-    for at in offset.saturating_sub(32)..offset.saturating_add(33).min(bytes.len()) {
-        if (at == 0
-            || bytes
-                .get(at - 1)
-                .is_some_and(|&byte| pagura_core::syntax::is_whitespace(byte)))
-            && bytes.get(at).is_some_and(u8::is_ascii_digit)
-            && matches(at)
-        {
-            if found.is_some() {
-                return Err(Error::syntax("ambiguous nearby object headers").in_object(id));
-            }
-            found = Some(at);
+    for at in
+        crate::xref::nearby_tokens(document.original_bytes(), offset).filter(|&at| matches(at))
+    {
+        if found.is_some() {
+            return Err(Error::syntax("ambiguous nearby object headers").in_object(id));
         }
+        found = Some(at);
     }
     if found.is_none() && zero_catalog_header(document, id, offset) {
         return Ok(offset);
     }
     let corrected = found.ok_or_else(|| {
         Error::syntax("cross-reference entry disagrees with object header")
-            .at(pagura_core::Position::File(offset))
+            .at(Position::File(offset))
             .in_object(id)
     })?;
     diagnostics.repair(
         Diagnostic::new(
-            crate::repairs::OFFSET_CORRECTED,
+            repairs::OFFSET_CORRECTED,
             "cross-reference offset corrected to a nearby matching object header",
         )
-        .at(pagura_core::Position::File(offset))
+        .at(Position::File(offset))
         .in_object(id),
     )?;
     Ok(corrected)

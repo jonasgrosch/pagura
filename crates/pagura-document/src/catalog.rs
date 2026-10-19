@@ -3,9 +3,10 @@
 use crate::{Document, repairs};
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Result, Value};
 
-/// Types of other standard dictionaries. A Root carrying one of them is a
-/// different object, never a catalog with a damaged Type.
-const CONFLICTING_TYPES: [&[u8]; 11] = [
+/// Types of standard dictionaries that recovery never reinterprets: an object
+/// typed as one of them is that object, not another with a damaged Type.
+const STANDARD_TYPES: [&[u8]; 12] = [
+    b"Catalog",
     b"Page",
     b"Pages",
     b"ObjStm",
@@ -19,6 +20,11 @@ const CONFLICTING_TYPES: [&[u8]; 11] = [
     b"Outlines",
 ];
 
+/// Whether `name` is a standard Type other than `expected`.
+pub(crate) fn other_type(name: &[u8], expected: &[u8]) -> bool {
+    name != expected && STANDARD_TYPES.contains(&name)
+}
+
 /// Infer a missing/unknown Type through Pages; conflicting known types fail.
 pub(crate) fn candidate(document: &Document, dictionary: &Dictionary) -> Result<bool> {
     if dictionary.is_name(b"Type", b"Catalog") {
@@ -27,7 +33,7 @@ pub(crate) fn candidate(document: &Document, dictionary: &Dictionary) -> Result<
     if dictionary.get(b"Type").is_some_and(|value| {
         value
             .as_name()
-            .is_none_or(|name| CONFLICTING_TYPES.contains(&name.as_bytes()))
+            .is_none_or(|name| other_type(name.as_bytes(), b"Catalog"))
     }) {
         return Ok(false);
     }

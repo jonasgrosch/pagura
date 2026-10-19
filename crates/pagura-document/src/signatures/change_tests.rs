@@ -390,7 +390,7 @@ fn exhausted_change_work_preserves_structural_results() {
     ));
     drop(good);
     // Source inspection is small; walking all revision roles exceeds this cap.
-    doc.options.limits.traversal_work = 300;
+    doc.limits.traversal_work = 300;
     let limited = doc.signatures().unwrap();
     assert!(limited.history_complete);
     let signature = limited.fields[0].signature.as_ref().unwrap();
@@ -457,7 +457,7 @@ fn large_revision_roles_are_shared_and_all_signatures_survive_limits() {
             } else { ModificationOutcome::Allowed }));
     }
     drop(good);
-    doc.options.limits.traversal_work = 150_000;
+    doc.limits.traversal_work = 150_000;
     let limited = doc.signatures().unwrap();
     assert!(limited.history_complete);
     assert_eq!(

@@ -227,6 +227,7 @@ fn ignore_quads(context: &mut Context<'_>, source: Source) -> Result<()> {
 }
 
 pub(super) fn read<'a>(document: &'a Document, page: &'a Page) -> Result<Vec<Link<'a>>> {
+    document.check_page(page)?;
     let mut context = Context::new(document);
     let source = context.source(page.id())?;
     let Some(annotations) = context.entry(page.dictionary(), b"Annots", source)? else {

@@ -197,13 +197,13 @@ fn padded_key_choice_precedes_cached_strings_and_obeys_decoding_limits() {
 }
 
 mod unit {
-    use super::super::lookup;
+    use crate::security::{Methods, lookup};
     fn methods<'a>(
         dictionary: &'a Dictionary,
         params: &pagura_crypto::standard::SecurityParams,
         resolve: impl Fn(&'a Value) -> pagura_core::Result<&'a Value>,
-    ) -> pagura_core::Result<super::super::Methods> {
-        super::super::methods(
+    ) -> pagura_core::Result<Methods> {
+        crate::security::methods(
             dictionary,
             params,
             resolve,
@@ -221,7 +221,7 @@ mod unit {
         dictionary: &Dictionary,
         trailer: &Dictionary,
     ) -> pagura_core::Result<pagura_crypto::standard::SecurityParams> {
-        super::super::parameters(dictionary, trailer, None)
+        crate::security::parameters(dictionary, trailer, None)
     }
 
     fn dictionary(bytes: &[u8]) -> Dictionary {
@@ -262,7 +262,12 @@ mod unit {
     fn crypt_filter_defaults_identity_and_embedded_file_events() {
         let encryption = dictionary(b"<< /V 4 /R 4 /Length 128 /O () /U () /P -4 /CF << /RC << /CFM /V2 /Length 16 >> /AES << /CFM /AESV2 >> /EF << /CFM /V2 /AuthEvent /EFOpen >> >> /StrF /Identity /StmF /AES /EFF /EF >>");
         let params = parameters(&encryption, &trailer()).unwrap();
-        let (filters, strings, streams, embedded) = methods(&encryption, &params, Ok).unwrap();
+        let Methods {
+            filters,
+            strings,
+            streams,
+            embedded,
+        } = methods(&encryption, &params, Ok).unwrap();
         assert_eq!(strings, CryptMethod::Identity);
         assert_eq!(streams, CryptMethod::AesV2);
         assert_eq!(embedded, CryptMethod::Rc4);
@@ -279,7 +284,12 @@ mod unit {
         encryption.remove(b"StrF");
         encryption.remove(b"StmF");
         encryption.remove(b"EFF");
-        let (_, strings, streams, embedded) = methods(&encryption, &params, Ok).unwrap();
+        let Methods {
+            strings,
+            streams,
+            embedded,
+            ..
+        } = methods(&encryption, &params, Ok).unwrap();
         assert_eq!(
             (strings, streams, embedded),
             (
@@ -354,11 +364,11 @@ mod unit {
         )
         .unwrap();
         let expected = pagura_crypto::standard::authenticate(&parameters, b"").unwrap_err();
-        assert_eq!(super::super::read(&document).unwrap_err(), expected);
+        assert_eq!(crate::security::read(&document, &[]).unwrap_err(), expected);
         *document.trailer.get_mut(b"Encrypt").unwrap() =
             Value::Dictionary(dictionary(b"<< /Filter /Adobe.PubSec >>"));
         assert_eq!(
-            super::super::read(&document).unwrap_err().feature(),
+            crate::security::read(&document, &[]).unwrap_err().feature(),
             Some(crate::features::PUBSEC)
         );
         let options = OpenOptions {
@@ -420,79 +430,77 @@ mod authorization_events {
 
     #[test]
     fn embedded_file_authorization_does_not_block_identity_page_data() {
-        for name in ["security-embedded-event"] {
-            let bytes = fixture("document", &format!("{name}.pdf"));
+        let name = "security-embedded-event";
+        let bytes = fixture("document", &format!("{name}.pdf"));
+        assert_eq!(
+            Document::open(
+                bytes.clone(),
+                &OpenOptions {
+                    recovery: Recovery::Strict,
+                    ..OpenOptions::default()
+                }
+            )
+            .unwrap_err()
+            .repair,
+            Some(crate::repairs::CRYPT_EVENT)
+        );
+        let recovery = Recovery::Repair;
+        for password in [b"".as_slice(), b"wrong"] {
+            let document = Document::open(
+                bytes.clone(),
+                &OpenOptions {
+                    recovery,
+                    password: password.to_vec(),
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(document.page_count().unwrap(), 1);
             assert_eq!(
-                Document::open(
-                    bytes.clone(),
-                    &OpenOptions {
-                        recovery: Recovery::Strict,
-                        ..OpenOptions::default()
-                    }
-                )
-                .unwrap_err()
-                .repair,
-                Some(crate::repairs::CRYPT_EVENT)
+                document
+                    .catalog()
+                    .unwrap()
+                    .get(b"Marker")
+                    .unwrap()
+                    .as_string(),
+                Some(b"independent".as_slice())
             );
-            for recovery in [Recovery::Repair] {
-                for password in [b"".as_slice(), b"wrong"] {
-                    let document = Document::open(
-                        bytes.clone(),
-                        &OpenOptions {
-                            recovery,
-                            password: password.to_vec(),
-                            ..OpenOptions::default()
-                        },
-                    )
-                    .unwrap();
-                    assert_eq!(document.page_count().unwrap(), 1);
-                    assert_eq!(
-                        document
-                            .catalog()
-                            .unwrap()
-                            .get(b"Marker")
-                            .unwrap()
-                            .as_string(),
-                        Some(b"independent".as_slice())
-                    );
-                    let content = document.object(ObjectId::new(4, 0)).unwrap();
-                    assert_eq!(
-                        document.stream_data(content).unwrap().as_ref(),
-                        b"1 0 0 rg 8 8 48 32 re f\n"
-                    );
-                    let embedded = document.object(ObjectId::new(6, 0)).unwrap();
-                    let error = document.stream_data(embedded).unwrap_err();
-                    assert_eq!(error.kind, ErrorKind::Password);
-                    assert_eq!(error.object, Some(embedded.id()));
-                    let retained = document.retained.used();
-                    assert_eq!(document.stream_data(embedded).unwrap_err(), error);
-                    assert_eq!(document.retained.used(), retained);
-                    assert!(
-                        document
-                            .diagnostics()
-                            .iter()
-                            .any(|d| d.repair() == Some(crate::repairs::CRYPT_EVENT))
-                    );
-                }
-                for password in [b"attachment".as_slice(), b"owner"] {
-                    let document = Document::open(
-                        bytes.clone(),
-                        &OpenOptions {
-                            recovery,
-                            password: password.to_vec(),
-                            ..OpenOptions::default()
-                        },
-                    )
-                    .unwrap();
-                    assert_eq!(
-                        document
-                            .stream_data(document.object(ObjectId::new(6, 0)).unwrap())
-                            .unwrap()
-                            .as_ref(),
-                        b"attached file bytes"
-                    );
-                }
-            }
+            let content = document.object(ObjectId::new(4, 0)).unwrap();
+            assert_eq!(
+                document.stream_data(content).unwrap().as_ref(),
+                b"1 0 0 rg 8 8 48 32 re f\n"
+            );
+            let embedded = document.object(ObjectId::new(6, 0)).unwrap();
+            let error = document.stream_data(embedded).unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Password);
+            assert_eq!(error.object, Some(embedded.id()));
+            let retained = document.retained.used();
+            assert_eq!(document.stream_data(embedded).unwrap_err(), error);
+            assert_eq!(document.retained.used(), retained);
+            assert!(
+                document
+                    .diagnostics()
+                    .iter()
+                    .any(|d| d.repair() == Some(crate::repairs::CRYPT_EVENT))
+            );
+        }
+        for password in [b"attachment".as_slice(), b"owner"] {
+            let document = Document::open(
+                bytes.clone(),
+                &OpenOptions {
+                    recovery,
+                    password: password.to_vec(),
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(
+                document
+                    .stream_data(document.object(ObjectId::new(6, 0)).unwrap())
+                    .unwrap()
+                    .as_ref(),
+                b"attached file bytes"
+            );
         }
     }
 

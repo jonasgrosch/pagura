@@ -207,18 +207,16 @@ fn budgets_fail_without_partial_results() {
     // Read source objects first so result limits, rather than lazy cache
     // admission, are exercised independently.
     doc.signatures().unwrap();
-    let mut options = doc.options.clone();
-    options.limits.traversal_work = 1;
     let mut limited = doc;
-    limited.options = options;
+    limited.limits.traversal_work = 1;
     assert_eq!(limited.signatures().unwrap_err().kind, ErrorKind::Limit);
     let mut doc = open("multiple-revisions", Limits::default());
     doc.signatures().unwrap();
-    doc.options.limits.document_bytes = 1;
+    doc.limits.document_bytes = 1;
     assert_eq!(doc.signatures().unwrap_err().kind, ErrorKind::Limit);
     let mut doc = open("multiple-revisions", Limits::default());
     doc.signatures().unwrap();
-    doc.options.limits.file_bytes = 1;
+    doc.limits.file_bytes = 1;
     assert_eq!(doc.signatures().unwrap_err().kind, ErrorKind::Limit);
 }
 
