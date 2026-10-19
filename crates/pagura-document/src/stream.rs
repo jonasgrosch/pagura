@@ -55,6 +55,7 @@ pub(crate) fn decoded<'a>(
 /// Encoded image data with every filter except a trailing image codec
 /// applied (clauses 7.4 and 8.9.5).
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct ImageStream<'a> {
     /// The data after decryption and all non-image filters.
     pub data: Cow<'a, [u8]>,

@@ -4,6 +4,7 @@ use pagura_core::{Error, Limits, Result};
 
 /// A choice selection. Indexes disambiguate repeated display/export strings.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ChoiceSelection<'a> {
     /// Select options by index. Order is canonicalized; duplicates are rejected.
     Indices(&'a [usize]),

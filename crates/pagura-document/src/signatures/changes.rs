@@ -28,6 +28,7 @@ pub enum ModificationOutcome {
 }
 /// One independent policy decision for a changed object.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ChangeDecision {
     /// Permitted by the policy.
     Allowed,
@@ -38,7 +39,8 @@ pub enum ChangeDecision {
     /// No such transform restricts this signature.
     NotApplicable,
 }
-/// Object identity or the effective trailer (which has no object identity).
+/// Object identity or the effective trailer (which has no object identity);
+/// nothing else can change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChangeTarget {
     /// A generation-sensitive indirect identity.
@@ -48,6 +50,7 @@ pub enum ChangeTarget {
 }
 /// Semantic difference; a byte-only rewrite with equal values and stream bytes
 /// is omitted. Stream encoding changes are retained, even if they render alike.
+/// An identity can only be added, removed or modified.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChangeKind {
     /// Identity became in use.
@@ -59,6 +62,7 @@ pub enum ChangeKind {
 }
 /// A use established by reachability, never merely an object's `/Type` name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum ObjectRole {
     /// Field dictionary or its structural configuration.
     Field,
@@ -96,6 +100,7 @@ pub enum ObjectRole {
 }
 /// Clause-based rule used to explain a structural decision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ModificationRule {
     /// No ordinary changes at DocMDP P=1 (12.8.2.2, Table 257).
     NoChanges,
@@ -117,6 +122,7 @@ pub enum ModificationRule {
 }
 /// Complete object-level evidence for a change.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ObjectChange {
     /// Changed identity.
     pub target: ChangeTarget,
@@ -138,6 +144,7 @@ pub struct ObjectChange {
 /// One later incremental update. Comparisons include both net differences
 /// against the signed revision and differences against the preceding update.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct RevisionChanges {
     /// Index in `Document::revisions()`, newest first.
     pub revision: usize,
@@ -150,6 +157,7 @@ pub struct RevisionChanges {
 }
 /// Bounded structural comparisons, in chronological update order.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ModificationAnalysis {
     /// Index of the signed revision in the original document.
     pub signed_revision: usize,

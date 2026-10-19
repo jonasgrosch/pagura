@@ -11,6 +11,7 @@ pub use choices::{ChoiceSelection, ChoiceValue};
 
 /// A button selection (12.7.5.2). Widget indexes refer to `AcroForm::widgets`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ButtonValue<'a> {
     /// Clear the field, subject to `NoToggleToOff`.
     Off,
@@ -29,6 +30,7 @@ pub enum ButtonValue<'a> {
 
 /// Typed input for a terminal field (12.7.5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FillValue<'a> {
     /// Plain text. CR and CRLF are normalized to LF before length validation.
     Text(&'a str),
@@ -40,6 +42,7 @@ pub enum FillValue<'a> {
 
 /// A validated replacement value, separate from the original source dictionary.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FilledValue {
     /// Plain Unicode text; passwords remain only in caller-owned memory.
     Text(String),

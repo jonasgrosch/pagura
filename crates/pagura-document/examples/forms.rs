@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     FieldKind::Text { .. } => 4,
                     FieldKind::Choice { .. } => 5,
                     FieldKind::Signature { .. } => 6,
-                    FieldKind::Other(_) => 7,
+                    _ => 7,
                 };
                 counts[index] += 1;
             }

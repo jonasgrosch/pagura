@@ -298,6 +298,7 @@ impl Views<'_> {
             None => {}
             Some(Target::Destination(destination)) => self.destination(destination),
             Some(Target::Actions(sequence)) => self.action_list(&sequence.actions),
+            Some(other) => unreachable!("target kind without an oracle: {other:?}"),
         }
     }
 
@@ -350,6 +351,7 @@ impl Views<'_> {
                         assert_eq!(name, Some(other.as_bytes()), "named action");
                         None
                     }
+                    other => unreachable!("named action without an oracle: {other:?}"),
                 };
                 if standard.is_some() {
                     assert_eq!(name, standard, "named action");
@@ -387,6 +389,7 @@ impl Views<'_> {
                 );
                 name.as_bytes()
             }
+            other => unreachable!("action kind without an oracle: {other:?}"),
         };
         assert_eq!(subtype, Some(expected), "action of kind {:?}", action.kind);
     }
