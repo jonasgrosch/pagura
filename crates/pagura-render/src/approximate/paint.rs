@@ -9,13 +9,25 @@ use pagura_raster::{Pixmap, Rgba8};
 pub(super) struct Target {
     pixels: Pixmap,
     tile: Tile,
+    background: Rgba8,
+    /// Per tile row, the tile columns `[lo, hi)` that any mark has been
+    /// given to paint; every other pixel still holds the background.
+    painted: Vec<[u32; 2]>,
 }
 
 impl Target {
     pub(super) fn new(tile: Tile, background: Rgba8, limits: pagura_core::Limits) -> Result<Self> {
+        let pixels = Pixmap::new_with_limits(tile.width, tile.height, background, limits)?;
+        let mut painted = Vec::new();
+        painted
+            .try_reserve_exact(tile.height as usize)
+            .map_err(|_| pagura_core::Error::limit("surface allocation failed"))?;
+        painted.resize(tile.height as usize, [0; 2]);
         Ok(Self {
-            pixels: Pixmap::new_with_limits(tile.width, tile.height, background, limits)?,
+            pixels,
             tile,
+            background,
+            painted,
         })
     }
 
@@ -46,9 +58,38 @@ impl Target {
             return None;
         }
         let stride = tile.width as usize;
-        let start = row as usize * stride + (lo - i64::from(tile.x)) as usize;
+        let (left, right) = (
+            (lo - i64::from(tile.x)) as u32,
+            (hi - i64::from(tile.x)) as u32,
+        );
+        let painted = &mut self.painted[row as usize];
+        *painted = if painted[0] == painted[1] {
+            [left, right]
+        } else {
+            [painted[0].min(left), painted[1].max(right)]
+        };
+        let start = row as usize * stride + left as usize;
         let end = start + (hi - lo) as usize;
         Some((lo, &mut self.pixels.data_mut()[start * 4..end * 4]))
+    }
+
+    /// Whether every pixel of page row `y` from column `x0` (inclusive) to
+    /// `x1` (exclusive) that lies in the tile still holds the background.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "indices are clamped to the tile, whose extent fits u32"
+    )]
+    fn unpainted(&self, y: i64, x0: i64, x1: i64) -> bool {
+        let tile = self.tile;
+        let row = y - i64::from(tile.y);
+        if row < 0 || row >= i64::from(tile.height) {
+            return true;
+        }
+        let lo = (x0 - i64::from(tile.x)).clamp(0, i64::from(tile.width)) as u32;
+        let hi = (x1 - i64::from(tile.x)).clamp(0, i64::from(tile.width)) as u32;
+        let [left, right] = self.painted[row as usize];
+        lo >= hi || left == right || hi <= left || right <= lo
     }
 }
 
@@ -145,7 +186,13 @@ pub(super) fn fill_rectangle(
     }
     let lo = x0.floor() as i64;
     let hi = x1.ceil() as i64;
+    // An opaque fill in the background colour leaves background pixels as
+    // they are at every coverage: c * a + c * (255 - a) rounds back to c.
+    let background = color.a == 255 && color == target.background;
     for y in y0.floor() as i64..y1.ceil() as i64 {
+        if background && target.unpainted(y, lo, hi) {
+            continue;
+        }
         let vertical = (y1.min(y as f64 + 1.0) - y0.max(y as f64)).clamp(0.0, 1.0);
         let area = |width: f64| (width * vertical * 255.0).round() as u16;
         if hi - lo == 1 {
@@ -404,6 +451,21 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn background_rectangles_skip_only_unpainted_rows() {
+        let colors = [Rgba8::WHITE, Rgba8::opaque(13, 91, 183)];
+        let mut skipped = target(6, 4);
+        let mut written = target(6, 4);
+        written.painted.iter_mut().for_each(|row| *row = [0, 6]);
+        for target in [&mut skipped, &mut written] {
+            fill_rectangle(target, [0.5, 1.25, 2.5, 2.75], (6, 4), colors[1]);
+            fill_rectangle(target, [0.25, 0.5, 5.5, 3.5], (6, 4), colors[0]);
+            fill_rectangle(target, [3.25, 0.0, 5.0, 4.0], (6, 4), colors[1]);
+            fill_rectangle(target, [0.0, 0.25, 6.0, 1.5], (6, 4), colors[0]);
+        }
+        assert_eq!(skipped.finish().data(), written.finish().data());
     }
 
     #[test]
