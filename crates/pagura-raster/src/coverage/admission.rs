@@ -1,7 +1,8 @@
 //! Select the strip sweep from geometry, independently of the viewport.
 
 use super::{Geometry, Shape};
-use crate::{Point, Segment};
+use crate::{FillRule, Point, Segment};
+use std::sync::Arc;
 
 const SWEEP_RANGE: f64 = 65_536.0;
 // Construction commands in a small component path, not per-cell density.
@@ -29,14 +30,43 @@ pub(super) fn sweep_anchor(shapes: &[Shape], maximum: usize) -> Option<Point> {
     let Some(first) = first else {
         return Some(Point::new(0.0, 0.0));
     };
+    if !prefers_sweep(shape) {
+        return None;
+    }
+    frame(shape, &shapes[1..], first, maximum)
+}
+
+// A stroke's proven boundary takes the sweep in place of its components when
+// the sweep admits it in the components' own frame, which keeps their sweep
+// rounding. Anywhere else the components keep their coverage path.
+pub(super) fn stroke_boundary(shapes: &[Shape], maximum: usize) -> Option<(Shape, Point)> {
+    let shape = shapes.first()?;
+    let Geometry::Path(path) = &shape.geometry else {
+        return None;
+    };
+    let (Some(boundary), Some(Segment::MoveTo(first)), FillRule::NonZero) =
+        (&path.boundary, path.segments().first(), shape.rule)
+    else {
+        return None;
+    };
+    let boundary = Shape {
+        geometry: Geometry::Path(Arc::clone(boundary)),
+        ..shape.clone()
+    };
+    let anchor = frame(&boundary, &shapes[1..], *first, maximum)?;
+    Some((boundary, anchor))
+}
+
+// The integer frame anchored at `first`, if it bounds the shape and every
+// nonrectangular clip within the segment budget.
+fn frame(shape: &Shape, clips: &[Shape], first: Point, maximum: usize) -> Option<Point> {
     let first = first * shape.transform;
     let anchor = Point::new(first.x.floor(), first.y.floor());
     (anchor.x.is_finite()
         && anchor.y.is_finite()
         && shape.segments() <= maximum
-        && prefers_sweep(shape)
         && within_frame(shape, anchor)
-        && shapes[1..].iter().all(|clip| {
+        && clips.iter().all(|clip| {
             clip.segments() <= maximum && (clip.rectangle().is_some() || within_frame(clip, anchor))
         }))
     .then_some(anchor)
@@ -126,8 +156,94 @@ fn within_frame(shape: &Shape, anchor: Point) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{FillRule, PathBuilder, Point, Transform};
-    use std::sync::Arc;
+    use crate::{PathBuilder, Transform};
+
+    #[test]
+    fn stroke_boundaries_take_the_sweep_only_in_their_component_frame() {
+        // A sixteen-sided miter stroke, placed `offset` units from its user
+        // origin and translated back near the device origin.
+        let stroke = |offset: f64| {
+            let mut builder = PathBuilder::new();
+            for i in 0..16 {
+                let angle = f64::from(i) * std::f64::consts::TAU / 16.0;
+                let point = Point::new(
+                    offset + 4.0 + 3.0 * angle.cos(),
+                    offset + 4.0 + 3.0 * angle.sin(),
+                );
+                if i == 0 {
+                    builder.move_to(point);
+                } else {
+                    builder.line_to(point).unwrap();
+                }
+            }
+            builder.close();
+            let (path, transform) = crate::stroke_outline(
+                &builder.finish(),
+                Transform::translate(-offset, -offset),
+                &crate::Stroke {
+                    width: 1.09375,
+                    ..crate::Stroke::default()
+                },
+                &pagura_core::Limits::default(),
+            )
+            .unwrap();
+            assert!(path.boundary.is_some());
+            Shape {
+                geometry: Geometry::Path(Arc::new(path)),
+                transform,
+                rule: FillRule::NonZero,
+            }
+        };
+        let near = stroke(0.0);
+        let Geometry::Path(path) = &near.geometry else {
+            unreachable!()
+        };
+        let Some(Segment::MoveTo(first)) = path.segments().first() else {
+            unreachable!()
+        };
+        let anchor = Point::new(first.x.floor(), first.y.floor());
+        let (boundary, admitted) =
+            stroke_boundary(std::slice::from_ref(&near), usize::MAX).unwrap();
+        assert_eq!(admitted, anchor);
+        assert_eq!(
+            sweep_anchor(std::slice::from_ref(&near), usize::MAX),
+            Some(anchor)
+        );
+        assert_eq!(
+            boundary.geometry,
+            Geometry::Path(Arc::clone(path.boundary.as_ref().unwrap()))
+        );
+        assert!(stroke_boundary(std::slice::from_ref(&near), 0).is_none());
+        let even_odd = Shape {
+            rule: FillRule::EvenOdd,
+            ..near.clone()
+        };
+        assert!(stroke_boundary(&[even_odd], usize::MAX).is_none());
+        // Far from its user origin the frame rejects the boundary as it does
+        // the components.
+        let far = stroke(70_000.0);
+        assert!(stroke_boundary(std::slice::from_ref(&far), usize::MAX).is_none());
+        assert!(sweep_anchor(&[far], usize::MAX).is_none());
+        // So does a distant nonrectangular clip, unlike a rectangular one.
+        let clip = |rectangle: bool| {
+            let mut builder = PathBuilder::new();
+            if rectangle {
+                builder.rect(70_000.0, 70_000.0, 8.0, 8.0);
+            } else {
+                builder.move_to(Point::new(70_000.0, 70_000.0));
+                builder.line_to(Point::new(70_016.0, 70_000.0)).unwrap();
+                builder.line_to(Point::new(70_000.0, 70_016.0)).unwrap();
+                builder.close();
+            }
+            Shape {
+                geometry: Geometry::Path(Arc::new(builder.finish())),
+                transform: Transform::translate(-70_000.0, -70_000.0),
+                rule: FillRule::NonZero,
+            }
+        };
+        assert!(stroke_boundary(&[near.clone(), clip(false)], usize::MAX).is_none());
+        assert!(stroke_boundary(&[near, clip(true)], usize::MAX).is_some());
+    }
 
     #[test]
     fn quadrilateral_admission_is_global_and_keeps_other_components_on_sweep() {

@@ -5,6 +5,766 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "raster/convex-miter-rectangle-forward",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-rectangle-forward.path",
+          "sha256": "f464e6d6ba8e2a5924216898e48d7cac8eeb135639442814fa3d80d3d4d8b3f2"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-rectangle-forward.pgm",
+          "sha256": "53b6e00904f7902a09bd35e251d257461bbacbb3e0dda5a5d7b3ab365c326e15"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-rectangle-reverse",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-rectangle-reverse.path",
+          "sha256": "553218d5564348dfb73e5e14de38d4d6cd3bbf5f272c41b5657f2384a06ca5ca"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-rectangle-reverse.pgm",
+          "sha256": "53b6e00904f7902a09bd35e251d257461bbacbb3e0dda5a5d7b3ab365c326e15"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-triangle-forward",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-triangle-forward.path",
+          "sha256": "6d72d8bd6db026f015cde020e8298d1b8d3381105b7dd18598e9e076af613562"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-triangle-forward.pgm",
+          "sha256": "97956c59adde377220d34c27c5e37ac19a4f205d47e9e35f40a1b2348ceba8ac"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-triangle-reverse",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-triangle-reverse.path",
+          "sha256": "5a3d0c9df8c6abf2c478ea1d0829f9f73535f73aae850d68db60081c9cfd9a8b"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-triangle-reverse.pgm",
+          "sha256": "97956c59adde377220d34c27c5e37ac19a4f205d47e9e35f40a1b2348ceba8ac"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-octagon-forward",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-octagon-forward.path",
+          "sha256": "48d0f54b1aa34e727dabfea216c0cb468e53597ab261d23414566c836075269d"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-octagon-forward.pgm",
+          "sha256": "2b9593df7814c854df18b6adfcc44f65b82b1943537ccea0ba60e66bc60a221f"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-octagon-reverse",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-octagon-reverse.path",
+          "sha256": "853c123e631270db6e3eaa51b3662b7f54fa94ba52762bbad3afeb734a179e83"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-octagon-reverse.pgm",
+          "sha256": "2b9593df7814c854df18b6adfcc44f65b82b1943537ccea0ba60e66bc60a221f"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-closed-hole-forward",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-closed-hole-forward.path",
+          "sha256": "96a478793847c86f234e95886d64bf40504afb66fd1ecc105b8f5044dc584272"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-closed-hole-forward.pgm",
+          "sha256": "347aad0db9b7ff0cd86cb0dd0df57c4ac9a01d5970c8a5eef375a813a12beae0"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-closed-hole-reverse",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-closed-hole-reverse.path",
+          "sha256": "3e897a90650f31f681cec5a41054a11473be1aede58848983f13c38c6c4f367d"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-closed-hole-reverse.pgm",
+          "sha256": "347aad0db9b7ff0cd86cb0dd0df57c4ac9a01d5970c8a5eef375a813a12beae0"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-reversed-side-forward",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-reversed-side-forward.path",
+          "sha256": "8e57074fe8ea20b0cf96a6c7d69288c04a26d4a75b95bc4ae237a3f1151e51e0"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-reversed-side-forward.pgm",
+          "sha256": "347aad0db9b7ff0cd86cb0dd0df57c4ac9a01d5970c8a5eef375a813a12beae0"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-reversed-side-reverse",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-reversed-side-reverse.path",
+          "sha256": "58694fb8715f017e8c553360ffeb39a03721d75aaf77f9eb6baeb3d3b2c29d39"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-reversed-side-reverse.pgm",
+          "sha256": "347aad0db9b7ff0cd86cb0dd0df57c4ac9a01d5970c8a5eef375a813a12beae0"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-icosagon-forward",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-icosagon-forward.path",
+          "sha256": "28e5c20c973bd894d3fec5b9526d09ec56f8f5cf75601504c710fd4b0f1906ea"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-icosagon-forward.pgm",
+          "sha256": "a50aad3215fae65067c1cc14f0c87accd4ff252017beea14bf5807df070a8883"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-icosagon-reverse",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-icosagon-reverse.path",
+          "sha256": "d4c275b2555c0988bae36f3edcc18348896ccf854906f058399a0ad2de5e3dbe"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-icosagon-reverse.pgm",
+          "sha256": "a50aad3215fae65067c1cc14f0c87accd4ff252017beea14bf5807df070a8883"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-thin-forward",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-thin-forward.path",
+          "sha256": "97c97f131a9d0bb2756f110c7f37e6df4ec1774549a3a6796e52a6ee215a2fac"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-thin-forward.pgm",
+          "sha256": "46b8035ea530ca99566c32efa2f30fa3291cd0b362bda8ed270cbf2049e8abd4"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-thin-reverse",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-thin-reverse.path",
+          "sha256": "a26ab6045bca75452cedba25e1f79951c65a9c94d6967040183841a57f112e8e"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-thin-reverse.pgm",
+          "sha256": "46b8035ea530ca99566c32efa2f30fa3291cd0b362bda8ed270cbf2049e8abd4"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-wide-forward",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-wide-forward.path",
+          "sha256": "11ed38eb53c0d74b3c39eac8060a9f7bacfea32f2164f3200086636365db72af"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-wide-forward.pgm",
+          "sha256": "9d922302a67e7f2f786b07b2e45217147554cbd06858945e2f753ff68bb21e94"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-wide-reverse",
+      "kind": "vector",
+      "description": "Rational parallel supporting lines and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-wide-reverse.path",
+          "sha256": "4bbdf3f40bdb43033dbb95ac1dd2a6ef2a0ef95bf531836ce00e4ed56edf2af6"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-wide-reverse.pgm",
+          "sha256": "9d922302a67e7f2f786b07b2e45217147554cbd06858945e2f753ff68bb21e94"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-sixteen-thin-forward",
+      "kind": "vector",
+      "description": "Sixteen rational sides, exact parallel offsets and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-thin-forward.path",
+          "sha256": "230769bd7386ce8387491d26e819f8beec96fa17b9dbb137e200ffdfcea837e5"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-thin-forward.pgm",
+          "sha256": "7e9fbc98c144d17883507adaab9556e7b6650f2b206f3156707ef6c2ecded9e3"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-sixteen-thin-forward-pdf",
+      "kind": "pdf",
+      "description": "Sixteen-sided white miter stroke on black, exact rational pixel area",
+      "expected": "render",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "path": "corpus/generated/raster/convex-miter-sixteen-thin-forward-pdf.pdf",
+      "sha256": "b1243d424eab27a4951b0d7301df274c1184501938fd841c83b0ceab80b10894",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/raster/convex-miter-sixteen-thin-forward-pdf.ppm",
+      "oracle_sha256": "55cc60ac6fd0d1c373ed684358dd6195ab5e2bbd9776f428c0fecc2245a6f0f3",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "raster/convex-miter-sixteen-thin-reverse",
+      "kind": "vector",
+      "description": "Sixteen rational sides, exact parallel offsets and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-thin-reverse.path",
+          "sha256": "07cd9b7ec4dd60ed86387e30300631f2b01bc4c8d754fa7311d2f0464d897cc2"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-thin-reverse.pgm",
+          "sha256": "7e9fbc98c144d17883507adaab9556e7b6650f2b206f3156707ef6c2ecded9e3"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-sixteen-thin-reverse-pdf",
+      "kind": "pdf",
+      "description": "Sixteen-sided white miter stroke on black, exact rational pixel area",
+      "expected": "render",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "path": "corpus/generated/raster/convex-miter-sixteen-thin-reverse-pdf.pdf",
+      "sha256": "67d99483395661ceb7bc8382e29e47c5e29d8fd4ebba7c542cbdb011822ec0e9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/raster/convex-miter-sixteen-thin-reverse-pdf.ppm",
+      "oracle_sha256": "55cc60ac6fd0d1c373ed684358dd6195ab5e2bbd9776f428c0fecc2245a6f0f3",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "raster/convex-miter-sixteen-wide-forward",
+      "kind": "vector",
+      "description": "Sixteen rational sides, exact parallel offsets and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-wide-forward.path",
+          "sha256": "03a766d7ecade55743c005c16f6f31ea06986919462017665456b69cfaa0eaab"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-wide-forward.pgm",
+          "sha256": "3180636c75b1da3fdc38d8cc689cb7de419d21883a8554c4b5d99ac36b4b7220"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-sixteen-wide-forward-pdf",
+      "kind": "pdf",
+      "description": "Sixteen-sided white miter stroke on black, exact rational pixel area",
+      "expected": "render",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "path": "corpus/generated/raster/convex-miter-sixteen-wide-forward-pdf.pdf",
+      "sha256": "578a700d6d4dd46537954098dbcaa54c720ba9c0d14ed254a0a03fd7b2ec5f4c",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/raster/convex-miter-sixteen-wide-forward-pdf.ppm",
+      "oracle_sha256": "6a0b5912ff0576aa09d293d3262118e2f590b047fdcdc3ab3dc9b5ead0961ce2",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "raster/convex-miter-sixteen-wide-reverse",
+      "kind": "vector",
+      "description": "Sixteen rational sides, exact parallel offsets and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-wide-reverse.path",
+          "sha256": "03e3c2a6d5879a02fbdcd334e2f2875295c16209cd00cf583f1d384ac6219c63"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-wide-reverse.pgm",
+          "sha256": "3180636c75b1da3fdc38d8cc689cb7de419d21883a8554c4b5d99ac36b4b7220"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-sixteen-wide-reverse-pdf",
+      "kind": "pdf",
+      "description": "Sixteen-sided white miter stroke on black, exact rational pixel area",
+      "expected": "render",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "path": "corpus/generated/raster/convex-miter-sixteen-wide-reverse-pdf.pdf",
+      "sha256": "79e0de0db893c829160ba821189b1938f91bc96963c20705085567d418707b06",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/raster/convex-miter-sixteen-wide-reverse-pdf.ppm",
+      "oracle_sha256": "6a0b5912ff0576aa09d293d3262118e2f590b047fdcdc3ab3dc9b5ead0961ce2",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "raster/convex-miter-sixteen-filled-forward",
+      "kind": "vector",
+      "description": "Sixteen rational sides, exact parallel offsets and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-filled-forward.path",
+          "sha256": "5aa9b43d058235958da7356341a5ed2232571c1052b5d4d2601ccf4ee9b5ce31"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-filled-forward.pgm",
+          "sha256": "37ef65dc73bbe5dee063edd68e9dcb1784297966920278dfd014a2cfedb78fce"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-sixteen-filled-forward-pdf",
+      "kind": "pdf",
+      "description": "Sixteen-sided white miter stroke on black, exact rational pixel area",
+      "expected": "render",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "path": "corpus/generated/raster/convex-miter-sixteen-filled-forward-pdf.pdf",
+      "sha256": "025244d9da66948bb7b8e3dc63958551cbfaf86471cff3d6b459bb7bff23ef76",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/raster/convex-miter-sixteen-filled-forward-pdf.ppm",
+      "oracle_sha256": "6198102e8547b5b380c5647a3d5aea747049dba74d13ef1d0be5a56fae346aa7",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "raster/convex-miter-sixteen-filled-reverse",
+      "kind": "vector",
+      "description": "Sixteen rational sides, exact parallel offsets and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-filled-reverse.path",
+          "sha256": "6f8cdb9811626467aac011b9f8d7bbab96a37dd9553281ed4c046fd1dcee86bd"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-filled-reverse.pgm",
+          "sha256": "37ef65dc73bbe5dee063edd68e9dcb1784297966920278dfd014a2cfedb78fce"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-sixteen-filled-reverse-pdf",
+      "kind": "pdf",
+      "description": "Sixteen-sided white miter stroke on black, exact rational pixel area",
+      "expected": "render",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "path": "corpus/generated/raster/convex-miter-sixteen-filled-reverse-pdf.pdf",
+      "sha256": "c269d9c025332cacf58b7fcf91a95655dd26125a717c03a1eba496a8917c5ccf",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/raster/convex-miter-sixteen-filled-reverse-pdf.ppm",
+      "oracle_sha256": "6198102e8547b5b380c5647a3d5aea747049dba74d13ef1d0be5a56fae346aa7",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "raster/convex-miter-sixteen-near-miter-forward",
+      "kind": "vector",
+      "description": "Sixteen rational sides, exact parallel offsets and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-near-miter-forward.path",
+          "sha256": "999dd0993074a70893163412eb33812284381d9c12234c4c99bc8d869e95ae02"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-near-miter-forward.pgm",
+          "sha256": "37267180dde398d7ab6348374cd8b8f0dbe37456487623764e04feb0fa13ff2c"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-sixteen-near-miter-forward-pdf",
+      "kind": "pdf",
+      "description": "Sixteen-sided white miter stroke on black, exact rational pixel area",
+      "expected": "render",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "path": "corpus/generated/raster/convex-miter-sixteen-near-miter-forward-pdf.pdf",
+      "sha256": "60b24cef36c1adea0cffb14ae66cfddb7ac7ba5bbb14e003af2aff48772c8dfb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/raster/convex-miter-sixteen-near-miter-forward-pdf.ppm",
+      "oracle_sha256": "40849844972c9e53687986da6293cb9825239dbaeb09c1e8ec10b1b282d3615c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "raster/convex-miter-sixteen-near-miter-reverse",
+      "kind": "vector",
+      "description": "Sixteen rational sides, exact parallel offsets and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-near-miter-reverse.path",
+          "sha256": "c4beb814531311438c58bbfbe52d2264bd091d389d5d849fa2b073d6983dc56b"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-near-miter-reverse.pgm",
+          "sha256": "37267180dde398d7ab6348374cd8b8f0dbe37456487623764e04feb0fa13ff2c"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-sixteen-near-miter-reverse-pdf",
+      "kind": "pdf",
+      "description": "Sixteen-sided white miter stroke on black, exact rational pixel area",
+      "expected": "render",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "path": "corpus/generated/raster/convex-miter-sixteen-near-miter-reverse-pdf.pdf",
+      "sha256": "5ae58c82b4624eadc4256953e01c8dcca51febf677811099352cee7af9538be8",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/raster/convex-miter-sixteen-near-miter-reverse-pdf.ppm",
+      "oracle_sha256": "40849844972c9e53687986da6293cb9825239dbaeb09c1e8ec10b1b282d3615c",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "raster/convex-miter-sixteen-reversed-inner-forward",
+      "kind": "vector",
+      "description": "Sixteen rational sides, exact parallel offsets and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-reversed-inner-forward.path",
+          "sha256": "9ae7b38571850297a31df1479486375538a4fb94f02ef70273eba1ddbab174d6"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-reversed-inner-forward.pgm",
+          "sha256": "405b6555292c15d02d5d916b7b43cc30f5b2b80cf60acf78ccbbf6613055e4c8"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-sixteen-reversed-inner-forward-pdf",
+      "kind": "pdf",
+      "description": "Sixteen-sided white miter stroke on black, exact rational pixel area",
+      "expected": "render",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "path": "corpus/generated/raster/convex-miter-sixteen-reversed-inner-forward-pdf.pdf",
+      "sha256": "ad688854fdb42e50490e3e6e32e74427d067478d9e74e1a3fa7225f9670058f4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/raster/convex-miter-sixteen-reversed-inner-forward-pdf.ppm",
+      "oracle_sha256": "c6d2c46e9b84893dc7645bf355a774f7a18cd535d94b5f8b1818e6d96495efe2",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "raster/convex-miter-sixteen-reversed-inner-reverse",
+      "kind": "vector",
+      "description": "Sixteen rational sides, exact parallel offsets and inward half-plane intersection",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-reversed-inner-reverse.path",
+          "sha256": "418a82722a56c2ce28f0e928f2e2e286d8d314d85981393b10dca3c2c6784a10"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-sixteen-reversed-inner-reverse.pgm",
+          "sha256": "405b6555292c15d02d5d916b7b43cc30f5b2b80cf60acf78ccbbf6613055e4c8"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-sixteen-reversed-inner-reverse-pdf",
+      "kind": "pdf",
+      "description": "Sixteen-sided white miter stroke on black, exact rational pixel area",
+      "expected": "render",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "path": "corpus/generated/raster/convex-miter-sixteen-reversed-inner-reverse-pdf.pdf",
+      "sha256": "9019123268b03da8adb0d58de4e2eec0bb258dc61dcc8c8ea5db5ae894ae8476",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/raster/convex-miter-sixteen-reversed-inner-reverse-pdf.ppm",
+      "oracle_sha256": "c6d2c46e9b84893dc7645bf355a774f7a18cd535d94b5f8b1818e6d96495efe2",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
+      "id": "raster/convex-miter-compound-opposed",
+      "kind": "vector",
+      "description": "Exact rational union of independently offset stroke regions",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-compound-opposed.path",
+          "sha256": "d9b95f259cc446187c02275285411b7825c02cda06240e60a48061a8e24391b9"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-compound-opposed.pgm",
+          "sha256": "ff9f23e7c6cf2578d40c42a35d6bfa35c7fea3da35c6832cb326d0b80527b70e"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-compound-reversed",
+      "kind": "vector",
+      "description": "Exact rational union of independently offset stroke regions",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-compound-reversed.path",
+          "sha256": "8dc2ad03004ee53e16c0a5e32fd99493c8cfb570ae49c3552cc0a6c16a21b8d4"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-compound-reversed.pgm",
+          "sha256": "ff9f23e7c6cf2578d40c42a35d6bfa35c7fea3da35c6832cb326d0b80527b70e"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-compound-filled",
+      "kind": "vector",
+      "description": "Exact rational union of independently offset stroke regions",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-compound-filled.path",
+          "sha256": "00f43f487e1426334cad371a049725c62b25bbbba92a0579d9eefe1a15147da4"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-compound-filled.pgm",
+          "sha256": "940f5af13bd92d247903efeeee9fbc99eb0879bad9d33c8c2533d4f9b5155c29"
+        }
+      },
+      "tolerance": 0
+    },
+    {
+      "id": "raster/convex-miter-compound-fallback",
+      "kind": "vector",
+      "description": "Exact rational union of independently offset stroke regions",
+      "requirements": [
+        "raster-strokes"
+      ],
+      "files": {
+        ".path": {
+          "path": "corpus/generated/raster/convex-miter-compound-fallback.path",
+          "sha256": "09a648025e048a1d75411d0ea1d7301d4fb7042956038ae8b30c7c241f5a916c"
+        },
+        ".pgm": {
+          "path": "corpus/generated/raster/convex-miter-compound-fallback.pgm",
+          "sha256": "28a9de0c1b03bd873b7c2c02cfb327f26cf9abdb915a8ad0ffa6debdd112f103"
+        }
+      },
+      "tolerance": 0
+    },
+    {
       "id": "raster/quad-union-128-nonzero",
       "kind": "vector",
       "description": "Rational union/parity of coincident slanted quadrilaterals",

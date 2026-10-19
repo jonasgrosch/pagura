@@ -314,6 +314,15 @@ pub(crate) fn coverage(
     limits: &Limits,
     scratch: &mut Scratch,
 ) -> Result<()> {
+    let boundary = admission::stroke_boundary(shapes, limits.path_segments);
+    let substituted;
+    let (shapes, boundary_anchor) = match boundary {
+        Some((boundary, anchor)) => {
+            substituted = [std::slice::from_ref(&boundary), &shapes[1..]].concat();
+            (substituted.as_slice(), Some(anchor))
+        }
+        None => (shapes, None),
+    };
     // Admitted glyphs take the curve sweep. Everything else runs the line
     // sweep or accumulation below, which never see a curve.
     if let Some(anchor) = quadratic::anchor(shapes) {
@@ -331,7 +340,9 @@ pub(crate) fn coverage(
         scratch.exact.row.charge(out.len())?;
         return prepared.0.write(out, width as usize, origin);
     }
-    if let Some(anchor) = admission::sweep_anchor(shapes, limits.path_segments) {
+    if let Some(anchor) =
+        boundary_anchor.or_else(|| admission::sweep_anchor(shapes, limits.path_segments))
+    {
         let result = scratch.exact.render(
             width,
             shapes,

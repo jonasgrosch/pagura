@@ -7,6 +7,9 @@
 use crate::flatten::{TOLERANCE, bounded, flatten};
 use crate::{LineCap, LineJoin, Path, PathBuilder, Point, Stroke, Transform};
 use pagura_core::{Error, Limits, Result};
+use std::sync::Arc;
+
+mod convex;
 
 /// A dash retains its tangent even when its length is zero (8.5.3.2).
 pub(crate) struct Run {
@@ -63,7 +66,6 @@ pub(crate) fn outline(
         transform
     };
     let width = if hairline { 1.0 } else { stroke.width };
-    let mut builder = PathBuilder::new();
     let radius = width * 0.5;
     let stretch = pen_transform.a.hypot(pen_transform.b) + pen_transform.c.hypot(pen_transform.d);
     let tolerance = if stretch == 0.0 {
@@ -71,21 +73,57 @@ pub(crate) fn outline(
     } else {
         TOLERANCE / stretch
     };
+    // Boundaries replace components only for undashed miter strokes whose pen
+    // maps circles to circles.
+    let boundaries_allowed = stroke.dash_array.is_empty()
+        && stroke.join == LineJoin::Miter
+        && ((transform.a == transform.d && transform.b == -transform.c)
+            || (transform.a == -transform.d && transform.b == transform.c));
+    let mut components = PathBuilder::new();
+    // Begins at the first proven boundary as a copy of the components so far;
+    // each later run adds its boundary or its components.
+    let mut boundaries: Option<PathBuilder> = None;
+    let mut cleanup_work = 0;
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
             continue;
         }
         let runs = dash(contour.points, contour.closed, stroke, limits)?;
         for run in runs {
-            let run = if hairline {
+            let mut run = if hairline {
                 run.transformed(transform)
             } else {
                 run
             };
-            draw(&mut builder, &run, radius, tolerance, stroke, limits)?;
+            let boundary = if boundaries_allowed
+                && run.closed
+                && run.points.len() >= convex::MIN_VERTICES
+            {
+                // Closed curves may explicitly repeat their starting vertex.
+                // Use the same point cleanup as the component stroker before
+                // proving strict convexity; duplicate endpoints are not a
+                // geometric turn.
+                crate::coverage::charge(&mut cleanup_work, run.points.len(), limits.raster_work)?;
+                run.points.dedup();
+                if run.points.first() == run.points.last() {
+                    run.points.pop();
+                }
+                convex::boundaries(&run.points, radius, tolerance, stroke.miter_limit, limits)?
+            } else {
+                None
+            };
+            if let Some(contours) = boundary {
+                let out = boundaries.get_or_insert_with(|| components.clone());
+                convex::append(out, contours, limits)?;
+            } else if let Some(out) = &mut boundaries {
+                draw(out, &run, radius, tolerance, stroke, limits)?;
+            }
+            draw(&mut components, &run, radius, tolerance, stroke, limits)?;
         }
     }
-    Ok((builder.finish(), pen_transform))
+    let mut outline = components.finish();
+    outline.boundary = boundaries.map(|mut boundaries| Arc::new(boundaries.finish()));
+    Ok((outline, pen_transform))
 }
 
 pub(crate) fn validate(stroke: &Stroke, limits: &Limits) -> Result<()> {

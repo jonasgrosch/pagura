@@ -2,6 +2,7 @@
 
 use crate::{FillRule, Point, Transform};
 use pagura_core::{Limits, Result};
+use std::sync::Arc;
 
 /// One path construction step (ISO 32000-2 clause 8.5.2 semantics).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -32,6 +33,9 @@ pub enum FillRegion {
 pub struct Path {
     segments: Vec<Segment>,
     fill_certificates: [Option<FillRegion>; 2],
+    // A stroke outline's proven two-boundary equivalent. Coverage uses it only
+    // where the strip sweep admits it in these components' frame.
+    pub(crate) boundary: Option<Arc<Path>>,
 }
 
 impl Path {
@@ -89,6 +93,7 @@ impl Path {
         Self {
             segments,
             fill_certificates: [None; 2],
+            boundary: None,
         }
     }
 }
@@ -176,6 +181,7 @@ impl PathBuilder {
         Path {
             segments: std::mem::take(&mut self.segments),
             fill_certificates: [None; 2],
+            boundary: None,
         }
     }
 }
