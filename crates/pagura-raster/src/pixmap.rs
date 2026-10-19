@@ -46,7 +46,16 @@ impl Pixmap {
         data.try_reserve_exact(bytes)
             .map_err(|_| Error::limit("surface allocation failed"))?;
         let pixel = premultiply(background);
-        data.extend(std::iter::repeat_n(pixel, pixels).flatten());
+        // A gray or transparent background is one repeated byte; any other
+        // is written a whole pixel at a time rather than byte by byte.
+        if pixel.iter().all(|&byte| byte == pixel[0]) {
+            data.resize(bytes, pixel[0]);
+        } else {
+            data.resize(bytes, 0);
+            for target in data.as_chunks_mut::<4>().0 {
+                *target = pixel;
+            }
+        }
         Ok(Self {
             width,
             height,
