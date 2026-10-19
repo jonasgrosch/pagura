@@ -39,13 +39,12 @@ impl Context {
             .map(|m| self.soft_mask(m, target.tile, model, frame.depth + 1))
             .transpose()?;
         let soft = soft.as_deref().map(Vec::as_slice);
-        let stencil = self.stencil_color(command, model)?;
-        let template = self.image_source(command, model, stencil)?;
+        let (template, stencil) = self.image_source(command, model)?;
         let image = &command.image;
         let origin = clip.origin();
         let mut mask_samples = MaskSamples { table: [None; 256] };
         self.charge(clip.coverage().len())?;
-        if clip.spans().next().is_none() {
+        if runs(&clip).next().is_none() {
             return Ok(());
         }
         let mut texels = Texels::new(image, model);
@@ -88,28 +87,19 @@ impl Context {
         drop(held);
         Ok(())
     }
+    /// The colour template of an image's samples and, for a stencil mask, the
+    /// fill colour it paints (8.9.6.2).
     fn image_source(
         &mut self,
         command: &ImageCommand,
         model: Model,
-        stencil: Option<Source>,
-    ) -> Result<Source> {
-        if let Some(stencil) = stencil {
-            return Ok(stencil);
-        }
-        let space = command
-            .image
-            .space
-            .as_ref()
-            .ok_or(Error::syntax("image missing colour space"))?;
-        Ok(self.sampled_source(space, model, &command.composite))
-    }
-    fn stencil_color(&mut self, command: &ImageCommand, model: Model) -> Result<Option<Source>> {
+    ) -> Result<(Source, Option<Source>)> {
         match (&command.image.space, &command.stencil) {
-            (Some(_), _) => Ok(None),
-            (None, crate::color::Color::Solid { space, components }) => self
-                .source(space, components, model, &command.composite, true)
-                .map(Some),
+            (Some(space), _) => Ok((self.sampled_source(space, model, &command.composite), None)),
+            (None, crate::color::Color::Solid { space, components }) => {
+                let stencil = self.source(space, components, model, &command.composite, true)?;
+                Ok((stencil, Some(stencil)))
+            }
             (None, crate::color::Color::Pattern { .. }) => Err(Error::unsupported(
                 crate::features::PATTERN_IMAGE_MASK,
                 "pattern-coloured image stencils are not implemented",
