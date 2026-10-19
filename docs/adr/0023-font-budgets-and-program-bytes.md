@@ -20,6 +20,9 @@ A review of `pagura-font` found:
 - **Copied static data.** `FontProgram::parse(impl Into<Arc<[u8]>>)` copied
   `include_bytes!` data to the heap: about 6 MB for the bundled standard 14
   fonts and 8 MB per CJK font, each byte resident twice.
+- **Positions in derived buffers.** Type 1 errors carried offsets into the
+  PFB-unframed, hex-decoded or decrypted copies as if they were offsets
+  into the program.
 - **The raster dependency.** The crate depends on `pagura-raster` for
   `Path`, `PathBuilder`, `Point`, `Segment` and `Transform`. The review asked
   whether an `OutlineSink` trait should replace it.
@@ -64,6 +67,11 @@ A review of `pagura-font` found:
    caches outlines as `Arc<Path>` and would build the same path through the
    sink; quadratics already convert to cubics exactly; and raster depends
    only on `pagura-core`, so the dependency adds build order, not coupling.
+5. **Type 1 positions point into the input.** The parser keeps a map from
+   decoded offsets back to program offsets: PFB segment starts, the eexec
+   section, the cipher's discarded prefix, and, for hexadecimal eexec data,
+   every digit pair that does not follow its predecessor. Errors and
+   repairs are placed through it.
 
 ## Consequences
 
