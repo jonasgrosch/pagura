@@ -285,4 +285,4 @@ fn check_digest(hash: HashAlgorithm, digest: &[u8]) -> Result<()> {
 }
 
 #[cfg(test)]
-pub(crate) mod tests;
+mod tests;

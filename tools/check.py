@@ -9,6 +9,8 @@ CARGO = ["cargo"]
 OFFLINE = ["--locked", "--offline"]
 COMMANDS = [
     ([sys.executable, "tools/policy.py"], {}),
+    # Cached CAVP, ACVP and Wycheproof suites for pagura-crypto; a no-op without the cache.
+    ([sys.executable, "tools/signature_vectors.py"], {}),
     ([sys.executable, "tools/fixtures.py", "--check"], {}),
     ([sys.executable, "tools/bundled_data.py", "verify"], {}),
     (CARGO + ["fmt", "--all", "--", "--check"], {}),

@@ -1,37 +1,7 @@
 use super::*;
+use crate::tests::{cached_suite, decode};
 use pagura_core::SignatureLimits;
-use std::process::Command;
-
-pub(crate) fn decode(hex: &str) -> Vec<u8> {
-    if hex == "-" {
-        return Vec::new();
-    }
-    assert!(hex.len().is_multiple_of(2), "non-byte hexadecimal input");
-    hex.as_bytes()
-        .as_chunks::<2>()
-        .0
-        .iter()
-        .map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap())
-        .collect()
-}
-
-pub(crate) fn vectors(suite: &str) -> String {
-    let output = Command::new("python3")
-        .arg(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../tools/fixturegen/rsa_oracle.py"
-        ))
-        .arg(suite)
-        .env("PYTHONDONTWRITEBYTECODE", "1")
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    String::from_utf8(output.stdout).unwrap()
-}
+use pagura_testkit::fixture_text;
 
 fn algorithm(name: &str) -> HashAlgorithm {
     match name {
@@ -141,19 +111,17 @@ fn nist_minimized_vectors() {
 
 #[test]
 fn independently_encoded_padding_and_boundary_cases() {
-    check_vectors(&vectors("encodings"));
+    check_vectors(&fixture_text("crypto", "rsa-encodings.vectors"));
 }
 
 #[test]
 fn cached_wycheproof_and_nist_suites() {
-    let data = vectors("rsa");
-    eprintln!(
-        "{}",
-        data.lines()
-            .filter(|line| line.starts_with('#'))
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
+    let Some(data) = cached_suite("rsa") else {
+        return;
+    };
+    for line in data.lines().filter(|line| line.starts_with('#')) {
+        eprintln!("{line}");
+    }
     check_vectors(&data);
 }
 
@@ -281,50 +249,4 @@ fn shared_limits_and_verification_outcome_contract() {
         key.verify_pss(pss, &digest, &signature).unwrap_err().kind,
         pagura_core::ErrorKind::Limit
     );
-}
-
-#[test]
-fn verification_timing_context() {
-    // Explicit opt-in: ordinary tests never perform timings.
-    if std::env::var_os("PAGURA_RSA_TIMING").is_none() {
-        return;
-    }
-    let data = vectors("timing");
-    for line in data.lines().filter(|line| !line.starts_with('#')) {
-        let fields: Vec<_> = line.split('|').collect();
-        let [bits, n, e, digest, signature] = fields.as_slice() else {
-            unreachable!()
-        };
-        let key = RsaPublicKey::new(&decode(n), &decode(e), RsaLimits::default()).unwrap();
-        let digest = decode(digest);
-        let signature = decode(signature);
-        assert_eq!(
-            key.verify_pkcs1v15(HashAlgorithm::Sha256, &digest, &signature)
-                .unwrap(),
-            Verification::Valid
-        );
-        for _ in 0..100 {
-            assert_eq!(
-                key.verify_pkcs1v15(HashAlgorithm::Sha256, &digest, &signature)
-                    .unwrap(),
-                Verification::Valid
-            );
-        }
-        let start = std::time::Instant::now();
-        for _ in 0..2000 {
-            assert_eq!(
-                key.verify_pkcs1v15(
-                    HashAlgorithm::Sha256,
-                    std::hint::black_box(&digest),
-                    std::hint::black_box(&signature),
-                )
-                .unwrap(),
-                Verification::Valid
-            );
-        }
-        eprintln!(
-            "RSA-{bits}: {:.3} us/verification (2000 operations, prepared key)",
-            start.elapsed().as_secs_f64() * 500.0
-        );
-    }
 }

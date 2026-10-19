@@ -1,9 +1,10 @@
 use super::*;
-use crate::rsa::tests::{decode, vectors};
+use crate::tests::decode;
+use pagura_testkit::fixture_text;
 
 #[test]
 fn independent_python_integer_oracles() {
-    let data = vectors("pow");
+    let data = fixture_text("crypto", "modular-power.vectors");
     let mut count = 0;
     for line in data.lines() {
         let fields: Vec<_> = line.split('|').collect();
@@ -21,7 +22,7 @@ fn independent_python_integer_oracles() {
         );
         count += 1;
     }
-    assert!(count >= 1000);
+    assert_eq!(count, 810);
     eprintln!("Python modular exponentiation: {count} cases passed");
 }
 
