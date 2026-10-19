@@ -521,25 +521,33 @@ impl Accumulator {
     )]
     fn finish(&self) -> Vec<u8> {
         let level = |value: f32| (value.abs().min(1.0) * 255.0 + 0.5) as u8;
-        let mut data = vec![0_u8; self.width * self.height];
-        for (row, output) in self
-            .area
-            .chunks_exact(self.width + 1)
-            .zip(data.chunks_exact_mut(self.width))
-        {
-            // The prefix sums stay serial, in the same order; only their
-            // conversions to levels are independent, four at a time.
-            let mut value = 0.0_f32;
-            let (blocks, tail) = output.as_chunks_mut::<4>();
-            let (deltas, rest) = row.split_at(blocks.len() * 4);
-            for (out, delta) in blocks.iter_mut().zip(deltas.as_chunks::<4>().0) {
-                let a = value + delta[0];
-                let b = a + delta[1];
-                let c = b + delta[2];
-                value = c + delta[3];
-                *out = [a, b, c, value].map(level);
+        let (width, stride) = (self.width, self.width + 1);
+        let mut data = vec![0_u8; width * self.height];
+        // Each row's prefix sums stay serial, in the same order. Four rows
+        // run side by side so that their additions overlap.
+        let mut cells = self.area.chunks_exact(4 * stride);
+        let mut outputs = data.chunks_exact_mut(4 * width);
+        for (cells, output) in cells.by_ref().zip(outputs.by_ref()) {
+            let [d0, d1, d2, d3] = [0, 1, 2, 3].map(|i| &cells[i * stride..i * stride + width]);
+            let (o0, output) = output.split_at_mut(width);
+            let (o1, output) = output.split_at_mut(width);
+            let (o2, o3) = output.split_at_mut(width);
+            let mut value = [0.0_f32; 4];
+            for (column, out) in o0.iter_mut().enumerate() {
+                value[0] += d0[column];
+                value[1] += d1[column];
+                value[2] += d2[column];
+                value[3] += d3[column];
+                *out = level(value[0]);
+                o1[column] = level(value[1]);
+                o2[column] = level(value[2]);
+                o3[column] = level(value[3]);
             }
-            for (out, &delta) in tail.iter_mut().zip(rest) {
+        }
+        let rows = self.area[self.area.len() - cells.remainder().len()..].chunks_exact(stride);
+        for (row, output) in rows.zip(outputs.into_remainder().chunks_exact_mut(width)) {
+            let mut value = 0.0_f32;
+            for (out, &delta) in output.iter_mut().zip(row) {
                 value += delta;
                 *out = level(value);
             }
@@ -582,10 +590,11 @@ mod tests {
     #[test]
     fn block_and_tail_levels_match_independent_integer_prefix_areas() {
         let deltas = [513_i16, -1025, 511, 1024, -255, 1537, -2048, 1791];
+        // Six rows: four side by side and two alone.
         for width in 1..=33 {
-            let mut raster = accumulator(width, 3);
+            let mut raster = accumulator(width, 6);
             let mut expected = Vec::new();
-            for row in 0..3 {
+            for row in 0..6 {
                 let mut winding = 0_i32;
                 for column in 0..width {
                     let delta = deltas[(row + column) % deltas.len()];
