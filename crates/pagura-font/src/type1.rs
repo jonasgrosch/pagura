@@ -1,256 +1,216 @@
 //! Static Type 1 font dictionaries, PFA/PFB framing and cipher decoding.
 //!
-//! Follows Adobe Type 1 Font Format, referenced by ISO 32000-2, 9.9.
-//! This is a font reader, without a PostScript execution environment.
-use crate::GlyphId;
+//! Follows Adobe Type 1 Font Format, which 9.9 references. This is a font
+//! reader, without a PostScript execution environment.
 use crate::budget::Work;
-use crate::memory::{encoding, names, nested};
-use crate::read::bad;
+use crate::cff::strings;
+use crate::memory::{encoding, names, vector};
+use crate::read::{self, glyph_id, syntax, unsupported};
+use crate::{GlyphId, features};
+use pagura_core::bytes::Cursor;
+use pagura_core::convert::u32_to_usize;
 use pagura_core::{Name, Position, Result};
 use pagura_raster::{Path, Transform};
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 mod aliases;
 mod charstring;
 mod charstrings;
-use charstrings::CharStrings;
+mod cipher;
 mod tokens;
+
+use aliases::{Aliases, Assignment};
+use charstrings::CharStrings;
+use cipher::{CHARSTRING_KEY, EEXEC_DISCARD, EEXEC_KEY, decrypt};
 use tokens::Tokens;
+
+/// PFB framing (Adobe TN 5040): each segment starts with a marker byte and
+/// a kind; ASCII and binary segments carry a 32-bit little-endian length.
+const PFB_MARKER: u8 = 128;
+const PFB_ASCII: u8 = 1;
+const PFB_BINARY: u8 = 2;
+const PFB_END: u8 = 3;
+/// The only FontType of a Type 1 font program (Type 1 5.1).
+const FONT_TYPE: usize = 1;
+/// The default charstring lenIV (Type 1 5.1, Private dictionary).
+const DEFAULT_LEN_IV: usize = 4;
+
+/// A decrypted charstring and the plaintext offset of its first byte.
+#[derive(Debug)]
+struct Charstring {
+    bytes: Vec<u8>,
+    at: usize,
+}
+
+impl Charstring {
+    fn cursor(&self) -> Cursor<'_> {
+        read::cursor(&self.bytes).with_base(self.at)
+    }
+
+    const fn end(&self) -> usize {
+        self.at.saturating_add(self.bytes.len())
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct Type1 {
-    glyphs: Vec<Vec<u8>>,
-    subrs: Vec<Vec<u8>>,
+    glyphs: Vec<Charstring>,
+    glyph_count: u32,
+    subrs: Vec<Charstring>,
     names: BTreeMap<Name, GlyphId>,
     glyph_names: Vec<Option<Name>>,
     encoding: Box<[Option<Name>; 256]>,
     matrix: Transform,
 }
 
-pub(super) fn decrypt(data: &[u8], seed: u16, discard: usize, at: usize) -> Result<Vec<u8>> {
-    if data.len() < discard {
-        return Err(bad(at, "truncated Type 1 cipher prefix"));
-    }
-    let mut state = seed;
-    let mut result = Vec::with_capacity(data.len() - discard);
-    for (i, &byte) in data.iter().enumerate() {
-        let plain = byte ^ state.to_be_bytes()[0];
-        state = u16::from(byte)
-            .wrapping_add(state)
-            .wrapping_mul(52845)
-            .wrapping_add(22719);
-        if i >= discard {
-            result.push(plain);
-        }
-    }
-    Ok(result)
-}
-
 impl Type1 {
     pub(crate) fn parse(data: &[u8], work: &mut Work<'_>) -> Result<Self> {
         let (flat, binary) = flatten(data, work)?;
-        let Clear {
-            matrix,
-            encoding,
-            start,
-            encrypted,
-            mut aliases,
-        } = cleartext(&flat, work)?;
-        let cipher = flat
-            .get(start..)
-            .ok_or_else(|| bad(start, "missing eexec data"))?;
-        let cipher = if binary {
-            cipher.to_vec()
-        } else {
-            eexec_bytes(cipher, work)?
-        };
-        let plain = if encrypted {
-            decrypt(&cipher, 55665, 4, start)?
-        } else {
-            cipher
-        };
-        let mut r = Tokens::new(&plain, work);
-        let mut len_iv = Some(4);
-        let mut subrs = Vec::new();
-        let mut have_subrs = false;
-        let mut chars = CharStrings::default();
-        let mut closed = false;
-        let mut have_chars = false;
-        while let Some(token) = r.next()? {
-            match token {
-                b"hires" | b"FontDirectory" => {
-                    return Err(unsupported(
-                        r.pos,
-                        "hybrid or synthetic Type 1 font is not supported",
-                    ));
-                }
-                b"/lenIV" => {
-                    let token = r.required()?;
-                    if token == b"-1" {
-                        len_iv = None;
-                    } else {
-                        len_iv = Some(tokens::integer(token, r.pos)?);
-                    }
-                }
-                b"/Subrs" => {
-                    if have_subrs {
-                        return Err(bad(r.pos, "duplicate Type 1 Subrs array"));
-                    }
-                    have_subrs = true;
-                    subrs = subroutines(&mut r, len_iv, &aliases)?;
-                }
-                b"/CharStrings" => {
-                    if have_chars {
-                        return Err(bad(r.pos, "invalid Type 1 dictionary organization"));
-                    }
-                    have_chars = true;
-                    chars.read(&mut r, len_iv, &aliases)?;
-                }
-                b"closefile" => {
-                    closed = true;
-                    break;
-                }
-                _ => aliases.definition(token, &mut r)?,
-            }
-        }
-        if !closed {
-            return Err(bad(r.pos, "missing Type 1 closefile"));
-        }
-        chars.normalize(start)?;
-        let CharStrings { glyphs, names } = chars;
+        let mut clear = cleartext(&flat, work)?;
+        let plain = eexec(&flat, &clear, binary, work)?;
+        let aliases = std::mem::take(&mut clear.aliases);
+        let Private { subrs, charstrings } = private(&plain, aliases, work)?;
         let glyph_names = crate::names::indexed(
-            glyphs.len(),
-            names.iter().map(|(name, glyph)| Ok((*glyph, name))),
+            charstrings.glyphs.len(),
+            charstrings
+                .names
+                .iter()
+                .map(|(name, &glyph)| Ok((glyph, name))),
             work,
-            Position::Buffer(start),
+            Position::Buffer(clear.start),
         )?;
         Ok(Self {
-            glyphs,
+            glyph_count: glyph_id(charstrings.glyphs.len(), Position::Unknown)?.0,
+            glyphs: charstrings.glyphs,
             subrs,
-            names,
+            names: charstrings.names,
             glyph_names,
-            encoding,
-            matrix,
+            encoding: clear.encoding,
+            matrix: clear.matrix,
         })
     }
-    pub(crate) fn glyph_count(&self) -> u32 {
-        u32::try_from(self.glyphs.len()).unwrap_or(0)
+
+    pub(crate) const fn glyph_count(&self) -> u32 {
+        self.glyph_count
     }
-    pub(crate) fn matrix(&self) -> Transform {
+
+    pub(crate) const fn matrix(&self) -> Transform {
         self.matrix
     }
+
     pub(crate) fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
-        self.glyph_names
-            .get(usize::try_from(glyph.0).ok()?)?
-            .as_ref()
+        crate::names::get(&self.glyph_names, glyph)
     }
+
     pub(crate) fn name(&self, name: &[u8]) -> Option<GlyphId> {
         self.names.get(name).copied()
     }
+
     pub(crate) fn encoding(&self) -> &[Option<Name>; 256] {
         &self.encoding
     }
+
     pub(crate) fn outline(&self, glyph: GlyphId, work: &mut Work<'_>) -> Result<Path> {
-        Ok(charstring::glyph(self, glyph, work)?.0)
-    }
-    pub(crate) fn advance(&self, glyph: GlyphId, work: &mut Work<'_>) -> Option<f64> {
-        charstring::glyph(self, glyph, work).ok().map(|g| g.1)
+        charstring::outline(self, glyph, work)
     }
 
-    /// Type 1 keeps decrypted charstrings and subroutines, not decrypted
-    /// dictionaries.
+    /// The charstring width, if the glyph interprets.
+    pub(crate) fn advance(&self, glyph: GlyphId, work: &mut Work<'_>) -> Option<f64> {
+        charstring::advance(self, glyph, work).ok()
+    }
+
     pub(crate) fn heap_bytes(&self) -> usize {
-        nested(&self.glyphs)
-            .saturating_add(nested(&self.subrs))
+        charstrings(&self.glyphs)
+            .saturating_add(charstrings(&self.subrs))
             .saturating_add(names(&self.names))
             .saturating_add(crate::names::heap_bytes(&self.glyph_names))
             .saturating_add(encoding(&self.encoding))
     }
 }
 
-fn char_bytes(bytes: &[u8], len_iv: Option<usize>, at: usize) -> Result<Vec<u8>> {
-    len_iv.map_or_else(|| Ok(bytes.to_vec()), |n| decrypt(bytes, 4330, n, at))
+/// Type 1 keeps decrypted charstrings and subroutines, not decrypted
+/// dictionaries.
+fn charstrings(values: &Vec<Charstring>) -> usize {
+    values.iter().fold(vector(values), |sum, c| {
+        sum.saturating_add(vector(&c.bytes))
+    })
 }
-fn unsupported(at: usize, message: &'static str) -> pagura_core::Error {
-    pagura_core::Error::unsupported(crate::features::TYPE1_POSTSCRIPT, message)
-        .at(Position::Buffer(at))
+
+/// A charstring's bytes, decrypted unless lenIV is -1; `start` is their
+/// plaintext offset.
+fn charstring_bytes(bytes: &[u8], start: usize, len_iv: Option<usize>) -> Result<Charstring> {
+    let Some(discard) = len_iv else {
+        return Ok(Charstring {
+            bytes: bytes.to_vec(),
+            at: start,
+        });
+    };
+    Ok(Charstring {
+        bytes: decrypt(bytes, CHARSTRING_KEY, discard, Position::Buffer(start))?,
+        at: start.saturating_add(discard),
+    })
 }
-fn flatten(data: &[u8], work: &mut Work<'_>) -> Result<(Vec<u8>, bool)> {
-    if data.first() != Some(&128) {
-        return Ok((data.to_vec(), false));
+
+/// The program with PFB framing removed, and whether a segment was binary.
+fn flatten<'a>(data: &'a [u8], work: &mut Work<'_>) -> Result<(Cow<'a, [u8]>, bool)> {
+    if data.first() != Some(&PFB_MARKER) {
+        return Ok((Cow::Borrowed(data), false));
     }
-    let mut pos = 0;
+    let mut r = read::cursor(data);
     let mut result = Vec::new();
     let mut binary = false;
     loop {
-        work.work(1, Position::Buffer(pos))?;
-        if data.get(pos) != Some(&128) {
-            return Err(bad(pos, "invalid PFB segment marker"));
+        let at = r.position();
+        work.work(1, at)?;
+        if r.u8().ok() != Some(PFB_MARKER) {
+            return Err(syntax(at, "invalid PFB segment marker"));
         }
-        let kind = *data
-            .get(pos + 1)
-            .ok_or_else(|| bad(pos, "truncated PFB header"))?;
-        pos += 2;
-        if kind == 3 {
-            if pos != data.len() {
-                return Err(bad(pos, "trailing PFB data"));
+        let kind = r.u8().map_err(|_| syntax(at, "truncated PFB header"))?;
+        if kind == PFB_END {
+            if !r.at_end() {
+                return Err(r.error("trailing PFB data"));
             }
             break;
         }
-        if !matches!(kind, 1 | 2) {
-            return Err(bad(pos, "invalid PFB segment kind"));
+        if !matches!(kind, PFB_ASCII | PFB_BINARY) {
+            return Err(r.error("invalid PFB segment kind"));
         }
-        binary |= kind == 2;
-        let bytes = data
-            .get(pos..pos.saturating_add(4))
-            .ok_or_else(|| bad(pos, "truncated PFB size"))?;
-        let size = usize::try_from(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
-            .map_err(|_| crate::read::limit(Position::Buffer(pos), "PFB size overflow"))?;
-        pos += 4;
-        let end = pos
-            .checked_add(size)
-            .ok_or_else(|| crate::read::limit(Position::Buffer(pos), "PFB size overflow"))?;
-        work.decoded(result.len().saturating_add(size), Position::Buffer(pos))?;
-        result.extend_from_slice(
-            data.get(pos..end)
-                .ok_or_else(|| bad(pos, "truncated PFB segment"))?,
-        );
-        pos = end;
+        binary |= kind == PFB_BINARY;
+        let size = u32_to_usize(u32::from_le_bytes(r.take_array()?));
+        work.decoded(result.len().saturating_add(size), r.position())?;
+        result.extend_from_slice(r.take(size)?);
     }
-    Ok((result, binary))
+    Ok((Cow::Owned(result), binary))
 }
-fn eexec_bytes(data: &[u8], work: &Work<'_>) -> Result<Vec<u8>> {
-    if !data
-        .iter()
-        .filter(|b| !b.is_ascii_whitespace())
-        .take(4)
-        .all(u8::is_ascii_hexdigit)
-    {
-        return Ok(data.to_vec());
+
+/// The eexec section's plaintext: hexadecimal data decoded unless PFB
+/// framing marked it binary, then decrypted if it was encrypted.
+fn eexec<'a>(
+    flat: &'a [u8],
+    clear: &Clear,
+    binary: bool,
+    work: &mut Work<'_>,
+) -> Result<Cow<'a, [u8]>> {
+    let start = clear.start;
+    let cipher = flat
+        .get(start..)
+        .ok_or_else(|| syntax(Position::Buffer(start), "missing eexec data"))?;
+    let decoded = if binary {
+        None
+    } else {
+        cipher::hex(cipher, start, work)?
+    };
+    let cipher = decoded.map_or(Cow::Borrowed(cipher), Cow::Owned);
+    if !clear.encrypted {
+        return Ok(cipher);
     }
-    let mut result = Vec::new();
-    let mut high = None;
-    for (i, &byte) in data.iter().enumerate() {
-        if byte.is_ascii_whitespace() {
-            continue;
-        }
-        let digit = match byte {
-            b'0'..=b'9' => byte - b'0',
-            b'A'..=b'F' => byte - b'A' + 10,
-            b'a'..=b'f' => byte - b'a' + 10,
-            _ => break,
-        };
-        if let Some(h) = high.take() {
-            work.decoded(result.len() + 1, Position::Buffer(i))?;
-            result.push(h * 16 + digit);
-        } else {
-            high = Some(digit);
-        }
-    }
-    if high.is_some() {
-        return Err(bad(data.len(), "odd eexec hexadecimal data"));
-    }
-    Ok(result)
+    Ok(Cow::Owned(decrypt(
+        &cipher,
+        EEXEC_KEY,
+        EEXEC_DISCARD,
+        Position::Buffer(start),
+    )?))
 }
 
 struct Clear {
@@ -258,42 +218,41 @@ struct Clear {
     encoding: Box<[Option<Name>; 256]>,
     start: usize,
     encrypted: bool,
-    aliases: aliases::Aliases,
+    aliases: Aliases,
 }
+
 fn cleartext(flat: &[u8], work: &mut Work<'_>) -> Result<Clear> {
     if !flat.starts_with(b"%!") {
-        return Err(bad(0, "missing Type 1 header"));
+        return Err(syntax(Position::Buffer(0), "missing Type 1 header"));
     }
     let mut clear = Tokens::new(flat, work);
-    let mut aliases = aliases::Aliases::default();
+    let mut aliases = Aliases::default();
     let mut matrix = None;
     let mut font_type = false;
     let mut encrypted = false;
-    let mut encoding = Box::new(std::array::from_fn(|_| None));
-    let mut encoded = false;
+    let mut encoding = None;
     let mut custom_encoding = false;
-    while let Some(token) = clear.next()? {
+    let mut start = None;
+    while let Some(token) = clear.token()? {
         match token {
             b"/FontMatrix" => matrix = Some(clear.matrix()?),
             b"/FontType" => {
-                if clear.integer()? != 1 {
-                    return Err(bad(clear.pos, "invalid Type 1 FontType"));
+                if clear.integer()? != FONT_TYPE {
+                    return Err(syntax(clear.position(), "invalid Type 1 FontType"));
                 }
                 font_type = true;
             }
             b"/Encoding" => {
                 let next = clear.required()?;
                 if next == b"StandardEncoding" {
-                    for code in 0..=255_u8 {
-                        encoding[usize::from(code)] = crate::cff::strings::standard(code);
-                    }
-                    encoded = true;
+                    encoding = Some(strings::standard_encoding());
                 } else if next == b"256" && clear.required()? == b"array" {
                     custom_encoding = true;
-                    encoded = true;
+                    // Entries are added to the current encoding, if any.
+                    encoding.get_or_insert_with(|| Box::new(std::array::from_fn(|_| None)));
                 } else {
-                    return Err(unsupported(
-                        clear.pos,
+                    return Err(computed(
+                        &clear,
                         "Type 1 encoding expression is not implemented",
                     ));
                 }
@@ -305,21 +264,23 @@ fn cleartext(flat: &[u8], work: &mut Work<'_>) -> Result<Clear> {
                 let name = clear.required()?;
                 let name = name
                     .strip_prefix(b"/")
-                    .ok_or_else(|| bad(clear.pos, "invalid Type 1 encoding name"))?;
+                    .ok_or_else(|| syntax(clear.position(), "invalid Type 1 encoding name"))?;
                 let entry = encoding
-                    .get_mut(code)
-                    .ok_or_else(|| bad(clear.pos, "Type 1 encoding code exceeds 255"))?;
-                *entry = Some(Name::new(name));
+                    .as_mut()
+                    .and_then(|encoding| encoding.get_mut(code))
+                    .ok_or_else(|| syntax(clear.position(), "Type 1 encoding code exceeds 255"))?;
+                *entry = Some(Name::try_new(name).map_err(|e| e.at(clear.position()))?);
                 if clear.required()? != b"put" {
-                    return Err(unsupported(
-                        clear.pos,
+                    return Err(computed(
+                        &clear,
                         "Type 1 encoding expression is not implemented",
                     ));
                 }
             }
             b"def" | b"readonly" if custom_encoding => custom_encoding = false,
             b"/Private" => {
-                clear.pos -= token.len();
+                // An unencrypted font continues with its Private dictionary.
+                start = Some(clear.token_start());
                 break;
             }
             b"eexec" => {
@@ -330,19 +291,21 @@ fn cleartext(flat: &[u8], work: &mut Work<'_>) -> Result<Clear> {
         }
     }
     if !font_type {
-        return Err(bad(clear.pos, "Type 1 font has no FontType"));
+        return Err(syntax(clear.position(), "Type 1 font has no FontType"));
     }
-    if !encoded {
-        return Err(bad(clear.pos, "Type 1 font has no encoding"));
-    }
-    let mut start = clear.pos;
-    if flat.get(start) == Some(&b'\r') && flat.get(start + 1) == Some(&b'\n') {
+    let Some(encoding) = encoding else {
+        return Err(syntax(clear.position(), "Type 1 font has no encoding"));
+    };
+    let matrix = matrix.ok_or_else(|| syntax(clear.position(), "missing Type 1 FontMatrix"))?;
+    let mut start = start.unwrap_or(clear.offset());
+    // One end-of-line ends the eexec operator (Type 1 7.2).
+    if flat.get(start..start.saturating_add(2)) == Some(b"\r\n") {
         start += 2;
     } else if flat.get(start).is_some_and(u8::is_ascii_whitespace) {
         start += 1;
     }
     Ok(Clear {
-        matrix: matrix.ok_or_else(|| bad(0, "missing Type 1 FontMatrix"))?,
+        matrix,
         encoding,
         start,
         encrypted,
@@ -350,38 +313,103 @@ fn cleartext(flat: &[u8], work: &mut Work<'_>) -> Result<Clear> {
     })
 }
 
+fn computed(r: &Tokens<'_, '_, '_>, message: &'static str) -> pagura_core::Error {
+    unsupported(features::TYPE1_POSTSCRIPT, r.position(), message)
+}
+
+/// The Private dictionary's subroutines and the CharStrings dictionary.
+struct Private {
+    subrs: Vec<Charstring>,
+    charstrings: CharStrings,
+}
+
+fn private(plain: &[u8], mut aliases: Aliases, work: &mut Work<'_>) -> Result<Private> {
+    let mut r = Tokens::new(plain, work);
+    let mut len_iv = Some(DEFAULT_LEN_IV);
+    let mut subrs = None;
+    let mut charstrings = None;
+    let mut closed = false;
+    while let Some(token) = r.token()? {
+        match token {
+            b"hires" | b"FontDirectory" => {
+                return Err(computed(
+                    &r,
+                    "hybrid or synthetic Type 1 font is not supported",
+                ));
+            }
+            b"/lenIV" => {
+                let token = r.required()?;
+                len_iv = if token == b"-1" {
+                    None
+                } else {
+                    Some(tokens::integer(token, r.position())?)
+                };
+            }
+            b"/Subrs" => {
+                if subrs.is_some() {
+                    return Err(syntax(r.position(), "duplicate Type 1 Subrs array"));
+                }
+                subrs = Some(subroutines(&mut r, len_iv, &aliases)?);
+            }
+            b"/CharStrings" => {
+                if charstrings.is_some() {
+                    return Err(syntax(
+                        r.position(),
+                        "invalid Type 1 dictionary organization",
+                    ));
+                }
+                let mut read = CharStrings::default();
+                read.read(&mut r, len_iv, &aliases)?;
+                charstrings = Some(read);
+            }
+            b"closefile" => {
+                closed = true;
+                break;
+            }
+            _ => aliases.definition(token, &mut r)?,
+        }
+    }
+    if !closed {
+        return Err(syntax(r.position(), "missing Type 1 closefile"));
+    }
+    let mut charstrings = charstrings.unwrap_or_default();
+    // The plaintext start: CharStrings has no glyph to point at.
+    charstrings.normalize(Position::Buffer(0))?;
+    Ok(Private {
+        subrs: subrs.unwrap_or_default(),
+        charstrings,
+    })
+}
+
 fn subroutines(
     r: &mut Tokens<'_, '_, '_>,
     len_iv: Option<usize>,
-    aliases: &aliases::Aliases,
-) -> Result<Vec<Vec<u8>>> {
+    aliases: &Aliases,
+) -> Result<Vec<Charstring>> {
     let count = r.integer()?;
-    let at = Position::Buffer(r.pos);
+    let at = r.position();
     r.work().entries(count, at)?;
-    let mut subrs = vec![Vec::new(); count];
-    let mut assigned = vec![false; count];
-    let mut assignments = 0;
+    let mut slots: Vec<Option<Charstring>> = std::iter::repeat_with(|| None).take(count).collect();
     if r.required()? != b"array" {
-        return Err(bad(r.pos, "invalid Type 1 Subrs array"));
+        return Err(syntax(r.position(), "invalid Type 1 Subrs array"));
     }
     while r.peek()? == Some(b"dup".as_slice()) {
         r.required()?;
         let index = r.integer()?;
-        let program = r.binary(aliases)?;
-        let program = char_bytes(program, len_iv, r.pos)?;
-        let slot = subrs
+        let (program, start) = r.binary(aliases)?;
+        let program = charstring_bytes(program, start, len_iv)?;
+        let slot = slots
             .get_mut(index)
-            .ok_or_else(|| bad(r.pos, "Type 1 Subrs index out of range"))?;
-        if assigned[index] {
-            return Err(bad(r.pos, "duplicate Type 1 subroutine"));
+            .ok_or_else(|| syntax(r.position(), "Type 1 Subrs index out of range"))?;
+        if slot.is_some() {
+            return Err(syntax(r.position(), "duplicate Type 1 subroutine"));
         }
-        assigned[index] = true;
-        assignments += 1;
-        *slot = program;
-        aliases.finish(r, aliases::Assignment::Put)?;
+        *slot = Some(program);
+        aliases.finish(r, Assignment::Put)?;
     }
-    if assignments != count {
-        return Err(bad(r.pos, "incomplete Type 1 Subrs array"));
+    let mut subrs = Vec::with_capacity(count);
+    for slot in slots {
+        subrs.push(slot.ok_or_else(|| syntax(r.position(), "incomplete Type 1 Subrs array"))?);
     }
     Ok(subrs)
 }

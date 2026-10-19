@@ -38,12 +38,6 @@ pub(crate) fn here(cursor: &Cursor<'_>) -> usize {
     }
 }
 
-/// A `Syntax` error at buffer offset `at`, for parsers whose errors are
-/// not yet positioned through their cursors.
-pub(crate) fn bad(at: usize, message: &'static str) -> Error {
-    syntax(Position::Buffer(at), message)
-}
-
 pub(crate) const fn syntax(at: Position, message: &'static str) -> Error {
     Error::syntax(message).at(at)
 }
