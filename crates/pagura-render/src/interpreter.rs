@@ -191,6 +191,8 @@ struct Compiler<'a> {
     position: Position,
     forms: Vec<ObjectId>,
     extraction: Option<text::extract::Extraction>,
+    /// Reused decoded glyphs of one shown string.
+    glyphs: Vec<pagura_text::Glyph>,
 }
 
 impl<'a> Compiler<'a> {
@@ -222,6 +224,7 @@ impl<'a> Compiler<'a> {
             position: Position::Unknown,
             forms: Vec::new(),
             extraction: None,
+            glyphs: Vec::new(),
         })
     }
 

@@ -273,11 +273,27 @@ impl PdfFont {
     /// Returns syntax errors for codes outside the font's code space that
     /// recovery cannot map, and errors from loading glyph data.
     pub fn decode(&self, string: &[u8]) -> Result<Vec<Glyph>> {
-        self.decode_inner(string)
+        let mut glyphs = Vec::new();
+        self.decode_into(string, true, &mut glyphs)?;
+        Ok(glyphs)
+    }
+
+    /// Decodes `string` into `glyphs`, replacing their contents, as
+    /// [`Self::decode`] does. Without `unicode`, each glyph's
+    /// [`Glyph::unicode`] is `None`; its text is still charged to the
+    /// decoded-byte budget, so results and errors are otherwise those of
+    /// `decode`. Rendering reuses one vector this way and copies no text.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::decode`]; `glyphs` then holds an unspecified prefix.
+    pub fn decode_into(&self, string: &[u8], unicode: bool, glyphs: &mut Vec<Glyph>) -> Result<()> {
+        glyphs.clear();
+        self.decode_inner(string, unicode, glyphs)
             .map_err(|error| error.at(Position::Buffer(0)))
     }
 
-    fn decode_inner(&self, string: &[u8]) -> Result<Vec<Glyph>> {
+    fn decode_inner(&self, string: &[u8], unicode: bool, glyphs: &mut Vec<Glyph>) -> Result<()> {
         if !string.is_empty() && matches!(self.source, font::Source::MetricsOnly) {
             return Err(Error::unsupported(
                 features::NON_EMBEDDED,
@@ -287,7 +303,6 @@ impl PdfFont {
         if string.len() > self.limits.string_bytes {
             return Err(Error::limit("text string byte budget exceeded"));
         }
-        let mut glyphs = Vec::new();
         let mut offset = 0;
         let mut work = 0;
         let mut unicode_bytes = 0;
@@ -299,21 +314,24 @@ impl PdfFont {
                     Error::limit("decoded glyph budget exceeded").at(Position::Buffer(offset))
                 );
             }
-            let result = self.decode_glyph(input, &mut work);
-            let glyph = result.map_err(|e| e.at(Position::Buffer(offset)))?;
-            cmap::charge(
-                &mut unicode_bytes,
-                glyph.unicode.as_ref().map_or(0, String::len),
-                self.limits.decoded_bytes,
-            )
-            .map_err(|e| e.at(Position::Buffer(offset)))?;
+            let result = self.decode_glyph(input, &mut work, unicode);
+            let (glyph, text) = result.map_err(|e| e.at(Position::Buffer(offset)))?;
+            cmap::charge(&mut unicode_bytes, text, self.limits.decoded_bytes)
+                .map_err(|e| e.at(Position::Buffer(offset)))?;
             offset += usize::from(glyph.byte_len);
             glyphs.push(glyph);
         }
-        Ok(glyphs)
+        Ok(())
     }
 
-    fn decode_glyph(&self, input: &[u8], work: &mut usize) -> Result<Glyph> {
+    /// One glyph and the byte length of its Unicode text, which the glyph
+    /// carries only with `unicode`.
+    fn decode_glyph(
+        &self,
+        input: &[u8],
+        work: &mut usize,
+        unicode: bool,
+    ) -> Result<(Glyph, usize)> {
         let (code, selector, name, fallback) = match &self.mapping {
             font::Mapping::Simple(encoding) => {
                 let byte = *input
@@ -346,13 +364,14 @@ impl PdfFont {
                 (code, cid, None, unicode)
             }
         };
-        let unicode = self
+        let text = self
             .to_unicode
             .as_ref()
             .and_then(|map| map.text(code))
-            .map(str::to_owned)
-            .or_else(|| fallback.map(str::to_owned));
-        Ok(Glyph {
+            .or(fallback);
+        let length = text.map_or(0, str::len);
+        let unicode = text.filter(|_| unicode).map(str::to_owned);
+        let glyph = Glyph {
             code: code.value,
             byte_len: code.len,
             advance: self.metrics.width(selector),
@@ -361,7 +380,8 @@ impl PdfFont {
             word_space: code.len == 1 && code.value == 32,
             unicode,
             shape: self.shape(code, selector, name, fallback),
-        })
+        };
+        Ok((glyph, length))
     }
 }
 
