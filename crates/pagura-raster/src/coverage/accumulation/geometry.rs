@@ -2,11 +2,17 @@
 
 use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
 use crate::{FillRule, Point};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Error, Limits, Meter, Result};
 
-use super::super::{Shape, capacity_bytes, charge};
+use super::super::{Shape, capacity_bytes};
 
+/// Grid units per device pixel: snapped coordinates are multiples of 2^-20 px.
 pub(super) const GRID: i64 = 1 << 20;
+/// [`GRID`] in a cell-local coordinate.
+pub(super) const CELL: i32 = 1 << 20;
+/// [`GRID`] as a scale factor.
+pub(super) const SCALE: f64 = 1_048_576.0;
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct Segment {
@@ -56,7 +62,7 @@ impl Geometry {
         &mut self,
         shapes: &[Shape],
         limits: &Limits,
-        work: &mut usize,
+        work: &mut Meter,
     ) -> Result<()> {
         self.exact.clear();
         self.points.clear();
@@ -93,7 +99,7 @@ impl Geometry {
                         ]
                     });
                 let count = corners.as_ref().map_or(contour.points.len(), |_| 4);
-                charge(work, count, limits.raster_work)?;
+                work.charge(count)?;
                 if self
                     .exact
                     .len()
@@ -157,7 +163,7 @@ impl Geometry {
     }
 
     pub(super) fn next(&self, segment: usize) -> usize {
-        let c = &self.contours[self.segments[segment].contour as usize];
+        let c = &self.contours[u32_to_usize(self.segments[segment].contour)];
         if segment + 1 == c.first + c.len {
             c.first
         } else {
@@ -166,7 +172,7 @@ impl Geometry {
     }
 
     pub(super) fn group(&self, segment: usize) -> usize {
-        self.contours[self.segments[segment].contour as usize].group
+        self.contours[u32_to_usize(self.segments[segment].contour)].group
     }
 
     pub(super) fn neighbours(&self, a: usize, b: usize) -> bool {
@@ -180,7 +186,7 @@ fn contours<'a>(
     flattened: &'a mut Vec<Polyline>,
     curves: &mut CurveStack,
     limits: &Limits,
-    work: &mut usize,
+    work: &mut Meter,
 ) -> Result<&'a [Polyline]> {
     Ok(match &shape.geometry {
         super::super::Geometry::Path(path) => {
@@ -193,7 +199,7 @@ fn contours<'a>(
                 return Err(Error::limit("flattened segment budget exceeded"));
             }
             // Every placement pays for canonical geometry, including cache hits.
-            charge(work, glyph.vertices(), limits.raster_work)?;
+            work.charge(glyph.vertices())?;
             glyph.contours()
         }
     })
@@ -210,7 +216,7 @@ pub(super) fn reserve<T>(values: &mut Vec<T>, additional: usize) -> Result<()> {
     reason = "bounded device coordinates times 2^20 are within 2^60"
 )]
 fn snap(value: f64) -> i64 {
-    (value * 1_048_576.0).round_ties_even() as i64
+    (value * SCALE).round_ties_even() as i64
 }
 
 fn direction(a: [i64; 2], b: [i64; 2]) -> i8 {

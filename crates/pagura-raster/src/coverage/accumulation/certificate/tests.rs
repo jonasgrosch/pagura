@@ -1,5 +1,12 @@
 use super::super::scatter::Scatter;
 use super::*;
+use crate::IntRect;
+use crate::coverage::RASTER_WORK;
+use pagura_core::Limits;
+
+fn meter(limits: &Limits) -> Meter {
+    Meter::new(limits.raster_work, RASTER_WORK)
+}
 
 #[test]
 fn integer_orientation_rejects_crossings_overlaps_and_endpoint_touches() {
@@ -52,16 +59,13 @@ fn band_cell(groups: usize, full_first: bool) -> (Geometry, Scatter) {
         });
     }
     let limits = Limits::default();
-    let mut work = 0;
+    let mut work = meter(&limits);
     let mut geometry = Geometry::default();
     geometry.build(&shapes, &limits, &mut work).unwrap();
     let mut scatter = Scatter::default();
-    scatter
-        .prepare(&geometry, (0, 0), 1, &limits, &mut work)
-        .unwrap();
-    scatter
-        .row(&geometry, (0, 0), 1, 0, &limits, &mut work)
-        .unwrap();
+    let area = IntRect::new(0, 0, 1, 1).unwrap();
+    scatter.prepare(&geometry, area, &mut work).unwrap();
+    scatter.row(&geometry, area, 0, &mut work).unwrap();
     assert!(geometry.segments.len() <= 512 && scatter.pieces.len() <= 512);
     (geometry, scatter)
 }
@@ -83,8 +87,7 @@ fn each_group_gets_its_own_pair_cap_in_every_piece_order() {
                 &scatter.pieces,
                 &scatter.carry,
                 [0, 0],
-                &Limits::default(),
-                &mut 0,
+                &mut meter(&Limits::default()),
             )
             .unwrap();
         // The full first group intersects a strip between x=y and x=y+1/32.
@@ -114,7 +117,7 @@ fn skipped_walk_pairs_consume_the_work_budget() {
             ..Limits::default()
         };
         let mut certificates = Certificates::default();
-        let mut work = 0;
+        let mut work = meter(&limits);
         let mut pairs = 0;
         let context = GroupCell {
             group: 0,
@@ -123,31 +126,17 @@ fn skipped_walk_pairs_consume_the_work_budget() {
         };
         assert_eq!(
             certificates
-                .walk(
-                    &geometry,
-                    &scatter.pieces,
-                    context,
-                    &mut pairs,
-                    &limits,
-                    &mut work
-                )
+                .walk(&geometry, &scatter.pieces, context, &mut pairs, &mut work)
                 .unwrap_err()
                 .kind,
             pagura_core::ErrorKind::Limit
         );
-        work = 0;
+        work = meter(&Limits::default());
         pairs = 0;
         certificates
-            .walk(
-                &geometry,
-                &scatter.pieces,
-                context,
-                &mut pairs,
-                &Limits::default(),
-                &mut work,
-            )
+            .walk(&geometry, &scatter.pieces, context, &mut pairs, &mut work)
             .unwrap();
         assert!(pairs > 0 && pairs <= 256);
-        assert!(work >= skipped + scatter.pieces.len());
+        assert!(work.used() >= skipped + scatter.pieces.len());
     }
 }

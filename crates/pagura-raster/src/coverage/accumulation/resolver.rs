@@ -1,11 +1,10 @@
 //! One-cell strip sweep, using source geometry for ghosts and dense cells.
 
-use super::super::{
-    Edge, Exact, RASTER_WORK, Rectangle, capacity_bytes, clipped, normalize_boundaries,
-};
-use super::geometry::{GRID, Geometry, reserve};
+use super::super::{Edge, Exact, Rectangle, capacity_bytes, clipped, normalize_boundaries};
+use super::geometry::{CELL, GRID, Geometry, SCALE, reserve};
 use super::scatter::{Active, Piece};
 use crate::Point;
+use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Limits, Meter, Result};
 
 #[derive(Debug, Default)]
@@ -36,15 +35,15 @@ impl Resolver {
         g: &Geometry,
         cell: [i64; 2],
         limits: &Limits,
-        work: &mut usize,
+        work: &mut Meter,
     ) -> Result<u8> {
-        self.begin(limits, *work)?;
+        self.begin(limits, work)?;
         let result = (|| {
             let x = coordinate(cell[0]);
             let y = coordinate(cell[1]);
             for &segment in &self.sources {
                 self.scratch.row.charge(3)?;
-                let segment = segment as usize;
+                let segment = u32_to_usize(segment);
                 let group = g.group(segment);
                 let (a, b) = (g.exact[segment], g.exact[g.next(segment)]);
                 reserve(&mut self.scratch.raw, 3)?;
@@ -65,7 +64,7 @@ impl Resolver {
             }
             self.finish(g.rules.len(), limits)
         })();
-        *work = self.scratch.row.work.used();
+        *work = self.scratch.row.work.clone();
         result
     }
 
@@ -75,9 +74,9 @@ impl Resolver {
         pieces: &[Piece],
         prefix: &[i64],
         limits: &Limits,
-        work: &mut usize,
+        work: &mut Meter,
     ) -> Result<Option<u8>> {
-        self.begin(limits, *work)?;
+        self.begin(limits, work)?;
         self.pieces.clear();
         reserve(&mut self.pieces, pieces.len())?;
         self.pieces.extend_from_slice(pieces);
@@ -87,7 +86,7 @@ impl Resolver {
                 if p.a[1] == p.b[1] || (p.a[0] == 0 && p.b[0] == 0) {
                     continue;
                 }
-                let group = g.group(p.segment as usize);
+                let group = g.group(u32_to_usize(p.segment));
                 let (a, b, winding) = if p.a[1] < p.b[1] {
                     (p.a, p.b, 1)
                 } else {
@@ -110,7 +109,7 @@ impl Resolver {
                 for p in self
                     .pieces
                     .iter()
-                    .filter(|p| g.group(p.segment as usize) == group)
+                    .filter(|p| g.group(u32_to_usize(p.segment)) == group)
                 {
                     self.scratch.row.charge(1)?;
                     let dy = i64::from(p.b[1]) - i64::from(p.a[1]);
@@ -121,7 +120,7 @@ impl Resolver {
                     }
                     let delta = -(i64::from(p.b[0]) - i64::from(p.a[0])).signum();
                     for endpoint in [p.a, p.b] {
-                        for (side, boundary) in [0_i32, 1 << 20].into_iter().enumerate() {
+                        for (side, boundary) in [0, CELL].into_iter().enumerate() {
                             if endpoint[0] != boundary || delta == 0 {
                                 continue;
                             }
@@ -130,10 +129,10 @@ impl Resolver {
                                 reserve(&mut self.scratch.raw, 1)?;
                                 self.scratch.raw.push(Edge {
                                     a: Point::new(
-                                        f64::from(boundary) / 1_048_576.0,
-                                        f64::from(endpoint[1]) / 1_048_576.0,
+                                        f64::from(boundary) / SCALE,
+                                        f64::from(endpoint[1]) / SCALE,
                                     ),
-                                    b: Point::new(f64::from(boundary) / 1_048_576.0, 1.0),
+                                    b: Point::new(f64::from(boundary) / SCALE, 1.0),
                                     winding: if side == 0 { delta } else { -delta },
                                     group,
                                     rule,
@@ -165,13 +164,12 @@ impl Resolver {
             }
             self.finish(g.rules.len(), limits).map(Some)
         })();
-        *work = self.scratch.row.work.used();
+        *work = self.scratch.row.work.clone();
         result
     }
 
-    fn begin(&mut self, limits: &Limits, work: usize) -> Result<()> {
-        self.scratch.row.work = Meter::new(limits.raster_work, RASTER_WORK);
-        self.scratch.row.work.charge(work)?;
+    fn begin(&mut self, limits: &Limits, work: &Meter) -> Result<()> {
+        self.scratch.row.work = work.clone();
         self.scratch.row.maximum_events = limits.path_segments;
         self.scratch.row.reset(1, 0)?;
         self.scratch.raw.clear();
@@ -216,7 +214,7 @@ impl Resolver {
 }
 
 fn local(p: [i32; 2]) -> Point {
-    Point::new(f64::from(p[0]) / 1_048_576.0, f64::from(p[1]) / 1_048_576.0)
+    Point::new(f64::from(p[0]) / SCALE, f64::from(p[1]) / SCALE)
 }
 
 #[expect(

@@ -7,13 +7,17 @@ const SWEEP_RANGE: f64 = 65_536.0;
 // Construction commands in a small component path, not per-cell density.
 const SMALL_COMPONENT_SEGMENTS: usize = 512;
 
+/// The most construction segments (MoveTo, lines and Close) a first contour
+/// may have and still count as a short component polygon.
+const SHORT_CONTOUR: usize = 6;
+
 // The strip sweep integrates primitive polygons once per strip. Scattering a
 // union of short component polygons creates repeated local sweeps at overlaps.
 // Select from the first contour, then bound all controls in a shape-anchored
 // integer frame. Neither admission nor the frame depends on the tile.
 pub(super) fn sweep_anchor(shapes: &[Shape], maximum: usize) -> Option<Point> {
     let Some(shape) = shapes.first() else {
-        return Some(Point::new(0.0, 0.0));
+        return Some(Point::default());
     };
     let first = match &shape.geometry {
         Geometry::Path(path) => match path.segments().first() {
@@ -27,7 +31,7 @@ pub(super) fn sweep_anchor(shapes: &[Shape], maximum: usize) -> Option<Point> {
             .copied(),
     };
     let Some(first) = first else {
-        return Some(Point::new(0.0, 0.0));
+        return Some(Point::default());
     };
     let first = first * shape.transform;
     let anchor = Point::new(first.x.floor(), first.y.floor());
@@ -55,9 +59,9 @@ fn prefers_sweep(shape: &Shape) -> bool {
         Geometry::Glyph(glyph) => glyph.contours().first().is_none_or(|c| {
             // The vertex count includes MoveTo; Close costs one more.
             if c.is_closed() {
-                c.points().len() < 6
+                c.points().len() < SHORT_CONTOUR
             } else {
-                glyph.vertices() <= 6
+                glyph.vertices() <= SHORT_CONTOUR
             }
         }),
     }
@@ -84,14 +88,14 @@ fn diagonal_quadrilateral_components(segments: &[Segment], transform: crate::Tra
 }
 
 fn small_first_contour(segments: &[Segment]) -> bool {
-    for segment in segments.iter().take(6) {
+    for segment in segments.iter().take(SHORT_CONTOUR) {
         match segment {
             Segment::CubicTo { .. } => return false,
             Segment::Close => return true,
             _ => {}
         }
     }
-    segments.len() <= 6
+    segments.len() <= SHORT_CONTOUR
 }
 
 // Large extents need page-anchored integer crossings. Bound every control point so a

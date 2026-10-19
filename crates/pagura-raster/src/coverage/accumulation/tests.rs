@@ -1,6 +1,15 @@
 use super::*;
+use crate::coverage::RASTER_WORK;
 use crate::{FillRule, PathBuilder, Point, Transform};
 use std::sync::Arc;
+
+fn area(origin: (u32, u32), (width, height): (u32, u32)) -> IntRect {
+    IntRect::new(origin.0, origin.1, width, height).unwrap()
+}
+
+fn meter() -> Meter {
+    Meter::new(Limits::default().raster_work, RASTER_WORK)
+}
 
 fn compare(points: &[Point], rule: FillRule) {
     let mut path = PathBuilder::new();
@@ -22,7 +31,7 @@ fn compare_shapes(shapes: &[Shape], origin: (u32, u32), tiles: bool) {
     let mut candidate = vec![0; 64];
     let limits = Limits::default();
     super::super::coverage_exact(
-        crate::IntRect::new(origin.0, origin.1, 8, 8).unwrap(),
+        area(origin, (8, 8)),
         shapes,
         &mut exact,
         &limits,
@@ -31,7 +40,13 @@ fn compare_shapes(shapes: &[Shape], origin: (u32, u32), tiles: bool) {
     .unwrap();
     let mut accumulator = Accumulator::default();
     accumulator
-        .render(shapes, &mut candidate, origin, (8, 8), &limits, 0)
+        .render(
+            shapes,
+            &mut candidate,
+            area(origin, (8, 8)),
+            &limits,
+            meter(),
+        )
         .unwrap();
     for (i, (&a, &b)) in exact.iter().zip(&candidate).enumerate() {
         assert!(
@@ -47,10 +62,9 @@ fn compare_shapes(shapes: &[Shape], origin: (u32, u32), tiles: bool) {
                     .render(
                         shapes,
                         &mut pixel,
-                        (origin.0 + x, origin.1 + y),
-                        (1, 1),
+                        area((origin.0 + x, origin.1 + y), (1, 1)),
                         &limits,
-                        0,
+                        meter(),
                     )
                     .unwrap();
                 assert_eq!(pixel[0], candidate[(y * 8 + x) as usize], "tile {x},{y}");
@@ -95,7 +109,7 @@ fn all_tile_phases(shapes: &[Shape], origin: (u32, u32)) {
     let limits = Limits::default();
     let mut whole = [0; 64];
     accumulator
-        .render(shapes, &mut whole, origin, (8, 8), &limits, 0)
+        .render(shapes, &mut whole, area(origin, (8, 8)), &limits, meter())
         .unwrap();
     for (width, height) in [(1, 1), (2, 3), (7, 5)] {
         for py in 0..height {
@@ -110,10 +124,9 @@ fn all_tile_phases(shapes: &[Shape], origin: (u32, u32)) {
                             .render(
                                 shapes,
                                 &mut tile,
-                                (origin.0 + x[0], origin.1 + y[0]),
-                                (w, h),
+                                area((origin.0 + x[0], origin.1 + y[0]), (w, h)),
                                 &limits,
-                                0,
+                                meter(),
                             )
                             .unwrap();
                         for j in 0..h {
@@ -164,8 +177,8 @@ fn every_phase_of_small_tiles_preserves_groups_ghosts_and_translation() {
         }
         for count in [127, 128, 129] {
             for i in 0..count {
-                let lo = 2.0 + f64::from(4 * i + 2) / 1_048_576.0 - 0.25 / 1_048_576.0;
-                p.rect(2.125, lo, 0.75, 0.5 / 1_048_576.0);
+                let lo = 2.0 + f64::from(4 * i + 2) / geometry::SCALE - 0.25 / geometry::SCALE;
+                p.rect(2.125, lo, 0.75, 0.5 / geometry::SCALE);
             }
             all_tile_phases(
                 &[Shape {
@@ -194,11 +207,11 @@ fn random_contours_and_mixed_rule_groups_match_the_sweep_and_tiles() {
             let mut builder = PathBuilder::new();
             for contour in 0..2 + next(&mut seed) % 4 {
                 if (case + contour as usize).is_multiple_of(17) {
-                    let lo = 2.0 + 1.75 / 1_048_576.0;
+                    let lo = 2.0 + 1.75 / geometry::SCALE;
                     if case % 2 == 0 {
-                        builder.rect(1.125, lo, 5.75, 0.5 / 1_048_576.0);
+                        builder.rect(1.125, lo, 5.75, 0.5 / geometry::SCALE);
                     } else {
-                        builder.rect(lo, 1.125, 0.5 / 1_048_576.0, 5.75);
+                        builder.rect(lo, 1.125, 0.5 / geometry::SCALE, 5.75);
                     }
                     continue;
                 }

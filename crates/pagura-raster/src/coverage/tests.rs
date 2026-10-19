@@ -164,10 +164,9 @@ fn many_subpixel_slivers_keep_their_combined_area() {
                     .render(
                         &shapes,
                         &mut accumulated,
-                        origin,
-                        (3, 2),
+                        area(origin, (3, 2)),
                         &Limits::default(),
-                        0,
+                        Meter::new(Limits::default().raster_work, RASTER_WORK),
                     )
                     .unwrap();
                 assert_eq!(accumulated, whole);
@@ -178,10 +177,9 @@ fn many_subpixel_slivers_keep_their_combined_area() {
                     .render(
                         &shapes,
                         &mut accumulated_tile,
-                        origin,
-                        (1, 1),
+                        area(origin, (1, 1)),
                         &Limits::default(),
-                        0,
+                        Meter::new(Limits::default().raster_work, RASTER_WORK),
                     )
                     .unwrap();
                 assert_eq!(accumulated_tile, [3]);

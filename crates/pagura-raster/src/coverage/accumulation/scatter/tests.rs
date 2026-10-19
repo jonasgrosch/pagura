@@ -1,6 +1,8 @@
+use super::super::geometry::SCALE;
 use super::*;
-use crate::coverage::Shape;
+use crate::coverage::{RASTER_WORK, Shape};
 use crate::{FillRule, PathBuilder, Point, Transform};
+use pagura_core::Limits;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -19,24 +21,24 @@ fn geometry(points: &[Point], shift: u32) -> Geometry {
             rule: FillRule::NonZero,
         }],
         &Limits::default(),
-        &mut 0,
+        &mut meter(),
     )
     .unwrap();
     g
 }
 
+fn meter() -> Meter {
+    Meter::new(Limits::default().raster_work, RASTER_WORK)
+}
+
 fn values(g: &Geometry, origin: (u32, u32), size: (u32, u32)) -> BTreeMap<(u32, u32), i128> {
     let mut scatter = Scatter::default();
-    let mut work = 0;
-    let limits = Limits::default();
-    scatter
-        .prepare(g, origin, size.1, &limits, &mut work)
-        .unwrap();
+    let mut work = meter();
+    let area = IntRect::new(origin.0, origin.1, size.0, size.1).unwrap();
+    scatter.prepare(g, area, &mut work).unwrap();
     let mut result = BTreeMap::new();
     for row in 0..size.1 {
-        scatter
-            .row(g, origin, size.0, row, &limits, &mut work)
-            .unwrap();
+        scatter.row(g, area, row, &mut work).unwrap();
         let mut prefix = scatter.carry[0];
         for column in 0..size.0 {
             let mut value = 2 * i128::from(GRID) * i128::from(prefix);
@@ -106,16 +108,16 @@ fn original_density_and_ghosts_survive_the_512_piece_cutoff() {
         for vertical in [false, true] {
             let mut p = PathBuilder::new();
             for i in 0..count {
-                let lo = f64::from(4 * i + 2) / 1_048_576.0 - 0.25 / 1_048_576.0;
+                let lo = f64::from(4 * i + 2) / SCALE - 0.25 / SCALE;
                 if vertical {
-                    p.rect(lo, 0.125, 0.5 / 1_048_576.0, 0.75);
+                    p.rect(lo, 0.125, 0.5 / SCALE, 0.75);
                 } else {
-                    p.rect(0.125, lo, 0.75, 0.5 / 1_048_576.0);
+                    p.rect(0.125, lo, 0.75, 0.5 / SCALE);
                 }
             }
             let mut g = Geometry::default();
             let limits = Limits::default();
-            let mut work = 0;
+            let mut work = meter();
             g.build(
                 &[Shape {
                     geometry: crate::coverage::Geometry::Path(Arc::new(p.finish())),
@@ -127,8 +129,9 @@ fn original_density_and_ghosts_survive_the_512_piece_cutoff() {
             )
             .unwrap();
             let mut scatter = Scatter::default();
-            scatter.prepare(&g, (0, 0), 1, &limits, &mut work).unwrap();
-            scatter.row(&g, (0, 0), 1, 0, &limits, &mut work).unwrap();
+            let area = IntRect::new(0, 0, 1, 1).unwrap();
+            scatter.prepare(&g, area, &mut work).unwrap();
+            scatter.row(&g, area, 0, &mut work).unwrap();
             let originals: i64 = scatter
                 .risks
                 .iter()
@@ -164,8 +167,8 @@ fn huge_endpoints_use_exact_closed_form_crossings_and_left_carry() {
     assert_eq!(values[&(0, 0)], unit / 2);
     assert_eq!(values[&(1, 0)], unit);
     assert_eq!(values[&(0, 1)], 0);
-    assert_eq!(interpolate([0, 0], [2, 1], 1, 0), 1);
-    assert_eq!(interpolate([0, 0], [2, -1], 1, 0), 0);
+    assert_eq!(interpolate([0, 0], [2, 1], 1, Axis::X), 1);
+    assert_eq!(interpolate([0, 0], [2, -1], 1, Axis::X), 0);
 }
 
 #[test]
@@ -180,11 +183,11 @@ fn collapsed_contour_bounds_mark_every_closed_cell_they_touch() {
     );
     assert!(g.contours[0].collapsed);
     let mut scatter = Scatter::default();
-    let mut work = 0;
-    let limits = Limits::default();
-    scatter.prepare(&g, (0, 0), 4, &limits, &mut work).unwrap();
+    let mut work = meter();
+    let area = IntRect::new(0, 0, 4, 4).unwrap();
+    scatter.prepare(&g, area, &mut work).unwrap();
     for row in 0..4 {
-        scatter.row(&g, (0, 0), 4, row, &limits, &mut work).unwrap();
+        scatter.row(&g, area, row, &mut work).unwrap();
         let mut ghosts = 0;
         for column in 0..4 {
             for event in scatter.risks.iter().filter(|e| e.column == column) {
