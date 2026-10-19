@@ -55,9 +55,9 @@ Implemented formats:
   mandatory argument fallback for unrecognized OtherSubrs, hint replacement, and StandardEncoding seac. Hint replacement consumes its
   operands and returns the requested subroutine number without applying hints.
 
-All font errors carry a `Position::Buffer`. Type 1 offsets count in the
-decoded copy they occur in: the PFB-unframed cleartext or the decrypted
-eexec plaintext.
+Font errors carry a `Position::Buffer` offset into the program bytes. For
+Type 1 programs, offsets in the PFB-unframed, hexadecimal-decoded or
+decrypted copies are mapped back to the input byte they came from.
 
 Two kinds of bound apply (ADR 0016, ADR 0023). **Format ceilings** are fixed
 by the font specifications and named next to their parser: operand stacks of
@@ -195,8 +195,8 @@ For rendering, a successfully recovered unusable glyph is an empty path with
 other glyphs. Failed composite dependencies discard the entire requested
 glyph. Budget failures still propagate. Diagnostics retain the first position
 of each repair kind per parse or outline operation, coalescing repetitions.
-Type 1 positions count in the decoded copies, as for errors. Bytes shared by
-the font remain unchanged.
+Type 1 positions are input offsets, as for errors. Bytes shared by the font
+remain unchanged.
 
 The caller must create the sink using `Document::recovery()`, call the
 corresponding diagnostic-aware method, attach the font stream object to parse
