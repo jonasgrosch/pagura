@@ -206,7 +206,8 @@ def cases():
     yield vector('catalog-ur3', pdf, ['Approval|unsigned', row(name='@UR3', ranges=ranges, refs='UR')], 'signature-fields')
     # Duplicate names are repaired by the document parser, but must never bind
     # signature Contents to whichever spelling happens to win that repair.
-    yield single('duplicate-contents', extra=b'/Contents <abcd>', expected='AmbiguousSource', revision='RepairedDocument')
+    # Without a usable byte range, coverage is not checked at all.
+    yield single('duplicate-contents', extra=b'/Contents <abcd>', expected='AmbiguousSource', revision='NotCheckedYet')
 
     for case, array, expected in [
         ('range-count', b'[0 1]', 'ExpectedTwoRanges'),

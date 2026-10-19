@@ -42,6 +42,8 @@ pub(crate) struct Context<'a> {
     pub(crate) document: &'a Document,
     work: Rc<RefCell<Work>>,
     pages: Option<BTreeMap<ObjectId, usize>>,
+    /// A repair was applied, or a repaired object read, by this view.
+    repaired: bool,
 }
 
 impl<'a> Context<'a> {
@@ -55,9 +57,17 @@ impl<'a> Context<'a> {
                     "navigation traversal budget exceeded",
                 ),
                 bytes: Meter::new(limits.document_bytes, "navigation result budget exceeded"),
-                scanned: Meter::new(limits.file_bytes, "source scan budget exceeded"),
+                // Each revision's inspection may reread the file once.
+                scanned: Meter::new(
+                    document
+                        .original_bytes()
+                        .len()
+                        .saturating_mul(document.revisions().len().max(1)),
+                    "source scan budget exceeded",
+                ),
             })),
             pages: None,
+            repaired: false,
         }
     }
 
@@ -68,7 +78,13 @@ impl<'a> Context<'a> {
             document,
             work: Rc::clone(&self.work),
             pages: None,
+            repaired: false,
         }
+    }
+
+    /// Whether this view applied a repair or read a repaired object, so far.
+    pub(crate) const fn repaired(&self) -> bool {
+        self.repaired
     }
 
     pub(crate) fn catalog(&mut self) -> Result<(&'a Dictionary, Source)> {
@@ -83,6 +99,7 @@ impl<'a> Context<'a> {
 
     pub(crate) fn source(&mut self, id: ObjectId) -> Result<Source> {
         let object = self.document.object(id)?;
+        self.repaired |= object.is_repaired();
         Ok(Source {
             object: Some(id),
             position: object.source().position(),
@@ -168,6 +185,7 @@ impl<'a> Context<'a> {
                 .document
                 .object(*id)
                 .map_err(|error| source.error(error))?;
+            self.repaired |= object.is_repaired();
             source = Source {
                 object: Some(*id),
                 position: object.source().position(),
@@ -253,7 +271,9 @@ impl<'a> Context<'a> {
         source: Source,
     ) -> Result<()> {
         self.document
-            .repair(source.diagnostic(Diagnostic::new(tag, message)))
+            .repair(source.diagnostic(Diagnostic::new(tag, message)))?;
+        self.repaired = true;
+        Ok(())
     }
 
     /// Decodes a text string (7.9.2.2) through [`text_string::decode`], with
@@ -262,6 +282,7 @@ impl<'a> Context<'a> {
         let mut diagnostics = Diagnostics::new(self.document.recovery());
         let text = text_string::decode(bytes, &self.document.limits(), &mut diagnostics)
             .map_err(|error| source.error(error))?;
+        self.repaired |= !diagnostics.is_empty();
         self.document.report(
             diagnostics
                 .take()

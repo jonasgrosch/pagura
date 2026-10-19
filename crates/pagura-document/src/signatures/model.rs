@@ -24,6 +24,8 @@ pub enum SubFilter<'a> {
 }
 /// Document modification permission (Tables 236 and 257).
 /// DSS/timestamp exceptions in 12.8.2.2 still require modification analysis.
+///
+/// Tables 257 and 259 define exactly these three values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MdpPermission {
     /// Permission 1.
@@ -34,6 +36,7 @@ pub enum MdpPermission {
     FormsSignaturesAndAnnotations,
 }
 /// Field selection (Tables 236 and 259). Names retain PDF text-string encoding.
+/// The tables' Action entry has exactly these three values.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FieldSelection<'a> {
     /// All fields.

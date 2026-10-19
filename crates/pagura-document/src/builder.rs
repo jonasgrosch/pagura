@@ -202,6 +202,7 @@ impl DocumentBuilder {
             revisions: self.revisions,
             object_streams: self.object_streams,
             security: self.security,
+            repaired: self.diagnostics.has_repairs(),
             boundaries: OnceLock::new(),
             pages: OnceLock::new(),
             diagnostics: Mutex::new(self.diagnostics),

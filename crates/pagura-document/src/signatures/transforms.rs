@@ -1,4 +1,7 @@
 //! Typed inert modification parameters (12.8.2; Tables 236, 256–259).
+//!
+//! Signature dictionaries hold direct values (Table 255), so these readers
+//! never resolve references, unlike the shared view context.
 use super::{FieldLock, FieldSelection, MdpPermission, SignatureReference, Transform};
 use crate::view::{Context, Source};
 use pagura_core::{Dictionary, Error, Name, Result, Value};
@@ -27,6 +30,40 @@ pub(super) fn string<'a>(
 pub(super) fn present<'a>(d: &'a Dictionary, key: &[u8]) -> Option<&'a Value> {
     d.get(key).filter(|v| !v.is_null())
 }
+
+/// An optional entry that must be direct. An indirect one reads as absent:
+/// the byte-range result already reports it as `IndirectValue`, and one such
+/// entry must not hide every other signature.
+pub(super) fn optional<'a>(d: &'a Dictionary, key: &[u8]) -> Option<&'a Value> {
+    present(d, key).filter(|value| value.as_reference().is_none())
+}
+
+pub(super) fn optional_name<'a>(
+    d: &'a Dictionary,
+    key: &[u8],
+    source: Source,
+) -> Result<Option<&'a Name>> {
+    optional(d, key)
+        .map(|v| {
+            v.as_name()
+                .ok_or_else(|| source.error(Error::syntax("signature entry must be a direct name")))
+        })
+        .transpose()
+}
+
+pub(super) fn optional_string<'a>(
+    d: &'a Dictionary,
+    key: &[u8],
+    source: Source,
+) -> Result<Option<&'a [u8]>> {
+    optional(d, key)
+        .map(|v| {
+            v.as_string().ok_or_else(|| {
+                source.error(Error::syntax("signature entry must be a direct string"))
+            })
+        })
+        .transpose()
+}
 fn dictionary(value: &Value, source: Source) -> Result<&Dictionary> {
     value
         .as_dictionary()
@@ -40,10 +77,10 @@ fn type_name(d: &Dictionary, expected: &[u8], source: Source) -> Result<()> {
 }
 pub(super) fn permission(d: &Dictionary, source: Source) -> Result<Option<MdpPermission>> {
     present(d, b"P")
-        .map(|v| match v.as_number() {
-            Some(1.0) => Ok(MdpPermission::NoChanges),
-            Some(2.0) => Ok(MdpPermission::FormsAndSignatures),
-            Some(3.0) => Ok(MdpPermission::FormsSignaturesAndAnnotations),
+        .map(|v| match v.as_integer() {
+            Some(1) => Ok(MdpPermission::NoChanges),
+            Some(2) => Ok(MdpPermission::FormsAndSignatures),
+            Some(3) => Ok(MdpPermission::FormsSignaturesAndAnnotations),
             _ => Err(source.error(Error::syntax("signature permission must be 1, 2 or 3"))),
         })
         .transpose()

@@ -1158,7 +1158,7 @@
       "files": {
         ".history": {
           "path": "corpus/generated/signature-changes/replaced-malformed-signatures.history",
-          "sha256": "6bc118829ca23f80c1910f156abe386ed57a45f4828d9d3a4f10ff3a68f6cfc0"
+          "sha256": "783d4241fe90f8fd754cbd4d6de6ec5e41436681af665c8b202e6d87d6e34940"
         },
         ".pdf": {
           "path": "corpus/generated/signature-changes/replaced-malformed-signatures.pdf",

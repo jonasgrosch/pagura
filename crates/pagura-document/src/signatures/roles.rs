@@ -249,6 +249,8 @@ fn walk(
             Err(error) if error.kind == ErrorKind::MissingObject => return Ok(()),
             Err(error) => return Err(error),
         };
+        // Uses read from repaired structure cannot establish a permission.
+        roles.ambiguous |= object.is_repaired();
         if object.is_stream() {
             read_length(doc, ctx, roles, *id, object.value(), depth + 1)?;
         }

@@ -3,12 +3,17 @@
 use pagura_core::{Diagnostic, DiagnosticKind, ObjectId, Position};
 use std::collections::BTreeSet;
 
+/// Entries retained of each kind, repairs and information, so information
+/// (one per substituted font, say) never displaces evidence of a repair.
 pub(crate) const CAPACITY: usize = 1024;
 
 #[derive(Debug, Default)]
 pub(crate) struct Log {
     pub(crate) items: Vec<Diagnostic>,
     keys: BTreeSet<(DiagnosticKind, Option<ObjectId>, Position)>,
+    repairs: usize,
+    information: usize,
+    repairs_suppressed: bool,
     pub(crate) suppressed: usize,
 }
 
@@ -18,12 +23,25 @@ impl Log {
         if self.keys.contains(&key) {
             return;
         }
-        if self.items.len() == CAPACITY {
+        let repair = diagnostic.repair().is_some();
+        let count = if repair {
+            &mut self.repairs
+        } else {
+            &mut self.information
+        };
+        if *count == CAPACITY {
             self.suppressed = self.suppressed.saturating_add(1);
+            self.repairs_suppressed |= repair;
             return;
         }
+        *count += 1;
         self.keys.insert(key);
         self.items.push(diagnostic);
+    }
+
+    /// Whether any repair was reported, retained or not.
+    pub(crate) const fn has_repairs(&self) -> bool {
+        self.repairs > 0 || self.repairs_suppressed
     }
 }
 
@@ -123,8 +141,9 @@ mod tests {
         }));
         assert_eq!(document.diagnostics().len(), 2);
     }
+
     #[test]
-    fn information_and_repairs_share_the_cap_but_have_distinct_identities() {
+    fn information_and_repairs_have_separate_caps_and_distinct_identities() {
         let mut log = super::Log::default();
         let info = Diagnostic::information(TAG.as_str(), "information").at(Position::File(1));
         let repair = Diagnostic::new(TAG, "repair").at(Position::File(1));
@@ -132,14 +151,20 @@ mod tests {
             log.push(diagnostic);
         }
         assert_eq!(log.items, [info, repair]);
-        for offset in 2..CAPACITY {
+        for offset in 2..=CAPACITY {
             log.push(
                 Diagnostic::information(TAG.as_str(), "more information")
                     .at(Position::File(offset)),
             );
         }
-        assert_eq!(log.items.len(), CAPACITY);
-        log.push(Diagnostic::new(TAG, "omitted repair").at(Position::File(CAPACITY)));
+        // Information is at its cap: one more is omitted, a repair is not.
+        assert_eq!(log.items.len(), CAPACITY + 1);
+        log.push(Diagnostic::information(TAG.as_str(), "omitted").at(Position::File(0)));
         assert_eq!(log.suppressed, 1);
+        log.push(Diagnostic::new(TAG, "retained repair").at(Position::File(2)));
+        assert_eq!(log.items.len(), CAPACITY + 2);
+        assert_eq!(log.suppressed, 1);
+        assert!(log.has_repairs());
+        assert!(!super::Log::default().has_repairs());
     }
 }

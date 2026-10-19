@@ -2,23 +2,9 @@ use super::*;
 use crate::{Document, OpenOptions};
 use pagura_core::{ErrorKind, Limits, Recovery};
 use pagura_testkit::{fixture, fixture_path};
-use std::fmt::Write;
 
 fn open(name: &str, limits: Limits) -> Document {
-    Document::open(
-        fixture("signatures", &format!("{name}.pdf")),
-        &OpenOptions {
-            limits,
-            ..OpenOptions::default()
-        },
-    )
-    .unwrap()
-}
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().fold(String::new(), |mut s, b| {
-        write!(s, "{b:02x}").unwrap();
-        s
-    })
+    crate::tests::open("signatures", name, Recovery::default(), limits)
 }
 fn permission(p: MdpPermission) -> u8 {
     match p {
@@ -103,7 +89,7 @@ fn snapshot(name: &str, sig: &Signature<'_>, lock: Option<&FieldLock<'_>>) -> St
     format!(
         "{name}|{integrity}|{revision}|{later}|{:?}|{ranges}|{}|{}|{lock}|{metadata}",
         sig.results.algorithms,
-        hex(sig.contents),
+        pagura_testkit::hex(sig.contents),
         if refs.is_empty() { "_" } else { &refs }
     )
 }
@@ -153,14 +139,14 @@ fn independent_structures() {
             match &signature.results.revision_coverage {
                 RevisionCoverage::Covered { index: 0, .. } => assert!(matches!(
                     &signature.results.permitted_modifications,
-                    PermittedModifications::Analysed(ModificationAnalysis {
+                    PermittedModifications::Analyzed(ModificationAnalysis {
                         outcome: ModificationOutcome::NoChanges,
                         ..
                     })
                 )),
                 RevisionCoverage::Covered { .. } => assert!(matches!(
                     &signature.results.permitted_modifications,
-                    PermittedModifications::Analysed(_)
+                    PermittedModifications::Analyzed(_)
                 )),
                 RevisionCoverage::RepairedDocument | RevisionCoverage::Indeterminate => assert_eq!(
                     signature.results.permitted_modifications,
@@ -168,7 +154,7 @@ fn independent_structures() {
                 ),
                 _ => assert_eq!(
                     signature.results.permitted_modifications,
-                    PermittedModifications::NotAnalysedYet
+                    PermittedModifications::NotAnalyzedYet
                 ),
             }
             assert_eq!(signature.results.signer_trust, SignerTrust::NotCheckedYet);
@@ -214,10 +200,40 @@ fn budgets_fail_without_partial_results() {
     doc.signatures().unwrap();
     doc.limits.document_bytes = 1;
     assert_eq!(doc.signatures().unwrap_err().kind, ErrorKind::Limit);
-    let mut doc = open("multiple-revisions", Limits::default());
-    doc.signatures().unwrap();
-    doc.limits.file_bytes = 1;
-    assert_eq!(doc.signatures().unwrap_err().kind, ErrorKind::Limit);
+    // Source rescans are bounded by the file and its revisions, not by a
+    // borrowed limit: each revision's inspection may reread the file once.
+    let doc = open("multiple-revisions", Limits::default());
+    let context = crate::view::Context::new(&doc);
+    let source = crate::view::Source::default();
+    let file = doc.original_bytes().len();
+    context.scan(file * doc.revisions().len(), source).unwrap();
+    assert_eq!(context.scan(1, source).unwrap_err().kind, ErrorKind::Limit);
+}
+
+#[test]
+fn coverage_does_not_depend_on_unrelated_diagnostics() {
+    let results = |doc: &crate::Document| {
+        let signatures = doc.signatures().unwrap();
+        format!(
+            "{:?}",
+            signatures
+                .fields
+                .iter()
+                .map(|field| field.signature.as_ref().map(|signature| &signature.results))
+                .collect::<Vec<_>>()
+        )
+    };
+    let doc = open("multiple-revisions", Limits::default());
+    let before = results(&doc);
+    // A font-substitution note and a repair found while rendering some page
+    // say nothing about the revision structure the signatures cover.
+    doc.report([
+        pagura_core::Diagnostic::information("font.substituted", "substitute font"),
+        pagura_core::Diagnostic::new(crate::repairs::STREAM_EOL, "repair elsewhere")
+            .at(pagura_core::Position::File(1)),
+    ]);
+    assert_eq!(results(&doc), before);
+    assert!(before.contains("Covered"), "{before}");
 }
 
 #[test]
@@ -242,4 +258,39 @@ fn checked_ranges_do_not_depend_on_recovery_mode() {
         Integrity::ByteRangeCheckedCryptographyNotChecked
     );
     assert_eq!(doc.diagnostics(), []);
+}
+
+#[test]
+fn an_indirect_optional_entry_does_not_hide_other_signatures() {
+    // Table 255 requires direct values. One indirect Reason makes that
+    // signature's byte range IndirectValue; every signature is still read.
+    let bytes = fixture("signatures", "multiple-revisions.pdf");
+    let marker = b"/SubFilter /adbe.pkcs7.detached";
+    let at = bytes
+        .windows(marker.len())
+        .position(|window| window == marker)
+        .unwrap();
+    // Same length, so every offset and range stays valid: "/Reason 1 0 R"
+    // padded with spaces replaces the SubFilter entry.
+    let mut patched = bytes;
+    let replacement = b"/Reason 1 0 R                  ";
+    assert_eq!(replacement.len(), marker.len());
+    patched[at..at + marker.len()].copy_from_slice(replacement);
+    let doc = Document::open(patched, &OpenOptions::default()).unwrap();
+    let signatures = doc.signatures().unwrap();
+    assert_eq!(signatures.fields.len(), 2);
+    let first = signatures.fields[0].signature.as_ref().unwrap();
+    assert_eq!(first.reason, None);
+    assert_eq!(
+        first.results.integrity,
+        Integrity::InvalidByteRange(ByteRangeError::IndirectValue)
+    );
+    assert!(
+        signatures.fields[1]
+            .signature
+            .as_ref()
+            .unwrap()
+            .byte_range
+            .is_some()
+    );
 }

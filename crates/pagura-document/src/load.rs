@@ -52,7 +52,10 @@ impl Document {
         };
         slot.object
             .get_or_init(|| {
-                let (object, diagnostics) = loaded?;
+                let (mut object, diagnostics) = loaded?;
+                object.repaired = diagnostics
+                    .iter()
+                    .any(|diagnostic| diagnostic.repair().is_some());
                 self.retained.charge(object.retained_bytes(), Some(id))?;
                 self.report(diagnostics);
                 Ok(object)

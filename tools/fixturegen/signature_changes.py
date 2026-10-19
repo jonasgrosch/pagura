@@ -330,7 +330,7 @@ def cases():
     patch(pdf, positions[5], body, span, ranges=wrong_gap)
     positions = pdf.append({5: body})
     patch(pdf, positions[5], body, span, revision=1, ranges=wrong_gap)
-    yield Vector('replaced-malformed-signatures', {'.pdf': bytes(pdf.data), '.history': b'1|Approval|5|NotAnalysedYet\n'}, ('signature-permitted-changes',), 'Distinct malformed signature sources remain visible')
+    yield Vector('replaced-malformed-signatures', {'.pdf': bytes(pdf.data), '.history': b'1|Approval|5|NotAnalyzedYet\n'}, ('signature-permitted-changes',), 'Distinct malformed signature sources remain visible')
     pdf, objects = base(refs_extra=b' << /TransformMethod /UR /DigestMethod /SHA256 >>', trailer=b' /ID [<0101> <0101>] ')
     pdf.append({7: objects[7]}, trailer=b' /ID [<0101> <0202>] ')
     yield vector('usage-rights-trailer-unclassified', pdf, [edit('trailer', 'bookkeeping')])
