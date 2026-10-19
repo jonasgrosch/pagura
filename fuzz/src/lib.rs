@@ -78,6 +78,9 @@ pub fn limits() -> Limits {
         raster_work: 50_000_000,
         mask_sources: 32,
         display_commands: 10_000,
+        // Image codecs charge decode_work and decode_bytes (ADR 0016).
+        decode_work: 50_000_000,
+        decode_bytes: 16 << 20,
         ..Limits::default()
     }
 }

@@ -1,8 +1,10 @@
 //! JP2 fields, T.800 I.4–I.5 and PDF 7.4.9; Part 2 extensions need T.801.
 
-use pagura_core::{Error, Result};
+use pagura_core::{Diagnostic, Diagnostics, Error, Position, Result};
 
-use super::io::{Budget, Reader, area, syntax};
+use crate::budget::Budget;
+
+use super::io::{Reader, area, syntax};
 use super::{
     Decoded, JpxColor, JpxComponent, JpxImage, Opacity, OpacityKind, Options, unsupported,
 };
@@ -14,7 +16,7 @@ struct BoxData<'a> {
     to_end: bool,
 }
 
-fn next_box<'a>(reader: &mut Reader<'a>, budget: &mut Budget<'_>) -> Result<BoxData<'a>> {
+fn next_box<'a>(reader: &mut Reader<'a>, budget: &mut Budget) -> Result<BoxData<'a>> {
     budget.work(1)?;
     let start = reader.position();
     let length = reader.u32()?;
@@ -63,8 +65,10 @@ struct Palette {
 
 pub(super) fn parse<'a>(
     data: &'a [u8],
-    budget: &mut Budget<'_>,
+    pixels: usize,
+    budget: &mut Budget,
     options: &Options,
+    diagnostics: &mut Diagnostics,
 ) -> Result<(&'a [u8], usize, Header)> {
     let mut reader = Reader::new(data, 0);
     let signature = next_box(&mut reader, budget)?;
@@ -99,7 +103,7 @@ pub(super) fn parse<'a>(
                 if header.is_some() || codestream.is_some() {
                     return Err(syntax("misplaced or repeated JP2 header", b.position));
                 }
-                header = Some(parse_header(b.body, b.position, budget, options)?);
+                header = Some(parse_header(b.body, b.position, pixels, budget, options)?);
             }
             b"jp2c" => {
                 if header.is_none() {
@@ -109,7 +113,13 @@ pub(super) fn parse<'a>(
                     codestream = Some((b.body, b.position));
                 }
             }
-            b"cmap" => misplaced_mapping(&b, header.as_mut(), codestream.is_some(), budget)?,
+            b"cmap" => misplaced_mapping(
+                &b,
+                header.as_mut(),
+                codestream.is_some(),
+                budget,
+                diagnostics,
+            )?,
             b"jP  " | b"ftyp" => {
                 return Err(syntax("repeated JP2 signature or file type", b.position));
             }
@@ -125,33 +135,31 @@ pub(super) fn parse<'a>(
     ))
 }
 
-/// A sole misplaced mapping has one matching header palette. Conflicting
-/// definitions, missing palettes and mappings after the codestream stay errors.
+/// A component mapping box belongs in the JP2 header (T.800 I.5.3.5). One
+/// outside it, before the codestream, is used as a reported repair only when
+/// it is the sole mapping and the header has the palette it maps; any other
+/// stays an error.
 fn misplaced_mapping(
-    box_data: &BoxData<'_>,
+    b: &BoxData<'_>,
     header: Option<&mut Header>,
     after_stream: bool,
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
+    diagnostics: &mut Diagnostics,
 ) -> Result<()> {
     let header = header
         .filter(|h| h.palette.is_some() && h.mapping.is_none() && !after_stream)
-        .ok_or_else(|| {
-            syntax(
-                "misplaced or repeated JP2 component mapping",
-                box_data.position,
-            )
-        })?;
-    if box_data.body.is_empty() || !box_data.body.len().is_multiple_of(4) {
-        return Err(syntax("invalid JP2 component mapping", box_data.position));
+        .ok_or_else(|| syntax("misplaced or repeated JP2 component mapping", b.position))?;
+    if b.body.is_empty() || !b.body.len().is_multiple_of(4) {
+        return Err(syntax("invalid JP2 component mapping", b.position));
     }
-    budget.diagnostics.repair(
-        pagura_core::Diagnostic::new(
+    diagnostics.repair(
+        Diagnostic::new(
             crate::repairs::JPX_MAPPING_LOCATION,
-            "top-level JP2 mapping used for its header palette (T.800 I.5.3.4–I.5.3.5)",
+            "JP2 component mapping outside the header used for its palette (T.800 I.5.3.4, I.5.3.5)",
         )
-        .at(pagura_core::Position::Buffer(box_data.position)),
+        .at(Position::Buffer(b.position)),
     )?;
-    let mut fields = Reader::new(box_data.body, box_data.position);
+    let mut fields = Reader::new(b.body, b.position);
     header.mapping = Some(read_mapping(&mut fields, budget)?);
     fields.finish()
 }
@@ -159,7 +167,8 @@ fn misplaced_mapping(
 fn parse_header(
     data: &[u8],
     base: usize,
-    budget: &mut Budget<'_>,
+    pixels: usize,
+    budget: &mut Budget,
     options: &Options,
 ) -> Result<Header> {
     let mut reader = Reader::new(data, base);
@@ -196,14 +205,15 @@ fn parse_header(
                 if header.dimensions.is_some() {
                     return Err(syntax("repeated JP2 image header", b.position));
                 }
-                header.dimensions = Some(read_dimensions(&mut fields, budget)?);
+                header.dimensions = Some(read_dimensions(&mut fields, pixels)?);
             }
             b"bpcc" => {
                 if header.depths.is_some() {
                     return Err(syntax("repeated JP2 bit depths", b.position));
                 }
-                budget.charge::<u8>(b.body.len())?;
-                header.depths = Some(fields.take(fields.remaining())?.to_vec());
+                let mut depths = budget.filled(b.body.len(), 0)?;
+                depths.copy_from_slice(fields.take(fields.remaining())?);
+                header.depths = Some(depths);
             }
             b"colr" => {
                 if fields.remaining() < 3 {
@@ -263,7 +273,7 @@ fn parse_header(
     Ok(header)
 }
 
-fn read_channels(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Vec<(u16, u16, u16)>> {
+fn read_channels(fields: &mut Reader<'_>, budget: &mut Budget) -> Result<Vec<(u16, u16, u16)>> {
     let count = usize::from(fields.u16()?);
     if count == 0 {
         return Err(syntax("empty JP2 channel definition", fields.position()));
@@ -275,7 +285,7 @@ fn read_channels(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Vec
     Ok(channels)
 }
 
-fn read_mapping(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Vec<(u16, u8, u8)>> {
+fn read_mapping(fields: &mut Reader<'_>, budget: &mut Budget) -> Result<Vec<(u16, u8, u8)>> {
     let mut mapping = budget.filled(fields.remaining() / 4, (0, 0, 0))?;
     for item in &mut mapping {
         *item = (fields.u16()?, fields.u8()?, fields.u8()?);
@@ -283,7 +293,7 @@ fn read_mapping(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Vec<
     Ok(mapping)
 }
 
-fn read_dimensions(fields: &mut Reader<'_>, budget: &Budget<'_>) -> Result<(u32, u32, u16, u8)> {
+fn read_dimensions(fields: &mut Reader<'_>, pixels: usize) -> Result<(u32, u32, u16, u8)> {
     let height = fields.u32()?;
     let width = fields.u32()?;
     let components = fields.u16()?;
@@ -300,13 +310,13 @@ fn read_dimensions(fields: &mut Reader<'_>, budget: &Budget<'_>) -> Result<(u32,
     {
         return Err(syntax("invalid JP2 image header", fields.base));
     }
-    if area(width, height)? > budget.limits.pixels {
+    if area(width, height)? > pixels {
         return Err(Error::limit("JP2 pixel budget exceeded"));
     }
     Ok((width, height, components, depth))
 }
 
-fn parse_color(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<JpxColor> {
+fn parse_color(fields: &mut Reader<'_>, budget: &mut Budget) -> Result<JpxColor> {
     let method = fields.u8()?;
     fields.take(2)?; // I.5.3.3: readers ignore PREC and APPROX.
     match method {
@@ -332,8 +342,9 @@ fn parse_color(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<JpxCo
             {
                 return Err(syntax("invalid JP2 ICC profile header", profile.base));
             }
-            budget.charge::<u8>(bytes.len())?;
-            Ok(JpxColor::Icc(bytes.to_vec()))
+            let mut profile = budget.output(bytes.len(), 0)?;
+            profile.copy_from_slice(bytes);
+            Ok(JpxColor::Icc(profile))
         }
         _ => Err(unsupported(
             "vendor JPX colour spaces are not implemented",
@@ -342,14 +353,14 @@ fn parse_color(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<JpxCo
     }
 }
 
-fn parse_palette(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Palette> {
+fn parse_palette(fields: &mut Reader<'_>, budget: &mut Budget) -> Result<Palette> {
     let entries = usize::from(fields.u16()?);
     let columns = usize::from(fields.u8()?);
     if entries == 0 || entries > 1024 || columns == 0 {
         return Err(syntax("empty JP2 palette", fields.position()));
     }
-    budget.charge::<u8>(columns)?;
-    let depths = fields.take(columns)?.to_vec();
+    let mut depths = budget.filled(columns, 0)?;
+    depths.copy_from_slice(fields.take(columns)?);
     let mut values = budget.filled(entries * columns, 0)?;
     for row in values.chunks_exact_mut(columns) {
         for (value, &depth) in row.iter_mut().zip(&depths) {
@@ -386,7 +397,7 @@ fn parse_palette(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Pal
     })
 }
 
-fn parse_resolution(data: &[u8], base: usize, budget: &mut Budget<'_>) -> Result<()> {
+fn parse_resolution(data: &[u8], base: usize, budget: &mut Budget) -> Result<()> {
     let mut reader = Reader::new(data, base);
     let mut seen = [false; 2];
     while reader.remaining() != 0 {
@@ -431,6 +442,18 @@ fn parse_resolution(data: &[u8], base: usize, budget: &mut Budget<'_>) -> Result
 }
 
 impl Header {
+    /// PDF 7.4.9: an explicit Indexed space interprets the stored indices.
+    /// Applying the container's palette too would expand those indices twice.
+    pub(super) fn use_pdf_palette(&mut self) -> Result<()> {
+        if self.palette.is_some() != self.mapping.is_some() {
+            return Err(syntax("JP2 palette and mapping disagree", 0));
+        }
+        self.palette = None;
+        self.mapping = None;
+        self.channels = None;
+        Ok(())
+    }
+
     fn check_image(&self, image: &JpxImage) -> Result<()> {
         if let Some((width, height, count, depth)) = self.dimensions {
             if (width, height, usize::from(count))
@@ -461,19 +484,7 @@ impl Header {
         Ok(())
     }
 
-    /// PDF 7.4.9: an explicit Indexed space interprets the stored indices.
-    /// Applying the container's palette too would expand those indices twice.
-    pub fn use_pdf_palette(&mut self) -> Result<()> {
-        if self.palette.is_some() != self.mapping.is_some() {
-            return Err(syntax("JP2 palette and mapping disagree", 0));
-        }
-        self.palette = None;
-        self.mapping = None;
-        self.channels = None;
-        Ok(())
-    }
-
-    pub fn apply(self, decoded: &mut Decoded, budget: &mut Budget<'_>) -> Result<()> {
+    pub fn apply(self, decoded: &mut Decoded, budget: &mut Budget) -> Result<()> {
         let image = &mut decoded.image;
         self.check_image(image)?;
         if self.palette.is_some() != self.mapping.is_some() {
@@ -485,32 +496,25 @@ impl Header {
             source.0 = index;
         }
         if let Some(mapping) = mapping {
-            budget.charge::<JpxComponent>(mapping.len())?;
-            let mut components = Vec::with_capacity(mapping.len());
-            let mut geometry = Vec::new();
-            let mut mapped_origins = Vec::new();
+            let mut components = budget.output_with_capacity(mapping.len())?;
+            let mut geometry = budget.output_with_capacity(mapping.len())?;
+            let mut mapped_origins = budget.with_capacity(mapping.len())?;
             for (component, kind, column) in mapping {
                 let source = image
                     .components
                     .get(usize::from(component))
                     .ok_or_else(|| syntax("JP2 mapping references missing component", 0))?;
-                budget.push(
-                    &mut geometry,
-                    decoded.component_geometry[usize::from(component)],
-                )?;
-                budget.push(
-                    &mut mapped_origins,
-                    (
-                        usize::from(component),
-                        if kind == 1 { Some(column) } else { None },
-                    ),
-                )?;
+                geometry.push(decoded.component_geometry[usize::from(component)]);
+                mapped_origins.push((
+                    usize::from(component),
+                    if kind == 1 { Some(column) } else { None },
+                ));
                 let mut result = JpxComponent {
                     bits: source.bits,
                     signed: source.signed,
                     width: source.width,
                     height: source.height,
-                    samples: budget.filled(source.samples.len(), 0)?,
+                    samples: budget.output(source.samples.len(), 0)?,
                 };
                 match kind {
                     0 if column == 0 => result.samples.copy_from_slice(&source.samples),
@@ -575,7 +579,7 @@ fn apply_channels(
     definitions: &[(u16, u16, u16)],
     origins: &[(usize, Option<u8>)],
     geometry: &mut [super::ComponentGeometry],
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<Option<Opacity>> {
     let count = image.components.len();
     let mut opacity = None;
@@ -652,13 +656,10 @@ fn apply_channels(
     }
     // Swaps preserve the sample allocations, even for large planes.
     budget.work(count)?;
-    budget.charge::<usize>(
-        count
-            .checked_mul(2)
-            .ok_or_else(|| Error::limit("JP2 channel permutation overflow"))?,
-    )?;
-    let mut current: Vec<usize> = (0..count).collect();
-    let mut positions = current.clone();
+    let mut current = budget.with_capacity(count)?;
+    current.extend(0..count);
+    let mut positions = budget.with_capacity(count)?;
+    positions.extend(0..count);
     for (target, source) in order.into_iter().enumerate() {
         let source = source.ok_or_else(|| syntax("missing JP2 channel association", 0))?;
         let position = positions[source];

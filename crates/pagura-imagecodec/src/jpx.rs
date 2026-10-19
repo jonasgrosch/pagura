@@ -14,10 +14,12 @@
 //! `Unsupported(filter.JPXDecode)`; structural truncations remain explicit errors.
 //! ICC bytes and enumerated colour identifiers are preserved for the caller.
 //!
-//! `Limits::stream_bytes` caps encoded input, `pixels` caps the reference-grid
-//! image, `decoded_bytes` conservatively caps cumulative allocations (including
-//! scratch buffers), `objects` caps tiles, and `operations` caps parsing,
-//! tag-tree and coefficient-pass work. All allocations are charged first.
+//! Budgets (ADR 0016): `Limits::pixels` caps the reference-grid image,
+//! `decode_work` caps parsing, tag-tree, coefficient-pass, synthesis and
+//! transform work, `decode_bytes` caps working allocations (coefficient
+//! planes, code-block data, tag trees and scratch buffers) and
+//! `decoded_bytes` caps the returned samples and metadata. Every allocation
+//! is charged before it is made. The tile count is bounded by T.800 A.4.2.
 
 mod boxes;
 mod codestream;
@@ -33,7 +35,16 @@ mod tier1;
 mod wavelet;
 
 use pagura_codec::features::JPX as UNSUPPORTED;
-use pagura_core::{Error, Limits, Position, Result};
+use pagura_core::{Diagnostics, Error, Limits, Position, Recovery, Result};
+
+use crate::budget::{Budget, Messages};
+
+/// The `Limit` messages of a JPEG 2000 decode.
+const MESSAGES: Messages = Messages {
+    work: "JPEG 2000 work budget exceeded",
+    memory: "JPEG 2000 working memory budget exceeded",
+    output: "JPEG 2000 output budget exceeded",
+};
 
 /// Colour information carried by a JP2 file.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -162,41 +173,45 @@ pub fn decode_with_options(data: &[u8], limits: &Limits, options: &Options) -> R
         data,
         limits,
         options,
-        &mut pagura_core::Diagnostics::new(pagura_core::Recovery::Strict),
+        &mut Diagnostics::new(Recovery::Strict),
     )
 }
 
-/// Decodes JPEG 2000 with reported, bounded tile-part count recovery (T.800 A.4.2).
-/// Lengths, ordered part numbers, packet syntax and EOC remain authoritative.
+/// Decodes as [`decode_with_options`], with reported repairs: tile-parts
+/// beyond their declared count, which their order and lengths still delimit
+/// ([`crate::repairs::JPX_TILE_PART_COUNT`], T.800 A.4.2), and a component
+/// mapping box outside the JP2 header that supplies the mapping its palette
+/// lacks ([`crate::repairs::JPX_MAPPING_LOCATION`]).
 ///
 /// # Errors
-/// As [`decode_with_options`]; strict diagnostics reject malformed counts.
+/// As [`decode_with_options`], including stable repair tags when strict
+/// `diagnostics` refuse a repair.
 pub fn decode_with_diagnostics(
     data: &[u8],
     limits: &Limits,
     options: &Options,
-    diagnostics: &mut pagura_core::Diagnostics,
+    diagnostics: &mut Diagnostics,
 ) -> Result<Decoded> {
-    if data.len() > limits.stream_bytes {
-        return Err(Error::limit("JPEG 2000 input budget exceeded").at(Position::Buffer(0)));
-    }
-    let mut budget = io::Budget::new(limits);
-    budget.diagnostics = pagura_core::Diagnostics::new(diagnostics.mode());
-    let result =
-        decode_bounded(data, &mut budget, options).map_err(|error| error.at(Position::Buffer(0)));
-    diagnostics.absorb(budget.diagnostics.take())?;
-    result
+    let mut budget = Budget::new(limits, MESSAGES);
+    decode_bounded(data, limits.pixels, &mut budget, options, diagnostics)
+        .map_err(|error| error.at(Position::Buffer(0)))
 }
 
-fn decode_bounded(data: &[u8], budget: &mut io::Budget<'_>, options: &Options) -> Result<Decoded> {
+fn decode_bounded(
+    data: &[u8],
+    pixels: usize,
+    budget: &mut Budget,
+    options: &Options,
+    diagnostics: &mut Diagnostics,
+) -> Result<Decoded> {
     if data.starts_with(&[255, 79]) {
-        codestream::decode(data, 0, budget)
+        codestream::decode(data, 0, pixels, budget, diagnostics)
     } else {
-        let (stream, base, mut header) = boxes::parse(data, budget, options)?;
+        let (stream, base, mut header) = boxes::parse(data, pixels, budget, options, diagnostics)?;
         if options.ignore_palette {
             header.use_pdf_palette()?;
         }
-        let mut decoded = codestream::decode(stream, base, budget)?;
+        let mut decoded = codestream::decode(stream, base, pixels, budget, diagnostics)?;
         header.apply(&mut decoded, budget)?;
         Ok(decoded)
     }

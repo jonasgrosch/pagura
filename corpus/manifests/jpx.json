@@ -4715,6 +4715,26 @@
       "alpha": null
     },
     {
+      "id": "jpx/large-tiles",
+      "kind": "vector",
+      "description": "Realistic-size lossy image of constant-color tiles decoded under default limits",
+      "requirements": [
+        "jpx-irreversible",
+        "jpx-tiles",
+        "jpx-hostile"
+      ],
+      "files": {
+        ".jpx": {
+          "path": "corpus/generated/jpx/large-tiles.jpx",
+          "sha256": "5ac3db8070f4577c548ba7e6652ad379f258e44aceafbdc419439330740ca468"
+        },
+        ".regions": {
+          "path": "corpus/generated/jpx/large-tiles.regions",
+          "sha256": "b316d9583f173580801c624ceb8cf54467214805eb96b8a968f1a65942006415"
+        }
+      }
+    },
+    {
       "id": "jpx/partial-layer",
       "kind": "vector",
       "description": "Independently encoded input pixels",

@@ -3,8 +3,10 @@ mod idct;
 mod rgb;
 
 use super::{DctImage, frame::Frame};
+use crate::budget::vector;
 use idct::Idct;
-use pagura_core::{Error, Limits, Result};
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Error, Result};
 use rgb::Rgb;
 
 // T.81 Figure A.6 diagonal coefficient order, independent of any encoder.
@@ -25,6 +27,8 @@ fn sample(value: f64) -> u8 {
 
 trait Sample: Copy + Default {
     fn from_idct(value: f64) -> Self;
+    /// Upsamples and converts YCbCr `planes` into `samples` in one pass, if
+    /// this precision and the sampling factors allow it.
     fn fused(_frame: &Frame, _planes: &[Vec<Self>], _samples: &mut [Self]) -> bool {
         false
     }
@@ -32,11 +36,12 @@ trait Sample: Copy + Default {
 }
 
 impl Sample for u8 {
-    fn fused(frame: &Frame, planes: &[Vec<Self>], samples: &mut [Self]) -> bool {
-        fused_rgb(frame, planes, samples)
-    }
     fn from_idct(value: f64) -> Self {
         sample(value + 128.0)
+    }
+
+    fn fused(frame: &Frame, planes: &[Vec<Self>], samples: &mut [Self]) -> bool {
+        fused_rgb(frame, planes, samples)
     }
 
     fn finish(mut samples: Vec<Self>, components: usize, convert: bool) -> Vec<u8> {
@@ -107,37 +112,59 @@ fn ycbcr(y: f64, cb: f64, cr: f64) -> [f64; 3] {
     ]
 }
 
-pub(super) fn output(
-    frame: &Frame,
-    adobe: Option<u8>,
-    transform: Option<i64>,
-    limits: &Limits,
-) -> Result<DctImage> {
+/// The samples of a decoded frame: the inverse DCT of every block, the
+/// color transform and byte samples. The memory was charged with the frame.
+pub(super) fn output(frame: &Frame, adobe: Option<u8>, transform: Option<i64>) -> Result<DctImage> {
     if frame.precision == 8 {
-        output_native::<u8>(frame, adobe, transform, limits)
+        output_native::<u8>(frame, adobe, transform)
     } else {
-        output_native::<u16>(frame, adobe, transform, limits)
+        output_native::<u16>(frame, adobe, transform)
     }
+}
+
+/// Whether the samples are YCbCr (or YCCK) to convert, from the Adobe
+/// marker or else `/ColorTransform` (Table 13). Table 13 ignores the
+/// parameter for one component and whenever an Adobe marker specifies the
+/// transform.
+fn converts(components: u8, adobe: Option<u8>, transform: Option<i64>) -> Result<bool> {
+    if adobe.is_none() && components > 1 && transform.is_some_and(|v| !matches!(v, 0 | 1)) {
+        return Err(Error::syntax("invalid DCT ColorTransform"));
+    }
+    if adobe == Some(2) && components != 4 {
+        return Err(Error::syntax("Adobe YCCK marker requires four components"));
+    }
+    Ok(match adobe {
+        Some(0) => false,
+        Some(1 | 2) => true,
+        _ => transform.map_or(components == 3, |v| v == 1),
+    })
 }
 
 fn output_native<T: Sample>(
     frame: &Frame,
     adobe: Option<u8>,
     transform: Option<i64>,
-    limits: &Limits,
 ) -> Result<DctImage> {
     let n = u8::try_from(frame.components.len())
         .map_err(|_| Error::syntax("invalid JPEG component count"))?;
-    let count = crate::sample_count(frame.width, frame.height, n, 8, limits)?;
+    // Checked before the inverse DCT does any work.
+    let convert = converts(n, adobe, transform)?;
+    let components = usize::from(n);
+    let width = u32_to_usize(frame.width);
+    let count = width
+        .checked_mul(u32_to_usize(frame.height))
+        .and_then(|pixels| pixels.checked_mul(components))
+        .ok_or(Error::limit("JPEG sample count overflow"))?;
     let idct = Idct::new();
-    let mut planes = Vec::with_capacity(usize::from(n));
+    let mut planes = Vec::with_capacity(components);
     for c in &frame.components {
-        if c.approximation[0] < 0 || (!frame.progressive && c.approximation.iter().any(|&v| v < 0))
+        if c.approximation[0] < 0
+            || (!frame.progressive() && c.approximation.iter().any(|&v| v < 0))
         {
             return Err(Error::syntax("JPEG component has no complete scan"));
         }
         let quant = c.quant.ok_or(Error::syntax("missing JPEG quantizer"))?;
-        let mut plane = vec![T::default(); c.stride * c.rows * 64];
+        let mut plane = vector(c.stride * c.rows * 64, T::default())?;
         let pitch = c.stride * 8;
         for (blocks, rows) in c
             .blocks
@@ -157,30 +184,15 @@ fn output_native<T: Sample>(
         }
         planes.push(plane);
     }
-    // Table 13 ignores the parameter for one component and whenever an
-    // Adobe marker specifies the transform.
-    if adobe.is_none() && n > 1 && transform.is_some_and(|v| !matches!(v, 0 | 1)) {
-        return Err(Error::syntax("invalid DCT ColorTransform"));
-    }
-    let convert = match adobe {
-        Some(0) => false,
-        Some(1 | 2) => true,
-        _ => transform.map_or(n == 3, |v| v == 1),
-    };
-    if adobe == Some(2) && n != 4 {
-        return Err(Error::syntax("Adobe YCCK marker requires four components"));
-    }
-    let mut samples = vec![T::default(); count];
+    let mut samples = vector(count, T::default())?;
     if convert && T::fused(frame, &planes, &mut samples) {
         return Ok(DctImage {
             width: frame.width,
             height: frame.height,
             components: n,
-            samples: T::finish(samples, usize::from(n), false),
+            samples: T::finish(samples, components, false),
         });
     }
-    let components = usize::from(n);
-    let width = frame.width as usize;
     for (i, c) in frame.components.iter().enumerate() {
         let pitch = c.stride * 8;
         for (y, row) in samples.chunks_exact_mut(width * components).enumerate() {
@@ -197,11 +209,10 @@ fn output_native<T: Sample>(
     })
 }
 
-/// Expand matching chroma planes directly into RGB. Chroma contributions are
-/// evaluated once per source run; each output keeps the byte-domain rounding
-/// and the original multiplication/subtraction order (7.4.8, Table 13).
+/// Expands matching chroma planes directly into RGB (7.4.8, Table 13): each
+/// chroma pair is converted once per run of luminance samples it covers.
 fn fused_rgb(frame: &Frame, planes: &[Vec<u8>], samples: &mut [u8]) -> bool {
-    let [y, cb, cr] = frame.components.as_slice() else {
+    let ([y, cb, cr], [luminance, blue, red]) = (frame.components.as_slice(), planes) else {
         return false;
     };
     if y.h != frame.max_h
@@ -213,22 +224,22 @@ fn fused_rgb(frame: &Frame, planes: &[Vec<u8>], samples: &mut [u8]) -> bool {
         return false;
     }
     let repeat = frame.max_h / cb.h;
-    let width = frame.width as usize;
+    let width = u32_to_usize(frame.width);
     let pitch = y.stride * 8;
     let chroma_pitch = cb.stride * 8;
     for (line, output) in samples.chunks_exact_mut(width * 3).enumerate() {
-        let luminance = &planes[0][line * pitch..line * pitch + width];
+        let luminance = &luminance[line * pitch..line * pitch + width];
         let start = line * cb.v / frame.max_v * chroma_pitch;
-        let blue = &planes[1][start..start + chroma_pitch];
-        let red = &planes[2][start..start + chroma_pitch];
-        for (((run, yy), &cb), &cr) in output
+        let blue = &blue[start..start + chroma_pitch];
+        let red = &red[start..start + chroma_pitch];
+        for (((run, luminance), &cb), &cr) in output
             .chunks_mut(repeat * 3)
             .zip(luminance.chunks(repeat))
             .zip(blue)
             .zip(red)
         {
             let rgb = Rgb::new(cb, cr);
-            for (pixel, &y) in run.as_chunks_mut::<3>().0.iter_mut().zip(yy) {
+            for (pixel, &y) in run.as_chunks_mut::<3>().0.iter_mut().zip(luminance) {
                 *pixel = rgb.pixel(y);
             }
         }
@@ -274,26 +285,29 @@ mod tests {
             for yv in 1..=4 {
                 for ch in 1..=yh {
                     for cv in 1..=yv {
+                        let header = [
+                            8,
+                            0,
+                            11,
+                            0,
+                            9,
+                            3,
+                            1,
+                            yh * 16 + yv,
+                            0,
+                            2,
+                            ch * 16 + cv,
+                            0,
+                            3,
+                            ch * 16 + cv,
+                            0,
+                        ];
                         let frame = super::Frame::parse(
-                            &[
-                                8,
-                                0,
-                                11,
-                                0,
-                                9,
-                                3,
-                                1,
-                                yh * 16 + yv,
-                                0,
-                                2,
-                                ch * 16 + cv,
-                                0,
-                                3,
-                                ch * 16 + cv,
-                                0,
-                            ],
-                            0xc0,
+                            pagura_core::bytes::Cursor::new(&header),
+                            crate::dct::frame::Process::Baseline,
+                            crate::dct::frame::Coding::Huffman,
                             &limits,
+                            &mut crate::budget::Budget::new(&limits, crate::dct::MESSAGES),
                         )
                         .unwrap();
                         let planes: Vec<Vec<_>> = frame
@@ -324,13 +338,9 @@ mod tests {
                                         )
                                     })
                                     .collect();
-                                let (yy, cb, cr) =
-                                    (source[0], source[1] - 128.0, source[2] - 128.0);
-                                let expected = [
-                                    super::sample(yy + 1.402 * cr),
-                                    super::sample(yy - 0.344_136 * cb - 0.714_136 * cr),
-                                    super::sample(yy + 1.772 * cb),
-                                ];
+                                let expected =
+                                    super::ycbcr(source[0], source[1] - 128.0, source[2] - 128.0)
+                                        .map(super::sample);
                                 assert_eq!(
                                     &actual[(y * 9 + x) * 3..(y * 9 + x + 1) * 3],
                                     &expected
@@ -440,9 +450,13 @@ mod tests {
     fn block_rows_and_padding_preserve_component_coordinates() {
         let limits = pagura_core::Limits::default();
         let mut frame = super::Frame::parse(
-            &[8, 0, 9, 0, 29, 3, 1, 0x31, 0, 2, 0x21, 0, 3, 0x11, 0],
-            0xc0,
+            pagura_core::bytes::Cursor::new(&[
+                8, 0, 9, 0, 29, 3, 1, 0x31, 0, 2, 0x21, 0, 3, 0x11, 0,
+            ]),
+            crate::dct::frame::Process::Baseline,
+            crate::dct::frame::Coding::Huffman,
             &limits,
+            &mut crate::budget::Budget::new(&limits, crate::dct::MESSAGES),
         )
         .unwrap();
         for (i, component) in frame.components.iter_mut().enumerate() {
@@ -452,7 +466,7 @@ mod tests {
                 block[0] = i32::try_from(8 * (16 * i + index)).unwrap();
             }
         }
-        let image = super::output(&frame, None, Some(0), &limits).unwrap();
+        let image = super::output(&frame, None, Some(0)).unwrap();
         assert_eq!(image.samples.len(), 29 * 9 * 3);
         for (y, row) in image.samples.as_chunks::<87>().0.iter().enumerate() {
             for (x, pixel) in row.as_chunks::<3>().0.iter().enumerate() {

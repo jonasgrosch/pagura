@@ -293,7 +293,7 @@ mod tests {
         coefficients[32] = 24.0;
         coefficients[36] = 32.0;
         // At frequency 4, cos((2x+1)*pi/4) has signs +--++--+.
-        // With these multiples of 8, A.3.3 gives integer samples:
+        // With these multiples of 8, T.81 A.3.3 gives integer samples:
         // 128 + 1 + 2*sx + 3*sy + 4*sx*sy, without rounding ties.
         let expected = [
             [138, 126, 126, 138, 138, 126, 126, 138],

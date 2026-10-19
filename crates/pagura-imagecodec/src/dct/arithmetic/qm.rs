@@ -1,6 +1,8 @@
 //! T.81 D.2: interval subdivision, conditional exchange and byte input.
 use super::table::STATES;
-use pagura_core::{Error, Position, Result};
+use crate::dct::marker;
+use pagura_core::bytes::Cursor;
+use pagura_core::{Error, Result};
 
 #[derive(Clone, Copy, Default)]
 pub(super) struct Bin {
@@ -8,68 +10,62 @@ pub(super) struct Bin {
     mps: bool,
 }
 
+/// The QM decoder of T.81 Annex D over one entropy-coded segment.
+///
+/// Its work needs no meter of its own: every decision belongs to a block,
+/// and the scan charges each block before decoding it.
 pub(super) struct Qm<'a> {
-    data: &'a [u8],
-    offset: usize,
+    bytes: Cursor<'a>,
+    /// Whether a marker has been reached; the decoder then reads zeros.
     terminal: bool,
     interval: u32,
     code: u32,
     available: u8,
-    remaining: usize,
-    initial_budget: usize,
 }
 
 impl<'a> Qm<'a> {
-    pub(super) fn new(data: &'a [u8], offset: usize, budget: usize) -> Result<Self> {
+    pub(super) fn new(bytes: Cursor<'a>) -> Result<Self> {
         let mut coder = Self {
-            data,
-            offset,
+            bytes,
             terminal: false,
             interval: 0x1_0000,
             code: 0,
             available: 0,
-            remaining: budget,
-            initial_budget: budget,
         };
-        // D.2.7: two bytes in Cx; C-low starts empty.
+        // T.81 D.2.7: two bytes in Cx; C-low starts empty.
         coder.code = coder.byte()? << 24;
         coder.code |= coder.byte()? << 16;
         Ok(coder)
     }
 
     pub(super) fn error(&self, message: &'static str) -> Error {
-        Error::syntax(message).at(Position::Buffer(self.offset))
+        self.bytes.error(message)
     }
 
-    fn charge(&mut self) -> Result<()> {
-        self.remaining = self.remaining.checked_sub(1).ok_or(
-            Error::limit("JPEG arithmetic work budget exceeded").at(Position::Buffer(self.offset)),
-        )?;
-        Ok(())
-    }
-
+    /// BYTEIN with the stuffing of T.81 D.2.6 and F.1.2.3: `FF 00` is a data
+    /// byte `FF`; `FF` and any other byte is a marker, after which the
+    /// decoder reads zeros. The end of the data is not a marker.
     fn byte(&mut self) -> Result<u32> {
-        self.charge()?;
         if self.terminal {
-            // D.2.6 supplies zeros after an actual marker, never after EOF.
             return Ok(0);
         }
-        let value = *self
-            .data
-            .get(self.offset)
-            .ok_or(self.error("truncated JPEG arithmetic data"))?;
-        if value == 255 {
-            let next = *self
-                .data
-                .get(self.offset + 1)
-                .ok_or(self.error("truncated JPEG arithmetic marker"))?;
-            if next != 0 {
-                self.terminal = true;
-                return Ok(0);
+        let at = self.bytes.position();
+        let value = self
+            .bytes
+            .u8()
+            .map_err(|_| Error::syntax("truncated JPEG arithmetic data").at(at))?;
+        if value == marker::PREFIX {
+            match self.bytes.rest().first() {
+                None => return Err(Error::syntax("truncated JPEG arithmetic marker").at(at)),
+                Some(&marker::STUFFED) => self.bytes.skip(1)?,
+                Some(_) => {
+                    self.terminal = true;
+                    // Stay on the marker, which ends the segment.
+                    self.bytes.seek(self.bytes.offset() - 1)?;
+                    return Ok(0);
+                }
             }
-            self.offset += 1;
         }
-        self.offset += 1;
         Ok(u32::from(value))
     }
 
@@ -108,32 +104,30 @@ impl<'a> Qm<'a> {
     }
 
     pub(super) fn fixed(&mut self) -> Result<bool> {
-        // F.1.4.4.2 / G.1.3.1: a fresh, non-adapting estimate for every bit.
+        // T.81 F.1.4.4.2 and G.1.3.1: a fresh, non-adapting estimate for every bit.
         self.decision(&mut Bin::default())
     }
 
-    pub(super) fn used(&self) -> usize {
-        self.initial_budget - self.remaining
-    }
-
+    /// Reads to the marker that ends the segment (T.81 D.1.8, D.2.6): the
+    /// termination bytes and an optional zero suffix precede it. Huffman
+    /// padding and surplus-symbol rules do not apply. Returns the marker's
+    /// offset.
     pub(super) fn finish(&mut self) -> Result<usize> {
-        // D.1.8/D.2.6: termination bytes and optional zero suffix precede
-        // the marker. Huffman padding and surplus-symbol rules do not apply.
         while !self.terminal {
             self.byte()?;
         }
-        Ok(self.offset)
+        Ok(self.bytes.offset())
     }
 
+    /// Reads restart marker `RST<expected>` and starts the next segment.
     pub(super) fn restart(&mut self, expected: u8) -> Result<()> {
-        let mut offset = self.finish()?;
-        let code = super::super::marker(self.data, &mut offset)?;
-        if code != 0xd0 + expected {
-            return Err(self.error("wrong JPEG arithmetic restart marker"));
+        self.finish()?;
+        let mut bytes = self.bytes.clone();
+        let at = bytes.position();
+        if crate::dct::read_marker(&mut bytes)? != marker::RST0 + expected {
+            return Err(Error::syntax("wrong JPEG arithmetic restart marker").at(at));
         }
-        let used = self.used();
-        *self = Self::new(self.data, offset, self.remaining)?;
-        self.initial_budget += used;
+        *self = Self::new(bytes)?;
         Ok(())
     }
 }
@@ -141,6 +135,7 @@ impl<'a> Qm<'a> {
 #[cfg(test)]
 mod tests {
     use super::{Bin, Qm};
+    use pagura_core::bytes::Cursor;
 
     #[test]
     fn annex_k_4_known_answer_including_stuffing_and_zero_termination() {
@@ -155,7 +150,7 @@ mod tests {
             0xaa, 0xaa, 0x82, 0xc0, 0x20, 0x00, 0xfc, 0xd7, 0x9e, 0xf6, 0x74, 0xea, 0xab, 0xf7,
             0x69, 0x7e, 0xe7, 0x4c,
         ];
-        let mut coder = Qm::new(&encoded, 0, 10_000).unwrap();
+        let mut coder = Qm::new(Cursor::new(&encoded)).unwrap();
         let mut bin = Bin::default();
         for byte in expected {
             for shift in (0..8).rev() {
@@ -166,24 +161,19 @@ mod tests {
     }
 
     #[test]
-    fn marker_termination_does_not_authorize_eof_or_unbounded_refills() {
-        assert!(Qm::new(&[], 0, 100).is_err());
-        assert!(Qm::new(&[0xff], 0, 100).is_err());
-        let mut coder = Qm::new(&[0xff, 0xd9], 0, 8).unwrap();
+    fn markers_end_segments_but_the_end_of_data_does_not() {
+        assert!(Qm::new(Cursor::new(&[])).is_err());
+        assert!(Qm::new(Cursor::new(&[0xff])).is_err());
+        // After a marker every byte reads as zero, however many are needed.
+        let mut coder = Qm::new(Cursor::new(&[0xff, 0xd9])).unwrap();
         let mut bin = Bin::default();
-        // Cheap adaptive decisions are covered by the scan's block charge.
-        for _ in 0..32 {
+        for _ in 0..1000 {
             coder.decision(&mut bin).unwrap();
+            coder.fixed().unwrap();
         }
-        // A fresh estimate forces regular renormalization even on marker zeros.
-        for _ in 0..128 {
-            if let Err(error) = coder.fixed() {
-                assert_eq!(coder.used(), 8);
-                assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
-                assert!(matches!(error.position, pagura_core::Position::Buffer(_)));
-                return;
-            }
-        }
-        panic!("unbounded arithmetic byte refills");
+        assert_eq!(coder.finish().unwrap(), 0);
+        // Without a marker, decoding past the data is an error.
+        let mut coder = Qm::new(Cursor::new(&[0x12, 0x34])).unwrap();
+        assert!((0..64).any(|_| coder.fixed().is_err()));
     }
 }

@@ -2,7 +2,9 @@
 
 use pagura_core::Result;
 
-use super::io::{Budget, Reader, syntax};
+use crate::budget::Budget;
+
+use super::io::{Reader, syntax};
 use super::progression::{self, Change};
 use super::unsupported;
 
@@ -15,7 +17,7 @@ pub(super) struct Style {
     pub precincts: Vec<[u8; 2]>,
 }
 
-fn read_style(reader: &mut Reader<'_>, flags: u8, budget: &mut Budget<'_>) -> Result<Style> {
+fn read_style(reader: &mut Reader<'_>, flags: u8, budget: &mut Budget) -> Result<Style> {
     let levels = reader.u8()?;
     let block = [reader.u8()? & 15, reader.u8()? & 15];
     let modes = reader.u8()?;
@@ -62,7 +64,7 @@ pub(super) struct Quantization {
     pub steps: Vec<(u8, u16)>,
 }
 
-fn read_quantization(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Quantization> {
+fn read_quantization(reader: &mut Reader<'_>, budget: &mut Budget) -> Result<Quantization> {
     let header = reader.u8()?;
     let guard = header >> 5;
     let kind = header & 31;
@@ -84,8 +86,7 @@ fn read_quantization(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result
             reader.position(),
         ));
     }
-    budget.charge::<(u8, u16)>(count)?;
-    let mut steps = Vec::with_capacity(count);
+    let mut steps = budget.with_capacity(count)?;
     for _ in 0..count {
         if kind == 0 {
             let value = reader.u8()?;
@@ -118,7 +119,7 @@ pub(super) struct Configuration {
 }
 
 impl Configuration {
-    pub fn new(count: usize, budget: &mut Budget<'_>) -> Result<Self> {
+    pub fn new(count: usize, budget: &mut Budget) -> Result<Self> {
         Ok(Self {
             styles: budget.filled(count, Style::default())?,
             quants: budget.filled(count, Quantization::default())?,
@@ -135,16 +136,16 @@ impl Configuration {
         })
     }
 
-    pub fn copy(&self, budget: &mut Budget<'_>) -> Result<Self> {
-        budget.charge::<Style>(self.styles.len())?;
-        budget.charge::<Quantization>(self.quants.len())?;
+    pub fn copy(&self, budget: &mut Budget) -> Result<Self> {
+        copied::<Style>(budget, self.styles.len())?;
+        copied::<Quantization>(budget, self.quants.len())?;
         for style in &self.styles {
-            budget.charge::<[u8; 2]>(style.precincts.len())?;
+            copied::<[u8; 2]>(budget, style.precincts.len())?;
         }
-        budget.charge::<u8>(self.roi.len())?;
-        budget.charge::<Change>(self.progressions.len())?;
+        copied::<u8>(budget, self.roi.len())?;
+        copied::<Change>(budget, self.progressions.len())?;
         for q in &self.quants {
-            budget.charge::<(u8, u16)>(q.steps.len())?;
+            copied::<(u8, u16)>(budget, q.steps.len())?;
         }
         Ok(Self {
             styles: self.styles.clone(),
@@ -166,7 +167,7 @@ impl Configuration {
         &mut self,
         marker: u16,
         fields: &mut Reader<'_>,
-        budget: &mut Budget<'_>,
+        budget: &mut Budget,
     ) -> Result<()> {
         match marker {
             0xff52 => {
@@ -188,7 +189,7 @@ impl Configuration {
                     if self.seen_components[index] & 1 != 0 {
                         continue;
                     }
-                    budget.charge::<[u8; 2]>(style.precincts.len())?;
+                    copied::<[u8; 2]>(budget, style.precincts.len())?;
                     *entry = style.clone();
                 }
                 self.has_style = true;
@@ -212,7 +213,7 @@ impl Configuration {
                     if self.seen_components[index] & 2 != 0 {
                         continue;
                     }
-                    budget.charge::<(u8, u16)>(quant.steps.len())?;
+                    copied::<(u8, u16)>(budget, quant.steps.len())?;
                     *entry = quant.clone();
                 }
                 self.has_quant = true;
@@ -253,11 +254,7 @@ impl Configuration {
         Ok(())
     }
 
-    fn progression_marker(
-        &mut self,
-        fields: &mut Reader<'_>,
-        budget: &mut Budget<'_>,
-    ) -> Result<()> {
+    fn progression_marker(&mut self, fields: &mut Reader<'_>, budget: &mut Budget) -> Result<()> {
         if self.seen_defaults[2] {
             return Err(syntax(
                 "repeated JPEG 2000 POC in one header",
@@ -399,7 +396,7 @@ fn validate_tile_lengths(fields: &mut Reader<'_>) -> Result<()> {
     Ok(())
 }
 
-fn validate_packet_lengths(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<()> {
+fn validate_packet_lengths(fields: &mut Reader<'_>, budget: &mut Budget) -> Result<()> {
     fields.u8()?; // Zplt.
     if fields.remaining() == 0 {
         return Err(syntax(
@@ -433,6 +430,13 @@ fn validate_packet_lengths(fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> 
         ));
     }
     Ok(())
+}
+
+/// Charges the working memory of `count` copied values of `T`, and the copying
+/// as work.
+fn copied<T>(budget: &mut Budget, count: usize) -> Result<()> {
+    budget.memory::<T>(count)?;
+    budget.work(count)
 }
 
 fn component_index(reader: &mut Reader<'_>, count: usize) -> Result<usize> {

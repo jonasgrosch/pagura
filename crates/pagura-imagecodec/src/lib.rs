@@ -7,6 +7,7 @@
 //! PDF objects: `pagura-image` reads image dictionaries, maps their
 //! parameters onto the codecs and places codec positions in the document.
 
+mod budget;
 pub mod ccitt;
 pub mod dct;
 pub mod features;
@@ -14,6 +15,7 @@ pub mod jbig2;
 pub mod jpx;
 pub mod repairs;
 
+use pagura_core::convert::usize_to_u64;
 use pagura_core::{Error, Limits, Result};
 
 /// The number of sample values in an image of `width × height` pixels with
@@ -36,7 +38,7 @@ pub fn sample_count(
         .checked_mul(u64::from(components))
         .and_then(|v| usize::try_from(v).ok())
         .ok_or(Error::limit("image sample size overflow"))?;
-    if pixels > limits.pixels as u64
+    if pixels > usize_to_u64(limits.pixels)
         || count
             .checked_mul(if bits > 8 { 2 } else { 1 })
             .is_none_or(|bytes| bytes > limits.decoded_bytes)

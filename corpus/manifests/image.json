@@ -6172,6 +6172,28 @@
       }
     },
     {
+      "id": "image/jpeg-progressive-large-default-limits",
+      "kind": "vector",
+      "description": "jpeg progressive large default limits",
+      "requirements": [
+        "image-dct"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/image/jpeg-progressive-large-default-limits.in",
+          "sha256": "c4097a60881ca2b38a7f241289517a50b43ba9e7045c58fef07c81131a3c3f58"
+        },
+        ".out": {
+          "path": "corpus/generated/image/jpeg-progressive-large-default-limits.out",
+          "sha256": "eef9ee83c625f794cbebce0e6c82efbdff3c0856265a1604007edd953b5dab1b"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpeg-progressive-large-default-limits.params",
+          "sha256": "40d3734740a1a03c95d27dfed420728b1cb158f7e4808b734b95904abbd3f207"
+        }
+      }
+    },
+    {
       "id": "image/jpeg-baseline-gray",
       "kind": "vector",
       "description": "jpeg baseline gray",

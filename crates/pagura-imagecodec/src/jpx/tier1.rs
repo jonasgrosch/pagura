@@ -2,7 +2,9 @@
 
 use pagura_core::Result;
 
-use super::io::{Budget, syntax};
+use crate::budget::Budget;
+
+use super::io::syntax;
 use super::mq::{Context, Decoder};
 use super::segments::{self, Segment};
 
@@ -366,7 +368,7 @@ impl Raw<'_> {
 pub(super) fn decode(
     segments: &[Segment],
     p: &Parameters,
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<Vec<Sample>> {
     let base = segments.first().map_or(0, |s| s.base);
     let valid_modes = segments::BYPASS
@@ -404,7 +406,7 @@ fn decode_segment_inner(
     segment: &Segment,
     p: &Parameters,
     contexts: &mut [Context; 19],
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<()> {
     // B.10.6/D.4: a final layer may end at a nonterminated coding pass.
     let end = segment.first + segment.passes;
@@ -471,7 +473,7 @@ fn decode_segment(
     segment: &Segment,
     p: &Parameters,
     contexts: &mut [Context; 19],
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<()> {
     decode_segment_inner(block, segment, p, contexts, budget).map_err(|mut error| {
         if let pagura_core::Position::Buffer(offset) = error.position {

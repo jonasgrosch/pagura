@@ -432,6 +432,61 @@ def eob_jpeg(run_count=4, restart=0):
     return data+segment(0xda,bytes([1,1,0,1,63,0x10]))+wire.bytes(True)+b"\xff\xd9"
 
 
+def eob_runs(wire, blocks):
+    """Codes `blocks` all-zero bands as T.81 G.1.2.2 EOB runs of at most 32767."""
+    while blocks:
+        run = min(blocks, 32767)
+        size = run.bit_length() - 1
+        huff(wire, size*16)
+        wire.put(run - (1 << size), size)
+        blocks -= run
+
+
+def large_progressive_jpeg(width=3000, height=2000):
+    """A progressive gray JPEG of realistic size that decodes exactly.
+
+    Every block is flat: its only coefficient is DC, quantized by 8, so each
+    sample is 128 + DC (T.81 A.3.3) and the expectation is one byte per
+    block. Ten scans (DC first and refinement, four AC bands each with a
+    first pass and a refinement, T.81 G.1.1.1) make the block work exceed
+    the 50,000,000 units of the content-token budget the codecs once used.
+    """
+    columns, rows = (width+7)//8, (height+7)//8
+    values = bytes((bx*7 + by*13 + (bx*by) % 5) % 256 for by in range(rows) for bx in range(columns))
+    result = b"\xff\xd8" + segment(0xdb, b"\0" + bytes([8] + [1]*63))
+    result += segment(0xc2, bytes([8]) + struct.pack(">HHB", height, width, 1) + bytes([1, 0x11, 0]))
+    result += segment(0xc4, b"\0"+bytes([0, 0, 0, len(DC)]+[0]*12)+bytes(DC)
+                      + b"\x10"+bytes([0]*7+[len(AC)]+[0]*8)+bytes(AC))
+    bands = [(1, 2), (3, 9), (10, 20), (21, 63)]
+
+    def scan(start, end, high, low, code):
+        nonlocal result
+        result += segment(0xda, bytes([1, 1, 0, start, end, high*16+low]))
+        wire = Wire()
+        code(wire)
+        result += wire.bytes(True)
+
+    def dc_first(wire):
+        predictor = 0
+        for value in values:
+            dc = (value - 128) >> 1
+            dc_value(wire, dc - predictor)
+            predictor = dc
+
+    def dc_refinement(wire):
+        for value in values:
+            wire.put((value - 128) & 1, 1)
+
+    scan(0, 0, 0, 1, dc_first)
+    for start, end in bands:
+        scan(start, end, 0, 1, lambda wire: eob_runs(wire, len(values)))
+    scan(0, 0, 1, 0, dc_refinement)
+    for start, end in bands:
+        scan(start, end, 1, 0, lambda wire: eob_runs(wire, len(values)))
+    result += b"\xff\xd9"
+    return result, values
+
+
 def cases():
     from . import jpeg as jpeg_models
     yield from jpeg_models.cases()
@@ -444,6 +499,10 @@ def cases():
     yield from fax_grid_cases()
     yield from inline_filter_cases()
     yield from jpx_options_cases()
+    encoded, blocks = large_progressive_jpeg()
+    # The expectation has one sample per 8x8 block (kind dct-blocks).
+    yield vector("jpeg-progressive-large-default-limits", "dct-blocks", encoded, blocks,
+                 requirement="image-dct", width=3000, height=2000)
     for name, options in [
         ("jpeg-baseline-gray", {}), ("jpeg-extended", dict(extended=True)),
         ("jpeg-baseline-rgb", dict(n=3)), ("jpeg-rgb-direct", dict(n=3, transform=0)),

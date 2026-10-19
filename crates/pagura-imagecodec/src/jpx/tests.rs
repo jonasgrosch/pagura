@@ -148,8 +148,8 @@ fn truncation_and_mutation_never_panic() {
         );
     }
     let limits = Limits {
-        operations: 100_000,
-        decoded_bytes: 1_000_000,
+        decode_work: 100_000,
+        decode_bytes: 1_000_000,
         pixels: 4096,
         ..Limits::default()
     };
@@ -163,39 +163,64 @@ fn truncation_and_mutation_never_panic() {
 }
 
 #[test]
-fn limits_bound_input_pixels_allocations_and_work() {
+fn limits_bound_pixels_work_memory_and_output() -> pagura_core::Result<()> {
     let data = fixture("jpx", "gray.jpx");
-    for limits in [
-        Limits {
-            stream_bytes: data.len() - 1,
-            ..Limits::default()
-        },
-        Limits {
-            pixels: 63,
-            ..Limits::default()
-        },
-        Limits {
-            decoded_bytes: 100,
-            ..Limits::default()
-        },
-        Limits {
-            operations: 10,
-            ..Limits::default()
-        },
-        Limits {
+    for (limits, message) in [
+        (
+            Limits {
+                pixels: 63,
+                ..Limits::default()
+            },
+            "JPEG 2000 pixel budget exceeded",
+        ),
+        (
+            Limits {
+                decode_work: 10,
+                ..Limits::default()
+            },
+            super::MESSAGES.work,
+        ),
+        (
+            Limits {
+                decode_bytes: 100,
+                ..Limits::default()
+            },
+            super::MESSAGES.memory,
+        ),
+        // The 8×8 gray samples alone take 128 bytes.
+        (
+            Limits {
+                decoded_bytes: 127,
+                ..Limits::default()
+            },
+            super::MESSAGES.output,
+        ),
+    ] {
+        let error = decode(&data, &limits).err();
+        assert_eq!(
+            error.map(|e| (e.kind, e.message)),
+            Some((ErrorKind::Limit, message))
+        );
+    }
+    // Input already in memory, content-stream operations and object counts
+    // are other budgets (ADR 0016); none of them bounds a decode.
+    let image = decode(
+        &data,
+        &Limits {
+            stream_bytes: 0,
+            operations: 0,
             objects: 0,
             ..Limits::default()
         },
-    ] {
-        let result = decode(&data, &limits);
-        assert!(matches!(result,Err(e) if e.kind == ErrorKind::Limit));
-    }
+    )?;
+    assert_eq!(image.components.len(), 1);
+    Ok(())
 }
 
 #[test]
 fn smooth_tile_synthesis_stays_within_work_budget() -> pagura_core::Result<()> {
     let limits = Limits {
-        operations: 250_000,
+        decode_work: 250_000,
         ..Limits::default()
     };
     let image = decode(&fixture("jpx", "wavelet-budget.jpx"), &limits)?;
@@ -232,9 +257,8 @@ fn reserved_coding_modes_are_rejected() -> Result<(), Box<dyn std::error::Error>
 fn packed_and_progression_boundaries_never_panic() {
     let limits = Limits {
         pixels: 4096,
-        decoded_bytes: 2_000_000,
-        operations: 200_000,
-        objects: 256,
+        decode_bytes: 2_000_000,
+        decode_work: 200_000,
         ..Limits::default()
     };
     for name in [
@@ -407,5 +431,64 @@ fn subsampled_components_retain_reference_grid_placement() -> Result<(), Box<dyn
         }
     }
     assert_eq!(offset, values.len());
+    Ok(())
+}
+
+#[test]
+fn realistic_sizes_decode_under_default_limits() -> Result<(), Box<dyn std::error::Error>> {
+    let data = fixture("jpx", "large-tiles.jpx");
+    let text = String::from_utf8(fixture("jpx", "large-tiles.regions"))?;
+    let values = text
+        .split_whitespace()
+        .map(str::parse::<u32>)
+        .collect::<Result<Vec<_>, _>>()?;
+    let (&[width, height, tile_width, tile_height, tolerance], colors) = values
+        .split_first_chunk::<5>()
+        .ok_or("short region header")?;
+    let image = decode(&data, &Limits::default())?;
+    assert_eq!(
+        (image.width, image.height, image.components.len()),
+        (width, height, 3)
+    );
+    let row = usize::try_from(width)?;
+    let tile = [usize::try_from(tile_width)?, usize::try_from(tile_height)?];
+    let columns = row.div_ceil(tile[0]);
+    for (channel, component) in image.components.iter().enumerate() {
+        assert_eq!(
+            (component.width, component.height, component.bits),
+            (width, height, 8)
+        );
+        for (index, &sample) in component.samples.iter().enumerate() {
+            let region = index / row / tile[1] * columns + index % row / tile[0];
+            let expected = colors.get(region * 3 + channel).ok_or("missing region")?;
+            assert!(
+                u32::from(sample).abs_diff(*expected) <= tolerance,
+                "channel {channel} sample {index}: {sample} vs {expected}"
+            );
+        }
+    }
+    // H1: the 50,000,000 units codecs once borrowed from the content-stream
+    // `operations` budget do not cover this image's synthesis and transform.
+    let error = decode(
+        &data,
+        &Limits {
+            decode_work: 50_000_000,
+            ..Limits::default()
+        },
+    )
+    .err();
+    assert_eq!(
+        error.map(|e| (e.kind, e.message)),
+        Some((ErrorKind::Limit, super::MESSAGES.work))
+    );
+    // Each tile returns its coefficient planes and code-block scratch, so
+    // the decoder holds far less than the 77 MB it allocates in total.
+    decode(
+        &data,
+        &Limits {
+            decode_bytes: 16 * 1024 * 1024,
+            ..Limits::default()
+        },
+    )?;
     Ok(())
 }

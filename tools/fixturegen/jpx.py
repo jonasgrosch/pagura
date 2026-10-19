@@ -712,6 +712,49 @@ def coefficient_stream(bands, width, height, *, lossy=False, exponents=None, mod
     return result+marker(0x90,struct.pack(">HIBB",0,14+len(body),0,1))+b"\xff\x93"+body+b"\xff\xd9"
 
 
+def constant_tiles(colors, width, height, tile, levels=5, bits=8):
+    """Encode one constant RGB color per tile, lossy 9/7 with the ICT (G.3).
+
+    Tiles are transformed independently. Within a tile, F.4.8.2 lifting with
+    the K normalization maps a constant line to the same constant in its
+    low-pass samples and zero in its high-pass samples, which is checked on
+    every line length and origin parity the tiles use. Each tile therefore
+    has a constant LL band and zero detail bands, so only its LL code-blocks
+    carry data and the generator never runs a full-size forward transform.
+    Every subband is quantized with Delta = 1/4 (E.1.1.1).
+    """
+    columns, rows = -(-width//tile[0]), -(-height//tile[1])
+    assert len(colors) == columns*rows
+    exponent = bits+2
+    siz = struct.pack(">H8IH",0,width,height,0,0,tile[0],tile[1],0,0,3)+bytes([bits-1,1,1])*3
+    cod = bytes([0,0])+struct.pack(">H",1)+bytes([1,levels,4,4,0,0])
+    qcd = bytes([0x42])+struct.pack(">H",exponent << 11)*(1+3*levels)
+    stream = b"\xff\x4f"+marker(0x51,siz)+marker(0x52,cod)+marker(0x5c,qcd)
+    for index,color in enumerate(colors):
+        tx0,ty0 = (index % columns)*tile[0],(index // columns)*tile[1]
+        bounds = (tx0,ty0,min(tx0+tile[0],width),min(ty0+tile[1],height))
+        x0,y0,x1,y1 = bounds
+        for _ in range(levels):
+            for origin,length in ((x0,x1-x0),(y0,y1-y0)):
+                line = forward_line([1.0]*length,origin,False)
+                assert all(abs(v-(i % 2 == origin % 2)) < 1e-9 for i,v in enumerate(line))
+            x0,y0,x1,y1 = (-(-v//2) for v in (x0,y0,x1,y1))
+        r,g,b = (v-(1 << (bits-1)) for v in color)
+        components = (.299*r+.587*g+.114*b,-.16875*r-.33126*g+.5*b,.5*r-.41869*g-.08131*b)
+        lx0,ly0,lx1,ly1 = (-(-v//(1 << levels)) for v in bounds)
+        body = b""
+        for resolution in range(levels+1):
+            for value in components:
+                if resolution:
+                    body += b"\0"  # B.10.3: an empty packet, as every detail band is zero.
+                    continue
+                band = [[math.trunc(value*4)]*(lx1-lx0) for _ in range(ly1-ly0)]
+                header,data = packet([band],[exponent+1],[(lx0,ly0)])
+                body += header+data
+        stream += marker(0x90,struct.pack(">HIBB",index,14+len(body),0,1))+b"\xff\x93"+body
+    return stream+b"\xff\xd9"
+
+
 def rejection(name, data, requirements, rule):
     return Vector(name,{".jpx":data,".error":b"syntax\n"},requirements,rule,extra={"error":"syntax"})
 
@@ -978,6 +1021,18 @@ def cases():
     flat = [[128]*(64*64)]*3
     yield vector("wavelet-budget",codestream(flat,64,64,levels=5,mct=True,lossy=True),
                  flat,64,64,("jpx-wavelet","jpx-hostile"))
+    # A realistic size: 2000x1500, lossy 9/7 with the ICT, five levels and
+    # 512x512 tiles, one constant color each (partial tiles on the right and
+    # bottom). Its synthesis and transform work exceeds the 50M units that
+    # codecs once borrowed from the content-stream operation budget. The
+    # expectation is each tile's input color, rounded within one unit.
+    colors = [(200,30,40),(30,180,60),(20,40,220),(240,220,30),
+              (128,128,128),(0,0,0),(255,255,255),(90,200,210),
+              (170,60,190),(250,140,0),(60,60,30),(10,120,130)]
+    regions = "2000 1500 512 512 1\n"+"".join(f"{r} {g} {b}\n" for r,g,b in colors)
+    yield Vector("large-tiles",{".jpx":constant_tiles(colors,2000,1500,(512,512)),".regions":regions.encode()},
+                 ("jpx-irreversible","jpx-tiles","jpx-hostile"),
+                 "Realistic-size lossy image of constant-color tiles decoded under default limits")
     # Remove the final layer's packets but keep its COD declaration. The
     # earlier packet is a real contribution, rather than an empty layer.
     layer = bytearray(coefficient_stream([column],1,4,max_passes=5))
