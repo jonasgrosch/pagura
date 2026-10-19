@@ -8,6 +8,10 @@ use std::sync::Arc;
 /// The operand stack depth Annex C (Table C.1) gives for PostScript
 /// calculator functions; deeper stacks are refused.
 const STACK: usize = 100;
+/// Operands held in place before the stack spills to the heap: enough for
+/// typical tint and shading programs, without zeroing the whole Annex C
+/// stack on every evaluation.
+const INLINE: usize = 16;
 
 #[derive(Debug, Clone)]
 pub(super) struct Calculator {
@@ -283,8 +287,7 @@ impl Calculator {
         limits: &Limits,
     ) -> Result<()> {
         let mut stack = Stack {
-            values: [Operand::Integer(0); STACK],
-            len: 0,
+            values: Operands::new(),
             limits,
             work,
             object: self.object,
@@ -293,18 +296,95 @@ impl Calculator {
             stack.push(Operand::Real(value))?;
         }
         stack.execute(&self.program, 0)?;
-        if stack.len != output.len() {
+        if stack.values.len != output.len() {
             return Err(Error::syntax("wrong calculator output count"));
         }
-        for (out, value) in output.iter_mut().zip(&stack.values) {
-            *out = numeric(*value)?;
+        for (index, out) in output.iter_mut().enumerate() {
+            *out = numeric(stack.values.get(index)?)?;
         }
         Ok(())
     }
 }
-struct Stack<'a> {
-    values: [Operand; STACK],
+
+/// The operand stack, filled as it grows: the first [`INLINE`] operands live
+/// in place and deeper ones spill to the heap, up to [`STACK`].
+struct Operands {
+    inline: [Operand; INLINE],
+    spill: Vec<Operand>,
     len: usize,
+}
+impl Operands {
+    const fn new() -> Self {
+        Self {
+            inline: [Operand::Integer(0); INLINE],
+            spill: Vec::new(),
+            len: 0,
+        }
+    }
+    fn get(&self, index: usize) -> Result<Operand> {
+        let value = if index >= self.len {
+            None
+        } else if let Some(spilled) = index.checked_sub(INLINE) {
+            self.spill.get(spilled)
+        } else {
+            self.inline.get(index)
+        };
+        value
+            .copied()
+            .ok_or(Error::syntax("calculator stack underflow"))
+    }
+    fn push(&mut self, value: Operand) -> Result<()> {
+        if self.len >= STACK {
+            return Err(Error::limit("calculator stack exceeded"));
+        }
+        if let Some(slot) = self.inline.get_mut(self.len) {
+            *slot = value;
+        } else {
+            self.spill.push(value);
+        }
+        self.len += 1;
+        Ok(())
+    }
+    fn pop(&mut self) -> Result<Operand> {
+        let value = self.get(
+            self.len
+                .checked_sub(1)
+                .ok_or(Error::syntax("calculator stack underflow"))?,
+        )?;
+        self.len -= 1;
+        if self.len >= INLINE {
+            self.spill.pop();
+        }
+        Ok(value)
+    }
+    /// Rotates the operands in `range` towards the top by `shift` places.
+    fn rotate_right(&mut self, range: std::ops::Range<usize>, shift: usize) -> Result<()> {
+        if let Some(values) = self.inline.get_mut(range.clone())
+            && range.end <= self.len
+        {
+            values.rotate_right(shift);
+            return Ok(());
+        }
+        // A spilled stack is rare; gather, rotate and write back.
+        let mut values = range
+            .clone()
+            .map(|index| self.get(index))
+            .collect::<Result<Vec<_>>>()?;
+        values.rotate_right(shift);
+        let (low, high) = values.split_at(INLINE.saturating_sub(range.start).min(values.len()));
+        if let Some(slots) = self.inline.get_mut(range.start..range.start + low.len()) {
+            slots.copy_from_slice(low);
+        }
+        let first = range.start.max(INLINE) - INLINE;
+        if let Some(slots) = self.spill.get_mut(first..first + high.len()) {
+            slots.copy_from_slice(high);
+        }
+        Ok(())
+    }
+}
+
+struct Stack<'a> {
+    values: Operands,
     limits: &'a Limits,
     work: &'a mut usize,
     object: ObjectId,
@@ -319,10 +399,9 @@ impl Stack<'_> {
         Ok(())
     }
     fn push(&mut self, value: Operand) -> Result<()> {
-        let slot = self
-            .values
-            .get_mut(self.len)
-            .ok_or(Error::limit("calculator stack exceeded"))?;
+        if self.values.len >= STACK {
+            return Err(Error::limit("calculator stack exceeded"));
+        }
         if let Operand::Real(v) = value
             && !v.is_finite()
         {
@@ -330,24 +409,19 @@ impl Stack<'_> {
                 "calculator arithmetic is undefined or overflows",
             ));
         }
-        *slot = value;
-        self.len += 1;
-        Ok(())
+        self.values.push(value)
     }
     fn pop(&mut self) -> Result<Operand> {
-        self.len = self
-            .len
-            .checked_sub(1)
-            .ok_or(Error::syntax("calculator stack underflow"))?;
-        Ok(self.values[self.len])
+        self.values.pop()
     }
     /// The operands from depth `count` to the top, oldest first.
     fn top(&self, count: usize, underflow: &'static str) -> Result<std::ops::Range<usize>> {
         let start = self
+            .values
             .len
             .checked_sub(count)
             .ok_or(Error::syntax(underflow))?;
-        Ok(start..self.len)
+        Ok(start..self.values.len)
     }
     fn integer(&mut self) -> Result<i32> {
         if let Operand::Integer(v) = self.pop()? {
@@ -437,18 +511,21 @@ impl Stack<'_> {
                 let count = usize::try_from(self.integer()?)
                     .map_err(|_| Error::syntax("negative calculator copy"))?;
                 let copied = self.top(count, "calculator copy underflow")?;
-                if self.len.checked_add(count).is_none_or(|n| n > STACK) {
+                if self.values.len.checked_add(count).is_none_or(|n| n > STACK) {
                     return Err(Error::limit("calculator stack exceeded"));
                 }
                 self.charge(count)?;
-                self.values.copy_within(copied, self.len);
-                self.len += count;
+                for index in copied {
+                    let value = self.values.get(index)?;
+                    self.values.push(value)?;
+                }
             }
             PsOp::Index => {
                 let n = usize::try_from(self.integer()?)
                     .map_err(|_| Error::syntax("negative calculator index"))?;
                 let below = self.top(n.saturating_add(1), "calculator index underflow")?;
-                self.push(self.values[below.start])?;
+                let value = self.values.get(below.start)?;
+                self.push(value)?;
             }
             PsOp::Roll => {
                 let shift = self.integer()?;
@@ -463,7 +540,7 @@ impl Stack<'_> {
                 if n > 0 {
                     let shift = usize::try_from(shift.rem_euclid(n))
                         .map_err(|_| Error::limit("roll shift exceeds usize"))?;
-                    self.values[rolled].rotate_right(shift);
+                    self.values.rotate_right(rolled, shift)?;
                 }
             }
             _ => return Err(Error::syntax("unknown calculator stack operator")),
@@ -646,7 +723,7 @@ fn numeric(value: Operand) -> Result<f64> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Calculator, STACK};
+    use super::{Calculator, INLINE, Operand, Operands, STACK};
     use pagura_core::{ErrorKind, Limits, ObjectId};
 
     fn run(program: &str, limits: &Limits) -> pagura_core::Result<f64> {
@@ -729,5 +806,40 @@ mod tests {
         // copy past the depth is refused before copying.
         let program = format!("{{ {} {} copy }}", "1 ".repeat(60), 60);
         assert_eq!(run(&program, &limits).unwrap_err().kind, ErrorKind::Limit);
+    }
+    #[test]
+    fn spilled_operands_behave_like_one_stack() {
+        // Push, roll and pop across the inline/spill boundary against a
+        // plain vector holding the same integers.
+        let integer = |value: Operand| match value {
+            Operand::Integer(v) => v,
+            _ => unreachable!("the test pushes integers only"),
+        };
+        let mut stack = Operands::new();
+        let mut model = Vec::new();
+        for value in 0..40 {
+            stack.push(Operand::Integer(value)).unwrap();
+            model.push(value);
+        }
+        for (start, end, shift) in [
+            (0, 40, 7),
+            (10, 20, 3),
+            (16, 40, 5),
+            (2, 16, 4),
+            (15, 17, 1),
+        ] {
+            stack.rotate_right(start..end, shift).unwrap();
+            model[start..end].rotate_right(shift);
+            let actual: Vec<_> = (0..model.len())
+                .map(|i| integer(stack.get(i).unwrap()))
+                .collect();
+            assert_eq!(actual, model, "{start}..{end} by {shift}");
+        }
+        while let Some(expected) = model.pop() {
+            assert_eq!(integer(stack.pop().unwrap()), expected);
+            assert_eq!(stack.len, model.len());
+        }
+        assert!(stack.pop().is_err());
+        const { assert!(INLINE < 40 && 40 < STACK) };
     }
 }
