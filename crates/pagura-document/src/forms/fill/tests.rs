@@ -85,6 +85,7 @@ fn independent_field_replacements() {
             Vec::new()
         };
         let state = Name::new(bytes.as_bytes());
+        let initial = filler.storage.used();
         let result = filler.set(0, input(params["mode"], &bytes, &state, &indices));
         if params["error"].is_empty() {
             assert_eq!(
@@ -94,13 +95,13 @@ fn independent_field_replacements() {
             );
             assert_eq!(filler.changes().count(), 1);
             // Idempotent replacement charges storage once.
-            let used = filler.bytes;
+            let used = filler.storage.used();
             filler
                 .set(0, input(params["mode"], &bytes, &state, &indices))
                 .unwrap();
-            assert_eq!(filler.bytes, used, "{name}");
+            assert_eq!(filler.storage.used(), used, "{name}");
             filler.reset(0);
-            assert_eq!(filler.bytes, 0);
+            assert_eq!(filler.storage.used(), initial);
             assert!(filler.get(0).is_none());
         } else {
             let error = result.unwrap_err();

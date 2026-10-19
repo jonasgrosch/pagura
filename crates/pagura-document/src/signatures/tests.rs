@@ -208,7 +208,7 @@ fn budgets_fail_without_partial_results() {
     // admission, are exercised independently.
     doc.signatures().unwrap();
     let mut options = doc.options.clone();
-    options.limits.value_nodes = 1;
+    options.limits.traversal_work = 1;
     let mut limited = doc;
     limited.options = options;
     assert_eq!(limited.signatures().unwrap_err().kind, ErrorKind::Limit);

@@ -2,7 +2,7 @@
 use super::{FieldSelection, MdpPermission, Signature, Transform, roles::Roles, transforms};
 use crate::{
     Document,
-    view::{Context, Source, text},
+    view::{Context, Source},
 };
 use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
 use std::collections::BTreeSet;
@@ -22,7 +22,7 @@ impl Selection {
         let mut names = BTreeSet::new();
         for name in raw {
             ctx.allocate::<usize>(12, Source::default())?;
-            names.insert(text::decode(ctx, name, Source::default())?);
+            names.insert(ctx.text(name, Source::default())?);
         }
         Ok(Self {
             all,
@@ -99,7 +99,11 @@ fn references<'a>(
             }
             Transform::FieldMdp(selection) if own => {
                 if reference.data.and_then(Value::as_reference)
-                    != ctx.doc.trailer().get(b"Root").and_then(Value::as_reference)
+                    != ctx
+                        .document
+                        .trailer()
+                        .get(b"Root")
+                        .and_then(Value::as_reference)
                 {
                     policy.field_unknown = true;
                     continue;

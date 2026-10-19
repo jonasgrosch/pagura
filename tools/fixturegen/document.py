@@ -1103,7 +1103,7 @@ def navigation_cases():
         damaged=copy.deepcopy(objects);change(damaged)
         yield navigation_vector('navigation-outlines-'+suffix,damaged,'outlines',expected,repair=repair)
     damaged=copy.deepcopy(objects);damaged[14]['Title']=b'\xfe\xff\xd8\x00'
-    yield navigation_vector('navigation-outlines-text',damaged,'outlines',expected.replace('Fin|','�|'),repair='navigation.text')
+    yield navigation_vector('navigation-outlines-text',damaged,'outlines',expected.replace('Fin|','�|'),repair='string.invalid-text')
 
     objects=navigation_base()
     objects[1]['URI']=dict(Base=b'https://example.invalid/docs/')

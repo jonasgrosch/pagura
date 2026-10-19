@@ -1,6 +1,6 @@
 //! Actions are inert data, including their ordered Next graph (12.6).
 use super::destinations::{self, Destination, RemoteDestination};
-use crate::view::{Context, Source, identity};
+use crate::view::{Context, Source, ValueIdentity, identity};
 use crate::{Document, IndirectObject, repairs};
 use pagura_core::{Dictionary, Error, Name, Result, Value};
 use std::collections::BTreeSet;
@@ -20,7 +20,9 @@ pub enum NamedAction<'a> {
     /// An extension name, without implied execution support.
     Other(&'a Name),
 }
-/// Script source, never evaluated by Pagura (12.6.4.17).
+
+/// Script source, never evaluated by Pagura (12.6.4.17), which allows a
+/// text string or a text stream and nothing else.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Script<'a> {
     /// String bytes, preserving their encoding.
@@ -28,6 +30,7 @@ pub enum Script<'a> {
     /// A script stream; the caller can use Document::stream_data to inspect it.
     Stream(&'a IndirectObject),
 }
+
 /// An action's data. Every variant is inert; the host chooses whether and how
 /// to activate it. File specifications and platform parameters remain source data.
 #[derive(Debug, Clone, PartialEq)]
@@ -67,6 +70,7 @@ pub enum ActionKind<'a> {
     /// Another action type, listed without execution semantics.
     Other(&'a Name),
 }
+
 /// One action in a flat preorder sequence.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
@@ -78,6 +82,7 @@ pub struct Action<'a> {
     /// Unmodified source dictionary, retaining extension/platform entries.
     pub dictionary: &'a Dictionary,
 }
+
 /// An inert action/Next tree in depth-first execution order (12.6.2).
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
@@ -86,72 +91,74 @@ pub struct ActionSequence<'a> {
     /// subgraphs occur each time; only back edges are omitted with a repair.
     pub actions: Vec<Action<'a>>,
 }
-fn boolean(
-    ctx: &mut Context<'_>,
-    d: &Dictionary,
+
+fn boolean<'a>(
+    context: &mut Context<'a>,
+    dictionary: &'a Dictionary,
     key: &[u8],
     source: Source,
 ) -> Result<Option<bool>> {
-    d.get(key)
-        .map(|v| {
-            ctx.doc.resolve(v).and_then(|v| {
-                if v.is_null() {
-                    Ok(None)
-                } else if let Value::Boolean(b) = v {
-                    Ok(Some(*b))
-                } else {
-                    Err(source.error(Error::syntax("action flag must be boolean")))
-                }
-            })
-        })
-        .transpose()
-        .map(Option::flatten)
+    match context.entry(dictionary, key, source)? {
+        None => Ok(None),
+        Some(Value::Boolean(flag)) => Ok(Some(*flag)),
+        Some(_) => Err(source.error(Error::syntax("action flag must be boolean"))),
+    }
 }
-fn file<'a>(ctx: &mut Context<'a>, value: &'a Value, source: Source) -> Result<&'a Value> {
-    let (v, source) = ctx.resolve(value, source)?;
+
+fn file<'a>(context: &mut Context<'a>, value: &'a Value, source: Source) -> Result<&'a Value> {
+    let (v, source) = context.resolve(value, source)?;
     if matches!(v, Value::String(_) | Value::Dictionary(_)) {
         Ok(v)
     } else {
         Err(source.error(Error::syntax("invalid action file specification")))
     }
 }
-fn kind<'a>(ctx: &mut Context<'a>, d: &'a Dictionary, source: Source) -> Result<ActionKind<'a>> {
-    ctx.type_name(d, b"Action", source)?;
-    let name = ctx
-        .required(d, b"S", source)?
+
+fn kind<'a>(
+    context: &mut Context<'a>,
+    dictionary: &'a Dictionary,
+    source: Source,
+) -> Result<ActionKind<'a>> {
+    context.type_name(dictionary, b"Action", source)?;
+    let name = context
+        .required(dictionary, b"S", source)?
         .as_name()
         .ok_or_else(|| source.error(Error::syntax("action S must be a name")))?;
     Ok(match name.as_bytes() {
         b"GoTo" => ActionKind::GoTo(destinations::resolve(
-            ctx,
-            d.get(b"D")
+            context,
+            dictionary
+                .get(b"D")
                 .ok_or_else(|| source.error(Error::syntax("GoTo requires D")))?,
             source,
         )?),
         b"GoToR" => ActionKind::GoToR {
             file: file(
-                ctx,
-                d.get(b"F")
+                context,
+                dictionary
+                    .get(b"F")
                     .ok_or_else(|| source.error(Error::syntax("GoToR requires F")))?,
                 source,
             )?,
             destination: destinations::remote(
-                ctx,
-                d.get(b"D")
+                context,
+                dictionary
+                    .get(b"D")
                     .ok_or_else(|| source.error(Error::syntax("GoToR requires D")))?,
                 source,
             )?,
-            new_window: boolean(ctx, d, b"NewWindow", source)?,
+            new_window: boolean(context, dictionary, b"NewWindow", source)?,
         },
         b"URI" => {
-            let uri = ctx
-                .required(d, b"URI", source)?
+            let uri = context
+                .required(dictionary, b"URI", source)?
                 .as_string()
                 .ok_or_else(|| source.error(Error::syntax("URI action requires a string")))?;
-            let (catalog, catalog_source) = ctx.catalog()?;
-            let base = if let Some(uri) = ctx.present(catalog, b"URI", catalog_source)? {
-                let (uri, source) = ctx.dictionary(uri, catalog_source)?;
-                ctx.entry(uri, b"Base", source)?
+            let (catalog, catalog_source) = context.catalog()?;
+            let base = if let Some(uri) = context.present(catalog, b"URI", catalog_source)? {
+                let (uri, source) = context.dictionary(uri, catalog_source)?;
+                context
+                    .entry(uri, b"Base", source)?
                     .map(|v| {
                         v.as_string()
                             .ok_or_else(|| source.error(Error::syntax("URI Base must be a string")))
@@ -163,12 +170,12 @@ fn kind<'a>(ctx: &mut Context<'a>, d: &'a Dictionary, source: Source) -> Result<
             ActionKind::Uri {
                 uri,
                 base,
-                is_map: boolean(ctx, d, b"IsMap", source)?.unwrap_or(false),
+                is_map: boolean(context, dictionary, b"IsMap", source)?.unwrap_or(false),
             }
         }
         b"Named" => {
-            let n = ctx
-                .required(d, b"N", source)?
+            let n = context
+                .required(dictionary, b"N", source)?
                 .as_name()
                 .ok_or_else(|| source.error(Error::syntax("Named action requires a name")))?;
             ActionKind::Named(match n.as_bytes() {
@@ -179,19 +186,19 @@ fn kind<'a>(ctx: &mut Context<'a>, d: &'a Dictionary, source: Source) -> Result<
                 _ => NamedAction::Other(n),
             })
         }
-        b"Launch" => parse_launch(ctx, d, source)?,
+        b"Launch" => parse_launch(context, dictionary, source)?,
         b"JavaScript" => {
-            let value = d
+            let value = dictionary
                 .get(b"JS")
                 .ok_or_else(|| source.error(Error::syntax("JavaScript requires JS")))?;
-            let (script, source) = ctx.resolve(value, source)?;
+            let (script, source) = context.resolve(value, source)?;
             let script = if let Some(bytes) = script.as_string() {
                 Script::String(bytes)
             } else {
                 let id = source.object.ok_or_else(|| {
                     source.error(Error::syntax("script must be a string or stream"))
                 })?;
-                let object = ctx.doc.object(id)?;
+                let object = context.document.object(id)?;
                 if object.stream_range().is_none() || identity(object.value()) != identity(script) {
                     return Err(source.error(Error::syntax("script must be a string or stream")));
                 }
@@ -202,45 +209,73 @@ fn kind<'a>(ctx: &mut Context<'a>, d: &'a Dictionary, source: Source) -> Result<
         _ => ActionKind::Other(name),
     })
 }
-pub(crate) fn read<'a>(doc: &'a Document, value: &'a Value) -> Result<ActionSequence<'a>> {
-    read_with(&mut Context::new(doc), value, Source::default())
+
+pub(crate) fn read<'a>(document: &'a Document, value: &'a Value) -> Result<ActionSequence<'a>> {
+    read_with(&mut Context::new(document), value, Source::default())
 }
+
+/// One step of the iterative depth-first walk over an action's Next tree.
+enum Frame<'a> {
+    /// Visit an action below `parent`.
+    Enter {
+        value: &'a Value,
+        source: Source,
+        parent: Option<usize>,
+        depth: usize,
+    },
+    /// Leave an action: later siblings may reuse it without forming a cycle.
+    Exit(ValueIdentity),
+}
+
 pub(crate) fn read_with<'a>(
-    ctx: &mut Context<'a>,
+    context: &mut Context<'a>,
     value: &'a Value,
     source: Source,
 ) -> Result<ActionSequence<'a>> {
     let mut actions = Vec::new();
     let mut active = BTreeSet::new();
-    let mut stack = vec![(value, source, None, 0, false)];
-    while let Some((value, source, parent, depth, exit)) = stack.pop() {
-        if exit {
-            active.remove(&identity(value));
-            continue;
-        }
-        ctx.step(depth, source)?;
-        let (value, source) = ctx.resolve(value, source)?;
-        ctx.allocate::<usize>(8, source)?;
+    let mut stack = vec![Frame::Enter {
+        value,
+        source,
+        parent: None,
+        depth: 0,
+    }];
+    while let Some(frame) = stack.pop() {
+        let (value, source, parent, depth) = match frame {
+            Frame::Exit(identity) => {
+                active.remove(&identity);
+                continue;
+            }
+            Frame::Enter {
+                value,
+                source,
+                parent,
+                depth,
+            } => (value, source, parent, depth),
+        };
+        context.step(depth, source)?;
+        let (value, source) = context.resolve(value, source)?;
+        context.index_entry(source)?;
         if !active.insert(identity(value)) {
-            ctx.repair(
+            context.repair(
                 repairs::ACTION_CYCLE,
                 "cyclic action Next edge omitted (12.6.2)",
                 source,
             )?;
             continue;
         }
-        let (dictionary, source) = ctx.dictionary(value, source)?;
-        ctx.allocate::<Action<'_>>(1, source)?;
+        let (dictionary, source) = context.dictionary(value, source)?;
+        context.allocate::<Action<'_>>(1, source)?;
         let index = actions.len();
         actions.push(Action {
             parent,
-            kind: kind(ctx, dictionary, source)?,
+            kind: kind(context, dictionary, source)?,
             dictionary,
         });
-        ctx.allocate::<(&Value, Source, Option<usize>, usize, bool)>(1, source)?;
-        stack.push((value, source, parent, depth, true));
+        context.allocate::<Frame<'_>>(1, source)?;
+        stack.push(Frame::Exit(identity(value)));
         if let Some(next) = dictionary.get(b"Next") {
-            let (next, next_source) = ctx.resolve(next, source)?;
+            let (next, next_source) = context.resolve(next, source)?;
             if next.is_null() {
                 continue;
             }
@@ -249,9 +284,14 @@ pub(crate) fn read_with<'a>(
             } else {
                 std::slice::from_ref(next)
             };
-            ctx.allocate::<(&Value, Source, Option<usize>, usize, bool)>(children.len(), source)?;
+            context.allocate::<Frame<'_>>(children.len(), source)?;
             for child in children.iter().rev() {
-                stack.push((child, next_source, Some(index), depth + 1, false));
+                stack.push(Frame::Enter {
+                    value: child,
+                    source: next_source,
+                    parent: Some(index),
+                    depth: depth + 1,
+                });
             }
         }
     }
@@ -259,18 +299,18 @@ pub(crate) fn read_with<'a>(
 }
 
 fn parse_launch<'a>(
-    ctx: &mut Context<'a>,
-    d: &'a Dictionary,
+    context: &mut Context<'a>,
+    dictionary: &'a Dictionary,
     source: Source,
 ) -> Result<ActionKind<'a>> {
-    let file = ctx
-        .present(d, b"F", source)?
-        .map(|v| file(ctx, v, source))
+    let file = context
+        .present(dictionary, b"F", source)?
+        .map(|v| file(context, v, source))
         .transpose()?;
     if file.is_none() {
         let mut platform = false;
         for key in [b"Win".as_slice(), b"Mac", b"Unix"] {
-            platform |= ctx.present(d, key, source)?.is_some();
+            platform |= context.present(dictionary, key, source)?.is_some();
         }
         if !platform {
             return Err(source.error(Error::syntax(
@@ -280,6 +320,6 @@ fn parse_launch<'a>(
     }
     Ok(ActionKind::Launch {
         file,
-        new_window: boolean(ctx, d, b"NewWindow", source)?,
+        new_window: boolean(context, dictionary, b"NewWindow", source)?,
     })
 }

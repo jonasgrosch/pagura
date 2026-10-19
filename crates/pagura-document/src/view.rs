@@ -1,79 +1,100 @@
-//! Shared work accounting and source locations for navigation views.
-pub(crate) mod text;
+//! Bounded, source-located traversal shared by navigation, forms and
+//! signatures: each view charges its steps to `Limits::traversal_work` and
+//! its caller-owned results to `Limits::document_bytes`, and attaches the
+//! object and position it read to every error and repair.
 
 use crate::Document;
 use pagura_core::{
-    Diagnostic, Diagnostics, Dictionary, Error, Limits, ObjectId, Position, Repair, Result, Value,
+    Diagnostic, Diagnostics, Dictionary, Error, INDEX_ENTRY_OVERHEAD, Meter, ObjectId, Position,
+    Repair, Result, Value, text_string,
 };
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::rc::Rc;
 
+/// Where a value was read: the object holding it and its position.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct Source {
-    pub object: Option<ObjectId>,
-    pub position: Position,
+    pub(crate) object: Option<ObjectId>,
+    pub(crate) position: Position,
 }
+
 impl Source {
-    pub(crate) fn error(self, mut error: Error) -> Error {
-        if error.position == Position::Unknown {
-            error.position = self.position;
-        }
-        if error.object.is_none() {
-            error.object = self.object;
-        }
-        error
+    /// Adds this source to `error` where it has none (innermost wins).
+    pub(crate) const fn error(self, error: Error) -> Error {
+        error.at(self.position).in_object_opt(self.object)
+    }
+
+    pub(crate) const fn diagnostic(self, diagnostic: Diagnostic) -> Diagnostic {
+        diagnostic.at(self.position).in_object_opt(self.object)
     }
 }
 
-#[derive(Clone, Copy, Default)]
+/// Work charged by every context of one inspection, including the contexts
+/// for earlier revisions of the same document.
 struct Work {
-    steps: usize,
-    bytes: usize,
-    scanned: usize,
+    steps: Meter,
+    bytes: Meter,
+    scanned: Meter,
 }
+
 pub(crate) struct Context<'a> {
-    pub doc: &'a Document,
-    work: std::rc::Rc<std::cell::Cell<Work>>,
-    limits: Limits,
-    pages: Option<std::collections::BTreeMap<ObjectId, usize>>,
+    pub(crate) document: &'a Document,
+    work: Rc<RefCell<Work>>,
+    pages: Option<BTreeMap<ObjectId, usize>>,
 }
+
 impl<'a> Context<'a> {
-    pub(crate) fn new(doc: &'a Document) -> Self {
+    pub(crate) fn new(document: &'a Document) -> Self {
+        let limits = document.limits();
         Self {
-            doc,
-            work: std::rc::Rc::default(),
-            limits: doc.limits(),
+            document,
+            work: Rc::new(RefCell::new(Work {
+                steps: Meter::new(
+                    limits.traversal_work,
+                    "navigation traversal budget exceeded",
+                ),
+                bytes: Meter::new(limits.document_bytes, "navigation result budget exceeded"),
+                scanned: Meter::new(limits.file_bytes, "source scan budget exceeded"),
+            })),
             pages: None,
         }
     }
-    /// A different source revision using this traversal's aggregate work budget.
-    pub(crate) fn for_document<'b>(&self, doc: &'b Document) -> Context<'b> {
+
+    /// A context for another revision of the document, charging this one's
+    /// budgets.
+    pub(crate) fn for_document<'b>(&self, document: &'b Document) -> Context<'b> {
         Context {
-            doc,
-            work: self.work.clone(),
-            limits: self.limits,
+            document,
+            work: Rc::clone(&self.work),
             pages: None,
         }
     }
+
     pub(crate) fn catalog(&mut self) -> Result<(&'a Dictionary, Source)> {
-        self.doc.catalog()?;
+        self.document.catalog()?;
         let root = self
-            .doc
+            .document
             .trailer()
             .get(b"Root")
             .ok_or(Error::syntax("catalog Root is absent"))?;
         self.dictionary(root, Source::default())
     }
-    pub(crate) fn source(&self, id: ObjectId) -> Result<Source> {
-        let object = self.doc.object(id)?;
+
+    pub(crate) fn source(&mut self, id: ObjectId) -> Result<Source> {
+        let object = self.document.object(id)?;
         Ok(Source {
             object: Some(id),
             position: object.source().position(),
         })
     }
+
     pub(crate) fn page_index(&mut self, id: ObjectId, source: Source) -> Result<usize> {
         if self.pages.is_none() {
-            let pages = self.doc.pages()?;
-            self.allocate::<(ObjectId, usize)>(pages.len().saturating_mul(4), source)?;
-            let mut index = std::collections::BTreeMap::new();
+            let pages = self.document.pages()?;
+            self.allocate::<(ObjectId, usize)>(pages.len(), source)?;
+            self.allocate::<u8>(pages.len().saturating_mul(INDEX_ENTRY_OVERHEAD), source)?;
+            let mut index = BTreeMap::new();
             for page in pages.iter().filter(|page| page.source_path().is_empty()) {
                 index.entry(page.id()).or_insert(page.index());
             }
@@ -84,42 +105,46 @@ impl<'a> Context<'a> {
             .and_then(|pages| pages.get(&id))
             .copied()
             .ok_or_else(|| {
-                source.error(Error::new(
-                    pagura_core::ErrorKind::MissingObject,
+                source.error(Error::missing_object(
                     "destination page is absent from the page tree",
                 ))
             })
     }
+
     pub(crate) fn step(&mut self, depth: usize, source: Source) -> Result<()> {
-        let limits = self.limits;
-        let mut work = self.work.get();
-        if depth > limits.depth || work.steps >= limits.value_nodes.min(limits.objects) {
+        if depth > self.document.limits().depth {
             return Err(source.error(Error::limit("navigation traversal budget exceeded")));
         }
-        work.steps += 1;
-        self.work.set(work);
-        Ok(())
+        self.work
+            .borrow_mut()
+            .steps
+            .charge(1)
+            .map_err(|error| source.error(error))
     }
+
+    /// Charges caller-owned storage for `count` values of `T`.
     pub(crate) fn allocate<T>(&mut self, count: usize, source: Source) -> Result<()> {
-        let mut work = self.work.get();
-        work.bytes = count
-            .checked_mul(size_of::<T>())
-            .and_then(|n| work.bytes.checked_add(n))
-            .filter(|&n| n <= self.limits.document_bytes)
-            .ok_or_else(|| source.error(Error::limit("navigation result budget exceeded")))?;
-        self.work.set(work);
-        Ok(())
+        self.work
+            .borrow_mut()
+            .bytes
+            .charge_items::<T>(count)
+            .map_err(|error| source.error(error))
     }
+
+    /// Charges one entry of a visited set or index (ADR 0012's estimate).
+    pub(crate) fn index_entry(&mut self, source: Source) -> Result<()> {
+        self.allocate::<u8>(INDEX_ENTRY_OVERHEAD, source)
+    }
+
+    /// Charges `count` source bytes read again outside object loading.
     pub(crate) fn scan(&self, count: usize, source: Source) -> Result<()> {
-        let mut work = self.work.get();
-        work.scanned = work
+        self.work
+            .borrow_mut()
             .scanned
-            .checked_add(count)
-            .filter(|&n| n <= self.limits.file_bytes)
-            .ok_or_else(|| source.error(Error::limit("source scan budget exceeded")))?;
-        self.work.set(work);
-        Ok(())
+            .charge(count)
+            .map_err(|error| source.error(error))
     }
+
     pub(crate) fn resolve(
         &mut self,
         mut value: &'a Value,
@@ -127,26 +152,31 @@ impl<'a> Context<'a> {
     ) -> Result<(&'a Value, Source)> {
         static NULL: Value = Value::Null;
         let mut references = std::collections::BTreeSet::new();
-        for depth in 0..=self.doc.limits().depth {
-            if let Value::Reference(id) = value {
-                self.step(depth, source)?;
-                self.allocate::<usize>(8, source)?;
-                if !references.insert(*id) {
-                    return Err(source.error(Error::cycle("cyclic navigation reference chain")));
-                }
-                if !self.doc.slots.contains_key(id) {
-                    return Ok((&NULL, source));
-                }
-                let object = self.doc.object(*id).map_err(|e| source.error(e))?;
-                source.object = Some(*id);
-                source.position = object.source().position();
-                value = object.value();
-            } else {
+        for depth in 0..=self.document.limits().depth {
+            let Value::Reference(id) = value else {
                 return Ok((value, source));
+            };
+            self.step(depth, source)?;
+            self.index_entry(source)?;
+            if !references.insert(*id) {
+                return Err(source.error(Error::cycle("cyclic navigation reference chain")));
             }
+            if !self.document.slots.contains_key(id) {
+                return Ok((&NULL, source));
+            }
+            let object = self
+                .document
+                .object(*id)
+                .map_err(|error| source.error(error))?;
+            source = Source {
+                object: Some(*id),
+                position: object.source().position(),
+            };
+            value = object.value();
         }
         Err(source.error(Error::limit("navigation reference depth exceeded")))
     }
+
     pub(crate) fn dictionary(
         &mut self,
         value: &'a Value,
@@ -155,9 +185,10 @@ impl<'a> Context<'a> {
         let (value, source) = self.resolve(value, source)?;
         value
             .as_dictionary()
-            .map(|d| (d, source))
+            .map(|dictionary| (dictionary, source))
             .ok_or_else(|| source.error(Error::syntax("navigation object must be a dictionary")))
     }
+
     /// Preserve the original reference while applying dictionary-null absence
     /// (7.3.9), so subsequent traversal retains its source identity.
     pub(crate) fn present(
@@ -172,6 +203,7 @@ impl<'a> Context<'a> {
         let (resolved, _) = self.resolve(value, source)?;
         Ok((!resolved.is_null()).then_some(value))
     }
+
     pub(crate) fn entry(
         &mut self,
         dictionary: &'a Dictionary,
@@ -180,10 +212,11 @@ impl<'a> Context<'a> {
     ) -> Result<Option<&'a Value>> {
         dictionary
             .get(key)
-            .map(|v| self.resolve(v, source).map(|(v, _)| v))
+            .map(|value| self.resolve(value, source).map(|(value, _)| value))
             .transpose()
-            .map(|v| v.filter(|v| !v.is_null()))
+            .map(|value| value.filter(|value| !value.is_null()))
     }
+
     pub(crate) fn type_name(
         &mut self,
         dictionary: &'a Dictionary,
@@ -192,12 +225,17 @@ impl<'a> Context<'a> {
     ) -> Result<()> {
         if self
             .entry(dictionary, b"Type", source)?
-            .is_some_and(|v| v.as_name().is_none_or(|n| n.as_bytes() != expected))
+            .is_some_and(|value| {
+                value
+                    .as_name()
+                    .is_none_or(|name| name.as_bytes() != expected)
+            })
         {
             return Err(source.error(Error::syntax("invalid navigation dictionary Type")));
         }
         Ok(())
     }
+
     pub(crate) fn required(
         &mut self,
         dictionary: &'a Dictionary,
@@ -207,21 +245,56 @@ impl<'a> Context<'a> {
         self.entry(dictionary, key, source)?
             .ok_or_else(|| source.error(Error::syntax("required navigation entry is absent")))
     }
-    pub(crate) fn repair(&self, tag: Repair, message: &'static str, source: Source) -> Result<()> {
-        let mut diagnostics = Diagnostics::new(self.doc.recovery());
-        let mut diagnostic = Diagnostic::new(tag, message).at(source.position);
-        diagnostic.object = source.object;
-        diagnostics.repair(diagnostic)?;
-        self.doc.report(diagnostics.take());
-        Ok(())
+
+    pub(crate) fn repair(
+        &mut self,
+        tag: Repair,
+        message: &'static str,
+        source: Source,
+    ) -> Result<()> {
+        self.document
+            .repair(source.diagnostic(Diagnostic::new(tag, message)))
+    }
+
+    /// Decodes a text string (7.9.2.2) through [`text_string::decode`], with
+    /// its repairs located at `source` and its length charged as a result.
+    pub(crate) fn text(&mut self, bytes: &[u8], source: Source) -> Result<String> {
+        let mut diagnostics = Diagnostics::new(self.document.recovery());
+        let text = text_string::decode(bytes, &self.document.limits(), &mut diagnostics)
+            .map_err(|error| source.error(error))?;
+        self.document.report(
+            diagnostics
+                .take()
+                .into_iter()
+                .map(|diagnostic| source.diagnostic(diagnostic)),
+        );
+        self.allocate::<u8>(text.len(), source)?;
+        Ok(text)
     }
 }
-pub(crate) fn identity(value: &Value) -> usize {
-    std::ptr::from_ref(value).addr()
+
+/// The identity of a value borrowed from the document: its address.
+///
+/// Sound because cached values are never moved or evicted while the document
+/// lives: object and object-stream caches are write-once cells, and views
+/// only borrow from them. Two equal identities are therefore the same source
+/// value, and an identity is never reused for another one during a borrow.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct ValueIdentity(usize);
+
+impl ValueIdentity {
+    pub(crate) fn of(value: &Value) -> Self {
+        Self(std::ptr::from_ref(value).addr())
+    }
 }
+
+pub(crate) fn identity(value: &Value) -> ValueIdentity {
+    ValueIdentity::of(value)
+}
+
 pub(crate) fn number(value: &Value, source: Source) -> Result<f64> {
     value
         .as_number()
-        .filter(|n| n.is_finite())
+        .filter(|number| number.is_finite())
         .ok_or_else(|| source.error(Error::syntax("navigation coordinate must be finite")))
 }

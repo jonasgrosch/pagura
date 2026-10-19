@@ -1,7 +1,17 @@
 //! Button V/AS selection without evaluating appearance programs (12.7.5.2).
-use super::super::{ButtonKind, Widget};
+
 use super::{ButtonValue, FormFiller, WidgetState};
-use pagura_core::{Error, Name, Result};
+use crate::forms::{ButtonKind, FieldFlags, FieldValue, Widget};
+use pagura_core::{Error, Meter, Name, Result};
+
+/// Whether widgets sharing the selected on state turn on together.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Selection {
+    /// Only the chosen widget turns on.
+    Exclusive,
+    /// Check boxes, and radios in unison, turn on together (Table 229).
+    Unison,
+}
 
 pub(super) fn validate(
     filler: &FormFiller<'_>,
@@ -9,59 +19,60 @@ pub(super) fn validate(
     kind: ButtonKind,
     exports: &[String],
     input: ButtonValue<'_>,
+    budget: &mut Meter,
 ) -> Result<(Name, Vec<WidgetState>)> {
     if kind == ButtonKind::Push {
         return Err(Error::invalid_argument("push buttons have no value"));
     }
-    let config = &filler.form.fields[field];
-    let limits = filler.document.limits();
-    if filler
+    let flags = filler
         .form
-        .widgets
-        .len()
-        .saturating_mul(size_of::<(usize, &Widget<'_>)>())
-        > limits.document_bytes
-    {
-        return Err(Error::limit("button widget selection budget exceeded"));
-    }
-    let widgets: Vec<_> = filler.widgets(field).collect();
-    if widgets.len() > limits.value_nodes
-        || widgets.len().saturating_mul(128) > limits.document_bytes
-    {
-        return Err(Error::limit("button widget selection budget exceeded"));
+        .fields
+        .get(field)
+        .map_or(FieldFlags::default(), |field| field.flags);
+    let widgets: Vec<(usize, &Widget<'_>)> = {
+        let count = filler.widgets(field).count();
+        budget.charge_items::<(usize, &Widget<'_>)>(count)?;
+        filler.widgets(field).collect()
+    };
+    if widgets.is_empty() {
+        return Err(Error::syntax("button field has no widgets"));
     }
     if !exports.is_empty() && exports.len() != widgets.len() {
-        return Err(Error::invalid_argument(
-            "button Opt must have one export per widget",
+        return Err(Error::syntax(
+            "button Opt must have one export per widget (Table 230)",
         ));
     }
-    if widgets.is_empty() {
-        return Err(Error::invalid_argument("button field has no widgets"));
-    }
-    let unison = kind == ButtonKind::CheckBox || config.flags.contains(26);
-    let selected = select(filler, &widgets, exports, input, unison)?;
-    if selected.is_none() && kind == ButtonKind::Radio && config.flags.contains(15) {
+    let selection = if kind == ButtonKind::CheckBox || flags.contains(FieldFlags::RADIOS_IN_UNISON)
+    {
+        Selection::Unison
+    } else {
+        Selection::Exclusive
+    };
+    let selected = select(filler, &widgets, exports, input, selection)?;
+    if selected.is_none()
+        && kind == ButtonKind::Radio
+        && flags.contains(FieldFlags::NO_TOGGLE_TO_OFF)
+    {
         return Err(Error::invalid_argument(
             "NoToggleToOff requires a selected radio widget",
         ));
     }
-    let name = if let Some((ordinal, requested)) = selected {
-        on_state(filler, widgets[ordinal].1, ordinal, exports, requested)?
-    } else {
-        Name::new(b"Off")
+    let name = match selected {
+        Some((ordinal, requested)) => {
+            let (_, widget) = widgets[ordinal];
+            on_state(filler, widget, ordinal, exports, requested)?
+        }
+        None => Name::new(b"Off"),
     };
-    let mut bytes = 0usize;
+    budget.charge_items::<WidgetState>(widgets.len())?;
     let mut states = Vec::with_capacity(widgets.len());
     for (ordinal, &(index, widget)) in widgets.iter().enumerate() {
-        let on = selected.is_some_and(|(i, _)| i == ordinal)
-            || (unison && selected.is_some() && supports(filler, widget, ordinal, exports, &name)?);
+        let on = selected.is_some_and(|(chosen, _)| chosen == ordinal)
+            || (selection == Selection::Unison
+                && selected.is_some()
+                && supports(filler, widget, ordinal, exports, &name)?);
         let state = if on { name.clone() } else { Name::new(b"Off") };
-        bytes = bytes
-            .saturating_add(size_of::<WidgetState>())
-            .saturating_add(state.len());
-        if bytes > limits.document_bytes {
-            return Err(Error::limit("button state storage budget exceeded"));
-        }
+        budget.charge(state.len())?;
         states.push(WidgetState {
             widget: index,
             state,
@@ -69,14 +80,15 @@ pub(super) fn validate(
     }
     Ok((name, states))
 }
+
 fn has_appearance(filler: &FormFiller<'_>, widget: &Widget<'_>) -> Result<bool> {
-    widget
-        .dictionary
-        .get(b"AP")
-        .map(|ap| filler.document.resolve(ap).map(|v| !v.is_null()))
-        .transpose()
-        .map(|v| v.unwrap_or(false))
+    Ok(filler
+        .document
+        .optional(widget.dictionary, b"AP")?
+        .is_some())
 }
+
+/// The on state a widget without appearances would use.
 fn fallback(
     filler: &FormFiller<'_>,
     widget: &Widget<'_>,
@@ -86,19 +98,24 @@ fn fallback(
     if !exports.is_empty() {
         return Name::new(ordinal.to_string().as_bytes());
     }
-    let field = &filler.form.fields[widget.field];
-    let value = |v: &super::super::FieldValue<'_>| match v {
-        super::super::FieldValue::Name(n) if n.as_bytes() != b"Off" => Some((*n).clone()),
+    let state = |value: &FieldValue<'_>| match value {
+        FieldValue::Name(name) if name.as_bytes() != b"Off" => Some((*name).clone()),
         _ => None,
     };
+    let field = filler.form.fields.get(widget.field);
     widget
         .appearance_state
-        .filter(|n| n.as_bytes() != b"Off")
+        .filter(|name| name.as_bytes() != b"Off")
         .cloned()
-        .or_else(|| field.value.as_ref().and_then(value))
-        .or_else(|| field.default_value.as_ref().and_then(value))
+        .or_else(|| field.and_then(|field| field.value.as_ref()).and_then(state))
+        .or_else(|| {
+            field
+                .and_then(|field| field.default_value.as_ref())
+                .and_then(state)
+        })
         .unwrap_or_else(|| Name::new(b"Yes"))
 }
+
 fn on_state(
     filler: &FormFiller<'_>,
     widget: &Widget<'_>,
@@ -118,14 +135,13 @@ fn on_state(
     match widget.on_states.as_slice() {
         [state] => Ok((*state).clone()),
         [] if !has_appearance(filler, widget)? => Ok(fallback(filler, widget, ordinal, exports)),
-        [] => Err(Error::invalid_argument(
-            "existing button appearance has no on state",
-        )),
+        [] => Err(Error::syntax("existing button appearance has no on state")),
         _ => Err(Error::invalid_argument(
             "widget has several on appearances; specify a state",
         )),
     }
 }
+
 fn supports(
     filler: &FormFiller<'_>,
     widget: &Widget<'_>,
@@ -137,55 +153,46 @@ fn supports(
         || (!has_appearance(filler, widget)?
             && fallback(filler, widget, ordinal, exports) == *state))
 }
+
+/// The chosen widget's ordinal and requested state, or `None` for Off.
+/// Comparisons cost no more than the parsed export and state names.
 fn select<'a>(
     filler: &FormFiller<'_>,
     widgets: &[(usize, &Widget<'_>)],
     exports: &[String],
     input: ButtonValue<'a>,
-    unison: bool,
+    selection: Selection,
 ) -> Result<Option<(usize, Option<&'a Name>)>> {
-    if matches!(input, ButtonValue::Off)
-        || matches!(input, ButtonValue::State(n) if n.as_bytes() == b"Off")
-    {
-        return Ok(None);
-    }
-    if let ButtonValue::Widget { index, state } = input {
-        let ordinal =
-            widgets
+    let requested = match input {
+        ButtonValue::Off => return Ok(None),
+        ButtonValue::State(name) if name.as_bytes() == b"Off" => return Ok(None),
+        ButtonValue::Widget { index, state } => {
+            let ordinal = widgets
                 .iter()
-                .position(|(i, _)| *i == index)
+                .position(|&(widget, _)| widget == index)
                 .ok_or(Error::invalid_argument(
                     "widget does not belong to the field",
                 ))?;
-        return Ok(Some((ordinal, state)));
-    }
-    let input_bytes = match input {
-        ButtonValue::Export(s) => s.len(),
-        ButtonValue::State(n) => n.len(),
-        _ => 0,
+            return Ok(Some((ordinal, state)));
+        }
+        ButtonValue::State(name) => Some(name),
+        ButtonValue::Export(_) => None,
     };
-    if input_bytes > filler.document.limits().string_bytes
-        || widgets.len().saturating_mul(input_bytes.max(1)) > filler.document.limits().operations
-    {
-        return Err(Error::limit("button lookup work budget exceeded"));
-    }
     let mut selected = None;
     let mut first_state = None;
     for (ordinal, &(_, widget)) in widgets.iter().enumerate() {
         let matches = match input {
-            ButtonValue::Export(s) => exports.get(ordinal).is_some_and(|e| e == s),
-            ButtonValue::State(n) => supports(filler, widget, ordinal, exports, n)?,
+            ButtonValue::Export(export) => exports.get(ordinal).is_some_and(|e| e == export),
+            ButtonValue::State(name) => supports(filler, widget, ordinal, exports, name)?,
             _ => false,
         };
         if !matches {
             continue;
         }
-        let requested = match input {
-            ButtonValue::State(n) => Some(n),
-            _ => None,
-        };
         let state = on_state(filler, widget, ordinal, exports, requested)?;
-        if selected.is_some() && (!unison || first_state.as_ref() != Some(&state)) {
+        if selected.is_some()
+            && (selection == Selection::Exclusive || first_state.as_ref() != Some(&state))
+        {
             return Err(Error::invalid_argument(
                 "ambiguous button value; select a widget index",
             ));

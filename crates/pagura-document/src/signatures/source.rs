@@ -13,8 +13,8 @@ pub(super) fn contents_span(
     extent: Range<usize>,
     source: Source,
 ) -> Result<Option<Range<usize>>> {
-    let bytes = &ctx.doc.original_bytes()[..extent.end];
-    let mut parser = Parser::with_offset(bytes, extent.start, Origin::File, ctx.doc.limits())?;
+    let bytes = &ctx.document.original_bytes()[..extent.end];
+    let mut parser = Parser::with_offset(bytes, extent.start, Origin::File, ctx.document.limits())?;
     parser.unsigned()?;
     parser.unsigned()?;
     if !parser.keyword(b"obj") {

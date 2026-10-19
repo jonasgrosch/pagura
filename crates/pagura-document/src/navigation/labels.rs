@@ -1,9 +1,10 @@
 //! Page labels (12.4.2, Table 161), including repeated-letter numbering.
 use crate::Document;
-use crate::view::{Context, Source, text};
-use pagura_core::{Error, ErrorKind, Result};
+use crate::view::{Context, Source};
+use pagura_core::{Error, Name, Result};
 
-/// The numbering convention of a page-label range.
+/// The numbering convention of a page-label range; Table 161 defines
+/// exactly these five.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LabelStyle {
     /// Decimal Arabic digits.
@@ -17,6 +18,23 @@ pub enum LabelStyle {
     /// Lowercase repeated letters.
     LowerLetters,
 }
+
+impl TryFrom<&Name> for LabelStyle {
+    type Error = Error;
+
+    /// The `S` entry of a page-label dictionary (Table 161).
+    fn try_from(name: &Name) -> Result<Self> {
+        match name.as_bytes() {
+            b"D" => Ok(Self::Decimal),
+            b"R" => Ok(Self::UpperRoman),
+            b"r" => Ok(Self::LowerRoman),
+            b"A" => Ok(Self::UpperLetters),
+            b"a" => Ok(Self::LowerLetters),
+            _ => Err(Error::syntax("unknown page label style")),
+        }
+    }
+}
+
 /// One page-label range; its end is the next range or the document end.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -31,48 +49,48 @@ pub struct PageLabelRange {
     /// First numeric value, at least one.
     pub start: u64,
 }
-pub(super) fn ranges(doc: &Document) -> Result<Vec<PageLabelRange>> {
-    let mut ctx = Context::new(doc);
-    let (catalog, tree_source) = ctx.catalog()?;
-    let Some(tree) = ctx.present(catalog, b"PageLabels", tree_source)? else {
+
+pub(super) fn ranges(document: &Document) -> Result<Vec<PageLabelRange>> {
+    let mut context = Context::new(document);
+    let (catalog, tree_source) = context.catalog()?;
+    let Some(tree) = context.present(catalog, b"PageLabels", tree_source)? else {
         return Ok(Vec::new());
     };
     let mut result = Vec::new();
-    let pages = doc.page_count()?;
-    for entry in doc
+    let pages = document.page_count()?;
+    for entry in document
         .number_tree(tree)
         .with_source(tree_source)
-        .entries_with(&mut ctx)?
+        .entries_with(&mut context)?
     {
-        let (dictionary, source) = ctx.dictionary(entry.value, entry.source)?;
-        ctx.type_name(dictionary, b"PageLabel", source)?;
+        let (dictionary, source) = context.dictionary(entry.value, entry.source)?;
+        context.type_name(dictionary, b"PageLabel", source)?;
         let page = usize::try_from(entry.key)
             .ok()
             .filter(|n| *n < pages)
             .ok_or_else(|| {
                 source.error(Error::syntax("page label range index outside document"))
             })?;
-        let style = ctx
+        let style = context
             .entry(dictionary, b"S", source)?
-            .map(|v| match v.as_name().map(pagura_core::Name::as_bytes) {
-                Some(b"D") => Ok(LabelStyle::Decimal),
-                Some(b"R") => Ok(LabelStyle::UpperRoman),
-                Some(b"r") => Ok(LabelStyle::LowerRoman),
-                Some(b"A") => Ok(LabelStyle::UpperLetters),
-                Some(b"a") => Ok(LabelStyle::LowerLetters),
-                _ => Err(source.error(Error::syntax("unknown page label style"))),
+            .map(|value| {
+                value
+                    .as_name()
+                    .ok_or(Error::syntax("unknown page label style"))
+                    .and_then(LabelStyle::try_from)
+                    .map_err(|error| source.error(error))
             })
             .transpose()?;
-        let prefix = ctx
+        let prefix = context
             .entry(dictionary, b"P", source)?
             .map(|v| {
                 v.as_string()
                     .ok_or_else(|| source.error(Error::syntax("page label prefix must be text")))
-                    .and_then(|b| text::decode(&mut ctx, b, source))
+                    .and_then(|b| context.text(b, source))
             })
             .transpose()?
             .unwrap_or_default();
-        let start = ctx
+        let start = context
             .entry(dictionary, b"St", source)?
             .map(|v| {
                 v.as_integer()
@@ -82,7 +100,7 @@ pub(super) fn ranges(doc: &Document) -> Result<Vec<PageLabelRange>> {
             })
             .transpose()?
             .unwrap_or(1);
-        ctx.allocate::<PageLabelRange>(1, source)?;
+        context.allocate::<PageLabelRange>(1, source)?;
         result.push(PageLabelRange {
             source,
             page,
@@ -96,6 +114,7 @@ pub(super) fn ranges(doc: &Document) -> Result<Vec<PageLabelRange>> {
     }
     Ok(result)
 }
+
 /// Parsed page-label ranges, reusable for a viewer's page list. No document
 /// cache is added. Formatting one label allocates only its bounded output.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -104,11 +123,13 @@ pub struct PageLabels {
     pages: usize,
     maximum: usize,
 }
+
 impl PageLabels {
     /// Validated ranges, in ascending starting-page order.
     pub fn ranges(&self) -> &[PageLabelRange] {
         &self.ranges
     }
+
     /// Formats one page label with logarithmic range lookup.
     ///
     /// # Errors
@@ -116,14 +137,12 @@ impl PageLabels {
     /// would exceed the string/result budget. Errors retain range source context.
     pub fn label(&self, index: usize) -> Result<String> {
         if index >= self.pages {
-            return Err(Error::new(
-                ErrorKind::InvalidArgument,
-                "page label index outside document",
-            ));
+            return Err(Error::invalid_argument("page label index outside document"));
         }
         let end = self.ranges.partition_point(|range| range.page <= index);
         self.format(index, end.checked_sub(1).and_then(|n| self.ranges.get(n)))
     }
+
     /// Formats labels in page order, advancing through each range once. Each
     /// item can fail with a string-budget error; no strings are cached. Retaining
     /// or collecting the returned strings is the caller's responsibility.
@@ -140,6 +159,7 @@ impl PageLabels {
             self.format(index, self.ranges.get(range))
         })
     }
+
     fn format(&self, index: usize, range: Option<&PageLabelRange>) -> Result<String> {
         if let Some(range) = range {
             return format_range(range, index, self.maximum).map_err(|e| range.source.error(e));
@@ -151,13 +171,36 @@ impl PageLabels {
         Ok(label)
     }
 }
-pub(super) fn read(doc: &Document) -> Result<PageLabels> {
+
+pub(super) fn read(document: &Document) -> Result<PageLabels> {
     Ok(PageLabels {
-        ranges: ranges(doc)?,
-        pages: doc.page_count()?,
-        maximum: doc.limits().string_bytes.min(doc.limits().document_bytes),
+        ranges: ranges(document)?,
+        pages: document.page_count()?,
+        maximum: document
+            .limits()
+            .string_bytes
+            .min(document.limits().document_bytes),
     })
 }
+
+/// Roman numeral values with their upper- and lowercase spellings, largest
+/// first; larger values repeat M (12.4.2).
+const ROMAN: [(u64, &str, &str); 13] = [
+    (1000, "M", "m"),
+    (900, "CM", "cm"),
+    (500, "D", "dictionary"),
+    (400, "CD", "cd"),
+    (100, "C", "c"),
+    (90, "XC", "xc"),
+    (50, "L", "l"),
+    (40, "XL", "xl"),
+    (10, "X", "x"),
+    (9, "IX", "ix"),
+    (5, "V", "v"),
+    (4, "IV", "iv"),
+    (1, "I", "i"),
+];
+
 fn format_range(range: &PageLabelRange, index: usize, maximum: usize) -> Result<String> {
     let offset = u64::try_from(index - range.page)
         .map_err(|_| Error::limit("page label number overflow"))?;
@@ -171,21 +214,7 @@ fn format_range(range: &PageLabelRange, index: usize, maximum: usize) -> Result<
         Some(LabelStyle::Decimal) => append(&mut result, &value.to_string(), maximum)?,
         Some(LabelStyle::UpperRoman | LabelStyle::LowerRoman) => {
             let mut remaining = value;
-            for (number, upper) in [
-                (1000, "M"),
-                (900, "CM"),
-                (500, "D"),
-                (400, "CD"),
-                (100, "C"),
-                (90, "XC"),
-                (50, "L"),
-                (40, "XL"),
-                (10, "X"),
-                (9, "IX"),
-                (5, "V"),
-                (4, "IV"),
-                (1, "I"),
-            ] {
+            for (number, upper, lower) in ROMAN {
                 let count = usize::try_from(remaining / number)
                     .map_err(|_| Error::limit("page label too long"))?;
                 let size = upper
@@ -195,9 +224,8 @@ fn format_range(range: &PageLabelRange, index: usize, maximum: usize) -> Result<
                     .filter(|n| *n <= maximum)
                     .ok_or(Error::limit("page label too long"))?;
                 result.reserve(size - result.len());
-                let lower = upper.to_ascii_lowercase();
                 let text = if range.style == Some(LabelStyle::LowerRoman) {
-                    lower.as_str()
+                    lower
                 } else {
                     upper
                 };
@@ -227,6 +255,7 @@ fn format_range(range: &PageLabelRange, index: usize, maximum: usize) -> Result<
     }
     Ok(result)
 }
+
 fn append(out: &mut String, text: &str, maximum: usize) -> Result<()> {
     if out
         .len()
@@ -237,4 +266,53 @@ fn append(out: &mut String, text: &str, maximum: usize) -> Result<()> {
     }
     out.push_str(text);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{LabelStyle, PageLabelRange, format_range};
+    use crate::view::Source;
+
+    fn label(style: LabelStyle, value: u64) -> String {
+        let range = PageLabelRange {
+            source: Source::default(),
+            page: 0,
+            prefix: "p-".into(),
+            style: Some(style),
+            start: value,
+        };
+        format_range(&range, 0, 1024).unwrap()
+    }
+
+    #[test]
+    fn numerals_follow_table_161() {
+        for (value, expected) in [
+            (1, "p-I"),
+            (4, "p-IV"),
+            (14, "p-XIV"),
+            (3999, "p-MMMCMXCIX"),
+            (4000, "p-MMMM"),
+        ] {
+            assert_eq!(label(LabelStyle::UpperRoman, value), expected);
+            assert_eq!(
+                label(LabelStyle::LowerRoman, value),
+                format!("p-{}", expected[2..].to_ascii_lowercase())
+            );
+        }
+        // A to Z, then AA to ZZ, then AAA: letters repeat, they do not carry.
+        for (value, expected) in [
+            (1, "p-A"),
+            (26, "p-Z"),
+            (27, "p-AA"),
+            (28, "p-BB"),
+            (53, "p-AAA"),
+        ] {
+            assert_eq!(label(LabelStyle::UpperLetters, value), expected);
+            assert_eq!(
+                label(LabelStyle::LowerLetters, value),
+                format!("p-{}", expected[2..].to_ascii_lowercase())
+            );
+        }
+        assert_eq!(label(LabelStyle::Decimal, 12), "p-12");
+    }
 }

@@ -7,7 +7,7 @@ use crate::view::{Context, Source};
 use pagura_core::{Position, Result};
 
 pub(super) fn read(ctx: &mut Context<'_>) -> Result<Vec<Option<Boundary>>> {
-    let revisions = ctx.doc.revisions();
+    let revisions = ctx.document.revisions();
     ctx.allocate::<Option<Boundary>>(revisions.len(), Source::default())?;
     revisions
         .iter()
@@ -19,7 +19,9 @@ pub(super) fn read(ctx: &mut Context<'_>) -> Result<Vec<Option<Boundary>>> {
             };
             let end = index
                 .checked_sub(1)
-                .map_or(ctx.doc.original_bytes().len(), |i| revisions[i].offset());
+                .map_or(ctx.document.original_bytes().len(), |i| {
+                    revisions[i].offset()
+                });
             if end <= revision.end_section {
                 return Ok(None);
             }
@@ -47,7 +49,7 @@ pub(super) fn coverage<'a>(
         .iter()
         .position(|b| b.is_some_and(|b| signed_end == b.eof || signed_end == b.eol))
     {
-        let revisions = ctx.doc.revisions();
+        let revisions = ctx.document.revisions();
         RevisionCoverage::Covered {
             index,
             revision: &revisions[index],
