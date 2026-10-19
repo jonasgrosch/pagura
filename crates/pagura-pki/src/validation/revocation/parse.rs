@@ -1,16 +1,14 @@
-//! CRL and distribution-point semantics (RFC 5280 §§4.2.1.13, 5.2–5.3).
+//! CRL and distribution-point semantics (RFC 5280 4.2.1.13, 5.2–5.3).
 use super::{RevocationReason, UnknownReason};
-use crate::der::{Document, Element, Fields, SEQUENCE, Tag, single};
+use crate::der::{self, Document, Element, Fields, Form, SEQUENCE, Tag, single};
 use crate::validation::budget::Budget;
 use crate::validation::names::Dn;
 use crate::validation::{Check, Issue, Uncertainty};
 use crate::x509::extensions::{self, BasicConstraints, GeneralName};
-use crate::x509::{Certificate, CertificateList, Extension, Name};
+use crate::x509::{Certificate, CertificateList, Extension, Name, Version};
 use crate::{BitString, Integer, Time};
 
 pub(super) const ALL: u16 = 0x1fe;
-pub(super) const AKI: &[u8] = extensions::AUTHORITY_KEY_IDENTIFIER;
-pub(super) const FRESHEST: &[u8] = &[85, 29, 46];
 
 pub(super) fn unknown(reason: UnknownReason) -> Issue {
     Issue::Unknown(Uncertainty::RevocationData(reason))
@@ -22,9 +20,9 @@ pub(super) fn document<'a>(
     extension: Extension<'a>,
     budget: &mut Budget<'_>,
 ) -> Check<Document<'a>> {
-    budget.work(extension.value.len())?;
-    budget.bytes(extension.value.len().saturating_mul(64))?;
-    let doc = Document::parse(extension.value, &budget.der_limits()).map_err(|error| {
+    budget.work(extension.value().len())?;
+    budget.bytes(extension.value().len().saturating_mul(64))?;
+    let doc = Document::parse(extension.value(), &budget.der_limits()).map_err(|error| {
         if matches!(error.kind, pagura_core::ErrorKind::Limit) {
             Issue::Unknown(Uncertainty::Limit("pki.der"))
         } else {
@@ -41,7 +39,7 @@ pub(super) enum DpName {
     Other(Vec<u8>),
 }
 impl DpName {
-    pub fn equal(&self, other: &Self, budget: &mut Budget<'_>) -> Check<bool> {
+    pub(super) fn equal(&self, other: &Self, budget: &mut Budget<'_>) -> Check<bool> {
         match (self, other) {
             (Self::Directory(a), Self::Directory(b)) => a.equal(b, budget),
             (Self::Other(a), Self::Other(b)) => {
@@ -84,10 +82,10 @@ pub(super) fn intersects(a: &[DpName], b: &[DpName], budget: &mut Budget<'_>) ->
 }
 fn point(value: Element<'_>, base: Name<'_>, budget: &mut Budget<'_>) -> Check<Vec<DpName>> {
     let choice = single(value).map_err(|_| malformed())?;
-    if choice.tag() == Tag::context(0, true) {
+    if choice.tag() == Tag::context(0, Form::Constructed) {
         return names(choice, budget);
     }
-    if choice.tag() != Tag::context(1, true) || choice.children().next().is_none() {
+    if choice.tag() != Tag::context(1, Form::Constructed) || choice.children().next().is_none() {
         return Err(malformed());
     }
     let mut previous = None;
@@ -151,13 +149,13 @@ pub(super) fn points(
     let mut result = Vec::new();
     for value in doc.root().children() {
         let mut fields = Fields::sequence(value).map_err(|_| malformed())?;
-        let name = fields.optional(Tag::context(0, true));
+        let name = fields.optional(Tag::context(0, Form::Constructed));
         let reasons = fields
-            .optional(Tag::context(1, false))
+            .optional(Tag::context(1, Form::Primitive))
             .map(reasons)
             .transpose()?
             .unwrap_or(ALL);
-        let issuers = fields.optional(Tag::context(2, true));
+        let issuers = fields.optional(Tag::context(2, Form::Constructed));
         fields.finish().map_err(|_| malformed())?;
         if name.is_none() && issuers.is_none() {
             return Err(malformed());
@@ -170,13 +168,15 @@ pub(super) fn points(
             return Err(malformed());
         }
         let relative_base = if let Some(issuers) = issuers {
-            if name.is_some_and(|n| single(n).is_ok_and(|c| c.tag() == Tag::context(1, true))) {
+            if name.is_some_and(|n| {
+                single(n).is_ok_and(|c| c.tag() == Tag::context(1, Form::Constructed))
+            }) {
                 if issuer_names.as_ref().is_some_and(|names| names.len() != 1) {
                     return Err(malformed());
                 }
                 let mut directory = issuers
                     .children()
-                    .filter(|n| n.tag() == Tag::context(4, true));
+                    .filter(|n| n.tag() == Tag::context(4, Form::Constructed));
                 let name = directory.next().ok_or_else(malformed)?;
                 if directory.next().is_some() {
                     return Err(malformed());
@@ -224,15 +224,15 @@ impl Scope {
     fn read(value: Element<'_>, base: Name<'_>, budget: &mut Budget<'_>) -> Check<Self> {
         let mut fields = Fields::sequence(value).map_err(|_| malformed())?;
         let names = fields
-            .optional(Tag::context(0, true))
+            .optional(Tag::context(0, Form::Constructed))
             .map(|v| point(v, base, budget))
             .transpose()?;
-        let user = boolean(fields.optional(Tag::context(1, false)))?;
-        let ca = boolean(fields.optional(Tag::context(2, false)))?;
-        let reason_field = fields.optional(Tag::context(3, false));
+        let user = boolean(fields.optional(Tag::context(1, Form::Primitive)))?;
+        let ca = boolean(fields.optional(Tag::context(2, Form::Primitive)))?;
+        let reason_field = fields.optional(Tag::context(3, Form::Primitive));
         let reasons = reason_field.map(reasons).transpose()?.unwrap_or(ALL);
-        let indirect = boolean(fields.optional(Tag::context(4, false)))?;
-        let attribute = boolean(fields.optional(Tag::context(5, false)))?;
+        let indirect = boolean(fields.optional(Tag::context(4, Form::Primitive)))?;
+        let attribute = boolean(fields.optional(Tag::context(5, Form::Primitive)))?;
         fields.finish().map_err(|_| malformed())?;
         if u8::from(user) + u8::from(ca) + u8::from(attribute) > 1
             || (names.is_none()
@@ -270,7 +270,7 @@ pub(super) struct Info {
     pub freshest: bool,
 }
 impl Info {
-    pub fn read(crl: &CertificateList<'_>, budget: &mut Budget<'_>) -> Check<Self> {
+    pub(super) fn read(crl: &CertificateList<'_>, budget: &mut Budget<'_>) -> Check<Self> {
         let mut info = Self {
             issuer: Dn::read(crl.issuer, budget)?,
             scope: Scope {
@@ -285,10 +285,11 @@ impl Info {
         };
         for &ext in &crl.extensions {
             budget.node()?;
-            let oid = ext.id.as_bytes();
-            match oid {
-                [85, 29, 20 | 27] => {
-                    if (oid[2] == 27) != ext.critical {
+            let id = ext.id();
+            match id {
+                extensions::CRL_NUMBER | extensions::DELTA_CRL_INDICATOR => {
+                    let delta = id == extensions::DELTA_CRL_INDICATOR;
+                    if delta != ext.is_critical() {
                         return Err(malformed());
                     }
                     let doc = document(ext, budget)?;
@@ -297,37 +298,37 @@ impl Info {
                         .unsigned()
                         .map_err(|_| malformed())?;
                     budget.string(n.len())?;
-                    if oid[2] == 27 {
+                    if delta {
                         info.delta = Some(n.to_vec());
                     } else {
                         info.number = Some(n.to_vec());
                     }
                 }
-                [85, 29, 28] => {
-                    if !ext.critical {
+                extensions::ISSUING_DISTRIBUTION_POINT => {
+                    if !ext.is_critical() {
                         return Err(malformed());
                     }
                     let doc = document(ext, budget)?;
                     info.scope = Scope::read(doc.root(), crl.issuer, budget)?;
-                    info.idp = Some(ext.value.to_vec());
+                    info.idp = Some(ext.value().to_vec());
                 }
-                [85, 29, 35] => {
-                    if ext.critical {
+                extensions::AUTHORITY_KEY_IDENTIFIER => {
+                    if ext.is_critical() {
                         return Err(malformed());
                     }
                     let doc = document(ext, budget)?;
                     extensions::AuthorityKeyIdentifier::parse(doc.root())
                         .map_err(|_| malformed())?;
-                    info.aki = Some(ext.value.to_vec());
+                    info.aki = Some(ext.value().to_vec());
                 }
-                [85, 29, 46] => {
-                    if ext.critical {
+                extensions::FRESHEST_CRL => {
+                    if ext.is_critical() {
                         return Err(malformed());
                     }
                     freshest(ext, crl.issuer, budget)?;
                     info.freshest = true;
                 }
-                _ if ext.critical => {
+                _ if ext.is_critical() => {
                     return Err(unknown(UnknownReason::UnsupportedCriticalExtension));
                 }
                 _ => {}
@@ -355,7 +356,7 @@ fn freshest(extension: Extension<'_>, base: Name<'_>, budget: &mut Budget<'_>) -
             fields
                 .take()
                 .map_err(|_| malformed())?
-                .expect(Tag::context(0, true))
+                .expect(Tag::context(0, Form::Constructed))
                 .map_err(|_| malformed())?,
             base,
             budget,
@@ -374,18 +375,18 @@ pub(super) fn certificate_points(
     } else {
         Vec::new()
     };
-    // RFC 5280 §6.3.3 final fallback, independent of advertised locations.
+    // RFC 5280 6.3.3 final fallback, independent of advertised locations.
     let mut fallback = Vec::new();
     let issuer = Dn::read(certificate.issuer, budget)?;
     budget.push(&mut fallback, DpName::Directory(issuer))?;
-    if let Some(ext) = certificate.extension(&[85, 29, 18]) {
+    if let Some(ext) = certificate.extension(extensions::ISSUER_ALT_NAME) {
         let doc = document(ext, budget)?;
         for name in names(doc.root(), budget)? {
             budget.push(&mut fallback, name)?;
         }
     }
-    if let Some(ext) = certificate.extension(FRESHEST) {
-        if ext.critical {
+    if let Some(ext) = certificate.extension(extensions::FRESHEST_CRL) {
+        if ext.is_critical() {
             return Err(malformed());
         }
         points(ext, certificate.issuer, budget)?;
@@ -444,7 +445,7 @@ pub(super) fn scope(
         || (matches!(
             info.scope.class,
             CertificateClass::User | CertificateClass::Ca
-        ) && certificate.version < 3)
+        ) && certificate.version < Version::V3)
     {
         return Ok(0);
     }
@@ -452,9 +453,7 @@ pub(super) fn scope(
 }
 
 pub(super) fn reason(value: Element<'_>) -> Check<RevocationReason> {
-    value
-        .expect(Tag::universal(10, false))
-        .map_err(|_| malformed())?;
+    value.expect(der::ENUMERATED).map_err(|_| malformed())?;
     let [n] = value.content() else {
         return Err(malformed());
     };
@@ -470,9 +469,9 @@ pub(super) fn entry_extensions(
         budget.string(entry.serial.as_bytes().len())?;
         for &ext in &entry.extensions {
             budget.node()?;
-            match ext.id.as_bytes() {
-                [85, 29, 21] => {
-                    if ext.critical {
+            match ext.id() {
+                extensions::REASON_CODE => {
+                    if ext.is_critical() {
                         return Err(malformed());
                     }
                     let doc = document(ext, budget)?;
@@ -481,18 +480,18 @@ pub(super) fn entry_extensions(
                         return Err(malformed());
                     }
                 }
-                [85, 29, 24] => {
-                    if ext.critical {
+                extensions::INVALIDITY_DATE => {
+                    if ext.is_critical() {
                         return Err(malformed());
                     }
                     let doc = document(ext, budget)?;
                     doc.root()
-                        .expect(Tag::universal(24, false))
+                        .expect(der::GENERALIZED_TIME)
                         .map_err(|_| malformed())?;
                     Time::parse(doc.root()).map_err(|_| malformed())?;
                 }
-                [85, 29, 29] => {
-                    if !ext.critical || !info.scope.indirect {
+                extensions::CERTIFICATE_ISSUER => {
+                    if !ext.is_critical() || !info.scope.indirect {
                         return Err(malformed());
                     }
                     let doc = document(ext, budget)?;
@@ -504,7 +503,7 @@ pub(super) fn entry_extensions(
                         return Err(malformed());
                     }
                 }
-                _ if ext.critical => {
+                _ if ext.is_critical() => {
                     return Err(unknown(UnknownReason::UnsupportedCriticalExtension));
                 }
                 _ => {}

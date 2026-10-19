@@ -3,7 +3,7 @@ use super::algorithms;
 use pagura_core::{ErrorKind, Result};
 use pagura_pki::ObjectIdentifier;
 use pagura_pki::cms::{SignedAttributes, SignerInfo};
-use pagura_pki::der::{Element, Fields, Tag, single};
+use pagura_pki::der::{self, Element, Fields, Form, Tag, single};
 use pagura_pki::oids;
 use pagura_pki::x509::AlgorithmIdentifier;
 
@@ -12,8 +12,8 @@ pub(super) fn check(attributes: &SignedAttributes<'_>, signer: &SignerInfo<'_>) 
         return Ok(true);
     };
     let mut fields = Fields::sequence(single(attribute.values)?)?;
-    let digest = fields.take()?.expect(pagura_pki::der::SEQUENCE)?;
-    let signature = fields.take()?.expect(Tag::context(1, true))?;
+    let digest = fields.take()?.expect(der::SEQUENCE)?;
+    let signature = fields.take()?.expect(Tag::context(1, Form::Constructed))?;
     fields.finish()?; // macAlgorithm is forbidden in SignedData.
     // The signatureAlgorithm field is IMPLICIT: compare its components,
     // without rewriting or retagging bytes covered by the CMS signature.
@@ -25,12 +25,12 @@ pub(super) fn check(attributes: &SignedAttributes<'_>, signer: &SignerInfo<'_>) 
 fn matches_identifier(expected: AlgorithmIdentifier<'_>, actual: Element<'_>) -> Result<bool> {
     let mut fields = Fields::new(actual);
     let oid = ObjectIdentifier::parse(fields.take()?)?;
-    let parameters = fields.rest();
+    let parameters = fields.optional_any();
     fields.finish()?;
     if oid != expected.algorithm {
         return Ok(false);
     }
-    if oid.is(oids::RSASSA_PSS) {
+    if oid == oids::RSASSA_PSS {
         return match (expected.parameters, parameters) {
             (Some(expected), Some(actual)) => {
                 let expected = algorithms::pss(expected)?;
@@ -45,7 +45,7 @@ fn matches_identifier(expected: AlgorithmIdentifier<'_>, actual: Element<'_>) ->
         };
     }
     let absent_null_equivalent = matches!(
-        oid.as_bytes(),
+        oid,
         oids::SHA1
             | oids::SHA224
             | oids::SHA256
@@ -66,6 +66,6 @@ fn matches_identifier(expected: AlgorithmIdentifier<'_>, actual: Element<'_>) ->
 
 fn parameter_bytes(parameter: Option<Element<'_>>, absent_null_equivalent: bool) -> Option<&[u8]> {
     parameter
-        .filter(|p| !absent_null_equivalent || p.tag() != Tag::universal(5, false))
+        .filter(|p| !absent_null_equivalent || p.tag() != der::NULL)
         .map(Element::encoded)
 }

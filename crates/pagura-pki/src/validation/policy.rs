@@ -1,4 +1,4 @@
-//! RFC 9618 §5: one node per policy per depth, with shared parent edges.
+//! RFC 9618 5: one node per policy per depth, with shared parent edges.
 use super::budget::Budget;
 use super::{Check, InvalidReason, Issue, Oid, ValidationOptions};
 use std::collections::{BTreeMap, BTreeSet};
@@ -25,7 +25,11 @@ pub(super) struct Graph {
 }
 
 impl Graph {
-    pub fn new(n: usize, options: &ValidationOptions<'_>, budget: &mut Budget<'_>) -> Check<Self> {
+    pub(super) fn new(
+        n: usize,
+        options: &ValidationOptions<'_>,
+        budget: &mut Budget<'_>,
+    ) -> Check<Self> {
         let mut graph = Self {
             identifiers: Vec::new(),
             lookup: BTreeMap::new(),
@@ -106,7 +110,7 @@ impl Graph {
         }
         Ok(parents)
     }
-    pub fn process(
+    pub(super) fn process(
         &mut self,
         policies: Option<&[Oid]>,
         depth: usize,
@@ -172,7 +176,7 @@ impl Graph {
         }
         Ok(())
     }
-    pub fn mappings(
+    pub(super) fn mappings(
         &mut self,
         mappings: &[(Oid, Oid)],
         depth: usize,
@@ -222,18 +226,18 @@ impl Graph {
         }
         self.prune(budget)
     }
-    pub fn required(&self) -> Check<()> {
+    pub(super) fn required(&self) -> Check<()> {
         if self.explicit == 0 && self.current.is_empty() {
             return Err(Issue::Invalid(InvalidReason::Policy));
         }
         Ok(())
     }
-    pub fn decrement(&mut self) {
+    pub(super) fn decrement(&mut self) {
         self.explicit = self.explicit.saturating_sub(1);
         self.mapping = self.mapping.saturating_sub(1);
         self.any = self.any.saturating_sub(1);
     }
-    pub fn finish(
+    pub(super) fn finish(
         &self,
         initial: &[Oid],
         depth: usize,

@@ -2,7 +2,7 @@
 use pagura_core::{Error, Limits, Position, Result};
 use pagura_crypto::ecdsa::{Curve, PublicKey};
 use pagura_crypto::{HashAlgorithm, PssParameters, RsaPublicKey, Verification};
-use pagura_pki::der::{Document, Element, Fields, Tag, single};
+use pagura_pki::der::{self, Document, Element, Fields, Form, Tag, single};
 use pagura_pki::oids::{
     EC_PUBLIC_KEY, ECDSA_WITH_SHA1, ECDSA_WITH_SHA224, ECDSA_WITH_SHA256, ECDSA_WITH_SHA384,
     ECDSA_WITH_SHA512, MGF1, RSA_ENCRYPTION, RSASSA_PSS, SECP256R1, SECP384R1, SECP521R1, SHA1,
@@ -21,13 +21,13 @@ fn unsupported(element: Element<'_>) -> Error {
 }
 pub(super) fn null_or_absent(algorithm: AlgorithmIdentifier<'_>) -> Result<()> {
     if let Some(parameter) = algorithm.parameters {
-        parameter.expect(Tag::universal(5, false))?;
+        parameter.expect(der::NULL)?;
     }
     Ok(())
 }
 pub(super) fn hash(algorithm: AlgorithmIdentifier<'_>) -> Result<HashAlgorithm> {
     null_or_absent(algorithm)?;
-    match algorithm.algorithm.as_bytes() {
+    match algorithm.algorithm {
         SHA1 => Ok(HashAlgorithm::Sha1),
         SHA224 => Ok(HashAlgorithm::Sha224),
         SHA256 => Ok(HashAlgorithm::Sha256),
@@ -45,7 +45,7 @@ pub(super) enum SignatureAlgorithm {
 }
 impl SignatureAlgorithm {
     pub(super) fn parse(algorithm: AlgorithmIdentifier<'_>, digest: HashAlgorithm) -> Result<Self> {
-        let oid = algorithm.algorithm.as_bytes();
+        let oid = algorithm.algorithm;
         if oid == RSASSA_PSS {
             let parameters = pss(algorithm
                 .parameters
@@ -107,15 +107,15 @@ impl SignatureAlgorithm {
         }
         match self {
             Self::Rsa | Self::Pss(_) => {
-                if key.algorithm.algorithm.is(RSA_ENCRYPTION) {
+                if key.algorithm.algorithm == RSA_ENCRYPTION {
                     key.algorithm
                         .parameters
                         .ok_or_else(|| {
                             key.element
                                 .error("rsaEncryption key requires NULL parameters")
                         })?
-                        .expect(Tag::universal(5, false))?;
-                } else if key.algorithm.algorithm.is(RSASSA_PSS) {
+                        .expect(der::NULL)?;
+                } else if key.algorithm.algorithm == RSASSA_PSS {
                     let Self::Pss(parameters) = self else {
                         return Err(key.element.error("PSS-only key used for PKCS1 signature"));
                     };
@@ -145,14 +145,14 @@ impl SignatureAlgorithm {
                 }
             }
             Self::Ec => {
-                if !key.algorithm.algorithm.is(EC_PUBLIC_KEY) {
+                if key.algorithm.algorithm != EC_PUBLIC_KEY {
                     return Err(unsupported(key.algorithm.element));
                 }
                 let parameter = key
                     .algorithm
                     .parameters
                     .ok_or_else(|| key.element.error("missing EC named curve"))?;
-                let curve = match ObjectIdentifier::parse(parameter)?.as_bytes() {
+                let curve = match ObjectIdentifier::parse(parameter)? {
                     SECP256R1 => Curve::P256,
                     SECP384R1 => Curve::P384,
                     SECP521R1 => Curve::P521,
@@ -167,13 +167,13 @@ impl SignatureAlgorithm {
 pub(super) fn pss(element: Element<'_>) -> Result<PssParameters> {
     let mut fields = Fields::sequence(element)?;
     let digest = fields
-        .optional(Tag::context(0, true))
+        .optional(Tag::context(0, Form::Constructed))
         .map(|v| hash(AlgorithmIdentifier::parse(single(v)?)?))
         .transpose()?
         .unwrap_or(HashAlgorithm::Sha1);
-    let mgf = if let Some(value) = fields.optional(Tag::context(1, true)) {
+    let mgf = if let Some(value) = fields.optional(Tag::context(1, Form::Constructed)) {
         let algorithm = AlgorithmIdentifier::parse(single(value)?)?;
-        if !algorithm.algorithm.is(MGF1) {
+        if algorithm.algorithm != MGF1 {
             return Err(unsupported(algorithm.element));
         }
         hash(AlgorithmIdentifier::parse(
@@ -185,13 +185,13 @@ pub(super) fn pss(element: Element<'_>) -> Result<PssParameters> {
         HashAlgorithm::Sha1
     };
     let salt = fields
-        .optional(Tag::context(2, true))
-        .map(|v| Integer::parse(single(v)?)?.to_u64())
+        .optional(Tag::context(2, Form::Constructed))
+        .map(pss_integer)
         .transpose()?
         .unwrap_or(20);
     let trailer = fields
-        .optional(Tag::context(3, true))
-        .map(|v| Integer::parse(single(v)?)?.to_u64())
+        .optional(Tag::context(3, Form::Constructed))
+        .map(pss_integer)
         .transpose()?
         .unwrap_or(1);
     fields.finish()?;
@@ -214,4 +214,14 @@ pub(super) fn pss(element: Element<'_>) -> Result<PssParameters> {
         usize::try_from(salt).map_err(|_| Error::limit("PSS salt exceeds address space"))?,
         trailer,
     )
+}
+
+/// A nonnegative PSS parameter INTEGER; one wider than 64 bits exceeds the
+/// implementation's range.
+fn pss_integer(value: Element<'_>) -> Result<u64> {
+    let integer = Integer::parse(single(value)?)?;
+    integer.unsigned()?;
+    integer.to_u64().ok_or_else(|| {
+        Error::limit("ASN.1 integer exceeds u64").at(Position::Buffer(value.range().start))
+    })
 }

@@ -98,6 +98,7 @@ name = "pagura-pki"
 version = "0.1.0"
 dependencies = [
  "pagura-core",
+ "pagura-testkit",
 ]
 
 [[package]]

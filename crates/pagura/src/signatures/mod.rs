@@ -161,7 +161,7 @@ fn check(
     if signature.contents[used..].iter().any(|&b| b != 0) {
         return Err(tree.root().error("nonzero PDF Contents padding"));
     }
-    let data = SignedData::from_content_info_reported(tree.root(), diagnostics)?;
+    let data = SignedData::from_content_info_with_diagnostics(tree.root(), diagnostics)?;
     if data.signers.is_empty() {
         return Err(data.element.error("PDF signature has no CMS signer"));
     }
@@ -190,7 +190,7 @@ fn check(
         .as_ref()
         .ok_or_else(|| data.element.error("missing checked byte ranges"))?;
     let content = if matches!(signature.sub_filter, SubFilter::Rfc3161) {
-        if !data.content_type.is(ID_TST_INFO) {
+        if data.content_type != ID_TST_INFO {
             return Err(data
                 .element
                 .error("document timestamp content is not TSTInfo"));
@@ -211,7 +211,7 @@ fn check(
         }
         Some(bytes)
     } else {
-        if !data.content_type.is(ID_DATA) || data.content.is_some() {
+        if data.content_type != ID_DATA || data.content.is_some() {
             return Err(data
                 .element
                 .error("detached PDF CMS must contain detached id-data"));
@@ -270,7 +270,7 @@ fn check_signer(
     if signer
         .unsigned_attributes
         .iter()
-        .any(|a| a.id.is(oids::SIGNING_CERTIFICATE_V2) || a.id.is(oids::SIGNING_CERTIFICATE))
+        .any(|a| a.id == oids::SIGNING_CERTIFICATE_V2 || a.id == oids::SIGNING_CERTIFICATE)
     {
         return Err(data.element.error("ESS signing certificate must be signed"));
     }
@@ -337,7 +337,7 @@ fn certificate<'a>(
                 if let Some(extension) = candidate
                     .extensions
                     .iter()
-                    .find(|e| e.id.is(extensions::SUBJECT_KEY_IDENTIFIER))
+                    .find(|e| e.id() == extensions::SUBJECT_KEY_IDENTIFIER)
                 {
                     let matched: Result<bool> = (|| {
                         let tree = extension.value_der()?;
@@ -355,6 +355,7 @@ fn certificate<'a>(
                     false
                 }
             }
+            _ => false,
         };
         if matches {
             if found.is_some_and(|old| old.element.encoded() != candidate.element.encoded()) {

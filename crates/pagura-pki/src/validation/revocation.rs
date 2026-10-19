@@ -1,4 +1,4 @@
-//! Offline CRL validation (RFC 5280 §6.3). URLs are inert names, never fetched.
+//! Offline CRL validation (RFC 5280 6.3). URLs are inert names, never fetched.
 //!
 //! Only supplied CRLs and certificates are considered. CRL issuers must reach
 //! the same host anchor as the certificate path. Delta processing is enabled;
@@ -14,7 +14,8 @@ use crate::Time;
 use crate::x509::{Certificate, CertificateList};
 use pagura_core::Limits;
 
-/// RFC 5280 §5.3.1 reasonCode values. Value 7 is reserved.
+/// RFC 5280 5.3.1 reasonCode values. Value 7 is reserved. The standard
+/// closes the set.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RevocationReason {
     /// No more specific reason was supplied.
@@ -58,6 +59,7 @@ impl RevocationReason {
 
 /// Why caller-supplied offline evidence does not establish non-revocation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum UnknownReason {
     /// No applicable revocation evidence was supplied.
     NoData,
@@ -87,7 +89,8 @@ pub enum UnknownReason {
     Limit(&'static str),
 }
 
-/// Authenticated revocation outcome for one certificate at the caller's time.
+/// Authenticated revocation outcome for one certificate at the caller's time:
+/// good, revoked or unknown, a closed set.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RevocationOutcome {
     /// Authenticated, current evidence covers every reason without revocation.
