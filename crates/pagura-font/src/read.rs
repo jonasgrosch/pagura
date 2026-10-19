@@ -57,27 +57,6 @@ pub(crate) fn glyph_id(index: usize, at: Position) -> Result<crate::GlyphId> {
         .map_err(|_| limit(at, "glyph index overflow"))
 }
 
-/// Checks that every point of an outline is finite: arithmetic beyond
-/// `f64` range is malformed glyph data.
-pub(crate) fn finite_path(path: &pagura_raster::Path) -> Result<()> {
-    use pagura_raster::Segment;
-    for segment in path.segments() {
-        let finite = match *segment {
-            Segment::MoveTo(p) | Segment::LineTo(p) => p.is_finite(),
-            Segment::CubicTo {
-                c1: a,
-                c2: b,
-                end: c,
-            } => a.is_finite() && b.is_finite() && c.is_finite(),
-            Segment::Close => true,
-        };
-        if !finite {
-            return Err(syntax(Position::Unknown, "nonfinite glyph outline"));
-        }
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::{cursor, slice};

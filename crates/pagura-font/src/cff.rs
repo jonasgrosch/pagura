@@ -223,12 +223,16 @@ impl Cff {
         type2::outline(self, data, glyph, work)
     }
 
-    /// The charstring width, if the glyph interprets; CFF2 charstrings
-    /// carry none.
-    pub(crate) fn advance(&self, data: &[u8], glyph: GlyphId, work: &mut Work<'_>) -> Option<f64> {
+    /// The charstring width; CFF2 charstrings carry none.
+    pub(crate) fn advance(
+        &self,
+        data: &[u8],
+        glyph: GlyphId,
+        work: &mut Work<'_>,
+    ) -> Result<Option<f64>> {
         match self.version {
-            Version::Cff1 => type2::advance(self, data, glyph, work).ok(),
-            Version::Cff2 => None,
+            Version::Cff1 => type2::advance(self, data, glyph, work).map(Some),
+            Version::Cff2 => Ok(None),
         }
     }
 
@@ -473,7 +477,10 @@ impl Context<'_> {
     fn private_dict(&self, dict: &Dict, matrix: Transform, work: &mut Work<'_>) -> Result<Private> {
         let at = self.table.position();
         let (size, offset) = match (dict.values(Operator::PRIVATE), self.version) {
-            (Some(&[size, offset]), _) => (dict::integer(size, at)?, dict::integer(offset, at)?),
+            (Some(&[size, offset]), _) => (
+                crate::charstring::integer(size, at)?,
+                crate::charstring::integer(offset, at)?,
+            ),
             (Some(_), _) => return Err(syntax(at, "invalid CFF Private operands")),
             // A CFF2 Font DICT without a Private DICT uses all defaults.
             (None, Version::Cff2) => (0, 0),

@@ -67,11 +67,20 @@ A review of `pagura-font` found:
    caches outlines as `Arc<Path>` and would build the same path through the
    sink; quadratics already convert to cubics exactly; and raster depends
    only on `pagura-core`, so the dependency adds build order, not coupling.
+   Every `PathBuilder` call is in one module (`outline::Pen`), which charges
+   each segment and checks finiteness, so a change to the path API touches
+   one file.
 5. **Type 1 positions point into the input.** The parser keeps a map from
    decoded offsets back to program offsets: PFB segment starts, the eexec
    section, the cipher's discarded prefix, and, for hexadecimal eexec data,
    every digit pair that does not follow its predecessor. Errors and
    repairs are placed through it.
+6. **`advance` reads only the width.** It interprets a charstring up to the
+   operator that fixes the width and returns `Result<Option<f64>>`: `None`
+   when the program records no advance (CFF2 without `hmtx`), an error for
+   an unknown glyph, a malformed width or a budget. It is kept rather than
+   removed because PDF widths can be missing or short, and the program's
+   advance is the evidence a text-layer repair would use.
 
 ## Consequences
 
