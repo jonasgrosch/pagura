@@ -1,100 +1,140 @@
-//! T.81 F.2 and G.1/G.2 entropy scans, including successive approximation.
-use super::{
-    Decoder,
-    entropy::{Bits, Huffman},
-};
-use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Position, Result};
+//! T.81 B.2.3 scan headers and the F.2 and G.1/G.2 entropy scans,
+//! including successive approximation.
+use super::entropy::{Bits, Huffman, Tables};
+use super::frame::{Coding, Frame, Process};
+use super::{Decoder, marker};
+use pagura_core::bytes::Cursor;
+use pagura_core::{Diagnostic, Diagnostics, Error, Result};
+
+/// Work charged per 8×8 block in each scan: one unit per coefficient.
+const BLOCK_WORK: usize = 64;
+/// The most data units of an interleaved MCU (T.81 B.2.3).
+const MCU_UNITS: usize = 10;
+/// The largest successive-approximation bit position (T.81 Table B.3).
+const MAX_APPROXIMATION: u8 = 13;
+
+/// A component of a scan and its entropy coding table selectors.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Selected {
+    /// Index into the frame's components.
+    pub(super) component: usize,
+    /// DC table selector.
+    pub(super) dc: usize,
+    /// AC table selector.
+    pub(super) ac: usize,
+}
 
 pub(super) struct Scan {
-    selected: Vec<(usize, usize, usize)>,
+    selected: Vec<Selected>,
     pub(super) start: usize,
     pub(super) end: usize,
     pub(super) high: u8,
     pub(super) low: u8,
+    pub(super) process: Process,
+    /// Sample precision of the frame, 8 or 12 bits.
+    pub(super) precision: u8,
 }
+
 impl Scan {
-    fn geometry(&self, frame: &super::Frame) -> Result<(usize, usize)> {
-        let interleaved = self.selected.len() > 1;
-        let geometry = if interleaved {
-            (frame.mcu_cols, frame.mcu_rows)
-        } else {
-            let c = &frame.components[self.selected[0].0];
-            (
-                (frame.width as usize * c.h).div_ceil(8 * frame.max_h),
-                (frame.height as usize * c.v).div_ceil(8 * frame.max_v),
-            )
-        };
-        if interleaved
-            && self
-                .selected
-                .iter()
-                .map(|&(i, _, _)| frame.components[i].h * frame.components[i].v)
-                .sum::<usize>()
-                > 10
-        {
-            return Err(Error::syntax("too many JPEG data units in MCU"));
-        }
-        Ok(geometry)
+    pub(super) fn progressive(&self) -> bool {
+        self.process == Process::Progressive
     }
 
-    fn parse(data: &[u8], frame: &mut super::Frame) -> Result<Self> {
-        let n = usize::from(*data.first().ok_or(Error::syntax("missing JPEG scan"))?);
-        if n == 0 || n > frame.components.len() || data.len() != 1 + 2 * n + 3 {
+    fn geometry(&self, frame: &Frame) -> Result<(usize, usize)> {
+        let interleaved = self.selected.len() > 1;
+        if interleaved {
+            let units: usize = self
+                .selected
+                .iter()
+                .filter_map(|s| frame.components.get(s.component))
+                .map(|c| c.h * c.v)
+                .sum();
+            if units > MCU_UNITS {
+                return Err(Error::syntax("too many JPEG data units in MCU"));
+            }
+            return Ok((frame.mcu_cols, frame.mcu_rows));
+        }
+        let c = self
+            .selected
+            .first()
+            .and_then(|s| frame.components.get(s.component))
+            .ok_or(Error::syntax("missing JPEG scan component"))?;
+        let width = pagura_core::convert::u32_to_usize(frame.width);
+        let height = pagura_core::convert::u32_to_usize(frame.height);
+        Ok((
+            (width * c.h).div_ceil(8 * frame.max_h),
+            (height * c.v).div_ceil(8 * frame.max_v),
+        ))
+    }
+
+    fn parse(mut data: Cursor<'_>, frame: &mut Frame) -> Result<Self> {
+        let n = usize::from(data.u8()?);
+        if n == 0 || n > frame.components.len() || data.remaining() != 2 * n + 3 {
             return Err(Error::syntax("invalid JPEG scan component count"));
         }
-        let mut selected = Vec::with_capacity(n);
-        for pair in data[1..=2 * n].as_chunks::<2>().0 {
-            let index = frame
+        let max_table = if frame.process == Process::Baseline {
+            1
+        } else {
+            3
+        };
+        let mut selected: Vec<Selected> = Vec::with_capacity(n);
+        for _ in 0..n {
+            let [id, tables] = data.take_array()?;
+            let component = frame
                 .components
                 .iter()
-                .position(|c| c.id == pair[0])
+                .position(|c| c.id == id)
                 .ok_or(Error::syntax("unknown JPEG scan component"))?;
-            let max_table = if frame.baseline { 1 } else { 3 };
-            if selected.iter().any(|&(i, _, _)| i == index)
-                || pair[1] >> 4 > max_table
-                || pair[1] & 15 > max_table
+            if selected.iter().any(|s| s.component == component)
+                || tables >> 4 > max_table
+                || tables & 15 > max_table
             {
                 return Err(Error::syntax("invalid JPEG scan selector"));
             }
-            selected.push((
-                index,
-                usize::from(pair[1] >> 4),
-                4 + usize::from(pair[1] & 15),
-            ));
+            selected.push(Selected {
+                component,
+                dc: usize::from(tables >> 4),
+                ac: usize::from(tables & 15),
+            });
         }
+        let [start, end, approximation] = data.take_array()?;
         let (start, end, high, low) = (
-            usize::from(data[1 + 2 * n]),
-            usize::from(data[2 + 2 * n]),
-            data[3 + 2 * n] >> 4,
-            data[3 + 2 * n] & 15,
+            usize::from(start),
+            usize::from(end),
+            approximation >> 4,
+            approximation & 15,
         );
-        if start > end || end > 63 || high > 13 || low > 13 || (high != 0 && high != low + 1) {
+        if start > end
+            || end > 63
+            || high > MAX_APPROXIMATION
+            || low > MAX_APPROXIMATION
+            || (high != 0 && high != low + 1)
+        {
             return Err(Error::syntax(
                 "invalid JPEG spectral selection or approximation",
             ));
         }
-        if frame.progressive {
+        if frame.progressive() {
             if (start == 0 && end != 0) || (start != 0 && n != 1) {
                 return Err(Error::syntax("invalid progressive JPEG scan structure"));
             }
         } else if start != 0 || end != 63 || high != 0 || low != 0 {
             return Err(Error::syntax("invalid sequential JPEG scan structure"));
         }
-        for &(i, _, _) in &selected {
-            if start > 0 && frame.components[i].approximation[0] < 0 {
+        let (high_state, low_state) = (
+            i8::try_from(high).map_err(|_| Error::syntax("invalid JPEG approximation"))?,
+            i8::try_from(low).map_err(|_| Error::syntax("invalid JPEG approximation"))?,
+        );
+        for s in &selected {
+            let approximation = &mut frame.components[s.component].approximation;
+            if start > 0 && approximation[0] < 0 {
                 return Err(Error::syntax("JPEG AC scan precedes DC scan"));
             }
-            for state in &mut frame.components[i].approximation[start..=end] {
-                if (high == 0 && *state != -1)
-                    || (high != 0
-                        && *state
-                            != i8::try_from(high)
-                                .map_err(|_| Error::syntax("invalid JPEG approximation"))?)
-                {
+            for state in &mut approximation[start..=end] {
+                if (high == 0 && *state != -1) || (high != 0 && *state != high_state) {
                     return Err(Error::syntax("out-of-order JPEG coefficient scan"));
                 }
-                *state =
-                    i8::try_from(low).map_err(|_| Error::syntax("invalid JPEG approximation"))?;
+                *state = low_state;
             }
         }
         Ok(Self {
@@ -103,17 +143,19 @@ impl Scan {
             end,
             high,
             low,
+            process: frame.process,
+            precision: frame.precision,
         })
     }
 }
 
 impl Decoder {
+    /// Decodes the scan whose header is `payload` and whose entropy-coded
+    /// data starts at `data`; returns the offset of the marker after it.
     pub(super) fn scan(
         &mut self,
-        payload: &[u8],
-        data: &[u8],
-        offset: usize,
-        limits: &Limits,
+        payload: Cursor<'_>,
+        data: Cursor<'_>,
         diagnostics: &mut Diagnostics,
     ) -> Result<usize> {
         let frame = self
@@ -123,17 +165,21 @@ impl Decoder {
         let scan = Scan::parse(payload, frame)?;
         let interleaved = scan.selected.len() > 1;
         let (cols, rows) = scan.geometry(frame)?;
-        let mut bits = Bits::new(data, offset);
-        let mut arithmetic = frame
-            .arithmetic
-            .then(|| {
-                super::arithmetic::Arithmetic::new(
-                    data,
-                    offset,
-                    limits.operations.saturating_sub(self.work),
-                )
-            })
-            .transpose()?;
+        // Quantizers are latched at a component's first scan (T.81 B.2.4.1).
+        let entropy = data.position();
+        for s in &scan.selected {
+            latch_quant(
+                &mut frame.components[s.component],
+                &self.quant,
+                frame.process,
+            )
+            .map_err(|error| error.at(entropy))?;
+        }
+        let mut bits = Bits::new(data.clone());
+        let mut arithmetic = match frame.coding {
+            Coding::Huffman => None,
+            Coding::Arithmetic => Some(super::arithmetic::Arithmetic::new(data.clone())?),
+        };
         let mut predictors = [0i32; 4];
         let (mut eob, mut sequence) = (0u32, 0u8);
         for mcu in 0..cols * rows {
@@ -149,22 +195,12 @@ impl Decoder {
                 sequence = (sequence + 1) % 8;
                 predictors.fill(0);
             }
-            for &(i, dc, ac) in &scan.selected {
-                let c = &mut frame.components[i];
-                // The tables cannot change within a scan (B.2.4.1). Validate
-                // and latch in component order at its first MCU only.
-                if mcu == 0 {
-                    latch_quant(c, &self.quant, frame.baseline)
-                        .map_err(|error| error.at(Position::Buffer(offset)))?;
-                }
+            for &s in &scan.selected {
+                let c = &mut frame.components[s.component];
                 let (horizontal, vertical) = if interleaved { (c.h, c.v) } else { (1, 1) };
                 for y in 0..vertical {
                     for x in 0..horizontal {
-                        self.work = self
-                            .work
-                            .checked_add(64)
-                            .filter(|&w| w <= limits.operations)
-                            .ok_or(Error::limit("JPEG scan work budget exceeded"))?;
+                        self.budget.work(BLOCK_WORK)?;
                         let index = if interleaved {
                             (mcu / cols * c.v + y) * c.stride + mcu % cols * c.h + x
                         } else {
@@ -173,27 +209,17 @@ impl Decoder {
                         let block = c
                             .blocks
                             .get_mut(index)
-                            .ok_or(bits.error("JPEG block outside component"))?;
+                            .ok_or_else(|| bits.error("JPEG block outside component"))?;
+                        let predictor = &mut predictors[s.component];
                         if let Some(coder) = &mut arithmetic {
-                            coder.block(
-                                block,
-                                &scan,
-                                frame.progressive,
-                                &self.conditioning,
-                                i,
-                                (dc, ac),
-                                &mut predictors[i],
-                                frame.precision,
-                            )?;
+                            coder.block(block, &scan, &self.conditioning, s, predictor)?;
                         } else {
                             decode_block(
                                 block,
                                 &scan,
-                                frame.progressive,
-                                frame.precision,
                                 &self.huffman,
-                                (dc, ac),
-                                &mut predictors[i],
+                                s,
+                                predictor,
                                 &mut eob,
                                 &mut bits,
                             )?;
@@ -206,27 +232,21 @@ impl Decoder {
             return Err(bits.error("JPEG EOB run exceeds scan"));
         }
         if let Some(coder) = arithmetic {
-            let (offset, used) = coder.finish()?;
-            self.work = self
-                .work
-                .checked_add(used)
-                .filter(|&w| w <= limits.operations)
-                .ok_or(Error::limit("JPEG arithmetic work budget exceeded"))?;
-            return Ok(offset);
+            return coder.finish();
         }
         bits.align(diagnostics, &mut self.padding_reported)?;
-        scan_end(data, bits.offset, &mut self.work, limits, diagnostics)
+        let end = bits.offset();
+        scan_end(data, end, &mut self.budget, diagnostics)
     }
 }
 
-/// Quantizers are latched at a component's first scan (B.2.4.1).
 fn latch_quant(
     component: &mut super::frame::Component,
-    tables: &[Option<[u16; 64]>; 4],
-    baseline: bool,
+    tables: &[Option<[u16; 64]>; super::frame::TABLES],
+    process: Process,
 ) -> Result<()> {
     let quant = tables[component.table].ok_or(Error::syntax("missing JPEG quantization table"))?;
-    if baseline && quant.iter().any(|&q| q > 255) {
+    if process == Process::Baseline && quant.iter().any(|&q| q > 255) {
         return Err(Error::syntax("baseline JPEG quantizer exceeds eight bits"));
     }
     if component.quant.is_some_and(|q| q != quant) {
@@ -238,102 +258,99 @@ fn latch_quant(
 
 /// T.81 B.2.1 fixes the final segment's MCU count. Extra complete bytes can
 /// be discarded only immediately before EOI; byte stuffing is still obeyed.
+/// Returns the offset of the marker that ends the scan.
 fn scan_end(
-    data: &[u8],
+    data: Cursor<'_>,
     start: usize,
-    work: &mut usize,
-    limits: &Limits,
+    budget: &mut crate::budget::Budget,
     diagnostics: &mut Diagnostics,
 ) -> Result<usize> {
-    let mut offset = start;
+    let mut bytes = data;
+    bytes.seek(start)?;
+    let excess = bytes.position();
     loop {
-        *work = work
-            .checked_add(1)
-            .filter(|&w| w <= limits.operations)
-            .ok_or(Error::limit("JPEG scan work budget exceeded"))?;
-        let byte = data.get(offset).ok_or_else(|| {
-            Error::syntax("missing JPEG scan terminator").at(Position::Buffer(offset))
-        })?;
-        if *byte == 255 {
-            let marker = offset;
-            while data.get(offset) == Some(&255) {
-                offset += 1;
-                *work = work
-                    .checked_add(1)
-                    .filter(|&w| w <= limits.operations)
-                    .ok_or(Error::limit("JPEG scan work budget exceeded"))?;
+        budget.work(1)?;
+        let at = bytes.position();
+        let byte = bytes
+            .u8()
+            .map_err(|_| Error::syntax("missing JPEG scan terminator").at(at))?;
+        if byte != marker::PREFIX {
+            continue;
+        }
+        let fill = bytes
+            .rest()
+            .iter()
+            .take_while(|&&b| b == marker::PREFIX)
+            .count();
+        budget.work(fill)?;
+        bytes.skip(fill)?;
+        let code = bytes
+            .u8()
+            .map_err(|_| Error::syntax("truncated JPEG scan marker").at(at))?;
+        if code == marker::STUFFED {
+            // Only FF 00 is a stuffed data byte; FF FF 00 is malformed.
+            if fill != 0 {
+                return Err(Error::syntax("invalid JPEG byte stuffing").at(at));
             }
-            let code = data.get(offset).ok_or_else(|| {
-                Error::syntax("truncated JPEG scan marker").at(Position::Buffer(marker))
-            })?;
-            if *code != 0 {
-                if marker == start
-                    && (0xd0..=0xd7).contains(code)
-                    && data.get(offset + 1..offset + 3) == Some(&[255, 217])
-                {
-                    diagnostics.repair(
-                        Diagnostic::new(
-                            crate::repairs::JPEG_TRAILING_RESTART,
-                            "JPEG restart marker after final MCU ignored (T.81 B.2.1, B.2.4.4)",
-                        )
-                        .at(Position::Buffer(marker)),
-                    )?;
-                    return Ok(offset + 1);
-                }
-                if marker == start {
-                    return Ok(marker);
-                }
-                if *code != 0xd9 {
-                    return Err(
-                        Error::syntax("extra JPEG entropy data before another marker")
-                            .at(Position::Buffer(start)),
-                    );
-                }
+            continue;
+        }
+        let offset = bytes.offset() - fill - 2;
+        if at == excess {
+            if matches!(code, marker::RST0..=marker::RST7)
+                && bytes.rest().starts_with(&[marker::PREFIX, marker::EOI])
+            {
+                // No entropy is synthesized: the restart only ends a final
+                // interval that has no MCUs left (T.81 B.2.1, B.2.4.4).
                 diagnostics.repair(
                     Diagnostic::new(
-                        crate::repairs::JPEG_ENTROPY_EXCESS,
-                        "extra JPEG entropy bytes before final EOI ignored (T.81 B.2.1)",
+                        crate::repairs::JPEG_TRAILING_RESTART,
+                        "JPEG restart marker after final MCU ignored (T.81 B.2.1, B.2.4.4)",
                     )
-                    .at(Position::Buffer(start)),
+                    .at(at),
                 )?;
-                return Ok(marker);
+                return Ok(bytes.offset());
             }
-            // Only FF 00 is a stuffed data byte; FF FF 00 is malformed.
-            if offset != marker + 1 {
-                return Err(
-                    Error::syntax("invalid JPEG byte stuffing").at(Position::Buffer(marker))
-                );
-            }
+            return Ok(offset);
         }
-        offset += 1;
+        if code != marker::EOI {
+            return Err(Error::syntax("extra JPEG entropy data before another marker").at(excess));
+        }
+        diagnostics.repair(
+            Diagnostic::new(
+                crate::repairs::JPEG_ENTROPY_EXCESS,
+                "extra JPEG entropy bytes before final EOI ignored (T.81 B.2.1)",
+            )
+            .at(excess),
+        )?;
+        return Ok(offset);
     }
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "entropy state belongs to the scan, tables, and individual component"
-)]
+/// The Huffman table a scan selects.
+fn table<'t>(
+    tables: &'t [Option<Huffman>; 4],
+    index: usize,
+    bits: &Bits<'_>,
+) -> Result<&'t Huffman> {
+    tables
+        .get(index)
+        .and_then(Option::as_ref)
+        .ok_or_else(|| bits.error("missing JPEG Huffman table"))
+}
+
 fn decode_block(
     block: &mut [i32; 64],
     scan: &Scan,
-    progressive: bool,
-    precision: u8,
-    tables: &[Option<Huffman>; 8],
-    selectors: (usize, usize),
+    tables: &Tables,
+    selected: Selected,
     predictor: &mut i32,
     eob: &mut u32,
     bits: &mut Bits<'_>,
 ) -> Result<()> {
-    let missing = bits.error("missing JPEG Huffman table");
-    let table = |index| {
-        tables
-            .get(index)
-            .and_then(Option::as_ref)
-            .ok_or_else(|| missing.clone())
-    };
+    let (precision, progressive) = (scan.precision, scan.progressive());
     if scan.start == 0 {
         if scan.high == 0 {
-            let size = table(selectors.0)?.symbol(bits)?;
+            let size = table(&tables.dc, selected.dc, bits)?.symbol(bits)?;
             if size > precision + 3 {
                 return Err(bits.error("invalid JPEG DC magnitude"));
             }
@@ -343,7 +360,7 @@ fn decode_block(
                     let bound = 1 << (precision + 3);
                     (-bound..bound).contains(&v)
                 })
-                .ok_or(bits.error("JPEG DC predictor out of range"))?;
+                .ok_or_else(|| bits.error("JPEG DC predictor out of range"))?;
             block[0] = *predictor << scan.low;
         } else {
             block[0] |= i32::try_from(bits.read(1)?)
@@ -354,7 +371,7 @@ fn decode_block(
             return Ok(());
         }
     }
-    let table = table(selectors.1)?;
+    let table = table(&tables.ac, selected.ac, bits)?;
     if scan.high != 0 {
         return refine(block, scan, table, eob, bits);
     }

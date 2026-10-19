@@ -20,27 +20,25 @@ pub(crate) fn decode(
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<Pixels> {
-    if declared.bits != 8 {
-        return Err(Error::syntax(
-            "JPEG metadata disagrees with image dictionary",
-        ));
-    }
-    let transform = color_transform(params)?;
-    let decoded = match dct::decode_with_diagnostics(data, transform, limits, diagnostics) {
-        Ok(decoded) => decoded,
+    // The frame header is checked before any entropy data is decoded.
+    let header = match dct::header(data) {
+        Ok(header) => header,
         Err(error) => {
             return mislabeled_flate(data, params, declared, limits, diagnostics)
                 .unwrap_or(Err(error));
         }
     };
-    if decoded.width != declared.width
-        || decoded.height != declared.height
-        || decoded.components != declared.components
+    if declared.bits != 8
+        || header.width != declared.width
+        || header.height != declared.height
+        || header.components != declared.components
     {
         return Err(Error::syntax(
             "JPEG metadata disagrees with image dictionary",
         ));
     }
+    let transform = color_transform(params)?;
+    let decoded = dct::decode_with_diagnostics(data, transform, limits, diagnostics)?;
     Ok(Pixels {
         components: decoded.components,
         precision: Precision::Uniform(8),
@@ -107,4 +105,44 @@ pub(crate) fn color_transform(params: Option<&Dictionary>) -> Result<Option<i64>
                 .ok_or(Error::syntax("invalid DCT ColorTransform"))
         })
         .transpose()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Declared, decode};
+    use pagura_core::{Diagnostics, ErrorKind, Limits, Recovery};
+    use pagura_testkit::fixture;
+
+    #[test]
+    fn the_frame_header_is_checked_before_entropy_decoding() {
+        let data = fixture("image", "jpeg-baseline-gray.in");
+        let header = pagura_imagecodec::dct::header(&data).unwrap();
+        // Without work budget no block can be decoded, so the dictionary
+        // check must come first.
+        let limits = Limits {
+            decode_work: 0,
+            ..Limits::default()
+        };
+        let declared = Declared {
+            width: header.width + 1,
+            height: header.height,
+            components: header.components,
+            bits: 8,
+        };
+        let error = decode(
+            &data,
+            None,
+            &declared,
+            &limits,
+            &mut Diagnostics::new(Recovery::Strict),
+        )
+        .unwrap_err();
+        assert_eq!(
+            (error.kind, error.message),
+            (
+                ErrorKind::Syntax,
+                "JPEG metadata disagrees with image dictionary"
+            )
+        );
+    }
 }

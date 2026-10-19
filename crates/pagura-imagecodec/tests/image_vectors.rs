@@ -134,6 +134,48 @@ fn fax_vectors() {
 }
 
 #[test]
+fn large_progressive_jpeg_decodes_under_default_limits() {
+    // ten scans of 375 × 250 blocks: 60,000,000 units of block work, more
+    // than the 50,000,000 content tokens the codecs once borrowed (H1).
+    let count = each_case("dct-blocks", |name, params| {
+        let encoded = fixture("image", &format!("{name}.in"));
+        let blocks = fixture("image", &format!("{name}.out"));
+        let width: usize = params["width"].parse().unwrap();
+        let height: usize = params["height"].parse().unwrap();
+        let image = dct::decode(&encoded, None, &Limits::default()).unwrap();
+        assert_eq!(
+            (image.width, image.height, image.components),
+            (3000, 2000, 1)
+        );
+        let columns = width.div_ceil(8);
+        let mismatches = image
+            .samples
+            .chunks_exact(width)
+            .enumerate()
+            .flat_map(|(y, row)| {
+                let blocks = &blocks;
+                row.iter()
+                    .enumerate()
+                    .filter(move |&(x, &sample)| sample != blocks[y / 8 * columns + x / 8])
+            })
+            .count();
+        assert_eq!(mismatches, 0, "{name}");
+        assert_eq!(image.samples.len(), width * height);
+        let error = dct::decode(
+            &encoded,
+            None,
+            &Limits {
+                decode_work: 50_000_000,
+                ..Limits::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit, "{name}");
+    });
+    assert_eq!(count, 1);
+}
+
+#[test]
 fn image_budgets_precede_allocations() {
     let limits = Limits {
         pixels: 1,

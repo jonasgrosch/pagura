@@ -1,11 +1,28 @@
 //! T.81 F.2.4 and G.2 coefficient models over the Annex D QM decoder.
 mod qm;
 mod table;
-use super::scan::Scan;
+use super::scan::{Scan, Selected};
+use pagura_core::bytes::Cursor;
 use pagura_core::{Error, Result};
 use qm::{Bin, Qm};
 
-/// B.2.4.3 defaults are established by SOI and replaced by DAC entries.
+/// The statistics bins of one DC table (T.81 F.1.4.4.1, Figure F.17): 20
+/// for the five sign and magnitude contexts and 29 for the magnitude
+/// categories and bits.
+const DC_BINS: usize = 49;
+/// The statistics bins of one AC table (T.81 F.1.4.4.2, Figure F.18): three
+/// per coefficient position 1 to 63, then the two magnitude groups.
+const AC_BINS: usize = 245;
+
+/// The first DC magnitude-category bins (T.81 Figure F.17): X1 and X2.
+const DC_X1: usize = 20;
+const DC_X2: usize = 21;
+/// The first AC magnitude-category bin for coefficients up to the
+/// conditioning bound Kx, and above it (T.81 Figure F.18).
+const AC_LOW_X2: usize = 189;
+const AC_HIGH_X2: usize = 217;
+
+/// T.81 B.2.4.3 defaults are established by SOI and replaced by DAC entries.
 pub(super) struct Conditioning {
     dc: [(u8, u8); 4],
     ac: [u8; 4],
@@ -19,11 +36,13 @@ impl Default for Conditioning {
     }
 }
 impl Conditioning {
-    pub(super) fn define(&mut self, data: &[u8]) -> Result<()> {
-        if data.is_empty() || !data.len().is_multiple_of(2) {
+    /// Reads a DAC segment payload (T.81 B.2.4.3).
+    pub(super) fn define(&mut self, mut data: Cursor<'_>) -> Result<()> {
+        if data.at_end() || !data.remaining().is_multiple_of(2) {
             return Err(Error::syntax("invalid JPEG conditioning table length"));
         }
-        for &[selector, value] in data.as_chunks::<2>().0 {
+        while !data.at_end() {
+            let [selector, value] = data.take_array()?;
             let index = usize::from(selector & 15);
             if index > 3 || selector >> 4 > 1 {
                 return Err(Error::syntax("invalid JPEG conditioning table selector"));
@@ -47,53 +66,48 @@ impl Conditioning {
 
 pub(super) struct Arithmetic<'a> {
     coder: Qm<'a>,
-    dc: [[Bin; 49]; 4],
-    ac: [[Bin; 245]; 4],
+    dc: [[Bin; DC_BINS]; 4],
+    ac: [[Bin; AC_BINS]; 4],
     context: [usize; 4],
 }
 impl<'a> Arithmetic<'a> {
-    pub(super) fn new(data: &'a [u8], offset: usize, budget: usize) -> Result<Self> {
+    /// Starts decoding the entropy-coded segment at `data`.
+    pub(super) fn new(data: Cursor<'a>) -> Result<Self> {
         Ok(Self {
-            coder: Qm::new(data, offset, budget)?,
-            dc: [[Bin::default(); 49]; 4],
-            ac: [[Bin::default(); 245]; 4],
+            coder: Qm::new(data)?,
+            dc: [[Bin::default(); DC_BINS]; 4],
+            ac: [[Bin::default(); AC_BINS]; 4],
             context: [0; 4],
         })
     }
 
     pub(super) fn restart(&mut self, sequence: u8) -> Result<()> {
         self.coder.restart(sequence)?;
-        self.dc.fill([Bin::default(); 49]);
-        self.ac.fill([Bin::default(); 245]);
+        self.dc.fill([Bin::default(); DC_BINS]);
+        self.ac.fill([Bin::default(); AC_BINS]);
         self.context.fill(0);
         Ok(())
     }
 
-    pub(super) fn finish(mut self) -> Result<(usize, usize)> {
-        let offset = self.coder.finish()?;
-        Ok((offset, self.coder.used()))
+    /// Reads to the marker after the scan and returns its offset.
+    pub(super) fn finish(mut self) -> Result<usize> {
+        self.coder.finish()
     }
 
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "scan, component and table state have distinct lifetimes"
-    )]
     pub(super) fn block(
         &mut self,
         block: &mut [i32; 64],
         scan: &Scan,
-        progressive: bool,
         conditioning: &Conditioning,
-        component: usize,
-        selectors: (usize, usize),
+        selected: Selected,
         predictor: &mut i32,
-        precision: u8,
     ) -> Result<()> {
+        let (precision, component) = (scan.precision, selected.component);
         if scan.start == 0 {
             if scan.high != 0 {
                 block[0] |= i32::from(self.coder.fixed()?) << scan.low;
             } else {
-                let bins = &mut self.dc[selectors.0];
+                let bins = &mut self.dc[selected.dc];
                 let context = &mut self.context[component];
                 let difference = if self.coder.decision(&mut bins[*context])? {
                     let negative = self.coder.decision(&mut bins[*context + 1])?;
@@ -101,13 +115,13 @@ impl<'a> Arithmetic<'a> {
                         &mut self.coder,
                         bins,
                         *context + 2 + usize::from(negative),
-                        20,
-                        21,
+                        DC_X1,
+                        DC_X2,
                     )? + 1;
                     if magnitude >= 1 << (precision + 3) {
                         return Err(self.coder.error("invalid JPEG arithmetic DC magnitude"));
                     }
-                    let (lower, upper) = conditioning.dc[selectors.0];
+                    let (lower, upper) = conditioning.dc[selected.dc];
                     let small = if lower == 0 { 0 } else { 1 << (lower - 1) };
                     *context = if magnitude <= small {
                         0
@@ -129,11 +143,11 @@ impl<'a> Arithmetic<'a> {
                     )?;
                 block[0] = *predictor << scan.low;
             }
-            if progressive {
+            if scan.progressive() {
                 return Ok(());
             }
         }
-        let bins = &mut self.ac[selectors.1 - 4];
+        let bins = &mut self.ac[selected.ac];
         if scan.high != 0 {
             return refinement(&mut self.coder, bins, block, scan);
         }
@@ -150,10 +164,10 @@ impl<'a> Arithmetic<'a> {
             }
             let negative = self.coder.fixed()?;
             let first = 3 * (k - 1) + 2;
-            let extended = if k <= usize::from(conditioning.ac[selectors.1 - 4]) {
-                189
+            let extended = if k <= usize::from(conditioning.ac[selected.ac]) {
+                AC_LOW_X2
             } else {
-                217
+                AC_HIGH_X2
             };
             let value = magnitude(&mut self.coder, bins, first, first, extended)? + 1;
             if value >= 1 << (precision + 2) {
@@ -166,7 +180,7 @@ impl<'a> Arithmetic<'a> {
     }
 }
 
-/// F.2.4.3: decode |V|-1; the category and its bits share one bounded tree.
+/// T.81 F.2.4.3: decode |V|-1; the category and its bits share one bounded tree.
 fn magnitude(
     coder: &mut Qm<'_>,
     bins: &mut [Bin],
@@ -196,11 +210,11 @@ fn magnitude(
     Ok(value)
 }
 
-/// Reverse G.1.3.3: EOB decisions resume after the previous band's last
+/// Reverse of T.81 G.1.3.3: EOB decisions resume after the previous band's last
 /// nonzero; existing values consume correction bits even inside a zero run.
 fn refinement(
     coder: &mut Qm<'_>,
-    bins: &mut [Bin; 245],
+    bins: &mut [Bin; AC_BINS],
     block: &mut [i32; 64],
     scan: &Scan,
 ) -> Result<()> {
