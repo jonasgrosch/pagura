@@ -478,4 +478,6 @@ fn filled<T: Clone>(length: usize, value: T) -> Result<Vec<T>> {
 }
 
 #[cfg(test)]
+mod oracle_tests;
+#[cfg(test)]
 mod tests;

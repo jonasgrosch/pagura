@@ -8,7 +8,7 @@
 //! until the final rounding.
 use super::footprint::{Band, Tap};
 use pagura_core::{Error, Limits, Result};
-use pagura_image::deferred::{Constant, Planar, uniform, ycbcr8};
+use pagura_image::deferred::{Constant, Planar, deficits, uniform, ycbcr8};
 use std::ops::Range;
 const NONE: usize = usize::MAX;
 pub(super) struct Plan {
@@ -209,6 +209,11 @@ fn convert(
                 && uniform(&cr[cs..ce], cr[cs])
                 && Constant::new(cb[cs], cr[cs]).is_some_and(|c| c.deficits(chunk, interval, out))
             {
+                continue;
+            }
+            // Integer Table 13 offsets per chroma pair; a green half tie
+            // keeps the binary64 conversion below.
+            if deficits(chunk, &cb[cs..ce], &cr[cs..ce], repeat, interval, out) {
                 continue;
             }
             let mut lower = [0; 24];

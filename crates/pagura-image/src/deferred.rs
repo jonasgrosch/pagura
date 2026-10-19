@@ -17,7 +17,7 @@ mod colour;
 mod packed;
 mod planar;
 
-pub use colour::{Constant, uniform, ycbcr, ycbcr8};
+pub use colour::{Constant, deficits, uniform, ycbcr, ycbcr8};
 pub use packed::Packed;
 pub use planar::Planar;
 

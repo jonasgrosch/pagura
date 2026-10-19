@@ -23,6 +23,63 @@ pub struct Planar {
 }
 
 impl Planar {
+    /// Builds a planar image from Y, Cb and Cr planes in eight-by-eight
+    /// block rows, as a baseline decoder stores them: component `c` has
+    /// sampling factors `geometry[c][..2]` and row pitch `geometry[c][2]`.
+    /// `intervals` holds one flag per luma block. Returns None when the
+    /// planes do not cover the image.
+    #[must_use]
+    pub fn new(
+        (width, height): (usize, usize),
+        maximum: [usize; 2],
+        geometry: [[usize; 3]; 3],
+        planes: [Vec<u8>; 3],
+        intervals: Vec<u8>,
+    ) -> Option<Self> {
+        const BACKGROUNDS: [u8; 3] = [255, 128, 128];
+        if width == 0 || height == 0 || !maximum.iter().all(|m| (1..=4).contains(m)) {
+            return None;
+        }
+        let mut dirty: [Vec<u8>; 3] = Default::default();
+        for (c, ([h, v, pitch], plane)) in geometry.iter().zip(&planes).enumerate() {
+            let rows = plane.len().checked_div(*pitch)?;
+            if !(1..=maximum[0]).contains(h)
+                || !(1..=maximum[1]).contains(v)
+                || pitch % 8 != 0
+                || plane.len() % pitch != 0
+                || rows % 8 != 0
+                || pitch * maximum[0] < width * h
+                || rows * maximum[1] <= (height - 1) * v
+            {
+                return None;
+            }
+            let stride = pitch / 8;
+            dirty[c] = (0..stride * rows / 8)
+                .map(|block| {
+                    let (row, column) = (block / stride, block % stride);
+                    let differs = (0..8).any(|y| {
+                        let start = (row * 8 + y) * pitch + column * 8;
+                        plane[start..start + 8].iter().any(|&s| s != BACKGROUNDS[c])
+                    });
+                    u8::from(differs)
+                })
+                .collect();
+        }
+        if intervals.len() != dirty[0].len() {
+            return None;
+        }
+        Some(Self {
+            width,
+            height,
+            maximum,
+            geometry,
+            planes,
+            dirty,
+            backgrounds: BACKGROUNDS,
+            intervals,
+        })
+    }
+
     /// Image width in samples.
     #[must_use]
     pub fn width(&self) -> usize {

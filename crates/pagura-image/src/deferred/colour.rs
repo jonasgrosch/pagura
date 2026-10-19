@@ -128,6 +128,16 @@ mod tests {
                     for interval in [false, true] {
                         let mut deficits = vec![[0u16; 4]; 256];
                         assert!(colour.deficits(&ys, interval, &mut deficits));
+                        let mut varying = vec![[0u16; 4]; 256];
+                        assert!(super::deficits(
+                            &ys,
+                            &[cb; 256],
+                            &[cr; 256],
+                            1,
+                            interval,
+                            &mut varying
+                        ));
+                        assert_eq!(varying, deficits);
                         for (y, p) in deficits.iter().enumerate() {
                             let high = if interval { (y + 1).min(255) } else { y };
                             for c in 0..3 {
@@ -239,6 +249,48 @@ impl Constant {
         }
         true
     }
+}
+
+/// Doubled RGB deficits from white for `luma` with chroma replicated
+/// `repeat` times, as [`Constant::deficits`] for each chroma pair. Returns
+/// false, with `output` unspecified, for mismatched extents, an unsupported
+/// repeat or an exact green half tie.
+#[must_use]
+pub fn deficits(
+    luma: &[u8],
+    cb: &[u8],
+    cr: &[u8],
+    repeat: usize,
+    interval: bool,
+    output: &mut [[u16; 4]],
+) -> bool {
+    if !matches!(repeat, 1 | 2 | 4)
+        || luma.len() != output.len()
+        || cb.len() < luma.len().div_ceil(repeat)
+        || cr.len() < luma.len().div_ceil(repeat)
+    {
+        return false;
+    }
+    let up = u8::from(interval);
+    for ((ys, out), (&cb, &cr)) in luma
+        .chunks(repeat)
+        .zip(output.chunks_mut(repeat))
+        .zip(cb.iter().zip(cr))
+    {
+        let Some(colour) = Constant::new(cb, cr) else {
+            return false;
+        };
+        for (&y, pixel) in ys.iter().zip(out) {
+            let low = u16::from(y);
+            let high = u16::from(y.saturating_add(up));
+            let p = colour.offsets.map(|offset| {
+                510 - (low.wrapping_add(offset).saturating_sub(256).min(255)
+                    + high.wrapping_add(offset).saturating_sub(256).min(255))
+            });
+            *pixel = [p[0], p[1], p[2], 0];
+        }
+    }
+    true
 }
 
 /// As [`ycbcr`], in groups of eight samples for short runs.
