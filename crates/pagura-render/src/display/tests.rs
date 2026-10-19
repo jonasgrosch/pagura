@@ -115,6 +115,39 @@ fn every_glyph_placement_pays_for_its_outline() {
     }
 }
 #[test]
+fn placements_off_the_tile_are_never_flattened() {
+    // As above, but every placement lies right of the two-pixel page: each
+    // costs one bounds test instead of its 400-vertex scan, on either path.
+    let mut path = PathBuilder::new();
+    path.move_to(Point::new(0.0, 0.0));
+    for i in 1..400 {
+        let t = f64::from(i) / 400.0 * std::f64::consts::TAU;
+        path.line_to(Point::new(0.25 + 0.25 * t.cos(), 0.5 + 0.25 * t.sin()))
+            .unwrap();
+    }
+    path.close();
+    let path = Arc::new(path.finish());
+    for alpha in [1.0, 0.5] {
+        let mut run = GlyphRun::new(paint(alpha));
+        for i in 0..1000 {
+            run.push(
+                Arc::clone(&path),
+                Transform::translate(8.0 + f64::from(i % 4) * 0.25, 0.0),
+                Position::Unknown,
+            )
+            .unwrap();
+        }
+        let mut list = list(run, false);
+        let expected = list.render(&RenderOptions::default()).unwrap();
+        list.limits.raster_work = 100_000;
+        assert_eq!(
+            list.render(&RenderOptions::default()).unwrap(),
+            expected,
+            "alpha {alpha}"
+        );
+    }
+}
+#[test]
 fn device_bounds_preserve_small_extents_at_large_user_origins() {
     let mut path = PathBuilder::new();
     path.rect(0.0, 0.0, 0.4, 1.0);

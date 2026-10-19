@@ -89,6 +89,7 @@ impl DisplayList {
                 .map_err(|e| contextual(e, command.position))?;
             let mut out = Opaque {
                 target: &mut target,
+                tile,
                 device,
                 mask: &mask,
                 raster: &mut raster,
@@ -110,6 +111,7 @@ impl GlyphRun {
     fn rasterize(&self, out: &mut Opaque<'_>, cache: &mut GlyphCache, paint: Paint) -> Result<()> {
         let Opaque {
             target,
+            tile,
             device,
             mask,
             raster,
@@ -118,6 +120,20 @@ impl GlyphRun {
         } = out;
         let (device, limits) = (*device, *limits);
         for (index, &placement) in self.glyphs.iter().enumerate() {
+            // A placement off the tile costs its bounds test, as in the
+            // compositor, and is never flattened.
+            let visible = glyphs
+                .charge(1)
+                .and_then(|()| {
+                    let hull = self
+                        .source(placement)?
+                        .device_hull(placement.origin, device);
+                    crate::compositor::hull_visible(hull, *tile)
+                })
+                .map_err(|error| contextual(error, self.position(index)))?;
+            if !visible {
+                continue;
+            }
             let geometry = cache
                 .geometry(self, placement, device, limits, raster)
                 .and_then(|geometry| glyphs.charge(geometry.vertices()).map(|()| geometry))
@@ -151,6 +167,7 @@ impl GlyphRun {
 /// transform and clip mask, the shared rasterizer and the page's limits.
 struct Opaque<'a> {
     target: &'a mut Pixmap,
+    tile: Tile,
     device: Transform,
     mask: &'a Mask,
     raster: &'a mut Rasterizer,

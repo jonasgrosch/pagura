@@ -155,6 +155,11 @@ pub(super) fn glyph_visible(
         .checked_add(1)
         .filter(|&n| n <= maximum)
         .ok_or(Error::limit("glyph bounds work exceeded"))?;
+    hull_visible(hull, tile)
+}
+/// Whether a glyph placement's device hull meets `tile`, padded by the pixel
+/// that antialiasing can reach. Both renderers test this before flattening.
+pub(crate) fn hull_visible(hull: [Point; 2], tile: Tile) -> Result<bool> {
     if hull.iter().any(|p| p.x.is_nan() || p.y.is_nan()) {
         return Err(Error::limit("glyph bounds overflow"));
     }
