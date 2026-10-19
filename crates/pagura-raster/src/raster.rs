@@ -3,10 +3,12 @@
 use crate::coverage::{Geometry, Shape};
 
 mod reuse;
-mod spans;
+mod runs;
+pub(crate) mod spans;
 use crate::{Paint, Path, Pixmap, Transform};
 use pagura_core::{Error, Limits, Result};
 pub use reuse::Rasterizer;
+pub use runs::{Coverage, Rectangle};
 use std::sync::Arc;
 
 /// Which points a fill covers (ISO 32000-2 clause 8.5.3.3).

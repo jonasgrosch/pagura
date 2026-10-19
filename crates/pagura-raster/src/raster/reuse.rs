@@ -1,6 +1,6 @@
 //! Reusable working storage for a sequence of independent path fills.
 
-use super::{FillRule, Mask};
+use super::{Coverage, FillRule, Mask, Rectangle};
 use crate::coverage::{Geometry, Scratch, Shape};
 use crate::{Paint, Path, Pixmap, Transform};
 use pagura_core::{Error, Limits, Result};
@@ -56,13 +56,19 @@ impl Rasterizer {
         *self = Self::default();
     }
 
-    /// Returns a consumed mask's storage. Geometry is released immediately;
-    /// recycling never retains its paths or changes a later fill's result.
-    /// At most one coverage buffer is kept, subject to the retained byte budget.
-    pub fn recycle(&mut self, mut mask: Mask) {
-        mask.shapes.clear();
-        self.coverage = mask.coverage;
-        self.shapes = mask.shapes;
+    /// Returns a consumed mask's or rectangle's storage. Geometry is released
+    /// immediately; recycling never retains its paths or changes a later
+    /// fill's result. At most one coverage buffer is kept, subject to the
+    /// retained byte budget.
+    pub fn recycle(&mut self, coverage: impl Into<Coverage>) {
+        match coverage.into() {
+            Coverage::Mask(mut mask) => {
+                mask.shapes.clear();
+                self.coverage = mask.coverage;
+                self.shapes = mask.shapes;
+            }
+            Coverage::Rectangle(rectangle) => self.coverage = rectangle.rows.into_samples(),
+        }
         self.trim();
     }
 
@@ -97,6 +103,57 @@ impl Rasterizer {
             limits,
             ((clip.width, clip.height), clip.origin, Some(clip)),
         )
+    }
+
+    /// Fills a path clipped to `clip` as [`Self::clipped_path`] does, but keeps
+    /// an axis-aligned rectangle within rectangular clips in closed form: its
+    /// runs equal the integrated mask's, and validation and work charges are
+    /// unchanged, but no mask is written or scanned. Other fills return a mask.
+    ///
+    /// # Errors
+    /// As [`Self::clipped_path`].
+    pub fn clipped_coverage(
+        &mut self,
+        clip: &Mask,
+        path: Arc<Path>,
+        transform: Transform,
+        rule: FillRule,
+        limits: Limits,
+    ) -> Result<Option<Coverage>> {
+        self.maximum = limits.decoded_bytes;
+        self.trim();
+        let result = (|| {
+            let Some((shape, region)) = shape(
+                PathSource::Shared(path),
+                transform,
+                rule,
+                &limits,
+                ((clip.width, clip.height), clip.origin),
+            )?
+            else {
+                return Ok(None);
+            };
+            let count = self.sources(shape, region, limits, Some(clip))?;
+            let (x, y, width, height) = region;
+            if let Some(rows) = crate::coverage::rectangle(
+                (width, height),
+                count,
+                &self.shapes,
+                (x, y),
+                &limits,
+                &mut self.scratch,
+                &mut self.coverage,
+            )? {
+                return Ok(Some(Coverage::Rectangle(Rectangle {
+                    origin: (x, y),
+                    area: count,
+                    rows,
+                })));
+            }
+            self.integrate(region, count, limits)
+                .map(|mask| Some(Coverage::Mask(mask)))
+        })();
+        self.complete(result)
     }
 
     /// Rasterizes canonical glyph contours at their exact device origin.
@@ -150,7 +207,7 @@ impl Rasterizer {
         self.complete(result)
     }
 
-    fn complete(&mut self, result: Result<Option<Mask>>) -> Result<Option<Mask>> {
+    fn complete<T>(&mut self, result: Result<T>) -> Result<T> {
         self.shapes.clear();
         if result.is_err() {
             self.clear();
@@ -192,56 +249,37 @@ impl Rasterizer {
     ) -> Result<Option<Mask>> {
         self.maximum = limits.decoded_bytes;
         self.trim();
-        let result = self.fill(path, transform, rule, limits, viewport);
-        self.complete(result)
-    }
-
-    fn fill(
-        &mut self,
-        path: PathSource<'_>,
-        transform: Transform,
-        rule: FillRule,
-        limits: Limits,
-        (size, origin, clip): ((u32, u32), (u32, u32), Option<&Mask>),
-    ) -> Result<Option<Mask>> {
-        // Only retained fill/clip certificates opt into boundary scan conversion.
-        // Ordinary paths and stroke outlines take the original raster path.
-        let (path, transform, rule) =
-            if path.path().fill_region(rule) == Some(crate::FillRegion::EmptyBoundary) {
-                let outline =
-                    crate::empty_fill::outline_boundary(path.path(), transform, rule, &limits)?;
-                (
-                    PathSource::Shared(Arc::new(outline)),
-                    Transform::IDENTITY,
-                    FillRule::NonZero,
-                )
-            } else {
-                (path, transform, rule)
+        let (size, origin, clip) = viewport;
+        let result = (|| {
+            let Some((shape, region)) = shape(path, transform, rule, &limits, (size, origin))?
+            else {
+                return Ok(None);
             };
-        let Some((x, y, width, height)) =
-            crate::bounds::region(path.path(), transform, size, origin, &limits)?
-        else {
-            return Ok(None);
-        };
-        self.fill_shape(
-            Shape {
-                geometry: Geometry::Path(path.into_shared()),
-                transform,
-                rule,
-            },
-            (x, y, width, height),
-            limits,
-            clip,
-        )
+            self.fill_shape(shape, region, limits, clip)
+        })();
+        self.complete(result)
     }
 
     fn fill_shape(
         &mut self,
         shape: Shape,
-        (x, y, width, height): (u32, u32, u32, u32),
+        region: Region,
         limits: Limits,
         clip: Option<&Mask>,
     ) -> Result<Option<Mask>> {
+        let count = self.sources(shape, region, limits, clip)?;
+        self.integrate(region, count, limits).map(Some)
+    }
+
+    // Collects the fill and the clip paths that do not contain its region,
+    // and returns the region's sample count after the source and pixel budgets.
+    fn sources(
+        &mut self,
+        shape: Shape,
+        (x, y, width, height): Region,
+        limits: Limits,
+        clip: Option<&Mask>,
+    ) -> Result<usize> {
         self.shapes.clear();
         if limits.mask_sources == 0 {
             return Err(Error::limit("mask source budget exceeded"));
@@ -255,10 +293,18 @@ impl Rasterizer {
                 self.shapes.push(shape.clone());
             }
         }
-        let count = usize::try_from(u64::from(width) * u64::from(height))
+        usize::try_from(u64::from(width) * u64::from(height))
             .ok()
             .filter(|&n| n <= limits.pixels)
-            .ok_or(Error::limit("mask pixel budget exceeded"))?;
+            .ok_or(Error::limit("mask pixel budget exceeded"))
+    }
+
+    fn integrate(
+        &mut self,
+        (x, y, width, height): Region,
+        count: usize,
+        limits: Limits,
+    ) -> Result<Mask> {
         self.coverage
             .try_reserve_exact(count.saturating_sub(self.coverage.len()))
             .map_err(|_| Error::limit("mask allocation failed"))?;
@@ -273,14 +319,14 @@ impl Rasterizer {
             &mut self.scratch,
         )?;
         self.scratch_bytes = self.scratch.retained_bytes();
-        Ok(Some(Mask {
+        Ok(Mask {
             width,
             height,
             origin: (x, y),
             limits,
             coverage: std::mem::take(&mut self.coverage),
             shapes: std::mem::take(&mut self.shapes),
-        }))
+        })
     }
 
     /// Fills a tile and immediately recycles the temporary mask.
@@ -314,10 +360,46 @@ impl Rasterizer {
     }
 }
 
+// A device region as `(x, y, width, height)`.
+type Region = (u32, u32, u32, u32);
+
+// The fill's shape and its device region within the viewport, if any.
+// Only retained fill/clip certificates opt into boundary scan conversion.
+// Ordinary paths and stroke outlines take the original raster path.
+fn shape(
+    path: PathSource<'_>,
+    transform: Transform,
+    rule: FillRule,
+    limits: &Limits,
+    (size, origin): ((u32, u32), (u32, u32)),
+) -> Result<Option<(Shape, Region)>> {
+    let (path, transform, rule) = if path.path().fill_region(rule)
+        == Some(crate::FillRegion::EmptyBoundary)
+    {
+        let outline = crate::empty_fill::outline_boundary(path.path(), transform, rule, limits)?;
+        (
+            PathSource::Shared(Arc::new(outline)),
+            Transform::IDENTITY,
+            FillRule::NonZero,
+        )
+    } else {
+        (path, transform, rule)
+    };
+    let Some(region) = crate::bounds::region(path.path(), transform, size, origin, limits)? else {
+        return Ok(None);
+    };
+    let shape = Shape {
+        geometry: Geometry::Path(path.into_shared()),
+        transform,
+        rule,
+    };
+    Ok(Some((shape, region)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::PathBuilder;
+    use crate::{PathBuilder, Point};
 
     fn rectangle(x: f64, y: f64, width: f64, height: f64) -> Arc<Path> {
         let mut path = PathBuilder::new();
@@ -359,6 +441,156 @@ mod tests {
             assert_eq!(Arc::strong_count(&path), 1);
             assert!(raster.retained_bytes() > 0);
             assert!(raster.retained_bytes() <= limits.decoded_bytes);
+        }
+    }
+
+    type Runs = Vec<(usize, usize, Vec<u8>)>;
+    type Placed = Result<Option<((u32, u32), Runs)>>;
+
+    // The closed-form runs and origin, and the integrated mask's.
+    fn both(
+        clip: &Mask,
+        path: &Arc<Path>,
+        transform: Transform,
+        limits: Limits,
+    ) -> (Placed, Placed) {
+        let runs = |spans: &mut dyn Iterator<Item = (usize, usize, &[u8])>| -> Runs {
+            spans.map(|(y, x, run)| (y, x, run.to_vec())).collect()
+        };
+        let mut raster = Rasterizer::default();
+        let direct = raster
+            .clipped_coverage(clip, Arc::clone(path), transform, FillRule::NonZero, limits)
+            .map(|coverage| {
+                coverage.map(|coverage| match &coverage {
+                    Coverage::Rectangle(rectangle) => {
+                        (rectangle.origin(), runs(&mut rectangle.spans()))
+                    }
+                    Coverage::Mask(_) => panic!("rectangle took the mask"),
+                })
+            });
+        let dense = raster
+            .clipped_path(clip, Arc::clone(path), transform, FillRule::NonZero, limits)
+            .map(|mask| mask.map(|mask| (mask.origin(), runs(&mut mask.spans()))));
+        (direct, dense)
+    }
+
+    #[test]
+    fn closed_form_rectangle_runs_equal_mask_runs() {
+        let origin = (10, 20);
+        let clips = [
+            rectangle(0.0, 0.0, 100.0, 100.0),
+            rectangle(11.375, 20.5, 3.25, 2.875),
+            rectangle(12.0, 19.0, 9.0, 3.0),
+            rectangle(13.875, 21.125, 0.25, 0.125),
+        ];
+        let transforms = [
+            Transform::IDENTITY,
+            Transform::new(0.0, 1.0, -1.0, 0.0, 30.0, 0.0),
+            Transform::new(1.5, 0.0, 0.0, -2.0, 0.0, 47.0),
+        ];
+        let mut rectangles = 0;
+        for clip in &clips {
+            let clip = Mask::from_path_at(
+                7,
+                5,
+                clip,
+                Transform::IDENTITY,
+                FillRule::NonZero,
+                35,
+                origin,
+            )
+            .unwrap();
+            // Eighth-pixel edges: whole, fractional, sub-pixel and beyond the tile.
+            for left in (72..=150).step_by(7) {
+                for top in (152..=205).step_by(5) {
+                    for (width, height) in [(1, 1), (3, 2), (8, 8), (13, 9), (40, 3), (90, 60)] {
+                        let path = rectangle(
+                            f64::from(left) / 8.0,
+                            f64::from(top) / 8.0,
+                            f64::from(width) / 8.0,
+                            f64::from(height) / 8.0,
+                        );
+                        for transform in transforms {
+                            let path = Arc::new(path.transformed(transform.inverse().unwrap()));
+                            let (direct, dense) = both(&clip, &path, transform, Limits::default());
+                            let direct = direct.unwrap();
+                            assert_eq!(direct, dense.unwrap());
+                            rectangles += usize::from(direct.is_some());
+                        }
+                    }
+                }
+            }
+        }
+        assert!(rectangles > 2000, "{rectangles}");
+    }
+
+    #[test]
+    fn closed_form_rectangles_charge_and_fail_as_masks() {
+        let clip = Mask::from_path_at(
+            40,
+            30,
+            &rectangle(0.0, 0.0, 200.0, 200.0),
+            Transform::IDENTITY,
+            FillRule::NonZero,
+            1200,
+            (8, 6),
+        )
+        .unwrap();
+        let path = rectangle(8.5, 6.25, 30.25, 20.5);
+        // 31 × 21 samples; the whole fill needs 657 work units in either form.
+        let mut outcomes = [0; 2];
+        for raster_work in [0, 5, 651, 656, 657, 10_000] {
+            for pixels in [650, 651, 10_000] {
+                let limits = Limits {
+                    raster_work,
+                    pixels,
+                    ..Limits::default()
+                };
+                let (direct, dense) = both(&clip, &path, Transform::IDENTITY, limits);
+                match (direct, dense) {
+                    (Ok(direct), Ok(dense)) => {
+                        assert_eq!(direct, dense);
+                        outcomes[0] += 1;
+                    }
+                    (Err(direct), Err(dense)) => {
+                        assert_eq!(direct.to_string(), dense.to_string());
+                        outcomes[1] += 1;
+                    }
+                    (direct, dense) => panic!("{raster_work} {pixels}: {direct:?} {dense:?}"),
+                }
+            }
+        }
+        assert_eq!(outcomes, [4, 14]);
+        // Other shapes and nonrectangular clips keep the integrated mask.
+        let mut triangle = PathBuilder::new();
+        triangle.move_to(Point::new(9.0, 7.0));
+        triangle.line_to(Point::new(30.0, 7.0)).unwrap();
+        triangle.line_to(Point::new(9.0, 25.0)).unwrap();
+        let triangle = Arc::new(triangle.finish());
+        let round = Mask::from_path_at(
+            40,
+            30,
+            &triangle,
+            Transform::IDENTITY,
+            FillRule::NonZero,
+            1200,
+            (8, 6),
+        )
+        .unwrap();
+        let mut raster = Rasterizer::default();
+        for (clip, path) in [(&clip, &triangle), (&round, &path)] {
+            let coverage = raster
+                .clipped_coverage(
+                    clip,
+                    Arc::clone(path),
+                    Transform::IDENTITY,
+                    FillRule::NonZero,
+                    Limits::default(),
+                )
+                .unwrap()
+                .unwrap();
+            assert!(matches!(coverage, Coverage::Mask(_)));
+            raster.recycle(coverage);
         }
     }
 

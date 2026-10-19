@@ -27,7 +27,7 @@ use crate::transparency::{Composite, Group, MaskMethod, Model, SoftMask};
 use crate::{RenderOptions, Tile};
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::{
-    FillRule, Mask, Path, PathBuilder, Pixmap, Point, Transform, adjusted_stroke_outline,
+    Coverage, FillRule, Mask, Path, PathBuilder, Pixmap, Point, Transform, adjusted_stroke_outline,
     stroke_outline,
 };
 use std::sync::Arc;
@@ -184,6 +184,16 @@ impl Backdrop<'_> {
         p
     }
 }
+
+// Rasterizes one fill against a clip, as `Rasterizer::clipped_path` does.
+type Fill<T> = fn(
+    &mut pagura_raster::Rasterizer,
+    &Mask,
+    Arc<Path>,
+    Transform,
+    FillRule,
+    Limits,
+) -> Result<Option<T>>;
 
 struct Context {
     overprint: crate::overprint::Policy,
@@ -595,6 +605,31 @@ impl Context {
         if !path_active(p) {
             return Ok(());
         }
+        // Narrow storage paints only solid colours, which need no pattern
+        // bounds, so rectangles keep their closed-form runs.
+        if target.narrow().is_some() && matches!(p.color, crate::color::Color::Solid { .. }) {
+            let Some(coverage) =
+                self.path_fill(p, tile, pagura_raster::Rasterizer::clipped_coverage)?
+            else {
+                return Ok(());
+            };
+            let result = match &coverage {
+                Coverage::Mask(mask) => self.narrow_path(
+                    p,
+                    (mask.origin(), mask.coverage().len()),
+                    mask.spans(),
+                    target,
+                ),
+                Coverage::Rectangle(rectangle) => self.narrow_path(
+                    p,
+                    (rectangle.origin(), rectangle.area()),
+                    rectangle.spans(),
+                    target,
+                ),
+            };
+            self.raster.recycle(coverage);
+            return result;
+        }
         let Some(mask) = self.path_mask(p, tile)? else {
             return Ok(());
         };
@@ -602,18 +637,25 @@ impl Context {
         self.raster.recycle(mask);
         result
     }
-    // Admission fixes the page and its flattened descendants to RGB.
-    fn narrow_path(&mut self, p: &PathCommand, mask: &Mask, target: &mut Surface) -> Result<()> {
+    // Admission fixes the page and its flattened descendants to RGB. Work is
+    // charged for every sample of the coverage region, as for a dense mask.
+    fn narrow_path<'a>(
+        &mut self,
+        p: &PathCommand,
+        (origin, area): ((u32, u32), usize),
+        spans: impl Iterator<Item = (usize, usize, &'a [u8])>,
+        target: &mut Surface,
+    ) -> Result<()> {
         let color = self.color(&p.color, Model::Rgb, &p.composite, true)?.color;
-        self.charge(mask.coverage().len())?;
+        self.charge(area)?;
         let tile = target.tile;
         let buffer = target
             .narrow_mut()
             .ok_or(Error::invalid_argument("missing colour buffer"))?;
         let stride = tile.width as usize;
-        let (x, y) = mask.origin();
+        let (x, y) = origin;
         let offset = (y - tile.y) as usize * stride + (x - tile.x) as usize;
-        for (row, column, coverage) in mask.spans() {
+        for (row, column, coverage) in spans {
             buffer.path(
                 offset + row * stride + column,
                 coverage,
@@ -633,7 +675,8 @@ impl Context {
         depth: usize,
     ) -> Result<()> {
         if target.narrow().is_some() {
-            return self.narrow_path(p, mask, target);
+            let area = mask.coverage().len();
+            return self.narrow_path(p, (mask.origin(), area), mask.spans(), target);
         }
         if let crate::color::Color::Pattern {
             selected: Some(pattern),
@@ -752,6 +795,13 @@ impl Context {
         Ok(())
     }
     fn path_mask(&mut self, p: &PathCommand, tile: Tile) -> Result<Option<Mask>> {
+        let Some(mask) = self.path_fill(p, tile, pagura_raster::Rasterizer::clipped_path)? else {
+            return Ok(None);
+        };
+        self.pattern_mask(p, mask)
+    }
+    // Rasterizes a fill or stroke outline with `fill` against the mark's clip.
+    fn path_fill<T>(&mut self, p: &PathCommand, tile: Tile, fill: Fill<T>) -> Result<Option<T>> {
         // Preserve the explicit singular-pen error even for off-tile marks.
         let inverse = match &p.mark {
             Mark::Fill(_) => Transform::IDENTITY,
@@ -777,11 +827,15 @@ impl Context {
             decoded_bytes: self.limits.decoded_bytes.saturating_sub(self.allocated),
             ..self.limits
         };
-        let mask = match &p.mark {
-            Mark::Fill(rule) => {
-                self.raster
-                    .clipped_path(&clip, Arc::clone(&p.path), self.device, *rule, limits)?
-            }
+        match &p.mark {
+            Mark::Fill(rule) => fill(
+                &mut self.raster,
+                &clip,
+                Arc::clone(&p.path),
+                self.device,
+                *rule,
+                limits,
+            ),
             Mark::Stroke(stroke, ctm, adjust) => {
                 let path = p.path.transformed(inverse);
                 let outline = if *adjust {
@@ -791,17 +845,16 @@ impl Context {
                 };
                 let (path, transform) =
                     outline(&path, ctm.then(self.device), stroke, &self.limits)?;
-                self.raster.clipped_path(
+                fill(
+                    &mut self.raster,
                     &clip,
                     Arc::new(path),
                     transform,
                     FillRule::NonZero,
                     limits,
-                )?
+                )
             }
-        };
-        let Some(mask) = mask else { return Ok(None) };
-        self.pattern_mask(p, mask)
+        }
     }
     fn pattern_mask(&self, p: &PathCommand, mask: Mask) -> Result<Option<Mask>> {
         if let crate::color::Color::Pattern {
@@ -2061,6 +2114,92 @@ mod tests {
                 );
             }
             assert!(outcomes.windows(2).all(|pair| pair[0] == pair[1]));
+        }
+    }
+    #[test]
+    fn narrow_rectangles_charge_their_region_as_masks() {
+        let tile = Tile {
+            x: 0,
+            y: 0,
+            width: 12,
+            height: 10,
+        };
+        // The fill's region is 7 × 6 pixels at (2, 1); the crop leaves only
+        // its first four columns covered, so the region holds zero samples.
+        let mut path = PathBuilder::new();
+        path.rect(2.5, 1.25, 6.0, 5.5);
+        let paint = PathCommand {
+            path: Arc::new(path.finish()),
+            mark: Mark::Fill(FillRule::NonZero),
+            clip: None,
+            color: crate::color::Color::Solid {
+                space: crate::color::Space::Rgb,
+                components: vec![0.2, 0.5, 0.8],
+            },
+            position: pagura_core::Position::Unknown,
+            transfer: None,
+            composite: Composite::opaque(),
+        };
+        let context = |limits: Limits, work: usize| {
+            let mut context = glyph_context(limits);
+            let mut crop = PathBuilder::new();
+            crop.rect(0.0, 0.0, 6.0, 10.0);
+            context.crop = crop.finish();
+            context.work = work;
+            context
+        };
+        // `path_fill` charges only the visibility test. The closed form keeps
+        // the region's area, although only 24 of its samples are covered.
+        let mut probe = context(Limits::default(), 0);
+        let Some(Coverage::Rectangle(rectangle)) = probe
+            .path_fill(&paint, tile, pagura_raster::Rasterizer::clipped_coverage)
+            .unwrap()
+        else {
+            panic!("the fill took the mask");
+        };
+        let covered: usize = rectangle.spans().map(|(_, _, run)| run.len()).sum();
+        assert_eq!(
+            (rectangle.origin(), rectangle.area(), covered),
+            ((2, 1), 42, 24)
+        );
+        let used = probe.work + 42;
+        // The closed form, and the dense mask path it replaces.
+        let paint_with = |closed: bool, limits: Limits, work: usize| {
+            let mut context = context(limits, work);
+            let buffer = narrow::Buffer::new(plan::Format::N16, 120, [255; 4]).unwrap();
+            let mut target = Surface::with_buffer(tile, buffer);
+            let (initial, model) = (Backdrop::Transparent, Model::Rgb);
+            let result = if closed {
+                context.path_in((&paint, tile), &mut target, initial, model, false, 0)
+            } else {
+                let mask = context.path_mask(&paint, tile).unwrap().unwrap();
+                let result =
+                    context.paint_path((&paint, &mask), &mut target, initial, model, false, 0);
+                context.raster.recycle(mask);
+                result
+            };
+            let mut pixels = vec![0; 480];
+            target.narrow().unwrap().output(0, &mut pixels);
+            (result.map_err(|e| e.to_string()), context.work, pixels)
+        };
+        let (result, work, expected) = paint_with(false, Limits::default(), 0);
+        assert_eq!((result, work), (Ok(()), used));
+        let closed = paint_with(true, Limits::default(), 0);
+        assert_eq!(closed, (Ok(()), used, expected.clone()));
+        // At the compositing budget's boundary both paths succeed or fail alike.
+        let limits = Limits {
+            raster_work: 10_000,
+            ..Limits::default()
+        };
+        for closed in [false, true] {
+            let fits = paint_with(closed, limits, 10_000 - used);
+            assert_eq!(fits, (Ok(()), 10_000, expected.clone()));
+            let (result, ..) = paint_with(closed, limits, 10_000 - used + 1);
+            let error = result.unwrap_err();
+            assert!(
+                error.contains("compositing work budget exceeded"),
+                "{error}"
+            );
         }
     }
 }

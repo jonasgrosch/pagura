@@ -3,6 +3,7 @@
 use super::{Geometry, Row, Shape, index, quantize};
 use crate::Segment;
 use crate::flatten::bounded;
+use crate::raster::spans::Runs;
 use pagura_core::{Error, Limits, Result};
 
 #[derive(Debug, Clone, Copy)]
@@ -122,30 +123,163 @@ impl Rectangle {
         if self.is_empty() {
             return Ok(());
         }
+        let columns = self.columns(stride, origin)?;
+        for (y, row) in out.chunks_exact_mut(stride).enumerate() {
+            let height = self.height(y, origin.1)?;
+            if height > 0.0 {
+                columns.write(&mut row[columns.start..columns.end], height);
+            }
+        }
+        Ok(())
+    }
+
+    // The covered columns of every row, relative to the mask origin.
+    fn columns(self, stride: usize, origin: (u32, u32)) -> Result<Columns> {
         let left = self.left - f64::from(origin.0);
         let right = self.right - f64::from(origin.0);
         let start = index(left.floor(), stride);
         let end = index(right.ceil(), stride);
         let column =
             f64::from(u32::try_from(start).map_err(|_| Error::limit("column exceeds u32"))?);
-        let first = (right.min(column + 1.0) - left).min(1.0);
-        let last = right - (right.ceil() - 1.0).max(left);
-        for (y, row) in out.chunks_exact_mut(stride).enumerate() {
-            let y = f64::from(u32::try_from(y).map_err(|_| Error::limit("row exceeds u32"))?)
-                + f64::from(origin.1);
-            let height = (self.bottom.min(y + 1.0) - self.top.max(y)).clamp(0.0, 1.0);
-            if height > 0.0 {
-                let run = &mut row[start..end];
-                run.fill(quantize(height));
-                if let Some(pixel) = run.first_mut() {
-                    *pixel = quantize(first * height);
+        Ok(Columns {
+            start,
+            end,
+            first: (right.min(column + 1.0) - left).min(1.0),
+            last: right - (right.ceil() - 1.0).max(left),
+        })
+    }
+
+    // The covered height of mask row `y`, in global device coordinates.
+    fn height(self, y: usize, origin: u32) -> Result<f64> {
+        let y = f64::from(u32::try_from(y).map_err(|_| Error::limit("row exceeds u32"))?)
+            + f64::from(origin);
+        Ok((self.bottom.min(y + 1.0) - self.top.max(y)).clamp(0.0, 1.0))
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Columns {
+    start: usize,
+    end: usize,
+    first: f64,
+    last: f64,
+}
+
+impl Columns {
+    // One row's samples from `start` to `end`; a single column takes `last`.
+    fn write(self, run: &mut [u8], height: f64) {
+        run.fill(quantize(height));
+        if let Some(pixel) = run.first_mut() {
+            *pixel = quantize(self.first * height);
+        }
+        if let Some(pixel) = run.last_mut() {
+            *pixel = quantize(self.last * height);
+        }
+    }
+}
+
+/// Nonzero row runs of closed-form rectangle coverage, without a mask.
+///
+/// A row's coverage depends only on its covered height. Rows strictly
+/// between the first and the last covered row have unit height, because
+/// their bounds are integers inside the rectangle, so at most three distinct
+/// rows exist. Each is written once by [`Rectangle::write`]'s row code and
+/// split into runs once by [`crate::Mask::spans`]'s splitter, so the runs
+/// equal those it finds in the dense mask.
+#[derive(Debug, Default)]
+pub(crate) struct Rows {
+    samples: Vec<u8>,
+    start: usize,
+    bands: [Band; 3],
+}
+
+// Mask rows `rows.0..rows.1` share the samples at `offset` and their runs,
+// as (column after `start`, length).
+#[derive(Debug, Default, Clone, Copy)]
+struct Band {
+    rows: (usize, usize),
+    offset: usize,
+    runs: [(usize, usize); 3],
+    count: usize,
+}
+
+impl Rows {
+    pub(super) fn new(
+        rectangle: Rectangle,
+        (width, height): (u32, u32),
+        origin: (u32, u32),
+        mut samples: Vec<u8>,
+    ) -> Result<Self> {
+        samples.clear();
+        let mut rows = Self {
+            samples,
+            ..Self::default()
+        };
+        if rectangle.is_empty() {
+            return Ok(rows);
+        }
+        let stride =
+            usize::try_from(width).map_err(|_| Error::limit("mask width exceeds usize"))?;
+        let height =
+            usize::try_from(height).map_err(|_| Error::limit("mask height exceeds usize"))?;
+        let columns = rectangle.columns(stride, origin)?;
+        let length = columns.end - columns.start;
+        // Rows outside the covered interval have no positive height.
+        let first = index(rectangle.top.floor() - f64::from(origin.1), height);
+        let end = index(rectangle.bottom.ceil() - f64::from(origin.1), height);
+        let Some(last) = end.checked_sub(1).filter(|&last| last >= first) else {
+            return Ok(rows);
+        };
+        rows.start = columns.start;
+        let bands = [
+            (first, first + 1),
+            (first + 1, last.max(first + 1)),
+            (last.max(first + 1), last + 1),
+        ];
+        // One distinct row per covered row, up to three, so never more
+        // samples than the mask would have held.
+        rows.samples
+            .try_reserve_exact(length.saturating_mul((last - first + 1).min(bands.len())))
+            .map_err(|_| Error::limit("mask allocation failed"))?;
+        for (band, range) in rows.bands.iter_mut().zip(bands) {
+            if range.0 >= range.1 {
+                continue;
+            }
+            let covered = rectangle.height(range.0, origin.1)?;
+            band.rows = range;
+            if covered > 0.0 {
+                band.offset = rows.samples.len();
+                rows.samples.resize(band.offset + length, 0);
+                let samples = &mut rows.samples[band.offset..];
+                columns.write(samples, covered);
+                // A left edge sample, a constant interior and a right edge
+                // sample split into at most three runs.
+                let mut runs = Runs::new(samples);
+                for (slot, (x, run)) in band.runs.iter_mut().zip(&mut runs) {
+                    *slot = (x, run.len());
+                    band.count += 1;
                 }
-                if let Some(pixel) = run.last_mut() {
-                    *pixel = quantize(last * height);
-                }
+                debug_assert!(runs.next().is_none());
             }
         }
-        Ok(())
+        Ok(rows)
+    }
+
+    /// Returns the sample storage for reuse.
+    pub(crate) fn into_samples(self) -> Vec<u8> {
+        self.samples
+    }
+
+    /// Nonzero runs as `(row, column, coverage)`, as [`crate::Mask::spans`].
+    pub(crate) fn spans(&self) -> impl Iterator<Item = (usize, usize, &[u8])> {
+        self.bands.iter().flat_map(move |band| {
+            let samples = &self.samples[band.offset..];
+            let runs = &band.runs[..band.count];
+            (band.rows.0..band.rows.1).flat_map(move |y| {
+                runs.iter()
+                    .map(move |&(x, length)| (y, self.start + x, &samples[x..x + length]))
+            })
+        })
     }
 }
 
