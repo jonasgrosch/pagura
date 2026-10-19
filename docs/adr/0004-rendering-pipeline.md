@@ -130,9 +130,14 @@ transient storage, and preserve semantic work charges and error positions
 across hits, misses and eviction (ADR 0012, ADR 0013).
 
 The raster oracle is the placed canonical polygon with its preserved point
-rule. ADR 0004's composition contract remains unchanged. No fixture tolerance
-is raised by this amendment. The translated-tiny-outline correction from RGB 0
-to the oracle's 255 is an explicit correctness correction.
+rule, except for glyphs admitted to the curve sweep: their reference is the
+true curve (amendment of 2026-10-19). The polygon departs from that curve by
+up to its flattening tolerance, so a correctly rounded curve result can differ
+from it by more than one level; for those glyphs it is a differential
+reference, not the oracle. ADR 0004's composition contract remains unchanged.
+No fixture tolerance is raised by this amendment. The translated-tiny-outline
+correction from RGB 0 to the oracle's 255 is an explicit correctness
+correction.
 
 ## Amendment: overprint preview (2026-10-18)
 
