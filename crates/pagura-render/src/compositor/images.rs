@@ -6,6 +6,7 @@ use crate::{display::ImageCommand, interpreter::images::Image};
 use pagura_core::{Error, Result};
 use pagura_image::{ImageKind, MaskKind, Samples};
 use pagura_raster::{FillRule, PathBuilder, Transform};
+use std::sync::Arc;
 
 impl Context {
     // Keep sampling and painting out of the command dispatch.
@@ -19,27 +20,14 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
-        let transform = command.transform.then(self.device);
-        if !transform.is_finite() {
-            return Err(Error::limit("image transform overflow"));
+        let Some((inverse, clip)) = self.image_geometry(command, target.tile)? else {
+            return Ok(());
+        };
+        if self.constant_stencil((command, &clip), target, initial, model, knockout, depth)? {
+            self.raster.recycle(clip);
+            return Ok(());
         }
-        let Some(inverse) = transform.inverse() else {
-            return Ok(());
-        };
-        let clip = self.clip(command.clip.as_ref(), target.tile)?;
-        let mut bounds = PathBuilder::new();
-        bounds.rect(0.0, 0.0, 1.0, 1.0);
-        let Some(clip) =
-            clip.clipped_path(&bounds.finish(), transform, FillRule::NonZero, self.limits)?
-        else {
-            return Ok(());
-        };
-        let soft = command
-            .composite
-            .mask
-            .as_ref()
-            .map(|m| self.soft_mask(m, target.tile, model, depth + 1))
-            .transpose()?;
+        let soft = self.image_opacity(command, target.tile, model, depth)?;
         let stencil = self.stencil_color(command, model)?;
         let template = self.image_source(command, model, stencil)?;
         let image = &command.image;
@@ -47,16 +35,24 @@ impl Context {
         let mut mask_samples = MaskSamples { table: [None; 256] };
         self.charge(clip.coverage().len())?;
         if clip.spans().next().is_none() {
+            self.raster.recycle(clip);
             return Ok(());
         }
-        let mut texels = Texels::new(image, model);
-        let available = self.limits.decoded_bytes.saturating_sub(self.allocated);
+        let interiors = self.image_interiors(command, target, model, &clip)?;
+        let mut texels = Texels::with_policy(
+            image,
+            model,
+            matches!(target.narrow(), Some(super::narrow::Buffer::U8(_))),
+        );
         let (mut sampler, mut mask_sampler) =
-            prepare(image, inverse, origin.0, clip.width(), available)?;
+            self.image_samplers(image, inverse, origin.0, clip.width())?;
         let sampling_bytes = sampler.bytes() + mask_sampler.as_ref().map_or(0, Prepared::bytes);
         self.trim_raster(sampling_bytes);
         self.allocated += sampling_bytes;
         for (row, column, coverage) in clip.spans() {
+            if interiors && coverage.first() == Some(&255) {
+                continue;
+            }
             let y =
                 origin.1 + u32::try_from(row).map_err(|_| Error::limit("image row exceeds u32"))?;
             for (offset, &coverage) in coverage.iter().enumerate() {
@@ -66,22 +62,24 @@ impl Context {
                         .map_err(|_| Error::limit("image column exceeds u32"))?;
                 let mut work = 0;
                 let maximum = self.limits.raster_work.saturating_sub(self.work);
+                let factor =
+                    mask_samples.opacity(image, &mut mask_sampler, (x, y), &mut work, maximum)?;
+                // Narrow surfaces have no knockout, transfer or spot feeds.
+                // Direct byte tables also need no fallible colour function at
+                // an unused sample. Zero opacity then leaves every channel intact.
+                if factor == Some(0.0) && target.narrow().is_some() && texels.direct() {
+                    self.charge(work)?;
+                    continue;
+                }
                 let mut value = sampler.sample(x, y, &mut work, maximum, |pixel| {
                     texels.sample(self, command, pixel, model, stencil)
                 })?;
-                if let (Some(mask), Some(mask_sampler)) = (&image.mask, &mut mask_sampler) {
-                    let sample = mask_sampler.sample(x, y, &mut work, maximum, |pixel| {
-                        mask_samples.texel(mask, pixel)
-                    })?;
-                    let factor = sample.alpha;
-                    value.color = value.color.map(|v| v * factor);
-                    value.alpha *= factor;
-                    if matches!(image.decoded.mask, MaskKind::Stencil(_))
-                        || command.composite.alpha_is_shape
-                    {
-                        value.shape *= factor;
-                    }
-                }
+                apply_mask(
+                    &mut value,
+                    factor,
+                    matches!(image.decoded.mask, MaskKind::Stencil(_))
+                        || command.composite.alpha_is_shape,
+                );
                 self.charge(work)?;
                 let source = covered_source(value, coverage, template);
                 let index = target
@@ -111,7 +109,116 @@ impl Context {
             }
         }
         self.allocated -= sampling_bytes;
+        self.raster.recycle(clip);
         Ok(())
+    }
+    fn image_samplers(
+        &mut self,
+        image: &Image,
+        inverse: Transform,
+        origin: u32,
+        width: u32,
+    ) -> Result<(Prepared, Option<Prepared<f64>>)> {
+        let available = self.limits.decoded_bytes.saturating_sub(self.allocated);
+        match prepare(image, inverse, origin, width, available) {
+            Err(error) if error.kind == pagura_core::ErrorKind::Limit && self.palette.is_some() => {
+                self.clear_palette();
+                prepare(
+                    image,
+                    inverse,
+                    origin,
+                    width,
+                    self.limits.decoded_bytes.saturating_sub(self.allocated),
+                )
+            }
+            result => result,
+        }
+    }
+    fn image_opacity(
+        &mut self,
+        command: &ImageCommand,
+        tile: crate::Tile,
+        model: Model,
+        depth: usize,
+    ) -> Result<Option<Arc<Vec<f64>>>> {
+        command
+            .composite
+            .mask
+            .as_ref()
+            .map(|m| self.soft_mask(m, tile, model, depth + 1))
+            .transpose()
+    }
+    fn image_geometry(
+        &mut self,
+        command: &ImageCommand,
+        tile: crate::Tile,
+    ) -> Result<Option<(Transform, pagura_raster::Mask)>> {
+        if matches!(
+            command.image.space,
+            Some(crate::color::Space::Indexed { .. })
+        ) && self
+            .palette
+            .as_ref()
+            .is_some_and(|p| !p.matches(&command.image))
+        {
+            self.clear_palette();
+        }
+        let transform = command.transform.then(self.device);
+        if !transform.is_finite() {
+            return Err(Error::limit("image transform overflow"));
+        }
+        let Some(inverse) = transform.inverse() else {
+            return Ok(None);
+        };
+        let clip = self.clip(command.clip.as_ref(), tile)?;
+        let mut bounds = PathBuilder::new();
+        bounds.rect(0.0, 0.0, 1.0, 1.0);
+        Ok(self
+            .raster
+            .clipped_path(
+                &clip,
+                Arc::new(bounds.finish()),
+                transform,
+                FillRule::NonZero,
+                self.limits,
+            )?
+            .map(|clip| (inverse, clip)))
+    }
+    fn constant_stencil(
+        &mut self,
+        (command, clip): (&ImageCommand, &pagura_raster::Mask),
+        target: &mut Surface,
+        initial: Backdrop<'_>,
+        model: Model,
+        knockout: bool,
+        depth: usize,
+    ) -> Result<bool> {
+        let image = &command.image;
+        if image.decoded.width == 1
+            && image.decoded.height == 1
+            && matches!(image.decoded.kind, ImageKind::Stencil { .. })
+            && matches!(image.decoded.mask, MaskKind::None)
+            && image.mask.is_none()
+            && command.composite.mask.is_none()
+            && matches!(command.stencil, crate::color::Color::Solid { .. })
+        {
+            if mask_texel(image, 0)?.alpha == 0.0 {
+                self.stencil_color(command, model)?;
+                return Ok(true);
+            }
+            let paint = crate::display::PathCommand {
+                path: Arc::default(),
+                mark: crate::display::Mark::Fill(FillRule::NonZero),
+                clip: None,
+                color: command.stencil.clone(),
+                position: command.position,
+                transfer: command.transfer.clone(),
+                composite: command.composite.clone(),
+            };
+            self.paint_path((&paint, clip), target, initial, model, knockout, depth)?;
+            return Ok(true);
+        }
+        Ok(false)
     }
     fn image_source(
         &mut self,
@@ -219,19 +326,33 @@ impl Context {
         })
     }
 }
+fn apply_mask(value: &mut Texel, factor: Option<f64>, alpha_is_shape: bool) {
+    if let Some(factor) = factor {
+        value.color = value.color.map(|v| v * factor);
+        value.alpha *= factor;
+        if alpha_is_shape {
+            value.shape *= factor;
+        }
+    }
+}
+
 fn prepare(
     image: &Image,
     inverse: Transform,
     origin: u32,
     width: u32,
     bytes: usize,
-) -> Result<(Prepared, Option<Prepared>)> {
+) -> Result<(Prepared, Option<Prepared<f64>>)> {
     let sampler = sampler_for(image, inverse).prepare(origin, width, bytes)?;
     let mask = image
         .mask
         .as_ref()
         .map(|mask| {
-            sampler_for(mask, inverse).prepare(origin, width, bytes.saturating_sub(sampler.bytes()))
+            sampler_for(mask, inverse).prepare_alpha(
+                origin,
+                width,
+                bytes.saturating_sub(sampler.bytes()),
+            )
         })
         .transpose()?;
     Ok((sampler, mask))
@@ -303,13 +424,21 @@ pub(super) struct MaskSamples {
     table: [Option<f64>; 256],
 }
 impl MaskSamples {
-    fn texel(&mut self, image: &Image, pixel: usize) -> Result<Texel> {
-        let alpha = self.sample(image, pixel)?;
-        Ok(Texel {
-            color: [alpha; 4],
-            alpha,
-            shape: alpha,
-        })
+    fn opacity(
+        &mut self,
+        image: &Image,
+        sampler: &mut Option<Prepared<f64>>,
+        (x, y): (u32, u32),
+        work: &mut usize,
+        maximum: usize,
+    ) -> Result<Option<f64>> {
+        if let (Some(mask), Some(sampler)) = (&image.mask, sampler.as_mut()) {
+            Ok(Some(sampler.sample(x, y, work, maximum, |pixel| {
+                self.sample(mask, pixel)
+            })?))
+        } else {
+            Ok(None)
+        }
     }
 
     pub(super) fn sample(&mut self, image: &Image, pixel: usize) -> Result<f64> {
@@ -349,10 +478,80 @@ enum Texels<'a> {
     Rgb {
         pixels: &'a [[u8; 3]],
         channels: [[f64; 256]; 3],
+        matte: Option<Matte<'a>>,
     },
 }
+
+struct Matte<'a> {
+    pixels: &'a [u8],
+    opacity: [f64; 256],
+    color: [f64; 3],
+    reciprocal: Option<[f64; 256]>,
+}
+impl<'a> Matte<'a> {
+    fn new(image: &'a Image, fast: bool) -> Option<Self> {
+        let [r, g, b] = image.matte.as_deref()? else {
+            return None;
+        };
+        let mask = image.mask.as_ref()?;
+        if mask.decoded.components != 1 || !(1..=8).contains(&mask.decoded.bits_per_component) {
+            return None;
+        }
+        let Samples::Bytes(pixels) = &mask.decoded.samples else {
+            return None;
+        };
+        let [(low, high)] = mask.decode.as_slice() else {
+            return None;
+        };
+        if !matches!(mask.decoded.kind, ImageKind::Color { .. }) {
+            return None;
+        }
+        let maximum = f64::from(u16::MAX >> (16 - mask.decoded.bits_per_component));
+        Some(Self {
+            pixels,
+            opacity: std::array::from_fn(|code| {
+                (low + code as f64 / maximum * (high - low)).clamp(0.0, 1.0)
+            }),
+            color: [*r, *g, *b],
+            reciprocal: fast.then(|| {
+                std::array::from_fn(|code| {
+                    let a = (low + code as f64 / maximum * (high - low)).clamp(0.0, 1.0);
+                    if a > 0.0 { 1.0 / a } else { 0.0 }
+                })
+            }),
+        })
+    }
+    fn apply(&self, pixel: usize, color: [f64; 3]) -> Result<[f64; 3]> {
+        let &sample = self
+            .pixels
+            .get(pixel)
+            .ok_or(Error::syntax("missing mask sample"))?;
+        let opacity = self.opacity[usize::from(sample)];
+        Ok(std::array::from_fn(|i| {
+            if opacity > 0.0 {
+                (self.color[i]
+                    + if let Some(reciprocal) = &self.reciprocal {
+                        (color[i] - self.color[i]) * reciprocal[usize::from(sample)]
+                    } else {
+                        (color[i] - self.color[i]) / opacity
+                    })
+                .clamp(0.0, 1.0)
+            } else {
+                0.0
+            }
+        }))
+    }
+}
 impl<'a> Texels<'a> {
+    fn direct(&self) -> bool {
+        matches!(self, Self::Gray { .. } | Self::Rgb { .. })
+    }
+    #[cfg(test)]
     fn new(image: &'a Image, model: Model) -> Self {
+        Self::with_policy(image, model, false)
+    }
+    fn with_policy(image: &'a Image, model: Model, fast: bool) -> Self {
+        let matte = Matte::new(image, fast);
         // Decode and clipping apply per sample before any weighted sum (8.9.5.2).
         // For DeviceGray, and DeviceRGB into RGB, each channel depends on one
         // sample, so a 256-entry table equals the scalar result.
@@ -383,7 +582,7 @@ impl<'a> Texels<'a> {
             && matches!(image.space, Some(crate::color::Space::Rgb))
             && image.decoded.bits_per_component == 8
             && image.decoded.components == 3
-            && image.matte.is_none()
+            && (image.matte.is_none() || matte.is_some())
             && !matches!(
                 image.decoded.mask,
                 MaskKind::ColorKey(_) | MaskKind::Embedded(_)
@@ -395,10 +594,19 @@ impl<'a> Texels<'a> {
             if remainder.is_empty() {
                 let channels = [red, green, blue].map(|&(low, high)| {
                     std::array::from_fn(|sample| {
-                        (low + sample as f64 / 255.0 * (high - low)).clamp(0.0, 1.0)
+                        let value = low + sample as f64 / 255.0 * (high - low);
+                        if matte.is_some() {
+                            value
+                        } else {
+                            value.clamp(0.0, 1.0)
+                        }
                     })
                 });
-                return Self::Rgb { pixels, channels };
+                return Self::Rgb {
+                    pixels,
+                    channels,
+                    matte,
+                };
             }
         }
         if (1..=4).contains(&image.decoded.components)
@@ -435,17 +643,24 @@ impl<'a> Texels<'a> {
                     shape: 1.0,
                 });
             }
-            Self::Rgb { pixels, channels } => {
+            Self::Rgb {
+                pixels,
+                channels,
+                matte,
+            } => {
                 let &[red, green, blue] = pixels
                     .get(pixel)
                     .ok_or(Error::syntax("missing image sample"))?;
+                let color = [
+                    channels[0][usize::from(red)],
+                    channels[1][usize::from(green)],
+                    channels[2][usize::from(blue)],
+                ];
+                let color = matte
+                    .as_ref()
+                    .map_or(Ok(color), |matte| matte.apply(pixel, color))?;
                 return Ok(Texel {
-                    color: [
-                        channels[0][usize::from(red)],
-                        channels[1][usize::from(green)],
-                        channels[2][usize::from(blue)],
-                        0.0,
-                    ],
+                    color: [color[0], color[1], color[2], 0.0],
                     alpha: 1.0,
                     shape: 1.0,
                 });
@@ -518,6 +733,7 @@ mod tests {
             mask_colors: false,
             raster: pagura_raster::Rasterizer::default(),
             bounds: super::super::regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
+            palette: None,
             glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
             limits,
             device: Transform::IDENTITY,
@@ -607,6 +823,60 @@ mod tests {
         );
         assert_eq!(value.alpha, 1.0);
         assert_eq!(value.shape, 1.0);
+    }
+
+    #[test]
+    fn matte_tables_match_rational_channels_and_scalar_decode_before_clipping() {
+        for matte in [[1.0; 3], [0.0; 3], [2.0, -1.0, 0.5]] {
+            for range in [(0.0, 1.0), (1.0, 0.0), (-0.5, 1.5)] {
+                let mut image = byte_image(3, 8);
+                image.matte = Some(matte.to_vec());
+                image.decode = vec![range; 3];
+                let mut mask = byte_image(1, 8);
+                mask.decode[0] = (1.0, 0.0);
+                image.mask = Some(Arc::new(mask));
+                image.decoded.mask = MaskKind::Soft(pagura_core::ObjectId::new(1, 0));
+                let command = command(image);
+                let mut context = context();
+                let mut table = Texels::new(&command.image, Model::Rgb);
+                assert!(matches!(table, Texels::Rgb { matte: Some(_), .. }));
+                for pixel in 0..256 {
+                    let expected = context
+                        .image_texel(&command, pixel, Model::Rgb, None)
+                        .unwrap();
+                    let actual = table
+                        .sample(&mut context, &command, pixel, Model::Rgb, None)
+                        .unwrap();
+                    assert_eq!(
+                        actual.color.map(f64::to_bits),
+                        expected.color.map(f64::to_bits)
+                    );
+                    assert_eq!(actual.alpha, expected.alpha);
+                    assert_eq!(actual.shape, expected.shape);
+                }
+            }
+        }
+        let mut image = byte_image(3, 8);
+        image.decoded.samples = Samples::Bytes(vec![128, 192, 0]);
+        image.decoded.width = 1;
+        let mut mask = byte_image(1, 8);
+        mask.decoded.samples = Samples::Bytes(vec![128]);
+        mask.decoded.width = 1;
+        image.mask = Some(Arc::new(mask));
+        image.matte = Some(vec![1.0; 3]);
+        image.decoded.mask = MaskKind::Soft(pagura_core::ObjectId::new(1, 0));
+        let command = command(image);
+        let value = Texels::new(&command.image, Model::Rgb)
+            .sample(&mut context(), &command, 0, Model::Rgb, None)
+            .unwrap();
+        // Exact white-matte removal gives 1/128, 65/128 and zero.
+        assert_eq!(
+            value.color[..3]
+                .iter()
+                .map(|&v| super::super::quantize(v))
+                .collect::<Vec<_>>(),
+            [2, 129, 0]
+        );
     }
 
     #[test]

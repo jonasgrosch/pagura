@@ -5,6 +5,7 @@ use super::{Source, plan::Format};
 use pagura_core::{Error, Result};
 
 pub(super) enum Buffer {
+    U8(Vec<[u8; 4]>),
     N16(Vec<[u16; 4]>),
     F32(Vec<[f32; 4]>),
 }
@@ -19,6 +20,7 @@ impl Buffer {
             Ok(pixels)
         }
         match format {
+            Format::U8 => Ok(Self::U8(filled(count, background)?)),
             Format::N16 => Ok(Self::N16(filled(
                 count,
                 background.map(|v| u16::from(v) * 257),
@@ -29,10 +31,42 @@ impl Buffer {
     }
     pub(super) fn bytes(&self) -> usize {
         match self {
+            Self::U8(v) => v.len() * 4,
             Self::N16(v) => v.len() * 8,
             Self::F32(v) => v.len() * 16,
         }
     }
+    pub(super) fn small_mask(
+        &mut self,
+        region: (usize, usize, usize),
+        coverage: &[u8],
+        color: [f64; 4],
+        alpha: f64,
+    ) -> Result<bool> {
+        let (offset, stride, width) = region;
+        let Self::U8(pixels) = self else {
+            return Ok(false);
+        };
+        if width == 0 || width > 64 || coverage.len() / width > 64 {
+            return Ok(false);
+        }
+        let color = [
+            byte(scalar(color[0] * 255.0)),
+            byte(scalar(color[1] * 255.0)),
+            byte(scalar(color[2] * 255.0)),
+            255,
+        ];
+        let alpha = byte(scalar(alpha * 255.0));
+        for (row, mask) in coverage.chunks_exact(width).enumerate() {
+            let start = offset + row * stride;
+            let target = pixels
+                .get_mut(start..start + width)
+                .ok_or(Error::invalid_argument("mask outside colour buffer"))?;
+            super::lowp::row(target, mask, color, alpha);
+        }
+        Ok(true)
+    }
+
     pub(super) fn path(
         &mut self,
         offset: usize,
@@ -41,6 +75,18 @@ impl Buffer {
         alpha: f64,
     ) -> Result<()> {
         match self {
+            Self::U8(pixels) => {
+                let color = [
+                    byte(scalar(color[0] * 255.0)),
+                    byte(scalar(color[1] * 255.0)),
+                    byte(scalar(color[2] * 255.0)),
+                    255,
+                ];
+                let row = pixels
+                    .get_mut(offset..offset + coverage.len())
+                    .ok_or(Error::invalid_argument("mask outside colour buffer"))?;
+                super::lowp::row(row, coverage, color, byte(scalar(alpha * 255.0)));
+            }
             Self::N16(pixels) => {
                 let color = [word(color[0]), word(color[1]), word(color[2]), 65535];
                 let row = pixels
@@ -75,6 +121,19 @@ impl Buffer {
         Ok(())
     }
     pub(super) fn paint(&mut self, index: usize, source: Source) -> Result<()> {
+        if let Self::U8(pixels) = self {
+            let pixel = pixels
+                .get_mut(index)
+                .ok_or(Error::invalid_argument("source outside colour buffer"))?;
+            let color = [
+                byte(scalar(source.color[0] * 255.0)),
+                byte(scalar(source.color[1] * 255.0)),
+                byte(scalar(source.color[2] * 255.0)),
+                255,
+            ];
+            super::lowp::pixel(pixel, color, byte(scalar(source.alpha * 255.0)));
+            return Ok(());
+        }
         let Self::F32(pixels) = self else {
             return Err(Error::invalid_argument("dynamic source in N16 buffer"));
         };
@@ -92,6 +151,16 @@ impl Buffer {
     }
     pub(super) fn output(&self, offset: usize, target: &mut [u8]) {
         match self {
+            Self::U8(pixels) => {
+                for (out, pixel) in target
+                    .as_chunks_mut::<4>()
+                    .0
+                    .iter_mut()
+                    .zip(&pixels[offset..])
+                {
+                    *out = *pixel;
+                }
+            }
             Self::N16(pixels) => {
                 for (out, pixel) in target
                     .as_chunks_mut::<4>()

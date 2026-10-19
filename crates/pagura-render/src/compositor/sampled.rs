@@ -12,15 +12,32 @@ pub(super) struct Texel {
     pub(super) alpha: f64,
     pub(super) shape: f64,
 }
-impl Texel {
-    pub(super) fn add(&mut self, value: Self, weight: f64) {
+/// One ordered weighted sum. Scalar masks and colour samples share geometry.
+pub(super) trait Weighted: Copy + Default {
+    fn add(&mut self, value: Self, weight: f64);
+    fn scale(self, weight: f64) -> Self;
+}
+impl Weighted for f64 {
+    #[inline]
+    fn add(&mut self, value: Self, weight: f64) {
+        *self += value * weight;
+    }
+    #[inline]
+    fn scale(self, weight: f64) -> Self {
+        self * weight
+    }
+}
+impl Weighted for Texel {
+    #[inline]
+    fn add(&mut self, value: Self, weight: f64) {
         for (sum, c) in self.color.iter_mut().zip(value.color) {
             *sum += c * weight;
         }
         self.alpha += value.alpha * weight;
         self.shape += value.shape * weight;
     }
-    pub(super) fn scale(mut self, weight: f64) -> Self {
+    #[inline]
+    fn scale(mut self, weight: f64) -> Self {
         self.color = self.color.map(|v| v * weight);
         self.alpha *= weight;
         self.shape *= weight;
@@ -50,14 +67,14 @@ impl Sampler {
         self.index(center.x.floor(), center.y.floor())
     }
 
-    pub(super) fn magnify(
+    pub(super) fn magnify<T: Weighted>(
         &self,
         x: u32,
         y: u32,
         work: &mut usize,
         maximum: usize,
-        mut texel: impl FnMut(usize) -> Result<Texel>,
-    ) -> Result<Texel> {
+        mut texel: impl FnMut(usize) -> Result<T>,
+    ) -> Result<T> {
         if !self.interpolate {
             charge(work, 1, maximum)?;
             return texel(self.nearest(x, y)?);
@@ -67,7 +84,7 @@ impl Sampler {
         let (x, y) = (center.x - 0.5, center.y - 0.5);
         let (left, top) = (x.floor(), y.floor());
         let (fx, fy) = (x - left, y - top);
-        let mut out = Texel::default();
+        let mut out = T::default();
         for (x, y, w) in [
             (left, top, (1.0 - fx) * (1.0 - fy)),
             (left + 1.0, top, fx * (1.0 - fy)),
@@ -78,14 +95,14 @@ impl Sampler {
         }
         Ok(out)
     }
-    pub(super) fn area(
+    pub(super) fn area<T: Weighted>(
         &self,
         x: u32,
         y: u32,
         work: &mut usize,
         maximum: usize,
-        mut texel: impl FnMut(usize) -> Result<Texel>,
-    ) -> Result<Texel> {
+        mut texel: impl FnMut(usize) -> Result<T>,
+    ) -> Result<T> {
         let (x, y) = (f64::from(x), f64::from(y));
         let polygon = [
             Point::new(x, y),
@@ -113,7 +130,7 @@ impl Sampler {
             usize::try_from(u64::from(x1.saturating_sub(x0)) * u64::from(y1.saturating_sub(y0)))
                 .map_err(|_| Error::limit("image sampling work overflow"))?;
         charge(work, count, maximum)?;
-        let mut out = Texel::default();
+        let mut out = T::default();
         let mut weight = 0.0;
         for row in y0..y1 {
             for col in x0..x1 {

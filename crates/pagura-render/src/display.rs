@@ -381,6 +381,7 @@ pub(crate) struct GlyphCache {
     entries: std::collections::HashMap<GlyphKey, CachedGeometry>,
     bytes: usize,
     maximum: usize,
+    tolerance: Option<f64>,
 }
 impl GlyphCache {
     pub(crate) fn new(bytes: usize) -> Self {
@@ -389,13 +390,19 @@ impl GlyphCache {
             ..Self::default()
         }
     }
+    pub(crate) fn set_tolerance(&mut self, tolerance: f64) {
+        self.clear();
+        self.tolerance = Some(tolerance);
+    }
     pub(crate) fn retained_bytes(&self) -> usize {
         self.bytes
     }
     pub(crate) fn clear(&mut self) {
         let maximum = self.maximum;
+        let tolerance = self.tolerance;
         *self = Self {
             maximum,
+            tolerance,
             ..Self::default()
         };
     }
@@ -425,11 +432,33 @@ impl GlyphCache {
             decoded_bytes: limits.decoded_bytes.saturating_sub(resident),
             ..*limits
         };
-        let geometry = match run.geometry(placement, device, &budget) {
+        let prepare = |limits: &Limits| {
+            if let Some(tolerance) = self.tolerance {
+                pagura_raster::GlyphGeometry::at_tolerance(
+                    &source.outline,
+                    [linear.a, linear.b, linear.c, linear.d],
+                    limits,
+                    tolerance,
+                )
+                .map(Arc::new)
+            } else {
+                run.geometry(placement, device, limits)
+            }
+        };
+        let geometry = match prepare(&budget) {
             Err(error) if resident != 0 && error.kind == pagura_core::ErrorKind::Limit => {
                 self.clear();
                 raster.clear();
-                run.geometry(placement, device, limits)?
+                if let Some(tolerance) = self.tolerance {
+                    Arc::new(pagura_raster::GlyphGeometry::at_tolerance(
+                        &source.outline,
+                        [linear.a, linear.b, linear.c, linear.d],
+                        limits,
+                        tolerance,
+                    )?)
+                } else {
+                    run.geometry(placement, device, limits)?
+                }
             }
             result => result?,
         };
@@ -596,6 +625,14 @@ impl DisplayList {
             || tile.y.checked_add(tile.height).is_none_or(|n| n > height)
         {
             return Err(Error::invalid_argument("tile lies outside the page"));
+        }
+        if options.accuracy == crate::Accuracy::SignedCells {
+            return crate::compositor::render_approximate(
+                self,
+                options,
+                tile,
+                crate::compositor::Policy::SIGNED_CELLS,
+            );
         }
         if self.preview_separations(options)?.enabled
             || self.group.knockout

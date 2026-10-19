@@ -6,7 +6,9 @@
 
 mod colorants;
 pub(crate) use colorants::Separations;
+mod image_interiors;
 mod images;
+mod lowp;
 mod narrow;
 mod opaque_image;
 mod output;
@@ -194,6 +196,7 @@ struct Context {
     mask_colors: bool,
     bounds: regions::Prepared,
     glyphs: crate::display::GlyphCache,
+    palette: Option<image_interiors::Palette>,
     raster: pagura_raster::Rasterizer,
     limits: Limits,
     device: Transform,
@@ -248,6 +251,7 @@ impl Context {
                 list.device_transform(options),
                 list.limits.decoded_bytes,
             ),
+            palette: None,
             glyphs: crate::display::GlyphCache::new(list.limits.decoded_bytes),
             limits: list.limits,
             device: list.device_transform(options),
@@ -283,6 +287,9 @@ impl Context {
         Ok(())
     }
     fn trim_raster(&mut self, bytes: usize) {
+        if self.allocated.saturating_add(bytes) > self.limits.decoded_bytes {
+            self.clear_palette();
+        }
         if self
             .allocated
             .saturating_add(bytes)
@@ -346,7 +353,12 @@ impl Context {
             return self.surface(tile, Backdrop::Transparent);
         }
         let count = tile.width as usize * tile.height as usize;
-        let bytes = count * if format == plan::Format::N16 { 8 } else { 16 };
+        let bytes = count
+            * match format {
+                plan::Format::U8 => 4,
+                plan::Format::N16 => 8,
+                _ => 16,
+            };
         self.trim_raster(bytes);
         self.allocated = self
             .allocated
@@ -406,7 +418,7 @@ impl Context {
                 self.limits,
                 (tile.x, tile.y),
             )?;
-            mask.intersect(&next)?;
+            self.raster.intersect_clip(&mut mask, &next)?;
         }
         let mask = Arc::new(mask);
         self.clip = Some((id, tile, Arc::clone(&mask)));
@@ -613,6 +625,14 @@ impl Context {
         let stride = tile.width as usize;
         let (x, y) = mask.origin();
         let offset = (y - tile.y) as usize * stride + (x - tile.x) as usize;
+        if buffer.small_mask(
+            (offset, stride, mask.width() as usize),
+            mask.coverage(),
+            color,
+            p.composite.alpha,
+        )? {
+            return Ok(());
+        }
         for (row, column, coverage) in mask.spans() {
             buffer.path(
                 offset + row * stride + column,
@@ -632,7 +652,7 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
-        if target.narrow().is_some() {
+        if target.narrow().is_some() && matches!(p.color, crate::color::Color::Solid { .. }) {
             return self.narrow_path(p, mask, target);
         }
         if let crate::color::Color::Pattern {
@@ -742,6 +762,10 @@ impl Context {
                 };
                 self.transfer_mark(p.transfer.as_ref(), &p.composite, (x, y), source, true)?;
                 let source = source.apply(&p.composite, mask_value);
+                if let Some(buffer) = target.narrow_mut() {
+                    buffer.paint(index, source)?;
+                    continue;
+                }
                 let pixel = target
                     .pixels_mut()
                     .get_mut(index)
@@ -1288,27 +1312,149 @@ impl Context {
     }
 }
 
+/// The band schedule and approximations of an approximate rendering path.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct Policy {
+    /// Rows per full-width band of narrow storage, between 1 and 16384.
+    /// Retained groups keep square chunks of at most `plan.side` rows.
+    pub(crate) rows: u32,
+    /// Signed-cell polygons at this device tolerance; `None` keeps exact coverage.
+    pub(crate) curve_tolerance: Option<f64>,
+    /// One-round byte Normal composition in place of admitted N16/F32 storage.
+    pub(crate) byte_composition: bool,
+    /// Multiply independently sampled clip coverages (requires signed cells).
+    pub(crate) clip_product: bool,
+    /// Keep geometric integration of compound paths without a stroke boundary.
+    pub(crate) geometric_compounds: bool,
+}
+
+impl Policy {
+    /// [`crate::Accuracy::SignedCells`].
+    pub(crate) const SIGNED_CELLS: Self = Self {
+        rows: 256,
+        curve_tolerance: Some(1.0 / 64.0),
+        byte_composition: true,
+        clip_product: true,
+        geometric_compounds: true,
+    };
+
+    fn rasterizer(self) -> Result<pagura_raster::Rasterizer> {
+        let raster = match (self.curve_tolerance, self.clip_product) {
+            (Some(tolerance), true) => {
+                pagura_raster::Rasterizer::with_approximate_clip_product(tolerance)
+            }
+            (Some(tolerance), false) => {
+                pagura_raster::Rasterizer::with_approximate_cells(tolerance)
+            }
+            (None, false) => Ok(pagura_raster::Rasterizer::default()),
+            (None, true) => Err(Error::invalid_argument(
+                "clip product requires approximate cells",
+            )),
+        }?;
+        Ok(if self.geometric_compounds {
+            raster.with_geometric_compounds()
+        } else {
+            raster
+        })
+    }
+}
+
+pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
+    render_policy(list, options, tile, None)
+}
+
+pub(crate) fn render_approximate(
+    list: &DisplayList,
+    options: &RenderOptions,
+    tile: Tile,
+    policy: Policy,
+) -> Result<Pixmap> {
+    render_policy(list, options, tile, Some(policy))
+}
+
 // Keep the large general compositor out of the opaque page dispatch.
 #[inline(never)]
-pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
+fn render_policy(
+    list: &DisplayList,
+    options: &RenderOptions,
+    tile: Tile,
+    bands: Option<Policy>,
+) -> Result<Pixmap> {
+    if let Some(bands) = bands
+        && !(1..=16_384).contains(&bands.rows)
+    {
+        return Err(Error::invalid_argument("band height outside 1..=16384"));
+    }
     let separations = list.preview_separations(options)?;
-    let plan = plan::page(list, &separations)?;
+    let mut plan = if bands.is_some_and(|b| b.byte_composition) {
+        plan::byte_page(list, &separations)?
+    } else {
+        plan::page(list, &separations)?
+    };
+    if bands.is_some_and(|b| b.byte_composition) && plan.format != plan::Format::F64 {
+        plan.format = plan::Format::U8;
+    }
     let mut context = Context::new(list, options, &plan, separations)?;
+    if let Some(bands) = bands {
+        context.raster = bands.rasterizer()?;
+        if let Some(tolerance) = bands.curve_tolerance {
+            context.glyphs.set_tolerance(tolerance);
+        }
+    }
     let model = list.group.model.unwrap_or(if context.separations.enabled {
         Model::Cmyk
     } else {
         Model::Rgb
     });
+    // Wide retained groups have a much larger live working set. Keep their
+    // existing square chunks; narrow pages can retain full-width byte bands.
+    let band_width = if bands.is_some() && plan.format != plan::Format::F64 {
+        tile.width
+    } else {
+        plan.side
+    };
+    let band_height = bands.map_or(plan.side, |b| {
+        if plan.format == plan::Format::F64 {
+            b.rows.min(plan.side)
+        } else {
+            b.rows
+        }
+    });
+    if plan.format == plan::Format::U8
+        && band_width >= tile.width
+        && band_height >= tile.height
+        && options.background.a == 255
+        && !matches!(list.commands.as_slice(), [Command::Image(_)])
+    {
+        context.begin_transfers(tile)?;
+        let mut page = context.page_surface(
+            tile,
+            plan.format,
+            [
+                options.background.r,
+                options.background.g,
+                options.background.b,
+                255,
+            ],
+        )?;
+        context.commands(
+            &list.commands,
+            &mut page,
+            Backdrop::Transparent,
+            model,
+            list.group.knockout,
+            0,
+        )?;
+        return Pixmap::from_premultiplied(tile.width, tile.height, page.into_rgba()?, list.limits);
+    }
     let mut output =
         Pixmap::new_with_limits(tile.width, tile.height, options.background, list.limits)?;
-    // Keep the high-precision page backdrop bounded too. Global device
-    // coordinates preserve exact tile parity; one work budget spans all chunks.
     let mut y = tile.y;
     while y < tile.y + tile.height {
-        let height = (tile.y + tile.height - y).min(plan.side);
+        let height = (tile.y + tile.height - y).min(band_height);
         let mut x = tile.x;
         while x < tile.x + tile.width {
-            let width = (tile.x + tile.width - x).min(plan.side);
+            let width = (tile.x + tile.width - x).min(band_width);
             let region = Tile {
                 x,
                 y,
@@ -1843,6 +1989,7 @@ mod tests {
             mask_colors: false,
             raster: pagura_raster::Rasterizer::default(),
             bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
+            palette: None,
             glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
             limits,
             device: Transform::IDENTITY,
@@ -1915,6 +2062,7 @@ mod tests {
             spot_batch: None,
             mask_colors: false,
             bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
+            palette: None,
             glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
             raster: pagura_raster::Rasterizer::default(),
             limits,

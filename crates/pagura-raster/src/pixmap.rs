@@ -73,6 +73,51 @@ impl Pixmap {
         Ok(surface)
     }
 
+    /// Takes an existing, tightly packed premultiplied RGBA8 allocation.
+    ///
+    /// Components use the same layout as [`Self::data_mut`]. Ownership is
+    /// transferred without initialization or a second pixel copy.
+    ///
+    /// # Errors
+    /// Returns `InvalidArgument` for zero dimensions or an incorrect byte
+    /// count, and `Limit` when the pixel or decoded-byte budget is exceeded.
+    pub fn from_premultiplied(
+        width: u32,
+        height: u32,
+        data: Vec<u8>,
+        limits: Limits,
+    ) -> Result<Self> {
+        if width == 0 || height == 0 {
+            return Err(Error::invalid_argument(
+                "surface dimensions must be positive",
+            ));
+        }
+        let pixels = usize::try_from(u64::from(width) * u64::from(height))
+            .ok()
+            .filter(|&n| n <= limits.pixels)
+            .ok_or(Error::limit("surface pixel budget exceeded"))?;
+        let bytes = pixels
+            .checked_mul(4)
+            .filter(|&n| n <= limits.decoded_bytes)
+            .ok_or(Error::limit("surface byte budget exceeded"))?;
+        if data.len() != bytes {
+            return Err(Error::invalid_argument(
+                "surface byte count differs from dimensions",
+            ));
+        }
+        if data.capacity() > limits.decoded_bytes {
+            return Err(Error::limit(
+                "surface retained allocation exceeds byte budget",
+            ));
+        }
+        Ok(Self {
+            width,
+            height,
+            data,
+            limits,
+        })
+    }
+
     pub(crate) fn limits(&self) -> &Limits {
         &self.limits
     }
@@ -168,6 +213,59 @@ fn unpremultiply(pixel: [u8; 4]) -> [u8; 4] {
 mod tests {
     use super::{Pixmap, div255};
     use crate::Rgba8;
+
+    #[test]
+    fn owned_rgba_transfer_preserves_allocation_and_checks_budgets() {
+        let mut data = Vec::with_capacity(32);
+        data.extend_from_slice(&[128, 0, 0, 128, 0, 0, 255, 255]);
+        let pointer = data.as_ptr();
+        let surface =
+            Pixmap::from_premultiplied(2, 1, data, pagura_core::Limits::default()).unwrap();
+        assert_eq!(surface.data().as_ptr(), pointer);
+        assert_eq!(surface.data(), [128, 0, 0, 128, 0, 0, 255, 255]);
+        let mut spare = Vec::with_capacity(32);
+        spare.resize(8, 0);
+        assert!(
+            Pixmap::from_premultiplied(
+                2,
+                1,
+                spare,
+                pagura_core::Limits {
+                    decoded_bytes: 8,
+                    ..pagura_core::Limits::default()
+                }
+            )
+            .is_err()
+        );
+        assert!(Pixmap::from_premultiplied(0, 1, vec![], pagura_core::Limits::default()).is_err());
+        assert!(
+            Pixmap::from_premultiplied(2, 1, vec![0; 4], pagura_core::Limits::default()).is_err()
+        );
+        assert!(
+            Pixmap::from_premultiplied(
+                2,
+                1,
+                vec![0; 8],
+                pagura_core::Limits {
+                    decoded_bytes: 7,
+                    ..pagura_core::Limits::default()
+                }
+            )
+            .is_err()
+        );
+        assert!(
+            Pixmap::from_premultiplied(
+                2,
+                1,
+                vec![0; 8],
+                pagura_core::Limits {
+                    pixels: 1,
+                    ..pagura_core::Limits::default()
+                }
+            )
+            .is_err()
+        );
+    }
 
     #[test]
     fn div255_rounds_exactly() {

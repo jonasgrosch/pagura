@@ -118,6 +118,14 @@ impl Surface {
         });
         Ok(true)
     }
+    pub(super) fn into_rgba(self) -> Result<Vec<u8>> {
+        let Some(narrow::Buffer::U8(pixels)) = self.narrow else {
+            return Err(Error::invalid_argument(
+                "byte output requires a byte surface",
+            ));
+        };
+        Ok(pixels.into_flattened())
+    }
     pub(super) fn bytes(&self) -> usize {
         self.pixels.len() * size_of::<Pixel>()
             + self.narrow.as_ref().map_or(0, narrow::Buffer::bytes)

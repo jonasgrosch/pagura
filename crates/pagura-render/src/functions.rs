@@ -14,6 +14,7 @@ pub(crate) struct Function {
     body: Body,
     limits: Limits,
     object: Option<ObjectId>,
+    normalized_bytes: bool,
 }
 #[derive(Debug, Clone)]
 enum Body {
@@ -164,6 +165,11 @@ impl Function {
             4 => calculator(document, value, range.is_some())?,
             _ => return Err(Error::syntax("invalid FunctionType")),
         };
+        let normalized_bytes = domain.as_slice() == [[0.0, 1.0]]
+            && range
+                .as_ref()
+                .is_some_and(|r| r.iter().all(|&r| r == [0.0, 1.0]))
+            && matches!(&body, Body::Sampled(s) if s.normalized_byte_grid());
         Ok(Self {
             domain,
             range,
@@ -171,6 +177,7 @@ impl Function {
             body,
             limits: document.limits(),
             object: value.as_reference(),
+            normalized_bytes,
         })
     }
     pub(crate) fn evaluate(&self, inputs: &[f64]) -> Result<Vec<f64>> {
@@ -183,7 +190,7 @@ impl Function {
                 .zip(&self.domain)
                 .all(|(a, b)| a[0] >= b[0] && a[1] <= b[1])
     }
-    /// Evaluate common exponential gradients without allocating per sample.
+    /// Evaluate common gradients without allocating per sample.
     pub(crate) fn evaluate_into(
         &self,
         inputs: &[f64],
@@ -200,34 +207,7 @@ impl Function {
         if output.len() != self.outputs {
             return Err(Error::invalid_argument("wrong function output buffer"));
         }
-        if let Body::Exponential { low, high, power } = &self.body {
-            if *work >= self.limits.operations {
-                return Err(Error::limit("function evaluation budget exceeded"));
-            }
-            *work += 1;
-            let [value] = inputs else {
-                return Err(Error::syntax("wrong function input count"));
-            };
-            let range = self
-                .domain
-                .first()
-                .ok_or(Error::syntax("missing function domain"))?;
-            let value = value.clamp(range[0], range[1]).powf(*power);
-            for (i, ((out, &low), &high)) in output.iter_mut().zip(low).zip(high).enumerate() {
-                *out = low + value * (high - low);
-                if !out.is_finite() {
-                    return Err(Error::syntax(
-                        "function arithmetic is undefined or overflows",
-                    ));
-                }
-                if let Some(range) = self.range.as_ref().and_then(|r| r.get(i)) {
-                    *out = out.clamp(range[0], range[1]);
-                }
-            }
-            return Ok(());
-        }
-        output.copy_from_slice(&self.evaluate_with_work(inputs, work)?);
-        Ok(())
+        self.run_into(inputs, output, 0, work)
     }
     pub(crate) fn evaluate_with_work(&self, inputs: &[f64], work: &mut usize) -> Result<Vec<f64>> {
         self.run(inputs, 0, work).map_err(|e| {
@@ -239,6 +219,17 @@ impl Function {
         })
     }
     fn run(&self, inputs: &[f64], depth: usize, work: &mut usize) -> Result<Vec<f64>> {
+        let mut output = vec![0.0; self.outputs];
+        self.run_into(inputs, &mut output, depth, work)?;
+        Ok(output)
+    }
+    fn run_into(
+        &self,
+        inputs: &[f64],
+        output: &mut [f64],
+        depth: usize,
+        work: &mut usize,
+    ) -> Result<()> {
         if depth >= self.limits.depth || *work >= self.limits.operations {
             return Err(Error::limit("function evaluation budget exceeded"));
         }
@@ -246,32 +237,35 @@ impl Function {
         if inputs.len() != self.domain.len() || inputs.iter().any(|v| !v.is_finite()) {
             return Err(Error::syntax("invalid function inputs"));
         }
-        let input: Vec<_> = inputs
-            .iter()
-            .zip(&self.domain)
-            .map(|(&v, r)| v.clamp(r[0], r[1]))
-            .collect();
-        let mut result = match &self.body {
+        match &self.body {
             Body::Exponential { low, high, power } => {
-                let x = input
+                let value = inputs
                     .first()
                     .copied()
-                    .ok_or(Error::syntax("missing function input"))?
-                    .powf(*power);
-                low.iter()
-                    .zip(high)
-                    .map(|(&a, &b)| a + x * (b - a))
-                    .collect::<Vec<_>>()
+                    .ok_or(Error::syntax("missing function input"))?;
+                let range = self
+                    .domain
+                    .first()
+                    .ok_or(Error::syntax("missing function domain"))?;
+                let x = value.clamp(range[0], range[1]).powf(*power);
+                for ((out, &a), &b) in output.iter_mut().zip(low).zip(high) {
+                    *out = a + x * (b - a);
+                }
             }
             Body::Stitch {
                 functions,
                 bounds,
                 encode,
             } => {
-                let x = input
+                let value = inputs
                     .first()
                     .copied()
                     .ok_or(Error::syntax("missing function input"))?;
+                let range = self
+                    .domain
+                    .first()
+                    .ok_or(Error::syntax("missing function domain"))?;
+                let x = value.clamp(range[0], range[1]);
                 // The first degenerate interval owns its endpoint (7.10.4).
                 let index = if bounds.first() == Some(&x)
                     && self.domain.first().is_some_and(|d| d[0] == x)
@@ -299,26 +293,43 @@ impl Function {
                 functions
                     .get(index)
                     .ok_or(Error::syntax("invalid stitching index"))?
-                    .run(&[x], depth + 1, work)?
+                    .run_into(&[x], output, depth + 1, work)?;
             }
             Body::Calculator(calculator) => {
-                calculator.evaluate(&input, self.outputs, work, &self.limits)?
+                let input: Vec<_> = inputs
+                    .iter()
+                    .zip(&self.domain)
+                    .map(|(&v, r)| v.clamp(r[0], r[1]))
+                    .collect();
+                let result = calculator.evaluate(&input, self.outputs, work, &self.limits)?;
+                if result.len() != output.len() {
+                    return Err(Error::syntax("wrong calculator output count"));
+                }
+                output.copy_from_slice(&result);
             }
             Body::Sampled(sampled) => {
-                sampled.evaluate(&input, &self.domain, self.outputs, work, &self.limits)?
+                if self.normalized_bytes {
+                    return sampled.evaluate_normalized_bytes(
+                        inputs[0],
+                        output,
+                        work,
+                        &self.limits,
+                    );
+                }
+                sampled.evaluate_into(inputs, &self.domain, output, work, &self.limits)?;
             }
-        };
-        if result.len() != self.outputs || result.iter().any(|v| !v.is_finite()) {
+        }
+        if output.iter().any(|v| !v.is_finite()) {
             return Err(Error::syntax(
                 "function arithmetic is undefined or overflows",
             ));
         }
         if let Some(range) = &self.range {
-            for (v, r) in result.iter_mut().zip(range) {
+            for (v, r) in output.iter_mut().zip(range) {
                 *v = v.clamp(r[0], r[1]);
             }
         }
-        Ok(result)
+        Ok(())
     }
 }
 
@@ -479,6 +490,7 @@ pub(crate) fn transfer(document: &Document, value: &Value) -> Result<Option<Tran
                         },
                         limits: document.limits(),
                         object: None,
+                        normalized_bytes: false,
                     })
                 } else {
                     Function::parse(document, v, 1, 1)

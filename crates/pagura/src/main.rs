@@ -5,7 +5,8 @@
 mod password;
 
 use pagura::{
-    Document, Limits, OpenOptions, OverprintPreview, Pixmap, Recovery, RenderOptions, Rgba8,
+    Accuracy, Document, Limits, OpenOptions, OverprintPreview, Pixmap, Recovery, RenderOptions,
+    Rgba8,
 };
 use std::error::Error;
 use std::fmt::Write as _;
@@ -36,6 +37,8 @@ options:
                    memory) and emit (encode and write the image); the
                    engine's contribution to a conversion is open + render
   --overprint MODE auto (default): PDF/X declarations; always: simulate; never: ignore
+  --accuracy MODE  exact (default): every pixel within one level of exact;
+                   signed-cells: the approximate path of RenderOptions::accuracy
   --max-pages N    scan at most N pages per document
 scan prints one JSON line describing what opened and rendered, never images.";
 
@@ -60,6 +63,7 @@ struct Flags {
     password: Vec<u8>,
     max_pages: Option<usize>,
     overprint: OverprintPreview,
+    accuracy: Accuracy,
 }
 
 impl Flags {
@@ -78,6 +82,7 @@ impl Flags {
     fn render_options(&self, dpi: f64) -> RenderOptions {
         RenderOptions {
             overprint: self.overprint,
+            accuracy: self.accuracy,
             ..RenderOptions::from_dpi(dpi)
         }
     }
@@ -108,6 +113,13 @@ fn parse(args: &[String]) -> CliResult<(Flags, Vec<&str>)> {
                     "always" => OverprintPreview::Always,
                     "never" => OverprintPreview::Never,
                     _ => return Err("--overprint requires auto, always or never".into()),
+                };
+            }
+            "--accuracy" => {
+                flags.accuracy = match value()? {
+                    "exact" => Accuracy::Exact,
+                    "signed-cells" => Accuracy::SignedCells,
+                    _ => return Err("--accuracy requires exact or signed-cells".into()),
                 };
             }
             "--version" => positional.push(arg),

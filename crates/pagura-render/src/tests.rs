@@ -345,6 +345,44 @@ fn all_supported_fixtures_assemble_as_single_pixel_tiles() {
 }
 
 #[test]
+fn signed_cell_fixtures_assemble_as_single_pixel_tiles() {
+    for &name in RENDER {
+        let document = open(name);
+        let list = compile_page(&document, document.page(0).unwrap()).unwrap();
+        for background in [Rgba8::WHITE, Rgba8::new(17, 35, 61, 96)] {
+            let options = RenderOptions {
+                scale: 1.25,
+                background,
+                accuracy: crate::Accuracy::SignedCells,
+                ..RenderOptions::default()
+            };
+            let full = list.render(&options).unwrap();
+            for y in 0..full.height() {
+                for x in 0..full.width() {
+                    let tile = list
+                        .render_tile(
+                            &options,
+                            Tile {
+                                x,
+                                y,
+                                width: 1,
+                                height: 1,
+                            },
+                        )
+                        .unwrap();
+                    let start = usize::try_from(x).unwrap() * 4;
+                    assert_eq!(
+                        tile.data(),
+                        &full.row(y).unwrap()[start..start + 4],
+                        "{name} ({x}, {y})"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn unsupported_colour_reports_its_stream_and_object() {
     let document = open("cie-blackpoint");
     let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();

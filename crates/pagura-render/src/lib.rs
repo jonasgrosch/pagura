@@ -41,6 +41,27 @@ pub mod features;
 /// In-memory form appearance programs and resource dictionaries (12.7.4.3).
 pub mod form_appearance;
 
+/// The accuracy contract of a rendering (ADR 0004).
+///
+/// The exact path is the reference and the default. An approximate path is
+/// named for its mechanism and can always be switched back to the exact one;
+/// its measured accuracy is kept with the change that introduces it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Accuracy {
+    /// Every pixel within one level of its exact result.
+    #[default]
+    Exact,
+    /// Signed-area cells after flattening curves to 1/64-pixel chords, in
+    /// full-width bands of 256 rows. Compound paths without a retained
+    /// stroke boundary keep geometric integration of their union; clip
+    /// coverages multiply as independent bytes; Normal composition rounds
+    /// once into byte storage where the exact path would admit 16-bit or
+    /// f32 storage. Retained groups and other compositing keep the general
+    /// compositor. It does not meet the one-level contract.
+    SignedCells,
+}
+
 /// Options for rendering a page.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RenderOptions {
@@ -50,6 +71,8 @@ pub struct RenderOptions {
     pub background: Rgba8,
     /// Whether to simulate overprinting (8.6.7; 11.7.4).
     pub overprint: OverprintPreview,
+    /// The accuracy contract pixels are rendered to (ADR 0004).
+    pub accuracy: Accuracy,
 }
 
 impl Default for RenderOptions {
@@ -58,6 +81,7 @@ impl Default for RenderOptions {
             scale: 1.0,
             background: Rgba8::WHITE,
             overprint: OverprintPreview::Auto,
+            accuracy: Accuracy::Exact,
         }
     }
 }

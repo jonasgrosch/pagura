@@ -57,6 +57,31 @@ impl GlyphGeometry {
     /// # Errors
     /// Returns invalid geometry, excessive coordinates, segment or depth limits.
     pub fn new(outline: &Path, linear: [f64; 4], limits: &Limits) -> Result<Self> {
+        Self::build(outline, linear, limits, None)
+    }
+
+    /// Subdivides an outline for the explicitly approximate coverage policy.
+    ///
+    /// Placement remains exact; the tolerance is in device pixels. Monotone
+    /// curve integration is replaced by the resulting canonical polygon.
+    ///
+    /// # Errors
+    /// As [`Self::new`], plus an invalid tolerance outside (0, 0.25].
+    pub fn at_tolerance(
+        outline: &Path,
+        linear: [f64; 4],
+        limits: &Limits,
+        tolerance: f64,
+    ) -> Result<Self> {
+        Self::build(outline, linear, limits, Some(tolerance))
+    }
+
+    fn build(
+        outline: &Path,
+        linear: [f64; 4],
+        limits: &Limits,
+        tolerance: Option<f64>,
+    ) -> Result<Self> {
         let [a, b, c, d] = linear;
         let transform = Transform::new(a, b, c, d, 0.0, 0.0);
         if !transform.is_finite() {
@@ -65,7 +90,21 @@ impl GlyphGeometry {
         if limits.decoded_bytes < size_of::<Self>() {
             return Err(Error::limit("glyph geometry byte budget exceeded"));
         }
-        let mut contours = flatten(outline, transform, limits)?;
+        let mut contours = if let Some(tolerance) = tolerance {
+            let mut contours = Vec::new();
+            let count = crate::flatten::flatten_into_at_tolerance(
+                outline,
+                transform,
+                limits,
+                &mut contours,
+                &mut Vec::new(),
+                tolerance,
+            )?;
+            contours.truncate(count);
+            contours
+        } else {
+            flatten(outline, transform, limits)?
+        };
         classify(outline, transform, &mut contours)?;
         let mut vertices = 0;
         for contour in &mut contours {
@@ -78,7 +117,11 @@ impl GlyphGeometry {
         if vertices > limits.path_segments {
             return Err(Error::limit("flattened segment budget exceeded"));
         }
-        let curves = curves(outline, transform, &contours, vertices, limits)?;
+        let curves = if tolerance.is_none() {
+            curves(outline, transform, &contours, vertices, limits)?
+        } else {
+            None
+        };
         let mut result = Self {
             contours,
             vertices,

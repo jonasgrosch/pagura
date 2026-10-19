@@ -14,7 +14,7 @@ pub(super) struct Rectangle {
 }
 
 impl Shape {
-    pub(super) fn rectangle(&self) -> Option<Rectangle> {
+    fn quadrilateral(&self) -> Option<[crate::Point; 4]> {
         use Segment::{Close, LineTo, MoveTo};
         let points = match &self.geometry {
             Geometry::Path(path) => {
@@ -59,6 +59,11 @@ impl Shape {
         {
             return None;
         }
+        Some([a, b, c, d])
+    }
+
+    pub(super) fn rectangle(&self) -> Option<Rectangle> {
+        let [a, b, c, d] = self.quadrilateral()?;
         let axis = (a.x == b.x && b.y == c.y && c.x == d.x && d.y == a.y)
             || (a.y == b.y && b.x == c.x && c.y == d.y && d.x == a.x);
         (axis && a != b && b != c && c != d && d != a).then_some(Rectangle {
@@ -67,6 +72,55 @@ impl Shape {
             right: a.x.max(c.x),
             bottom: a.y.max(c.y),
         })
+    }
+
+    /// Strict convex half-planes contain the entire geometry hull. Outward-rounded
+    /// orientation intervals decline near-boundary cases instead of guessing.
+    pub(crate) fn contains_hull(&self, [lo, hi]: [crate::Point; 2]) -> bool {
+        let Some(points) = self.quadrilateral() else {
+            return false;
+        };
+        let Some(sign) = orientation(points[0], points[1], points[2]) else {
+            return false;
+        };
+        let corners = [
+            lo,
+            crate::Point::new(hi.x, lo.y),
+            hi,
+            crate::Point::new(lo.x, hi.y),
+        ];
+        (0..4).all(|i| {
+            orientation(points[i], points[(i + 1) % 4], points[(i + 2) % 4]) == Some(sign)
+                && corners
+                    .iter()
+                    .all(|&p| orientation(points[i], points[(i + 1) % 4], p) == Some(sign))
+        })
+    }
+}
+
+fn orientation(a: crate::Point, b: crate::Point, c: crate::Point) -> Option<i8> {
+    let difference = |x: f64, y: f64| {
+        let value = x - y;
+        [value.next_down(), value.next_up()]
+    };
+    let product = |a: [f64; 2], b: [f64; 2]| {
+        let values = [a[0] * b[0], a[0] * b[1], a[1] * b[0], a[1] * b[1]];
+        [
+            values.into_iter().fold(f64::INFINITY, f64::min).next_down(),
+            values
+                .into_iter()
+                .fold(f64::NEG_INFINITY, f64::max)
+                .next_up(),
+        ]
+    };
+    let left = product(difference(b.x, a.x), difference(c.y, a.y));
+    let right = product(difference(b.y, a.y), difference(c.x, a.x));
+    if (left[0] - right[1]).next_down() > 0.0 {
+        Some(1)
+    } else if (left[1] - right[0]).next_up() < 0.0 {
+        Some(-1)
+    } else {
+        None
     }
 }
 
@@ -151,3 +205,51 @@ impl Rectangle {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod convex_tests {
+    use super::*;
+    use crate::{FillRule, PathBuilder, Point, Transform};
+    use std::sync::Arc;
+
+    fn shape(points: [[f64; 2]; 4]) -> Shape {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(points[0][0], points[0][1]));
+        for [x, y] in &points[1..] {
+            path.line_to(Point::new(*x, *y)).unwrap();
+        }
+        path.close();
+        Shape {
+            geometry: Geometry::Path(Arc::new(path.finish())),
+            transform: Transform::IDENTITY,
+            rule: FillRule::NonZero,
+        }
+    }
+    #[test]
+    fn convex_half_planes_certify_only_strict_interior_hulls() {
+        for offset in [0.0, 1e9] {
+            for reverse in [false, true] {
+                let mut points = [[0.0, 2.0], [2.0, 0.0], [4.0, 2.0], [2.0, 4.0]];
+                for p in &mut points {
+                    p[0] += offset;
+                    p[1] += offset;
+                }
+                if reverse {
+                    points.reverse();
+                }
+                let clip = shape(points);
+                let hull = |a, b| {
+                    [
+                        Point::new(offset + a, offset + a),
+                        Point::new(offset + b, offset + b),
+                    ]
+                };
+                assert!(clip.contains_hull(hull(1.5, 2.5)));
+                assert!(!clip.contains_hull(hull(1.0, 3.0)));
+                assert!(!clip.contains_hull(hull(0.0, 4.0)));
+            }
+        }
+        let crossed = shape([[0.0, 0.0], [4.0, 4.0], [0.0, 4.0], [4.0, 0.0]]);
+        assert!(!crossed.contains_hull([Point::new(1.9, 1.9), Point::new(2.1, 2.1)]));
+    }
+}

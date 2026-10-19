@@ -15,16 +15,39 @@ impl<'a> Iterator for Runs<'a> {
     type Item = (usize, &'a [u8]);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let start = self.x + self.row.get(self.x..)?.iter().position(|&v| v != 0)?;
+        let start = self.x + find(self.row.get(self.x..)?, |v| v)?;
         let rest = &self.row[start..];
         let full = rest[0] == 255;
-        let length = rest
-            .iter()
-            .position(|&v| v == 0 || (v == 255) != full)
-            .unwrap_or(rest.len());
+        let length = if full {
+            find(rest, |v| v ^ 255)
+        } else {
+            find(rest, |v| u8::from(v == 0 || v == 255))
+        }
+        .unwrap_or(rest.len());
         self.x = start + length;
         Some((start, &self.row[start..self.x]))
     }
+}
+
+// Fixed-width byte reductions let LLVM use the same vector mechanism on
+// NEON, x86 and SIMD128. Only a block containing a boundary needs a byte search.
+fn find(row: &[u8], mismatch: impl Fn(u8) -> u8) -> Option<usize> {
+    let (blocks, tail) = row.as_chunks::<16>();
+    for (index, block) in blocks.iter().enumerate() {
+        let mut changed = 0u8;
+        for &value in block {
+            changed |= mismatch(value);
+        }
+        if changed != 0 {
+            return block
+                .iter()
+                .position(|&v| mismatch(v) != 0)
+                .map(|n| index * 16 + n);
+        }
+    }
+    tail.iter()
+        .position(|&v| mismatch(v) != 0)
+        .map(|n| blocks.len() * 16 + n)
 }
 
 #[cfg(test)]
@@ -52,5 +75,41 @@ mod tests {
         }
         assert_eq!(restored, input);
         assert!(rows(&[0; 16], 8).next().is_none());
+    }
+}
+
+#[cfg(test)]
+mod vector_tests {
+    use super::*;
+    #[test]
+    fn vector_search_finds_boundaries_in_every_lane_and_tail() {
+        for length in 1..98 {
+            assert!(rows(&vec![0; length], length).next().is_none());
+            let full = vec![255; length];
+            assert_eq!(
+                rows(&full, length).collect::<Vec<_>>(),
+                [(0, 0, full.as_slice())]
+            );
+            for index in 0..length {
+                let mut pixels = vec![0; length];
+                pixels[index] = 37;
+                assert_eq!(
+                    rows(&pixels, length).collect::<Vec<_>>(),
+                    [(0, index, &[37][..])]
+                );
+                let mut pixels = vec![255; length];
+                pixels[index] = 37;
+                let runs = rows(&pixels, length).collect::<Vec<_>>();
+                assert!(
+                    runs.iter()
+                        .all(|(_, _, v)| v.iter().all(|&n| (n == 255) == (v[0] == 255)))
+                );
+                let mut restored = vec![0; length];
+                for (_, x, values) in runs {
+                    restored[x..x + values.len()].copy_from_slice(values);
+                }
+                assert_eq!(restored, pixels);
+            }
+        }
     }
 }
