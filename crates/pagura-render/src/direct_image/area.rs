@@ -187,7 +187,14 @@ impl<'a, const N: usize> Filter<'a, N> {
             identity,
             integer: integer_samples(image),
             factor: 255.0 / f32::from((1u16 << image.decoded.bits_per_component) - 1),
-            input: filled(if integer_samples(image) { 0 } else { width }, [0.0; N])?,
+            input: filled(
+                if integer_samples(image) && N == 1 {
+                    0
+                } else {
+                    width
+                },
+                [0.0; N],
+            )?,
             work: initial_work,
             maximum: limits.raster_work,
         })
@@ -223,12 +230,21 @@ impl<'a, const N: usize> Filter<'a, N> {
                     return Err(Error::limit("integer gray plan mismatch"));
                 }
             } else {
-                super::bytes::integer_row(
-                    source,
+                // Each sample converts once; footprints then sum whole lanes.
+                let pixels = self.input.as_flattened_mut().as_chunks_mut::<4>().0;
+                for (out, sample) in pixels.iter_mut().zip(source.as_chunks::<3>().0) {
+                    *out = [
+                        f32::from(sample[0]),
+                        f32::from(sample[1]),
+                        f32::from(sample[2]),
+                        255.0,
+                    ];
+                }
+                lanes::horizontal(
+                    self.input.as_flattened().as_chunks::<4>().0,
                     &self.plan.bands,
                     &self.plan.taps,
-                    self.factor,
-                    output,
+                    output.as_flattened_mut().as_chunks_mut::<4>().0,
                 );
             }
             return Ok(());
