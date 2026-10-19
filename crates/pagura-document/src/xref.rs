@@ -317,6 +317,12 @@ fn merge_entries(
                 .at(Position::File(offset)),
         );
     }
+    // The newest section already owns a complete ordered map. With physical
+    // offsets the effective table copies it whole instead of inserting each key.
+    if table.entries.is_empty() && shift == 0 {
+        table.entries.clone_from(&entries);
+        return Ok(entries);
+    }
     for (&number, entry) in &mut entries {
         if let Location::Offset(at) = entry.location {
             entry.location = Location::Offset(

@@ -133,30 +133,44 @@ fn unicode_with(name: &[u8], dingbats: bool) -> Option<String> {
     let stem = name.split(|byte| *byte == b'.').next()?;
     let mut result = String::new();
     for component in stem.split(|byte| *byte == b'_') {
-        if let Some(text) = component_unicode(component, dingbats) {
-            result.push_str(&text);
+        match component_unicode(component, dingbats) {
+            Some(Component::Scalar(scalar)) => result.push(scalar),
+            Some(Component::Sequence(text)) => result.push_str(&text),
+            None => {}
         }
     }
     (!result.is_empty()).then_some(result)
 }
 
-fn component_unicode(component: &[u8], dingbats: bool) -> Option<String> {
+enum Component {
+    Scalar(char),
+    Sequence(String),
+}
+
+fn component_unicode(component: &[u8], dingbats: bool) -> Option<Component> {
     let component = std::str::from_utf8(component).ok()?;
     if let Ok(index) = tables::UNICODE.binary_search_by_key(&component, |(name, _)| *name) {
-        return Some(char::from_u32(tables::UNICODE[index].1)?.to_string());
+        return Some(Component::Scalar(char::from_u32(tables::UNICODE[index].1)?));
     }
     if dingbats
         && let Ok(index) =
             tables::DINGBATS_UNICODE.binary_search_by_key(&component, |(name, _)| *name)
     {
-        return Some(char::from_u32(tables::DINGBATS_UNICODE[index].1)?.to_string());
+        return Some(Component::Scalar(char::from_u32(
+            tables::DINGBATS_UNICODE[index].1,
+        )?));
     }
     if let Some(scalar) = cyrillic(component) {
-        return Some(scalar.to_string());
+        return Some(Component::Scalar(scalar));
     }
     if let Some(hex) = component.strip_prefix("uni") {
         if hex.is_empty() || !hex.len().is_multiple_of(4) || !upper_hex(hex) {
             return None;
+        }
+        if hex.len() == 4 {
+            return Some(Component::Scalar(char::from_u32(
+                u32::from_str_radix(hex, 16).ok()?,
+            )?));
         }
         // Build one component atomically: a malformed scalar invalidates this
         // component, while other underscore components remain meaningful.
@@ -165,13 +179,15 @@ fn component_unicode(component: &[u8], dingbats: bool) -> Option<String> {
             let scalar = u32::from_str_radix(std::str::from_utf8(chunk).ok()?, 16).ok()?;
             result.push(char::from_u32(scalar)?);
         }
-        return Some(result);
+        return Some(Component::Sequence(result));
     }
     let hex = component.strip_prefix('u')?;
     if !(4..=6).contains(&hex.len()) || !upper_hex(hex) {
         return None;
     }
-    Some(char::from_u32(u32::from_str_radix(hex, 16).ok()?)?.to_string())
+    Some(Component::Scalar(char::from_u32(
+        u32::from_str_radix(hex, 16).ok()?,
+    )?))
 }
 
 // Russian AFII names from the AGL data: Yo/yo interrupt the two alphabetical
@@ -234,6 +250,7 @@ mod tests {
     #[test]
     fn names_and_encoding_exceptions() -> Result<()> {
         assert_eq!(unicode(b"uni00410042_u1F600.alt").as_deref(), Some("AB😀"));
+        assert_eq!(unicode(b"Euro_uni0041D800_B").as_deref(), Some("€B"));
         for name in [b"uniD800".as_slice(), b"u110000", b"uni00e9", b"unknown"] {
             assert_eq!(unicode(name), None);
         }

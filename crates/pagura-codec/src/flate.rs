@@ -6,6 +6,7 @@
 use crate::{Predictor, output::Output, repair, syntax, tags, trailing};
 use pagura_core::{Diagnostics, Error, Result};
 
+mod adler;
 mod encode;
 mod huffman;
 mod matcher;
@@ -140,6 +141,7 @@ fn inflate(
         window,
         adler_a: 1,
         adler_b: 0,
+        adler_pending: 0,
     };
     match inflater.blocks(&mut bits) {
         Ok(()) => {
@@ -159,6 +161,8 @@ fn inflate(
                 let expected = checksum
                     .iter()
                     .fold(0_u32, |value, &byte| (value << 8) | u32::from(byte));
+                inflater.adler_a %= 65521;
+                inflater.adler_b %= 65521;
                 if expected != (inflater.adler_b << 16) | inflater.adler_a {
                     repair(
                         diagnostics,
@@ -221,6 +225,17 @@ struct Bits<'a> {
 }
 impl Bits<'_> {
     fn peek(&self, width: u8) -> (usize, u8) {
+        if let Some(bytes) = self
+            .input
+            .get(self.offset..)
+            .and_then(|tail| tail.first_chunk::<4>())
+        {
+            let value = u32::from_le_bytes(*bytes) >> self.bit;
+            return (
+                usize::try_from(value & ((1 << width) - 1)).unwrap_or(0),
+                width,
+            );
+        }
         let mut value = 0_usize;
         let mut available = 0;
         for index in 0..3 {
@@ -433,18 +448,17 @@ struct Inflater {
     window: usize,
     adler_a: u32,
     adler_b: u32,
+    adler_pending: usize,
 }
 impl Inflater {
     fn emit(&mut self, bytes: &[u8], offset: usize) -> Result<()> {
         self.output.write(bytes, offset)?;
-        for chunk in bytes.chunks(5552) {
-            for &byte in chunk {
-                self.adler_a += u32::from(byte);
-                self.adler_b += self.adler_a;
-            }
-            self.adler_a %= 65521;
-            self.adler_b %= 65521;
-        }
+        adler::update(
+            bytes,
+            &mut self.adler_a,
+            &mut self.adler_b,
+            &mut self.adler_pending,
+        );
         if let Some(history) = &mut self.history {
             history.write(bytes, offset)?;
         }
@@ -500,12 +514,38 @@ impl Inflater {
         literal: &Huffman,
         distance: &Huffman,
     ) -> InflateResult<()> {
+        // Without prediction, decoded bytes already are the DEFLATE history.
+        // Accumulate their checksum once per block rather than once per symbol.
+        if self.history.is_none() {
+            let start = self.output.buffer().len();
+            let result = self.compressed_inner::<true>(bits, literal, distance);
+            adler::update(
+                &self.output.buffer()[start..],
+                &mut self.adler_a,
+                &mut self.adler_b,
+                &mut self.adler_pending,
+            );
+            return result;
+        }
+        self.compressed_inner::<false>(bits, literal, distance)
+    }
+
+    fn compressed_inner<const RAW: bool>(
+        &mut self,
+        bits: &mut Bits<'_>,
+        literal: &Huffman,
+        distance: &Huffman,
+    ) -> InflateResult<()> {
         loop {
             match literal.read(bits)? {
                 symbol @ 0..=255 => {
                     let byte =
                         u8::try_from(symbol).map_err(|_| syntax("invalid literal", bits.offset))?;
-                    self.emit(&[byte], bits.offset)?;
+                    if RAW {
+                        self.output.literal(byte, bits.offset)?;
+                    } else {
+                        self.emit(&[byte], bits.offset)?;
+                    }
                 }
                 256 => return Ok(()),
                 symbol @ 257..=285 => {
@@ -538,26 +578,29 @@ impl Inflater {
                         .copied()
                         .ok_or_else(|| syntax("reserved DEFLATE distance", bits.offset))?;
                     let distance = base + bits.read(extra)?;
-                    self.copy(distance, length, bits.offset)?;
+                    if distance > self.window {
+                        return Err(syntax("DEFLATE distance exceeds history", bits.offset).into());
+                    }
+                    if RAW {
+                        self.output.copy(distance, length, bits.offset)?;
+                    } else {
+                        self.copy(distance, length, bits.offset)?;
+                    }
                 }
                 _ => return Err(syntax("reserved DEFLATE literal", bits.offset).into()),
             }
         }
     }
     fn copy(&mut self, distance: usize, length: usize, offset: usize) -> Result<()> {
-        if distance > self.window {
-            return Err(syntax("DEFLATE distance exceeds history", offset));
-        }
         let mut scratch = [0; 258];
         let seed = distance.min(length);
         let target = scratch
             .get_mut(..seed)
             .ok_or_else(|| syntax("invalid DEFLATE copy length", offset))?;
-        if let Some(history) = &self.history {
-            history.seed(distance, target, offset)?;
-        } else {
-            target.copy_from_slice(self.output.history(distance, seed, offset)?);
-        }
+        let Some(history) = &self.history else {
+            return Err(syntax("DEFLATE distance exceeds history", offset));
+        };
+        history.seed(distance, target, offset)?;
         self.output.check(length, offset)?;
         let mut filled = seed;
         while filled < length {

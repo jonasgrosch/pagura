@@ -50,19 +50,32 @@ impl Output {
         })
     }
 
-    // Predictor-free inflation can use the decoded output as its history.
-    pub(crate) fn history(&self, distance: usize, length: usize, offset: usize) -> Result<&[u8]> {
+    pub(crate) fn buffer(&self) -> &[u8] {
+        &self.bytes
+    }
+
+    // These two operations are selected only when prediction is absent.
+    pub(crate) fn literal(&mut self, byte: u8, offset: usize) -> Result<()> {
+        self.reserve(1, offset)?;
+        self.bytes.push(byte);
+        Ok(())
+    }
+
+    pub(crate) fn copy(&mut self, distance: usize, length: usize, offset: usize) -> Result<()> {
         let start = self
             .bytes
             .len()
             .checked_sub(distance)
+            .filter(|_| distance != 0)
             .ok_or_else(|| syntax("DEFLATE distance exceeds history", offset))?;
-        let end = start
-            .checked_add(length)
-            .ok_or_else(|| crate::limit(offset))?;
-        self.bytes
-            .get(start..end)
-            .ok_or_else(|| syntax("DEFLATE distance exceeds history", offset))
+        self.reserve(length, offset)?;
+        let mut remaining = length;
+        while remaining != 0 {
+            let count = remaining.min(self.bytes.len() - start);
+            self.bytes.extend_from_within(start..start + count);
+            remaining -= count;
+        }
+        Ok(())
     }
 
     // PNG tags belong to pre-predictor history, but not to the decoded cap.
