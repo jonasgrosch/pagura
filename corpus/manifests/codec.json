@@ -4352,6 +4352,29 @@
       "oracle_source": "independent Python standard-library/format encoder"
     },
     {
+      "id": "codec/flate-dynamic-length15-match",
+      "kind": "vector",
+      "description": "flate dynamic length15 match",
+      "requirements": [
+        "filter-flate"
+      ],
+      "files": {
+        ".in": {
+          "path": "corpus/generated/codec/flate-dynamic-length15-match.in",
+          "sha256": "f6f75c36028e91e4248ca6da66f31eb7c04c9688d29985b73e2af88380ac85b8"
+        },
+        ".out": {
+          "path": "corpus/generated/codec/flate-dynamic-length15-match.out",
+          "sha256": "48f82315eb7e5bcd88b3c92961751f55fdd2a1b22fc973edfb7076d8f7cbcbe4"
+        },
+        ".params": {
+          "path": "corpus/generated/codec/flate-dynamic-length15-match.params",
+          "sha256": "8a7fde8d5bedffbf64622dc2e3ac5aa3f21837c0eebae8e86a18106b7f43c5ee"
+        }
+      },
+      "oracle_source": "independent Python standard-library/format encoder"
+    },
+    {
       "id": "codec/flate-dynamic-single-empty-distance",
       "kind": "vector",
       "description": "flate dynamic single empty distance",

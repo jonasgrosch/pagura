@@ -344,6 +344,13 @@ def cases():
     encoded = dynamic(lengths, [0], [65, 78, 65, 256])
     assert zlib.decompress(encoded, -15) == b"ANA"
     yield vector("flate-dynamic-length15", encoded, b"ANA", "filter-flate", raw=1)
+    # Codes of every length 1-15 in both alphabets: a 15-bit length code and
+    # a 15-bit distance code in one match, past any single-lookup table.
+    distances = [15, 15] + list(range(14, 0, -1))
+    plain = bytes(range(78, 64, -1)) + b"AAA"
+    encoded = dynamic(lengths, distances, list(range(78, 64, -1)) + [(257, 0, 0, 0, 0, 0), 256])
+    assert zlib.decompress(encoded, -15) == plain
+    yield vector("flate-dynamic-length15-match", encoded, plain, "filter-flate", raw=1)
     lengths = [0] * 257
     lengths[256] = 1
     encoded = dynamic(lengths, [0], [256])

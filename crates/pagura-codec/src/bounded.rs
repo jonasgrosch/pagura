@@ -32,10 +32,16 @@ pub(crate) fn filled<T: Clone>(len: usize, value: T) -> Result<Vec<T>> {
 /// the allocation fails.
 pub(crate) fn with_capacity<T>(capacity: usize) -> Result<Vec<T>> {
     let mut values = Vec::new();
-    values
-        .try_reserve_exact(capacity)
-        .map_err(|_| Error::limit(SCRATCH))?;
+    reserve(&mut values, capacity)?;
     Ok(values)
+}
+
+/// Makes room for `additional` more values, without aborting when the
+/// allocation fails.
+pub(crate) fn reserve<T>(values: &mut Vec<T>, additional: usize) -> Result<()> {
+    values
+        .try_reserve_exact(additional)
+        .map_err(|_| Error::limit(SCRATCH))
 }
 
 /// Bytes charged to a [`Meter`] before they are stored. Capacity doubles

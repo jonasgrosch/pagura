@@ -18,8 +18,6 @@ const CHUNK_FIELDS: usize = 12;
 const IHDR_LENGTH: usize = 13;
 /// Signature, IHDR, one IDAT and IEND without image data.
 const FRAMING: usize = SIGNATURE.len() + 3 * CHUNK_FIELDS + IHDR_LENGTH;
-/// The shortest complete zlib stream [`flate::compress`] emits.
-const MIN_ZLIB: usize = 8;
 /// The largest image dimension and chunk length, 2^31 - 1 (5.3, 11.2.2).
 const MAX_FIELD: u32 = 0x7fff_ffff;
 /// Sample depth: this encoder writes eight bits per sample.
@@ -140,7 +138,7 @@ pub fn encode(pixels: &[u8], width: u32, height: u32, options: &Options) -> Resu
     if pixels.len() != size {
         return Err(Error::invalid_argument("PNG pixel byte count mismatch"));
     }
-    if options.limits.stream_bytes < FRAMING + MIN_ZLIB {
+    if options.limits.stream_bytes < FRAMING + flate::MIN_STREAM {
         return Err(encode_limit());
     }
     let row_bytes = width.checked_mul(channels).ok_or(encode_limit())?;
