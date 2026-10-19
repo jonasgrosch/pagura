@@ -364,6 +364,7 @@
         "paint/image-area-quarter",
         "paint/image-area-sheared",
         "pagura-render compositor::images::tests::scalar_cache_uses_component_precision_for_mixed_samples",
+        "pagura-render::tests::image_reduction_half_levels_choose_a_nearest_level",
         "paint/image-area-separable",
         "paint/image-area-separable-colour-key",
         "paint/image-area-tie-1024-159",
@@ -377,7 +378,7 @@
       "review": [
         {
           "locator": "8.9.5.3",
-          "rule": "Implementation policy: nearest neighbours or bilinear associated colour/alpha for magnification, per Interpolate; exact source-cell footprint area integration for minification. Global device coordinates preserve tile parity. Axis-aligned area integration is separable; two boundary rows per column bound temporary storage independently of source height. Threshold oracles use exact rational half-up means.",
+          "rule": "Implementation policy: nearest neighbours or bilinear associated colour/alpha for magnification, per Interpolate; exact source-cell footprint area integration for minification. Global device coordinates preserve tile parity. Axis-aligned area integration is separable; two boundary rows per column bound temporary storage independently of source height. Threshold oracles use exact rational half-up means. Three half-level fixtures admit either adjacent level under ADR 0004; a separate nearest-level assertion excludes the farther byte allowed by a rounded-oracle tolerance.",
           "verdict": "verified against local primary text; device policy identified explicitly"
         }
       ]

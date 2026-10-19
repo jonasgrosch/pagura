@@ -641,6 +641,8 @@ def damaged_glyph_case():
 def separable_area_cases():
     # Four equal source-cell areas per device pixel. Include half-level ties
     # and associated colour/alpha; expectations use integers alone.
+    # ADR 0004 admits either neighbour at a half level; a separate test
+    # checks this tighter interval instead of only the rounded-byte tolerance.
     data = list(range(24))
     for masked in (False, True):
         marks = []
@@ -652,18 +654,18 @@ def separable_area_cases():
         name = 'image-area-separable'+('-colour-key' if masked else '')
         image = stream(bytes(data),b'/Subtype /Image /Width 6 /Height 4 /BitsPerComponent 8 /ColorSpace /DeviceGray'+(b' /Mask [0 0]' if masked else b''))
         yield case(name,b'q 3 0 0 2 2 2 cm /I Do Q',[image],b'<< /XObject << /I 5 0 R >> >>',
-                   rectangles=marks,requirement='paint-image-resampling')
+                   rectangles=marks,tolerance=1,requirement='paint-image-resampling')
 
 
 def area_threshold_cases():
     # Equal counts of adjacent 8-bit levels give the exact rational mean
     # (2*lo+1)/2. The independent half-up oracle is therefore lo+1.
-    for n, lo in [(1024,159),(2048,95),(2048,223),(2048,253)]:
+    for n, lo, tolerance in [(1024,159,1),(2048,95,0),(2048,223,0),(2048,253,0)]:
         image = stream(zlib.compress(bytes([lo,lo+1])*(n*n//2)),
                        b'/Subtype /Image /Width %d /Height %d /BitsPerComponent 8 /ColorSpace /DeviceGray /Filter /FlateDecode' % (n,n))
         yield case('image-area-tie-%d-%d'%(n,lo),b'/I Do',[image],
                    b'<< /XObject << /I 5 0 R >> >>',size=1,
-                   oracle=b'P6\n1 1\n255\n'+bytes([lo+1])*3,
+                   oracle=b'P6\n1 1\n255\n'+bytes([lo+1])*3,tolerance=tolerance,
                    requirement='paint-image-resampling')
     # Its exact covered area is 10^-307, below half a coverage level.
     # Sampling is never requested, even if source-coordinate scaling overflows.

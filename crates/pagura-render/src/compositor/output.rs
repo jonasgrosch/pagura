@@ -1,4 +1,5 @@
 //! RGB output without colour-space or transfer dispatch per pixel (11.3.3).
+//! Bounded page storage rounds each level once to the nearest byte (ADR 0004).
 
 use super::{Context, Model, Pixel, Surface, quantize};
 use crate::Tile;
@@ -14,9 +15,31 @@ impl Context {
         output: &mut Pixmap,
         tile: Tile,
     ) -> Result<()> {
-        let Tile { x, y, width, .. } = page.tile;
+        let Tile {
+            x,
+            y,
+            width,
+            height,
+        } = page.tile;
         let stride =
             usize::try_from(tile.width).map_err(|_| Error::limit("output width exceeds usize"))?;
+        let origin = usize::try_from(y - tile.y)
+            .map_err(|_| Error::limit("output row exceeds usize"))?
+            * stride
+            + usize::try_from(x - tile.x)
+                .map_err(|_| Error::limit("output column exceeds usize"))?;
+        if let Some(buffer) = page.narrow() {
+            // Admission keeps spot passes and transfer feeds on f64 storage.
+            let width = width as usize;
+            for row in 0..height as usize {
+                let start = origin + row * stride;
+                buffer.output(
+                    row * width,
+                    &mut output.data_mut()[start * 4..(start + width) * 4],
+                );
+            }
+            return Ok(());
+        }
         for (row, pixels) in page
             .pixels()
             .chunks_exact(
@@ -24,12 +47,7 @@ impl Context {
             )
             .enumerate()
         {
-            let start = (usize::try_from(y - tile.y)
-                .map_err(|_| Error::limit("output row exceeds usize"))?
-                + row)
-                * stride
-                + usize::try_from(x - tile.x)
-                    .map_err(|_| Error::limit("output column exceeds usize"))?;
+            let start = origin + row * stride;
             if model == Model::Rgb && spots.is_empty() && self.transfers.is_none() {
                 rgb(
                     output.data_mut()[start * 4..(start + pixels.len()) * 4]
@@ -133,5 +151,44 @@ mod tests {
             output,
             [[128, 64, 255, 255], [32, 96, 192, 160], [17, 85, 170, 64]]
         );
+    }
+
+    #[test]
+    fn direct_rgb_output_matches_the_general_f64_evaluation() {
+        let values = [
+            -0.0,
+            0.0,
+            f64::MIN_POSITIVE,
+            0.3,
+            0.5,
+            1.0,
+            f64::INFINITY,
+            f64::NAN,
+        ];
+        for alpha in [0.0, 0.5, 1.0] {
+            for color in values {
+                for background in [[0; 4], [17, 35, 61, 96], [255; 4]] {
+                    let pixel = Pixel {
+                        color: [color; 4],
+                        alpha,
+                        ..Pixel::default()
+                    };
+                    let mut expected = background;
+                    if alpha != 0.0 {
+                        let color = Model::Rgb.rgb(pixel.straight());
+                        for (i, out) in expected.iter_mut().enumerate().take(3) {
+                            *out = quantize(
+                                color[i] * alpha + f64::from(*out) / 255.0 * (1.0 - alpha),
+                            );
+                        }
+                        expected[3] =
+                            quantize(alpha + f64::from(expected[3]) / 255.0 * (1.0 - alpha));
+                    }
+                    let mut actual = [background];
+                    rgb(&mut actual, &[pixel]);
+                    assert_eq!(actual, [expected], "{color} at alpha {alpha}");
+                }
+            }
+        }
     }
 }

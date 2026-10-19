@@ -3244,7 +3244,7 @@
       "dpi": 72,
       "width": 32,
       "height": 32,
-      "tolerance": 0
+      "tolerance": 1
     },
     {
       "id": "paint/image-area-separable-colour-key",
@@ -3264,7 +3264,7 @@
       "dpi": 72,
       "width": 32,
       "height": 32,
-      "tolerance": 0
+      "tolerance": 1
     },
     {
       "id": "paint/image-area-tie-1024-159",
@@ -3284,7 +3284,7 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 0
+      "tolerance": 1
     },
     {
       "id": "paint/image-area-tie-2048-95",

@@ -8,6 +8,8 @@ use pagura_image::{ImageKind, MaskKind, Samples};
 use pagura_raster::{FillRule, PathBuilder, Transform};
 
 impl Context {
+    // Keep sampling and painting out of the command dispatch.
+    #[inline(never)]
     pub(super) fn image(
         &mut self,
         command: &ImageCommand,
@@ -91,6 +93,10 @@ impl Context {
                     .copied()
                     .unwrap_or(1.0);
                 self.image_transfer(command, (x, y), source)?;
+                if let Some(buffer) = target.narrow_mut() {
+                    buffer.paint(index, source.apply(&command.composite, mask))?;
+                    continue;
+                }
                 target
                     .pixels_mut()
                     .get_mut(index)
@@ -525,6 +531,7 @@ mod tests {
             function_work: 0,
             soft_source: false,
             transfers: None,
+            viewport: None,
         }
     }
 

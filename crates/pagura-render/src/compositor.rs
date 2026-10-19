@@ -1,6 +1,5 @@
-//! Floating-point group composition; quantization occurs at the output boundary.
-//!
-//! Intermediate channels, alpha and shape use f64 by project policy. Group
+//! Bounded Normal composition with statically selected N16/F32 page storage.
+//! Other group buffers retain f64 channels, alpha and shape (ADR 0004). Group
 //! blending spaces follow 11.7.2. Non-isolated
 //! group colours have their initial backdrop removed before final composition
 //! (11.4.4). Knockout replaces prior contributions according to shape, not alpha.
@@ -8,9 +7,11 @@
 mod colorants;
 pub(crate) use colorants::Separations;
 mod images;
+mod narrow;
 mod opaque_image;
 mod output;
 mod patterns;
+mod plan;
 mod reduced;
 mod regions;
 mod sampled;
@@ -149,6 +150,12 @@ impl Source {
             spot: false,
         }
     }
+    fn covered(mut self, coverage: u8) -> Self {
+        let factor = f64::from(coverage) / 255.0;
+        self.alpha *= factor;
+        self.shape *= factor;
+        self
+    }
     fn apply(mut self, state: &Composite, mask: f64) -> Self {
         let factor = state.alpha * mask;
         self.alpha *= factor;
@@ -200,6 +207,7 @@ struct Context {
     function_work: usize,
     soft_source: bool,
     transfers: Option<transfer::Regions>,
+    viewport: Option<Tile>,
 }
 struct CachedMask {
     id: usize,
@@ -208,6 +216,54 @@ struct CachedMask {
     values: Arc<Vec<f64>>,
 }
 impl Context {
+    fn new(
+        list: &DisplayList,
+        options: &RenderOptions,
+        plan: &plan::Plan,
+        separations: Arc<Separations>,
+    ) -> Result<Self> {
+        let mut crop = PathBuilder::new();
+        crop.rect(
+            list.crop.x0,
+            list.crop.y0,
+            list.crop.width(),
+            list.crop.height(),
+        );
+        let transfers = transfer::Regions::new(&list.commands, list.limits)?;
+        let allocated = transfers.as_ref().map_or(0, transfer::Regions::bytes);
+        let elide_opaque_groups = plan.format == plan::Format::F64
+            && !separations.enabled
+            && !list.group.knockout
+            && list.group.model.is_none_or(|m| m == Model::Rgb)
+            && normal_scene(&list.commands);
+        Ok(Self {
+            overprint: options.overprint.resolve(list.print_intent),
+            separations,
+            preview: colorants::Preview::default(),
+            spot_batch: None,
+            mask_colors: false,
+            elide_opaque_groups,
+            raster: pagura_raster::Rasterizer::default(),
+            bounds: regions::Prepared::new(
+                list.device_transform(options),
+                list.limits.decoded_bytes,
+            ),
+            glyphs: crate::display::GlyphCache::new(list.limits.decoded_bytes),
+            limits: list.limits,
+            device: list.device_transform(options),
+            page_device: list.device_transform(options),
+            view_unit: list.user_unit,
+            crop: crop.finish(),
+            allocated,
+            work: plan.work,
+            clip: None,
+            mask: None,
+            function_work: 0,
+            soft_source: false,
+            transfers,
+            viewport: None,
+        })
+    }
     fn region(&mut self, group: &Group, tile: Tile) -> Result<Option<Tile>> {
         group_region(
             group,
@@ -280,7 +336,31 @@ impl Context {
         }
         Ok(Surface::new(tile, pixels))
     }
+    fn page_surface(
+        &mut self,
+        tile: Tile,
+        format: plan::Format,
+        background: [u8; 4],
+    ) -> Result<Surface> {
+        if format == plan::Format::F64 {
+            return self.surface(tile, Backdrop::Transparent);
+        }
+        let count = tile.width as usize * tile.height as usize;
+        let bytes = count * if format == plan::Format::N16 { 8 } else { 16 };
+        self.trim_raster(bytes);
+        self.allocated = self
+            .allocated
+            .checked_add(bytes)
+            .filter(|&n| n <= self.limits.decoded_bytes)
+            .ok_or(Error::limit("colour buffer memory exceeded"))?;
+        self.charge(count)?;
+        Ok(Surface::with_buffer(
+            tile,
+            narrow::Buffer::new(format, count, background)?,
+        ))
+    }
     fn clip(&mut self, clip: Option<&Arc<Clip>>, tile: Tile) -> Result<Arc<Mask>> {
+        let tile = self.viewport.unwrap_or(tile);
         let id = clip.map_or(0, |c| Arc::as_ptr(c) as usize);
         if let Some((key, region, mask)) = &self.clip
             && *key == id
@@ -367,9 +447,15 @@ impl Context {
                 {
                     Ok(())
                 }
-                Command::Glyphs(run) => {
-                    self.glyphs(run, target.tile, target, initial, model, knockout, depth)
-                }
+                Command::Glyphs(run) => self.glyphs(
+                    run,
+                    self.viewport.unwrap_or(target.tile),
+                    target,
+                    initial,
+                    model,
+                    knockout,
+                    depth,
+                ),
                 Command::Path(path) => self.path(path, target, initial, model, knockout, depth),
                 Command::Image(image) => self.image(image, target, initial, model, knockout, depth),
                 Command::Shading(shading) => {
@@ -488,7 +574,14 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
-        self.path_in((p, target.tile), target, initial, model, knockout, depth)
+        self.path_in(
+            (p, self.viewport.unwrap_or(target.tile)),
+            target,
+            initial,
+            model,
+            knockout,
+            depth,
+        )
     }
     fn path_in(
         &mut self,
@@ -509,6 +602,27 @@ impl Context {
         self.raster.recycle(mask);
         result
     }
+    // Admission fixes the page and its flattened descendants to RGB.
+    fn narrow_path(&mut self, p: &PathCommand, mask: &Mask, target: &mut Surface) -> Result<()> {
+        let color = self.color(&p.color, Model::Rgb, &p.composite, true)?.color;
+        self.charge(mask.coverage().len())?;
+        let tile = target.tile;
+        let buffer = target
+            .narrow_mut()
+            .ok_or(Error::invalid_argument("missing colour buffer"))?;
+        let stride = tile.width as usize;
+        let (x, y) = mask.origin();
+        let offset = (y - tile.y) as usize * stride + (x - tile.x) as usize;
+        for (row, column, coverage) in mask.spans() {
+            buffer.path(
+                offset + row * stride + column,
+                coverage,
+                color,
+                p.composite.alpha,
+            )?;
+        }
+        Ok(())
+    }
     fn paint_path(
         &mut self,
         (p, mask): (&PathCommand, &Mask),
@@ -518,6 +632,9 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
+        if target.narrow().is_some() {
+            return self.narrow_path(p, mask, target);
+        }
         if let crate::color::Color::Pattern {
             selected: Some(pattern),
             ..
@@ -601,17 +718,12 @@ impl Context {
                     .and_then(|m| m.get(index))
                     .copied()
                     .unwrap_or(1.0);
-                let shape = f64::from(coverage) / 255.0;
                 let source = if let Some(color) = color {
-                    Source {
-                        alpha: shape,
-                        shape,
-                        ..color
-                    }
+                    color.covered(coverage)
                 } else if let (Some(pattern), Some(inverse)) = (&pattern, inverse) {
                     let rate = if pattern.shading.antialias { 2 } else { 1 };
                     self.charge(rate * rate)?;
-                    let Some(mut source) = self.shading_sample(
+                    let Some(source) = self.shading_sample(
                         pattern,
                         inverse,
                         (x, y),
@@ -624,9 +736,7 @@ impl Context {
                     else {
                         continue;
                     };
-                    source.alpha *= shape;
-                    source.shape *= shape;
-                    source
+                    source.covered(coverage)
                 } else {
                     return Err(Error::invalid_argument("missing pattern source"));
                 };
@@ -715,6 +825,28 @@ impl Context {
         }
         Ok(Some(mask))
     }
+    fn narrow_group(
+        &mut self,
+        group: &Group,
+        parent: &mut Surface,
+        model: Model,
+        tile: Tile,
+        depth: usize,
+    ) -> Result<()> {
+        let viewport = self.viewport.replace(tile);
+        self.clip = None;
+        let result = self.commands(
+            &group.commands,
+            parent,
+            Backdrop::Transparent,
+            model,
+            false,
+            depth + 1,
+        );
+        self.viewport = viewport;
+        self.clip = None;
+        result
+    }
     fn opaque_group(
         &mut self,
         group: &Group,
@@ -768,14 +900,15 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
-        let Some(tile) = self.region(group, parent.tile)? else {
+        let Some(tile) = self.region(group, self.viewport.unwrap_or(parent.tile))? else {
             return Ok(());
         };
+        if parent.narrow().is_some() {
+            return self.narrow_group(group, parent, parent_model, tile, depth);
+        }
         // For opaque Normal members, knockout's shape-weighted replacement
         // reduces to source-over (9.3.8, 11.4.6). Keep the group's mask viewport
         // even though its intermediate colour surface is unnecessary.
-        // The scene preflight validated every retained knockout group. Masks
-        // and patterns disable elision, so no dynamic group bypasses that check.
         if self.elide_opaque_groups && !knockout && group.attributes.knockout {
             return self.opaque_group(group, parent, parent_model, tile, depth);
         }
@@ -867,6 +1000,8 @@ impl Context {
         self.allocated -= surface.bytes();
         Ok(())
     }
+    // Keep sampling and painting out of the command dispatch.
+    #[inline(never)]
     fn shading(
         &mut self,
         command: &crate::display::ShadingCommand,
@@ -933,6 +1068,10 @@ impl Context {
                     source,
                     true,
                 )?;
+                if let Some(buffer) = target.narrow_mut() {
+                    buffer.paint(index, source.apply(&command.composite, mask))?;
+                    continue;
+                }
                 target
                     .pixels_mut()
                     .get_mut(index)
@@ -1149,77 +1288,49 @@ impl Context {
     }
 }
 
-impl Context {
-    /// The compositor state for one render of `list`, and its page blending model.
-    fn page(list: &DisplayList, options: &RenderOptions) -> Result<(Self, Model)> {
-        let mut crop = PathBuilder::new();
-        crop.rect(
-            list.crop.x0,
-            list.crop.y0,
-            list.crop.width(),
-            list.crop.height(),
-        );
-        let mut context = Self {
-            overprint: options.overprint.resolve(list.print_intent),
-            separations: list.preview_separations(options)?,
-            preview: colorants::Preview::default(),
-            spot_batch: None,
-            mask_colors: false,
-            elide_opaque_groups: !list.group.knockout
-                && list.group.model.is_none_or(|m| m == Model::Rgb)
-                && normal_scene(&list.commands),
-            raster: pagura_raster::Rasterizer::default(),
-            bounds: regions::Prepared::new(
-                list.device_transform(options),
-                list.limits.decoded_bytes,
-            ),
-            glyphs: crate::display::GlyphCache::new(list.limits.decoded_bytes),
-            limits: list.limits,
-            device: list.device_transform(options),
-            page_device: list.device_transform(options),
-            view_unit: list.user_unit,
-            crop: crop.finish(),
-            allocated: 0,
-            work: 0,
-            clip: None,
-            mask: None,
-            function_work: 0,
-            soft_source: false,
-            transfers: transfer::Regions::new(&list.commands, list.limits)?,
-        };
-        context.allocated = context
-            .transfers
-            .as_ref()
-            .map_or(0, transfer::Regions::bytes);
-        let model = list.group.model.unwrap_or(if context.separations.enabled {
-            Model::Cmyk
-        } else {
-            Model::Rgb
-        });
-        context.elide_opaque_groups &= !context.separations.enabled;
-        Ok((context, model))
-    }
-}
-
+// Keep the large general compositor out of the opaque page dispatch.
+#[inline(never)]
 pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
-    let (mut context, model) = Context::page(list, options)?;
+    let separations = list.preview_separations(options)?;
+    let plan = plan::page(list, &separations)?;
+    let mut context = Context::new(list, options, &plan, separations)?;
+    let model = list.group.model.unwrap_or(if context.separations.enabled {
+        Model::Cmyk
+    } else {
+        Model::Rgb
+    });
     let mut output =
         Pixmap::new_with_limits(tile.width, tile.height, options.background, list.limits)?;
     // Keep the high-precision page backdrop bounded too. Global device
     // coordinates preserve exact tile parity; one work budget spans all chunks.
     let mut y = tile.y;
     while y < tile.y + tile.height {
-        let height = (tile.y + tile.height - y).min(256);
+        let height = (tile.y + tile.height - y).min(plan.side);
         let mut x = tile.x;
         while x < tile.x + tile.width {
-            let width = (tile.x + tile.width - x).min(256);
+            let width = (tile.x + tile.width - x).min(plan.side);
             let region = Tile {
                 x,
                 y,
                 width,
                 height,
             };
-            context.render_chunk(list, model, &mut output, tile, region)?;
+            context.render_chunk(
+                list,
+                model,
+                &mut output,
+                tile,
+                region,
+                (
+                    plan.format,
+                    [
+                        options.background.r,
+                        options.background.g,
+                        options.background.b,
+                        options.background.a,
+                    ],
+                ),
+            )?;
             x += width;
         }
         y += height;
@@ -1235,6 +1346,7 @@ impl Context {
         output: &mut Pixmap,
         tile: Tile,
         region: Tile,
+        (format, background): (plan::Format, [u8; 4]),
     ) -> Result<()> {
         if let [Command::Image(image)] = list.commands.as_slice()
             && !list.group.knockout
@@ -1245,7 +1357,7 @@ impl Context {
         self.clip = None;
         self.discard_mask();
         self.begin_transfers(region)?;
-        let mut page = self.surface(region, Backdrop::Transparent)?;
+        let mut page = self.page_surface(region, format, background)?;
         self.commands(
             &list.commands,
             &mut page,
@@ -1543,6 +1655,34 @@ mod tests {
     }
 
     #[test]
+    fn full_normal_stores_preserve_the_f64_evaluation() {
+        let state = Composite::opaque();
+        for alpha in [0.0, 1.0] {
+            for backdrop in [-0.0, 0.0, 0.1, 0.5, 1.0] {
+                for source in [-0.0, 0.0, f64::MIN_POSITIVE, 0.3, 0.5, 1.0] {
+                    let mut pixel = Pixel {
+                        color: [backdrop; 4],
+                        alpha,
+                        group: 0.5,
+                        shape: 0.25,
+                    };
+                    let opacity = 1.0;
+                    let expected = (1.0 - opacity) * backdrop
+                        + opacity * ((1.0 - alpha) * source + alpha * source);
+                    pixel.paint(
+                        Source::new([source; 4], 1.0, 1.0),
+                        &state,
+                        Pixel::default(),
+                        false,
+                        Model::Rgb,
+                    );
+                    assert_eq!(pixel.color.map(f64::to_bits), [expected.to_bits(); 4]);
+                    assert_eq!([pixel.alpha, pixel.group, pixel.shape], [1.0; 3]);
+                }
+            }
+        }
+    }
+    #[test]
     fn sole_rgb_images_preserve_work_and_surface_admission() {
         let mut list = overprint_list(include_bytes!(
             "../../../corpus/generated/paint/image-page-rgb.pdf"
@@ -1569,6 +1709,8 @@ mod tests {
         list.limits.decoded_bytes = 32 * 32 * size_of::<Pixel>();
         assert_eq!(list.render(&options).unwrap(), expected);
         list.limits.decoded_bytes -= 1;
+        assert_eq!(list.render(&options).unwrap(), expected);
+        list.limits.decoded_bytes = 1000;
         assert_eq!(
             list.render(&options).unwrap_err().kind,
             pagura_core::ErrorKind::Limit
@@ -1591,7 +1733,10 @@ mod tests {
                 unreachable!();
             };
             let options = RenderOptions::default();
-            let (mut context, model) = Context::page(&list, &options).unwrap();
+            let separations = list.preview_separations(&options).unwrap();
+            let plan = plan::page(&list, &separations).unwrap();
+            let mut context = Context::new(&list, &options, &plan, separations).unwrap();
+            let model = Model::Rgb;
             let (width, height) = list.device_size(&options).unwrap();
             let tile = Tile {
                 x: 0,
@@ -1696,6 +1841,7 @@ mod tests {
             function_work: 0,
             soft_source: false,
             transfers: None,
+            viewport: None,
         };
         // Rectangles take a closed form without sweep scratch; warm it with a triangle.
         let mut warm = PathBuilder::new();
@@ -1768,6 +1914,7 @@ mod tests {
             function_work: 0,
             soft_source: false,
             transfers: None,
+            viewport: None,
         }
     }
     fn glyph_run() -> crate::display::GlyphRun {

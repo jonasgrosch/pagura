@@ -603,7 +603,7 @@ fn compositing_memory_work_and_shared_function_budgets_are_bounded() {
         (
             "group-i1-k0",
             pagura_core::Limits {
-                decoded_bytes: 3600,
+                decoded_bytes: 1000,
                 ..pagura_core::Limits::default()
             },
         ),
@@ -649,6 +649,23 @@ fn compositing_memory_work_and_shared_function_budgets_are_bounded() {
         list.render(&RenderOptions::default()).unwrap_err().kind,
         ErrorKind::Limit
     );
+    // The F32 page now fits the former F64-sized threshold. Keep a
+    // successful admission beside the smaller-budget rejection above.
+    let document = Document::open(
+        pagura_testkit::fixture("content", "group-i1-k0.pdf"),
+        &OpenOptions {
+            limits: pagura_core::Limits {
+                decoded_bytes: 3600,
+                ..pagura_core::Limits::default()
+            },
+            ..OpenOptions::default()
+        },
+    )
+    .unwrap();
+    compile_page(&document, document.page(0).unwrap())
+        .unwrap()
+        .render(&RenderOptions::default())
+        .unwrap();
     for name in ["group-i1-k0", "soft-Alpha", "annotation"] {
         let document = Document::open(
             pagura_testkit::fixture("content", &format!("{name}.pdf")),
@@ -951,6 +968,80 @@ fn empty_fill_boundaries_match_oracles_and_device_tiles() {
                     .unwrap();
                 let i = usize::try_from((y * 8 + x) * 4).unwrap();
                 assert_eq!(tile.data(), &full.data()[i..i + 4], "{name} ({x},{y})");
+            }
+        }
+    }
+}
+
+#[test]
+fn image_tiles_preserve_global_coordinates_at_large_scales() {
+    for turn in 0..4 {
+        let document = Document::open(
+            pagura_testkit::fixture("paint", &format!("image-quarter-turn-{turn}.pdf")),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let list = compile_page(&document, document.page(0).unwrap()).unwrap();
+        let options = RenderOptions {
+            scale: 41.1,
+            background: Rgba8::new(17, 35, 61, 96),
+            ..RenderOptions::default()
+        };
+        let full = list.render(&options).unwrap();
+        for y in (0..full.height()).step_by(133) {
+            for x in (0..full.width()).step_by(197) {
+                let tile = Tile {
+                    x,
+                    y,
+                    width: (full.width() - x).min(197),
+                    height: (full.height() - y).min(133),
+                };
+                let piece = list.render_tile(&options, tile).unwrap();
+                for row in 0..tile.height {
+                    let start = usize::try_from(((y + row) * full.width() + x) * 4).unwrap();
+                    let local = usize::try_from(row * tile.width * 4).unwrap();
+                    let bytes = usize::try_from(tile.width * 4).unwrap();
+                    assert_eq!(
+                        &piece.data()[local..local + bytes],
+                        &full.data()[start..start + bytes],
+                        "quarter turn {turn}, at {x},{y}, row {row}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn image_reduction_half_levels_choose_a_nearest_level() {
+    // The independently generated 2x2 means are 3.5, 5.5, 7.5, 15.5,
+    // 17.5 and 19.5. Colour-key replacement makes only the first mean 67.25.
+    for name in [
+        "image-area-separable",
+        "image-area-separable-colour-key",
+        "image-area-tie-1024-159",
+    ] {
+        let document = Document::open(
+            pagura_testkit::fixture("paint", &format!("{name}.pdf")),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let list = compile_page(&document, document.page(0).unwrap()).unwrap();
+        let output = list.render(&RenderOptions::default()).unwrap();
+        let actual = output.to_rgb_over(Rgba8::WHITE);
+        let oracle = pagura_testkit::fixture("paint", &format!("{name}.ppm"));
+        let expected = oracle.splitn(4, |&b| b == b'\n').nth(3).unwrap();
+        assert_eq!(actual.len(), expected.len());
+        for (&a, &e) in actual.iter().zip(expected) {
+            let halfway = if name == "image-area-tie-1024-159" {
+                true
+            } else {
+                matches!(e, 4 | 6 | 8 | 16 | 18 | 20)
+            };
+            if halfway {
+                assert!(a == e || a == e - 1, "{name}: {a} near {e}-0.5");
+            } else {
+                assert_eq!(a, e, "{name}: exact non-half level");
             }
         }
     }

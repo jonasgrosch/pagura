@@ -183,3 +183,72 @@ n <= 512, snapping and crossing error is at most (2.5n + 7)u; including byte
 quantization, error remains below 0.813 levels. Curve flattening retains its
 separate tolerance. Originally degenerate subpaths retain the existing
 floor-cell policy before snapping. Tiles must assemble byte-identically.
+
+## Amendment: bounded storage for general composition (2026-10-19)
+
+Status: accepted, 2026-10-19.
+
+The existing opaque renderer and its eligibility test remain unchanged.
+Preserve the sole opaque RGB page-image copy ahead of general composition;
+when it declines, use the selected general buffer and its actual-byte
+admission. Its documented per-mark 8-bit accumulation defect is a separate
+decision. These rules apply only where the general compositor runs (ISO
+32000-2, 11.3.3, 11.4.4 and 11.4.6).
+
+Choose the format before the buffer's first store, independently of the
+requested device tile. Keep geometry, coverage construction, source colour
+conversion, image reconstruction and prepared sampling in their existing
+precision. Admit narrow storage only for RGB Normal source-over with
+associative groups, including the existing opaque-member knockout identity. A
+retained group, root knockout, non-RGB group, soft mask, pattern, transfer
+feed, other blend mode or failed numerical bound conservatively fixes the
+entire general page on f64. Active CMYK simulation devices and every spot pass
+also remain f64, including RGB groups within them. Amplifying feeds use f64
+from their first store. Independent narrow child buffers, promotion and buffer
+pools remain deferred.
+
+N16 stores four u16 words at 257 words per output level, using 8 bytes per
+pixel. Background bytes embed as b*257. Encode a source level L=255*clamp(S)
+by rounding 257*L; choose the adjacent word when necessary to preserve
+round(L) at the final byte boundary. Source error is bounded by 1+2^-36 words.
+For coverage byte c and source/backdrop words s,u, store
+floor((c*s+(255-c)*u+127)/255), with one integer rounding. Division error is
+at most 127/255 words and positive opacity is at least 1/255. Intermediate
+error is consequently at most (128+2^-36)/257 levels, independently of overlap
+count. Final nearest output floor((u+128)/257) adds at most half a level:
+total error remains below 0.998055 levels.
+
+F32 stores four level lanes on 0..255, using 16 bytes per pixel. Encode
+inexact source levels with round-to-odd, preserving their side of a following
+nearest-byte boundary; exact source levels remain exact. Source rounding costs
+at most 2^-16 levels. Full-opacity stores overwrite; other stores evaluate x
++= a*(t-x) with separate roundings. Let rho=2^-17, pi=2^-16+255*6*2^-24, N
+bound stores at any pixel, K count stores with varying opacity, and theta
+conservatively lower-bound positive opacity of the other stores. Admit only
+when pi+rho*min(N,1/theta+K) <= 1/2-2^-12. The reserved margin covers retained
+f64 source-evaluation roundoff. Final nearest-byte rounding adds at most half
+a level. The 270,000-store opacity-3/2^27 counterexample therefore remains
+f64. Exact rounding of arbitrary translucent stacks is not promised.
+
+Count individual glyph instances, rather than glyph runs, when bounding
+stores. Preserve glyph order, canonical geometry, sparse coverage spans,
+clamped rows, prepared texels and mask lookup tables. Charge planning, raster
+work and actual allocated storage to existing limits. Use chunks up to 256
+pixels per side, or 128 for a single-image f32 scene. Narrow storage belongs
+to the page surface; wide group surfaces retain their existing representation.
+Keep the existing CMYK preservation metadata, spot replay, transfer regions
+and transfer_run ordering. F64 Pixel::paint and Surface arithmetic remain
+unchanged. At final output, opaque RGB pixels without pending transfer or spot
+processing may quantize premultiplied colour directly, skipping unit-alpha
+division and background blending without changing bytes.
+
+All-f64 composition remains the simpler alternative but forgoes measured
+allocation and bandwidth savings. Final nearest rounding alone does not
+prevent double rounding at source boundaries; the source encodings and
+full-opacity overwrite retain nearest output for nearly all measured changed
+channels. Keep independent rational fixtures, half-level source tests,
+glyph-instance bounds, device/transfer exclusions, actual-byte budget tests,
+tile assembly, changed-channel exact oracles, native/WASM parity and paired
+per-cell timing/RSS measurements whenever admission or kernel arithmetic
+changes. New optimizations must retain these bounds; CMYK and spot narrowing
+require a separate proof.

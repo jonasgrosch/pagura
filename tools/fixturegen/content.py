@@ -133,6 +133,7 @@ def recovery_cases():
 
 
 def cases():
+    yield from precision_cases()
     yield from image_shading_bounds_cases()
     yield knockout_rounding_case()
     yield from content_bounds_cases()
@@ -1579,3 +1580,90 @@ def image_shading_bounds_cases():
                'A shading is bounded by its transformed BBox',
                oracle=opaque_rectangles(8, 8, [((2, 1, 4, 4), RED)]),
                extra={'content_bounds': [2, 1, 6, 5]})
+
+
+def precision_cases():
+    """Exact Normal recurrences on coverage bytes (ISO 32000-2, 11.3.3).
+
+    An opaque non-isolated knockout form takes the general compositor;
+    its opaque members reduce to source-over by 11.4.6. Decimal closed
+    forms bound long uniform stacks without constructing huge rationals.
+    """
+    from decimal import Decimal, localcontext
+
+    def number(value):
+        with localcontext() as context:
+            context.prec = 60
+            return format(Decimal(value.numerator) / Decimal(value.denominator), 'f')
+
+    def uniform(source, coverage, count):
+        width = format(coverage / 255, '.12f')
+        assert int(F(width) * 255 + F(1, 2)) == coverage
+        return (number(source) + ' g\n').encode() + (
+            f'0 0 {width} 1 re f\n'.encode()) * count
+
+    def closed(background, source, coverage, alpha, count):
+        with localcontext() as context:
+            context.prec = 80
+            convert = lambda v: Decimal(v.numerator) / Decimal(v.denominator)
+            a = Decimal(coverage) / 255 * convert(alpha)
+            return 255 * (convert(source) + (convert(background) - convert(source)) * (1 - a) ** count)
+
+    def encoded(data, dictionary=b''):
+        import zlib
+        if len(data) > 1024:
+            return stream(zlib.compress(data), b'/Filter /FlateDecode ' + dictionary)
+        return stream(data, dictionary)
+
+    def case(name, background, body, exact, alpha=F(1)):
+        rounded = int(exact + Decimal('.5')) if isinstance(exact, Decimal) else int(exact + F(1, 2))
+        background = (number(background) + ' g 0 0 1 1 re f\n').encode()
+        if alpha == 1:
+            # Retain the current opaque-path boundary while independently
+            # exercising the opaque-knockout/Normal identity in the general path.
+            pdf = document([
+                b'<< /Type /Catalog /Pages 2 0 R >>',
+                b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+                b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1 1] /Resources << /XObject << /G 5 0 R >> >> /Contents 4 0 R >>',
+                stream(background + b'/G Do'),
+                encoded(body, b'/Type /XObject /Subtype /Form /BBox [0 0 1 1] /Group << /S /Transparency /I false /K true >>'),
+            ])
+        else:
+            pdf = document([
+                b'<< /Type /Catalog /Pages 2 0 R >>',
+                b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+                b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1 1] /Resources << /ExtGState << /A << /ca ' + number(alpha).encode() + b' >> >> >> /Contents 4 0 R >>',
+                encoded(background + b'/A gs\n' + body),
+            ])
+        return Case('precision-' + name, pdf, RENDER, ('content-compositor-precision',),
+                    'Independent exact Normal-composition stack: ' + name,
+                    oracle=b'P6\n1 1\n255\n' + bytes([rounded] * 3), extra={'tolerance': 1})
+
+    bg = F('.85')
+    source = F('.95')
+    a = F(10, 255)
+    exact = 255 * (source + (bg - source) * (1 - a) ** 2)
+    yield case('two-partial', bg, uniform(source, 10, 2), exact)
+
+    exact = F(255)
+    body = b''
+    for source, coverage in [(F(159, 255), 95), (F(240, 255), 10), (F(80, 255), 1)]:
+        a = F(coverage, 255)
+        exact = (1 - a) * exact + a * 255 * source
+        body += uniform(source, coverage, 1)
+    yield case('byte-threshold', F(1), body, exact)
+
+    for count in [254, 255, 1000, 270000]:
+        yield case('slivers-' + str(count), F(1), uniform(F(0), 1, count),
+                   closed(F(1), F(0), 1, F(1), count))
+
+    source = F('10.6') / 255
+    yield case('translucent-stagnation', F(1), uniform(source, 1, 20000),
+               closed(F(1), source, 1, F(1, 2), 20000), F(1, 2))
+    alpha = F(3, 2**27)
+    yield case('tiny-alpha', F(1), uniform(F(0), 255, 270000),
+               closed(F(1), F(0), 255, alpha, 270000), alpha)
+
+    bg, source = F('128.5') / 255, F('32768.5') / 65280
+    yield case('steady-state', bg, uniform(source, 1, 20000),
+               closed(bg, source, 1, F(1), 20000))
