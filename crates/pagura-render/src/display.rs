@@ -656,6 +656,7 @@ impl DisplayList {
         let area = IntRect::new(tile.x, tile.y, tile.width, tile.height)?;
         let crop = Mask::from_path(area, crop.finish(), device, FillRule::NonZero, self.limits)?;
         let mut raster = Rasterizer::default();
+        raster.set_retained_limit(self.limits.decoded_bytes);
         let mut glyph_cache = GlyphCache::new(self.limits.decoded_bytes);
         let mut last_clip = None;
         let mut mask = crop.clone();

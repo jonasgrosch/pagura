@@ -526,10 +526,9 @@ impl Context {
                     clip = Some(Arc::clone(&value));
                     value
                 };
-                let limits = Limits {
-                    decoded_bytes: self.limits.decoded_bytes.saturating_sub(self.allocated),
-                    ..self.limits
-                };
+                self.raster
+                    .set_retained_limit(self.limits.decoded_bytes.saturating_sub(self.allocated));
+                let limits = self.limits;
                 let Some(mask) = self.raster.clipped_glyph(
                     &clip,
                     geometry,
@@ -765,10 +764,9 @@ impl Context {
         let clip = self.clip(p.clip.as_ref(), tile)?;
         // Retained raster buffers share the live group-surface byte allowance.
         // Surface admissions can release this optional storage before failing.
-        let limits = Limits {
-            decoded_bytes: self.limits.decoded_bytes.saturating_sub(self.allocated),
-            ..self.limits
-        };
+        self.raster
+            .set_retained_limit(self.limits.decoded_bytes.saturating_sub(self.allocated));
+        let limits = self.limits;
         let mask = match &p.mark {
             Mark::Fill(rule) => {
                 self.raster
@@ -1847,6 +1845,7 @@ mod tests {
             viewport: None,
         };
         // Rectangles take a closed form without sweep scratch; warm it with a triangle.
+        context.raster.set_retained_limit(limits.decoded_bytes);
         let mut warm = PathBuilder::new();
         warm.move_to(Point::new(0.0, 0.0));
         warm.line_to(Point::new(2.0, 0.0)).unwrap();

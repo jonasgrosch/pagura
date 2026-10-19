@@ -10,9 +10,9 @@ use std::sync::Arc;
 /// geometry or quantizing positions. Independent fills retain their own masks;
 /// return a consumed mask with [`Self::recycle`] to reuse its allocation too.
 ///
-/// Retained capacities are bounded by the most recent call's
-/// [`Limits::decoded_bytes`]. Temporary geometry keeps the per-fill segment and
-/// work budgets. Nothing is shared between rendering contexts or threads.
+/// Retained capacities are bounded by [`Self::set_retained_limit`], which is
+/// zero for a new rasterizer. Temporary geometry keeps the per-fill segment
+/// and work budgets. Nothing is shared between rendering contexts or threads.
 #[derive(Debug, Default)]
 pub struct Rasterizer {
     scratch: Scratch,
@@ -31,9 +31,21 @@ impl Rasterizer {
             .saturating_add(capacity_bytes(&self.shapes))
     }
 
-    /// Releases all working buffers. It does not affect previously returned masks.
+    /// Bounds the bytes kept in working buffers between fills, releasing
+    /// them now if they exceed `bytes`. The caller owns this allowance: a
+    /// renderer passes what its own memory accounting leaves free.
+    pub fn set_retained_limit(&mut self, bytes: usize) {
+        self.maximum = bytes;
+        self.trim();
+    }
+
+    /// Releases all working buffers, keeping the retained limit. It does not
+    /// affect previously returned masks.
     pub fn clear(&mut self) {
-        *self = Self::default();
+        *self = Self {
+            maximum: self.maximum,
+            ..Self::default()
+        };
     }
 
     /// Returns a consumed mask's storage. Geometry is released immediately;
@@ -48,9 +60,7 @@ impl Rasterizer {
 
     fn trim(&mut self) {
         if self.retained_bytes() > self.maximum {
-            let maximum = self.maximum;
             self.clear();
-            self.maximum = maximum;
         }
     }
 
@@ -70,7 +80,6 @@ impl Rasterizer {
         rule: FillRule,
         limits: Limits,
     ) -> Result<Option<Mask>> {
-        self.maximum = limits.decoded_bytes;
         self.trim();
         let result = self.fill(clip, path.into(), transform, rule, limits);
         self.complete(result)
@@ -89,7 +98,6 @@ impl Rasterizer {
         origin: Point,
         limits: Limits,
     ) -> Result<Option<Mask>> {
-        self.maximum = limits.decoded_bytes;
         self.trim();
         let result = self.place(clip, glyph, origin, limits);
         self.complete(result)
@@ -273,6 +281,7 @@ mod tests {
         .unwrap();
         let path = rectangle(10.75, 20.0, 1.0, 2.0);
         let mut raster = Rasterizer::default();
+        raster.set_retained_limit(1 << 20);
         for _ in 0..3 {
             let mask = raster
                 .clipped_path(
@@ -291,7 +300,7 @@ mod tests {
             raster.recycle(mask);
             assert_eq!(Arc::strong_count(&path), 1);
             assert!(raster.retained_bytes() > 0);
-            assert!(raster.retained_bytes() <= limits.decoded_bytes);
+            assert!(raster.retained_bytes() <= 1 << 20);
         }
     }
 
@@ -326,17 +335,14 @@ mod tests {
                 .is_err()
         );
         assert_eq!(Arc::strong_count(&path), 1);
-        let uncached = Limits {
-            decoded_bytes: 0,
-            ..Limits::default()
-        };
+        raster.set_retained_limit(0);
         let mask = raster
             .clipped_path(
                 &clip,
                 path,
                 Transform::IDENTITY,
                 FillRule::EvenOdd,
-                uncached,
+                Limits::default(),
             )
             .unwrap()
             .unwrap();
