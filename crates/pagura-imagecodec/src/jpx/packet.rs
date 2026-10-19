@@ -2,7 +2,9 @@
 
 use pagura_core::{Error, Result};
 
-use super::io::{Budget, Reader, syntax};
+use crate::budget::Budget;
+
+use super::io::{Reader, syntax};
 use super::progression::{Precinct, band_bounds};
 use super::segments::{self, Segment};
 use super::wavelet::Plane;
@@ -79,7 +81,7 @@ struct Tree {
 }
 
 impl Tree {
-    fn new(width: usize, height: usize, budget: &mut Budget<'_>) -> Result<Self> {
+    fn new(width: usize, height: usize, budget: &mut Budget) -> Result<Self> {
         let mut count = 0;
         let (mut w, mut h) = (width, height);
         while w != 0 && h != 0 {
@@ -104,7 +106,7 @@ impl Tree {
         x: usize,
         y: usize,
         threshold: usize,
-        budget: &mut Budget<'_>,
+        budget: &mut Budget,
     ) -> Result<bool> {
         let mut path = [0; 32];
         let (mut w, mut h, mut offset, mut levels) = (self.width, self.height, 0, 0);
@@ -173,10 +175,9 @@ impl Band {
         orientation: u8,
         block: [u8; 2],
         precincts: &[Precinct],
-        budget: &mut Budget<'_>,
+        budget: &mut Budget,
     ) -> Result<Self> {
-        budget.charge::<Partition>(precincts.len())?;
-        let mut partitions = Vec::with_capacity(precincts.len());
+        let mut partitions = budget.with_capacity(precincts.len())?;
         for precinct in precincts {
             partitions.push(Partition::new(
                 &plane,
@@ -198,7 +199,7 @@ impl Partition {
         plane: &Plane,
         bounds: [u32; 4],
         exponents: [u8; 2],
-        budget: &mut Budget<'_>,
+        budget: &mut Budget,
     ) -> Result<Self> {
         let [x0, y0, x1, y1] = bounds;
         let (w, h) = (1_u32 << exponents[0], 1_u32 << exponents[1]);
@@ -216,8 +217,7 @@ impl Partition {
         let count = columns
             .checked_mul(rows)
             .ok_or_else(|| Error::limit("JPEG 2000 code-block count overflow"))?;
-        budget.charge::<CodeBlock>(count)?;
-        let mut blocks = Vec::with_capacity(count);
+        let mut blocks = budget.with_capacity(count)?;
         if count != 0 {
             for y in by0..by1 {
                 for x in bx0..bx1 {
@@ -256,7 +256,7 @@ impl Partition {
         modes: u8,
         band: usize,
         contributions: &mut Vec<Contribution>,
-        budget: &mut Budget<'_>,
+        budget: &mut Budget,
     ) -> Result<()> {
         for (index, block) in self.blocks.iter_mut().enumerate() {
             budget.work(1)?;
@@ -399,7 +399,7 @@ fn headers(
     reader: &mut Reader<'_>,
     bands: &mut [Band],
     parameters: &Parameters,
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<Vec<Contribution>> {
     let start = reader.offset;
     let mut bits = Bits::new(reader);
@@ -429,7 +429,7 @@ pub(super) fn read(
     packed: Option<&mut Reader<'_>>,
     bands: &mut [Band],
     parameters: &Parameters,
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<()> {
     budget.work(1)?;
     if body.data.get(body.offset..body.offset.saturating_add(2)) == Some(&[255, 145])

@@ -2,7 +2,9 @@
 
 use pagura_core::Result;
 
-use super::io::{Budget, area, usize_from};
+use crate::budget::Budget;
+
+use super::io::{area, usize_from};
 
 pub(super) struct Plane {
     pub x0: u32,
@@ -37,11 +39,18 @@ impl Plane {
         }
     }
 
-    pub fn materialize(&mut self, budget: &mut Budget<'_>) -> Result<()> {
+    pub fn materialize(&mut self, budget: &mut Budget) -> Result<()> {
         if self.values.is_empty() {
             self.values = budget.filled(area(self.width, self.height)?, 0.0)?;
         }
         Ok(())
+    }
+
+    /// Drops the plane and returns its coefficients to the memory budget.
+    pub fn release(self, budget: &mut Budget) {
+        let count = self.values.len();
+        drop(self);
+        budget.release::<f64>(count);
     }
 }
 
@@ -93,7 +102,7 @@ pub(super) fn synthesize(
     high: [&Plane; 3],
     bounds: [u32; 4],
     reversible: bool,
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<Plane> {
     let [x0, y0, x1, y1] = bounds;
     let bands = [low, high[0], high[1], high[2]];
@@ -203,7 +212,7 @@ fn lift_rows(
     plane: &mut Plane,
     parity: usize,
     update: impl Fn(f64) -> f64,
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<()> {
     let width = usize_from(plane.width)?;
     let height = usize_from(plane.height)?;
@@ -253,7 +262,7 @@ mod tests {
                     for orientation in 0..4 {
                         for position in 0..3 {
                             let limits = Limits::default();
-                            let mut budget = Budget::new(&limits);
+                            let mut budget = Budget::new(&limits, crate::jpx::MESSAGES);
                             let mut bands = Vec::new();
                             let mut full = Vec::new();
                             for band in 0..4 {
@@ -325,11 +334,11 @@ mod tests {
     #[test]
     fn zero_subbands_preserve_odd_grids_without_coefficient_storage() -> pagura_core::Result<()> {
         let limits = Limits {
-            operations: 0,
-            decoded_bytes: 0,
+            decode_work: 0,
+            decode_bytes: 0,
             ..Limits::default()
         };
-        let mut budget = Budget::new(&limits);
+        let mut budget = Budget::new(&limits, crate::jpx::MESSAGES);
         let low = Plane::new(1, 2, 4, 6);
         let hl = Plane::new(0, 2, 4, 6);
         let lh = Plane::new(1, 1, 4, 6);

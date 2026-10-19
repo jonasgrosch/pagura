@@ -1,6 +1,6 @@
-//! Checked binary access and the shared allocation/work budget.
+//! Checked binary access.
 
-use pagura_core::{Diagnostics, Error, Limits, Position, Recovery, Result};
+use pagura_core::{Error, Position, Result};
 
 pub(super) fn syntax(message: &'static str, offset: usize) -> Error {
     Error::syntax(message).at(Position::Buffer(offset))
@@ -109,91 +109,6 @@ impl<'a> Reader<'a> {
         } else {
             Err(syntax("extra JPEG 2000 field data", self.position()))
         }
-    }
-}
-
-pub(super) struct Budget<'a> {
-    pub limits: &'a Limits,
-    bytes: usize,
-    work: usize,
-    pub diagnostics: Diagnostics,
-    pub repaired_part_count: bool,
-}
-
-impl<'a> Budget<'a> {
-    pub fn new(limits: &'a Limits) -> Self {
-        Self {
-            limits,
-            bytes: 0,
-            work: 0,
-            diagnostics: Diagnostics::new(Recovery::Strict),
-            repaired_part_count: false,
-        }
-    }
-
-    pub fn work(&mut self, count: usize) -> Result<()> {
-        self.work = self
-            .work
-            .checked_add(count)
-            .filter(|&n| n <= self.limits.operations)
-            .ok_or_else(|| Error::limit("JPEG 2000 work budget exceeded"))?;
-        Ok(())
-    }
-
-    pub fn charge<T>(&mut self, count: usize) -> Result<()> {
-        // Initializing or copying each allocation is work even before entropy decoding.
-        self.work(count)?;
-        self.bytes = count
-            .checked_mul(size_of::<T>())
-            .and_then(|n| self.bytes.checked_add(n))
-            .filter(|&n| n <= self.limits.decoded_bytes)
-            .ok_or_else(|| Error::limit("JPEG 2000 allocation budget exceeded"))?;
-        Ok(())
-    }
-
-    pub fn push<T>(&mut self, values: &mut Vec<T>, value: T) -> Result<()> {
-        if values.len() == values.capacity() {
-            let capacity = values
-                .len()
-                .checked_mul(2)
-                .map(|n| n.max(1))
-                .ok_or_else(|| Error::limit("JPEG 2000 vector capacity overflow"))?;
-            self.charge::<T>(capacity)?;
-            values
-                .try_reserve_exact(capacity - values.len())
-                .map_err(|_| Error::limit("JPEG 2000 allocation failed"))?;
-        }
-        values.push(value);
-        Ok(())
-    }
-
-    pub fn append(&mut self, values: &mut Vec<u8>, bytes: &[u8]) -> Result<()> {
-        let needed = values
-            .len()
-            .checked_add(bytes.len())
-            .ok_or_else(|| Error::limit("JPEG 2000 byte length overflow"))?;
-        if needed > values.capacity() {
-            let capacity = needed
-                .checked_next_power_of_two()
-                .ok_or_else(|| Error::limit("JPEG 2000 byte capacity overflow"))?;
-            self.charge::<u8>(capacity)?;
-            values
-                .try_reserve_exact(capacity - values.len())
-                .map_err(|_| Error::limit("JPEG 2000 allocation failed"))?;
-        }
-        self.work(bytes.len())?;
-        values.extend_from_slice(bytes);
-        Ok(())
-    }
-
-    pub fn filled<T: Clone>(&mut self, count: usize, value: T) -> Result<Vec<T>> {
-        self.charge::<T>(count)?;
-        let mut result = Vec::new();
-        result
-            .try_reserve_exact(count)
-            .map_err(|_| Error::limit("JPEG 2000 allocation failed"))?;
-        result.resize(count, value);
-        Ok(result)
     }
 }
 

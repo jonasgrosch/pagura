@@ -1,15 +1,21 @@
 //! Tile assembly and reconstruction, T.800 Annex A, B.1–B.12, E.1 and G.1–G.4.
 
-use pagura_core::{Error, Position, Result};
+use pagura_core::{Diagnostic, Diagnostics, Error, Position, Result};
+
+use crate::budget::Budget;
 
 use super::coding::{Configuration, Quantization, Style};
-use super::io::{Budget, Reader, area, syntax, usize_from};
+use super::io::{Reader, area, syntax, usize_from};
 use super::packed::{Fragments, Ppm};
 use super::packet::{self, Band};
 use super::progression::{self, Packet, Precinct};
 use super::tier1;
 use super::wavelet::{self, Plane};
 use super::{ComponentGeometry, Decoded, JpxColor, JpxComponent, JpxImage, unsupported};
+
+/// The most tiles a codestream can have: tile indices `Isot` run from 0 to
+/// 65534 (T.800 A.4.2, Table A.5).
+const MAX_TILES: usize = 65_535;
 
 #[derive(Clone)]
 struct Component {
@@ -64,7 +70,7 @@ impl Size {
     }
 }
 
-fn read_size(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Size> {
+fn read_size(reader: &mut Reader<'_>, pixels: usize, budget: &mut Budget) -> Result<Size> {
     let capabilities = reader.u16()?;
     if capabilities > 2 {
         return Err(unsupported(
@@ -103,18 +109,16 @@ fn read_size(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Size> {
             reader.position(),
         ));
     }
-    if area(x1 - x0, y1 - y0)? > budget.limits.pixels {
+    if area(x1 - x0, y1 - y0)? > pixels {
         return Err(Error::limit("JPEG 2000 pixel budget exceeded"));
     }
     let columns = (x1 - tile_x0).div_ceil(tile_width);
     let rows = (y1 - tile_y0).div_ceil(tile_height);
     let tiles = area(columns, rows)?;
-    if tiles > budget.limits.operations || tiles > budget.limits.objects {
-        return Err(Error::limit("JPEG 2000 tile budget exceeded"));
-    }
-    if tiles > 65535 {
+    if tiles > MAX_TILES {
         return Err(syntax("too many JPEG 2000 tiles", reader.position()));
     }
+    budget.work(tiles)?;
     let count = usize::from(reader.u16()?);
     if count == 0 || count > 16384 {
         return Err(syntax(
@@ -122,8 +126,7 @@ fn read_size(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Size> {
             reader.position(),
         ));
     }
-    budget.charge::<Component>(count)?;
-    let mut components = Vec::with_capacity(count);
+    let mut components = budget.with_capacity(count)?;
     for _ in 0..count {
         let precision = reader.u8()?;
         let bits = (precision & 127) + 1;
@@ -164,7 +167,7 @@ fn read_size(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<Size> {
     })
 }
 
-fn marker(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<(u16, usize)> {
+fn marker(reader: &mut Reader<'_>, budget: &mut Budget) -> Result<(u16, usize)> {
     loop {
         budget.work(1)?;
         let position = reader.position();
@@ -217,18 +220,15 @@ struct Tile {
     next_packet: usize,
     next_part: u16,
     part_count: Option<u16>,
+    /// Whether an inconsistent declared tile-part count was set aside, so
+    /// that order and lengths alone delimit the tile-parts.
     ignore_part_count: bool,
     local_poc: bool,
     packed_headers: Option<bool>,
 }
 
 impl Tile {
-    fn new(
-        size: &Size,
-        index: u32,
-        config: Configuration,
-        budget: &mut Budget<'_>,
-    ) -> Result<Self> {
+    fn new(size: &Size, index: u32, config: Configuration, budget: &mut Budget) -> Result<Self> {
         size.validate_config(&config)?;
         let column = index % size.columns;
         let row = index / size.columns;
@@ -238,8 +238,7 @@ impl Tile {
         let ty1 = ty0.saturating_add(size.tile_height).min(size.y1);
         let tx0 = tx0.max(size.x0);
         let ty0 = ty0.max(size.y0);
-        budget.charge::<TileComponent>(size.components.len())?;
-        let mut components = Vec::with_capacity(size.components.len());
+        let mut components = budget.with_capacity(size.components.len())?;
         for (component, style) in size.components.iter().zip(&config.styles) {
             let [cx0, cy0, cx1, cy1] = [
                 tx0.div_ceil(component.dx),
@@ -247,8 +246,7 @@ impl Tile {
                 tx1.div_ceil(component.dx),
                 ty1.div_ceil(component.dy),
             ];
-            budget.charge::<Resolution>(usize::from(style.levels) + 1)?;
-            let mut resolutions = Vec::with_capacity(usize::from(style.levels) + 1);
+            let mut resolutions = budget.with_capacity(usize::from(style.levels) + 1)?;
             for resolution in 0..=style.levels {
                 let shift = style.levels - resolution;
                 let scale = 1_u64 << shift;
@@ -266,8 +264,7 @@ impl Tile {
                     budget,
                 )?;
                 let band_count = if resolution == 0 { 1 } else { 3 };
-                budget.charge::<Band>(band_count)?;
-                let mut bands = Vec::with_capacity(band_count);
+                let mut bands = budget.with_capacity(band_count)?;
                 let precinct_exponents = style.precincts[usize::from(resolution)];
                 let reduction = u8::from(resolution != 0);
                 let block = [
@@ -323,7 +320,7 @@ impl Tile {
         reader: &mut Reader<'_>,
         mut packed: Option<&mut Reader<'_>>,
         tile_headers: bool,
-        budget: &mut Budget<'_>,
+        budget: &mut Budget,
     ) -> Result<()> {
         let mut sequence = u16::try_from(self.decoded_packets % 65536)
             .map_err(|_| Error::limit("JPEG 2000 packet sequence overflow"))?;
@@ -355,30 +352,31 @@ impl Tile {
         Ok(())
     }
 
-    /// T.800 A.4.2: index order and byte lengths define the physical parts;
-    /// inconsistent declarations may be ignored only through reported recovery.
+    /// Checks that `part`, which starts at `position`, is the tile's next
+    /// tile-part (T.800 A.4.2). Index order and byte lengths define the
+    /// physical parts, so an inconsistent declared count is set aside, but
+    /// only as a reported repair, once per codestream.
     fn start_part(
         &mut self,
         part: &Part<'_>,
         position: usize,
-        budget: &mut Budget<'_>,
+        diagnostics: &mut Diagnostics,
+        reported: &mut bool,
     ) -> Result<()> {
         if self.next_part != part.number {
             return Err(syntax("out-of-order JPEG 2000 tile-part", position));
         }
         if !self.ignore_part_count && part.count != 0 {
             if part.number >= part.count || self.part_count.is_some_and(|n| n != part.count) {
-                // Ordered, length-delimited parts identify the actual sequence
-                // without guessing payload boundaries (T.800 A.4.2, Table A.5).
-                if !budget.repaired_part_count {
-                    budget.diagnostics.repair(
-                        pagura_core::Diagnostic::new(
+                if !*reported {
+                    diagnostics.repair(
+                        Diagnostic::new(
                             crate::repairs::JPX_TILE_PART_COUNT,
                             "inconsistent JPEG 2000 tile-part count ignored (T.800 A.4.2)",
                         )
                         .at(Position::Buffer(position)),
                     )?;
-                    budget.repaired_part_count = true;
+                    *reported = true;
                 }
                 self.ignore_part_count = true;
                 self.part_count = None;
@@ -390,12 +388,11 @@ impl Tile {
         Ok(())
     }
 
-    fn reconstruct(self, size: &Size, image: &mut JpxImage, budget: &mut Budget<'_>) -> Result<()> {
+    fn reconstruct(self, size: &Size, image: &mut JpxImage, budget: &mut Budget) -> Result<()> {
         if self.part_count.is_some_and(|n| self.next_part != n) {
             return Err(syntax("incomplete JPEG 2000 tile or tile-parts", 0));
         }
-        budget.charge::<Plane>(self.components.len())?;
-        let mut planes = Vec::with_capacity(self.components.len());
+        let mut planes = budget.with_capacity(self.components.len())?;
         for (((component, style), (quant, source)), roi) in self
             .components
             .into_iter()
@@ -448,6 +445,9 @@ impl Tile {
                 }
             }
         }
+        for plane in planes {
+            plane.release(budget);
+        }
         Ok(())
     }
 }
@@ -464,7 +464,7 @@ fn sample_u16(value: f64) -> u16 {
 fn packet_candidates(
     components: &[TileComponent],
     layers: usize,
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<Vec<Packet>> {
     let mut result = Vec::new();
     for (c, component) in components.iter().enumerate() {
@@ -496,7 +496,7 @@ fn reconstruct_component(
     quant: &Quantization,
     bits: u8,
     roi: u8,
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<Plane> {
     let mut low = None;
     let mut band_index = 0;
@@ -567,6 +567,9 @@ fn reconstruct_component(
                         band.plane.include_rows(block.y + y..block.y + y + 1);
                     }
                 }
+                let count = values.len();
+                drop(values);
+                budget.release::<tier1::Sample>(count);
             }
             band_index += 1;
         }
@@ -574,15 +577,20 @@ fn reconstruct_component(
             low = r.bands.pop().map(|band| band.plane);
         } else {
             let previous = low
-                .as_ref()
+                .take()
                 .ok_or_else(|| syntax("missing JPEG 2000 low-pass subband", 0))?;
             low = Some(wavelet::synthesize(
-                previous,
+                &previous,
                 [&r.bands[0].plane, &r.bands[1].plane, &r.bands[2].plane],
                 r.bounds,
                 style.reversible,
                 budget,
             )?);
+            // The synthesized resolution replaces its inputs.
+            previous.release(budget);
+            for band in r.bands {
+                band.plane.release(budget);
+            }
         }
     }
     low.ok_or_else(|| syntax("missing JPEG 2000 resolutions", 0))
@@ -607,7 +615,7 @@ fn quantization_step(
 fn component_transform(
     planes: &mut [Plane],
     reversible: bool,
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<bool> {
     let (first, rest) = planes.split_at_mut(1);
     let (second, rest) = rest.split_at_mut(1);
@@ -682,9 +690,8 @@ fn component_transform(
     Ok(false)
 }
 
-fn allocate_image(size: &Size, budget: &mut Budget<'_>) -> Result<Decoded> {
-    budget.charge::<JpxComponent>(size.components.len())?;
-    let mut components = Vec::with_capacity(size.components.len());
+fn allocate_image(size: &Size, budget: &mut Budget) -> Result<Decoded> {
+    let mut components = budget.output_with_capacity(size.components.len())?;
     for c in &size.components {
         let width = size.x1.div_ceil(c.dx) - size.x0.div_ceil(c.dx);
         let height = size.y1.div_ceil(c.dy) - size.y0.div_ceil(c.dy);
@@ -693,10 +700,10 @@ fn allocate_image(size: &Size, budget: &mut Budget<'_>) -> Result<Decoded> {
             signed: c.signed,
             width,
             height,
-            samples: budget.filled(area(width, height)?, 0)?,
+            samples: budget.output(area(width, height)?, 0)?,
         });
     }
-    let mut geometry = budget.filled(
+    let mut geometry = budget.output(
         size.components.len(),
         ComponentGeometry {
             step: [1, 1],
@@ -733,9 +740,15 @@ struct MainHeader {
     ppm: Ppm,
 }
 
-pub(super) fn decode(data: &[u8], base: usize, budget: &mut Budget<'_>) -> Result<Decoded> {
+pub(super) fn decode(
+    data: &[u8],
+    base: usize,
+    pixels: usize,
+    budget: &mut Budget,
+    diagnostics: &mut Diagnostics,
+) -> Result<Decoded> {
     let mut reader = Reader::new(data, base);
-    let header = read_header(&mut reader, budget)?;
+    let header = read_header(&mut reader, pixels, budget)?;
     let MainHeader {
         size,
         config,
@@ -743,9 +756,10 @@ pub(super) fn decode(data: &[u8], base: usize, budget: &mut Budget<'_>) -> Resul
         mut ppm,
     } = header;
     let count = area(size.columns, size.rows)?;
-    budget.charge::<Option<Tile>>(count)?;
-    let mut tiles: Vec<Option<Tile>> = (0..count).map(|_| None).collect();
+    let mut tiles = budget.with_capacity(count)?;
+    tiles.resize_with(count, || None::<Tile>);
     let mut image = allocate_image(&size, budget)?;
+    let mut part_count_reported = false;
     loop {
         let mut part = read_part(&mut reader, data, next.1, count)?;
         let mut local = if tiles[part.index].is_none() {
@@ -766,7 +780,7 @@ pub(super) fn decode(data: &[u8], base: usize, budget: &mut Budget<'_>) -> Resul
         let tile = tiles[part.index]
             .as_mut()
             .ok_or_else(|| syntax("missing JPEG 2000 tile", next.1))?;
-        tile.start_part(&part, next.1, budget)?;
+        tile.start_part(&part, next.1, diagnostics, &mut part_count_reported)?;
         if ppm.fragments.present() && ppt.present() {
             return Err(syntax("simultaneous JPEG 2000 PPM and PPT", next.1));
         }
@@ -850,7 +864,7 @@ fn tile_header(
     reader: &mut Reader<'_>,
     local: &mut Option<Configuration>,
     tile: &mut Option<Tile>,
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<Fragments> {
     let mut ppt = Fragments::default();
     let mut seen_poc = false;
@@ -951,11 +965,11 @@ fn tile_part_end(
     }
 }
 
-fn read_header(reader: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<MainHeader> {
+fn read_header(reader: &mut Reader<'_>, pixels: usize, budget: &mut Budget) -> Result<MainHeader> {
     if marker(reader, budget)?.0 != 0xff4f || marker(reader, budget)?.0 != 0xff51 {
         return Err(syntax("missing JPEG 2000 SOC or SIZ", reader.base));
     }
-    let size = read_size(&mut segment(reader)?, budget)?;
+    let size = read_size(&mut segment(reader)?, pixels, budget)?;
     let mut config = Configuration::new(size.components.len(), budget)?;
     let mut ppm = Ppm::default();
     let mut next = marker(reader, budget)?;
@@ -1003,8 +1017,7 @@ mod tests {
             (false, 0.0, 4.0, [16, 7, 10]),
             (false, 4.0, 0.0, [10, 9, 17]),
         ] {
-            let limits = Limits::default();
-            let mut budget = Budget::new(&limits);
+            let mut budget = Budget::new(&Limits::default(), crate::jpx::MESSAGES);
             let mut planes = Vec::new();
             for value in [10.0, cb, cr] {
                 let mut plane = Plane::new(1, 3, 2, 4);

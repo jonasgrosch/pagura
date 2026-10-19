@@ -4,8 +4,10 @@
 
 use pagura_core::{Error, Result};
 
+use crate::budget::Budget;
+
 use super::io::syntax;
-use super::io::{Budget, Reader, area};
+use super::io::{Reader, area};
 
 #[derive(Clone, Copy)]
 pub(super) struct Precinct {
@@ -19,7 +21,7 @@ pub(super) fn precincts(
     scale: u64,
     sampling: [u32; 2],
     tile_origin: [u32; 2],
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<Vec<Precinct>> {
     let [x0, y0, x1, y1] = bounds;
     if x0 == x1 || y0 == y1 {
@@ -29,8 +31,7 @@ pub(super) fn precincts(
     let h = 1_u32 << exponents[1];
     let (px0, py0, px1, py1) = (x0 / w, y0 / h, x1.div_ceil(w), y1.div_ceil(h));
     let count = area(px1 - px0, py1 - py0)?;
-    budget.charge::<Precinct>(count)?;
-    let mut result = Vec::with_capacity(count);
+    let mut result = budget.with_capacity(count)?;
     for py in py0..py1 {
         for px in px0..px1 {
             let x = if px == px0 && !x0.is_multiple_of(w) {
@@ -101,7 +102,7 @@ pub(super) fn changes(
     fields: &mut Reader<'_>,
     components: usize,
     layers: usize,
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<Vec<Change>> {
     let unit = if components <= 256 { 7 } else { 9 };
     if fields.remaining() == 0 || !fields.remaining().is_multiple_of(unit) {
@@ -111,8 +112,7 @@ pub(super) fn changes(
         ));
     }
     let count = fields.remaining() / unit;
-    budget.charge::<Change>(count)?;
-    let mut result = Vec::with_capacity(count);
+    let mut result = budget.with_capacity(count)?;
     while fields.remaining() != 0 {
         let resolution_start = usize::from(fields.u8()?);
         let component_start = if components <= 256 {
@@ -191,14 +191,10 @@ pub(super) fn order(
     changes: &[Change],
     default: u8,
     visited: &[bool],
-    budget: &mut Budget<'_>,
+    budget: &mut Budget,
 ) -> Result<Vec<Packet>> {
     let mut included = budget.filled(packets.len(), false)?;
-    let mut result = Vec::new();
-    budget.charge::<Packet>(packets.len())?;
-    result
-        .try_reserve_exact(packets.len())
-        .map_err(|_| Error::limit("JPEG 2000 packet schedule allocation failed"))?;
+    let mut result = budget.with_capacity(packets.len())?;
     let fallback = [Change {
         resolution_start: 0,
         component_start: 0,

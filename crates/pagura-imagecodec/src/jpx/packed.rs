@@ -2,7 +2,9 @@
 
 use pagura_core::Result;
 
-use super::io::{Budget, Reader, Span, syntax, usize_from};
+use crate::budget::Budget;
+
+use super::io::{Reader, Span, syntax, usize_from};
 
 #[derive(Default)]
 pub(super) struct Fragments {
@@ -16,7 +18,7 @@ impl Fragments {
         !self.indices.is_empty()
     }
 
-    pub fn push(&mut self, fields: &mut Reader<'_>, budget: &mut Budget<'_>) -> Result<()> {
+    pub fn push(&mut self, fields: &mut Reader<'_>, budget: &mut Budget) -> Result<()> {
         let index = fields.u8()?;
         let Err(slot) = self.indices.binary_search(&index) else {
             return Err(syntax(
