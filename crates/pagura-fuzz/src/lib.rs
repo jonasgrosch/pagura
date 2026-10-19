@@ -88,6 +88,8 @@ pub fn limits() -> Limits {
         raster_work: 50_000_000,
         mask_sources: 32,
         display_commands: 10_000,
+        font_work: 100_000,
+        font_entries: 10_000,
         ..Limits::default()
     }
 }

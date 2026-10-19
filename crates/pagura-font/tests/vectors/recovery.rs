@@ -113,19 +113,27 @@ fn required_metadata_and_resource_failures_still_reject() {
             "{name}"
         );
     }
-    for name in [
-        "cff-nonfinite",
-        "cff-recursive",
-        "cff-stack",
-        "cff-branching-subrs",
+    // Exhausted budgets reject in both modes: raising the limits admits them.
+    for (name, limits) in [
+        (
+            "cff-branching-subrs",
+            Limits {
+                font_work: 2000,
+                ..Limits::default()
+            },
+        ),
+        (
+            "cff-recursive",
+            Limits {
+                depth: 5,
+                ..Limits::default()
+            },
+        ),
     ] {
         let font = FontProgram::parse(
             pagura_testkit::fixture("font", &format!("{name}.font")),
             FontFormat::Cff,
-            &Limits {
-                operations: 2000,
-                ..Limits::default()
-            },
+            &limits,
         )
         .unwrap();
         let mut diagnostics = Diagnostics::new(Recovery::Repair);
@@ -134,6 +142,31 @@ fn required_metadata_and_resource_failures_still_reject() {
             .unwrap_err();
         assert_eq!(error.kind, ErrorKind::Limit, "{name}: {error}");
         assert_eq!(diagnostics.as_slice(), []);
+    }
+}
+
+#[test]
+fn format_ceilings_and_nonfinite_arithmetic_are_malformed_glyphs() {
+    // TN 5177 Appendix B ceilings (operand stack, ten nested calls) and
+    // arithmetic beyond f64 range make one glyph malformed, whatever the
+    // limits: strict rejects it as syntax, repair replaces only that glyph.
+    for name in ["cff-nonfinite", "cff-recursive", "cff-stack"] {
+        let font = font(name, FontFormat::Cff);
+        let error = font.outline(GlyphId(1)).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax, "{name}: {error}");
+        assert!(matches!(error.position, Position::Buffer(_)), "{name}");
+        let mut diagnostics = Diagnostics::new(Recovery::Repair);
+        let path = font
+            .outline_with_diagnostics(GlyphId(1), &mut diagnostics)
+            .unwrap();
+        assert!(path.is_empty(), "{name}");
+        let tags: Vec<_> = diagnostics
+            .as_slice()
+            .iter()
+            .map(pagura_core::Diagnostic::tag)
+            .collect();
+        assert_eq!(tags, [pagura_font::repairs::GLYPH_DATA.as_str()], "{name}");
+        assert!(font.outline(GlyphId(0)).is_ok(), "{name}");
     }
 }
 
@@ -160,9 +193,8 @@ fn repair_diagnostics_are_bounded_and_repeated_calls_are_independent() {
 #[test]
 fn repair_mode_mutations_keep_work_and_diagnostics_bounded() {
     let limits = Limits {
-        operations: 2000,
-        value_nodes: 1000,
-        objects: 1000,
+        font_work: 2000,
+        font_entries: 1000,
         depth: 8,
         path_segments: 500,
         decoded_bytes: 16384,

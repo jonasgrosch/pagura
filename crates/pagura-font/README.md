@@ -55,22 +55,27 @@ Implemented formats:
   mandatory argument fallback for unrecognized OtherSubrs, hint replacement, and StandardEncoding seac. Hint replacement consumes its
   operands and returns the requested subroutine number without applying hints.
 
-All font syntax errors, including exceeded font budgets, carry a
-`Position::Buffer`. For decrypted Type 1 charstrings the position refers to
-the decrypted charstring buffer. `Limits::objects`/`value_nodes` bound glyphs,
-indices and metadata; `file_bytes`/`decoded_bytes` bound input and tables;
-`string_bytes` bounds names; `operations` bounds interpreted tokens;
-`path_segments` bounds output and composite expansion. Type 1 and CFF1 subroutine calls use
-`min(Limits::depth, 10)` (Type 1 6.4/8; TN 5177 Appendix B). Other graph
-recursion and CFF2 use `min(Limits::depth, 64)`. Operand ceilings are
-`min(value_nodes, 24/48/513)` for Type 1/Type 2/CFF2, respectively; CFF1
-DICTs also use 48 (TN 5176 section 4). CFF1 charstrings have a 65,535-byte
-ceiling; Type 1 RD strings and tokens have that ceiling as well (chapter 10).
-Type 2 has 96 total stems and 32 transient slots. CFF1 INDEX's 16-bit count
-bounds subroutine arrays to 65,535 entries, within Appendix B's 65,536
-interpreter limit. Project byte, value, operation and segment budgets can
-further restrict these limits; they never raise a format ceiling. Geometry must remain finite. Cycles terminate at bounded recursion
-limits. Unsupported capabilities use stable `font.*` tags.
+All font errors carry a `Position::Buffer`. For decrypted Type 1
+charstrings the position refers to the decrypted charstring buffer.
+
+Two kinds of bound apply (ADR 0016, ADR 0023). **Format ceilings** are fixed
+by the font specifications and named next to their parser: operand stacks of
+24/48/513 (Type 1, Type 2, CFF2; CFF DICTs 48/513), ten nested subroutine
+calls (Type 1 Appendix 1; TN 5177 Appendix B), 96 stems and 32 transient
+slots, 65,535-byte CFF charstrings and Type 1 tokens and RD strings (chapter
+10), and seven flex points. A program beyond a ceiling is malformed: a
+`Syntax` error, as are composite cycles and arithmetic beyond `f64` range.
+**Budgets** come from `Limits`, each used for its documented meaning, and
+exhausting one is a `Limit` error: `font_work` bounds the work of one parse
+and of one outline (tokens, operators, validated entries, outline points);
+`font_entries` bounds the entries a program holds (glyphs, subroutines,
+names, cmap and encoding records) and the points of one outline;
+`file_bytes`/`decoded_bytes` bound the input, and `decoded_bytes` each
+decoded Type 1 copy; `string_bytes` bounds names and tokens; `depth` bounds
+subroutine and composite nesting; `path_segments` bounds one outline. A
+budget can restrict a format ceiling but never raises it. CFF1 INDEX's 16-bit
+count bounds subroutine arrays to 65,535 entries, within Appendix B's 65,536
+interpreter limit. Unsupported capabilities use stable `font.*` tags.
 
 TrueType component offsets use unscaled translation when neither offset flag
 is present; explicit scaled/unscaled flags take precedence. Quadratics are
@@ -148,7 +153,8 @@ and expanded path segments. The shared budgets include subroutine and seac
 expansion; arithmetic maintains a finite-stack invariant without rescanning
 all operands after every operator. Independent 64/128/256-line vectors with
 and without subroutines assert exact work/segment bounds and reject one fewer
-unit. A branching-subroutine vector checks aggregate budget exhaustion.
+unit of `font_work` or `path_segments`. A branching-subroutine vector checks
+aggregate budget exhaustion.
 
 
 The generated vectors now include every Type 1/Type 2 operator family,
@@ -160,11 +166,10 @@ operation budget rather than violating the format nesting limit first.
 
 `parse_with_diagnostics` and `outline_with_diagnostics` accept a core
 `Diagnostics` sink. Its mode governs every repair; strict rejection includes
-exactly the repair tag refused. The existing `parse` and `outline` APIs remain
-strict. The diagnostic-aware APIs return `ErrorKind::Limit` for exhausted
-budgets, overflowing sizes and nonfinite geometry, so these cannot be mistaken
-for recoverable glyph syntax. The original APIs retain their positioned syntax
-error contract for these failures.
+exactly the repair tag refused. `parse` and `outline` are their strict forms
+and return the same error kinds: `Limit` for exhausted budgets and
+overflowing sizes, so these are never mistaken for recoverable glyph syntax,
+and `Syntax` for malformed programs.
 
 In repair mode readable sfnt tables may be unaligned, or their extents may be
 clamped to the available buffer. Required headers, glyph count and advances
@@ -281,8 +286,9 @@ strict flag-pair validation.
 
 `FontProgram::glyph_name` looks up a selected glyph's existing program name
 without changing selection. It uses TrueType `post`, or a name-keyed Type 1/CFF
-charset; unnamed glyphs stay unknown. Names are indexed once within font byte
-budgets and included in `retained_bytes`; lookup is constant time and clones
+charset; unnamed glyphs stay unknown. Names are indexed once, each slot an
+entry and each copied name work (`font_entries`, `font_work`), and included
+in `retained_bytes`; lookup is constant time and clones
 share the parsed index. Repeated post names remain available for each glyph.
 
 Positioned extraction can use that name through the text crate's existing AGL

@@ -1,32 +1,35 @@
-//! Bounded glyph-index lookup of names, independent of PDF encodings.
+//! Bounded glyph-index lookup of program glyph names, independent of PDF
+//! encodings.
+use crate::budget::Work;
 use crate::{GlyphId, memory, read};
-use pagura_core::{Limits, Name, Result};
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Name, Position, Result};
 
+/// The name of each of `count` glyphs, from `(glyph, name)` entries; an
+/// empty index if there are none. Each slot is a held entry, and copying a
+/// name is work in proportion to its length, so many glyphs sharing one
+/// long name are bounded before the name is cloned for each.
 pub(crate) fn indexed<'a>(
     count: usize,
     entries: impl Iterator<Item = Result<(GlyphId, &'a Name)>>,
-    limits: &Limits,
+    work: &mut Work<'_>,
     at: usize,
 ) -> Result<Vec<Option<Name>>> {
     let mut entries = entries.peekable();
     if entries.peek().is_none() {
         return Ok(Vec::new());
     }
-    let mut bytes = count
-        .checked_mul(size_of::<Option<Name>>())
-        .filter(|n| isize::try_from(*n).is_ok())
-        .ok_or_else(|| read::limit(at, "glyph-name index size overflow"))?;
-    read::cap(bytes, limits.decoded_bytes, at)?;
-    let mut names = vec![None; count];
+    work.entries(count, Position::Buffer(at))?;
+    let mut names = Vec::new();
+    names
+        .try_reserve_exact(count)
+        .map_err(|_| read::limit(at, "glyph-name index allocation failed"))?;
+    names.resize(count, None);
     for entry in entries {
         let (glyph, name) = entry?;
-        bytes = bytes
-            .checked_add(name.len())
-            .ok_or_else(|| read::limit(at, "glyph-name byte count overflow"))?;
-        read::cap(bytes, limits.decoded_bytes, at)?;
-        let slot = usize::try_from(glyph.0)
-            .ok()
-            .and_then(|i| names.get_mut(i))
+        work.work(name.len(), Position::Buffer(at))?;
+        let slot = names
+            .get_mut(u32_to_usize(glyph.0))
             .ok_or_else(|| read::bad(at, "glyph-name index outside program"))?;
         *slot = Some(name.clone());
     }
@@ -44,45 +47,54 @@ pub(crate) fn heap_bytes(names: &Vec<Option<Name>>) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use pagura_core::ErrorKind;
+    use super::indexed;
+    use crate::GlyphId;
+    use crate::budget::{FontBudget, Work};
+    use pagura_core::{Diagnostics, ErrorKind, Limits, Name, Position, Recovery};
 
     #[test]
     fn repeated_name_payloads_are_bounded_before_cloning() {
         let name = Name::new(&[b'x'; 200]);
         let limits = Limits {
-            decoded_bytes: 400,
+            font_work: 400,
             ..Limits::default()
         };
-        let error = indexed(4, (0..4).map(|i| Ok((GlyphId(i), &name))), &limits, 123).unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Limit);
-        assert_eq!(error.position, pagura_core::Position::Buffer(123));
-        assert!(
+        let mut diagnostics = Diagnostics::new(Recovery::Strict);
+        let mut work = Work::new(FontBudget::new(&limits), &mut diagnostics);
+        let error =
+            indexed(4, (0..4).map(|i| Ok((GlyphId(i), &name))), &mut work, 123).unwrap_err();
+        assert_eq!(
+            (error.kind, error.position),
+            (ErrorKind::Limit, Position::Buffer(123))
+        );
+        let mut work = Work::new(FontBudget::new(&Limits::default()), &mut diagnostics);
+        assert_eq!(
             indexed(
                 usize::MAX,
                 std::iter::once(Ok((GlyphId(0), &name))),
-                &limits,
+                &mut work,
                 123
             )
-            .is_err()
+            .unwrap_err()
+            .kind,
+            ErrorKind::Limit
         );
         assert_eq!(
-            indexed(usize::MAX, std::iter::empty(), &limits, 123).unwrap(),
-            Vec::<Option<Name>>::new()
+            indexed(usize::MAX, std::iter::empty(), &mut work, 123).unwrap(),
+            []
         );
     }
 
     #[test]
-    fn invalid_index_retains_the_table_position() {
+    fn an_index_outside_the_program_is_malformed() {
         let name = Name::new(b"A");
-        let error = indexed(
-            1,
-            std::iter::once(Ok((GlyphId(1), &name))),
-            &Limits::default(),
-            456,
-        )
-        .unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Syntax);
-        assert_eq!(error.position, pagura_core::Position::Buffer(456));
+        let mut diagnostics = Diagnostics::new(Recovery::Strict);
+        let mut work = Work::new(FontBudget::new(&Limits::default()), &mut diagnostics);
+        let error =
+            indexed(1, std::iter::once(Ok((GlyphId(1), &name))), &mut work, 456).unwrap_err();
+        assert_eq!(
+            (error.kind, error.position),
+            (ErrorKind::Syntax, Position::Buffer(456))
+        );
     }
 }

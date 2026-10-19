@@ -1,11 +1,12 @@
 //! sfnt directory and horizontal metrics (ISO 32000-2, 9.9).
+use crate::budget::Work;
 use crate::memory::{names, vector};
-use crate::read::{bad, cap, here, slice};
+use crate::read::{bad, here, slice};
+use crate::repairs;
 use crate::{CmapSubtable, GlyphId};
-use crate::{recovery::repair, repairs};
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
-use pagura_core::{Diagnostics, Limits, Name, Position, Result};
+use pagura_core::{Name, Position, Result};
 use pagura_raster::{Path, Transform};
 use std::collections::BTreeMap;
 use std::ops::Range;
@@ -29,12 +30,8 @@ pub(crate) struct Sfnt {
 }
 
 impl Sfnt {
-    pub(crate) fn parse(
-        data: &[u8],
-        limits: &Limits,
-        diagnostics: &mut Diagnostics,
-    ) -> Result<Self> {
-        let (signature, tables, clipped_post) = directory(data, limits, diagnostics)?;
+    pub(crate) fn parse(data: &[u8], work: &mut Work<'_>) -> Result<Self> {
+        let (signature, tables, clipped_post) = directory(data, work)?;
         let table = |tag: &[u8; 4]| -> Result<Cursor<'_>> {
             let range = tables
                 .get(tag)
@@ -42,7 +39,7 @@ impl Sfnt {
             slice(data, range.clone(), "sfnt table outside font")
         };
         let (units, location_format, glyph_count, advances, cff) = if signature == 0x4f54_544f {
-            let cff = cff_tables(data, &tables, limits, diagnostics)?;
+            let cff = cff_tables(data, &tables, work)?;
             let count = usize::try_from(cff.glyph_count())
                 .map_err(|_| crate::read::limit(0, "glyph count overflow"))?;
             // ISO 32000-2, 9.9.1 Table 124: CFF OpenType needs CFF and cmap,
@@ -60,24 +57,19 @@ impl Sfnt {
                 1000
             };
             let advances = if tables.contains_key(b"hhea") || tables.contains_key(b"hmtx") {
-                Some(metrics(
-                    table(b"hhea")?,
-                    table(b"hmtx")?,
-                    count,
-                    diagnostics,
-                )?)
+                Some(metrics(table(b"hhea")?, table(b"hmtx")?, count, work)?)
             } else {
                 None
             };
             (units, 0, count, advances, Some(cff))
         } else {
             let (units, location_format) = header(table(b"head")?)?;
-            let glyph_count = maxp_count(table(b"maxp")?, signature, limits)?;
+            let glyph_count = maxp_count(table(b"maxp")?, signature, work)?;
             let advances = Some(metrics(
                 table(b"hhea")?,
                 table(b"hmtx")?,
                 glyph_count,
-                diagnostics,
+                work,
             )?);
             (units, location_format, glyph_count, advances, None)
         };
@@ -91,22 +83,17 @@ impl Sfnt {
                 glyph_count,
                 location_format,
                 glyf.len(),
-                diagnostics,
+                work,
             )?;
             (glyf, locations)
         } else {
             (0..0, Vec::new())
         };
         let cmaps = if tables.contains_key(b"cmap") {
-            match cmap::parse(table(b"cmap")?, glyph_count, limits, diagnostics) {
+            match cmap::parse(table(b"cmap")?, glyph_count, work) {
                 Ok(cmaps) => cmaps,
                 Err(error) if crate::recovery::glyph_error(&error) => {
-                    repair(
-                        diagnostics,
-                        repairs::CMAP_DATA,
-                        error.message,
-                        error.position,
-                    )?;
+                    work.repair(repairs::CMAP_DATA, error.message, error.position)?;
                     Vec::new()
                 }
                 Err(error) => return Err(error),
@@ -115,7 +102,7 @@ impl Sfnt {
             Vec::new()
         };
         let names = if tables.contains_key(b"post") {
-            match names::parse(table(b"post")?, glyph_count, limits) {
+            match names::parse(table(b"post")?, glyph_count, work) {
                 Ok(names) => names,
                 Err(error) if clipped_post && crate::recovery::glyph_error(&error) => {
                     names::PostNames::default()
@@ -158,14 +145,14 @@ impl Sfnt {
             crate::cff::Cff::matrix,
         )
     }
-    pub(crate) fn advance(&self, data: &[u8], glyph: GlyphId, limits: &Limits) -> Option<f64> {
+    pub(crate) fn advance(&self, data: &[u8], glyph: GlyphId, work: &mut Work<'_>) -> Option<f64> {
         if let Some(advances) = &self.advances {
             advances
                 .get(usize::try_from(glyph.0).ok()?)
                 .copied()
                 .map(f64::from)
         } else {
-            self.cff.as_ref()?.advance(data, glyph, limits)
+            self.cff.as_ref()?.advance(data, glyph, work)
         }
     }
     pub(crate) fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
@@ -195,17 +182,11 @@ impl Sfnt {
             .find_map(|c| c.lookup(data, code))
             .filter(|g| g.0 < self.glyph_count())
     }
-    pub(crate) fn outline(
-        &self,
-        data: &[u8],
-        glyph: GlyphId,
-        limits: &Limits,
-        diagnostics: &mut Diagnostics,
-    ) -> Result<Path> {
+    pub(crate) fn outline(&self, data: &[u8], glyph: GlyphId, work: &mut Work<'_>) -> Result<Path> {
         if let Some(cff) = &self.cff {
-            cff.outline(data, glyph, limits, diagnostics)
+            cff.outline(data, glyph, work)
         } else {
-            glyf::outline(self, data, glyph, limits, diagnostics)
+            glyf::outline(self, data, glyph, work)
         }
     }
 
@@ -228,15 +209,14 @@ fn locations(
     count: usize,
     format: i16,
     glyph_bytes: usize,
-    diagnostics: &mut Diagnostics,
+    work: &mut Work<'_>,
 ) -> Result<Vec<Option<usize>>> {
     let mut result = Vec::with_capacity(count + 1);
     let mut previous = 0;
     let word = if format == 0 { 2 } else { 4 };
     for _ in 0..=count {
         if r.remaining() < word {
-            repair(
-                diagnostics,
+            work.repair(
                 repairs::TABLE_BOUNDS,
                 "truncated glyph-location table",
                 Position::Buffer(here(&r)),
@@ -253,8 +233,7 @@ fn locations(
             return Err(bad(here(&r), "invalid glyph location"));
         }
         if offset > glyph_bytes {
-            repair(
-                diagnostics,
+            work.repair(
                 repairs::TABLE_BOUNDS,
                 "glyph location exceeds available outlines",
                 Position::Buffer(here(&r) - word),
@@ -270,7 +249,7 @@ fn metrics(
     mut hhea: Cursor<'_>,
     mut hmtx: Cursor<'_>,
     glyph_count: usize,
-    diagnostics: &mut Diagnostics,
+    work: &mut Work<'_>,
 ) -> Result<Vec<u16>> {
     if hhea.u32()? != 0x0001_0000 {
         return Err(bad(here(&hhea), "invalid hhea version"));
@@ -290,8 +269,7 @@ fn metrics(
         return Err(bad(here(&hmtx), "missing required horizontal advances"));
     }
     if hmtx.remaining() < metrics * 4 + (glyph_count - metrics) * 2 {
-        repair(
-            diagnostics,
+        work.repair(
             repairs::TABLE_BOUNDS,
             "truncated unused horizontal side bearings",
             Position::Buffer(here(&hmtx) + hmtx.remaining()),
@@ -331,20 +309,15 @@ fn header(mut head: Cursor<'_>) -> Result<(u16, i16)> {
     Ok((units, location_format))
 }
 
-fn cff_tables(
-    data: &[u8],
-    tables: &Tables,
-    limits: &Limits,
-    diagnostics: &mut Diagnostics,
-) -> Result<crate::cff::Cff> {
+fn cff_tables(data: &[u8], tables: &Tables, work: &mut Work<'_>) -> Result<crate::cff::Cff> {
     let range = tables
         .get(b"CFF ")
         .or_else(|| tables.get(b"CFF2"))
         .ok_or_else(|| bad(0, "missing OpenType CFF table"))?;
-    crate::cff::Cff::parse(data, range.clone(), limits, diagnostics)
+    crate::cff::Cff::parse(data, range.clone(), work)
 }
 
-fn maxp_count(mut maxp: Cursor<'_>, signature: u32, limits: &Limits) -> Result<usize> {
+fn maxp_count(mut maxp: Cursor<'_>, signature: u32, work: &mut Work<'_>) -> Result<usize> {
     let maxp_version = maxp.u32()?;
     if maxp_version
         != if signature == 0x0001_0000 {
@@ -362,10 +335,6 @@ fn maxp_count(mut maxp: Cursor<'_>, signature: u32, limits: &Limits) -> Result<u
     if glyph_count == 0 {
         return Err(bad(here(&maxp), "font has no glyphs"));
     }
-    cap(
-        glyph_count,
-        limits.objects.min(limits.value_nodes),
-        here(&maxp),
-    )?;
+    work.entries(glyph_count, Position::Buffer(here(&maxp)))?;
     Ok(glyph_count)
 }

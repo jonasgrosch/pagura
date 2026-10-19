@@ -1,8 +1,9 @@
 //! ISOAdobe glyph names and StandardEncoding (TN 5176 appendices).
 use super::predefined;
-use crate::read::{bad, cap, here};
+use crate::budget::Work;
+use crate::read::{bad, here};
 use pagura_core::bytes::Cursor;
-use pagura_core::{Diagnostics, Limits, Name, Result};
+use pagura_core::{Name, Position, Result};
 
 mod supplements;
 use std::ops::Range;
@@ -44,7 +45,7 @@ pub(super) fn sid(
     sid: u16,
     strings: &[Range<usize>],
     data: &[u8],
-    limits: &Limits,
+    work: &mut Work<'_>,
 ) -> Result<Name> {
     if sid >= 65000 {
         return Err(bad(0, "reserved CFF SID"));
@@ -58,13 +59,13 @@ pub(super) fn sid(
                 .nth(usize::from(sid) - 229)
         }
         .ok_or_else(|| bad(0, "invalid standard CFF SID"))?;
-        cap(value.len(), limits.string_bytes, 0)?;
+        work.string(value.len(), Position::Unknown)?;
         return Ok(Name::new(value.as_bytes()));
     }
     let range = strings
         .get(usize::from(sid) - 391)
         .ok_or_else(|| bad(0, "CFF SID outside String INDEX"))?;
-    cap(range.len(), limits.string_bytes, range.start)?;
+    work.string(range.len(), Position::Buffer(range.start))?;
     let bytes = data
         .get(range.clone())
         .ok_or_else(|| bad(range.start, "CFF string outside font"))?;
@@ -80,8 +81,7 @@ pub(super) fn encoding(
     charset: &[u16],
     strings: &[Range<usize>],
     data: &[u8],
-    limits: &Limits,
-    diagnostics: &mut Diagnostics,
+    work: &mut Work<'_>,
 ) -> Result<Box<[Option<Name>; 256]>> {
     let mut result = Box::new(std::array::from_fn(|_| None));
     if offset == 0 {
@@ -93,7 +93,7 @@ pub(super) fn encoding(
     if offset == 1 {
         for code in 0..=255_u8 {
             if let Some(id) = predefined::expert_sid(code) {
-                result[usize::from(code)] = Some(sid(id, strings, data, limits)?);
+                result[usize::from(code)] = Some(sid(id, strings, data, work)?);
             }
         }
         return Ok(result);
@@ -122,20 +122,12 @@ pub(super) fn encoding(
             if result[usize::from(code)].is_some() {
                 return Err(bad(here(&r), "duplicate CFF encoding code"));
             }
-            result[usize::from(code)] = Some(self::sid(sid, strings, data, limits)?);
+            result[usize::from(code)] = Some(self::sid(sid, strings, data, work)?);
             gid += 1;
         }
     }
     if format & 128 != 0 {
-        supplements::read(
-            &mut r,
-            &mut result,
-            &charset[1..gid],
-            strings,
-            data,
-            limits,
-            diagnostics,
-        )?;
+        supplements::read(&mut r, &mut result, &charset[1..gid], strings, data, work)?;
     }
     Ok(result)
 }

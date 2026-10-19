@@ -1,8 +1,7 @@
 //! Bounded static procedure aliases (Type 1 2.4, 7.3 and 10.3).
 //! Definitions are matched, never executed or expanded as PostScript.
 use super::{Tokens, unsupported};
-use crate::read::cap;
-use pagura_core::{Limits, Name, Result};
+use pagura_core::{Name, Position, Result};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -38,7 +37,7 @@ impl Aliases {
                     Assignment::Put => b"put",
                 }
     }
-    pub(super) fn finish(&self, r: &mut Tokens<'_>, assignment: Assignment) -> Result<()> {
+    pub(super) fn finish(&self, r: &mut Tokens<'_, '_, '_>, assignment: Assignment) -> Result<()> {
         let mut word = r.required()?;
         if word == b"noaccess" {
             word = r.required()?;
@@ -52,12 +51,7 @@ impl Aliases {
             ))
         }
     }
-    pub(super) fn definition(
-        &mut self,
-        token: &[u8],
-        r: &mut Tokens<'_>,
-        limits: &Limits,
-    ) -> Result<()> {
+    pub(super) fn definition(&mut self, token: &[u8], r: &mut Tokens<'_, '_, '_>) -> Result<()> {
         let Some(name) = token.strip_prefix(b"/") else {
             return Ok(());
         };
@@ -72,7 +66,7 @@ impl Aliases {
                 Ok(())
             };
         };
-        let Some(kind) = classify(Tokens::new(body, limits))? else {
+        let Some(kind) = classify(Tokens::new(body, r.work()))? else {
             return if known {
                 Err(unsupported(
                     r.pos,
@@ -95,22 +89,16 @@ impl Aliases {
                 "computed Type 1 procedure definition is not implemented",
             ));
         }
-        cap(
-            self.0
-                .len()
-                .saturating_add(usize::from(!self.0.contains_key(name))),
-            limits
-                .objects
-                .min(limits.value_nodes)
-                .min(limits.decoded_bytes / (size_of::<Name>() + 64)),
-            r.pos,
-        )?;
+        if !self.0.contains_key(name) {
+            let at = Position::Buffer(r.pos);
+            r.work().entries(1, at)?;
+        }
         self.0.insert(Name::new(name), kind);
         Ok(())
     }
 }
 
-fn classify(mut body: Tokens<'_>) -> Result<Option<Kind>> {
+fn classify(mut body: Tokens<'_, '_, '_>) -> Result<Option<Kind>> {
     let mut word = body.raw()?;
     let kind = if word == Some(b"string".as_slice()) {
         for expected in [b"currentfile".as_slice(), b"exch", b"readstring", b"pop"] {

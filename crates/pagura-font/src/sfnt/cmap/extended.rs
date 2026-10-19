@@ -1,18 +1,13 @@
 //! Mixed-byte and trimmed Unicode cmap layouts, pending OpenType primary review.
-use super::{charge, word};
-use crate::read::{bad, cap, here};
-use crate::{recovery::repair, repairs};
+use super::word;
+use crate::budget::Work;
+use crate::read::{bad, here};
+use crate::repairs;
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
-use pagura_core::{Diagnostics, Limits, Position, Result};
+use pagura_core::{Position, Result};
 
-pub(super) fn validate_two(
-    mut r: Cursor<'_>,
-    glyphs: usize,
-    limits: &Limits,
-    work: &mut usize,
-    diagnostics: &mut Diagnostics,
-) -> Result<()> {
+pub(super) fn validate_two(mut r: Cursor<'_>, glyphs: usize, work: &mut Work<'_>) -> Result<()> {
     r.skip(6)?;
     let mut largest = 0;
     for _ in 0..256 {
@@ -22,9 +17,9 @@ pub(super) fn validate_two(
         }
         largest = largest.max(key / 8);
     }
-    cap(largest + 1, limits.value_nodes, here(&r))?;
-    charge(work, 256, limits, here(&r))?;
-    let headers = super::available(&r, largest + 1, 8, diagnostics)?;
+    work.entries(largest + 1, Position::Buffer(here(&r)))?;
+    work.work(256, Position::Buffer(here(&r)))?;
+    let headers = super::available(&r, largest + 1, 8, work)?;
     for index in 0..headers {
         let mut header = r.cursor_at(518 + 8 * index)?;
         let first = usize::from(header.u16()?);
@@ -34,11 +29,10 @@ pub(super) fn validate_two(
         if first + count > 256 || relative % 2 != 0 {
             return Err(bad(here(&header), "invalid cmap subheader range"));
         }
-        charge(work, count, limits, here(&header))?;
+        work.work(count, Position::Buffer(here(&header)))?;
         let start = 524 + 8 * index + relative;
         if start > r.data().len() {
-            repair(
-                diagnostics,
+            work.repair(
                 repairs::CMAP_TRUNCATED,
                 "missing cmap subheader glyph array",
                 Position::Buffer(here(&header) - 2),
@@ -46,7 +40,7 @@ pub(super) fn validate_two(
             continue;
         }
         let mut glyph_array = r.cursor_at(start)?;
-        let count = super::available(&glyph_array, count, 2, diagnostics)?;
+        let count = super::available(&glyph_array, count, 2, work)?;
         for _ in 0..count {
             let raw = glyph_array.u16()?;
             let delta = word(r.data(), 522 + 8 * index)?;
@@ -87,22 +81,16 @@ pub(super) fn lookup_two(data: &[u8], code: u32) -> Result<u16> {
     })
 }
 
-pub(super) fn validate_ten(
-    mut r: Cursor<'_>,
-    glyphs: usize,
-    limits: &Limits,
-    work: &mut usize,
-    diagnostics: &mut Diagnostics,
-) -> Result<()> {
+pub(super) fn validate_ten(mut r: Cursor<'_>, glyphs: usize, work: &mut Work<'_>) -> Result<()> {
     r.skip(12)?;
     let first = r.u32()?;
     let count = u32_to_usize(r.u32()?);
     if u64::from(first) + count as u64 > 0x0011_0000 {
         return Err(bad(here(&r), "invalid cmap Unicode range"));
     }
-    cap(count, limits.value_nodes, here(&r))?;
-    charge(work, count, limits, here(&r))?;
-    let count = super::available(&r, count, 2, diagnostics)?;
+    work.entries(count, Position::Buffer(here(&r)))?;
+    work.work(count, Position::Buffer(here(&r)))?;
+    let count = super::available(&r, count, 2, work)?;
     for _ in 0..count {
         if usize::from(r.u16()?) >= glyphs {
             return Err(bad(here(&r), "invalid cmap glyph"));
