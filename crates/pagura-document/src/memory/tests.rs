@@ -113,7 +113,7 @@ fn decoded_object_streams_and_concurrent_object_access_are_charged_once() {
 }
 
 #[test]
-fn reconstruction_charges_new_compressed_slots_and_releases_bootstrap_caches() {
+fn reconstruction_charges_new_compressed_slots_and_keeps_what_it_decoded() {
     let name = "rebuild-compressed-catalog";
     let attempt = |bytes: usize| {
         Document::open(
@@ -147,9 +147,16 @@ fn reconstruction_charges_new_compressed_slots_and_releases_bootstrap_caches() {
     assert!(failure.object.is_some());
     let exact = attempt(peak).unwrap();
     assert_eq!(exact.retained.used(), total);
-    // The catalog scan cached every object in a scratch document; only what
-    // the opened document itself loaded stays charged.
-    assert!(total < peak, "{total} < {peak}");
+    // The plan carried the decoded object streams and the catalog scan ran on
+    // the final table, so what opening decoded stays: nothing is decoded or
+    // parsed twice, and the opened document retains exactly its peak.
+    assert_eq!(total, peak);
+    assert!(
+        exact
+            .object_streams
+            .values()
+            .all(|contents| contents.get().is_some())
+    );
     let before = exact.retained.used();
     exact.object(ObjectId::new(1, 0)).unwrap();
     assert_eq!(exact.retained.used(), before);

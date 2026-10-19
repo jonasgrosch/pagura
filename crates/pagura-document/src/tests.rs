@@ -329,6 +329,30 @@ mod reconstruction {
     use pagura_core::{Diagnostics, ErrorKind, ObjectId, Recovery, Value};
     use pagura_testkit::fixture;
 
+    #[test]
+    fn only_self_contained_object_streams_carry_their_decoded_contents() {
+        use crate::xref::rebuild::self_contained;
+        use pagura_core::{Dictionary, Name};
+        let mut dictionary = Dictionary::new();
+        dictionary.insert(Name::new(b"Length"), Value::Integer(12));
+        dictionary.insert(
+            Name::new(b"Filter"),
+            Value::Array(vec![Value::Name(Name::new(b"FlateDecode"))]),
+        );
+        assert!(self_contained(&dictionary));
+        // A parameter one level down is resolved while decoding (7.3.8.2).
+        let mut parameters = Dictionary::new();
+        parameters.insert(
+            Name::new(b"Predictor"),
+            Value::Reference(ObjectId::new(9, 0)),
+        );
+        dictionary.insert(Name::new(b"DecodeParms"), Value::Dictionary(parameters));
+        assert!(!self_contained(&dictionary));
+        dictionary.remove(b"DecodeParms");
+        dictionary.insert(Name::new(b"Length"), Value::Reference(ObjectId::new(8, 0)));
+        assert!(!self_contained(&dictionary));
+    }
+
     const CONTENT: &[u8] = b"1 0 0 rg 8 8 48 32 re f\n";
 
     #[test]

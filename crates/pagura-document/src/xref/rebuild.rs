@@ -2,13 +2,15 @@
 //!
 //! The scanner advances monotonically and skips strings and stream payloads.
 //! Heuristics follow the ADR 0003 repair catalogue and the damage classes seen
-//! in the real-world corpus. Object streams and the catalog of a rebuilt table
-//! are read through a scratch document; what they establish is returned as a
-//! plan that the document builder applies before any cache is kept.
+//! in the real-world corpus. Object streams of a rebuilt table are read through
+//! a scratch document; what they establish is returned as a plan that the
+//! document builder applies, carrying each stream's decoded contents when
+//! decoding read no other object. The catalog is then found on the final
+//! table.
 
 use super::{Location, XrefEntry, XrefOrigin, XrefTable, entry_budget, structural};
 use crate::object::recovery::{self, StreamContext, TERMINATOR_SLACK, header};
-use crate::object::stream::headers;
+use crate::object::stream::{Contents, headers};
 use crate::{Document, ObjectSource, repairs};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{
@@ -295,6 +297,9 @@ pub(crate) struct StreamSlots {
     pub(crate) slots: BTreeMap<u32, Replacement>,
     /// Object numbers of the object streams read.
     pub(crate) streams: Vec<u32>,
+    /// Decoded contents of the streams whose decoding read no other object,
+    /// and which no compressed definition supersedes, by object number.
+    pub(crate) contents: BTreeMap<u32, Contents>,
 }
 
 /// A compressed definition and the physical slot it supersedes, if any.
@@ -356,6 +361,7 @@ pub(crate) fn object_streams(
         .get(b"Encrypt")
         .and_then(Value::as_reference);
     let mut visited = BTreeSet::new();
+    let mut contents_by_stream = BTreeMap::new();
     for id in streams {
         // A stream superseded by a later compressed definition is no stream.
         if !visited.insert(id)
@@ -416,8 +422,30 @@ pub(crate) fn object_streams(
             );
         }
         plan.streams.push(id.number);
+        if self_contained(dictionary) {
+            contents_by_stream.insert(id.number, contents);
+        }
     }
+    contents_by_stream.retain(|number, _| !plan.slots.contains_key(number));
+    plan.contents = contents_by_stream;
     Ok(plan)
+}
+
+/// Whether decoding a stream with `dictionary` reads no other object: its
+/// length, filters and their parameters are direct (7.3.8.2), so replacing
+/// slots cannot change the decoded bytes.
+pub(crate) fn self_contained(dictionary: &Dictionary) -> bool {
+    fn direct(value: &Value) -> bool {
+        match value {
+            Value::Reference(_) => false,
+            Value::Array(values) => values.iter().all(direct),
+            Value::Dictionary(dictionary) => dictionary.iter().all(|(_, value)| direct(value)),
+            _ => true,
+        }
+    }
+    [b"Length".as_slice(), b"Filter", b"DecodeParms"]
+        .iter()
+        .all(|key| dictionary.get(key).is_none_or(direct))
 }
 
 /// The Root of a reconstructed document: `None` keeps the trailer's when it
