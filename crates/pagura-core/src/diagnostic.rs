@@ -1,6 +1,7 @@
 //! Typed repair and informational diagnostics (ADR 0003).
 
 use crate::{Error, ObjectId, Position, Result};
+use std::collections::BTreeSet;
 use std::fmt;
 
 /// Whether malformed input may be repaired.
@@ -203,6 +204,8 @@ impl fmt::Display for Diagnostic {
 pub struct Diagnostics {
     mode: Recovery,
     items: Vec<Diagnostic>,
+    /// The kinds in `items`, so [`Diagnostics::repair_once`] need not scan.
+    kinds: BTreeSet<DiagnosticKind>,
 }
 
 impl Diagnostics {
@@ -211,6 +214,7 @@ impl Diagnostics {
         Self {
             mode,
             items: Vec::new(),
+            kinds: BTreeSet::new(),
         }
     }
 
@@ -231,6 +235,7 @@ impl Diagnostics {
         {
             return Err(error);
         }
+        self.kinds.insert(diagnostic.kind);
         self.items.push(diagnostic);
         Ok(())
     }
@@ -241,13 +246,15 @@ impl Diagnostics {
     ///
     /// Use this where one damaged structure can repeat the same deviation
     /// many times (every glyph, code or row): the first occurrence is kept
-    /// with its position, and the sink does not grow per occurrence.
+    /// with its position, the sink does not grow per occurrence, and the
+    /// check costs a lookup among the distinct kinds recorded, not a scan of
+    /// every diagnostic.
     ///
     /// # Errors
     ///
     /// As [`Diagnostics::repair`].
     pub fn repair_once(&mut self, diagnostic: Diagnostic) -> Result<()> {
-        if self.items.iter().any(|item| item.kind == diagnostic.kind) {
+        if self.kinds.contains(&diagnostic.kind) {
             return Ok(());
         }
         self.repair(diagnostic)
@@ -275,6 +282,7 @@ impl Diagnostics {
 
     /// Moves the recorded diagnostics out, leaving the sink empty.
     pub fn take(&mut self) -> Vec<Diagnostic> {
+        self.kinds.clear();
         std::mem::take(&mut self.items)
     }
 }
@@ -378,6 +386,11 @@ mod tests {
         let tags: Vec<_> = sink.as_slice().iter().map(Diagnostic::tag).collect();
         assert_eq!(tags, ["file.trailing-bytes", "file.other", "file.note"]);
         assert_eq!(sink.as_slice()[0].position, Position::Buffer(0));
+        // Taking the diagnostics forgets their kinds as well.
+        assert_eq!(sink.take().len(), 3);
+        sink.repair_once(Diagnostic::new(TRAILING, "again"))
+            .unwrap();
+        assert_eq!(sink.as_slice().len(), 1);
         let mut strict = Diagnostics::new(Recovery::Strict);
         for _ in 0..2 {
             let error = strict
