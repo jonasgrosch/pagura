@@ -1,7 +1,9 @@
 //! Fax row geometry: 7.4.6 Table 11 and 8.9.5.1 Table 87.
-use crate::Samples;
+use super::Pixels;
+use crate::Precision;
 use crate::parameters::{self, boolean, integer};
-use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Limits, Position, Result};
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Limits, Result};
 use pagura_imagecodec::ccitt::{self, CcittParams};
 
 pub(crate) fn decode(
@@ -11,25 +13,23 @@ pub(crate) fn decode(
     height: u32,
     limits: &Limits,
     diagnostics: &mut Diagnostics,
-) -> Result<Samples> {
+) -> Result<Pixels> {
     let params = params(dictionary)?;
     if params.columns != width {
         diagnostics.repair(Diagnostic::new(crate::repairs::CCITT_COLUMNS,
             "CCITT Columns retained for decoding; rows cropped or white-padded to image Width (7.4.6 Table 11; 8.9.5.1 Table 87)")
-            .at(Position::Buffer(0)))?;
+            )?;
         parameters::budget(params.columns, height, 1, 1, limits)?;
     }
     let packed = ccitt::decode_with_diagnostics(data, &params, limits, diagnostics)?;
     if params.columns == width {
-        return parameters::unpack_with_diagnostics(
-            &packed,
-            width,
-            height,
-            1,
-            1,
-            limits,
-            diagnostics,
-        );
+        let samples =
+            parameters::unpack_with_diagnostics(&packed, width, height, 1, 1, limits, diagnostics)?;
+        return Ok(Pixels {
+            components: 1,
+            precision: Precision::Uniform(1),
+            samples,
+        });
     }
     let count = parameters::budget(width, height, 1, 1, limits)?;
     if packed
@@ -42,20 +42,24 @@ pub(crate) fn decode(
     let stride = usize::try_from(u64::from(params.columns).div_ceil(8))
         .map_err(|_| Error::limit("CCITT row exceeds addressable samples"))?;
     let length = stride
-        .checked_mul(height as usize)
+        .checked_mul(u32_to_usize(height))
         .ok_or(Error::limit("CCITT image size overflow"))?;
     let data = parameters::packed_data(&packed, length, diagnostics)?;
     // Columns controls encoded runs and reference rows. Width controls the
     // painting grid. Cropping is on the right; extension uses fax white before
     // applying Decode. Byte-alignment bits never become image samples.
     let mut samples = vec![u8::from(!params.black_is_1); count];
-    for (y, row) in samples.chunks_exact_mut(width as usize).enumerate() {
-        for (x, sample) in row.iter_mut().take(params.columns as usize).enumerate() {
+    for (y, row) in samples.chunks_exact_mut(u32_to_usize(width)).enumerate() {
+        for (x, sample) in row
+            .iter_mut()
+            .take(u32_to_usize(params.columns))
+            .enumerate()
+        {
             let byte = data.get(y * stride + x / 8).copied().unwrap_or(0);
             *sample = (byte >> (7 - x % 8)) & 1;
         }
     }
-    Ok(Samples::Bytes(samples))
+    Ok(Pixels::bilevel(samples))
 }
 
 /// Reads the Table 11 parameters, including defaults.

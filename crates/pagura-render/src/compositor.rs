@@ -1768,7 +1768,9 @@ mod tests {
         .expect("the fixture paints its image through a transfer");
         assert!(copies(|_| {}));
         assert!(!copies(image(|i| i.decode = vec![(1.0, 0.0); 3])));
-        assert!(!copies(image(|i| i.decoded.interpolate = true)));
+        assert!(!copies(image(
+            |i| i.decoded = i.decoded.clone().interpolated()
+        )));
         assert!(!copies(|c| c.composite.alpha = 0.5));
         assert!(!copies(|c| c.transfer = Some(transfer)));
         // A fractional last column, and an image over half the chunk.

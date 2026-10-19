@@ -1,5 +1,5 @@
 //! Narrow parameter recovery before image dispatch (7.3.8.1 Table 5, 7.4.1).
-use pagura_core::{Diagnostic, Diagnostics, Error, ErrorKind, Position, Result, Value};
+use pagura_core::{Diagnostic, Diagnostics, Error, ErrorKind, Result, Value};
 use pagura_document::{Document, ImageStream, IndirectObject};
 
 pub(crate) fn read<'a>(
@@ -41,16 +41,10 @@ fn read_inner<'a>(
     let Some(params) = repaired_params(document, names, params)? else {
         return document.image_stream(image);
     };
-    diagnostics.repair(
-        Diagnostic::new(
-            crate::repairs::DECODE_PARAMS,
-            "malformed image DecodeParms entry treated as absent (7.3.8.1 Table 5, 7.4.1, 7.4.9)",
-        )
-        .at(Position::Stream {
-            object: image.id(),
-            offset: 0,
-        }),
-    )?;
+    diagnostics.repair(Diagnostic::new(
+        crate::repairs::DECODE_PARAMS,
+        "malformed image DecodeParms entry treated as absent (7.3.8.1 Table 5, 7.4.1, 7.4.9)",
+    ))?;
     document.image_stream_with_parameters(image, Some(&params))
 }
 
@@ -117,16 +111,10 @@ fn predictor_precision<'a>(
         .ok()?;
     Some(
         diagnostics
-            .repair(
-                Diagnostic::new(
-                    crate::repairs::PREDICTOR_PRECISION,
-                    "predictor data decoded at image BitsPerComponent (7.4.4.3)",
-                )
-                .at(Position::Stream {
-                    object: image.id(),
-                    offset: 0,
-                }),
-            )
+            .repair(Diagnostic::new(
+                crate::repairs::PREDICTOR_PRECISION,
+                "predictor data decoded at image BitsPerComponent (7.4.4.3)",
+            ))
             .map(|()| stream),
     )
 }

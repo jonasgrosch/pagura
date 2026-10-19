@@ -76,7 +76,7 @@ impl Context {
                     let factor = sample.alpha;
                     value.color = value.color.map(|v| v * factor);
                     value.alpha *= factor;
-                    if matches!(image.decoded.mask, MaskKind::Stencil(_))
+                    if matches!(image.decoded.mask(), MaskKind::Stencil(_))
                         || command.composite.alpha_is_shape
                     {
                         value.shape *= factor;
@@ -161,33 +161,33 @@ impl Context {
         let (space, count) = expand_indexed(image, &mut components)?;
         let mut shape = 1.0;
         let mut alpha = 1.0;
-        if let MaskKind::ColorKey(ranges) = &image.decoded.mask {
+        if let MaskKind::ColorKey(ranges) = image.decoded.mask() {
             let offset = pixel
-                .checked_mul(usize::from(image.decoded.components))
+                .checked_mul(usize::from(image.decoded.components()))
                 .ok_or(Error::limit("colour key sample overflow"))?;
-            if ranges.iter().enumerate().all(|(i, &(lo, hi))| {
+            if ranges.iter().enumerate().all(|(i, range)| {
                 image
                     .decoded
-                    .samples
+                    .samples()
                     .get(offset + i)
-                    .is_some_and(|v| v >= lo && v <= hi)
+                    .is_some_and(|v| range.contains(&v))
             }) {
                 shape = 0.0;
                 alpha = 0.0;
             }
         }
-        if let MaskKind::Embedded(plane) = &image.decoded.mask {
+        if let MaskKind::Embedded(plane) = image.decoded.mask() {
             let opacity = f64::from(
                 plane
-                    .samples
+                    .samples()
                     .get(pixel)
                     .ok_or(Error::syntax("missing JPX opacity"))?,
-            ) / precision_max(plane.bits_per_component)?;
+            ) / precision_max(plane.bits_per_component())?;
             alpha *= opacity;
             if command.composite.alpha_is_shape {
                 shape *= opacity;
             }
-            if plane.premultiplied {
+            if plane.premultiplied() {
                 for c in components.iter_mut().take(count) {
                     *c = if opacity > 0.0 { *c / opacity } else { 0.0 };
                 }
@@ -239,26 +239,26 @@ fn prepare(
 
 pub(super) fn sampler_for(image: &Image, inverse: Transform) -> Sampler {
     Sampler {
-        width: image.decoded.width,
-        height: image.decoded.height,
-        interpolate: image.decoded.interpolate,
+        width: image.decoded.width(),
+        height: image.decoded.height(),
+        interpolate: image.decoded.interpolate(),
         inverse: inverse.then(Transform::new(
-            f64::from(image.decoded.width),
+            f64::from(image.decoded.width()),
             0.0,
             0.0,
-            -f64::from(image.decoded.height),
+            -f64::from(image.decoded.height()),
             0.0,
-            f64::from(image.decoded.height),
+            f64::from(image.decoded.height()),
         )),
     }
 }
 fn mask_texel(image: &Image, pixel: usize) -> Result<Texel> {
     let sample = image
         .decoded
-        .samples
+        .samples()
         .get(pixel)
         .ok_or(Error::syntax("missing mask sample"))?;
-    let alpha = if let ImageKind::Stencil { inverted } = image.decoded.kind {
+    let alpha = if let &ImageKind::Stencil { inverted } = image.decoded.kind() {
         f64::from(u8::from((sample == 1) == inverted))
     } else {
         let mut values = [0.0; 32];
@@ -295,7 +295,7 @@ fn expand_indexed<'a>(
         }
         Ok((base, n))
     } else {
-        Ok((space, usize::from(image.decoded.components)))
+        Ok((space, usize::from(image.decoded.components())))
     }
 }
 
@@ -313,9 +313,9 @@ impl MaskSamples {
     }
 
     pub(super) fn sample(&mut self, image: &Image, pixel: usize) -> Result<f64> {
-        if image.decoded.components == 1
-            && (1..=8).contains(&image.decoded.bits_per_component)
-            && let Samples::Bytes(values) = &image.decoded.samples
+        if image.decoded.components() == 1
+            && let Some(1..=8) = image.decoded.bits_per_component()
+            && let Samples::Bytes(values) = image.decoded.samples()
         {
             let raw = values
                 .get(pixel)
@@ -358,17 +358,17 @@ impl<'a> Texels<'a> {
         // sample, so a 256-entry table equals the scalar result.
         if matches!(model, Model::Gray | Model::Rgb)
             && matches!(image.space, Some(crate::color::Space::Gray))
-            && (1..=8).contains(&image.decoded.bits_per_component)
-            && image.decoded.components == 1
+            && let Some(bits @ 1..=8) = image.decoded.bits_per_component()
+            && image.decoded.components() == 1
             && image.matte.is_none()
             && !matches!(
-                image.decoded.mask,
+                image.decoded.mask(),
                 MaskKind::ColorKey(_) | MaskKind::Embedded(_)
             )
-            && let Samples::Bytes(pixels) = &image.decoded.samples
+            && let Samples::Bytes(pixels) = image.decoded.samples()
             && let [(low, high)] = image.decode.as_slice()
         {
-            let maximum = f64::from(u16::MAX >> (16 - image.decoded.bits_per_component));
+            let maximum = f64::from(u16::MAX >> (16 - bits));
             let colors = std::array::from_fn(|sample| {
                 let value = (low + sample as f64 / maximum * (high - low)).clamp(0.0, 1.0);
                 if model == Model::Rgb {
@@ -381,14 +381,14 @@ impl<'a> Texels<'a> {
         }
         if model == Model::Rgb
             && matches!(image.space, Some(crate::color::Space::Rgb))
-            && image.decoded.bits_per_component == 8
-            && image.decoded.components == 3
+            && image.decoded.bits_per_component() == Some(8)
+            && image.decoded.components() == 3
             && image.matte.is_none()
             && !matches!(
-                image.decoded.mask,
+                image.decoded.mask(),
                 MaskKind::ColorKey(_) | MaskKind::Embedded(_)
             )
-            && let Samples::Bytes(bytes) = &image.decoded.samples
+            && let Samples::Bytes(bytes) = image.decoded.samples()
             && let [red, green, blue] = image.decode.as_slice()
         {
             let (pixels, remainder) = bytes.as_chunks::<3>();
@@ -401,15 +401,15 @@ impl<'a> Texels<'a> {
                 return Self::Rgb { pixels, channels };
             }
         }
-        if (1..=4).contains(&image.decoded.components)
-            && (0..usize::from(image.decoded.components)).all(|i| {
+        if (1..=4).contains(&image.decoded.components())
+            && (0..usize::from(image.decoded.components())).all(|i| {
                 image
                     .decoded
                     .component_bits(i)
                     .is_some_and(|bits| (1..=8).contains(&bits))
             })
             && image.matte.is_none()
-            && !matches!(image.decoded.mask, MaskKind::Embedded(_))
+            && !matches!(image.decoded.mask(), MaskKind::Embedded(_))
         {
             Self::Cached([None; 256])
         } else {
@@ -453,7 +453,7 @@ impl<'a> Texels<'a> {
             Self::Uncached => return context.image_texel(command, pixel, model, stencil),
             Self::Cached(values) => values,
         };
-        let count = usize::from(command.image.decoded.components);
+        let count = usize::from(command.image.decoded.components());
         let offset = pixel
             .checked_mul(count)
             .ok_or(Error::limit("image sample offset overflow"))?;
@@ -462,7 +462,7 @@ impl<'a> Texels<'a> {
             let sample = command
                 .image
                 .decoded
-                .samples
+                .samples()
                 .get(offset + component)
                 .filter(|&v| v <= 255)
                 .ok_or(Error::syntax("missing or out-of-range image sample"))?;
@@ -505,7 +505,7 @@ fn covered_source(value: Texel, coverage: u8, template: Source) -> Source {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pagura_image::DecodedImage;
+    use pagura_image::{DecodedImage, Precision};
     use std::sync::Arc;
     fn context() -> Context {
         let limits = pagura_core::Limits::default();
@@ -548,27 +548,40 @@ mod tests {
     }
 
     fn byte_image(components: u8, bits: u8) -> Image {
+        let samples = (0..=255)
+            .flat_map(|v| std::iter::repeat_n(v & (u8::MAX >> (8 - bits)), usize::from(components)))
+            .collect();
+        byte_image_with(components, bits, samples)
+    }
+
+    /// `image` with one row of `samples` at `precision`, of the same kind.
+    fn resampled(image: Image, precision: Precision, samples: Samples) -> Image {
+        let components = image.decoded.components();
+        let width = u32::try_from(samples.len() / usize::from(components)).unwrap();
+        let kind = image.decoded.kind().clone();
         Image {
-            decoded: DecodedImage {
-                width: 256,
-                height: 1,
-                bits_per_component: bits,
+            decoded: DecodedImage::new(width, 1, components, precision, samples, kind).unwrap(),
+            ..image
+        }
+    }
+
+    fn byte_image_with(components: u8, bits: u8, samples: Vec<u8>) -> Image {
+        Image {
+            decoded: DecodedImage::new(
+                256,
+                1,
                 components,
-                samples: Samples::Bytes(
-                    (0..=255)
-                        .flat_map(|v| {
-                            std::iter::repeat_n(
-                                v & (u8::MAX >> (8 - bits)),
-                                usize::from(components),
-                            )
-                        })
-                        .collect(),
-                ),
-                kind: ImageKind::Color { color_space: None },
-                decode: None,
-                mask: MaskKind::None,
-                interpolate: false,
-            },
+                Precision::Uniform(bits),
+                Samples::Bytes(samples),
+                ImageKind::Color {
+                    color_space: pagura_core::Value::name(if components == 1 {
+                        b"DeviceGray"
+                    } else {
+                        b"DeviceRGB"
+                    }),
+                },
+            )
+            .unwrap(),
             space: Some(if components == 1 {
                 crate::color::Space::Gray
             } else {
@@ -583,15 +596,22 @@ mod tests {
 
     #[test]
     fn matte_removal_matches_independent_rational_channels() {
-        let mut image = byte_image(3, 8);
-        image.decoded.width = 1;
-        image.decoded.samples = Samples::Bytes(vec![128, 192, 0]);
-        let mut mask = byte_image(1, 8);
-        mask.decoded.width = 1;
-        mask.decoded.samples = Samples::Bytes(vec![128]);
+        let mut image = resampled(
+            byte_image(3, 8),
+            Precision::Uniform(8),
+            Samples::Bytes(vec![128, 192, 0]),
+        );
+        let mask = resampled(
+            byte_image(1, 8),
+            Precision::Uniform(8),
+            Samples::Bytes(vec![128]),
+        );
         image.matte = Some(vec![1.0; 3]);
         image.mask = Some(Arc::new(mask));
-        image.decoded.mask = MaskKind::Soft(pagura_core::ObjectId::new(1, 0));
+        image.decoded = image
+            .decoded
+            .with_mask(MaskKind::Soft(pagura_core::ObjectId::new(1, 0)))
+            .unwrap();
         let command = command(image);
         let value = context()
             .image_texel(&command, 0, Model::Rgb, None)
@@ -630,7 +650,15 @@ mod tests {
         }
         for inverted in [false, true] {
             let mut image = byte_image(1, 1);
-            image.decoded.kind = ImageKind::Stencil { inverted };
+            image.decoded = DecodedImage::new(
+                256,
+                1,
+                1,
+                Precision::Uniform(1),
+                image.decoded.samples().clone(),
+                ImageKind::Stencil { inverted },
+            )
+            .unwrap();
             image.decode[0] = (1.0, 0.0);
             let mut samples = MaskSamples { table: [None; 256] };
             for pixel in [0, 1, 0, 1] {
@@ -641,10 +669,11 @@ mod tests {
                 );
             }
         }
-        let mut image = byte_image(1, 8);
-        image.decoded.width = 3;
-        image.decoded.bits_per_component = 16;
-        image.decoded.samples = Samples::Words(vec![0, 32768, 65535]);
+        let image = resampled(
+            byte_image(1, 8),
+            Precision::Uniform(16),
+            Samples::Words(vec![0, 32768, 65535]),
+        );
         let mut samples = MaskSamples { table: [None; 256] };
         for (pixel, expected) in [0, 128, 255].into_iter().enumerate() {
             assert_eq!(
@@ -653,12 +682,7 @@ mod tests {
             );
         }
         assert!(samples.sample(&image, 3).is_err());
-        image.decoded.width = 1;
-        image.decoded.bits_per_component = 0;
-        image.decoded.samples = Samples::Mixed {
-            values: vec![128],
-            bits: vec![8],
-        };
+        let image = resampled(image, Precision::Mixed(vec![8]), Samples::Words(vec![128]));
         assert_eq!(
             super::super::quantize(samples.sample(&image, 0).unwrap()),
             128
@@ -708,7 +732,7 @@ mod tests {
         for mask in [MaskKind::Stencil(id), MaskKind::Soft(id)] {
             for components in [1, 3] {
                 let mut image = byte_image(components, 8);
-                image.decoded.mask = mask.clone();
+                image.decoded = image.decoded.with_mask(mask.clone()).unwrap();
                 let command = command(image);
                 let mut tables = Texels::new(&command.image, Model::Rgb);
                 assert!(matches!(tables, Texels::Gray { .. } | Texels::Rgb { .. }));
@@ -742,15 +766,16 @@ mod tests {
             (1, 8, Model::Rgb),
         ] {
             for range in [(0.0, 1.0), (1.0, 0.0), (-0.25, 1.25), (0.125, 0.875)] {
-                let mut image = byte_image(components, bits);
+                let mut image = if components == 3 {
+                    let samples = (0..=255_u8)
+                        .flat_map(|v| [v, 255 - v, v.wrapping_mul(73)])
+                        .collect();
+                    byte_image_with(components, bits, samples)
+                } else {
+                    byte_image(components, bits)
+                };
                 image.decode.fill(range);
-                if components == 3
-                    && let Samples::Bytes(bytes) = &mut image.decoded.samples
-                {
-                    for pixel in bytes.as_chunks_mut::<3>().0 {
-                        pixel[1] = 255 - pixel[0];
-                        pixel[2] = pixel[0].wrapping_mul(73);
-                    }
+                if components == 3 {
                     image.decode[1] = (range.1, range.0);
                 }
                 let command = command(image);
@@ -784,9 +809,13 @@ mod tests {
     #[test]
     fn byte_tables_exclude_masks_matte_and_nonmatching_spaces() {
         let mut image = byte_image(3, 8);
-        image.decoded.mask = MaskKind::ColorKey(vec![(0, 0); 3]);
+        let unmasked = image.decoded.clone();
+        image.decoded = unmasked
+            .clone()
+            .with_mask(MaskKind::ColorKey(vec![0..=0; 3]))
+            .unwrap();
         assert!(matches!(Texels::new(&image, Model::Rgb), Texels::Cached(_)));
-        image.decoded.mask = MaskKind::None;
+        image.decoded = unmasked;
         image.matte = Some(vec![0.0; 3]);
         assert!(matches!(Texels::new(&image, Model::Rgb), Texels::Uncached));
         image.matte = None;
@@ -805,22 +834,17 @@ mod tests {
     #[test]
     fn scalar_cache_uses_component_precision_for_mixed_samples() {
         let image = Arc::new(Image {
-            decoded: DecodedImage {
-                width: 1,
-                height: 1,
-                bits_per_component: 0,
-                components: 1,
-                samples: Samples::Mixed {
-                    values: vec![32768],
-                    bits: vec![16],
+            decoded: DecodedImage::new(
+                1,
+                1,
+                1,
+                Precision::Mixed(vec![16]),
+                Samples::Words(vec![32768]),
+                ImageKind::Color {
+                    color_space: pagura_core::Value::name(b"DeviceGray"),
                 },
-                kind: ImageKind::Color {
-                    color_space: Some(pagura_core::Value::name(b"DeviceGray")),
-                },
-                decode: None,
-                mask: MaskKind::None,
-                interpolate: false,
-            },
+            )
+            .unwrap(),
             space: Some(crate::color::Space::Gray),
             mask: None,
             matte: None,

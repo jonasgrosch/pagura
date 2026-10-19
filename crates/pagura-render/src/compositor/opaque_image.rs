@@ -112,17 +112,17 @@ fn copy_samples(
 
 fn rgb_samples(image: &Image) -> Option<&[[u8; 3]]> {
     if !matches!(image.space, Some(crate::color::Space::Rgb))
-        || image.decoded.bits_per_component != 8
-        || image.decoded.components != 3
-        || image.decoded.interpolate
-        || !matches!(image.decoded.mask, MaskKind::None)
+        || image.decoded.bits_per_component() != Some(8)
+        || image.decoded.components() != 3
+        || image.decoded.interpolate()
+        || !matches!(image.decoded.mask(), MaskKind::None)
         || image.mask.is_some()
         || image.matte.is_some()
         || image.decode.as_slice() != [(0.0, 1.0); 3]
     {
         return None;
     }
-    let Samples::Bytes(bytes) = &image.decoded.samples else {
+    let Samples::Bytes(bytes) = image.decoded.samples() else {
         return None;
     };
     let (samples, rest) = bytes.as_chunks::<3>();

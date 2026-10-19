@@ -1,237 +1,267 @@
-//! Image codec dispatch and cross-checking of dictionary and stream metadata.
-use crate::{DecodedImage, ImageKind, MaskKind, Samples, parameters as p};
+//! Image codec dispatch, cross-checking of dictionary and stream metadata,
+//! and the assembly of the decoded image (8.9.5, Table 87).
+use crate::adapter::{self, Pixels};
+use crate::image::Parts;
+use crate::{DecodedImage, ImageAlpha, ImageKind, MaskKind, Precision, parameters as p};
 use pagura_codec::ImageCodec;
-use pagura_core::{Diagnostics, Dictionary, Error, Result, Value};
+use pagura_core::{Diagnostics, Dictionary, Error, Limits, Result, Value};
 use pagura_document::Document;
-use pagura_imagecodec::{dct, jbig2};
 
-type Codec = (ImageCodec, Option<Dictionary>);
+/// The trailing image codec of a filter chain and its parameters.
+#[derive(Clone, Copy)]
+pub(crate) struct Codec<'a> {
+    pub(crate) codec: ImageCodec,
+    pub(crate) params: Option<&'a Dictionary>,
+}
+
+/// What `/ImageMask` and `/ColorSpace` make of the samples.
+enum Interpretation {
+    Stencil,
+    Color {
+        space: Value,
+        components: u8,
+    },
+    /// JPEG 2000 without `/ColorSpace`: the container decides (7.4.9).
+    Container,
+}
+
+impl Interpretation {
+    const fn components(&self) -> Option<u8> {
+        match self {
+            Self::Stencil => Some(1),
+            Self::Color { components, .. } => Some(*components),
+            Self::Container => None,
+        }
+    }
+
+    /// Whether the space is `/Indexed` (8.6.6.3).
+    fn indexed(&self) -> bool {
+        matches!(self, Self::Color { space: Value::Array(space), .. }
+            if space.first().and_then(Value::as_name).is_some_and(|name| name == b"Indexed"))
+    }
+}
+
+/// What a codec adapter decoded.
+struct Decoded {
+    pixels: Pixels,
+    /// A JPEG 2000 opacity plane requested by `/SMaskInData`.
+    alpha: Option<ImageAlpha>,
+    /// A JPEG 2000 container's color, for an image without `/ColorSpace`.
+    container: Option<ImageKind>,
+}
+
+impl From<Pixels> for Decoded {
+    fn from(pixels: Pixels) -> Self {
+        Self {
+            pixels,
+            alpha: None,
+            container: None,
+        }
+    }
+}
+
+/// The image a dictionary declares, for the codec adapters.
+struct Image<'a> {
+    document: &'a Document,
+    dict: &'a Dictionary,
+    width: u32,
+    height: u32,
+    interpretation: Interpretation,
+    limits: Limits,
+}
+
+impl Image<'_> {
+    /// Color components the dictionary declares; one for a stencil and for
+    /// a JPEG 2000 image whose container decides.
+    fn components(&self) -> u8 {
+        self.interpretation.components().unwrap_or(1)
+    }
+
+    /// `/BitsPerComponent` of an image that is not JPEG 2000 (Table 87),
+    /// checked against the sample budget.
+    fn bits(&self) -> Result<u8> {
+        let stencil = matches!(self.interpretation, Interpretation::Stencil);
+        let bits = u8::try_from(p::integer(
+            self.dict,
+            b"BitsPerComponent",
+            i64::from(stencil),
+        )?)
+        .ok()
+        .filter(|b| matches!(b, 1 | 2 | 4 | 8 | 16))
+        .ok_or(Error::syntax("invalid image BitsPerComponent"))?;
+        p::budget(
+            self.width,
+            self.height,
+            self.components(),
+            bits,
+            &self.limits,
+        )?;
+        Ok(bits)
+    }
+
+    /// Checks that a bilevel codec's image has one 1-bit component.
+    fn bilevel(&self, message: &'static str) -> Result<()> {
+        if self.bits()? == 1 && self.components() == 1 {
+            Ok(())
+        } else {
+            Err(Error::syntax(message))
+        }
+    }
+}
 
 pub(crate) fn decode(
     document: &Document,
     dict: &Dictionary,
     data: &[u8],
-    codec: Option<&Codec>,
+    codec: Option<Codec<'_>>,
     diagnostics: &mut Diagnostics,
 ) -> Result<DecodedImage> {
     let (width, height) = p::dimensions(dict)?;
     let limits = document.limits();
     p::budget(width, height, 1, 1, &limits)?;
-    let stencil = p::boolean(dict, b"ImageMask", false)?;
-    let (space, components) = if stencil {
-        (None, 1)
+    let jpx = codec.as_ref().is_some_and(|c| c.codec == ImageCodec::Jpx);
+    let interpretation = if p::boolean(dict, b"ImageMask", false)? {
+        Interpretation::Stencil
     } else if let Some(space) = dict.get(b"ColorSpace").filter(|v| !v.is_null()) {
-        let (value, n) = p::resolve_space(document, space)?;
-        (Some(value), n)
-    } else if matches!(codec, Some((ImageCodec::Jpx, _))) {
-        (None, 0)
+        let (space, components) = p::resolve_space(document, space)?;
+        Interpretation::Color { space, components }
+    } else if jpx {
+        Interpretation::Container
     } else {
         return Err(Error::syntax("missing image ColorSpace"));
     };
-    let bits = if matches!(codec, Some((ImageCodec::Jpx, _))) {
-        1
-    } else {
-        u8::try_from(p::integer(dict, b"BitsPerComponent", i64::from(stencil))?)
-            .ok()
-            .filter(|b| matches!(b, 1 | 2 | 4 | 8 | 16))
-            .ok_or(Error::syntax("invalid image BitsPerComponent"))?
-    };
-    if !matches!(codec, Some((ImageCodec::Jpx, _))) {
-        p::budget(width, height, components, bits, &limits)?;
-    }
-    let mut image = DecodedImage {
+    let image = Image {
+        document,
+        dict,
         width,
         height,
-        components,
-        bits_per_component: 1,
-        samples: Samples::Bytes(Vec::new()),
-        kind: if stencil {
-            ImageKind::Stencil { inverted: false }
-        } else {
-            ImageKind::Color { color_space: space }
-        },
-        decode: None,
-        mask: MaskKind::None,
-        interpolate: false,
+        interpretation,
+        limits,
     };
-    let params = codec.and_then(|(_, params)| params.as_ref());
-    match codec.map(|(codec, _)| codec) {
-        None => {
-            image.bits_per_component = bits;
-            image.samples = p::unpack_with_diagnostics(
-                data,
+    let decoded = decode_data(&image, data, codec, diagnostics)?;
+    assemble(image, decoded)
+}
+
+/// Decodes the samples with the image's codec, or unpacks them.
+fn decode_data(
+    image: &Image<'_>,
+    data: &[u8],
+    codec: Option<Codec<'_>>,
+    diagnostics: &mut Diagnostics,
+) -> Result<Decoded> {
+    let (width, height, limits) = (image.width, image.height, &image.limits);
+    let Some(Codec { codec, params }) = codec else {
+        let bits = image.bits()?;
+        let samples = p::unpack_with_diagnostics(
+            data,
+            width,
+            height,
+            image.components(),
+            bits,
+            limits,
+            diagnostics,
+        )?;
+        return Ok(Pixels {
+            components: image.components(),
+            precision: Precision::Uniform(bits),
+            samples,
+        }
+        .into());
+    };
+    Ok(match codec {
+        ImageCodec::Dct => {
+            let declared = adapter::dct::Declared {
                 width,
                 height,
-                components,
-                bits,
-                &limits,
-                diagnostics,
-            )?;
+                components: image.components(),
+                bits: image.bits()?,
+            };
+            adapter::dct::decode(data, params, &declared, limits, diagnostics)?.into()
         }
-        Some(ImageCodec::Dct) => {
-            image.samples = decode_dct(
-                data,
-                params,
-                (width, height, components, bits),
-                &limits,
-                diagnostics,
-            )?;
-            image.bits_per_component = 8;
+        ImageCodec::CcittFax => {
+            image.bilevel("CCITT requires one-bit components")?;
+            adapter::fax::decode(data, params, width, height, limits, diagnostics)?.into()
         }
-        Some(ImageCodec::CcittFax) => {
-            if bits != 1 || components != 1 {
-                return Err(Error::syntax("CCITT requires one-bit components"));
+        ImageCodec::Jbig2 => {
+            image.bilevel("JBIG2 requires one-bit components")?;
+            adapter::jbig2::decode(image.document, image.dict, data, params, width, height)?.into()
+        }
+        ImageCodec::Jpx => {
+            let declared = adapter::jpx::Declared {
+                width,
+                height,
+                components: image.interpretation.components(),
+                indexed: image.interpretation.indexed(),
+            };
+            let adapted = adapter::jpx::decode(data, image.dict, declared, limits, diagnostics)?;
+            Decoded {
+                pixels: adapted.pixels,
+                alpha: adapted.alpha,
+                container: adapted.kind,
             }
-            image.samples =
-                crate::adapter::fax::decode(data, params, width, height, &limits, diagnostics)?;
         }
-        Some(ImageCodec::Jbig2) => {
-            if bits != 1 || components != 1 {
-                return Err(Error::syntax("JBIG2 requires one-bit components"));
-            }
-            image.samples = decode_jbig2(document, dict, data, params, width, height)?;
-        }
-        Some(ImageCodec::Jpx) => {
-            crate::adapter::jpx::decode(data, dict, &mut image, &limits, diagnostics)?;
-        }
-    }
-    let mut dictionary = dict.clone();
-    if matches!(codec, Some((ImageCodec::Jpx, _)))
-        && dict.get(b"ColorSpace").is_none_or(Value::is_null)
-        && !stencil
-    {
-        dictionary.remove(b"Decode");
-    }
-    p::finish(document, &dictionary, image)
+    })
 }
 
-fn decode_jbig2(
-    document: &Document,
-    dict: &Dictionary,
-    data: &[u8],
-    params: Option<&Dictionary>,
-    width: u32,
-    height: u32,
-) -> Result<Samples> {
-    // Preserve identity for stream-valued parameters using the original
-    // dictionary; resolved filter parameters hold only object values.
-    let original = dict
-        .get(b"DecodeParms")
-        .map(|v| document.resolve(v))
-        .transpose()?;
-    let original = match original {
-        Some(Value::Array(values)) => values.last().map(|v| document.resolve(v)).transpose()?,
-        value => value,
+/// Adds the dictionary's painting parameters to the decoded samples.
+fn assemble(image: Image<'_>, decoded: Decoded) -> Result<DecodedImage> {
+    let Image {
+        document,
+        dict,
+        width,
+        height,
+        interpretation,
+        ..
+    } = image;
+    let Decoded {
+        pixels,
+        alpha,
+        container,
+    } = decoded;
+    // A JPEG 2000 color image without /ColorSpace ignores /Decode (Table 87).
+    let decode = if matches!(interpretation, Interpretation::Container) {
+        None
+    } else {
+        p::decode_array(document, dict, pixels.components)?
     };
-    let globals = original
-        .and_then(Value::as_dictionary)
-        .or(params)
-        .and_then(|p| p.get(b"JBIG2Globals"))
-        .map(|v| {
-            let id = v
-                .as_reference()
-                .ok_or(Error::syntax("JBIG2Globals must reference a stream"))?;
-            document.stream_data(document.object(id)?)
-        })
-        .transpose()?;
-    let decoded = jbig2::decode(data, globals.as_deref(), &document.limits())?;
-    if decoded.width != width || decoded.height != height {
-        return Err(Error::syntax(
-            "JBIG2 dimensions disagree with image dictionary",
-        ));
-    }
-    // JBIG2 black=1; PDF default image samples black=0 (7.4.7).
-    let mut inverted = decoded.data;
-    for byte in &mut inverted {
-        *byte = !*byte;
-    }
-    let count = p::budget(width, height, 1, 1, &document.limits())?;
-    if count
-        .checked_add(inverted.len())
-        .is_none_or(|v| v > document.limits().decoded_bytes)
-    {
-        return Err(Error::limit("JBIG2 adapter sample budget exceeded"));
-    }
-    p::unpack(&inverted, width, height, 1, 1, &document.limits())
-}
-
-fn color_transform(params: Option<&Dictionary>) -> Result<Option<i64>> {
-    params
-        .and_then(|dict| dict.get(b"ColorTransform"))
-        .map(|v| {
-            v.as_integer()
-                .ok_or(Error::syntax("invalid DCT ColorTransform"))
-        })
-        .transpose()
-}
-
-/// An independently validated lossless image cannot be a JPEG with a damaged
-/// SOI: all Flate framing, checksums, row tags and sample counts must agree.
-fn decode_dct(
-    data: &[u8],
-    params: Option<&Dictionary>,
-    dimensions: (u32, u32, u8, u8),
-    limits: &pagura_core::Limits,
-    diagnostics: &mut Diagnostics,
-) -> Result<Samples> {
-    let (width, height, components, bits) = dimensions;
-    let transform = color_transform(params)?;
-    let decoded = match dct::decode_with_diagnostics(data, transform, limits, diagnostics) {
-        Ok(decoded) => decoded,
-        Err(error) => {
-            if !data.starts_with(&[0xff, 0xd8])
-                && bits == 8
-                && let Some(samples) =
-                    predicted_flate(data, params, (width, height, components), limits)
-            {
-                diagnostics.repair(
-                    pagura_core::Diagnostic::new(
-                        crate::repairs::FILTER_MISMATCH,
-                        "DCTDecode replaced by validated Flate image data (7.4.4, 7.4.8)",
-                    )
-                    .at(pagura_core::Position::Buffer(0)),
-                )?;
-                return Ok(Samples::Bytes(samples));
-            }
-            return Err(error);
-        }
+    let stencil = matches!(interpretation, Interpretation::Stencil);
+    let kind = match interpretation {
+        Interpretation::Stencil => ImageKind::Stencil {
+            inverted: stencil_inverted(dict, &pixels, decode.as_deref())?,
+        },
+        Interpretation::Color { space, .. } => ImageKind::Color { color_space: space },
+        Interpretation::Container => container.ok_or(Error::syntax(
+            "JPX without dictionary ColorSpace requires container color information",
+        ))?,
     };
-    if decoded.width != width
-        || decoded.height != height
-        || decoded.components != components
-        || bits != 8
-    {
-        return Err(Error::syntax(
-            "JPEG metadata disagrees with image dictionary",
-        ));
-    }
-    Ok(Samples::Bytes(decoded.samples))
+    let mask = match alpha {
+        Some(alpha) => MaskKind::Embedded(alpha),
+        None if stencil => MaskKind::None,
+        None => crate::mask::read(document, dict, pixels.components, &pixels.precision)?,
+    };
+    Ok(DecodedImage::assemble(Parts {
+        width,
+        height,
+        pixels,
+        kind,
+        decode,
+        mask,
+        interpolate: p::boolean(dict, b"Interpolate", false)?,
+    }))
 }
 
-fn predicted_flate(
-    data: &[u8],
-    params: Option<&Dictionary>,
-    dimensions: (u32, u32, u8),
-    limits: &pagura_core::Limits,
-) -> Option<Vec<u8>> {
-    let (width, height, components) = dimensions;
-    let predictor = pagura_codec::Predictor::from_params(params).ok()?;
-    if predictor.kind == pagura_codec::PredictorKind::None
-        || predictor.columns != width
-        || predictor.colors != components
-        || predictor.bits_per_component != 8
+/// The stencil constraints of Table 87 and the sense of `/Decode` (8.9.6.2).
+fn stencil_inverted(dict: &Dictionary, pixels: &Pixels, decode: Option<&[f64]>) -> Result<bool> {
+    if pixels.precision != Precision::Uniform(1)
+        || [b"ColorSpace".as_slice(), b"Mask", b"SMask"]
+            .into_iter()
+            .any(|key| dict.get(key).is_some_and(|v| !v.is_null()))
     {
-        return None;
+        return Err(Error::syntax("invalid stencil image dictionary"));
     }
-    let expected = usize::try_from(
-        u64::from(width)
-            .checked_mul(u64::from(height))?
-            .checked_mul(u64::from(components))?,
-    )
-    .ok()?;
-    let mut strict = Diagnostics::new(pagura_core::Recovery::Strict);
-    let samples = pagura_codec::Filter::Flate { predictor }
-        .decode(data, limits.decoded_bytes, &mut strict)
-        .ok()?;
-    (samples.len() == expected).then_some(samples)
+    match decode {
+        None | Some([0.0, 1.0]) => Ok(false),
+        Some([1.0, 0.0]) => Ok(true),
+        _ => Err(Error::syntax("invalid stencil Decode")),
+    }
 }
